@@ -10,6 +10,7 @@ export const TILESET_FRAMES: readonly TileType[] = [
   TileType.Floor,
   TileType.StairsLocked,
   TileType.StairsOpen,
+  TileType.Gate,
 ];
 
 const tileIndexOf = (type: TileType): number => TILESET_FRAMES.indexOf(type);
@@ -37,7 +38,8 @@ export class DungeonView {
     const layer = map.createLayer(0, tileset, 0, 0);
     if (!layer) throw new Error('DungeonView: nie udało się utworzyć warstwy tilemapy.');
 
-    layer.setCollision(tileIndexOf(TileType.Wall));
+    // Kraty też kolidują — putTileAt nadaje kolizję kaflom o tych indeksach.
+    layer.setCollision([tileIndexOf(TileType.Wall), tileIndexOf(TileType.Gate)]);
     this.layer = layer;
     this.widthPx = map.widthInPixels;
     this.heightPx = map.heightInPixels;

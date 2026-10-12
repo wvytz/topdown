@@ -49,6 +49,17 @@ export const FLOOR_GUARDIAN: BossDefinition = {
   },
 };
 
+/** Kraty areny bossa. */
+export const ARENA_GATES = {
+  /**
+   * Kraty opadają dopiero, gdy gracz stoi co najmniej tyle kafli od krawędzi areny,
+   * żeby nie spadły na niego w przejściu (gracz ma 24 px, kafel 32 px).
+   */
+  sealMarginTiles: 1,
+  shakeDurationMs: 180,
+  shakeIntensity: 0.006,
+} as const;
+
 /** Skalowanie HP i obrażeń wszystkich ataków bossa do piętra. */
 export function scaleBossForFloor(boss: BossDefinition, floor: number, scaling: EnemyScalingConfig): BossDefinition {
   const dmg = (value: number): number => scaleForFloor(value, floor, scaling.damagePerFloor);

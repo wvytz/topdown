@@ -42,6 +42,7 @@ import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { computeLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
+import { ArenaGates } from '@/world/ArenaGates';
 import { ShrineSite } from '@/world/ShrineSite';
 
 /** Sole dla RNG — każdy system losuje ze swojego strumienia, niezależnie od pozostałych. */
@@ -66,6 +67,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private toast: { text: string; at: number } | null = null;
   private death: DeathSummary | null = null;
   private shrine!: ShrineSite;
+  private arenaGates!: ArenaGates;
   private readonly highscores = new HighscoreStorage(
     HighscoreStorage.browserStorage(),
     HIGHSCORE_CONFIG.maxEntries,
@@ -126,6 +128,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (this.player.tick(actions, time)) this.resolvePlayerStrike(time);
     this.enemies.update(time);
     this.bossFight.update(time);
+    this.arenaGates.update();
     this.projectiles.update(time);
     this.loot.update(time);
     this.shrine.update(actions.interact);
@@ -215,6 +218,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.unlockStairs();
         this.dropLoot(position, BOSS_LOOT);
       },
+    });
+
+    this.arenaGates = new ArenaGates({
+      scene: this,
+      floor: this.dungeon,
+      view: this.dungeonView,
+      player: this.player,
+      effects: this.effects,
+      isBossFighting: () => this.bossFight.isFighting,
+      isBossDefeated: () => this.bossFight.isDefeated,
+      onSealed: () => this.showToast('Kraty opadły — nie ma odwrotu!'),
     });
   }
 

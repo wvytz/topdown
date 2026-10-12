@@ -126,6 +126,13 @@ export class BootScene extends Phaser.Scene {
             g.fillStyle(step % 2 === 0 ? 0xe0b84a : 0xb38a2a, 1).fillRect(ox + 4 + step * 3, 4 + step * 6, s - 8 - step * 6, 6);
           }
           break;
+        case TileType.Gate:
+          // Żelazna krata: pionowe pręty i dwie poprzeczki na tle podłogi.
+          g.fillStyle(0x24242c, 1).fillRect(ox, 0, s, s);
+          for (let bar = 3; bar < s; bar += 7) g.fillStyle(0x8a8f9c, 1).fillRect(ox + bar, 0, 3, s);
+          g.fillStyle(0x5c606b, 1).fillRect(ox, 7, s, 3).fillRect(ox, s - 10, s, 3);
+          g.lineStyle(1, 0xff8a3c, 0.9).strokeRect(ox + 0.5, 0.5, s - 1, s - 1);
+          break;
       }
     });
   }

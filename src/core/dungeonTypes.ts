@@ -5,6 +5,8 @@ export enum TileType {
   Floor = 1,
   StairsLocked = 2,
   StairsOpen = 3,
+  /** Krata opuszczana na wejściach do areny w trakcie walki z bossem. */
+  Gate = 4,
 }
 
 export enum RoomKind {

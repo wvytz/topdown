@@ -75,6 +75,16 @@ export class BossFight {
     deps.scene.physics.add.collider(deps.player, boss);
   }
 
+  /** Walka trwa (boss obudzony i żywy). */
+  get isFighting(): boolean {
+    return this.boss?.isFighting ?? false;
+  }
+
+  /** Boss pokonany — na tym piętrze nie będzie już walki. */
+  get isDefeated(): boolean {
+    return this.boss === null;
+  }
+
   /** Stan dla HUD — null, dopóki walka się nie zaczęła lub po zwycięstwie. */
   getStatus(): BossStatus | null {
     const boss = this.boss;

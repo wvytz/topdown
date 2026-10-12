@@ -28,13 +28,13 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 | Typy domenowe | `src/core/` | nie |
 | Zasady i obliczenia | `src/systems/` (HP, cooldowny, dash, geometria walki, skalowanie) | nie |
 | Decyzje AI | `src/ai/` (maszyny stanów, plany ataków bossa) | nie |
-| Generowanie świata | `src/dungeon/DungeonGenerator.ts`, `EncounterPlanner.ts`, `lineOfSight.ts`, `rooms.ts` | nie |
+| Generowanie świata | `src/dungeon/DungeonGenerator.ts`, `EncounterPlanner.ts`, `ShrinePlanner.ts`, `arenaGates.ts`, `lineOfSight.ts`, `rooms.ts` | nie |
 | Strojenie liczb | `src/config/` | nie |
 | Encje (widok + fizyka) | `src/entities/` | tak |
 | Koordynacja walki | `src/combat/` (EnemyManager, ProjectileManager, BossFight) | tak |
 | Renderowanie mapy, efekty, sceny | `src/dungeon/DungeonView.ts`, `src/effects/`, `src/scenes/` | tak |
 | Wejście | `src/input/` (klawiatura i mysz zamieniane na abstrakcyjne `PlayerActions`) | tak |
-| Obiekty otoczenia | `src/world/` (kapliczka) | tak |
+| Obiekty otoczenia | `src/world/` (kapliczka, kraty areny) | tak |
 | Zapis danych | `src/persistence/` (rekordy w `localStorage`, magazyn wstrzykiwany) | nie, ale korzysta z API przeglądarki |
 
 **Zasady:**
@@ -350,10 +350,54 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 8 — Zamykanie areny bossa
+
+**Cel:** walka z bossem bez odwrotu. Po rozpoczęciu walki wejścia do areny zamykają kraty, a po zwycięstwie kraty się podnoszą.
+
+**Decyzja właściciela:** wyszukiwanie drogi dla wrogów odkładamy na później, bo na razie jest mało istotne.
+
+**Warstwa czysta: `dungeon/arenaGates.ts`** (dopisany do `PURE_FILES` w teście architektury):
+- **`findRoomEntrances(floor, room)`:** kafle podłogi w pierścieniu tuż za obrysem pokoju, łącznie z narożnikami (przejście po skosie). To są miejsca na kraty.
+- **`isDeepInsideRoom(room, tile, margin)`:** czy kafel leży co najmniej `margin` kafli od krawędzi pokoju.
+- **`ArenaGateLock`:** maszyna stanów `Open → Sealed → Released`. `update()` zwraca zmianę do wykonania (`'seal'`, `'release'` albo `null`).
+  - Kraty opadają, gdy boss walczy, a gracz stoi w głębi areny (margines 1 kafla). Dzięki temu krata nigdy nie spada na gracza stojącego w przejściu. Boss budzi się już na krawędzi areny, więc przez chwilę da się jeszcze wycofać.
+  - Po pokonaniu bossa kraty podnoszą się na stałe.
+  - Boss pokonany przed zamknięciem krat (np. klawisz B) nie zamyka ich już nigdy.
+
+**Warstwa Phasera:**
+- Nowy kafel `TileType.Gate`: żelazne pręty z pomarańczową obwódką, celowo inne niż czerwone kraty zamkniętych schodów.
+  - `DungeonView` nadaje kolizję ścianom i kratom.
+  - Krata blokuje gracza, wrogów, bossa, łupy i pociski, bo wszystkie zderzają się z tą samą warstwą.
+- **`world/ArenaGates.ts`:** wykonuje decyzje `ArenaGateLock`.
+  - Przy zamknięciu: podmiana kafli, błysk na każdej kracie, wstrząs kamery i komunikat „Kraty opadły — nie ma odwrotu!”.
+  - Przy otwarciu: przywraca kafle z danych piętra.
+- `BossFight` wystawia `isFighting` i `isDefeated`.
+- Liczby (margines, wstrząs) są w `ARENA_GATES` w `config/bossConfig.ts`.
+- `.claude/launch.json`: druga konfiguracja `dev-alt` na porcie 5174, gdy 5173 zajmuje inny serwer.
+
+**Testy: +12, razem 169.**
+- Wejścia na mapach ASCII: korytarze z dwóch stron, pokój bez wejść, wejście po skosie przez narożnik.
+- **Test właściwości na 240 piętrach:** arena zawsze ma co najmniej jedno wejście, żadne nie leży w środku areny. Po zamknięciu wejść da się dojść tylko do kafli areny.
+- `isDeepInsideRoom`: granice przy marginesie 1 i 0.
+- `ArenaGateLock`:
+  - śpiący boss nie zamyka krat;
+  - kraty czekają, aż gracz zejdzie z krawędzi;
+  - zamknięcie następuje tylko raz;
+  - otwarcie po zwycięstwie jest trwałe;
+  - zwycięstwo przed zamknięciem.
+
+**Weryfikacja w grze (port 5174, ręczne `game.step()`):**
+- Gracz na skrajnym kaflu areny budzi bossa, ale kraty zostają otwarte. W głębi areny kraty opadają (2 kafle, kolizja włączona) i pojawia się komunikat.
+- Próba ucieczki: gracz pchany w stronę kraty zatrzymuje się na niej (y = 21,4 przy kracie na y = 20). Po zwycięstwie ten sam ruch wyprowadza go z areny (y = 18,5).
+- Po pokonaniu bossa kafle wracają do podłogi, stan `released`.
+
+**Znane ograniczenie:** jeśli zwykły wróg stoi w przejściu dokładnie w chwili opadnięcia krat, fizyka wypycha go na jedną ze stron. Zdarza się rzadko i nie psuje gry.
+
+---
+
 ## Znane ograniczenia i backlog
 
-- **Wyszukiwanie drogi:** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
-- **Zamykanie areny:** wejścia do komnaty bossa nie zamykają się w trakcie walki (opcja na później).
+- **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
 - **Wybór przedmiotu z bossa:** obecnie losowy. Wybór 1 z 3 dałby graczowi decyzję.
 - **Modyfikatory pięter (GDD §2.5):** na razie skalują się tylko statystyki.
