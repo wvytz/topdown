@@ -7,6 +7,7 @@ export const NO_WEAPON_EFFECTS: WeaponEffects = {
   shotStatus: {},
   meleeStatus: {},
   meleeHeal: 0,
+  meleeHealCooldownMs: 0,
   dashDamage: 0,
 };
 
@@ -44,11 +45,14 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
     }),
   };
 
+  const fangs = count(ItemId.VampireFang);
+
   return {
     shotPierce: stacked(count(ItemId.Shuriken), config.shuriken.pierce, config.shuriken.piercePerStack),
     shotStatus,
     meleeStatus,
-    meleeHeal: stacked(count(ItemId.VampireFang), config.vampireFang.heal, config.vampireFang.healPerStack),
+    meleeHeal: stacked(fangs, config.vampireFang.heal, config.vampireFang.healPerStack),
+    meleeHealCooldownMs: fangs > 0 ? config.vampireFang.cooldownMs : 0,
     dashDamage: stacked(count(ItemId.StormDash), config.stormDash.damage, config.stormDash.damagePerStack),
   };
 }

@@ -698,6 +698,53 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 14 — Balans: przegląd liczb i testy balansu
+
+**Zlecenie właściciela:** „popraw balans”, bez konkretnych objawów z testów. Właściciel przygotowuje w tym czasie sprite bossa.
+
+**Podejście:** zamiast zgadywać, przeliczyliśmy liczby z `config/` dla pięter 1–10 przy typowym przebiegu runu: ile ciosów potrzeba na wroga i bossa, ile złota daje piętro, ile daje każdy przedmiot z efektem. Zmieniamy tylko to, co wyraźnie odstaje. Resztę stroimy po testach właściciela.
+
+**Wnioski z przeglądu (bez zmian):**
+- **Krzywa wrogów jest w porządku:**
+  - na piętrze 1 Rusher pada od 3 ciosów, a Kiter od 2;
+  - na piętrze 10 bez przedmiotów potrzeba 6 ciosów;
+  - z Ostrzami wybieranymi z kart zostaje ok. 3 ciosów, więc trudność zależy od wyborów gracza.
+- **Boss na piętrze 1:** 25 ciosów bez przedmiotów, czyli walka, a nie formalność.
+- **Ekonomia:** ofiara w kapliczce kosztuje przez cały run ok. 40–45% oczekiwanego złota z piętra, więc wybór „moc teraz kontra wynik” pozostaje realny.
+- **Strzał** zostaje bez zmian, bo właściciel ocenił go dobrze. Pełna seria ładunków (3 × 7) zabija Kitera z piętra 1.
+
+**Poprawki (dwa przedmioty z kroku 10 odstawały):**
+
+| Co | Przed | Po | Dlaczego |
+|---|---|---|---|
+| Wampirzy kieł | 2 HP za każdy trafiony cios (co 0,32 s) = 6,25 HP/s | najwyżej raz na 0,7 s = ok. 2,9 HP/s | wcześniej ok. 60% obrażeń Rushera (10/s); kieł unieważniał zagrożenie zwykłych wrogów |
+| Elektryczna strzała na zwykłych wrogach | ogłuszenie 0,9 s + odporność 0,5 s = do 64% czasu w ogłuszeniu | odporność 1,2 s = najwyżej ok. 43% | przy 3 ładunkach dało się trzymać wroga w ogłuszeniu bez przerwy |
+
+**Kod:**
+- `ITEM_EFFECTS.vampireFang.cooldownMs`, w `WeaponEffects` jako `meleeHealCooldownMs` (0 bez kła).
+- `GameScene` pilnuje odstępu `Timer`em, który resetuje się z piętrem.
+- `ENEMY_STATUS_RESISTANCE.stunImmunityMs`: 500 → 1200. Odporność bossa się nie zmienia.
+
+**Nowe testy `tests/balance/balance.test.ts` (+9, razem 256).** Mają szerokie progi: pilnują kształtu krzywej, a nie dokładnych liczb.
+- Piętro 1: Rusher od 3 ciosów, Kiter od 2. Piętro 10 bez przedmiotów: ≤ 7 ciosów.
+- HP i obrażenia wrogów i bossa nie maleją z piętrem.
+- Boss na piętrze 1: 20–30 ciosów.
+- Strzał słabszy od ciosu, ale seria ładunków zabija Kitera z piętra 1.
+- Ofiara w kapliczce kosztuje 25–60% oczekiwanego złota z piętra, na każdym piętrze 1–10.
+- Przedmioty z efektem:
+  - Wampirzy kieł leczy ≤ ~1/3 DPS Rushera;
+  - Elektryczna strzała (1–2 kopie) ogłusza ≤ 50% czasu;
+  - podpalenie daje < 50% DPS ciosów.
+- **Sprawdzone:** na starych wartościach testy kła i strzały nie przechodzą, a na nowych przechodzą.
+
+**Korekta w trakcie pracy:** pierwsze szacunki w rozmowie z właścicielem były zawyżone. Podałem ~7,4 obrażeń/s Rushera, a jest 10/s, bo cooldown liczy się od początku zamachu. Podałem też „ponad 150 HP” leczenia w walce z bossem, a jest najwyżej ok. 50 HP, bo leczenie ogranicza liczba trafień, nie czas walki. Wniosek o poprawce się nie zmienił, liczby w tabeli powyżej są poprawne.
+
+**Weryfikacja w grze (port 5174):** gracz z kłem bije wroga bez przerwy. Leczenie pada co 960 ms (pierwszy cios po upływie 0,7 s), czyli co trzeci cios.
+
+**Do decyzji właściciela (backlog):** ostrzał bossa z korytarza przed opadnięciem krat.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.

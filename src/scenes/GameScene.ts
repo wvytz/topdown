@@ -46,6 +46,7 @@ import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { computeLoadout } from '@/systems/PlayerLoadout';
+import { Timer } from '@/systems/Timer';
 import { NEW_RUN, RunState } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
@@ -95,6 +96,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Cele trafione Burzowym pędem w dashu o numerze `dashHitsFor`. */
   private dashHits = new Set<object>();
   private dashHitsFor = -1;
+  /** Wampirzy kieł: odstęp między leczeniami za cios. */
+  private healCooldown = new Timer();
   private readonly highscores = new HighscoreStorage(
     HighscoreStorage.browserStorage(),
     HIGHSCORE_CONFIG.maxEntries,
@@ -122,6 +125,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.deathHandled = false;
     this.dashHits = new Set();
     this.dashHitsFor = -1;
+    this.healCooldown = new Timer();
   }
 
   create(): void {
@@ -235,9 +239,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.effects.slash(swing.origin.x, swing.origin.y, swing.angle, combat.meleeRange, arc);
     const hits = this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing);
 
-    // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów).
-    const heal = this.player.effects.meleeHeal;
-    if (hits > 0 && heal > 0 && !this.player.health.isFull) {
+    // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów),
+    // najwyżej raz na meleeHealCooldownMs.
+    const { meleeHeal: heal, meleeHealCooldownMs } = this.player.effects;
+    if (hits > 0 && heal > 0 && !this.player.health.isFull && !this.healCooldown.isActive(now)) {
+      this.healCooldown.start(now, meleeHealCooldownMs);
       this.player.heal(heal);
       this.effects.floatingText(this.player.x, this.player.y - 14, `+${heal}`, '#ff6b8a');
     }

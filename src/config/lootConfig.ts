@@ -122,7 +122,8 @@ export const ITEM_EFFECTS: ItemEffectsConfig = {
   shuriken: { pierce: 1, piercePerStack: 1 },
   electricArrow: { stunMs: 900, stunMsPerStack: 300 },
   fireFist: { tickDamage: 3, tickDamagePerStack: 2, tickMs: 500, durationMs: 2000 },
-  vampireFang: { heal: 2, healPerStack: 2 },
+  // Raz na 0,7 s: ok. 2,9 HP/s przy jednej kopii (bez limitu: 2 HP co cios = 6,25 HP/s, ok. 60% DPS Rushera).
+  vampireFang: { heal: 2, healPerStack: 2, cooldownMs: 700 },
   stormDash: { damage: 10, damagePerStack: 6 },
   frostShard: { slowPct: 0.4, slowPctPerStack: 0.1, maxSlowPct: 0.7, durationMs: 1500 },
 };

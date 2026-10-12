@@ -77,6 +77,8 @@ export interface WeaponEffects {
   readonly meleeStatus: StatusApplication;
   /** Leczenie za cios wręcz, który trafił co najmniej jeden cel. */
   readonly meleeHeal: number;
+  /** Minimalny odstęp między leczeniami za cios (ms). */
+  readonly meleeHealCooldownMs: number;
   /** Obrażenia zadawane wrogom, przez których gracz przelatuje dashem (0 = brak). */
   readonly dashDamage: number;
 }

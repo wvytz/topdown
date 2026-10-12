@@ -94,7 +94,12 @@ export interface ItemEffectsConfig {
     readonly tickMs: number;
     readonly durationMs: number;
   };
-  readonly vampireFang: { readonly heal: number; readonly healPerStack: number };
+  readonly vampireFang: {
+    readonly heal: number;
+    readonly healPerStack: number;
+    /** Leczenie najwyżej raz na tyle ms — bez tego szybkie ciosy dają ogromną regenerację. */
+    readonly cooldownMs: number;
+  };
   readonly stormDash: { readonly damage: number; readonly damagePerStack: number };
   readonly frostShard: {
     readonly slowPct: number;

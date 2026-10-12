@@ -84,7 +84,8 @@ export const PROJECTILE_RADIUS = 4;
 /** Zwykli wrogowie: pełne efekty, krótka odporność na ponowne ogłuszenie. */
 export const ENEMY_STATUS_RESISTANCE: StatusResistance = {
   stunMultiplier: 1,
-  stunImmunityMs: 500,
+  // Ogłuszenie 0,9 s + odporność 1,2 s: Elektryczną strzałą da się trzymać wroga w ogłuszeniu najwyżej ok. 43% czasu.
+  stunImmunityMs: 1200,
   slowMultiplier: 1,
 };
 
