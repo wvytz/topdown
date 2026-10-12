@@ -743,6 +743,55 @@ Złota przybywa o +20% na każde piętro.
 
 **Do decyzji właściciela (backlog):** ostrzał bossa z korytarza przed opadnięciem krat.
 
+**Ocena właściciela po teście:** gra wydaje się trudniejsza, co mu się podoba — kierunek jest dobry. Nie łagodzimy trudności przy kolejnych zmianach bez sygnału z testów.
+
+---
+
+## Krok 15 — Sprite bossa (Sludge King)
+
+**Materiał od właściciela:** `sludge-king_move-spit.png` (768×768) i `sludge-king_glob.png` (64×16), zapisane w `OneDrive\Pictures\sprites`. Tym razem bez `sprites.json`, więc układ odczytaliśmy z obrazu (powiększone wiersze N i S):
+- komórka 96×96, czyli dwa razy więcej niż u zwykłych postaci;
+- 8 wierszy kierunków jak w pierwszej paczce (0 = N, zgodnie z zegarem);
+- kolumny 0–3 to ruch (kołysanie), a kolumny 4–7 plucie (nadymanie, otwarcie paszczy, w kolumnie 7 wylatuje kula);
+- kula ma 4 klatki 16×16.
+
+**Zasady ustalone z właścicielem (zapisane w CLAUDE.md):**
+- **Sprite'y:** właściciel zapisuje je w `OneDrive\Pictures\sprites`, a Claude kopiuje je do `public/assets/sprites` i opisuje w `config/spriteConfig.ts`. Najlepiej z krótkim opisem układu klatek; bez niego układ odczytujemy z obrazu.
+- **Trudność:** gra ma być wymagająca. Nie łagodzimy trudności bez sygnału z testów właściciela (notatka do kroku 14).
+
+**Przypisanie animacji (decyzja Claude'a, do korekty przez właściciela):**
+- **Ruch** gra w pętli, także w miejscu, bo działa jak oddech.
+- **Uśpiony boss** patrzy w kamerę (S). W walce zawsze patrzy na gracza.
+- **Plucie przed Novą i Ostrzałem.** Animacja trwa do pierwszego wystrzału albo wybuchu (`attackLeadTimeMs`, czyli telegraf, krótszy przy wściekłości), a ostatnia klatka trzyma się do końca ataku.
+- **Uderzenie bez plucia,** bo strefa wokół bossa jest czytelna sama w sobie.
+- **Fale Novy** to animowane kule szlamu zamiast pomarańczowych kółek.
+- **Ogłuszony boss** zamiera w bieżącej klatce.
+
+**Kod:**
+- `config/spriteConfig.ts`: arkusze `sludgeKing` i `sludgeGlob`, `BOSS_VISUAL` (z listą ataków z pluciem), `BOSS_PROJECTILE_VISUAL`.
+- `ai/bossAttacks.ts` (czysty): `attackLeadTimeMs(plan, now)`, czyli czas do pierwszego wystrzału lub wybuchu.
+- `entities/Boss.ts`:
+  - sprite z arkusza;
+  - ciało o promieniu z definicji wyśrodkowane w klatce 96×96, więc kolizje bez zmian;
+  - `updateAnimation` wybiera animację.
+- `DirectionalAnimator.restart`: kolejne plucie w tym samym kierunku zaczyna się od pierwszej klatki.
+- Usunięta geometryczna tekstura bossa (`TextureKey.Boss`).
+
+**Testy: +5, razem 261.**
+- `attackLeadTimeMs`: Nova, Uderzenie, Ostrzał, skrócenie przy wściekłości, plan, który już minął, pusty plan.
+- Test arkuszy sam objął nowe pliki: wymiary PNG, wiersze i klatki.
+- Boss dopisany do testu „używane animacje istnieją”.
+
+**Weryfikacja w grze (port 5174):**
+- Uśpiony boss: `move-4` (S), ciało 52 px z przesunięciem 22 w klatce 96×96.
+- W walce, z graczem po lewej, kolejno:
+  - Uderzenie bez plucia;
+  - plucie przed Novą w 3600 ms;
+  - 12 kul szlamu w 4304 ms (+700 ms = telegraf Novy);
+  - powrót do ruchu w 4608 ms (+300 ms regeneracji);
+  - plucie przed Ostrzałem.
+- Zrzut ekranu: boss zwrócony do gracza w trakcie plucia, kule Novy, opuszczone kraty.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -751,5 +800,5 @@ Złota przybywa o +20% na każde piętro.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
 - **Ewolucje przedmiotów: odrzucone na obecnym etapie** (decyzja właściciela). Nie komplikujemy sterowania ani działania broni; wzmacnianie kolejnymi kopiami zostaje.
 - **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
-- **Grafika (krok 13 zaczął):** gracz, Rusher i mag mają sprite'y. Brakuje: bossa, kafli (ściany, podłoga, schody, kraty), łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
+- **Grafika (kroki 13 i 15):** gracz, Rusher, mag i boss mają sprite'y. Brakuje: kafli (ściany, podłoga, schody, kraty), łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

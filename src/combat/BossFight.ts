@@ -5,6 +5,7 @@ import type { Vector2 } from '@/core/types';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { FLOOR_GUARDIAN, scaleBossForFloor } from '@/config/bossConfig';
+import { BOSS_PROJECTILE_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { isHitByAreaStrike } from '@/ai/bossAttacks';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -53,6 +54,11 @@ interface PendingBurst {
 const BOSS_SEED_SALT = 0xb055;
 const TELEGRAPH_COLOR = 0xff4040;
 const TELEGRAPH_DEPTH = 5;
+/** Fale Novy to kule wyplute przez bossa (animowany sprite). */
+const BOSS_GLOB = {
+  texture: SPRITE_SHEETS[BOSS_PROJECTILE_VISUAL.sheet].key,
+  animation: animationKey(BOSS_PROJECTILE_VISUAL.sheet, BOSS_PROJECTILE_VISUAL.animation),
+};
 
 /**
  * Walka z bossem: aktywacja po wejściu gracza na arenę, wykonanie zaplanowanych ataków
@@ -194,6 +200,7 @@ export class BossFight {
           damage: burst.damage,
           knockback: burst.knockback,
           lifetimeMs: burst.lifetimeMs,
+          visual: BOSS_GLOB,
         });
       }
       return false;

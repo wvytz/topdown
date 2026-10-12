@@ -5,7 +5,6 @@ import { TileType } from '@/core/dungeonTypes';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { TILESET_FRAMES } from '@/dungeon/DungeonView';
 import { PLAYER_COMBAT, PROJECTILE_RADIUS } from '@/config/combatConfig';
-import { FLOOR_GUARDIAN } from '@/config/bossConfig';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { ItemKind } from '@/core/lootTypes';
 import { itemTextureKey } from '@/entities/Pickup';
@@ -88,14 +87,6 @@ export class BootScene extends Phaser.Scene {
       g.generateTexture(key, 24, 24);
       g.clear();
     }
-
-    // Boss: duże koło z ciemnym pierścieniem i jasnym rdzeniem.
-    const b = FLOOR_GUARDIAN.radius;
-    g.fillStyle(FLOOR_GUARDIAN.color, 1).fillCircle(b, b, b);
-    g.lineStyle(4, 0x2a0f0a, 0.8).strokeCircle(b, b, b - 6);
-    g.fillStyle(0xffd27a, 1).fillCircle(b, b, b / 4);
-    g.generateTexture(TextureKey.Boss, b * 2, b * 2);
-    g.clear();
 
     this.drawTileset(g);
     g.generateTexture(TextureKey.Tileset, TILE_SIZE * TILESET_FRAMES.length, TILE_SIZE);

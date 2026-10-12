@@ -45,6 +45,13 @@ export class DirectionalAnimator {
     this.currentName = name;
   }
 
+  /** Gra animację od pierwszej klatki, nawet jeśli ta sama właśnie trwa lub się skończyła (np. kolejny atak). */
+  restart(name: string, durationMs?: number): void {
+    this.current = '';
+    this.currentName = '';
+    this.play(name, durationMs);
+  }
+
   stop(): void {
     this.sprite.anims.stop();
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BossBrain } from '@/ai/BossBrain';
-import { isHitByAreaStrike, planBossAttack } from '@/ai/bossAttacks';
+import { attackLeadTimeMs, isHitByAreaStrike, planBossAttack } from '@/ai/bossAttacks';
 import type { BossAttackPlan } from '@/core/bossTypes';
 import { BossAttackKind, BossPhase } from '@/core/bossTypes';
 import { createRng } from '@/core/random';
@@ -99,6 +99,17 @@ describe('BossBrain', () => {
 describe('planBossAttack', () => {
   const plan = (kind: BossAttackKind, enraged = false, now = 1000): BossAttackPlan =>
     planBossAttack({ kind, definition: BOSS, self: SELF, target: FAR, now, enraged, rng: createRng(3) });
+
+  it('attackLeadTimeMs: czas do pierwszego wystrzału lub wybuchu (pod animację ataku)', () => {
+    expect(attackLeadTimeMs(plan(BossAttackKind.Nova), 1000)).toBe(BOSS.nova.telegraphMs);
+    expect(attackLeadTimeMs(plan(BossAttackKind.Slam), 1000)).toBe(BOSS.slam.telegraphMs);
+    expect(attackLeadTimeMs(plan(BossAttackKind.Barrage), 1000)).toBe(BOSS.barrage.telegraphMs);
+    expect(attackLeadTimeMs(plan(BossAttackKind.Nova, true), 1000)).toBe(
+      Math.round(BOSS.nova.telegraphMs * BOSS.enrage.telegraphMultiplier),
+    );
+    expect(attackLeadTimeMs(plan(BossAttackKind.Nova), 99_999)).toBe(0);
+    expect(attackLeadTimeMs({ kind: BossAttackKind.Slam, strikes: [], bursts: [], endsAt: 0 }, 0)).toBe(0);
+  });
 
   it('Uderzenie: jedna strefa wokół bossa, uderza po telegrafie', () => {
     const slam = plan(BossAttackKind.Slam);

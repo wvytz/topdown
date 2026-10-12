@@ -27,7 +27,7 @@ npm run build        # typy + testy + build produkcyjny do dist/
 
 ## Co jest w grze
 
-- **Grafika:** pixel-artowe sprite'y w 8 kierunkach: bohater-barbarzyńca, Rusher i demon-mag rzucający kulami. Boss, kafle i łupy to na razie placeholdery.
+- **Grafika:** pixel-artowe sprite'y w 8 kierunkach: bohater-barbarzyńca, Rusher, demon-mag rzucający kulami i boss Sludge King plujący kulami szlamu. Kafle, łupy i kapliczka to na razie placeholdery.
 - **Piętra:** pokoje połączone korytarzami. Mapa i liczba pokojów rosną z każdym piętrem.
 - **Wrogowie:**
   - Rusher: walczy wręcz i zapowiada cios;

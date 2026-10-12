@@ -31,7 +31,6 @@ export enum SceneKey {
 
 export enum TextureKey {
   AimMarker = 'tex-aim-marker',
-  Boss = 'tex-boss',
   Projectile = 'tex-projectile',
   PlayerShot = 'tex-player-shot',
   Coin = 'tex-coin',

@@ -1,3 +1,4 @@
+import { BossAttackKind } from '@/core/bossTypes';
 import { EnemyType } from '@/core/combatTypes';
 
 /** Animacja w arkuszu: kolumny (klatki) w obrębie wiersza kierunku. */
@@ -83,6 +84,36 @@ export const SPRITE_SHEETS = {
       fly: { frames: [0, 1, 2, 3], loop: true },
     },
   },
+  // Boss „Sludge King” (bez sprites.json — układ odczytany z obrazu): komórka 96×96, wiersze = 8 kierunków
+  // jak wyżej; kolumny 0–3 ruch (kołysanie), 4–7 plucie (w kolumnie 7 wylatuje kula).
+  sludgeKing: {
+    key: 'sheet-sludge-king',
+    url: 'assets/sprites/sludge-king_move-spit.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      move: { frames: [0, 1, 2, 3], loop: true },
+      // Czas plucia dopasowujemy do telegrafu ataku — kula wylatuje w chwili wystrzału.
+      spit: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  sludgeGlob: {
+    key: 'sheet-sludge-king-glob',
+    url: 'assets/sprites/sludge-king_glob.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 10,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
+    },
+  },
 } as const satisfies Readonly<Record<string, SpriteSheetDef>>;
 
 export type SpriteSheetId = keyof typeof SPRITE_SHEETS;
@@ -107,6 +138,20 @@ export const PLAYER_VISUAL = { sheet: 'barbarian', move: 'walk', idle: 'idle' } 
 
 /** Pocisk maga: arkusz, animacja i przesunięcie startu przed maga (px, wg handoffu). */
 export const KITER_PROJECTILE_VISUAL = { sheet: 'demonOrb', animation: 'fly', forwardOffset: 13 } as const;
+
+/**
+ * Boss: ruch w pętli; plucie przed atakami z pociskami / strefami na odległość.
+ * Uderzenie (strefa wokół bossa) nie ma plucia — jego telegraf jest czytelny sam w sobie.
+ */
+export const BOSS_VISUAL = {
+  sheet: 'sludgeKing',
+  move: 'move',
+  attack: 'spit',
+  attackKinds: [BossAttackKind.Nova, BossAttackKind.Barrage],
+} as const satisfies EnemyVisual & { readonly attackKinds: readonly BossAttackKind[] };
+
+/** Pocisk bossa (fale Novy). */
+export const BOSS_PROJECTILE_VISUAL = { sheet: 'sludgeGlob', animation: 'fly' } as const;
 
 /** Klucz animacji Phasera dla arkusza, animacji i kierunku. */
 export function animationKey(sheet: SpriteSheetId, animation: string, direction = 0): string {

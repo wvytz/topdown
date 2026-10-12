@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { EnemyType } from '@/core/combatTypes';
-import { ENEMY_VISUALS, PLAYER_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { BOSS_VISUAL, ENEMY_VISUALS, PLAYER_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { SpriteSheetDef } from '@/config/spriteConfig';
 import { facingDirection, sheetFrameIndex } from '@/systems/Facing';
 
@@ -67,8 +67,8 @@ describe('arkusze sprite’ów', () => {
     }
   });
 
-  it('każdy wróg i gracz używają istniejących animacji', () => {
-    const visuals = [PLAYER_VISUAL, ...Object.values(EnemyType).map((type) => ENEMY_VISUALS[type])];
+  it('gracz, każdy wróg i boss używają istniejących animacji', () => {
+    const visuals = [PLAYER_VISUAL, BOSS_VISUAL, ...Object.values(EnemyType).map((type) => ENEMY_VISUALS[type])];
     for (const visual of visuals) {
       const animations: Readonly<Record<string, unknown>> = SPRITE_SHEETS[visual.sheet].animations;
       for (const name of [visual.move, 'idle' in visual ? visual.idle : undefined, 'attack' in visual ? visual.attack : undefined]) {

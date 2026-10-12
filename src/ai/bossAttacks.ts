@@ -99,3 +99,14 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
 export function isHitByAreaStrike(strike: AreaStrike, target: Vector2, targetRadius: number): boolean {
   return Math.hypot(target.x - strike.center.x, target.y - strike.center.y) <= strike.radius + targetRadius;
 }
+
+/**
+ * Czas od `now` do pierwszego „wybuchu” ataku: wystrzału fali albo uderzenia strefy.
+ * Warstwa widoku dopasowuje do niego animację ataku (np. plucie kończy się w chwili wystrzału).
+ * 0, gdy plan nie ma żadnego zdarzenia albo pierwsze już minęło.
+ */
+export function attackLeadTimeMs(plan: BossAttackPlan, now: number): number {
+  const moments = [...plan.bursts.map((burst) => burst.fireAt), ...plan.strikes.map((strike) => strike.impactAt)];
+  if (moments.length === 0) return 0;
+  return Math.max(0, Math.min(...moments) - now);
+}
