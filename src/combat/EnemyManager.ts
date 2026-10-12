@@ -4,6 +4,7 @@ import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 import { ENEMY_DEFINITIONS, ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
+import { KITER_PROJECTILE_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { EnemySpawn } from '@/dungeon/EncounterPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { hasLineOfSight } from '@/dungeon/lineOfSight';
@@ -108,9 +109,16 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   fireProjectile(enemy: Enemy, attack: ProjectileAttackDefinition, target: Vector2): void {
+    const direction = directionTo(enemy, target);
+    // Kula maga startuje kawałek przed nim (wg handoffu sprite'ów), w kierunku rzutu.
+    const offset = KITER_PROJECTILE_VISUAL.forwardOffset;
     this.deps.projectiles.fire({
-      origin: { x: enemy.x, y: enemy.y },
-      direction: directionTo(enemy, target),
+      origin: { x: enemy.x + direction.x * offset, y: enemy.y + direction.y * offset },
+      direction,
+      visual: {
+        texture: SPRITE_SHEETS[KITER_PROJECTILE_VISUAL.sheet].key,
+        animation: animationKey(KITER_PROJECTILE_VISUAL.sheet, KITER_PROJECTILE_VISUAL.animation),
+      },
       speed: attack.projectileSpeed,
       damage: attack.damage,
       knockback: attack.knockback,

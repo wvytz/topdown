@@ -6,7 +6,7 @@ import type {
   MeleeAttackDefinition,
   ProjectileAttackDefinition,
 } from '@/core/combatTypes';
-import { AttackPhase, EnemyAttackKind, EnemyType } from '@/core/combatTypes';
+import { AttackPhase, EnemyAttackKind } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { EnemyBrain } from '@/ai/EnemyBrain';
 import { ENEMY_STATUS_RESISTANCE } from '@/config/combatConfig';
@@ -15,6 +15,9 @@ import { Health } from '@/systems/Health';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
 import { statusTint } from '@/effects/statusTints';
+import type { EnemyVisual } from '@/config/spriteConfig';
+import { ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -31,10 +34,6 @@ const HIT_STUN_MS = 150;
 const HIT_FLASH_MS = 80;
 const WINDUP_TINT = 0xffb347;
 
-export function enemyTextureKey(type: EnemyType): string {
-  return `tex-enemy-${type}`;
-}
-
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly definition: EnemyDefinition;
   readonly health: Health;
@@ -44,9 +43,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly hitStun = new Timer();
   private readonly hitFlash = new Timer();
   readonly status = new StatusEffects(ENEMY_STATUS_RESISTANCE);
+  private readonly visual: EnemyVisual;
+  private readonly animator: DirectionalAnimator;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: EnemyDefinition) {
-    super(scene, x, y, enemyTextureKey(definition.type));
+    super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.type].sheet].key);
     this.definition = definition;
     this.health = new Health(definition.maxHp);
     this.brain = new EnemyBrain(definition.behaviour, definition.attack.range);
@@ -54,8 +55,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    this.setCircle(definition.radius);
+    // Klatka 48×48 z postacią pośrodku — okrągłe ciało o promieniu z definicji, wyśrodkowane.
+    this.setCircle(definition.radius, this.width / 2 - definition.radius, this.height / 2 - definition.radius);
     this.setDepth(9);
+    this.visual = ENEMY_VISUALS[definition.type];
+    this.animator = new DirectionalAnimator(this, this.visual.sheet);
+    this.animator.play(this.visual.idle ?? this.visual.move);
   }
 
   get radius(): number {
@@ -103,6 +108,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
+    this.updateAnimation(perception, decision.move, now);
     this.updateTint(now);
   }
 
@@ -114,6 +120,24 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.brain.alert(source);
     if (!result.died) this.status.apply(hit.status, now);
     return result;
+  }
+
+  /**
+   * Zamach: patrzy na cel i (mag) rzuca — animacja trwa dokładnie tyle co zamach.
+   * Poza tym patrzy w kierunku ruchu, a stojąc — na widocznego gracza.
+   */
+  private updateAnimation(perception: EnemyPerception, move: Vector2, now: number): void {
+    const toTarget = { x: perception.target.x - this.x, y: perception.target.y - this.y };
+    const moving = move.x !== 0 || move.y !== 0;
+
+    if (this.attackCycle.phase(now) === AttackPhase.Windup) {
+      this.animator.face(toTarget);
+      this.animator.play(this.visual.attack ?? this.visual.idle ?? this.visual.move, this.definition.attack.windupMs);
+      return;
+    }
+    if (moving) this.animator.face(move);
+    else if (perception.canSeeTarget) this.animator.face(toTarget);
+    this.animator.play(moving ? this.visual.move : (this.visual.idle ?? this.visual.move));
   }
 
   private releaseAttack(target: Vector2, handler: EnemyAttackHandler): void {

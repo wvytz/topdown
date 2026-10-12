@@ -640,11 +640,69 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 13 — Sprite'y postaci i ochrona kart nagrody
+
+**Zgłoszenie właściciela z testów:** na pierwszych piętrach karty nagrody mignęły i zniknęły. Przypadkowe kliknięcie LPM wybrało przedmiot mimochodem. Gracz zwykle trzyma LPM w walce, gdy boss pada, a stara wersja wybierała kartę już na samo *puszczenie* przycisku nad kartą.
+
+**Ochrona kart (`RewardScene`):**
+- **Uaktywnienie po czasie:** przez `BOSS_REWARD.armDelayMs` (900 ms) karty są przygaszone i nie reagują. Rozjaśniają się, a aktywne stają się dokładnie po zakończeniu rozjaśniania. Podpowiedź „Wybierz nagrodę…” pojawia się dopiero wtedy.
+- **Pełne kliknięcie:** wciśnięcie *i* puszczenie przycisku na tej samej karcie, po uaktywnieniu. Puszczenie przycisku trzymanego od walki niczego nie wybiera, a zjechanie z karty kasuje wciśnięcie.
+- **Klawisze 1–3:** liczą się tylko wtedy, gdy zostały wciśnięte po uaktywnieniu kart.
+
+**Sprite'y (paczka „Long-handed arcade slasher”, handoff właściciela):**
+- **Pliki** są w `public/assets/sprites/`:
+  - `blond-barbarian_walk.png`: bohater;
+  - `trashcan-man_walk.png`: Rusher;
+  - `demon-mage_float-cast.png`: Kiter;
+  - `demon-mage_orb.png`: pocisk maga.
+- **Format:** komórka 48×48 z pivotem w środku, postać ma ok. 32 px. Wiersze to 8 kierunków (N, NE, … NW), animacje mają 6 fps.
+- **Boss** zostaje na razie geometryczny, bo nie ma dla niego sprite'a.
+- **`config/spriteConfig.ts` (czysty):**
+  - opis arkuszy przepisany z `sprites.json`;
+  - przypisanie wyglądu do archetypów (`ENEMY_VISUALS`, `PLAYER_VISUAL`);
+  - parametry pocisku maga;
+  - `animationKey`.
+- **`systems/Facing.ts` (czysty):**
+  - `facingDirection` zamienia wektor na wiersz arkusza wg reguły z handoffu `round(kąt/45) % 8`, gdzie 0° to góra, a kąt rośnie zgodnie z zegarem;
+  - wektor zerowy zachowuje kierunek;
+  - `sheetFrameIndex` liczy indeks klatki w arkuszu.
+- **Phaser:**
+  - `effects/spriteAnimations.ts`: ładowanie arkuszy w `BootScene.preload` i rejestracja animacji, osobnej dla każdej pary (animacja, kierunek).
+  - `entities/DirectionalAnimator.ts`: encja mówi tylko, dokąd patrzy i co robi. Zmiana kierunku w trakcie chodu zachowuje klatkę, a ta sama animacja nie restartuje się co klatkę.
+- **Zachowanie postaci:**
+  - **Barbarzyńca:** patrzy tam, gdzie celuje mysz, i idzie, gdy się porusza. Ciało fizyczne zostaje 24×24 pośrodku klatki 48×48, więc kolizje są bez zmian.
+  - **Wrogowie:** ciało okrągłe o promieniu z definicji, wyśrodkowane w klatce. Patrzą w kierunku ruchu, a stojąc — na widocznego gracza.
+  - **Rusher:** chodzi albo stoi. Pomarańczowy telegraf zamachu zostaje.
+  - **Mag:** cały czas się unosi. W zamachu odwraca się do gracza i rzuca; animacja rzutu trwa dokładnie `windupMs`, więc kula wylatuje razem z końcem rzutu. Logika walki zostaje nadrzędna, a animacja tylko się do niej dopasowuje.
+- **Pocisk maga:** animowana zielona kula (`Projectile` jest teraz animowalnym sprite'em). Startuje 13 px przed magiem, jak w handoffie. Ciało ma ten sam promień co wcześniej, wyśrodkowane w klatce 16×16.
+- **Porządki:** usunięte geometryczne placeholdery gracza i wrogów (`TextureKey.Player`, `enemyTextureKey`, `PLAYER_COLOR`).
+
+**Testy: +16, razem 247.**
+- `facingDirection`: 8 kierunków, zaokrąglanie do najbliższego, wektor zerowy.
+- `sheetFrameIndex`.
+- Arkusze:
+  - każdy plik PNG istnieje, a jego wymiary odczytane z nagłówka zgadzają się z konfiguracją;
+  - wiersze to kierunki, a klatki animacji mieszczą się w wierszu;
+  - gracz i wrogowie używają istniejących animacji;
+  - klucze animacji są unikalne.
+
+**Weryfikacja w grze (port 5174):**
+- **Sprite'y:** barbarzyńca, Rusher i mag używają swoich arkuszy i animacji (zrzut ekranu). Ciała fizyczne: gracz 24×24 z przesunięciem 12, Rusher okrąg 22 px.
+- **Rzut maga:** zaczyna się razem z zamachem, 100 ms na klatkę (4 × 100 = 400 ms = `windupMs`). Kula wylatuje po 25 klatkach (400 ms), 13 px przed magiem, z wyśrodkowanym ciałem.
+- **Karty:**
+  - prawdziwy klik w kartę w pierwszej chwili jest ignorowany;
+  - rozjaśnianie trwa 0 → 0,87 s, a karty uaktywniają się przy pełnej widoczności;
+  - samo puszczenie przycisku nad kartą jest ignorowane;
+  - prawdziwy klik po uaktywnieniu wybiera kartę (Wampirzy kieł) i wznawia grę.
+- **Uwaga do testów w panelu w tle:** menedżer tweenów Phasera liczy czas z zegara ściennego, więc przy ręcznym `game.step()` trzeba robić prawdziwe przerwy między krokami.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
 - **Ewolucje przedmiotów: odrzucone na obecnym etapie** (decyzja właściciela). Nie komplikujemy sterowania ani działania broni; wzmacnianie kolejnymi kopiami zostaje.
 - **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
-- **Docelowa grafika:** spritesheety zamiast placeholderów.
+- **Grafika (krok 13 zaczął):** gracz, Rusher i mag mają sprite'y. Brakuje: bossa, kafli (ściany, podłoga, schody, kraty), łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

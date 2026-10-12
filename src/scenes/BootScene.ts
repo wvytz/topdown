@@ -2,24 +2,28 @@ import Phaser from 'phaser';
 import type { FloorSceneData } from '@/core/types';
 import { SceneKey, TextureKey } from '@/core/types';
 import { TileType } from '@/core/dungeonTypes';
-import { PLAYER_COLOR, PLAYER_SIZE, TILE_SIZE } from '@/config/gameConfig';
+import { TILE_SIZE } from '@/config/gameConfig';
 import { TILESET_FRAMES } from '@/dungeon/DungeonView';
-import { EnemyType } from '@/core/combatTypes';
-import { ENEMY_DEFINITIONS, PLAYER_COMBAT, PROJECTILE_RADIUS } from '@/config/combatConfig';
-import { enemyTextureKey } from '@/entities/Enemy';
+import { PLAYER_COMBAT, PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { FLOOR_GUARDIAN } from '@/config/bossConfig';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { ItemKind } from '@/core/lootTypes';
 import { itemTextureKey } from '@/entities/Pickup';
 import { NEW_RUN } from '@/systems/RunState';
+import { loadSpriteSheets, registerSpriteAnimations } from '@/effects/spriteAnimations';
 
-/** Generuje placeholderowe tekstury (geometria) i przechodzi do gry. */
+/** Ładuje arkusze sprite'ów, generuje placeholderowe tekstury (geometria) i przechodzi do gry. */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super(SceneKey.Boot);
   }
 
+  preload(): void {
+    loadSpriteSheets(this);
+  }
+
   create(): void {
+    registerSpriteAnimations(this);
     this.generatePlaceholderTextures();
     const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: NEW_RUN };
     this.scene.start(SceneKey.Game, startData);
@@ -28,12 +32,7 @@ export class BootScene extends Phaser.Scene {
   private generatePlaceholderTextures(): void {
     const g = this.make.graphics({ x: 0, y: 0 }, false);
 
-    // Gracz: zielony kwadrat z ciemniejszą obwódką.
-    g.fillStyle(PLAYER_COLOR, 1).fillRect(0, 0, PLAYER_SIZE, PLAYER_SIZE);
-    g.lineStyle(2, 0x1e7a46, 1).strokeRect(1, 1, PLAYER_SIZE - 2, PLAYER_SIZE - 2);
-    g.generateTexture(TextureKey.Player, PLAYER_SIZE, PLAYER_SIZE);
-    g.clear();
-
+    // Gracz i zwykli wrogowie mają sprite'y z arkuszy (preload); tu tylko placeholdery reszty.
     // Znacznik celowania: trójkąt skierowany w prawo (obracany wg kąta celowania).
     g.fillStyle(0xffffff, 0.9).fillTriangle(0, 0, 10, 5, 0, 10);
     g.generateTexture(TextureKey.AimMarker, 10, 10);
@@ -51,16 +50,6 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xe8fff8, 1).fillCircle(s, s, s / 2);
     g.generateTexture(TextureKey.PlayerShot, s * 2, s * 2);
     g.clear();
-
-    // Przeciwnicy: koła w kolorze archetypu; Kiter ma dodatkowo jasny „rdzeń”.
-    for (const definition of Object.values(ENEMY_DEFINITIONS)) {
-      const r = definition.radius;
-      g.fillStyle(definition.color, 1).fillCircle(r, r, r);
-      g.lineStyle(2, 0x000000, 0.4).strokeCircle(r, r, r - 1);
-      if (definition.type === EnemyType.Kiter) g.fillStyle(0xe8d8ff, 1).fillCircle(r, r, r / 3);
-      g.generateTexture(enemyTextureKey(definition.type), r * 2, r * 2);
-      g.clear();
-    }
 
     // Moneta: złote kółko z ciemniejszym obrysem.
     g.fillStyle(0xf5c542, 1).fillCircle(5, 5, 5);

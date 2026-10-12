@@ -34,7 +34,6 @@ export function getDungeonConfigForFloor(floor: number): DungeonGeneratorConfig 
 }
 
 export const PLAYER_SIZE = 24;
-export const PLAYER_COLOR = 0x3ddc84;
 
 export const PLAYER_BASE_STATS: PlayerStats = {
   maxHp: 100,

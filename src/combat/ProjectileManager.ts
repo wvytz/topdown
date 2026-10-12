@@ -13,6 +13,8 @@ export interface ProjectileSpec {
   readonly damage: number;
   readonly knockback: number;
   readonly lifetimeMs: number;
+  /** Wygląd z arkusza sprite'ów (np. kula maga); brak = domyślny pomarańczowy pocisk. */
+  readonly visual?: { readonly texture: string; readonly animation: string };
 }
 
 /** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
@@ -36,14 +38,16 @@ export class ProjectileManager {
   }
 
   fire(spec: ProjectileSpec): void {
-    const projectile = new Projectile(this.scene, spec.origin.x, spec.origin.y);
+    const projectile = new Projectile(this.scene, spec.origin.x, spec.origin.y, spec.visual?.texture);
     projectile.damage = spec.damage;
     projectile.knockback = spec.knockback;
     projectile.expiresAt = this.scene.time.now + spec.lifetimeMs;
     projectile.setDepth(11);
 
     this.group.add(projectile, true);
-    projectile.setCircle(PROJECTILE_RADIUS);
+    // Ciało zawsze o promieniu PROJECTILE_RADIUS, wyśrodkowane w klatce (kula maga ma 16×16).
+    projectile.setCircle(PROJECTILE_RADIUS, projectile.width / 2 - PROJECTILE_RADIUS, projectile.height / 2 - PROJECTILE_RADIUS);
+    if (spec.visual) projectile.play(spec.visual.animation);
     const dir = normalize(spec.direction);
     projectile.setVelocity(dir.x * spec.speed, dir.y * spec.speed);
   }

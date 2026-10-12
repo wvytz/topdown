@@ -8,6 +8,8 @@ import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { angleTo } from '@/systems/CombatMath';
 import { ChargePool } from '@/systems/ChargePool';
+import { PLAYER_VISUAL, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
@@ -56,13 +58,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly knockbackStun = new Timer();
   private readonly aimMarker: Phaser.GameObjects.Image;
   private aimAngle = 0;
+  private readonly animator: DirectionalAnimator;
 
   /**
    * @param loadout statystyki po zastosowaniu przedmiotów (PlayerLoadout)
    * @param startHp HP przeniesione z poprzedniego piętra; null = pełne
    */
   constructor(scene: Phaser.Scene, x: number, y: number, loadout: PlayerLoadout, startHp: number | null) {
-    super(scene, x, y, TextureKey.Player);
+    super(scene, x, y, SPRITE_SHEETS[PLAYER_VISUAL.sheet].key);
     this.stats = loadout.stats;
     this.combat = loadout.combat;
     this.weaponEffects = loadout.effects;
@@ -74,8 +77,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    // Sprite 48×48 (postać ok. 32 px) — ciało fizyczne zostaje 24×24 pośrodku klatki.
+    this.setBodySize(PLAYER_SIZE, PLAYER_SIZE, true);
     this.setCollideWorldBounds(true);
     this.setDepth(10);
+    this.animator = new DirectionalAnimator(this, PLAYER_VISUAL.sheet);
+    this.animator.play(PLAYER_VISUAL.idle);
 
     this.aimMarker = scene.add.image(x, y, TextureKey.AimMarker).setDepth(11);
   }
@@ -169,6 +176,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const shot = actions.shoot && this.tryShoot(now) ? { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) } : null;
 
     this.updateVisuals(now);
+    this.updateAnimation(actions);
     return { struck, shot };
   }
 
@@ -190,7 +198,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.isDead) {
       this.setVelocity(0, 0);
-      this.setTint(0x555555).setAlpha(1);      this.aimMarker.setVisible(false);
+      this.setTint(0x555555).setAlpha(1);
+      this.animator.stop();
+      this.aimMarker.setVisible(false);
     }
     return true;
   }
@@ -201,6 +211,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.y + Math.sin(this.aimAngle) * AIM_MARKER_DISTANCE,
     );
     this.aimMarker.setRotation(this.aimAngle);
+  }
+
+  /** Barbarzyńca patrzy tam, gdzie celuje; idzie, gdy się porusza. */
+  private updateAnimation(actions: PlayerActions): void {
+    this.animator.face({ x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) });
+    const moving = actions.move.x !== 0 || actions.move.y !== 0;
+    this.animator.play(moving ? PLAYER_VISUAL.move : PLAYER_VISUAL.idle);
   }
 
   private updateVisuals(now: number): void {

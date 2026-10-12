@@ -3,7 +3,7 @@ import type { StatusApplication } from '@/core/combatTypes';
 import { TextureKey } from '@/core/types';
 
 /** Pocisk — dane trafienia przenosi ze sobą; ruch i kolizje obsługuje ProjectileManager / PlayerShotManager. */
-export class Projectile extends Phaser.Physics.Arcade.Image {
+export class Projectile extends Phaser.Physics.Arcade.Sprite {
   damage = 0;
   knockback = 0;
   expiresAt = 0;
@@ -17,7 +17,7 @@ export class Projectile extends Phaser.Physics.Arcade.Image {
   /** Pociski gracza: cele już trafione — przebity wróg nie dostaje drugi raz. */
   readonly hitTargets = new Set<object>();
 
-  constructor(scene: Phaser.Scene, x: number, y: number, texture: TextureKey = TextureKey.Projectile) {
+  constructor(scene: Phaser.Scene, x: number, y: number, texture: string = TextureKey.Projectile) {
     super(scene, x, y, texture);
     this.origin = { x, y };
   }

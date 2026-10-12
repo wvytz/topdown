@@ -167,6 +167,8 @@ export const BOSS_LOOT: LootTable = {
 /** Nagroda za bossa: wybór 1 z tylu kart przedmiotów (różnych, losowanych z wagami z całej puli). */
 export const BOSS_REWARD = {
   choices: 3,
+  /** Karty są nieaktywne przez ten czas (ms) — chroni przed przypadkowym wyborem klikiem z walki. */
+  armDelayMs: 900,
 } as const;
 
 export const LOOT_SCALING: LootScalingConfig = {
