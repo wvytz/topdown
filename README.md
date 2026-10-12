@@ -62,3 +62,6 @@ tests/         testy Vitest
 ## Dokumentacja
 
 - [`docs/DEVLOG.md`](docs/DEVLOG.md): dziennik rozwoju z opisem kolejnych kroków, decyzji i procesu pracy.
+- [`docs/GDD.md`](docs/GDD.md): projekt gry.
+- [`docs/ZASADY_KODU.md`](docs/ZASADY_KODU.md): zasady pisania kodu.
+- [`CLAUDE.md`](CLAUDE.md): instrukcje dla asystenta AI (zasady pracy i decyzje projektowe).

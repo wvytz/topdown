@@ -2,8 +2,10 @@
 
 Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 
-- **Projekt gry (GDD):** `Documenten/tower_down_game_dev_doc.md`
-- **Zasady kodu:** `Documenten/system_prompt_topdown.md`
+- **Projekt gry (GDD):** [`docs/GDD.md`](GDD.md)
+- **Zasady kodu:** [`docs/ZASADY_KODU.md`](ZASADY_KODU.md)
+- **Instrukcje dla Claude:** [`CLAUDE.md`](../CLAUDE.md), wczytywane automatycznie w każdej sesji
+- **Repozytorium:** `github.com/wvytz/topdown` (prywatne)
 
 ---
 
