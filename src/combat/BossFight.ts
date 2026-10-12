@@ -15,6 +15,8 @@ import type { Player } from '@/entities/Player';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { PlayerShot } from '@/systems/ShotResolver';
+import { resolvePlayerShot } from '@/systems/ShotResolver';
 
 export interface BossFightDeps {
   readonly scene: Phaser.Scene;
@@ -112,6 +114,14 @@ export class BossFight {
   resolvePlayerMelee(swing: MeleeSwing): void {
     if (!this.boss) return;
     if (resolveMeleeSwing(swing, [this.boss]).length > 0) this.defeat();
+  }
+
+  /** Pocisk gracza — true, jeśli trafił bossa (trafienie budzi go jak cios wręcz). */
+  resolvePlayerShot(shot: PlayerShot): boolean {
+    if (!this.boss) return false;
+    const result = resolvePlayerShot(shot, [this.boss]);
+    if (result?.died) this.defeat();
+    return result !== null;
   }
 
   /** Tylko do debugowania (klawisz B w trybie dev). */

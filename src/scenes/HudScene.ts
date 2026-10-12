@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { BossHudData, DeathSummary, HudSceneData, HudSource } from '@/core/types';
+import type { BossHudData, DeathSummary, HudSceneData, HudSource, RangedHudData } from '@/core/types';
 import type { RankedEntry } from '@/systems/Highscores';
 import { SceneKey } from '@/core/types';
 
@@ -9,6 +9,11 @@ const HP_BAR_Y = 40;
 const HP_BAR_HEIGHT = 14;
 const DASH_BAR_Y = HP_BAR_Y + HP_BAR_HEIGHT + 4;
 const DASH_BAR_HEIGHT = 4;
+const CHARGES_Y = DASH_BAR_Y + DASH_BAR_HEIGHT + 3;
+const CHARGE_HEIGHT = 5;
+const CHARGE_GAP = 3;
+/** Pierwsza linia tekstu pod paskami. */
+const TEXT_Y = CHARGES_Y + CHARGE_HEIGHT + 4;
 const BOSS_BAR_WIDTH = 420;
 const BOSS_BAR_HEIGHT = 12;
 const BOSS_BAR_Y = 470;
@@ -56,10 +61,10 @@ export class HudScene extends Phaser.Scene {
     this.floorText = this.add.text(BAR_X, 12, '', style);
     this.bars = this.add.graphics();
     this.hpText = this.add.text(BAR_X + BAR_WIDTH + 8, HP_BAR_Y - 2, '', { ...style, fontSize: '13px' });
-    this.hintText = this.add.text(BAR_X, DASH_BAR_Y + 12, '', { ...style, fontSize: '13px' });
+    this.hintText = this.add.text(BAR_X, TEXT_Y, '', { ...style, fontSize: '13px' });
 
-    this.goldText = this.add.text(BAR_X, DASH_BAR_Y + 30, '', { ...style, fontSize: '14px', color: '#f5c542' });
-    this.itemsText = this.add.text(BAR_X, DASH_BAR_Y + 50, '', { ...style, fontSize: '12px', color: '#c8c8d8' });
+    this.goldText = this.add.text(BAR_X, TEXT_Y + 18, '', { ...style, fontSize: '14px', color: '#f5c542' });
+    this.itemsText = this.add.text(BAR_X, TEXT_Y + 38, '', { ...style, fontSize: '12px', color: '#c8c8d8' });
     this.toastText = this.add
       .text(this.scale.width / 2, 70, '', { ...style, fontSize: '18px', color: '#ffe08a' })
       .setOrigin(0.5);
@@ -71,7 +76,7 @@ export class HudScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setVisible(false);
 
-    const help = 'WASD — ruch · LPM — atak · Spacja/PPM — dash · E — kapliczka';
+    const help = 'WASD — ruch · LPM — atak · PPM — strzał · Spacja — dash · E — kapliczka';
     const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
     this.add.text(BAR_X, this.scale.height - 28, help + devHelp, { ...style, fontSize: '12px', color: '#8080a0' });
   }
@@ -91,6 +96,7 @@ export class HudScene extends Phaser.Scene {
     this.bars
       .fillStyle(hud.dashReadiness >= 1 ? 0x6ec6ff : 0x3a6080, 1)
       .fillRect(BAR_X, DASH_BAR_Y, BAR_WIDTH * hud.dashReadiness, DASH_BAR_HEIGHT);
+    this.drawCharges(hud.ranged);
 
     if (hud.stairsUnlocked) {
       this.hintText.setText('Schody otwarte — wejdź na nie, aby wspiąć się wyżej').setColor('#e0b84a');
@@ -109,6 +115,21 @@ export class HudScene extends Phaser.Scene {
 
     this.updateDeathPanel(hud.death);
     this.drawBossBar(hud.boss);
+  }
+
+  /** Ładunki strzału: pełne segmenty + częściowo wypełniony segment, który się ładuje. */
+  private drawCharges(ranged: RangedHudData): void {
+    const count = Math.max(1, ranged.maxCharges);
+    const width = (BAR_WIDTH - CHARGE_GAP * (count - 1)) / count;
+    for (let i = 0; i < count; i++) {
+      const x = BAR_X + i * (width + CHARGE_GAP);
+      this.bars.fillStyle(0x202030, 1).fillRect(x, CHARGES_Y, width, CHARGE_HEIGHT);
+      if (i < ranged.charges) {
+        this.bars.fillStyle(0x5ee0c8, 1).fillRect(x, CHARGES_Y, width, CHARGE_HEIGHT);
+      } else if (i === ranged.charges) {
+        this.bars.fillStyle(0x2f7064, 1).fillRect(x, CHARGES_Y, width * ranged.rechargeProgress, CHARGE_HEIGHT);
+      }
+    }
   }
 
   /** Panel śmierci: wynik runu + skrócona tablica (podium i ewentualnie miejsce tego runu). */

@@ -2,7 +2,7 @@ import type { DamageResult, Hit, PlayerCombatConfig } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { isInMeleeArc, knockbackFrom } from '@/systems/CombatMath';
 
-/** Wszystko, co można trafić bronią wręcz: zwykły przeciwnik, boss, w przyszłości np. skrzynie. */
+/** Wszystko, co gracz może trafić (cios wręcz, strzał): zwykły przeciwnik, boss, w przyszłości np. skrzynie. */
 export interface MeleeTarget extends Vector2 {
   readonly radius: number;
   takeHit(hit: Hit, now: number, source: Vector2): DamageResult;

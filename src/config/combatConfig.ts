@@ -18,6 +18,17 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
     durationMs: 150,
     cooldownMs: 700,
   },
+  // Strzał jest słabszy od ciosu wręcz: uzupełnienie walki (dobijanie, Kitery), nie zamiennik.
+  ranged: {
+    damage: 7,
+    knockback: 90,
+    projectileSpeed: 460,
+    projectileLifetimeMs: 650,
+    projectileRadius: 4,
+    maxCharges: 3,
+    rechargeMs: 1400,
+    shotIntervalMs: 200,
+  },
 };
 
 /** Na razie dwa podstawowe archetypy z GDD: wręcz (Rusher) i dystansowy (Kiter). */

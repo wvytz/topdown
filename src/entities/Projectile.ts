@@ -7,7 +7,11 @@ export class Projectile extends Phaser.Physics.Arcade.Image {
   knockback = 0;
   expiresAt = 0;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, TextureKey.Projectile);
+  /** Miejsce wystrzału (pociski gracza — trafiony wróg „słyszy” strzelca stamtąd). */
+  origin = { x: 0, y: 0 };
+
+  constructor(scene: Phaser.Scene, x: number, y: number, texture: TextureKey = TextureKey.Projectile) {
+    super(scene, x, y, texture);
+    this.origin = { x, y };
   }
 }

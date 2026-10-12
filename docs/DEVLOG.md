@@ -395,12 +395,76 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 9 — Atak dystansowy gracza (PPM)
+
+**Cel:** druga broń gracza pod PPM, z własnym ograniczeniem niezależnym od ciosu wręcz.
+
+**Decyzje właściciela:**
+- Strzał ma **ładunki odnawiające się z czasem**: 3 ładunki, każdy wraca po 1,4 s.
+- Odrzucone warianty: osobny cooldown (za mało decyzji) i amunicja z łupów (zmieniałaby ekonomię łupów).
+
+**Konsekwencja w sterowaniu:** PPM był dotąd drugim klawiszem dasha. Teraz dash jest tylko pod Spacją, a PPM to strzał. Zgadza się to z GDD, gdzie PPM to „dash lub umiejętność”. README jest zaktualizowane.
+
+**Warstwa czysta:**
+- **`systems/ChargePool.ts`:** pula ładunków liczona leniwie z jawnego `now`.
+  - Ładunki wracają po jednym.
+  - Zużycie w trakcie ładowania nie zeruje postępu kolejnego ładunku.
+  - Po napełnieniu odliczanie startuje od następnego strzału.
+- **`systems/ShotResolver.ts`:** `resolvePlayerShot` trafia najbliższy cel stykający się z pociskiem, tylko jeden.
+  - Odrzut działa w kierunku lotu.
+  - Źródłem alarmu dla wroga jest miejsce wystrzału, więc trafiony wróg odwraca się do strzelca.
+  - Korzysta z tego samego interfejsu `MeleeTarget` co cios wręcz, więc trafia zwykłych wrogów i bossa bez powielania logiki.
+- **`RangedConfig` w `PLAYER_COMBAT.ranged`:** 7 obrażeń (cios wręcz zadaje 12), prędkość 460 px/s, lot 650 ms (ok. 300 px), odstęp między strzałami 200 ms.
+  - Strzał celowo jest słabszy od ciosu: ma uzupełniać walkę (Kitery, dobijanie), a nie ją zastępować.
+  - Test pilnuje tej relacji.
+
+**Warstwa Phasera:**
+- **`InputController`:** nowe pole `shoot`. Przytrzymanie PPM daje serię co 200 ms, dopóki są ładunki. Krótki klik jest zapamiętywany do najbliższej klatki.
+- **`Player.tick`:** zwraca teraz `{ struck, shot }` zamiast samego `boolean`.
+  - Ładunki przetrwają zdobycie przedmiotu.
+  - Przedmioty na razie nie wpływają na strzał.
+- **`combat/PlayerShotManager.ts`:** lot pocisków gracza, rozbijanie o ściany i kraty areny, wygasanie.
+  - Trafienia rozstrzyga resolver przekazany przez scenę: najpierw wrogowie, potem boss.
+  - `EnemyManager` i `BossFight` mają metodę `resolvePlayerShot`.
+- **Wygląd:**
+  - Pocisk gracza jest turkusowy, odróżnia się od pomarańczowych pocisków wrogów.
+  - W HUD pod paskiem dasha są 3 segmenty ładunków w tym samym kolorze. Ładowany segment wypełnia się stopniowo.
+  - Linia pomocy u dołu ekranu jest zaktualizowana.
+
+**Testy: +14, razem 183.**
+- `ChargePool`:
+  - seria do opróżnienia;
+  - odnawianie po jednym;
+  - limit przy długiej przerwie;
+  - zużycie w trakcie ładowania;
+  - start odliczania po napełnieniu;
+  - gotowość pełnej puli.
+- `resolvePlayerShot`:
+  - pudło;
+  - trafienie na styku promieni;
+  - tylko najbliższy cel;
+  - kierunek odrzutu i źródło alarmu;
+  - zabicie;
+  - strzał słabszy od ciosu.
+
+**Weryfikacja w grze (port 5174, ręczne `game.step()`):**
+- Przytrzymanie PPM przez ok. 1 s daje dokładnie 3 strzały, potem pula jest pusta i się ładuje.
+- Rusher: 30 → 23 HP. Boss: 300 → 293 HP, a strzał go budzi.
+- Strzał w ścianę z 1 kafla znika po ok. 130 ms, nie leci przez całe 650 ms.
+- HUD pokazuje 1 pełny ładunek, 1 ładowany i 1 pusty.
+
+**Otwarte pytania (balans):**
+- **Boss z korytarza:** strzał budzi i rani bossa, zanim gracz wejdzie na arenę, a kraty opadają dopiero wtedy, gdy gracz jest w środku. Teoretycznie da się więc ostrzeliwać bossa z korytarza. Boss podchodzi do gracza, więc w praktyce to trudne, ale warto to sprawdzić w grze.
+- **Przedmioty a strzał:** czy Ostrze albo Rękawice mają wzmacniać strzał? Na razie nie wzmacniają.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
 - **Wybór przedmiotu z bossa:** obecnie losowy. Wybór 1 z 3 dałby graczowi decyzję.
 - **Modyfikatory pięter (GDD §2.5):** na razie skalują się tylko statystyki.
-- **Atak dystansowy gracza:** system pocisków jest gotowy, brakuje broni.
+- **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
 - **Docelowa grafika:** spritesheety zamiast placeholderów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

@@ -5,7 +5,7 @@ import { TileType } from '@/core/dungeonTypes';
 import { PLAYER_COLOR, PLAYER_SIZE, TILE_SIZE } from '@/config/gameConfig';
 import { TILESET_FRAMES } from '@/dungeon/DungeonView';
 import { EnemyType } from '@/core/combatTypes';
-import { ENEMY_DEFINITIONS, PROJECTILE_RADIUS } from '@/config/combatConfig';
+import { ENEMY_DEFINITIONS, PLAYER_COMBAT, PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { enemyTextureKey } from '@/entities/Enemy';
 import { FLOOR_GUARDIAN } from '@/config/bossConfig';
 import { ITEM_POOL } from '@/config/lootConfig';
@@ -42,6 +42,13 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffa040, 1).fillCircle(p, p, p);
     g.fillStyle(0xfff0c0, 1).fillCircle(p, p, p / 2);
     g.generateTexture(TextureKey.Projectile, p * 2, p * 2);
+    g.clear();
+
+    // Pocisk gracza: turkus jak ładunki w HUD (odróżnia się od pomarańczowych pocisków wrogów).
+    const s = PLAYER_COMBAT.ranged.projectileRadius;
+    g.fillStyle(0x5ee0c8, 1).fillCircle(s, s, s);
+    g.fillStyle(0xe8fff8, 1).fillCircle(s, s, s / 2);
+    g.generateTexture(TextureKey.PlayerShot, s * 2, s * 2);
     g.clear();
 
     // Przeciwnicy: koła w kolorze archetypu; Kiter ma dodatkowo jasny „rdzeń”.

@@ -29,6 +29,7 @@ import {
 import { BossFight } from '@/combat/BossFight';
 import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
+import { PlayerShotManager } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -58,6 +59,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dungeonView!: DungeonView;
   private enemies!: EnemyManager;
   private projectiles!: ProjectileManager;
+  private playerShots!: PlayerShotManager;
   private bossFight!: BossFight;
   private loot!: LootManager;
   private lootRng!: Rng;
@@ -125,11 +127,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (this.isTransitioning) return;
 
     const actions = this.inputController.getActions();
-    if (this.player.tick(actions, time)) this.resolvePlayerStrike(time);
+    const turn = this.player.tick(actions, time);
+    if (turn.struck) this.resolvePlayerStrike(time);
+    if (turn.shot) this.playerShots.fire({ x: this.player.x, y: this.player.y }, turn.shot, this.player.combatConfig.ranged);
     this.enemies.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
+    this.playerShots.update(time, (shot) => this.enemies.resolvePlayerShot(shot) || this.bossFight.resolvePlayerShot(shot));
     this.loot.update(time);
     this.shrine.update(actions.interact);
 
@@ -145,6 +150,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       hp: ready ? this.player.health.value : 0,
       maxHp: ready ? this.player.health.max : PLAYER_BASE_STATS.maxHp,
       dashReadiness: ready ? this.player.dashReadiness(this.time.now) : 1,
+      ranged: ready
+        ? this.player.rangedStatus(this.time.now)
+        : { charges: PLAYER_COMBAT.ranged.maxCharges, maxCharges: PLAYER_COMBAT.ranged.maxCharges, rechargeProgress: 1 },
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       isPlayerDead: ready && this.player.isDead,
@@ -190,6 +198,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const onPlayerHit = (): void => this.effects.playerHit();
 
     this.projectiles = new ProjectileManager(this, this.dungeonView.layer, this.player, onPlayerHit);
+    this.playerShots = new PlayerShotManager(this, this.dungeonView.layer);
     this.enemies = new EnemyManager({
       scene: this,
       floor: this.dungeon,

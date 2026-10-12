@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import type { Hit, PlayerCombatConfig } from '@/core/combatTypes';
-import type { MovementIntent, PlayerStats, Vector2 } from '@/core/types';
+import { AttackPhase } from '@/core/combatTypes';
+import type { MovementIntent, PlayerStats, RangedHudData, Vector2 } from '@/core/types';
 import { TextureKey } from '@/core/types';
 import { PLAYER_SIZE } from '@/config/gameConfig';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { angleTo } from '@/systems/CombatMath';
+import { ChargePool } from '@/systems/ChargePool';
 import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
@@ -18,10 +20,21 @@ export interface PlayerActions {
   readonly aim: Vector2;
   readonly attack: boolean;
   readonly dash: boolean;
+  /** Strzał (PPM, przytrzymanie = seria w tempie shotIntervalMs, dopóki są ładunki). */
+  readonly shoot: boolean;
   /** Interakcja z otoczeniem (np. kapliczka) — obsługuje scena, nie gracz. */
   readonly interact: boolean;
 }
 
+/** Co gracz zrobił w tej klatce — do rozstrzygnięcia przez scenę. */
+export interface PlayerTickResult {
+  /** Uderzenie bronią wręcz. */
+  readonly struck: boolean;
+  /** Kierunek wystrzelonego pocisku; null, gdy gracz nie strzelił. */
+  readonly shot: Vector2 | null;
+}
+
+const IDLE: PlayerTickResult = { struck: false, shot: null };
 const KNOCKBACK_STUN_MS = 120;
 const AIM_MARKER_DISTANCE = 22;
 
@@ -34,6 +47,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private combat: PlayerCombatConfig;
   private attackCycle: AttackCycle;
   private dash: DashController;
+  private shotCharges: ChargePool;
+  private shotCycle: AttackCycle;
   private readonly invulnerability = new Timer();
   private readonly knockbackStun = new Timer();
   private readonly aimMarker: Phaser.GameObjects.Image;
@@ -50,6 +65,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.health = new Health(loadout.stats.maxHp, startHp ?? loadout.stats.maxHp);
     this.attackCycle = new AttackCycle(0, loadout.combat.attackCooldownMs);
     this.dash = new DashController(loadout.combat.dash);
+    this.shotCharges = new ChargePool(loadout.combat.ranged.maxCharges, loadout.combat.ranged.rechargeMs);
+    this.shotCycle = new AttackCycle(0, loadout.combat.ranged.shotIntervalMs);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -71,10 +88,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Podmiana statystyk po zdobyciu przedmiotu. Wzrost maks. HP leczy o tę samą wartość. */
   applyLoadout(loadout: PlayerLoadout): void {
     this.stats = loadout.stats;
-    this.combat = loadout.combat;
     this.attackCycle = new AttackCycle(0, loadout.combat.attackCooldownMs);
     this.dash = new DashController(loadout.combat.dash);
+    // Ładunki zachowujemy przy zdobyciu przedmiotu — chyba że zmieniła się konfiguracja strzału.
+    if (loadout.combat.ranged !== this.combat.ranged) {
+      this.shotCharges = new ChargePool(loadout.combat.ranged.maxCharges, loadout.combat.ranged.rechargeMs);
+      this.shotCycle = new AttackCycle(0, loadout.combat.ranged.shotIntervalMs);
+    }
+    this.combat = loadout.combat;
     this.health.setMax(loadout.stats.maxHp);
+  }
+
+  rangedStatus(now: number): RangedHudData {
+    return {
+      charges: this.shotCharges.available(now),
+      maxCharges: this.shotCharges.maxCharges,
+      rechargeProgress: this.shotCharges.rechargeProgress(now),
+    };
   }
 
   heal(amount: number): void {
@@ -93,14 +123,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.invulnerability.isActive(now) || this.dash.isDashing(now);
   }
 
-  /** Zwraca true, jeśli w tej klatce nastąpiło uderzenie bronią (do rozstrzygnięcia przez scenę). */
-  tick(actions: PlayerActions, now: number): boolean {
+  /** Ruch, dash i ataki w tej klatce; trafienia rozstrzyga scena na podstawie wyniku. */
+  tick(actions: PlayerActions, now: number): PlayerTickResult {
     this.aimAngle = angleTo(this, actions.aim);
     this.updateAimMarker();
 
     if (this.isDead) {
       this.setVelocity(0, 0);
-      return false;
+      return IDLE;
     }
 
     if (actions.dash) {
@@ -120,8 +150,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (actions.attack) this.attackCycle.tryStart(now);
     const struck = this.attackCycle.consumeRelease(now);
 
+    const shot = actions.shoot && this.tryShoot(now) ? { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) } : null;
+
     this.updateVisuals(now);
-    return struck;
+    return { struck, shot };
+  }
+
+  /** Strzał wymaga odstępu od poprzedniego i wolnego ładunku. */
+  private tryShoot(now: number): boolean {
+    if (this.shotCycle.phase(now) !== AttackPhase.Ready || this.shotCharges.available(now) <= 0) return false;
+    this.shotCycle.tryStart(now);
+    return this.shotCharges.tryConsume(now);
   }
 
   /** Zwraca true, jeśli trafienie zostało przyjęte (gracz nie był nietykalny). */

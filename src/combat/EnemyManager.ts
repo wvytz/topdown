@@ -16,6 +16,8 @@ import { directionTo, distance, knockbackFrom } from '@/systems/CombatMath';
 import { scaleEnemyForFloor } from '@/systems/EnemyScaling';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { PlayerShot } from '@/systems/ShotResolver';
+import { resolvePlayerShot } from '@/systems/ShotResolver';
 
 export interface EnemyManagerDeps {
   readonly scene: Phaser.Scene;
@@ -66,6 +68,13 @@ export class EnemyManager implements EnemyAttackHandler {
   /** Cios gracza — trafia wszystkich przeciwników w łuku. */
   resolvePlayerMelee(swing: MeleeSwing): void {
     for (const enemy of resolveMeleeSwing(swing, [...this.enemies])) this.kill(enemy);
+  }
+
+  /** Pocisk gracza — true, jeśli trafił któregoś z przeciwników. */
+  resolvePlayerShot(shot: PlayerShot): boolean {
+    const result = resolvePlayerShot(shot, this.enemies);
+    if (result?.died) this.kill(result.target);
+    return result !== null;
   }
 
   meleeStrike(enemy: Enemy, attack: MeleeAttackDefinition): void {

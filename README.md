@@ -20,7 +20,8 @@ npm run build        # typy + testy + build produkcyjny do dist/
 | WASD / strzałki | ruch |
 | Mysz | celowanie |
 | LPM | atak wręcz |
-| Spacja / PPM | dash (krótka nietykalność) |
+| PPM | strzał (3 ładunki odnawiające się z czasem) |
+| Spacja | dash (krótka nietykalność) |
 | E | ofiara w kapliczce |
 | R | nowa wspinaczka (po śmierci) |
 

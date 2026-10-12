@@ -91,6 +91,20 @@ export interface DashConfig {
   readonly cooldownMs: number;
 }
 
+/** Atak dystansowy gracza (PPM): strzał z puli ładunków odnawiających się z czasem. */
+export interface RangedConfig {
+  readonly damage: number;
+  readonly knockback: number;
+  readonly projectileSpeed: number;
+  readonly projectileLifetimeMs: number;
+  readonly projectileRadius: number;
+  readonly maxCharges: number;
+  /** Czas odnowienia jednego ładunku. */
+  readonly rechargeMs: number;
+  /** Minimalny odstęp między strzałami (żeby seria nie wyszła w jednej klatce). */
+  readonly shotIntervalMs: number;
+}
+
 export interface PlayerCombatConfig {
   readonly meleeDamage: number;
   readonly meleeRange: number;
@@ -100,6 +114,7 @@ export interface PlayerCombatConfig {
   /** Nietykalność po otrzymaniu trafienia. */
   readonly invulnerabilityMs: number;
   readonly dash: DashConfig;
+  readonly ranged: RangedConfig;
 }
 
 export interface EnemyScalingConfig {

@@ -33,6 +33,7 @@ export enum TextureKey {
   AimMarker = 'tex-aim-marker',
   Boss = 'tex-boss',
   Projectile = 'tex-projectile',
+  PlayerShot = 'tex-player-shot',
   Coin = 'tex-coin',
   HealthPotion = 'tex-health-potion',
   Shrine = 'tex-shrine',
@@ -55,6 +56,8 @@ export interface HudData {
   readonly maxHp: number;
   /** 0..1, 1 = dash gotowy. */
   readonly dashReadiness: number;
+  /** Ładunki strzału (PPM). */
+  readonly ranged: RangedHudData;
   readonly enemiesAlive: number;
   readonly stairsUnlocked: boolean;
   readonly isPlayerDead: boolean;
@@ -66,6 +69,13 @@ export interface HudData {
   readonly toast: HudToast | null;
   /** Podsumowanie runu po śmierci; null, dopóki gracz żyje. */
   readonly death: DeathSummary | null;
+}
+
+export interface RangedHudData {
+  readonly charges: number;
+  readonly maxCharges: number;
+  /** 0..1 postęp kolejnego ładunku; 1, gdy wszystkie są gotowe. */
+  readonly rechargeProgress: number;
 }
 
 export interface DeathSummary {

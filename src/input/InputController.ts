@@ -18,7 +18,8 @@ export class InputController {
   private readonly arrows: MovementKeys;
   private readonly dashKey: Phaser.Input.Keyboard.Key;
   private readonly interactKey: Phaser.Input.Keyboard.Key;
-  private dashClickQueued = false;
+  /** Kliknięcie PPM zapamiętane do najbliższej klatki — krótki klik nie może zginąć. */
+  private shootClickQueued = false;
 
   constructor(private readonly scene: Phaser.Scene) {
     const keyboard = scene.input.keyboard;
@@ -40,27 +41,28 @@ export class InputController {
     this.dashKey = keyboard.addKey(K.SPACE);
     this.interactKey = keyboard.addKey(K.E);
 
-    // PPM = dash; wyłączamy menu kontekstowe przeglądarki.
+    // PPM = strzał; wyłączamy menu kontekstowe przeglądarki.
     scene.input.mouse?.disableContextMenu();
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
-      if (pointer.rightButtonDown()) this.dashClickQueued = true;
+      if (pointer.rightButtonDown()) this.shootClickQueued = true;
     });
   }
 
-  /** Wywoływać raz na klatkę — „zjada” jednorazowe wciśnięcia (dash). */
+  /** Wywoływać raz na klatkę — „zjada” jednorazowe wciśnięcia (dash, klik PPM). */
   getActions(): PlayerActions {
     const pointer = this.scene.input.activePointer;
     // Przeliczamy co klatkę: kamera się przesuwa, nawet gdy mysz stoi w miejscu.
     const aim = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
-    const dash = Phaser.Input.Keyboard.JustDown(this.dashKey) || this.dashClickQueued;
-    this.dashClickQueued = false;
+    const shoot = pointer.rightButtonDown() || this.shootClickQueued;
+    this.shootClickQueued = false;
 
     return {
       move: this.getMovementIntent(),
       aim: { x: aim.x, y: aim.y },
       attack: pointer.leftButtonDown(),
-      dash,
+      dash: Phaser.Input.Keyboard.JustDown(this.dashKey),
+      shoot,
       interact: Phaser.Input.Keyboard.JustDown(this.interactKey),
     };
   }
