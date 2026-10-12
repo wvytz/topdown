@@ -25,10 +25,60 @@ export enum EnemyAttackKind {
   Projectile = 'projectile',
 }
 
+/** Podpalenie: obrażenia co `tickMs` przez `durationMs`. Ponowne podpalenie odświeża czas. */
+export interface BurnEffect {
+  readonly tickDamage: number;
+  readonly tickMs: number;
+  readonly durationMs: number;
+}
+
+/** Spowolnienie: prędkość ruchu × (1 − pct). */
+export interface SlowEffect {
+  readonly pct: number;
+  readonly durationMs: number;
+}
+
+/** Ogłuszenie: cel stoi i nie atakuje. Czas skraca odporność celu (boss). */
+export interface StunEffect {
+  readonly durationMs: number;
+}
+
+/** Efekty statusu nakładane trafieniem (z przedmiotów gracza). */
+export interface StatusApplication {
+  readonly burn?: BurnEffect;
+  readonly slow?: SlowEffect;
+  readonly stun?: StunEffect;
+}
+
+/** Jak cel znosi efekty statusu — boss jest odporniejszy niż zwykli wrogowie. */
+export interface StatusResistance {
+  /** Mnożnik czasu ogłuszenia (0.4 = 40% czasu). */
+  readonly stunMultiplier: number;
+  /** Po ogłuszeniu cel jest na nie odporny przez ten czas (chroni przed zablokowaniem serią). */
+  readonly stunImmunityMs: number;
+  /** Mnożnik siły spowolnienia. */
+  readonly slowMultiplier: number;
+}
+
 /** Pojedyncze trafienie: ile obrażeń i jaki odrzut (px/s) otrzymuje cel. */
 export interface Hit {
   readonly damage: number;
   readonly knockback: Vector2;
+  readonly status?: StatusApplication;
+}
+
+/** Efekty broni gracza wynikające z przedmiotów (zero/puste = brak przedmiotu). */
+export interface WeaponEffects {
+  /** Ilu dodatkowych wrogów przebija strzał. */
+  readonly shotPierce: number;
+  /** Statusy nakładane strzałem (ogłuszenie, spowolnienie). */
+  readonly shotStatus: StatusApplication;
+  /** Statusy nakładane ciosem wręcz (podpalenie). */
+  readonly meleeStatus: StatusApplication;
+  /** Leczenie za cios wręcz, który trafił co najmniej jeden cel. */
+  readonly meleeHeal: number;
+  /** Obrażenia zadawane wrogom, przez których gracz przelatuje dashem (0 = brak). */
+  readonly dashDamage: number;
 }
 
 export interface DamageResult {

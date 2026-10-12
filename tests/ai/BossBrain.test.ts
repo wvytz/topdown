@@ -59,6 +59,20 @@ describe('BossBrain', () => {
     }
   });
 
+  it('ogłuszenie (delay) odsuwa pierwszy atak; uśpionego bossa nie dotyczy', () => {
+    const dormant = new BossBrain(BOSS, createRng(1));
+    dormant.delay(500);
+    dormant.activate(0);
+    expect(collectAttacks(dormant, 3000)[0]?.at).toBeLessThan(BOSS.openingDelayMs + FRAME);
+
+    const stunned = new BossBrain(BOSS, createRng(1));
+    stunned.activate(0);
+    stunned.delay(500);
+    const first = collectAttacks(stunned, 3000)[0]?.at ?? Infinity;
+    expect(first).toBeGreaterThanOrEqual(BOSS.openingDelayMs + 500);
+    expect(first).toBeLessThan(BOSS.openingDelayMs + 500 + FRAME);
+  });
+
   it('stoi w miejscu przez cały czas trwania ataku', () => {
     const brain = new BossBrain(BOSS, createRng(1));
     brain.activate(0);

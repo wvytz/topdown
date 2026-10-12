@@ -459,12 +459,99 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 10 — Przedmioty z efektem broni
+
+**Cel:** 7 nowych, rzadszych przedmiotów, które zmieniają działanie broni, a nie tylko liczby.
+
+**Decyzje właściciela:**
+- **Zmiana zasady puli.** Do 5 bazowych przedmiotów dochodzi 7 z efektem. Pula ma teraz 12 pozycji i jest opisana w CLAUDE.md.
+- **Przedmioty:**
+  - trzy zamówione przez właściciela: Szuriken, Elektryczna strzała, Ognista pięść;
+  - wszystkie 4 propozycje Claude'a: Kołczan, Wampirzy kieł, Burzowy pęd, Lodowy odłamek.
+- **Kumulacja:** kolejne kopie wzmacniają efekt.
+- **Elektryczna strzała** działa na wszystkich. Bossa ogłusza krócej i po ogłuszeniu daje mu odporność.
+- **Ewolucje przedmiotów** (np. stały ognisty promień, grad ciosów wręcz) to następny krok, do zaprojektowania razem.
+
+**Przedmioty** (pierwsza kopia / każda kolejna; wszystkie liczby w `ITEM_EFFECTS` w `config/lootConfig.ts`):
+
+| Przedmiot | Efekt | Kolejna kopia |
+|---|---|---|
+| Szuriken | strzał przebija 1 wroga (wiruje w locie) | +1 przebity wróg |
+| Elektryczna strzała | strzał ogłusza na 900 ms (boss: 40% czasu, potem 3 s odporności) | +300 ms |
+| Ognista pięść | cios podpala: 3 obrażenia co 0,5 s przez 2 s | +2 obrażenia na tyknięcie |
+| Kołczan | +1 ładunek strzału (limit 6) | +1 ładunek |
+| Wampirzy kieł | cios, który trafi, leczy 2 HP (raz na cios) | +2 HP |
+| Burzowy pęd | dash zadaje 10 obrażeń dotkniętym wrogom (każdemu raz na dash) | +6 |
+| Lodowy odłamek | strzał spowalnia o 40% na 1,5 s (boss: połowa siły) | +10%, limit 70% |
+
+- **Rzadkość:** każdy przedmiot z efektem ma wagę 3, bazowe mają 5–10. Test pilnuje, żeby przedmiot z efektem był rzadszy od każdego bazowego.
+- **Wygląd na ziemi:** przedmiot z efektem to gwiazda ze złotym obrysem, bazowy to romb.
+
+**Warstwa czysta:**
+- **`systems/StatusEffects.ts`:** podpalenie, spowolnienie i ogłuszenie na celu.
+  - Ten sam status się nie sumuje. Silniejszy lub dłuższy zastępuje słabszy, a ponowne podpalenie odświeża czas, ale nie przyspiesza tykania.
+  - Odporność celu (`StatusResistance`) skraca ogłuszenie, osłabia spowolnienie i po ogłuszeniu daje okno odporności.
+  - Wrogowie mają `ENEMY_STATUS_RESISTANCE`, a boss `BOSS_STATUS_RESISTANCE`.
+- **`systems/WeaponEffects.ts`:** `computeWeaponEffects` zamienia listę przedmiotów na `WeaponEffects`, czyli przebicie, statusy strzału i ciosu, leczenie i obrażenia dasha.
+- **`PlayerLoadout`:** niesie teraz `effects`. Kołczan działa jako zwykły modyfikator (`rangedCharges`) z limitem w `STAT_LIMITS`.
+- **`Hit`:** ma opcjonalne `status`. Cios, strzał i dash korzystają z tego samego interfejsu `MeleeTarget`.
+- **`resolveMeleeSwing`:** zwraca `{ hit, killed }`, bo Wampirzy kieł potrzebuje wiedzieć, czy cios trafił.
+- **`resolvePlayerShot`:** pomija cele z `ignore`, czyli już przebite.
+- **Nowy `systems/DashStrike.ts`:** `resolveDashSweep` rani dotknięte cele raz na dash.
+- **Pozostałe:**
+  - `ChargePool.resize`: nowe miejsca od Kołczanu przychodzą naładowane, a trwające ładowanie nie jest przerywane;
+  - `AttackCycle.interrupt`: ogłuszenie przerywa zamach wroga;
+  - `BossBrain.delay`: ogłuszenie odsuwa kolejny atak bossa. Atak już rozpisany w czasie, z widocznymi telegrafami, dobiega końca.
+
+**Warstwa Phasera:**
+- **Wróg:** ogłuszony stoi i nie atakuje, spowolniony chodzi wolniej. Podpalenie tyka w `EnemyManager.update`, a śmierć od ognia przechodzi tą samą ścieżką co zabicie, łącznie z łupami.
+- **Boss:**
+  - ogłuszony stoi;
+  - każdy kolejny atak przesuwa się o czas ogłuszenia;
+  - podpalenie może go dobić, wtedy otwierają się schody i kraty.
+- **Kolory statusów** (`effects/statusTints.ts`): ogłuszenie żółte, podpalenie migocze pomarańczowo, spowolnienie błękitne. Obrażenia od ognia i od dasha pokazują się jako unoszące się liczby.
+- **`PlayerShotManager`:** pocisk pamięta trafione cele i liczbę pozostałych przebić.
+- **`GameScene`:** podaje statusy do ciosu, leczy po trafionym ciosie i śledzi trafienia Burzowym pędem osobno dla każdego dasha.
+- **HUD:** lista przedmiotów zawija się, bo nazwy są teraz dłuższe.
+
+**Testy: +26, razem 209.**
+- Pula: 5 + 7, unikalne id, przedmiot z efektem rzadszy od bazowego, każdy przedmiot ma realne działanie.
+- `computeWeaponEffects`:
+  - brak efektów bez przedmiotów;
+  - każdy przedmiot daje swój efekt;
+  - kumulacja;
+  - limit spowolnienia;
+  - ogłuszenie i spowolnienie naraz.
+- Kołczan: limit ładunków, `resize`.
+- `StatusEffects`:
+  - tykanie podpalenia;
+  - odświeżanie;
+  - silniejsze podpalenie wygrywa;
+  - spowolnienie;
+  - odporność bossa;
+  - pełne ogłuszenie zwykłego wroga.
+- Trafienia przenoszą statusy, przebicie pomija trafione cele, dash rani raz na dash.
+- `AttackCycle.interrupt`, `BossBrain.delay`.
+
+**Weryfikacja w grze (port 5174, ręczne `game.step()`, nieśmiertelność gracza podmieniona w konsoli tylko na czas testu):**
+- **Szuriken:** strzał trafia dwóch ustawionych w linii wrogów (30 → 23 obaj). Bez Szurikena dostaje tylko pierwszy.
+- **Elektryczna i lodowa strzała:** wróg ogłuszony i stoi w miejscu, prędkość ×0,6. Po 900 ms ogłuszenie mija, a spowolnienie jeszcze trwa.
+- **Ognista pięść:** cios 30 → 18, potem podpalenie 18 → 6 (4 tyknięcia po 3).
+- **Wampirzy kieł:** trafiony cios leczy +2 HP.
+- **Kołczan:** 3 → 4 ładunki.
+- **Burzowy pęd:** dash przez wroga 30 → 20, kolejny dash 20 → 10.
+- **Boss:** ogłuszony na 360 ms, następny atak przesunięty o 360 ms. Druga strzała w czasie odporności trafia, ale nie ogłusza.
+- Testowy wpis rekordów (śmierć gracza w pierwszej próbie testu) został usunięty z `localStorage`.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
+- **Ewolucje przedmiotów (następny krok):** na wyższym poziomie przedmiot zmienia działanie, np. stały ognisty promień zamiast strzału, grad ciosów wręcz. Do zaprojektowania z właścicielem.
+- **Modyfikatory pięter (zaakceptowane):** Gorączka, Twarda skóra, Złota żyła, Mrok, Wyczerpanie, Kapliczka łaski. Jeden na piętro od piętra 2.
 - **Wybór przedmiotu z bossa:** obecnie losowy. Wybór 1 z 3 dałby graczowi decyzję.
-- **Modyfikatory pięter (GDD §2.5):** na razie skalują się tylko statystyki.
 - **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
 - **Docelowa grafika:** spritesheety zamiast placeholderów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

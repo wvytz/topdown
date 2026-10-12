@@ -9,9 +9,12 @@ import type {
 import { AttackPhase, EnemyAttackKind, EnemyType } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { EnemyBrain } from '@/ai/EnemyBrain';
+import { ENEMY_STATUS_RESISTANCE } from '@/config/combatConfig';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { Health } from '@/systems/Health';
+import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
+import { statusTint } from '@/effects/statusTints';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -40,6 +43,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly attackCycle: AttackCycle;
   private readonly hitStun = new Timer();
   private readonly hitFlash = new Timer();
+  readonly status = new StatusEffects(ENEMY_STATUS_RESISTANCE);
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: EnemyDefinition) {
     super(scene, x, y, enemyTextureKey(definition.type));
@@ -62,8 +66,25 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return this.health.isDead;
   }
 
+  /** Obrażenia od podpalenia należne do `now`; śmierć od ognia wykrywa menedżer po `isDead`. */
+  tickBurn(now: number): number {
+    const damage = this.status.takeBurnDamage(now);
+    if (damage > 0 && !this.isDead) {
+      this.health.takeDamage(damage);
+      this.hitFlash.start(now, HIT_FLASH_MS);
+    }
+    return damage;
+  }
+
   tick(perception: EnemyPerception, now: number, handler: EnemyAttackHandler): void {
     if (this.isDead) return;
+
+    if (this.status.isStunned(now)) {
+      this.attackCycle.interrupt();
+      if (!this.hitStun.isActive(now)) this.setVelocity(0, 0);
+      this.updateTint(now);
+      return;
+    }
 
     if (this.hitStun.isActive(now)) {
       this.updateTint(now);
@@ -80,7 +101,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (decision.startAttack) this.attackCycle.tryStart(now);
     if (this.attackCycle.consumeRelease(now)) this.releaseAttack(perception.target, handler);
 
-    const speed = this.definition.moveSpeed;
+    const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
     this.updateTint(now);
   }
@@ -91,6 +112,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.hitFlash.start(now, HIT_FLASH_MS);
     this.setVelocity(hit.knockback.x, hit.knockback.y);
     this.brain.alert(source);
+    if (!result.died) this.status.apply(hit.status, now);
     return result;
   }
 
@@ -107,8 +129,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   private updateTint(now: number): void {
+    const tint = statusTint(this.status, now);
     if (this.hitFlash.isActive(now)) {
       this.setTintFill(0xffffff);
+    } else if (tint !== null) {
+      this.setTint(tint);
     } else if (this.attackCycle.phase(now) === AttackPhase.Windup) {
       this.setTint(WINDUP_TINT);
     } else {

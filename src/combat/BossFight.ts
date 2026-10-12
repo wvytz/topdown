@@ -15,6 +15,8 @@ import type { Player } from '@/entities/Player';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { DashSweep } from '@/systems/DashStrike';
+import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 
@@ -104,6 +106,13 @@ export class BossFight {
       if (roomContainsTile(this.arena, playerTile)) boss.activate(now);
     }
 
+    const burn = boss.tickBurn(now);
+    if (burn > 0) this.deps.effects.floatingText(boss.x, boss.y - boss.radius, `-${burn}`, '#ff8a3c');
+    if (boss.isDead) {
+      this.defeat();
+      return;
+    }
+
     const plan = boss.tick({ x: player.x, y: player.y }, now);
     if (plan) this.schedule(plan);
 
@@ -111,17 +120,30 @@ export class BossFight {
     this.updateBursts(now);
   }
 
-  resolvePlayerMelee(swing: MeleeSwing): void {
-    if (!this.boss) return;
-    if (resolveMeleeSwing(swing, [this.boss]).length > 0) this.defeat();
+  /** Cios gracza — zwraca liczbę trafionych (0 lub 1). */
+  resolvePlayerMelee(swing: MeleeSwing): number {
+    if (!this.boss) return 0;
+    const { hit, killed } = resolveMeleeSwing(swing, [this.boss]);
+    if (killed.length > 0) this.defeat();
+    return hit.length;
   }
 
-  /** Pocisk gracza — true, jeśli trafił bossa (trafienie budzi go jak cios wręcz). */
-  resolvePlayerShot(shot: PlayerShot): boolean {
-    if (!this.boss) return false;
-    const result = resolvePlayerShot(shot, [this.boss]);
+  /** Pocisk gracza — zwraca bossa, jeśli go trafił (trafienie budzi go jak cios wręcz). */
+  resolvePlayerShot(shot: PlayerShot): Boss | null {
+    const boss = this.boss;
+    if (!boss) return null;
+    const result = resolvePlayerShot(shot, [boss]);
     if (result?.died) this.defeat();
-    return result !== null;
+    return result ? boss : null;
+  }
+
+  /** Burzowy pęd przez bossa. */
+  resolveDashSweep(sweep: DashSweep, alreadyHit: Set<object>): void {
+    const boss = this.boss;
+    if (!boss) return;
+    const { hit, killed } = resolveDashSweep(sweep, [boss], alreadyHit);
+    if (hit.length > 0) this.deps.effects.floatingText(boss.x, boss.y - boss.radius, `-${sweep.damage}`, '#b8a8ff');
+    if (killed.length > 0) this.defeat();
   }
 
   /** Tylko do debugowania (klawisz B w trybie dev). */

@@ -48,6 +48,14 @@ export class BossBrain {
     this.nextAttackAt = now + this.definition.openingDelayMs;
   }
 
+  /**
+   * Ogłuszenie: odsuwa kolejny atak o `ms`. Atak już rozpisany w czasie (telegrafy widoczne
+   * dla gracza) dobiega końca — odsuwamy dopiero następny.
+   */
+  delay(ms: number): void {
+    if (this.phase === BossPhase.Fighting && Number.isFinite(this.nextAttackAt)) this.nextAttackAt += ms;
+  }
+
   think(input: BossBrainInput): BossDecision {
     const enraged = input.hpRatio <= this.definition.enrage.hpThreshold;
     if (this.phase === BossPhase.Dormant) return { move: STOP, newAttack: null, enraged };

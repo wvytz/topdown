@@ -2,6 +2,7 @@ import type {
   EnemyDefinition,
   EnemyScalingConfig,
   PlayerCombatConfig,
+  StatusResistance,
 } from '@/core/combatTypes';
 import { EnemyAttackKind, EnemyType } from '@/core/combatTypes';
 import type { EncounterConfig } from '@/dungeon/EncounterPlanner';
@@ -79,6 +80,13 @@ export const ENEMY_SCALING: EnemyScalingConfig = {
 };
 
 export const PROJECTILE_RADIUS = 4;
+
+/** Zwykli wrogowie: pełne efekty, krótka odporność na ponowne ogłuszenie. */
+export const ENEMY_STATUS_RESISTANCE: StatusResistance = {
+  stunMultiplier: 1,
+  stunImmunityMs: 500,
+  slowMultiplier: 1,
+};
 
 /**
  * Celowo mało przeciwników: 1–2 na pokój. Liczba rośnie tylko razem z liczbą pokojów,

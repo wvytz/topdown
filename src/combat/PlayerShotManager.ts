@@ -1,15 +1,18 @@
 import Phaser from 'phaser';
-import type { RangedConfig } from '@/core/combatTypes';
+import type { RangedConfig, WeaponEffects } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { TextureKey } from '@/core/types';
 import { Projectile } from '@/entities/Projectile';
 import { normalize } from '@/systems/CombatMath';
 import type { PlayerShot } from '@/systems/ShotResolver';
 
-/** Rozstrzyga trafienie pocisku gracza; true = pocisk trafił i znika. */
-export type PlayerShotResolver = (shot: PlayerShot) => boolean;
+/** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. */
+export type PlayerShotResolver = (shot: PlayerShot) => object | null;
 
-/** Pociski gracza: lot, rozbijanie o ściany i kraty, wygasanie, trafienia przez przekazany resolver. */
+/**
+ * Pociski gracza: lot, rozbijanie o ściany i kraty, wygasanie, przebijanie wrogów (Szuriken).
+ * Trafienia rozstrzyga resolver przekazany przez scenę.
+ */
 export class PlayerShotManager {
   private readonly group: Phaser.Physics.Arcade.Group;
 
@@ -23,17 +26,21 @@ export class PlayerShotManager {
     });
   }
 
-  fire(origin: Vector2, direction: Vector2, config: RangedConfig): void {
+  fire(origin: Vector2, direction: Vector2, config: RangedConfig, effects: WeaponEffects): void {
     const shot = new Projectile(this.scene, origin.x, origin.y, TextureKey.PlayerShot);
     shot.damage = config.damage;
     shot.knockback = config.knockback;
     shot.expiresAt = this.scene.time.now + config.projectileLifetimeMs;
+    shot.status = effects.shotStatus;
+    shot.pierceLeft = effects.shotPierce;
     shot.setDepth(11);
 
     this.group.add(shot, true);
     shot.setCircle(config.projectileRadius);
     const dir = normalize(direction);
     shot.setVelocity(dir.x * config.projectileSpeed, dir.y * config.projectileSpeed);
+    // Przebijający pocisk obraca się jak szuriken (czysto wizualnie).
+    if (shot.pierceLeft > 0) shot.setAngularVelocity(720);
   }
 
   update(now: number, resolve: PlayerShotResolver): void {
@@ -44,7 +51,7 @@ export class PlayerShotManager {
         continue;
       }
       const velocity = child.body?.velocity ?? { x: 0, y: 0 };
-      const shot: PlayerShot = {
+      const target = resolve({
         position: { x: child.x, y: child.y },
         velocity: { x: velocity.x, y: velocity.y },
         radius: child.displayWidth / 2,
@@ -52,8 +59,13 @@ export class PlayerShotManager {
         damage: child.damage,
         knockback: child.knockback,
         now,
-      };
-      if (resolve(shot)) child.destroy();
+        status: child.status,
+        ignore: child.hitTargets,
+      });
+      if (!target) continue;
+      child.hitTargets.add(target);
+      if (child.pierceLeft > 0) child.pierceLeft--;
+      else child.destroy();
     }
   }
 }

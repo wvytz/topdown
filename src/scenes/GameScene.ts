@@ -22,6 +22,7 @@ import {
   ENEMY_LOOT,
   HIGHSCORE_CONFIG,
   ITEM_DEFINITIONS,
+  ITEM_EFFECTS,
   ITEM_POOL,
   LOOT_SCALING,
   STAT_LIMITS,
@@ -70,6 +71,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private death: DeathSummary | null = null;
   private shrine!: ShrineSite;
   private arenaGates!: ArenaGates;
+  /** Cele trafione Burzowym pędem w dashu o numerze `dashHitsFor`. */
+  private dashHits = new Set<object>();
+  private dashHitsFor = -1;
   private readonly highscores = new HighscoreStorage(
     HighscoreStorage.browserStorage(),
     HIGHSCORE_CONFIG.maxEntries,
@@ -95,6 +99,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stairsUnlocked = false;
     this.isTransitioning = false;
     this.deathHandled = false;
+    this.dashHits = new Set();
+    this.dashHitsFor = -1;
   }
 
   create(): void {
@@ -129,12 +135,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const actions = this.inputController.getActions();
     const turn = this.player.tick(actions, time);
     if (turn.struck) this.resolvePlayerStrike(time);
-    if (turn.shot) this.playerShots.fire({ x: this.player.x, y: this.player.y }, turn.shot, this.player.combatConfig.ranged);
+    if (turn.shot) {
+      const { x, y, combatConfig, effects } = this.player;
+      this.playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, effects);
+    }
+    this.resolveDashStrike(time);
     this.enemies.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
-    this.playerShots.update(time, (shot) => this.enemies.resolvePlayerShot(shot) || this.bossFight.resolvePlayerShot(shot));
+    this.playerShots.update(time, (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot));
     this.loot.update(time);
     this.shrine.update(actions.interact);
 
@@ -169,7 +179,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private currentLoadout(): PlayerLoadout {
-    return computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS);
+    return computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
   }
 
   /** Wywoływane po pokonaniu bossa — zamyka pętlę piętra. */
@@ -186,11 +196,31 @@ export class GameScene extends Phaser.Scene implements HudSource {
       angle: this.player.getAimAngle(),
       combat,
       now,
+      status: this.player.effects.meleeStatus,
     };
     const arc = Phaser.Math.DegToRad(combat.meleeArcDeg);
     this.effects.slash(swing.origin.x, swing.origin.y, swing.angle, combat.meleeRange, arc);
-    this.enemies.resolvePlayerMelee(swing);
-    this.bossFight.resolvePlayerMelee(swing);
+    const hits = this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing);
+
+    // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów).
+    const heal = this.player.effects.meleeHeal;
+    if (hits > 0 && heal > 0 && !this.player.health.isFull) {
+      this.player.heal(heal);
+      this.effects.floatingText(this.player.x, this.player.y - 14, `+${heal}`, '#ff6b8a');
+    }
+  }
+
+  /** Burzowy pęd: w trakcie dasha gracz rani dotkniętych wrogów (każdego raz na dash). */
+  private resolveDashStrike(now: number): void {
+    const damage = this.player.effects.dashDamage;
+    if (damage <= 0 || !this.player.isDashing(now)) return;
+    if (this.dashHitsFor !== this.player.dashId) {
+      this.dashHitsFor = this.player.dashId;
+      this.dashHits = new Set();
+    }
+    const sweep = { center: { x: this.player.x, y: this.player.y }, radius: this.player.radius, damage, now };
+    this.enemies.resolveDashSweep(sweep, this.dashHits);
+    this.bossFight.resolveDashSweep(sweep, this.dashHits);
   }
 
   private setupCombat(): void {

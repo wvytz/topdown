@@ -9,10 +9,22 @@ export class ChargePool {
   private rechargeStartedAt = 0;
 
   constructor(
-    readonly maxCharges: number,
+    private max: number,
     private readonly rechargeMs: number,
   ) {
-    this.stored = maxCharges;
+    this.stored = max;
+  }
+
+  get maxCharges(): number {
+    return this.max;
+  }
+
+  /** Zmiana pojemności (np. Kołczan): nowe miejsca przychodzą od razu naładowane. */
+  resize(maxCharges: number, now: number): void {
+    this.sync(now);
+    const gained = Math.max(0, maxCharges - this.max);
+    this.max = maxCharges;
+    this.stored = Math.min(this.max, this.stored + gained);
   }
 
   available(now: number): number {
@@ -25,7 +37,7 @@ export class ChargePool {
     this.sync(now);
     if (this.stored <= 0) return false;
     // Pełna pula nie ładowała się — odliczanie kolejnego ładunku zaczyna się teraz.
-    if (this.stored === this.maxCharges) this.rechargeStartedAt = now;
+    if (this.stored === this.max) this.rechargeStartedAt = now;
     this.stored--;
     return true;
   }
@@ -33,19 +45,19 @@ export class ChargePool {
   /** 0..1 postęp ładowania kolejnego ładunku; 1, gdy pula jest pełna. */
   rechargeProgress(now: number): number {
     this.sync(now);
-    if (this.stored >= this.maxCharges || this.rechargeMs <= 0) return 1;
+    if (this.stored >= this.max || this.rechargeMs <= 0) return 1;
     return Math.min(1, Math.max(0, (now - this.rechargeStartedAt) / this.rechargeMs));
   }
 
   private sync(now: number): void {
-    if (this.stored >= this.maxCharges) return;
+    if (this.stored >= this.max) return;
     if (this.rechargeMs <= 0) {
-      this.stored = this.maxCharges;
+      this.stored = this.max;
       return;
     }
     const gained = Math.floor((now - this.rechargeStartedAt) / this.rechargeMs);
     if (gained <= 0) return;
-    this.stored = Math.min(this.maxCharges, this.stored + gained);
+    this.stored = Math.min(this.max, this.stored + gained);
     this.rechargeStartedAt += gained * this.rechargeMs;
   }
 }

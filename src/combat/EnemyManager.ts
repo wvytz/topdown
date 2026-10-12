@@ -16,6 +16,8 @@ import { directionTo, distance, knockbackFrom } from '@/systems/CombatMath';
 import { scaleEnemyForFloor } from '@/systems/EnemyScaling';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { DashSweep } from '@/systems/DashStrike';
+import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 
@@ -59,22 +61,37 @@ export class EnemyManager implements EnemyAttackHandler {
   update(now: number): void {
     const { player, floor } = this.deps;
     const target: Vector2 = { x: player.x, y: player.y };
-    for (const enemy of this.enemies) {
+    for (const enemy of [...this.enemies]) {
+      const burn = enemy.tickBurn(now);
+      if (burn > 0) this.deps.effects.floatingText(enemy.x, enemy.y, `-${burn}`, '#ff8a3c');
+      if (enemy.isDead) {
+        this.kill(enemy);
+        continue;
+      }
       const canSeeTarget = !player.isDead && hasLineOfSight(floor, enemy, target, TILE_SIZE);
       enemy.tick({ target, canSeeTarget }, now, this);
     }
   }
 
-  /** Cios gracza — trafia wszystkich przeciwników w łuku. */
-  resolvePlayerMelee(swing: MeleeSwing): void {
-    for (const enemy of resolveMeleeSwing(swing, [...this.enemies])) this.kill(enemy);
+  /** Cios gracza — trafia wszystkich przeciwników w łuku. Zwraca liczbę trafionych. */
+  resolvePlayerMelee(swing: MeleeSwing): number {
+    const { hit, killed } = resolveMeleeSwing(swing, [...this.enemies]);
+    for (const enemy of killed) this.kill(enemy);
+    return hit.length;
   }
 
-  /** Pocisk gracza — true, jeśli trafił któregoś z przeciwników. */
-  resolvePlayerShot(shot: PlayerShot): boolean {
+  /** Pocisk gracza — zwraca trafionego przeciwnika albo null. */
+  resolvePlayerShot(shot: PlayerShot): Enemy | null {
     const result = resolvePlayerShot(shot, this.enemies);
     if (result?.died) this.kill(result.target);
-    return result !== null;
+    return result?.target ?? null;
+  }
+
+  /** Burzowy pęd: rani przeciwników dotkniętych w trakcie dasha (każdego raz na dash). */
+  resolveDashSweep(sweep: DashSweep, alreadyHit: Set<object>): void {
+    const { hit, killed } = resolveDashSweep(sweep, [...this.enemies], alreadyHit);
+    for (const enemy of hit) this.deps.effects.floatingText(enemy.x, enemy.y, `-${sweep.damage}`, '#b8a8ff');
+    for (const enemy of killed) this.kill(enemy);
   }
 
   meleeStrike(enemy: Enemy, attack: MeleeAttackDefinition): void {

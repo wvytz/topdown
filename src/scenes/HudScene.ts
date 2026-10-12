@@ -64,7 +64,12 @@ export class HudScene extends Phaser.Scene {
     this.hintText = this.add.text(BAR_X, TEXT_Y, '', { ...style, fontSize: '13px' });
 
     this.goldText = this.add.text(BAR_X, TEXT_Y + 18, '', { ...style, fontSize: '14px', color: '#f5c542' });
-    this.itemsText = this.add.text(BAR_X, TEXT_Y + 38, '', { ...style, fontSize: '12px', color: '#c8c8d8' });
+    this.itemsText = this.add.text(BAR_X, TEXT_Y + 38, '', {
+      ...style,
+      fontSize: '12px',
+      color: '#c8c8d8',
+      wordWrap: { width: 460 },
+    });
     this.toastText = this.add
       .text(this.scale.width / 2, 70, '', { ...style, fontSize: '18px', color: '#ffe08a' })
       .setOrigin(0.5);

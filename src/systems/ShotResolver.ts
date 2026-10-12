@@ -1,4 +1,4 @@
-import type { Hit } from '@/core/combatTypes';
+import type { Hit, StatusApplication } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { distance, knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeTarget } from '@/systems/MeleeResolver';
@@ -13,6 +13,10 @@ export interface PlayerShot {
   readonly damage: number;
   readonly knockback: number;
   readonly now: number;
+  /** Statusy z przedmiotów (ogłuszenie, spowolnienie). */
+  readonly status?: StatusApplication;
+  /** Cele już trafione tym pociskiem (przebicie) — nie trafia ich drugi raz. */
+  readonly ignore?: ReadonlySet<object>;
 }
 
 export interface ShotResult<T> {
@@ -21,13 +25,14 @@ export interface ShotResult<T> {
 }
 
 /**
- * Pocisk gracza trafia najbliższy cel, z którym się styka (tylko jeden — pocisk znika).
+ * Pocisk gracza trafia najbliższy cel, z którym się styka (jeden na klatkę), pomijając już trafione.
  * Odrzut działa w kierunku lotu. Zwraca null, gdy nic nie trafił.
  */
 export function resolvePlayerShot<T extends MeleeTarget>(shot: PlayerShot, targets: readonly T[]): ShotResult<T> | null {
   let best: T | null = null;
   let bestDistance = Infinity;
   for (const target of targets) {
+    if (shot.ignore?.has(target)) continue;
     const d = distance(shot.position, target);
     if (d <= shot.radius + target.radius && d < bestDistance) {
       best = target;
@@ -37,6 +42,10 @@ export function resolvePlayerShot<T extends MeleeTarget>(shot: PlayerShot, targe
   if (!best) return null;
 
   const behind: Vector2 = { x: shot.position.x - shot.velocity.x, y: shot.position.y - shot.velocity.y };
-  const hit: Hit = { damage: shot.damage, knockback: knockbackFrom(behind, best, shot.knockback) };
+  const hit: Hit = {
+    damage: shot.damage,
+    knockback: knockbackFrom(behind, best, shot.knockback),
+    ...(shot.status && { status: shot.status }),
+  };
   return { target: best, died: best.takeHit(hit, shot.now, shot.origin).died };
 }

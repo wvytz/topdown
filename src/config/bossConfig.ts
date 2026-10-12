@@ -1,6 +1,6 @@
 import type { BossDefinition } from '@/core/bossTypes';
 import { BossAttackKind } from '@/core/bossTypes';
-import type { EnemyScalingConfig } from '@/core/combatTypes';
+import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
 import { scaleForFloor } from '@/systems/CombatMath';
 
 /** Pierwszy boss: „Strażnik Piętra”. Sekwencja: uderzenie → pierścień pocisków → ostrzał stref. */
@@ -71,3 +71,13 @@ export function scaleBossForFloor(boss: BossDefinition, floor: number, scaling: 
     barrage: { ...boss.barrage, damage: dmg(boss.barrage.damage) },
   };
 }
+
+/**
+ * Boss znosi efekty gorzej niż zwykli wrogowie: ogłuszenie trwa 40% czasu, a potem
+ * przez 3 s jest na nie odporny (serią strzał nie da się go zablokować). Spowolnienie ma połowę siły.
+ */
+export const BOSS_STATUS_RESISTANCE: StatusResistance = {
+  stunMultiplier: 0.4,
+  stunImmunityMs: 3000,
+  slowMultiplier: 0.5,
+};

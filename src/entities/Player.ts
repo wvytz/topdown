@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Hit, PlayerCombatConfig } from '@/core/combatTypes';
+import type { Hit, PlayerCombatConfig, WeaponEffects } from '@/core/combatTypes';
 import { AttackPhase } from '@/core/combatTypes';
 import type { MovementIntent, PlayerStats, RangedHudData, Vector2 } from '@/core/types';
 import { TextureKey } from '@/core/types';
@@ -45,6 +45,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private stats: PlayerStats;
   private combat: PlayerCombatConfig;
+  private weaponEffects: WeaponEffects;
+  /** Numer bieżącego dasha — Burzowy pęd rani każdego wroga raz na dash. */
+  private dashCount = 0;
   private attackCycle: AttackCycle;
   private dash: DashController;
   private shotCharges: ChargePool;
@@ -62,6 +65,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, TextureKey.Player);
     this.stats = loadout.stats;
     this.combat = loadout.combat;
+    this.weaponEffects = loadout.effects;
     this.health = new Health(loadout.stats.maxHp, startHp ?? loadout.stats.maxHp);
     this.attackCycle = new AttackCycle(0, loadout.combat.attackCooldownMs);
     this.dash = new DashController(loadout.combat.dash);
@@ -81,6 +85,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Aktualna konfiguracja walki (zmienia się wraz z przedmiotami). */
+  /** Efekty broni z przedmiotów (przebicie, podpalenie, ogłuszenie…). */
+  get effects(): WeaponEffects {
+    return this.weaponEffects;
+  }
+
+  /** Numer bieżącego (lub ostatniego) dasha. */
+  get dashId(): number {
+    return this.dashCount;
+  }
+
+  isDashing(now: number): boolean {
+    return this.dash.isDashing(now);
+  }
+
   get combatConfig(): PlayerCombatConfig {
     return this.combat;
   }
@@ -90,12 +108,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.stats = loadout.stats;
     this.attackCycle = new AttackCycle(0, loadout.combat.attackCooldownMs);
     this.dash = new DashController(loadout.combat.dash);
-    // Ładunki zachowujemy przy zdobyciu przedmiotu — chyba że zmieniła się konfiguracja strzału.
-    if (loadout.combat.ranged !== this.combat.ranged) {
-      this.shotCharges = new ChargePool(loadout.combat.ranged.maxCharges, loadout.combat.ranged.rechargeMs);
-      this.shotCycle = new AttackCycle(0, loadout.combat.ranged.shotIntervalMs);
-    }
+    // Ładunki zachowujemy przy zdobyciu przedmiotu; Kołczan dokłada nowe, od razu naładowane.
+    this.shotCharges.resize(loadout.combat.ranged.maxCharges, this.scene.time.now);
     this.combat = loadout.combat;
+    this.weaponEffects = loadout.effects;
     this.health.setMax(loadout.stats.maxHp);
   }
 
@@ -136,7 +152,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (actions.dash) {
       const moving = actions.move.x !== 0 || actions.move.y !== 0;
       const direction = moving ? actions.move : { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
-      this.dash.tryStart(now, direction);
+      if (this.dash.tryStart(now, direction)) this.dashCount++;
     }
 
     if (this.dash.isDashing(now)) {

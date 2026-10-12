@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { ItemId } from '@/core/lootTypes';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
-import { ITEM_DEFINITIONS, STAT_LIMITS } from '@/config/lootConfig';
+import { ITEM_DEFINITIONS, ITEM_EFFECTS, STAT_LIMITS } from '@/config/lootConfig';
 import { Health } from '@/systems/Health';
 import { computeLoadout, sumModifiers } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState } from '@/systems/RunState';
 
 const loadout = (items: ItemId[]) =>
-  computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, items, ITEM_DEFINITIONS, STAT_LIMITS);
+  computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
 
 describe('computeLoadout', () => {
   it('bez przedmiotów = statystyki bazowe', () => {

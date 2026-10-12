@@ -3,7 +3,8 @@ import { EnemyType } from '@/core/combatTypes';
 import type { ItemDefinition, LootTable } from '@/core/lootTypes';
 import { ItemId, PickupKind } from '@/core/lootTypes';
 import { createRng } from '@/core/random';
-import { BOSS_LOOT, ENEMY_LOOT, ITEM_DEFINITIONS, ITEM_POOL, LOOT_SCALING } from '@/config/lootConfig';
+import { BOSS_LOOT, ENEMY_LOOT, ITEM_DEFINITIONS, ITEM_EFFECTS, ITEM_POOL, LOOT_SCALING } from '@/config/lootConfig';
+import { NO_WEAPON_EFFECTS, computeWeaponEffects } from '@/systems/WeaponEffects';
 import { scaleForFloor } from '@/systems/CombatMath';
 import { pickWeightedItem, rollLoot, splitGold } from '@/systems/Loot';
 
@@ -103,12 +104,7 @@ describe('splitGold', () => {
 });
 
 describe('konfiguracja łupów', () => {
-  it('każdy przedmiot ma dodatnią wagę, nazwę i choć jeden modyfikator', () => {
-    for (const item of ITEM_POOL) {
-      expect(item.weight).toBeGreaterThan(0);
-      expect(item.name.length).toBeGreaterThan(0);
-      expect(Object.keys(item.modifiers).length).toBeGreaterThan(0);
-    }
+it('każdy przedmiot ma dodatnią wagę, nazwę i realne działanie (modyfikator lub efekt broni)', () => {    for (const item of ITEM_POOL) {      expect(item.weight).toBeGreaterThan(0);      expect(item.name.length).toBeGreaterThan(0);      const hasModifier = Object.keys(item.modifiers).length > 0;      const hasEffect = JSON.stringify(computeWeaponEffects([item.id], ITEM_EFFECTS)) !== JSON.stringify(NO_WEAPON_EFFECTS);      expect(hasModifier || hasEffect, item.name).toBe(true);    }
   });
 
   it('każdy typ przeciwnika ma tabelę łupów z poprawnymi szansami', () => {

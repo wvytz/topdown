@@ -37,7 +37,8 @@ npm run build        # typy + testy + build produkcyjny do dist/
 - **Łupy:**
   - złoto;
   - mikstury zdrowia;
-  - 5 przedmiotów pasywnych, które się kumulują: Ostrze, Serce, Buty, Rękawice, Klepsydra.
+  - 5 przedmiotów bazowych, które się kumulują: Ostrze, Serce, Buty, Rękawice, Klepsydra.
+  - 7 rzadszych przedmiotów z efektem broni (kolejne kopie wzmacniają efekt): Szuriken (przebicie), Elektryczna strzała (ogłuszenie), Ognista pięść (podpalenie), Kołczan (+1 ładunek), Wampirzy kieł (leczenie za cios), Burzowy pęd (dash rani), Lodowy odłamek (spowolnienie).
 - **Kapliczka:** raz na piętro wymienia złoto na losowy bonus. Uwaga: ofiara obniża wynik.
 - **Tablica rekordów:** ekran śmierci pokazuje top 3 i miejsce bieżącego runu. Wyniki zapisują się w przeglądarce.
 

@@ -13,6 +13,21 @@ export enum ItemId {
   Boots = 'boots',
   Gloves = 'gloves',
   Hourglass = 'hourglass',
+  // Przedmioty z efektem broni (rzadsze).
+  Shuriken = 'shuriken',
+  ElectricArrow = 'electric-arrow',
+  FireFist = 'fire-fist',
+  Quiver = 'quiver',
+  VampireFang = 'vampire-fang',
+  StormDash = 'storm-dash',
+  FrostShard = 'frost-shard',
+}
+
+export enum ItemKind {
+  /** Zmienia liczby (HP, obrażenia, cooldowny). */
+  Stat = 'stat',
+  /** Dodaje efekt broni (przebicie, podpalenie, ogłuszenie…). Kolejne kopie go wzmacniają. */
+  Effect = 'effect',
 }
 
 /**
@@ -25,10 +40,13 @@ export interface StatModifiers {
   readonly moveSpeedPct: number;
   readonly attackCooldownPct: number;
   readonly dashCooldownPct: number;
+  /** Dodatkowe ładunki strzału. */
+  readonly rangedCharges: number;
 }
 
 export interface ItemDefinition {
   readonly id: ItemId;
+  readonly kind: ItemKind;
   readonly name: string;
   /** Krótki opis efektu do HUD, np. „+3 obrażeń”. */
   readonly effect: string;
@@ -60,6 +78,30 @@ export interface LootScalingConfig {
 export interface StatLimits {
   readonly minCooldownMultiplier: number;
   readonly maxMoveSpeedMultiplier: number;
+  readonly maxRangedCharges: number;
+}
+
+/**
+ * Siła efektów przedmiotów: wartość dla pierwszej kopii + przyrost za każdą kolejną.
+ * Liczby trzymamy w config/lootConfig.ts.
+ */
+export interface ItemEffectsConfig {
+  readonly shuriken: { readonly pierce: number; readonly piercePerStack: number };
+  readonly electricArrow: { readonly stunMs: number; readonly stunMsPerStack: number };
+  readonly fireFist: {
+    readonly tickDamage: number;
+    readonly tickDamagePerStack: number;
+    readonly tickMs: number;
+    readonly durationMs: number;
+  };
+  readonly vampireFang: { readonly heal: number; readonly healPerStack: number };
+  readonly stormDash: { readonly damage: number; readonly damagePerStack: number };
+  readonly frostShard: {
+    readonly slowPct: number;
+    readonly slowPctPerStack: number;
+    readonly maxSlowPct: number;
+    readonly durationMs: number;
+  };
 }
 
 /** Stan runu przenoszony między piętrami (przez restart sceny). */

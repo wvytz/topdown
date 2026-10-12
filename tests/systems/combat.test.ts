@@ -114,15 +114,16 @@ describe('resolveMeleeSwing', () => {
   };
   const swing = { origin: ORIGIN, angle: 0, combat: PLAYER_COMBAT, now: 0 };
 
-  it('trafia tylko cele w łuku i zwraca zabite', () => {
+  it('trafia tylko cele w łuku i zwraca trafione oraz zabite', () => {
     const weak = makeTarget(40, PLAYER_COMBAT.meleeDamage);
     const strong = makeTarget(30, 100);
     const behind = makeTarget(-40, 1);
     const far = makeTarget(200, 1);
 
-    const killed = resolveMeleeSwing(swing, [weak, strong, behind, far]);
+    const { hit, killed } = resolveMeleeSwing(swing, [weak, strong, behind, far]);
 
     expect(killed).toEqual([weak]);
+    expect(hit).toEqual([weak, strong]);
     expect(strong.hits).toHaveLength(1);
     expect(behind.hits).toHaveLength(0);
     expect(far.hits).toHaveLength(0);

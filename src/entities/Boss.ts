@@ -9,6 +9,9 @@ import { BossBrain } from '@/ai/BossBrain';
 import { Health } from '@/systems/Health';
 import type { MeleeTarget } from '@/systems/MeleeResolver';
 import { Timer } from '@/systems/Timer';
+import { StatusEffects } from '@/systems/StatusEffects';
+import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
+import { statusTint } from '@/effects/statusTints';
 
 const HIT_FLASH_MS = 70;
 const ENRAGE_TINT = 0xff7050;
@@ -20,6 +23,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
 
   private readonly brain: BossBrain;
   private readonly hitFlash = new Timer();
+  readonly status = new StatusEffects(BOSS_STATUS_RESISTANCE);
   private enraged = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: BossDefinition, rng: Rng) {
@@ -63,6 +67,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       this.setVelocity(0, 0);
       return null;
     }
+    if (this.status.isStunned(now)) {
+      this.setVelocity(0, 0);
+      this.updateTint(now);
+      return null;
+    }
     const decision = this.brain.think({
       self: { x: this.x, y: this.y },
       target,
@@ -70,7 +79,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       hpRatio: this.health.value / this.health.max,
     });
     this.enraged = decision.enraged;
-    this.setVelocity(decision.move.x * this.definition.moveSpeed, decision.move.y * this.definition.moveSpeed);
+    const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
+    this.setVelocity(decision.move.x * speed, decision.move.y * speed);
     this.updateTint(now);
     return decision.newAttack;
   }
@@ -79,11 +89,29 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     // Trafienie budzi bossa, nawet jeśli gracz zaatakował go z progu areny.
     this.activate(now);
     this.hitFlash.start(now, HIT_FLASH_MS);
-    return this.health.takeDamage(hit.damage);
+    const result = this.health.takeDamage(hit.damage);
+    if (!result.died) {
+      // Ogłuszenie odsuwa też kolejny atak — boss „traci” ten czas, a nie tylko stoi.
+      const { stunnedMs } = this.status.apply(hit.status, now);
+      if (stunnedMs > 0) this.brain.delay(stunnedMs);
+    }
+    return result;
+  }
+
+  /** Obrażenia od podpalenia należne do `now`; śmierć od ognia wykrywa BossFight po `isDead`. */
+  tickBurn(now: number): number {
+    const damage = this.status.takeBurnDamage(now);
+    if (damage > 0 && !this.isDead) {
+      this.health.takeDamage(damage);
+      this.hitFlash.start(now, HIT_FLASH_MS);
+    }
+    return damage;
   }
 
   private updateTint(now: number): void {
+    const tint = statusTint(this.status, now);
     if (this.hitFlash.isActive(now)) this.setTintFill(0xffffff);
+    else if (tint !== null) this.setTint(tint);
     else if (this.enraged) this.setTint(ENRAGE_TINT);
     else this.clearTint();
   }

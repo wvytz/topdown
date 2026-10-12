@@ -1,12 +1,13 @@
 import { EnemyType } from '@/core/combatTypes';
-import type { ItemDefinition, LootScalingConfig, LootTable, StatLimits } from '@/core/lootTypes';
-import { ItemId } from '@/core/lootTypes';
+import type { ItemDefinition, ItemEffectsConfig, LootScalingConfig, LootTable, StatLimits } from '@/core/lootTypes';
+import { ItemId, ItemKind } from '@/core/lootTypes';
 import type { ShrineConfig } from '@/systems/Shrine';
 
-/** Podstawowa pula przedmiotów pasywnych — kumulują się w trakcie runu. */
+/** Pula przedmiotów pasywnych (5 bazowych + 7 z efektem) — kumulują się w trakcie runu. */
 export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
   [ItemId.Blade]: {
     id: ItemId.Blade,
+    kind: ItemKind.Stat,
     name: 'Ostrze',
     effect: '+3 obrażeń',
     color: 0xd8dce8,
@@ -15,6 +16,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
   },
   [ItemId.Heart]: {
     id: ItemId.Heart,
+    kind: ItemKind.Stat,
     name: 'Serce',
     effect: '+20 maks. HP',
     color: 0xff5a7a,
@@ -23,6 +25,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
   },
   [ItemId.Boots]: {
     id: ItemId.Boots,
+    kind: ItemKind.Stat,
     name: 'Buty',
     effect: '+10% prędkości',
     color: 0x7fd36b,
@@ -31,6 +34,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
   },
   [ItemId.Gloves]: {
     id: ItemId.Gloves,
+    kind: ItemKind.Stat,
     name: 'Rękawice',
     effect: '-12% czasu ataku',
     color: 0xf0a040,
@@ -39,12 +43,88 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
   },
   [ItemId.Hourglass]: {
     id: ItemId.Hourglass,
+    kind: ItemKind.Stat,
     name: 'Klepsydra',
     effect: '-20% odnowienia dasha',
     color: 0x6ec6ff,
     weight: 5,
     modifiers: { dashCooldownPct: -0.2 },
   },
+
+  // Przedmioty z efektem: rzadsze (mniejsza waga), kolejne kopie wzmacniają efekt (ITEM_EFFECTS).
+  [ItemId.Shuriken]: {
+    id: ItemId.Shuriken,
+    kind: ItemKind.Effect,
+    name: 'Szuriken',
+    effect: 'strzał przebija wroga',
+    color: 0xc8d0e0,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.ElectricArrow]: {
+    id: ItemId.ElectricArrow,
+    kind: ItemKind.Effect,
+    name: 'Elektryczna strzała',
+    effect: 'strzał ogłusza (bossa krócej)',
+    color: 0xfff06a,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.FireFist]: {
+    id: ItemId.FireFist,
+    kind: ItemKind.Effect,
+    name: 'Ognista pięść',
+    effect: 'cios podpala',
+    color: 0xff6a2a,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.Quiver]: {
+    id: ItemId.Quiver,
+    kind: ItemKind.Effect,
+    name: 'Kołczan',
+    effect: '+1 ładunek strzału',
+    color: 0xb07a40,
+    weight: 3,
+    modifiers: { rangedCharges: 1 },
+  },
+  [ItemId.VampireFang]: {
+    id: ItemId.VampireFang,
+    kind: ItemKind.Effect,
+    name: 'Wampirzy kieł',
+    effect: 'trafiony cios leczy',
+    color: 0xb0203a,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.StormDash]: {
+    id: ItemId.StormDash,
+    kind: ItemKind.Effect,
+    name: 'Burzowy pęd',
+    effect: 'dash rani wrogów',
+    color: 0x9a86ff,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.FrostShard]: {
+    id: ItemId.FrostShard,
+    kind: ItemKind.Effect,
+    name: 'Lodowy odłamek',
+    effect: 'strzał spowalnia',
+    color: 0xa8f0ff,
+    weight: 3,
+    modifiers: {},
+  },
+};
+
+/** Siła efektów przedmiotów: pierwsza kopia + przyrost za każdą kolejną. */
+export const ITEM_EFFECTS: ItemEffectsConfig = {
+  shuriken: { pierce: 1, piercePerStack: 1 },
+  electricArrow: { stunMs: 900, stunMsPerStack: 300 },
+  fireFist: { tickDamage: 3, tickDamagePerStack: 2, tickMs: 500, durationMs: 2000 },
+  vampireFang: { heal: 2, healPerStack: 2 },
+  stormDash: { damage: 10, damagePerStack: 6 },
+  frostShard: { slowPct: 0.4, slowPctPerStack: 0.1, maxSlowPct: 0.7, durationMs: 1500 },
 };
 
 export const ITEM_POOL: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS);
@@ -54,6 +134,8 @@ export const STAT_LIMITS: StatLimits = {
   minCooldownMultiplier: 0.5,
   /** Prędkość ruchu maks. +60%. */
   maxMoveSpeedMultiplier: 1.6,
+  /** Kołczany: maks. 6 ładunków strzału. */
+  maxRangedCharges: 6,
 };
 
 export const ENEMY_LOOT: Readonly<Record<EnemyType, LootTable>> = {

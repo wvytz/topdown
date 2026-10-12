@@ -9,6 +9,7 @@ import { ENEMY_DEFINITIONS, PLAYER_COMBAT, PROJECTILE_RADIUS } from '@/config/co
 import { enemyTextureKey } from '@/entities/Enemy';
 import { FLOOR_GUARDIAN } from '@/config/bossConfig';
 import { ITEM_POOL } from '@/config/lootConfig';
+import { ItemKind } from '@/core/lootTypes';
 import { itemTextureKey } from '@/entities/Pickup';
 import { NEW_RUN } from '@/systems/RunState';
 
@@ -74,11 +75,18 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture(TextureKey.HealthPotion, 14, 14);
     g.clear();
 
-    // Przedmioty: romb w kolorze przedmiotu z jasnym obrysem.
+    // Przedmioty bazowe: romb z białym obrysem. Przedmioty z efektem: większa gwiazda ze złotym obrysem.
     for (const item of ITEM_POOL) {
-      g.fillStyle(item.color, 1).fillPoints([{ x: 8, y: 0 }, { x: 16, y: 8 }, { x: 8, y: 16 }, { x: 0, y: 8 }], true);
-      g.lineStyle(2, 0xffffff, 0.9).strokePoints([{ x: 8, y: 1 }, { x: 15, y: 8 }, { x: 8, y: 15 }, { x: 1, y: 8 }], true);
-      g.generateTexture(itemTextureKey(item.id), 16, 16);
+      if (item.kind === ItemKind.Effect) {
+        const star = starPoints(10, 10, 10, 4.5, 4);
+        g.fillStyle(item.color, 1).fillPoints(star, true);
+        g.lineStyle(2, 0xf5c542, 1).strokePoints(star, true);
+        g.generateTexture(itemTextureKey(item.id), 20, 20);
+      } else {
+        g.fillStyle(item.color, 1).fillPoints([{ x: 8, y: 0 }, { x: 16, y: 8 }, { x: 8, y: 16 }, { x: 0, y: 8 }], true);
+        g.lineStyle(2, 0xffffff, 0.9).strokePoints([{ x: 8, y: 1 }, { x: 15, y: 8 }, { x: 8, y: 15 }, { x: 1, y: 8 }], true);
+        g.generateTexture(itemTextureKey(item.id), 16, 16);
+      }
       g.clear();
     }
 
@@ -143,4 +151,13 @@ export class BootScene extends Phaser.Scene {
       }
     });
   }
+}
+
+/** Wierzchołki gwiazdy o `points` ramionach (naprzemiennie promień zewnętrzny i wewnętrzny). */
+function starPoints(cx: number, cy: number, outer: number, inner: number, points: number): Phaser.Math.Vector2[] {
+  return Array.from({ length: points * 2 }, (_, i) => {
+    const radius = i % 2 === 0 ? outer - 1 : inner;
+    const angle = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
+    return new Phaser.Math.Vector2(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+  });
 }

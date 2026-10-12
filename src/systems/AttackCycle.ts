@@ -34,6 +34,11 @@ export class AttackCycle {
     return true;
   }
 
+  /** Przerywa zamach (np. ogłuszenie): uderzenie nie nastąpi, odnowienie biegnie dalej. */
+  interrupt(): void {
+    this.released = true;
+  }
+
   /** 0..1, 1 = gotowy do kolejnego ataku. */
   readiness(now: number): number {
     const total = Math.max(this.cooldownMs, this.windupMs);
