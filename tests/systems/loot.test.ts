@@ -50,10 +50,10 @@ describe('rollLoot', () => {
     expect(counts.item / n).toBeCloseTo(table.itemChance, 1);
   });
 
-  it('boss zawsze zostawia złoto, miksturę i przedmiot', () => {
+  it('boss zawsze zostawia złoto i miksturę (przedmiot wybiera się z kart)', () => {
     for (let seed = 0; seed < 50; seed++) {
       const kinds = rollLoot(BOSS_LOOT, 1, LOOT_SCALING, ITEM_POOL, createRng(seed)).map((d) => d.kind);
-      expect(kinds).toEqual([PickupKind.Gold, PickupKind.Health, PickupKind.Item]);
+      expect(kinds).toEqual([PickupKind.Gold, PickupKind.Health]);
     }
   });
 });

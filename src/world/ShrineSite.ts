@@ -2,13 +2,14 @@ import type Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { ItemId } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
-import { ITEM_POOL, SHRINE_CONFIG } from '@/config/lootConfig';
+import { ITEM_POOL } from '@/config/lootConfig';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import type { Player } from '@/entities/Player';
 import { Shrine } from '@/entities/Shrine';
 import { distance } from '@/systems/CombatMath';
 import type { RunState } from '@/systems/RunState';
+import type { ShrineConfig } from '@/systems/Shrine';
 import { makeOffering, shrineCost } from '@/systems/Shrine';
 
 export interface ShrineSiteDeps {
@@ -18,6 +19,8 @@ export interface ShrineSiteDeps {
   readonly player: Player;
   readonly run: RunState;
   readonly rng: Rng;
+  /** Konfiguracja kapliczki na tym piętrze (z uwzględnieniem modyfikatora piętra). */
+  readonly config: ShrineConfig;
   /** Wywoływane po udanej ofierze — złoto jest już odjęte, przedmiot dodany do runu. */
   readonly onBlessing: (itemId: ItemId, cost: number) => void;
 }
@@ -41,12 +44,12 @@ export class ShrineSite {
     if (!shrine || shrine.isUsed) return;
     const { player, run, floorNumber } = this.deps;
 
-    if (player.isDead || distance(player, shrine) > SHRINE_CONFIG.interactRadius) {
+    if (player.isDead || distance(player, shrine) > this.deps.config.interactRadius) {
       shrine.hidePrompt();
       return;
     }
 
-    const cost = shrineCost(floorNumber, SHRINE_CONFIG);
+    const cost = shrineCost(floorNumber, this.deps.config);
     const affordable = run.gold >= cost;
     shrine.showPrompt(
       affordable ? `[E] Ofiara: ${cost} złota\nlosowy bonus` : `Kapliczka: potrzeba ${cost} złota`,
@@ -65,7 +68,7 @@ export class ShrineSite {
       gold: run.gold,
       floor: floorNumber,
       alreadyUsed: shrine.isUsed,
-      config: SHRINE_CONFIG,
+      config: this.deps.config,
       pool: ITEM_POOL,
       rng,
     });

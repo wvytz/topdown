@@ -155,14 +155,19 @@ export const ENEMY_LOOT: Readonly<Record<EnemyType, LootTable>> = {
   },
 };
 
-/** Boss: zawsze złoto, mikstura i przedmiot — nagroda za zamknięcie piętra. */
+/** Boss: zawsze złoto i mikstura. Przedmiot gracz wybiera z kart (BOSS_REWARD), więc nie wypada na ziemię. */
 export const BOSS_LOOT: LootTable = {
   gold: { min: 15, max: 25 },
   goldChance: 1,
   healthChance: 1,
   healthAmount: 30,
-  itemChance: 1,
+  itemChance: 0,
 };
+
+/** Nagroda za bossa: wybór 1 z tylu kart przedmiotów (różnych, losowanych z wagami z całej puli). */
+export const BOSS_REWARD = {
+  choices: 3,
+} as const;
 
 export const LOOT_SCALING: LootScalingConfig = {
   goldPerFloor: 0.2,

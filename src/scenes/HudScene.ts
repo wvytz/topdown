@@ -33,6 +33,7 @@ export class HudScene extends Phaser.Scene {
   private source!: HudSource;
   private bars!: Phaser.GameObjects.Graphics;
   private floorText!: Phaser.GameObjects.Text;
+  private modifierText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private deathPanel!: Phaser.GameObjects.Container;
@@ -59,6 +60,7 @@ export class HudScene extends Phaser.Scene {
     };
 
     this.floorText = this.add.text(BAR_X, 12, '', style);
+    this.modifierText = this.add.text(BAR_X + BAR_WIDTH + 70, 16, '', { ...style, fontSize: '13px', color: '#ffb070' });
     this.bars = this.add.graphics();
     this.hpText = this.add.text(BAR_X + BAR_WIDTH + 8, HP_BAR_Y - 2, '', { ...style, fontSize: '13px' });
     this.hintText = this.add.text(BAR_X, TEXT_Y, '', { ...style, fontSize: '13px' });
@@ -90,6 +92,8 @@ export class HudScene extends Phaser.Scene {
     const hud = this.source.getHudData();
 
     this.floorText.setText(`Piętro ${hud.floor}`);
+    const modifier = hud.floorModifier;
+    this.modifierText.setText(modifier ? `${modifier.name}: ${modifier.description}` : '');
     this.hpText.setText(`${hud.hp}/${hud.maxHp}`);
 
     const hpRatio = hud.maxHp > 0 ? hud.hp / hud.maxHp : 0;

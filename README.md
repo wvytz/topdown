@@ -34,6 +34,8 @@ npm run build        # typy + testy + build produkcyjny do dist/
 
   Gracza widzą tylko w linii wzroku.
 - **Boss „Strażnik Piętra”:** w kółko powtarza trzy ataki obszarowe — uderzenie, pierścień pocisków i ostrzał stref. Poniżej 50% HP wpada we wściekłość.
+  Wejścia do areny zamykają kraty na czas walki. Po zwycięstwie gra staje, a gracz wybiera nagrodę z 3 losowych kart przedmiotów.
+- **Modyfikatory pięter (od piętra 2):** jeden losowy na piętro, nigdy ten sam dwa razy z rzędu — Gorączka, Twarda skóra, Złota żyła, Mrok, Wyczerpanie, Kapliczka łaski.
 - **Łupy:**
   - złoto;
   - mikstury zdrowia;
@@ -55,9 +57,9 @@ src/
   config/      wszystkie liczby do balansu
   entities/    encje Phasera (gracz, wrogowie, boss, łupy)
   combat/      koordynacja walki i łupów
-  world/       obiekty otoczenia (kapliczka)
+  world/       obiekty otoczenia (kapliczka, kraty areny)
   persistence/ zapis rekordów
-  scenes/      sceny: Boot, Game, HUD
+  scenes/      sceny: Boot, Game, HUD, Reward (karty nagrody)
 tests/         testy Vitest
 ```
 

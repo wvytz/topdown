@@ -11,7 +11,7 @@ import type {
 import { SceneKey } from '@/core/types';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import { TileType } from '@/core/dungeonTypes';
-import type { LootDrop, LootTable } from '@/core/lootTypes';
+import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { PickupKind } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
@@ -19,12 +19,14 @@ import { CAMERA_CONFIG, PLAYER_BASE_STATS, getDungeonConfigForFloor } from '@/co
 import { PLAYER_COMBAT, getEncounterConfigForFloor } from '@/config/combatConfig';
 import {
   BOSS_LOOT,
+  BOSS_REWARD,
   ENEMY_LOOT,
   HIGHSCORE_CONFIG,
   ITEM_DEFINITIONS,
   ITEM_EFFECTS,
   ITEM_POOL,
   LOOT_SCALING,
+  SHRINE_CONFIG,
   STAT_LIMITS,
 } from '@/config/lootConfig';
 import { BossFight } from '@/combat/BossFight';
@@ -39,11 +41,24 @@ import { CombatEffects } from '@/effects/CombatEffects';
 import { InputController } from '@/input/InputController';
 import { Player } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
+import { rollItemChoices } from '@/systems/RewardChoice';
+import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { computeLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
+import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
+import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
+import { DarknessOverlay } from '@/effects/DarknessOverlay';
+import {
+  NO_FLOOR_EFFECTS,
+  applyFloorToEnemyLoot,
+  applyFloorToLoadout,
+  applyFloorToShrine,
+  floorEffectsOf,
+  floorModifierFor,
+} from '@/systems/FloorModifiers';
 import { ArenaGates } from '@/world/ArenaGates';
 import { ShrineSite } from '@/world/ShrineSite';
 
@@ -51,7 +66,10 @@ import { ShrineSite } from '@/world/ShrineSite';
 const ENCOUNTER_SEED_SALT = 0xe11e;
 const LOOT_SEED_SALT = 0x1007;
 const SHRINE_SEED_SALT = 0x5419;
+const REWARD_SEED_SALT = 0x4e3a;
 const TOAST_DURATION_MS = 2500;
+/** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
+const FLOOR_MODIFIER_TOAST_MS = 4500;
 
 export class GameScene extends Phaser.Scene implements HudSource {
   private player!: Player;
@@ -67,7 +85,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private effects!: CombatEffects;
   private run = new RunState(NEW_RUN);
   private startHp: number | null = null;
-  private toast: { text: string; at: number } | null = null;
+  private toast: { text: string; at: number; durationMs: number } | null = null;
+  private floorModifier: FloorModifierDefinition | null = null;
+  private floorEffects: FloorModifierEffects = NO_FLOOR_EFFECTS;
+  private darkness: DarknessOverlay | null = null;
   private death: DeathSummary | null = null;
   private shrine!: ShrineSite;
   private arenaGates!: ArenaGates;
@@ -107,6 +128,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const generator = new DungeonGenerator(getDungeonConfigForFloor(this.floorNumber));
     this.dungeon = generator.generate(deriveSeed(this.runSeed, this.floorNumber));
     this.dungeonView = new DungeonView(this, this.dungeon);
+    this.floorModifier = floorModifierFor(this.runSeed, this.floorNumber, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG);
+    this.floorEffects = floorEffectsOf(this.floorModifier);
 
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
 
@@ -121,11 +144,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupCamera();
     this.setupDebugKeys();
 
+    const vision = this.floorEffects.visionRadius;
+    this.darkness = vision !== null ? new DarknessOverlay(this, vision) : null;
+    this.darkness?.follow(this.player);
+
     if (!this.scene.isActive(SceneKey.Hud)) {
       const hudData: HudSceneData = { source: this };
       this.scene.launch(SceneKey.Hud, hudData);
     }
 
+    if (this.floorModifier) {
+      this.showToast(`${this.floorModifier.name}: ${this.floorModifier.description}`, FLOOR_MODIFIER_TOAST_MS);
+    }
     this.cameras.main.fadeIn(250, 0, 0, 0);
   }
 
@@ -147,6 +177,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.playerShots.update(time, (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot));
     this.loot.update(time);
     this.shrine.update(actions.interact);
+    this.darkness?.follow(this.player);
 
     if (this.player.isDead) this.handlePlayerDeath();
     else this.checkStairs();
@@ -157,6 +188,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const ready = Boolean(this.player?.active);
     return {
       floor: this.floorNumber,
+      floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
       maxHp: ready ? this.player.health.max : PLAYER_BASE_STATS.maxHp,
       dashReadiness: ready ? this.player.dashReadiness(this.time.now) : 1,
@@ -179,7 +211,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private currentLoadout(): PlayerLoadout {
-    return computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
+    const loadout = computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
+    return applyFloorToLoadout(loadout, this.floorEffects);
   }
 
   /** Wywoływane po pokonaniu bossa — zamyka pętlę piętra. */
@@ -233,12 +266,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
       scene: this,
       floor: this.dungeon,
       floorNumber: this.floorNumber,
+      floorEffects: this.floorEffects,
       walls: this.dungeonView.layer,
       player: this.player,
       projectiles: this.projectiles,
       effects: this.effects,
       onPlayerHit,
-      onEnemyKilled: (enemy) => this.dropLoot({ x: enemy.x, y: enemy.y }, ENEMY_LOOT[enemy.definition.type]),
+      onEnemyKilled: (enemy) =>
+        this.dropLoot({ x: enemy.x, y: enemy.y }, applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects)),
     });
 
     const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
@@ -256,6 +291,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onDefeated: (position) => {
         this.unlockStairs();
         this.dropLoot(position, BOSS_LOOT);
+        this.offerBossReward();
       },
     });
 
@@ -291,6 +327,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       player: this.player,
       run: this.run,
       rng: createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)),
+      config: applyFloorToShrine(SHRINE_CONFIG, this.floorEffects),
       onBlessing: (itemId, cost) => {
         const item = ITEM_DEFINITIONS[itemId];
         this.player.applyLoadout(this.currentLoadout());
@@ -314,23 +351,47 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.player.heal(drop.amount);
         this.effects.floatingText(position.x, position.y, `+${drop.amount} HP`, '#ff6b8a');
         break;
-      case PickupKind.Item: {
-        const item = ITEM_DEFINITIONS[drop.itemId];
-        this.run.addItem(drop.itemId);
-        this.player.applyLoadout(this.currentLoadout());
-        this.showToast(`${item.name}: ${item.effect}`);
+      case PickupKind.Item:
+        this.grantItem(drop.itemId);
         break;
-      }
     }
   }
 
-  private showToast(text: string): void {
-    this.toast = { text, at: this.time.now };
+  private grantItem(itemId: ItemId): void {
+    const item = ITEM_DEFINITIONS[itemId];
+    this.run.addItem(itemId);
+    this.player.applyLoadout(this.currentLoadout());
+    this.showToast(`${item.name}: ${item.effect}`);
+  }
+
+  /** Nagroda za bossa: gra staje, gracz wybiera 1 z kart. Po wyborze gra rusza dalej. */
+  private offerBossReward(): void {
+    const rng = createRng(deriveSeed(this.dungeon.seed, REWARD_SEED_SALT));
+    const choices = rollItemChoices(ITEM_POOL, BOSS_REWARD.choices, rng);
+    if (choices.length === 0) return;
+
+    const owned: Partial<Record<ItemId, number>> = {};
+    for (const { id, count } of this.run.itemCounts()) owned[id] = count;
+
+    const data: RewardSceneData = {
+      choices,
+      owned,
+      onPick: (itemId) => {
+        this.scene.resume(SceneKey.Game);
+        this.grantItem(itemId);
+      },
+    };
+    this.scene.pause();
+    this.scene.launch(SceneKey.Reward, data);
+  }
+
+  private showToast(text: string, durationMs = TOAST_DURATION_MS): void {
+    this.toast = { text, at: this.time.now, durationMs };
   }
 
   private currentToast(): HudToast | null {
     if (!this.toast) return null;
-    const remainingMs = TOAST_DURATION_MS - (this.time.now - this.toast.at);
+    const remainingMs = this.toast.durationMs - (this.time.now - this.toast.at);
     return remainingMs > 0 ? { text: this.toast.text, remainingMs } : null;
   }
 

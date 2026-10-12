@@ -14,6 +14,8 @@ import type { Player } from '@/entities/Player';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { directionTo, distance, knockbackFrom } from '@/systems/CombatMath';
 import { scaleEnemyForFloor } from '@/systems/EnemyScaling';
+import type { FloorModifierEffects } from '@/core/floorModifierTypes';
+import { applyFloorToEnemy } from '@/systems/FloorModifiers';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
 import type { DashSweep } from '@/systems/DashStrike';
@@ -25,6 +27,8 @@ export interface EnemyManagerDeps {
   readonly scene: Phaser.Scene;
   readonly floor: DungeonFloor;
   readonly floorNumber: number;
+  /** Modyfikator piętra (prędkość, HP, obrażenia zwykłych wrogów). */
+  readonly floorEffects: FloorModifierEffects;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
   readonly player: Player;
   readonly projectiles: ProjectileManager;
@@ -50,7 +54,8 @@ export class EnemyManager implements EnemyAttackHandler {
 
   spawnAll(spawns: readonly EnemySpawn[]): void {
     for (const spawn of spawns) {
-      const definition = scaleEnemyForFloor(ENEMY_DEFINITIONS[spawn.type], this.deps.floorNumber, ENEMY_SCALING);
+      const scaled = scaleEnemyForFloor(ENEMY_DEFINITIONS[spawn.type], this.deps.floorNumber, ENEMY_SCALING);
+      const definition = applyFloorToEnemy(scaled, this.deps.floorEffects);
       const position = DungeonView.tileToWorldCenter(spawn.tile);
       const enemy = new Enemy(this.deps.scene, position.x, position.y, definition);
       this.group.add(enemy);

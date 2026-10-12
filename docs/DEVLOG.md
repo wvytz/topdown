@@ -545,13 +545,106 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 11 — Modyfikatory pięter
+
+**Cel (GDD §2.5):** piętra różnią się nie tylko liczbami. Każde piętro od drugiego ma jeden modyfikator.
+
+**Decyzje właściciela:**
+- Pula 6 modyfikatorów zaakceptowana w całości, razem z Mrokiem.
+- **Ewolucje przedmiotów odrzucone na obecnym etapie.** Nie komplikujemy sterowania ani działania broni, a wzmacnianie kolejnymi kopiami zostaje. Zmiana jest zapisana w CLAUDE.md i w backlogu.
+
+| Modyfikator | Efekt |
+|---|---|
+| Gorączka | wrogowie szybsi o 20% |
+| Twarda skóra | wrogowie mają +30% HP |
+| Złota żyła | +50% złota z wrogów, ale zadają +15% obrażeń |
+| Mrok | widać tylko krąg o promieniu 150 px wokół gracza |
+| Wyczerpanie | dash i ładunki strzału odnawiają się o 30% wolniej |
+| Kapliczka łaski | ofiara kosztuje o połowę mniej |
+
+**Zasady:**
+- **Piętro 1 jest zawsze czyste.** Od piętra 2 (`FLOOR_MODIFIER_CONFIG.firstFloor`) każde piętro ma jeden modyfikator.
+- **Ten sam modyfikator nigdy nie wypada dwa piętra z rzędu.**
+  - Losowanie jest deterministyczne z seeda runu.
+  - `floorModifierFor` liczy kolejne piętra od pierwszego z modyfikatorem, więc nie trzeba przenosić stanu między piętrami.
+- **„Wrogowie” to zwykli przeciwnicy.** Boss ma własną krzywą trudności i modyfikatory go nie zmieniają.
+
+**Warstwa czysta:**
+- `core/floorModifierTypes.ts`: typy.
+- `config/floorModifierConfig.ts`: pula i liczby.
+- `systems/FloorModifiers.ts`:
+  - `floorModifierFor` losuje modyfikator piętra;
+  - `floorEffectsOf` uzupełnia brakujące pola wartościami neutralnymi;
+  - funkcje `applyFloorTo*` nakładają efekty na wroga, łupy wroga, loadout gracza i kapliczkę.
+
+**Warstwa Phasera:**
+- `GameScene` wybiera modyfikator w `create()` i przekazuje efekty:
+  - do `EnemyManager` (definicje wrogów);
+  - do łupów wrogów;
+  - do `currentLoadout()` (Wyczerpanie);
+  - do `ShrineSite`, który dostaje teraz `config` zamiast stałej.
+- **`effects/DarknessOverlay.ts`:** tekstura canvas 1800×1800 z gradientem radialnym (miękka krawędź kręgu), przesuwana za graczem. Leży nad encjami i telegrafami, pod liczbami obrażeń. Działa czysto wizualnie.
+- **HUD:** nazwa i opis modyfikatora obok numeru piętra. Na start piętra pojawia się komunikat (4,5 s).
+
+**Testy: +14.**
+- Piętro 1 jest czyste, od piętra 2 zawsze jest modyfikator.
+- Determinizm.
+- Brak powtórzeń dwa piętra z rzędu (200 runów × 8 pięter).
+- Każdy modyfikator z czasem wypada; pusta pula nic nie daje.
+- Efekt każdego modyfikatora z osobna; brak modyfikatora nic nie zmienia.
+
+**Weryfikacja w grze (port 5174):** seedy z każdym modyfikatorem na piętrze 2 znalezione przez import modułu w konsoli.
+- **Mrok:** krąg widoczności z miękką krawędzią, opis w HUD (zrzut ekranu).
+- **Gorączka:** prędkość Rushera 115 → 138.
+- **Twarda skóra:** HP 35 → 46.
+- **Złota żyła:** obrażenia 11 → 13.
+- **Wyczerpanie:** dash 700 → 910 ms, ładunek 1400 → 1820 ms.
+- **Kapliczka łaski:** koszt bazowy 15 → 7,5.
+
+---
+
+## Krok 12 — Karty nagrody za bossa
+
+**Cel (decyzja właściciela):** po pokonaniu bossa gra się zatrzymuje, a gracz wybiera jeden z 3 losowych przedmiotów.
+
+**Zasady:**
+- **Karty:**
+  - 3 różne przedmioty (`BOSS_REWARD.choices`) losowane z wagami z całej puli 12;
+  - przedmioty z efektem pojawiają się rzadziej, zgodnie z wagami;
+  - losowanie jest deterministyczne z seeda piętra (osobna sól).
+- **Łup bossa:** boss zostawia już tylko złoto i miksturę (`BOSS_LOOT.itemChance = 0`). Przedmiot pochodzi wyłącznie z kart.
+- **Opis karty:** ikona, nazwa i efekt, rodzaj („przedmiot bazowy” albo złoty „efekt broni”) oraz „nowy” albo „masz już: ×N (wzmocni)”.
+
+**Warstwa czysta:** `systems/RewardChoice.ts`, czyli `rollItemChoices`: losowanie z wagami bez powtórzeń, nie zmienia puli wejściowej.
+
+**Warstwa Phasera:**
+- **Nowa scena `scenes/RewardScene.ts`:** przyciemnione tło i 3 karty z podświetleniem po najechaniu.
+  - Wybór kliknięciem albo klawiszem 1–3.
+  - Wybór następuje na *puszczenie* przycisku, żeby klik nie zamienił się w cios po wznowieniu gry.
+- **`GameScene.offerBossReward`:** `scene.pause()` wstrzymuje grę (fizykę, wrogów, pociski i czas sceny), a `scene.launch(Reward)` otwiera karty. Po wyborze gra rusza dalej, a przedmiot dodaje wspólna metoda `grantItem` (ta sama co przy podniesieniu łupu).
+- Schody otwierają się jeszcze przed wyświetleniem kart, a złoto i mikstura leżą na ziemi.
+
+**Testy: +8, razem 231.**
+- `rollItemChoices`:
+  - 3 różne karty;
+  - determinizm;
+  - mała i pusta pula;
+  - brak mutacji puli;
+  - częstsze przedmioty częściej, a każdy przedmiot czasem trafia na kartę.
+- Test łupów bossa zaktualizowany: tylko złoto i mikstura.
+
+**Weryfikacja w grze (port 5174):**
+- Klawisz B (pokonanie bossa) wstrzymuje GameScene i pokazuje 3 karty (Ostrze, Serce, Elektryczna strzała; zrzut ekranu).
+- Prawdziwy klawisz „3”: Elektryczna strzała dodana, efekt aktywny, komunikat widoczny, gra wznowiona, schody otwarte.
+- Kliknięcie myszą w kartę 1 na innym piętrze: Buty dodane, gra wznowiona.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
-- **Ewolucje przedmiotów (następny krok):** na wyższym poziomie przedmiot zmienia działanie, np. stały ognisty promień zamiast strzału, grad ciosów wręcz. Do zaprojektowania z właścicielem.
-- **Modyfikatory pięter (zaakceptowane):** Gorączka, Twarda skóra, Złota żyła, Mrok, Wyczerpanie, Kapliczka łaski. Jeden na piętro od piętra 2.
-- **Wybór przedmiotu z bossa:** obecnie losowy. Wybór 1 z 3 dałby graczowi decyzję.
+- **Ewolucje przedmiotów: odrzucone na obecnym etapie** (decyzja właściciela). Nie komplikujemy sterowania ani działania broni; wzmacnianie kolejnymi kopiami zostaje.
 - **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
 - **Docelowa grafika:** spritesheety zamiast placeholderów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

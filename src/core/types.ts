@@ -26,6 +26,7 @@ export enum SceneKey {
   Boot = 'BootScene',
   Game = 'GameScene',
   Hud = 'HudScene',
+  Reward = 'RewardScene',
 }
 
 export enum TextureKey {
@@ -52,6 +53,8 @@ export interface FloorSceneData {
 
 export interface HudData {
   readonly floor: number;
+  /** Modyfikator bieżącego piętra; null na piętrach bez modyfikatora. */
+  readonly floorModifier: { readonly name: string; readonly description: string } | null;
   readonly hp: number;
   readonly maxHp: number;
   /** 0..1, 1 = dash gotowy. */
