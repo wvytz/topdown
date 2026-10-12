@@ -1,0 +1,104 @@
+/** Czyste typy domenowe — bez zależności od Phasera. */
+import type { RunSnapshot } from '@/core/lootTypes';
+import type { ScoreboardView } from '@/systems/Highscores';
+
+export interface Vector2 {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Znormalizowany stan wejścia ruchu w danej klatce (-1..1 na każdej osi). */
+export interface MovementIntent {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface MovementStats {
+  /** Prędkość maksymalna w px/s. */
+  readonly moveSpeed: number;
+}
+
+export interface PlayerStats extends MovementStats {
+  readonly maxHp: number;
+}
+
+export enum SceneKey {
+  Boot = 'BootScene',
+  Game = 'GameScene',
+  Hud = 'HudScene',
+}
+
+export enum TextureKey {
+  Player = 'tex-player',
+  AimMarker = 'tex-aim-marker',
+  Boss = 'tex-boss',
+  Projectile = 'tex-projectile',
+  Coin = 'tex-coin',
+  HealthPotion = 'tex-health-potion',
+  Shrine = 'tex-shrine',
+  ShrineUsed = 'tex-shrine-used',
+  /** Pasek kafli: ściana, podłoga, zamknięte schody, otwarte schody. */
+  Tileset = 'tex-tileset',
+}
+
+/** Dane przekazywane przy (re)starcie GameScene. */
+export interface FloorSceneData {
+  readonly runSeed: number;
+  readonly floor: number;
+  /** Złoto, przedmioty i HP przenoszone z poprzedniego piętra. */
+  readonly run: RunSnapshot;
+}
+
+export interface HudData {
+  readonly floor: number;
+  readonly hp: number;
+  readonly maxHp: number;
+  /** 0..1, 1 = dash gotowy. */
+  readonly dashReadiness: number;
+  readonly enemiesAlive: number;
+  readonly stairsUnlocked: boolean;
+  readonly isPlayerDead: boolean;
+  /** null, gdy walka z bossem nie trwa. */
+  readonly boss: BossHudData | null;
+  readonly gold: number;
+  readonly items: readonly HudItem[];
+  /** Ostatni komunikat (np. zdobyty przedmiot); null, gdy nic do pokazania. */
+  readonly toast: HudToast | null;
+  /** Podsumowanie runu po śmierci; null, dopóki gracz żyje. */
+  readonly death: DeathSummary | null;
+}
+
+export interface DeathSummary {
+  readonly score: number;
+  readonly floor: number;
+  readonly rank: number;
+  readonly board: ScoreboardView;
+}
+
+export interface HudItem {
+  readonly name: string;
+  readonly count: number;
+  readonly color: number;
+}
+
+export interface HudToast {
+  readonly text: string;
+  /** Ile ms komunikat będzie jeszcze widoczny (HUD na tej podstawie go wygasza). */
+  readonly remainingMs: number;
+}
+
+export interface BossHudData {
+  readonly name: string;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly enraged: boolean;
+}
+
+/** HUD czyta stan co klatkę z tego źródła (zamiast zdarzeń przy każdej zmianie). */
+export interface HudSource {
+  getHudData(): HudData;
+}
+
+export interface HudSceneData {
+  readonly source: HudSource;
+}

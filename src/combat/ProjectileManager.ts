@@ -1,0 +1,72 @@
+import Phaser from 'phaser';
+import type { Vector2 } from '@/core/types';
+import type { Player } from '@/entities/Player';
+import { Projectile } from '@/entities/Projectile';
+import { PROJECTILE_RADIUS } from '@/config/combatConfig';
+import { knockbackFrom, normalize } from '@/systems/CombatMath';
+
+export interface ProjectileSpec {
+  readonly origin: Vector2;
+  /** Kierunek lotu (nie musi być znormalizowany). */
+  readonly direction: Vector2;
+  readonly speed: number;
+  readonly damage: number;
+  readonly knockback: number;
+  readonly lifetimeMs: number;
+}
+
+/** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
+export class ProjectileManager {
+  private readonly group: Phaser.Physics.Arcade.Group;
+
+  constructor(
+    private readonly scene: Phaser.Scene,
+    walls: Phaser.Tilemaps.TilemapLayer,
+    private readonly player: Player,
+    private readonly onPlayerHit: () => void,
+  ) {
+    this.group = scene.physics.add.group({ classType: Projectile });
+
+    scene.physics.add.collider(this.group, walls, (projectile) => {
+      if (projectile instanceof Projectile) projectile.destroy();
+    });
+    scene.physics.add.overlap(player, this.group, (_player, projectile) => {
+      if (projectile instanceof Projectile) this.handlePlayerOverlap(projectile);
+    });
+  }
+
+  fire(spec: ProjectileSpec): void {
+    const projectile = new Projectile(this.scene, spec.origin.x, spec.origin.y);
+    projectile.damage = spec.damage;
+    projectile.knockback = spec.knockback;
+    projectile.expiresAt = this.scene.time.now + spec.lifetimeMs;
+    projectile.setDepth(11);
+
+    this.group.add(projectile, true);
+    projectile.setCircle(PROJECTILE_RADIUS);
+    const dir = normalize(spec.direction);
+    projectile.setVelocity(dir.x * spec.speed, dir.y * spec.speed);
+  }
+
+  update(now: number): void {
+    for (const child of this.group.getChildren()) {
+      if (child instanceof Projectile && now >= child.expiresAt) child.destroy();
+    }
+  }
+
+  private handlePlayerOverlap(projectile: Projectile): void {
+    const now = this.scene.time.now;
+    const velocity = projectile.body?.velocity;
+    // Odrzut w kierunku lotu pocisku.
+    const from = velocity
+      ? { x: projectile.x - velocity.x, y: projectile.y - velocity.y }
+      : { x: projectile.x, y: projectile.y };
+    const hit = { damage: projectile.damage, knockback: knockbackFrom(from, this.player, projectile.knockback) };
+
+    // Dash/nietykalność: pocisk przelatuje przez gracza.
+    if (this.player.takeHit(hit, now)) {
+      projectile.destroy();
+      this.onPlayerHit();
+    }
+  }
+}
