@@ -46,8 +46,19 @@ export const PLAYER_BASE_STATS: PlayerStats = {
 export const CAMERA_CONFIG = {
   /** Interpolacja śledzenia (0..1) — mniejsza = płynniej. */
   lerp: 0.12,
-  zoom: 1.5,
-  /** Martwa strefa w px, w której gracz może się ruszać bez przesuwania kamery. */
-  deadzoneWidth: 80,
-  deadzoneHeight: 60,
+  /** Stały zoom 2,0 (krok 18, decyzja właściciela): całkowita krotność, piksele bez zniekształceń. */
+  zoom: 2,
+  /** Martwa strefa w px świata, w której gracz może się ruszać bez przesuwania kamery
+   *  (przy zoomie 1,5 było 80×60; przeliczone, by zajmowała tę samą część ekranu). */
+  deadzoneWidth: 60,
+  deadzoneHeight: 45,
+} as const;
+
+/**
+ * Połowy boków prostokąta wokół gracza (px świata), który zawsze jest na ekranie:
+ * widok kamery minus luz martwej strefy. Przy zoomie 2: 210 × 112,5 px.
+ */
+export const GUARANTEED_VIEW_HALF = {
+  x: GAME_WIDTH / (2 * CAMERA_CONFIG.zoom) - CAMERA_CONFIG.deadzoneWidth / 2,
+  y: GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom) - CAMERA_CONFIG.deadzoneHeight / 2,
 } as const;

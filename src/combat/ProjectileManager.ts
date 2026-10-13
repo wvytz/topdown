@@ -4,6 +4,7 @@ import type { Player } from '@/entities/Player';
 import { Projectile } from '@/entities/Projectile';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { knockbackFrom, normalize } from '@/systems/CombatMath';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 export interface ProjectileSpec {
   readonly origin: Vector2;
@@ -42,7 +43,7 @@ export class ProjectileManager {
     projectile.damage = spec.damage;
     projectile.knockback = spec.knockback;
     projectile.expiresAt = this.scene.time.now + spec.lifetimeMs;
-    projectile.setDepth(11);
+    projectile.setDepth(RENDER_DEPTH.projectile);
 
     this.group.add(projectile, true);
     // Ciało zawsze o promieniu PROJECTILE_RADIUS, wyśrodkowane w klatce (kula maga ma 16×16).

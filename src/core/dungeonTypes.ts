@@ -1,12 +1,14 @@
 /** Typy domenowe piętra — czyste dane, bez zależności od Phasera. */
 
+/**
+ * Rodzaj kafla w danych piętra (stałych przez całe piętro). Otwarcie schodów i opuszczenie krat
+ * to stan widoku i kolizji (DungeonView), nie zmiana danych piętra.
+ */
 export enum TileType {
   Wall = 0,
   Floor = 1,
+  /** Blok schodów na kolejne piętro (STAIRS_SIZE × STAIRS_SIZE), otwierany po pokonaniu bossa. */
   StairsLocked = 2,
-  StairsOpen = 3,
-  /** Krata opuszczana na wejściach do areny w trakcie walki z bossem. */
-  Gate = 4,
 }
 
 export enum RoomKind {

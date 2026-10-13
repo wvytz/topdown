@@ -22,6 +22,7 @@ import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 export interface BossFightDeps {
   readonly scene: Phaser.Scene;
@@ -55,7 +56,6 @@ interface PendingBurst {
 
 const BOSS_SEED_SALT = 0xb055;
 const TELEGRAPH_COLOR = 0xff4040;
-const TELEGRAPH_DEPTH = 5;
 /** Fale Novy to kule wyplute przez bossa (animowany sprite). */
 const BOSS_GLOB = {
   texture: SPRITE_SHEETS[BOSS_PROJECTILE_VISUAL.sheet].key,
@@ -163,10 +163,10 @@ export class BossFight {
   private schedule(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
     for (const strike of plan.strikes) {
-      this.strikes.push({ strike, gfx: scene.add.graphics().setDepth(TELEGRAPH_DEPTH) });
+      this.strikes.push({ strike, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     for (const burst of plan.bursts) {
-      this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(TELEGRAPH_DEPTH) });
+      this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
   }
 

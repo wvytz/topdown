@@ -1,4 +1,4 @@
-import type { EnemyBehaviour } from '@/core/combatTypes';
+import type { EnemyBehaviour, EnemyViewRule } from '@/core/combatTypes';
 import { AttackPhase, EnemyState } from '@/core/combatTypes';
 import type { MovementIntent, Vector2 } from '@/core/types';
 import { directionTo, distance } from '@/systems/CombatMath';
@@ -24,6 +24,8 @@ const ARRIVAL_DISTANCE = 8;
  * Maszyna stanów AI: IDLE → CHASE → ATTACK. Czysta logika — zwraca decyzję,
  * a encja Phasera ją wykonuje.
  * Po utracie linii wzroku przeciwnik idzie do ostatniej znanej pozycji gracza, potem wraca do IDLE.
+ * Z regułą widoku (`view`) atakuje tylko z prostokąta widocznego na ekranie gracza: spoza niego
+ * podchodzi bliżej, a uciekając (kiting) nie wychodzi poza ekran.
  */
 export class EnemyBrain {
   private state = EnemyState.Idle;
@@ -32,6 +34,7 @@ export class EnemyBrain {
   constructor(
     private readonly behaviour: EnemyBehaviour,
     private readonly attackRange: number,
+    private readonly view?: EnemyViewRule,
   ) {}
 
   get currentState(): EnemyState {
@@ -49,7 +52,8 @@ export class EnemyBrain {
 
     if (input.canSeeTarget && (this.state !== EnemyState.Idle || dist <= this.behaviour.aggroRange)) {
       this.lastKnownTarget = input.target;
-      this.state = dist <= this.attackRange ? EnemyState.Attack : EnemyState.Chase;
+      const canAttack = dist <= this.attackRange && this.isInView(input.self, input.target, 0);
+      this.state = canAttack ? EnemyState.Attack : EnemyState.Chase;
     } else if (this.state !== EnemyState.Idle) {
       this.state = EnemyState.Chase;
     }
@@ -92,8 +96,26 @@ export class EnemyBrain {
     const kiting = this.behaviour.kiting;
     if (!kiting) return STOP;
     const toward = directionTo(self, target);
-    if (dist < kiting.retreatRange) return { x: -toward.x, y: -toward.y };
+    if (dist < kiting.retreatRange) return this.retreatWithinView(self, target, { x: -toward.x, y: -toward.y });
     if (dist > kiting.preferredRange) return toward;
     return STOP;
+  }
+
+  /** Czy wróg stoi w widocznym prostokącie wokół celu (zawężonym o `inset` px). */
+  private isInView(self: Vector2, target: Vector2, inset: number): boolean {
+    if (!this.view) return true;
+    const { halfX, halfY, margin } = this.view;
+    return Math.abs(self.x - target.x) <= halfX - margin - inset && Math.abs(self.y - target.y) <= halfY - margin - inset;
+  }
+
+  /** Ucieczka po osiach: składowa, która wyprowadziłaby wroga poza ekran, jest zerowana przy granicy. */
+  private retreatWithinView(self: Vector2, target: Vector2, away: MovementIntent): MovementIntent {
+    if (!this.view) return away;
+    const { halfX, halfY, margin, retreatSlack } = this.view;
+    const dx = self.x - target.x;
+    const dy = self.y - target.y;
+    const x = Math.abs(dx) >= halfX - margin - retreatSlack && Math.sign(away.x) === Math.sign(dx) ? 0 : away.x;
+    const y = Math.abs(dy) >= halfY - margin - retreatSlack && Math.sign(away.y) === Math.sign(dy) ? 0 : away.y;
+    return { x, y };
   }
 }

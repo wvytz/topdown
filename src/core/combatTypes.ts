@@ -127,6 +127,20 @@ export interface EnemyBehaviour {
   readonly kiting?: KitingBehaviour;
 }
 
+/**
+ * Wróg atakuje tylko z obszaru, który gracz na pewno widzi na ekranie (krok 18, zoom 2,0),
+ * i nie ucieka poza niego. Wymiary w px świata, względem pozycji gracza.
+ */
+export interface EnemyViewRule {
+  /** Połowy boków prostokąta zawsze widocznego wokół gracza. */
+  readonly halfX: number;
+  readonly halfY: number;
+  /** Zapas od krawędzi (sylwetka wroga ma być cała widoczna). */
+  readonly margin: number;
+  /** Ucieczka (kiting) zatrzymuje się tyle px przed granicą — bez drgania na krawędzi. */
+  readonly retreatSlack: number;
+}
+
 export interface EnemyDefinition {
   readonly type: EnemyType;
   readonly radius: number;

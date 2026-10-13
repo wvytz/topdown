@@ -1,9 +1,7 @@
 import Phaser from 'phaser';
 import type { FloorSceneData } from '@/core/types';
 import { SceneKey, TextureKey } from '@/core/types';
-import { TileType } from '@/core/dungeonTypes';
-import { TILE_SIZE } from '@/config/gameConfig';
-import { TILESET_FRAMES } from '@/dungeon/DungeonView';
+import { TILESET_ASSET } from '@/config/tilesetConfig';
 import { PLAYER_COMBAT, PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { ItemKind } from '@/core/lootTypes';
@@ -11,7 +9,7 @@ import { itemTextureKey } from '@/entities/Pickup';
 import { NEW_RUN } from '@/systems/RunState';
 import { loadSpriteSheets, registerSpriteAnimations } from '@/effects/spriteAnimations';
 
-/** Ładuje arkusze sprite'ów, generuje placeholderowe tekstury (geometria) i przechodzi do gry. */
+/** Ładuje arkusze sprite'ów i kafli, generuje placeholderowe tekstury (geometria) i przechodzi do gry. */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super(SceneKey.Boot);
@@ -19,6 +17,8 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     loadSpriteSheets(this);
+    this.load.image(TILESET_ASSET.imageKey, TILESET_ASSET.imageUrl);
+    this.load.json(TILESET_ASSET.jsonKey, TILESET_ASSET.jsonUrl);
   }
 
   create(): void {
@@ -88,48 +88,7 @@ export class BootScene extends Phaser.Scene {
       g.clear();
     }
 
-    this.drawTileset(g);
-    g.generateTexture(TextureKey.Tileset, TILE_SIZE * TILESET_FRAMES.length, TILE_SIZE);
-
     g.destroy();
-  }
-
-  /** Rysuje pasek kafli w kolejności TILESET_FRAMES (indeks klatki = indeks kafla w tilemapie). */
-  private drawTileset(g: Phaser.GameObjects.Graphics): void {
-    const s = TILE_SIZE;
-    TILESET_FRAMES.forEach((type, frame) => {
-      const ox = frame * s;
-      switch (type) {
-        case TileType.Wall:
-          g.fillStyle(0x3a3346, 1).fillRect(ox, 0, s, s);
-          g.fillStyle(0x4b4259, 1).fillRect(ox, 0, s, 6); // jaśniejsza krawędź = złudzenie wysokości
-          g.lineStyle(1, 0x221e2b, 1).strokeRect(ox + 0.5, 0.5, s - 1, s - 1);
-          break;
-        case TileType.Floor:
-          g.fillStyle(0x24242c, 1).fillRect(ox, 0, s, s);
-          g.lineStyle(1, 0x2f2f3a, 1).strokeRect(ox + 0.5, 0.5, s - 1, s - 1);
-          break;
-        case TileType.StairsLocked:
-          g.fillStyle(0x24242c, 1).fillRect(ox, 0, s, s);
-          g.fillStyle(0x6b2a2a, 1).fillRect(ox + 4, 4, s - 8, s - 8);
-          g.lineStyle(2, 0xc04848, 1).strokeRect(ox + 4, 4, s - 8, s - 8);
-          for (let bar = 10; bar < s - 4; bar += 6) g.fillStyle(0xc04848, 1).fillRect(ox + bar, 4, 2, s - 8);
-          break;
-        case TileType.StairsOpen:
-          g.fillStyle(0x24242c, 1).fillRect(ox, 0, s, s);
-          for (let step = 0; step < 4; step++) {
-            g.fillStyle(step % 2 === 0 ? 0xe0b84a : 0xb38a2a, 1).fillRect(ox + 4 + step * 3, 4 + step * 6, s - 8 - step * 6, 6);
-          }
-          break;
-        case TileType.Gate:
-          // Żelazna krata: pionowe pręty i dwie poprzeczki na tle podłogi.
-          g.fillStyle(0x24242c, 1).fillRect(ox, 0, s, s);
-          for (let bar = 3; bar < s; bar += 7) g.fillStyle(0x8a8f9c, 1).fillRect(ox + bar, 0, 3, s);
-          g.fillStyle(0x5c606b, 1).fillRect(ox, 7, s, 3).fillRect(ox, s - 10, s, 3);
-          g.lineStyle(1, 0xff8a3c, 0.9).strokeRect(ox + 0.5, 0.5, s - 1, s - 1);
-          break;
-      }
-    });
   }
 }
 

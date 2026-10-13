@@ -112,7 +112,7 @@ export class HudScene extends Phaser.Scene {
     } else if (hud.boss) {
       this.hintText.setText('Pokonaj bossa, aby otworzyć schody · unikaj czerwonych stref').setColor('#ffb0a0');
     } else {
-      this.hintText.setText(`Wrogowie: ${hud.enemiesAlive} · znajdź komnatę bossa (czerwone kraty)`).setColor('#a0a0b0');
+      this.hintText.setText(`Wrogowie: ${hud.enemiesAlive} · znajdź komnatę bossa (zakratowane schody)`).setColor('#a0a0b0');
     }
 
     this.goldText.setText(`Złoto (wynik): ${hud.gold}`);

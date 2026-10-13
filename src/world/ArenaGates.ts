@@ -1,6 +1,5 @@
 import type Phaser from 'phaser';
 import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
-import { TileType } from '@/core/dungeonTypes';
 import { ARENA_GATES } from '@/config/bossConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { ArenaGateLock, findRoomEntrances } from '@/dungeon/arenaGates';
@@ -46,7 +45,7 @@ export class ArenaGates {
   private seal(): void {
     const { scene, view, effects, onSealed } = this.deps;
     for (const gate of this.gates) {
-      view.setTile(gate, TileType.Gate);
+      view.sealGate(gate);
       const center = DungeonView.tileToWorldCenter(gate);
       effects.impact(center.x, center.y, TILE_SIZE * 0.6);
     }
@@ -55,9 +54,6 @@ export class ArenaGates {
   }
 
   private release(): void {
-    const { view, floor } = this.deps;
-    for (const gate of this.gates) {
-      view.setTile(gate, floor.tiles[gate.y * floor.width + gate.x] ?? TileType.Floor);
-    }
+    for (const gate of this.gates) this.deps.view.releaseGate(gate);
   }
 }

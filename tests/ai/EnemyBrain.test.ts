@@ -107,3 +107,42 @@ describe('EnemyBrain — Kiter', () => {
     expectMove(newKiter().think(input({ x: between, y: 0 })).move, { x: 0, y: 0 });
   });
 });
+
+describe('EnemyBrain — reguła widoku (zoom 2,0)', () => {
+  const view = { halfX: 210, halfY: 112.5, margin: 16, retreatSlack: 8 };
+  const viewKiter = (): EnemyBrain => new EnemyBrain(kiterDef.behaviour, kiterDef.attack.range, view);
+
+  it('Kiter w zasięgu strzału, ale poza ekranem (pionowo) nie strzela, tylko podchodzi', () => {
+    const decision = viewKiter().think(input({ x: 0, y: 150 }));
+    expect(150).toBeLessThan(kiterDef.attack.range);
+    expect(decision.state).toBe(EnemyState.Chase);
+    expect(decision.startAttack).toBe(false);
+    expectMove(decision.move, { x: 0, y: 1 });
+  });
+
+  it('w widocznym prostokącie strzela jak dotąd (poziomo widać dalej niż pionowo)', () => {
+    const decision = viewKiter().think(input({ x: 180, y: 0 }));
+    expect(decision.state).toBe(EnemyState.Attack);
+    expect(decision.startAttack).toBe(true);
+  });
+
+  it('bez reguły widoku zachowanie bez zmian (strzał spoza ekranu możliwy)', () => {
+    expect(newKiter().think(input({ x: 0, y: 150 })).state).toBe(EnemyState.Attack);
+  });
+
+  it('ucieczka nie wyprowadza poza ekran: składowa ku krawędzi jest zerowana', () => {
+    // Gracz 90 px nad wrogiem (granica pionowa 112,5 − 16 − 8 = 88,5): ucieczka w dół zablokowana.
+    const atEdge = viewKiter().think(input({ x: 0, y: -90 }));
+    expect(atEdge.state).toBe(EnemyState.Attack);
+    expectMove(atEdge.move, { x: 0, y: 0 });
+    // Daleko od krawędzi ucieka normalnie, od gracza.
+    const free = viewKiter().think(input({ x: 60, y: 0 }));
+    expectMove(free.move, { x: -1, y: 0 });
+  });
+
+  it('ucieczka po skosie przy krawędzi zachowuje składową, która nie wychodzi poza ekran', () => {
+    const decision = viewKiter().think(input({ x: 50, y: -95 }));
+    expect(decision.move.y).toBe(0);
+    expect(decision.move.x).toBeLessThan(0);
+  });
+});

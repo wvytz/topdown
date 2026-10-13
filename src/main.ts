@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
+import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import { BootScene } from '@/scenes/BootScene';
 import { GameScene } from '@/scenes/GameScene';
 import { HudScene } from '@/scenes/HudScene';
 import { RewardScene } from '@/scenes/RewardScene';
+import { pixelPerfectScale } from '@/systems/pixelScale';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -12,8 +13,9 @@ const config: Phaser.Types.Core.GameConfig = {
   height: GAME_HEIGHT,
   backgroundColor: '#1a1a1f',
   pixelArt: true,
+  // Skalę płótna ustawiamy sami (pixelPerfectScale): piksel świata = całkowita liczba pikseli ekranu.
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.NONE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   physics: {
@@ -27,6 +29,23 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+
+function applyPixelPerfectScale(): void {
+  const parent = document.getElementById('game');
+  if (!parent) return;
+  game.scale.setZoom(
+    pixelPerfectScale({
+      viewportWidth: parent.clientWidth,
+      viewportHeight: parent.clientHeight,
+      gameWidth: GAME_WIDTH,
+      gameHeight: GAME_HEIGHT,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      cameraZoom: CAMERA_CONFIG.zoom,
+    }),
+  );
+}
+applyPixelPerfectScale();
+window.addEventListener('resize', applyPixelPerfectScale);
 
 // Dostęp z konsoli przeglądarki do debugowania (tylko w trybie dev).
 if (import.meta.env.DEV) {

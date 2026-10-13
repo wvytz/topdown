@@ -7,6 +7,7 @@ import { Pickup } from '@/entities/Pickup';
 import type { Player } from '@/entities/Player';
 import { directionTo, distance } from '@/systems/CombatMath';
 import { splitGold } from '@/systems/Loot';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 export interface LootManagerDeps {
   readonly scene: Phaser.Scene;
@@ -59,7 +60,7 @@ export class LootManager {
     const scene = this.deps.scene;
     const pickup = new Pickup(scene, position.x, position.y, drop, scene.time.now + PICKUP_CONFIG.collectDelayMs);
     this.group.add(pickup, true);
-    pickup.setDepth(drop.kind === PickupKind.Item ? 8 : 7);
+    pickup.setDepth(drop.kind === PickupKind.Item ? RENDER_DEPTH.item : RENDER_DEPTH.coin);
 
     // Rozsypanie w losowym kierunku — czysto wizualne, więc Math.random zamiast RNG piętra.
     const angle = Math.random() * Math.PI * 2;

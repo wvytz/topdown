@@ -14,6 +14,7 @@ import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
 import { Timer } from '@/systems/Timer';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 /** Abstrakcyjne akcje gracza w danej klatce — produkuje je InputController. */
 export interface PlayerActions {
@@ -80,11 +81,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Sprite 48×48 (postać ok. 32 px) — ciało fizyczne zostaje 24×24 pośrodku klatki.
     this.setBodySize(PLAYER_SIZE, PLAYER_SIZE, true);
     this.setCollideWorldBounds(true);
-    this.setDepth(10);
+    this.setDepth(RENDER_DEPTH.player);
     this.animator = new DirectionalAnimator(this, PLAYER_VISUAL.sheet);
     this.animator.play(PLAYER_VISUAL.idle);
 
-    this.aimMarker = scene.add.image(x, y, TextureKey.AimMarker).setDepth(11);
+    this.aimMarker = scene.add.image(x, y, TextureKey.AimMarker).setDepth(RENDER_DEPTH.aimMarker);
   }
 
   get isDead(): boolean {

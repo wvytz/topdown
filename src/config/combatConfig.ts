@@ -1,11 +1,13 @@
 import type {
   EnemyDefinition,
   EnemyScalingConfig,
+  EnemyViewRule,
   PlayerCombatConfig,
   StatusResistance,
 } from '@/core/combatTypes';
 import { EnemyAttackKind, EnemyType } from '@/core/combatTypes';
 import type { EncounterConfig } from '@/dungeon/EncounterPlanner';
+import { GUARANTEED_VIEW_HALF } from '@/config/gameConfig';
 
 export const PLAYER_COMBAT: PlayerCombatConfig = {
   meleeDamage: 12,
@@ -72,6 +74,14 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
       projectileLifetimeMs: 2000,
     },
   },
+};
+
+/** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */
+export const ENEMY_VIEW_RULE: EnemyViewRule = {
+  halfX: GUARANTEED_VIEW_HALF.x,
+  halfY: GUARANTEED_VIEW_HALF.y,
+  margin: 16,
+  retreatSlack: 8,
 };
 
 export const ENEMY_SCALING: EnemyScalingConfig = {

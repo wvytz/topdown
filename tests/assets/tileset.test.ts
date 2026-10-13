@@ -1,6 +1,8 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SPRITE_SHEETS } from '@/config/spriteConfig';
+import { TILE_SIZE } from '@/config/gameConfig';
+import { TILESET_ASSET } from '@/config/tilesetConfig';
 import type { Rgba, RgbaImage } from '../helpers/png';
 import { contrastRatio, hueSaturation, luminance, pixel, readPng } from '../helpers/png';
 import { TILESETS_DIR, loadTileset } from '../helpers/tileset';
@@ -40,6 +42,14 @@ function mostCommon(pixels: readonly Rgba[]): Rgba {
 }
 
 describe('arkusz kafli: JSON zgodny z PNG', () => {
+  it('gra ładuje ten arkusz: ścieżki z konfiguracji, wersja formatu i rozmiar kafla gry', () => {
+    expect(TILESET_ASSET.imageUrl).toBe(`assets/tilesets/${meta.image}`);
+    expect(readPng(`${ROOT}public/${TILESET_ASSET.imageUrl}`).width).toBe(sheet.width);
+    expect(TILESET_ASSET.jsonUrl.endsWith('tower_ruins_tileset.json')).toBe(true);
+    expect(meta.version).toBe(TILESET_ASSET.version);
+    expect(meta.tileSize).toBe(TILE_SIZE);
+  });
+
   it('wymiary PNG = kolumny × wiersze × rozmiar kafla', () => {
     expect(meta.version).toBe(2);
     expect({ width: sheet.width, height: sheet.height }).toEqual({ width: meta.columns * S, height: meta.rows * S });

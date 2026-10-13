@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 /** Krótkie, czysto wizualne efekty walki (bez wpływu na logikę). */
 export class CombatEffects {
   constructor(private readonly scene: Phaser.Scene) {}
 
   slash(x: number, y: number, angle: number, range: number, arcRadians: number): void {
-    const g = this.scene.add.graphics().setDepth(12);
+    const g = this.scene.add.graphics().setDepth(RENDER_DEPTH.slash);
     g.fillStyle(0xffffff, 0.35);
     g.slice(x, y, range, angle - arcRadians / 2, angle + arcRadians / 2, false);
     g.fillPath();
@@ -13,7 +14,7 @@ export class CombatEffects {
   }
 
   deathBurst(x: number, y: number, color: number, radius: number): void {
-    const circle = this.scene.add.circle(x, y, radius, color, 0.8).setDepth(8);
+    const circle = this.scene.add.circle(x, y, radius, color, 0.8).setDepth(RENDER_DEPTH.deathBurst);
     this.scene.tweens.add({
       targets: circle,
       scale: 2.2,
@@ -26,7 +27,7 @@ export class CombatEffects {
 
   /** Błysk uderzenia strefy obszarowej. */
   impact(x: number, y: number, radius: number): void {
-    const circle = this.scene.add.circle(x, y, radius, 0xffd0a0, 0.45).setDepth(6);
+    const circle = this.scene.add.circle(x, y, radius, 0xffd0a0, 0.45).setDepth(RENDER_DEPTH.groundFlash);
     this.scene.tweens.add({ targets: circle, alpha: 0, duration: 180, onComplete: () => circle.destroy() });
   }
 
@@ -35,7 +36,7 @@ export class CombatEffects {
     const label = this.scene.add
       .text(x, y - 8, text, { fontFamily: 'monospace', fontSize: '11px', color, stroke: '#000000', strokeThickness: 3 })
       .setOrigin(0.5)
-      .setDepth(20);
+      .setDepth(RENDER_DEPTH.worldText);
     this.scene.tweens.add({ targets: label, y: y - 30, alpha: 0, duration: 700, onComplete: () => label.destroy() });
   }
 

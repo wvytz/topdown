@@ -29,7 +29,8 @@ export const FLOOR_MODIFIERS: Readonly<Record<FloorModifierId, FloorModifierDefi
     id: FloorModifierId.Darkness,
     name: 'Mrok',
     description: 'widać tylko najbliższe otoczenie',
-    effects: { visionRadius: 150 },
+    // px świata; przy zoomie 2,0 (krok 18) 112 px zajmuje na ekranie tyle, ile 150 px przy zoomie 1,5.
+    effects: { visionRadius: 112 },
   },
   [FloorModifierId.Exhaustion]: {
     id: FloorModifierId.Exhaustion,

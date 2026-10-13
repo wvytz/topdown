@@ -10,12 +10,14 @@ import type {
 } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import type { DungeonFloor } from '@/core/dungeonTypes';
-import { TileType } from '@/core/dungeonTypes';
+import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { PickupKind } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { CAMERA_CONFIG, PLAYER_BASE_STATS, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { FLOOR_DRESSING } from '@/config/dressingConfig';
+import { TILESET_ASSET } from '@/config/tilesetConfig';
 import { PLAYER_COMBAT, getEncounterConfigForFloor } from '@/config/combatConfig';
 import {
   BOSS_LOOT,
@@ -37,7 +39,8 @@ import { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { planEncounters } from '@/dungeon/EncounterPlanner';
-import { isStairsTile, stairsTiles } from '@/dungeon/stairs';
+import { isStairsTile } from '@/dungeon/stairs';
+import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
 import { InputController } from '@/input/InputController';
 import { Player } from '@/entities/Player';
@@ -69,6 +72,8 @@ const ENCOUNTER_SEED_SALT = 0xe11e;
 const LOOT_SEED_SALT = 0x1007;
 const SHRINE_SEED_SALT = 0x5419;
 const REWARD_SEED_SALT = 0x4e3a;
+/** Dekorowanie piętra (czysto wizualne). */
+const DRESSING_SEED_SALT = 0xd2e5;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -132,7 +137,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
   create(): void {
     const generator = new DungeonGenerator(getDungeonConfigForFloor(this.floorNumber));
     this.dungeon = generator.generate(deriveSeed(this.runSeed, this.floorNumber));
-    this.dungeonView = new DungeonView(this, this.dungeon);
+    const tileset = this.cache.json.get(TILESET_ASSET.jsonKey) as TilesetMeta;
+    const dressed = dressFloor(this.dungeon, tileset, FLOOR_DRESSING, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT));
+    this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset);
     this.floorModifier = floorModifierFor(this.runSeed, this.floorNumber, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG);
     this.floorEffects = floorEffectsOf(this.floorModifier);
 
@@ -140,7 +147,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     const spawn = DungeonView.tileToWorldCenter(this.dungeon.playerSpawn);
     this.player = new Player(this, spawn.x, spawn.y, this.currentLoadout(), this.startHp);
-    this.physics.add.collider(this.player, this.dungeonView.layer);
+    this.physics.add.collider(this.player, this.dungeonView.collisionLayer);
 
     this.setupCombat();
     this.setupLoot();
@@ -224,7 +231,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private unlockStairs(): void {
     if (this.stairsUnlocked) return;
     this.stairsUnlocked = true;
-    for (const tile of stairsTiles(this.dungeon)) this.dungeonView.setTile(tile, TileType.StairsOpen);
+    this.dungeonView.openStairs();
   }
 
   private resolvePlayerStrike(now: number): void {
@@ -267,14 +274,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.effects = new CombatEffects(this);
     const onPlayerHit = (): void => this.effects.playerHit();
 
-    this.projectiles = new ProjectileManager(this, this.dungeonView.layer, this.player, onPlayerHit);
-    this.playerShots = new PlayerShotManager(this, this.dungeonView.layer);
+    this.projectiles = new ProjectileManager(this, this.dungeonView.collisionLayer, this.player, onPlayerHit);
+    this.playerShots = new PlayerShotManager(this, this.dungeonView.collisionLayer);
     this.enemies = new EnemyManager({
       scene: this,
       floor: this.dungeon,
       floorNumber: this.floorNumber,
       floorEffects: this.floorEffects,
-      walls: this.dungeonView.layer,
+      walls: this.dungeonView.collisionLayer,
       player: this.player,
       projectiles: this.projectiles,
       effects: this.effects,
@@ -290,7 +297,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       scene: this,
       floor: this.dungeon,
       floorNumber: this.floorNumber,
-      walls: this.dungeonView.layer,
+      walls: this.dungeonView.collisionLayer,
       player: this.player,
       projectiles: this.projectiles,
       effects: this.effects,
@@ -318,7 +325,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.lootRng = createRng(deriveSeed(this.dungeon.seed, LOOT_SEED_SALT));
     this.loot = new LootManager({
       scene: this,
-      walls: this.dungeonView.layer,
+      walls: this.dungeonView.collisionLayer,
       player: this.player,
       // Mikstury zostają na ziemi, dopóki gracz ma pełne HP — można po nie wrócić.
       canCollect: (drop) => drop.kind !== PickupKind.Health || !this.player.health.isFull,

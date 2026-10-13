@@ -9,7 +9,7 @@ import type {
 import { AttackPhase, EnemyAttackKind } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { EnemyBrain } from '@/ai/EnemyBrain';
-import { ENEMY_STATUS_RESISTANCE } from '@/config/combatConfig';
+import { ENEMY_STATUS_RESISTANCE, ENEMY_VIEW_RULE } from '@/config/combatConfig';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { Health } from '@/systems/Health';
 import { StatusEffects } from '@/systems/StatusEffects';
@@ -18,6 +18,7 @@ import { statusTint } from '@/effects/statusTints';
 import type { EnemyVisual } from '@/config/spriteConfig';
 import { ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -50,14 +51,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.type].sheet].key);
     this.definition = definition;
     this.health = new Health(definition.maxHp);
-    this.brain = new EnemyBrain(definition.behaviour, definition.attack.range);
+    this.brain = new EnemyBrain(definition.behaviour, definition.attack.range, ENEMY_VIEW_RULE);
     this.attackCycle = new AttackCycle(definition.attack.windupMs, definition.attack.cooldownMs);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
     // Klatka 48×48 z postacią pośrodku — okrągłe ciało o promieniu z definicji, wyśrodkowane.
     this.setCircle(definition.radius, this.width / 2 - definition.radius, this.height / 2 - definition.radius);
-    this.setDepth(9);
+    this.setDepth(RENDER_DEPTH.enemy);
     this.visual = ENEMY_VISUALS[definition.type];
     this.animator = new DirectionalAnimator(this, this.visual.sheet);
     this.animator.play(this.visual.idle ?? this.visual.move);

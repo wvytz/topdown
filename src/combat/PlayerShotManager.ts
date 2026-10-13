@@ -5,6 +5,7 @@ import { TextureKey } from '@/core/types';
 import { Projectile } from '@/entities/Projectile';
 import { normalize } from '@/systems/CombatMath';
 import type { PlayerShot } from '@/systems/ShotResolver';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. */
 export type PlayerShotResolver = (shot: PlayerShot) => object | null;
@@ -33,7 +34,7 @@ export class PlayerShotManager {
     shot.expiresAt = this.scene.time.now + config.projectileLifetimeMs;
     shot.status = effects.shotStatus;
     shot.pierceLeft = effects.shotPierce;
-    shot.setDepth(11);
+    shot.setDepth(RENDER_DEPTH.projectile);
 
     this.group.add(shot, true);
     shot.setCircle(config.projectileRadius);

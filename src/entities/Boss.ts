@@ -14,6 +14,7 @@ import { Timer } from '@/systems/Timer';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
 import { statusTint } from '@/effects/statusTints';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 const HIT_FLASH_MS = 70;
 const ENRAGE_TINT = 0xff7050;
@@ -44,7 +45,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     // Ciężki przeciwnik: nie da się go przepchnąć ani odrzucić.
     this.setImmovable(true);
     this.setPushable(false);
-    this.setDepth(9);
+    this.setDepth(RENDER_DEPTH.boss);
     this.animator = new DirectionalAnimator(this, BOSS_VISUAL.sheet);
     this.animator.play(BOSS_VISUAL.move);
   }

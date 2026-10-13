@@ -58,6 +58,8 @@ export const ARENA_GATES = {
   sealMarginTiles: 1,
   shakeDurationMs: 180,
   shakeIntensity: 0.006,
+  /** Czas jednej klatki opadania/podnoszenia kraty (obraz; kolizja zmienia się od razu). */
+  frameMs: 90,
 } as const;
 
 /** Skalowanie HP i obrażeń wszystkich ataków bossa do piętra. */

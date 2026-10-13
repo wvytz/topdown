@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TextureKey } from '@/core/types';
+import { RENDER_DEPTH } from '@/config/renderLayers';
 
 /** Widok kapliczki: postument + podpowiedź nad nim. Zasady ofiary są w systems/Shrine.ts. */
 export class Shrine extends Phaser.GameObjects.Image {
@@ -10,7 +11,7 @@ export class Shrine extends Phaser.GameObjects.Image {
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, TextureKey.Shrine);
     scene.add.existing(this);
-    this.setDepth(6);
+    this.setDepth(RENDER_DEPTH.shrine);
 
     this.prompt = scene.add
       .text(x, y - 30, '', {
@@ -22,7 +23,7 @@ export class Shrine extends Phaser.GameObjects.Image {
         align: 'center',
       })
       .setOrigin(0.5, 1)
-      .setDepth(20)
+      .setDepth(RENDER_DEPTH.worldText)
       .setVisible(false);
 
     this.glow = scene.tweens.add({ targets: this, alpha: 0.75, duration: 900, yoyo: true, repeat: -1 });

@@ -979,22 +979,100 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 18 — Wielowarstwowy DungeonView, arkusz w grze i zoom 2,0
+
+**Zlecenie właściciela:** wielowarstwowy `DungeonView`, ładowanie PNG i JSON arkusza w grze, stały zoom 2,0. Commit kroku 17 wypchnięty jako `8dc81bf`.
+
+**Głębokości rysowania (`config/renderLayers.ts`):**
+- `RENDER_DEPTH` to jedno źródło prawdy dla całej sceny;
+- wszystkie dotychczasowe liczby w `setDepth` zastąpione nazwami, a wartości rozgrywki bez zmian (telegraf 5 … cios 12);
+- tło 0–3,5: podłoga, nakładki, elementy, cienie, ściany, kraty;
+- `overhead` 13: nad rozgrywką, pod mrokiem (15) i napisami (20).
+
+**Arkusz w grze:**
+- `config/tilesetConfig.ts` opisuje zasób: klucze, ścieżki i wersję formatu;
+- `BootScene` ładuje PNG i JSON z `public/assets/tilesets/`;
+- geometryczny tileset z `BootScene` i `TILESET_FRAMES` usunięte;
+- `GameScene` wywołuje `dressFloor` z solą `DRESSING_SEED_SALT` i przekazuje wynik do widoku.
+
+**`DungeonView` (przepisany):**
+- **Warstwy obrazu:** sześć warstw TilemapLayer z FloorDressing (z odbiciem `flipX`) plus warstwa krat, każda na swojej głębokości.
+- **Kolizja:** osobna, niewidoczna warstwa logiczna (ściany) z jedną klatką kolizji, więc `putTileAt` nadaje kolizję także kratom opuszczanym w trakcie gry. Menedżery walki i łupów dostają `collisionLayer`.
+- **Kraty:**
+  - `sealGate` i `releaseGate`: kolizja zmienia się od razu;
+  - obraz przechodzi przez klatkę „opada” do „zamknięta” albo „otwarta” (`ARENA_GATES.frameMs` = 90 ms);
+  - przed walką widać szczelinę w posadzce.
+- **Schody:** `openStairs` podmienia 4 klatki bloku 2×2 na otwarte.
+- **`TileType`:** usunięte `StairsOpen` i `Gate`. Stan schodów i krat to stan widoku i kolizji, a dane piętra są stałe.
+- **Kontrola arkusza:** niezgodna wersja albo rozmiar kafla kończy się błędem przy starcie piętra.
+
+**Zoom 2,0 (pixel-perfect):**
+- **Kamera:** `CAMERA_CONFIG.zoom` = 2. Phaser przy całkowitym zoomie i `roundPixels` przewija kamerę o pełne piksele świata.
+- **Martwa strefa:** przeliczona z 80×60 na 60×45 px świata, czyli ta sama część ekranu co przy zoomie 1,5.
+- **Skala płótna (`systems/pixelScale.ts`, czysty):**
+  - `pixelPerfectScale` dobiera skalę CSS tak, by piksel świata był całkowitą liczbą pikseli urządzenia, z uwzględnieniem `devicePixelRatio`, np. przy skalowaniu Windows 125%;
+  - `main.ts` używa `Scale.NONE` i `setZoom` przy każdej zmianie rozmiaru okna;
+  - przykłady: 1920×1080 → skala 2 (4 px na piksel świata), 1600×900 → 1,5 (3 px; FIT dałby 1,667 i nierówne piksele);
+  - kosztem są cienkie czarne pasy przy krawędziach okna.
+- **Mrok:** promień widoczności 150 → 112 px świata, czyli na ekranie tyle samo co wcześniej. To przeliczenie, a nie zmiana trudności.
+
+**Reguła widoku dla wrogów (decyzja właściciela: zasięg Kiterów w logice AI):**
+- **Problem:** przy zoomie 2 widać tylko 480×270 px świata, a Kiter strzela z 280 px (już przy 1,5 mógł strzelać spoza ekranu w pionie).
+- **`GUARANTEED_VIEW_HALF`** (`config/gameConfig.ts`): prostokąt wokół gracza, który zawsze jest na ekranie, czyli widok minus luz martwej strefy (210 × 112,5 px).
+- **`ENEMY_VIEW_RULE`** (`config/combatConfig.ts`, typ `EnemyViewRule`): margines 16 px i zapas ucieczki 8 px.
+- **`EnemyBrain`:**
+  - wróg atakuje tylko z tego prostokąta, a spoza niego podchodzi;
+  - kiting zeruje składową ucieczki, która wyprowadziłaby go poza ekran, więc nie drga na krawędzi;
+  - bez reguły (parametr opcjonalny) zachowanie jest jak dawniej.
+- **Liczby wrogów bez zmian** (zasięgi, obrażenia, aggro). Boss bez zmian, bo jego ataki są obszarowe i z telegrafem.
+
+**Drobne:** podpowiedź w HUD „czerwone kraty” → „zakratowane schody”.
+
+**Testy: +17, razem 516.**
+- `pixelScale` (5): 1920×1080, 1600×900, DPR 1,25, płótno zawsze w oknie z całkowitym pikselem świata, minimum 1 px.
+- `EnemyBrain` (5): poza ekranem w pionie nie strzela, tylko podchodzi; w prostokącie strzela; bez reguły jak dawniej; ucieczka zatrzymana przy krawędzi, także po skosie.
+- `RENDER_DEPTH` (3): kolejność tła, tło pod rozgrywką, `overhead` między rozgrywką a mrokiem.
+- Arkusz (1): ścieżki z `TILESET_ASSET`, wersja formatu i `TILE_SIZE`.
+- Architektura: +3 czyste pliki.
+
+**Weryfikacja w grze** (port 5174, emulowane okno 1600×900, panel w tle, więc ręczne `game.step()`):
+- **Skala i kamera:** płótno 1440×810 px wyśrodkowane (skala 1,5), zoom 2, `renderRoundPixels`, przewijanie i widok świata w pełnych pikselach.
+- **Warstwy na piętrze 1:**
+
+  | Warstwa | Głębokość | Kafle |
+  |---|---|---|
+  | floorBase | 0 | 649 (336 odbitych) |
+  | floorDecal | 0,5 | 119 |
+  | floorFeature | 1 | 4 |
+  | envShadow | 2 | 248 |
+  | walls | 3 | 1751 |
+  | gates | 3,5 | 7 |
+  | overhead | 13 | 98 |
+  | collision (niewidoczna) | — | 1751 |
+
+- **Kraty:** po wejściu na arenę 7 krat (6 pionowych przy prawej ścianie, 1 pozioma) przechodzi w klatkę „zamknięta” i dostaje kolizję. Po pokonaniu bossa i wyborze karty wracają do „otwartej” bez kolizji.
+- **Schody:** po pokonaniu bossa 4 klatki bloku podmienione na otwarte (zrzut ekranu).
+- **Overhead:** gracz przy dolnej ścianie pokoju — kafel overhead (głębokość 13) przykrywa wystający dół sprite'a.
+- **Wrogowie** mają regułę widoku 210 × 112,5 px.
+- Brak błędów w konsoli.
+
+**Uwaga do weryfikacji:** w trakcie testu gracz zginął od bossa (ręczne kroki), więc w pamięci wbudowanej przeglądarki został wpis 0 złota na tablicy rekordów.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
 - **Ewolucje przedmiotów: odrzucone na obecnym etapie** (decyzja właściciela). Nie komplikujemy sterowania ani działania broni; wzmacnianie kolejnymi kopiami zostaje.
 - **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
-- **Grafika (kroki 13, 15, 16):** gracz, Rusher, mag i boss mają sprite'y. Arkusz kafli jest gotowy (krok 16), ale gra go jeszcze nie ładuje. Brakuje: łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
+- **Grafika (kroki 13, 15, 16, 18):** gracz, Rusher, mag i boss mają sprite'y; mapa jest rysowana z arkusza kafli (krok 18). Brakuje: łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
 - **Plan warstwy wizualnej (zatwierdzony):**
   - **Krok 17 (zrobiony):** czysty `FloorDressing` i schody 2×2.
-  - **Krok 18:**
-    - wielowarstwowy `DungeonView` (głębokości w `config/renderLayers.ts`), ładowanie arkusza i JSON-a w `BootScene`;
-    - `dressFloor` z solą `DRESSING_SEED_SALT` w `GameScene`;
-    - krata (3 stany) i schody 2×2 z arkusza;
-    - kolizja ścian na osobnej, niewidocznej warstwie logicznej;
-    - zoom 2,0 (także skalowanie płótna całkowitymi krotnościami);
-    - dostosowanie zasięgu i aggro Kiterów do mniejszego pola widzenia.
+  - **Krok 18 (zrobiony):** wielowarstwowy widok, arkusz w grze, zoom 2,0, reguła widoku dla wrogów.
+  - **Do decyzji właściciela po testach zoomu 2,0:**
+    - czy reguła widoku nie zmieniła odczuwalnie trudności z Kiterami;
+    - czy martwa strefa 60×45 jest wygodna.
   - **Krok 19 (P1):**
     - światło: pochodnie, poświata wokół gracza, winieta;
     - animowane kafle, pyłki, trwałe ślady walki, cienie kontaktowe pod postaciami;
