@@ -7,6 +7,7 @@ import type {
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
 import { createRng } from '@/core/random';
+import { STAIRS_SIZE } from '@/config/gameConfig';
 
 const BOSS_ROOM_INDEX = 0;
 
@@ -49,8 +50,13 @@ export class DungeonGenerator {
       kind: id === startIndex ? RoomKind.Start : id === bossIndex ? RoomKind.Boss : RoomKind.Normal,
     }));
 
-    const stairs = roomCenter(rects[bossIndex]!);
-    tiles[stairs.y * width + stairs.x] = TileType.StairsLocked;
+    // Schody STAIRS_SIZE × STAIRS_SIZE wyśrodkowane w arenie; `stairs` to lewy górny róg bloku.
+    const bossCenter = roomCenter(rects[bossIndex]!);
+    const half = Math.floor(STAIRS_SIZE / 2);
+    const stairs: TilePoint = { x: bossCenter.x - half, y: bossCenter.y - half };
+    for (let dy = 0; dy < STAIRS_SIZE; dy++) {
+      for (let dx = 0; dx < STAIRS_SIZE; dx++) tiles[(stairs.y + dy) * width + stairs.x + dx] = TileType.StairsLocked;
+    }
 
     return {
       seed,

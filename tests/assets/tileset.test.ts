@@ -1,50 +1,18 @@
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SPRITE_SHEETS } from '@/config/spriteConfig';
 import type { Rgba, RgbaImage } from '../helpers/png';
 import { contrastRatio, hueSaturation, luminance, pixel, readPng } from '../helpers/png';
+import { TILESETS_DIR, loadTileset } from '../helpers/tileset';
 
 /**
  * Arkusz kafli z generatora (tools/tower_ruins_tiles.py): zgodność JSON z PNG
  * oraz progi czytelności postaci na podłodze (STYLEGUIDE §6a).
  */
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const TILESETS = `${ROOT}public/assets/tilesets/`;
 
-interface TileDef {
-  frame: number;
-  col: number;
-  row: number;
-  w: number;
-  h: number;
-  layer: string;
-  frames?: number[][];
-  weight?: number;
-  flipX?: boolean;
-}
-
-interface TilesetMeta {
-  version: number;
-  image: string;
-  tileSize: number;
-  columns: number;
-  rows: number;
-  envShadowAlpha: number;
-  tiles: Record<string, TileDef>;
-  groups: Record<string, string[]>;
-  autotile: {
-    wall: {
-      variants: Record<string, string>;
-      diagonal: { tiles: Record<string, string> };
-      bands: { groups: Record<string, string> };
-    };
-    envShadow: { tiles: Record<string, string> };
-  };
-}
-
-const meta = JSON.parse(readFileSync(`${TILESETS}tower_ruins_tileset.json`, 'utf8')) as TilesetMeta;
-const sheet = readPng(TILESETS + meta.image);
+const meta = loadTileset();
+const sheet = readPng(TILESETS_DIR + meta.image);
 const S = meta.tileSize;
 const tiles = Object.entries(meta.tiles);
 

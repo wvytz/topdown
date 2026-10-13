@@ -7,6 +7,9 @@ export const GAME_HEIGHT = 540;
 
 export const TILE_SIZE = 32;
 
+/** Schody na kolejne piętro zajmują blok STAIRS_SIZE × STAIRS_SIZE kafli (64×64 px, krok 17). */
+export const STAIRS_SIZE = 2;
+
 export const BASE_DUNGEON_CONFIG: DungeonGeneratorConfig = {
   widthTiles: 60,
   heightTiles: 40,

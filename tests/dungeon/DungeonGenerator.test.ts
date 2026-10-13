@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
-import { BASE_DUNGEON_CONFIG, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { BASE_DUNGEON_CONFIG, STAIRS_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { roomContainsTile } from '@/dungeon/rooms';
+import { stairsCenter, stairsTiles } from '@/dungeon/stairs';
 import { countReachable, countWalkable, sampleFloors } from '../helpers/floors';
 
 // Testy właściwości: sprawdzamy niezmienniki na wielu wygenerowanych piętrach.
@@ -35,11 +36,25 @@ describe('DungeonGenerator — niezmienniki pięter', () => {
     }
   });
 
-  it('zamknięte schody stoją w komnacie bossa, gracz startuje w pokoju startowym', () => {
+  it('zamknięte schody 2×2 stoją w komnacie bossa, gracz startuje w pokoju startowym', () => {
     for (const floor of FLOORS) {
-      expect(floor.tiles[floor.stairs.y * floor.width + floor.stairs.x]).toBe(TileType.StairsLocked);
-      expect(roomContainsTile(floor.rooms[floor.bossRoomId]!, floor.stairs)).toBe(true);
+      const stairs = stairsTiles(floor);
+      expect(stairs).toHaveLength(STAIRS_SIZE * STAIRS_SIZE);
+      for (const tile of stairs) {
+        expect(floor.tiles[tile.y * floor.width + tile.x]).toBe(TileType.StairsLocked);
+        expect(roomContainsTile(floor.rooms[floor.bossRoomId]!, tile)).toBe(true);
+      }
+      expect(floor.tiles.filter((t) => t === TileType.StairsLocked)).toHaveLength(STAIRS_SIZE * STAIRS_SIZE);
       expect(roomContainsTile(floor.rooms[floor.startRoomId]!, floor.playerSpawn)).toBe(true);
+    }
+  });
+
+  it('schody są wyśrodkowane w arenie (środek bloku najwyżej pół kafla od środka komnaty)', () => {
+    for (const floor of FLOORS) {
+      const arena = floor.rooms[floor.bossRoomId]!;
+      const center = stairsCenter(floor);
+      expect(Math.abs(center.x - (arena.x + arena.width / 2))).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(center.y - (arena.y + arena.height / 2))).toBeLessThanOrEqual(0.5);
     }
   });
 

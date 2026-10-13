@@ -37,6 +37,7 @@ import { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { planEncounters } from '@/dungeon/EncounterPlanner';
+import { isStairsTile, stairsTiles } from '@/dungeon/stairs';
 import { CombatEffects } from '@/effects/CombatEffects';
 import { InputController } from '@/input/InputController';
 import { Player } from '@/entities/Player';
@@ -223,7 +224,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private unlockStairs(): void {
     if (this.stairsUnlocked) return;
     this.stairsUnlocked = true;
-    this.dungeonView.setTile(this.dungeon.stairs, TileType.StairsOpen);
+    for (const tile of stairsTiles(this.dungeon)) this.dungeonView.setTile(tile, TileType.StairsOpen);
   }
 
   private resolvePlayerStrike(now: number): void {
@@ -420,7 +421,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private checkStairs(): void {
     if (!this.stairsUnlocked) return;
     const tile = DungeonView.worldToTile(this.player.x, this.player.y);
-    if (tile.x === this.dungeon.stairs.x && tile.y === this.dungeon.stairs.y) {
+    if (isStairsTile(this.dungeon, tile)) {
       this.goToNextFloor();
     }
   }

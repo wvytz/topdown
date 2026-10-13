@@ -4,18 +4,25 @@ import { getDungeonConfigForFloor } from '@/config/gameConfig';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 
 /**
- * Buduje piętro z rysunku ASCII: `#` = ściana, `.` = podłoga.
- * Pokoje podaje się osobno — przydaje się do testów precyzyjnych przypadków.
+ * Buduje piętro z rysunku ASCII: `#` = ściana, `.` = podłoga, `S` = schody (pierwsze `S` to lewy
+ * górny róg bloku), `@` = spawn gracza (podłoga). Pokoje podaje się osobno — przydaje się do testów
+ * precyzyjnych przypadków.
  */
 export function floorFromAscii(rows: readonly string[], rooms: readonly Room[] = []): DungeonFloor {
   const height = rows.length;
   const width = rows[0]?.length ?? 0;
   const tiles: TileType[] = [];
-  for (const row of rows) {
-    if (row.length !== width) throw new Error('floorFromAscii: wszystkie wiersze muszą mieć tę samą długość.');
-    for (const ch of row) tiles.push(ch === '#' ? TileType.Wall : TileType.Floor);
-  }
   const origin: TilePoint = { x: 0, y: 0 };
+  let stairs: TilePoint | null = null;
+  let playerSpawn: TilePoint = origin;
+  rows.forEach((row, y) => {
+    if (row.length !== width) throw new Error('floorFromAscii: wszystkie wiersze muszą mieć tę samą długość.');
+    [...row].forEach((ch, x) => {
+      if (ch === 'S') stairs ??= { x, y };
+      if (ch === '@') playerSpawn = { x, y };
+      tiles.push(ch === '#' ? TileType.Wall : ch === 'S' ? TileType.StairsLocked : TileType.Floor);
+    });
+  });
   return {
     seed: 0,
     width,
@@ -24,8 +31,8 @@ export function floorFromAscii(rows: readonly string[], rooms: readonly Room[] =
     rooms,
     startRoomId: 0,
     bossRoomId: 0,
-    playerSpawn: origin,
-    stairs: origin,
+    playerSpawn,
+    stairs: stairs ?? origin,
   };
 }
 

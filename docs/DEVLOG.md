@@ -894,6 +894,91 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 17 — FloorDressing: czyste dekorowanie piętra i schody 2×2
+
+**Zlecenie właściciela:** czysty moduł FloorDressing z testami jednostkowymi (plan kroków 16–19). Commit kroku 16 wypchnięty jako `cf575f4`.
+
+**`dungeon/FloorDressing.ts` (czysty, w `PURE_FILES`):**
+- **Wejście:** `dressFloor(floor, tileset, config, seed)`.
+  - Opis arkusza (`TilesetMeta`, typy w `core/tilesetTypes.ts`) dostaje jako obiekt. Plik JSON wczyta warstwa silnika, więc moduł nie robi żadnego wejścia/wyjścia.
+  - Seed podaje wywołujący. W kroku 18 będzie to własna sól w `GameScene`, jak przy innych systemach.
+- **Wynik:** warstwy do narysowania, każda z indeksami klatek arkusza i flagą odbicia na kafel (`EMPTY_TILE` = nic):
+  - `floorBase`, `floorDecal`, `floorFeature`, `envShadow`, `walls`, `overhead`;
+  - schody (zamknięte klatki w warstwie elementów, otwarte do podmiany);
+  - kraty z orientacją i klatkami trzech stanów.
+- **Ściany:**
+  - maska 4-bit (brzeg mapy liczy się jako ściana, kraty i schody nie);
+  - narożniki: maska 15 z podłogą po skosie dostaje kafel `wall_15_dXX`;
+  - pasma odległości Czebyszewa liczone BFS-em w 8 kierunkach: brzeg (1), przygaszone (2), głębia (3+);
+  - warianty losujemy wg wag, bez zakazu powtórzeń, bo zakaz zawyżałby udział zniszczeń.
+- **Nad postaciami:** `walls` zawiera wszystkie ściany, a `overhead` to kopie murów brzegowych z podłogą od północy, rysowane drugi raz nad postaciami.
+- **Podłoga:**
+  - najpierw wzory 2×2 w wolnych blokach (odbicie dotyczy całego wzoru, z zamianą części);
+  - potem bazy 1×1 pod każdą nie-ścianą, także pod schodami i kratami;
+  - sąsiednie bazy (lewa i górna) nigdy nie są tym samym kafelkiem.
+- **Nakładki:**
+  - tylko na zwykłej podłodze, poza strefą `clearRadius` wokół spawnu, schodów i krat;
+  - długie pęknięcia 2×1 i 1×2 kładziemy tylko, gdy oba kafle są wolne;
+  - zwykłe nakładki wg wag grup;
+  - kurz tylko od strony faktycznego muru (pierwszeństwo: północ, zachód, wschód).
+- **Cienie środowiska:** maska N/E/W sąsiednich ścian, zgodnie z arkuszem.
+- **Kraty:** na wejściach do areny z `findRoomEntrances`, tych samych co w `ArenaGates`. Wejście z północy lub południa daje kratę poziomą, z boku pionową.
+- **Bezpieczniki:** sprawdza zgodność bitów masek z arkuszem i obecność grup oraz kafli. Rozmiar kafla schodów musi być równy `STAIRS_SIZE`. Każda rozbieżność kończy się czytelnym błędem.
+
+**`config/dressingConfig.ts`:**
+- gęstości: wzory 2×2 4%, nakładki 10%, długie pęknięcia 1,2%, kurz 35/25/25%, odbicie 50%;
+- strefa wolna od nakładek: promień 1;
+- nazwy grup i kafli schodów oraz krat.
+
+**Schody 2×2 (decyzja z kroku 16):**
+- `STAIRS_SIZE = 2` w `config/gameConfig.ts`;
+- generator stawia blok wyśrodkowany w arenie, a `DungeonFloor.stairs` to lewy górny róg bloku;
+- czysty `dungeon/stairs.ts` (w `PURE_FILES`): `stairsTiles`, `isStairsTile`, `stairsCenter`;
+- `GameScene`: odblokowanie otwiera 4 kafle, wejście na dowolny kafel bloku prowadzi wyżej;
+- `BossFight`: boss budzi się na środku bloku;
+- do kroku 18 schody rysuje stary tileset, czyli 4 małe schodki.
+
+**Testy: +30, razem 499.**
+- **`FloorDressing` (22):**
+  - pasma odległości, grupy masek 11, 14, 13, 7 i 4 narożniki;
+  - ściany i bazy dokładnie na właściwych kaflach;
+  - warstwa nad postaciami;
+  - cienie;
+  - zakaz powtórzeń baz;
+  - kompletne, także odbite, wzory 2×2;
+  - nakładki poza strefą wolną;
+  - kurz od strony muru;
+  - długie pęknięcia;
+  - umiarkowana gęstość na wygenerowanych piętrach;
+  - schody i kraty z orientacją;
+  - determinizm (inny seed = inna podłoga);
+  - dane piętra nietknięte;
+  - klatki istnieją, a odbite są tylko kafle z `flipX`;
+  - konfiguracja wskazuje istniejące grupy;
+  - czytelne błędy przy niezgodnym arkuszu.
+- **Pozostałe:**
+  - `stairs` (3);
+  - generator: 4 kafle schodów w arenie i wyśrodkowanie;
+  - architektura: +4 czyste pliki.
+- **Pomocniki:**
+  - `floorFromAscii` rozumie `S` (schody) i `@` (spawn);
+  - `tests/helpers/tileset.ts` wczytuje arkusz;
+  - test arkusza używa typu z `core/`.
+- **Testy mutacyjne (ręcznie, kod przywrócony):** każde z 5 celowych uszkodzeń wywraca właściwy test:
+  - wyłączony zakaz powtórzeń baz;
+  - zła maska `overhead`;
+  - kraty bez strefy wolnej;
+  - zły bit narożnika;
+  - odbicie wzoru 2×2 bez zamiany części.
+
+**Weryfikacja w grze (port 5174):**
+- schody to 4 kafle `StairsLocked` w arenie 11×11, a boss stoi dokładnie na środku bloku (1152, 320);
+- po odblokowaniu wszystkie 4 kafle są otwarte;
+- wejście na prawy dolny kafel bloku przenosi na piętro 2;
+- brak błędów w konsoli.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
@@ -902,9 +987,12 @@ Złota przybywa o +20% na każde piętro.
 - **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
 - **Grafika (kroki 13, 15, 16):** gracz, Rusher, mag i boss mają sprite'y. Arkusz kafli jest gotowy (krok 16), ale gra go jeszcze nie ładuje. Brakuje: łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
 - **Plan warstwy wizualnej (zatwierdzony):**
-  - **Krok 17:** czysty `dungeon/FloorDressing.ts` (+ `PURE_FILES`, `config/dressingConfig.ts`): warstwy z `DungeonFloor` i JSON-a, własny strumień RNG, testy. Generator pięter rezerwuje 2×2 na schody.
+  - **Krok 17 (zrobiony):** czysty `FloorDressing` i schody 2×2.
   - **Krok 18:**
-    - wielowarstwowy `DungeonView` (głębokości w `config/renderLayers.ts`), ładowanie arkusza w `BootScene`, krata i schody 2×2 z arkusza;
+    - wielowarstwowy `DungeonView` (głębokości w `config/renderLayers.ts`), ładowanie arkusza i JSON-a w `BootScene`;
+    - `dressFloor` z solą `DRESSING_SEED_SALT` w `GameScene`;
+    - krata (3 stany) i schody 2×2 z arkusza;
+    - kolizja ścian na osobnej, niewidocznej warstwie logicznej;
     - zoom 2,0 (także skalowanie płótna całkowitymi krotnościami);
     - dostosowanie zasięgu i aggro Kiterów do mniejszego pola widzenia.
   - **Krok 19 (P1):**

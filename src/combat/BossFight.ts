@@ -4,12 +4,14 @@ import type { DungeonFloor, Room } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
+import { TILE_SIZE } from '@/config/gameConfig';
 import { FLOOR_GUARDIAN, scaleBossForFloor } from '@/config/bossConfig';
 import { BOSS_PROJECTILE_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { isHitByAreaStrike } from '@/ai/bossAttacks';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
+import { stairsCenter } from '@/dungeon/stairs';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import { Boss } from '@/entities/Boss';
 import type { Player } from '@/entities/Player';
@@ -76,7 +78,8 @@ export class BossFight {
     this.arena = arena;
 
     const definition = scaleBossForFloor(FLOOR_GUARDIAN, deps.floorNumber, ENEMY_SCALING);
-    const spawn = DungeonView.tileToWorldCenter(deps.floor.stairs);
+    const center = stairsCenter(deps.floor);
+    const spawn = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };
     const rng = createRng(deriveSeed(deps.floor.seed, BOSS_SEED_SALT));
     const boss = new Boss(deps.scene, spawn.x, spawn.y, definition, rng);
     this.boss = boss;
