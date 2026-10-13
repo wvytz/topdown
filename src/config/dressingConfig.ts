@@ -3,6 +3,8 @@
  * Czysto wizualne — nie wpływa na kolizje, linię wzroku ani zasady gry.
  */
 
+export type CombatDecalKind = 'splat' | 'scorch' | 'slime';
+
 export interface FloorDressingConfig {
   /** Szansa na wzór podłogi 2×2 w każdym wolnym bloku 2×2 (przełamuje siatkę 32 px). */
   readonly macroChance: number;
@@ -25,6 +27,16 @@ export interface FloorDressingConfig {
   readonly clearRadius: number;
   readonly floorGroup: string;
   readonly floorMacroGroup: string;
+  /** Baza podłogi korytarzy (poza prostokątami pokojów). */
+  readonly corridorGroup: string;
+  /** Detal na licu muru (prosty odcinek górnej ściany): szansa i grupa. */
+  readonly wallFace: { readonly chance: number; readonly group: string };
+  /** Łuk nad przejściem szerokości 2 w górnej i dolnej ścianie pokoju (nie nad kratami areny). */
+  readonly archGroup: string;
+  /** Pajęczyny w górnych narożnikach pokojów. */
+  readonly cobweb: { readonly chance: number; readonly nwGroup: string; readonly neGroup: string };
+  /** Trwałe ślady walki: pojemność puli (FIFO) i grupy kafli. */
+  readonly combatDecals: { readonly capacity: number; readonly groups: Readonly<Record<CombatDecalKind, string>> };
   readonly stairsTiles: { readonly locked: string; readonly open: string };
   readonly gateTiles: Readonly<Record<'h' | 'v', Readonly<Record<'open' | 'half' | 'closed', string>>>>;
 }
@@ -37,8 +49,9 @@ export const FLOOR_DRESSING: FloorDressingConfig = {
     'decal.crack': 4,
     'decal.debris': 2,
     'decal.stain': 1.5,
-    'decal.broken': 1,
-    'decal.rubble': 0.5,
+    // Wyłomy i gruz −60% (krok 19b): ciemne dziury dominowały pokój.
+    'decal.broken': 0.4,
+    'decal.rubble': 0.2,
   },
   longCrackChance: 0.012,
   longCrackGroup: 'decal.crackLong',
@@ -50,6 +63,11 @@ export const FLOOR_DRESSING: FloorDressingConfig = {
   clearRadius: 1,
   floorGroup: 'floor',
   floorMacroGroup: 'floorMacro',
+  corridorGroup: 'floorCobble',
+  wallFace: { chance: 0.1, group: 'wallFace' },
+  archGroup: 'overhead.arch',
+  cobweb: { chance: 0.35, nwGroup: 'overhead.cobwebNW', neGroup: 'overhead.cobwebNE' },
+  combatDecals: { capacity: 180, groups: { splat: 'combat.splat', scorch: 'combat.scorch', slime: 'combat.slime' } },
   stairsTiles: { locked: 'stairs_sealed_2x2', open: 'stairs_open_2x2' },
   gateTiles: {
     h: { open: 'gate_h_open', half: 'gate_h_half', closed: 'gate_h_closed' },

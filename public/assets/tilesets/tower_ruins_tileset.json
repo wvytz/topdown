@@ -5,7 +5,7 @@
  "image": "tower_ruins_tileset.png",
  "tileSize": 32,
  "columns": 16,
- "rows": 8,
+ "rows": 9,
  "envShadowAlpha": 0.4,
  "tiles": {
   "floor_slab16_a": {
@@ -899,69 +899,79 @@
    "h": 1,
    "layer": "wallDecor"
   },
-  "torch_flame_0": {
+  "floor_cobble_a": {
    "frame": 104,
    "col": 8,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "fx"
+   "layer": "floorBase",
+   "weight": 1,
+   "flipX": true
   },
-  "torch_flame_1": {
+  "floor_cobble_b": {
    "frame": 105,
    "col": 9,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "fx"
+   "layer": "floorBase",
+   "weight": 1,
+   "flipX": true
   },
-  "torch_flame_2": {
+  "floor_cobble_c": {
    "frame": 106,
    "col": 10,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "fx"
+   "layer": "floorBase",
+   "weight": 1,
+   "flipX": true
   },
-  "torch_flame_3": {
+  "face_banner": {
    "frame": 107,
    "col": 11,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "fx"
+   "layer": "wallDecor",
+   "weight": 2
   },
-  "pillar": {
+  "face_grate": {
    "frame": 108,
    "col": 12,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "wallDecor",
+   "weight": 2
   },
-  "pillar_cracked": {
+  "face_alcove": {
    "frame": 109,
    "col": 13,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "wallDecor",
+   "weight": 1
   },
-  "pillar_stump": {
+  "face_brick": {
    "frame": 110,
    "col": 14,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "wallDecor",
+   "weight": 3
   },
-  "fallen_pillar_2x1": {
+  "arch_2x1": {
    "frame": 119,
    "col": 7,
    "row": 7,
    "w": 2,
    "h": 1,
-   "layer": "prop",
+   "layer": "overheadDecor",
    "frames": [
     [
      119,
@@ -969,26 +979,172 @@
     ]
    ]
   },
-  "rubble_a": {
+  "cobweb_nw": {
    "frame": 111,
    "col": 15,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "overheadDecor"
   },
-  "rubble_b": {
+  "cobweb_ne": {
    "frame": 112,
    "col": 0,
    "row": 7,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "overheadDecor"
   },
-  "bones": {
+  "combat_splat_a": {
    "frame": 121,
    "col": 9,
    "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_splat_b": {
+   "frame": 122,
+   "col": 10,
+   "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_scorch_a": {
+   "frame": 123,
+   "col": 11,
+   "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_scorch_b": {
+   "frame": 124,
+   "col": 12,
+   "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_slime_a": {
+   "frame": 125,
+   "col": 13,
+   "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_slime_b": {
+   "frame": 126,
+   "col": 14,
+   "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "torch_flame_0": {
+   "frame": 127,
+   "col": 15,
+   "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "fx"
+  },
+  "torch_flame_1": {
+   "frame": 128,
+   "col": 0,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "fx"
+  },
+  "torch_flame_2": {
+   "frame": 129,
+   "col": 1,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "fx"
+  },
+  "torch_flame_3": {
+   "frame": 130,
+   "col": 2,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "fx"
+  },
+  "pillar": {
+   "frame": 131,
+   "col": 3,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "pillar_cracked": {
+   "frame": 132,
+   "col": 4,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "pillar_stump": {
+   "frame": 133,
+   "col": 5,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "fallen_pillar_2x1": {
+   "frame": 134,
+   "col": 6,
+   "row": 8,
+   "w": 2,
+   "h": 1,
+   "layer": "prop",
+   "frames": [
+    [
+     134,
+     135
+    ]
+   ]
+  },
+  "rubble_a": {
+   "frame": 136,
+   "col": 8,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "rubble_b": {
+   "frame": 137,
+   "col": 9,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "bones": {
+   "frame": 138,
+   "col": 10,
+   "row": 8,
    "w": 1,
    "h": 1,
    "layer": "prop"
@@ -1152,6 +1308,38 @@
   ],
   "torchSconce": [
    "torch_sconce"
+  ],
+  "floorCobble": [
+   "floor_cobble_a",
+   "floor_cobble_b",
+   "floor_cobble_c"
+  ],
+  "wallFace": [
+   "face_banner",
+   "face_grate",
+   "face_alcove",
+   "face_brick"
+  ],
+  "overhead.arch": [
+   "arch_2x1"
+  ],
+  "overhead.cobwebNW": [
+   "cobweb_nw"
+  ],
+  "overhead.cobwebNE": [
+   "cobweb_ne"
+  ],
+  "combat.splat": [
+   "combat_splat_a",
+   "combat_splat_b"
+  ],
+  "combat.scorch": [
+   "combat_scorch_a",
+   "combat_scorch_b"
+  ],
+  "combat.slime": [
+   "combat_slime_a",
+   "combat_slime_b"
   ],
   "torchFlame": [
    "torch_flame_0",

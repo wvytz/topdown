@@ -7,6 +7,8 @@ export const RENDER_DEPTH = {
   floorBase: 0,
   floorDecal: 0.5,
   floorFeature: 1,
+  /** Trwałe ślady walki: nad nakładkami i schodami, pod cieniami (mur nadal je przyciemnia). */
+  combatDecal: 1.5,
   envShadow: 2,
   /** Cień pod chodzącą postacią (rysowany przez silnik, STYLEGUIDE §6). */
   actorShadow: 2.5,
@@ -32,6 +34,8 @@ export const RENDER_DEPTH = {
 
   /** Mury z podłogą od północy (kopie z warstwy ścian): postać stoi „za” nimi. */
   overhead: 13,
+  /** Łuki nad przejściami i pajęczyny — dekoracje nad postaciami, bez kolizji. */
+  overheadDecor: 13.2,
   /** Pyłki w powietrzu: pod warstwą mroku (gasną na krawędziach), pod poświatą pochodni. */
   motes: 14,
   /** Warstwa mroku i świateł (LightingOverlay); przy modyfikatorze „Mrok” prawie nieprzezroczysta. */

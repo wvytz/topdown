@@ -4,7 +4,7 @@ import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
 import { FLOOR_DRESSING } from '@/config/dressingConfig';
-import type { DressedFloor, DressedLayer } from '@/dungeon/FloorDressing';
+import type { DressedFloor, DressedLayer, DressingExtras } from '@/dungeon/FloorDressing';
 import { EMPTY_TILE, dressFloor, gateOrientation, wallDistances } from '@/dungeon/FloorDressing';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
 import { isStairsTile, stairsTiles } from '@/dungeon/stairs';
@@ -15,18 +15,44 @@ const TILESET = loadTileset();
 const SEED = 1234;
 
 /** Pokój 4×4 otoczony murem grubości 3 — do sprawdzania masek, pasm i cieni kafel po kaflu. */
-const BOX = floorFromAscii([
-  '##########',
-  '##########',
-  '##########',
-  '###....###',
-  '###....###',
-  '###....###',
-  '###....###',
-  '##########',
-  '##########',
-  '##########',
-]);
+const BOX = floorFromAscii(
+  [
+    '##########',
+    '##########',
+    '##########',
+    '###....###',
+    '###....###',
+    '###....###',
+    '###....###',
+    '##########',
+    '##########',
+    '##########',
+  ],
+  [room(0, 3, 3, 4, 4, RoomKind.Normal)],
+);
+
+/**
+ * Sala z przejściami: od północy szerokości 2 (łuk), od południa szerokości 3 (bez łuku),
+ * korytarz na zachód; pokój to prostokąt x 2–11, y 3–6. Bez areny bossa (brak krat na wejściach).
+ */
+const HALLS: DungeonFloor = {
+  ...floorFromAscii(
+    [
+      '##############',
+      '####..########',
+      '####..########',
+      '##..........##',
+      '............##',
+      '............##',
+      '##..........##',
+      '#######...####',
+      '#######...####',
+      '##############',
+    ],
+    [room(0, 2, 3, 10, 4, RoomKind.Normal)],
+  ),
+  bossRoomId: -1,
+};
 
 /** Arena z wejściem od północy (korytarz 2 kafle) i od zachodu, spawn w korytarzu. */
 const ARENA = floorFromAscii(
@@ -47,8 +73,8 @@ const at = (layer: DressedLayer, x: number, y: number) => layer.frames[y * layer
 const flippedAt = (layer: DressedLayer, x: number, y: number) => layer.flipX[y * layer.width + x] === 1;
 const frameOf = (name: string) => TILESET.tiles[name]!.frame;
 const groupFrames = (group: string) => new Set(TILESET.groups[group]!.map(frameOf));
-const dress = (floor: DungeonFloor, config: FloorDressingConfig = FLOOR_DRESSING, seed = SEED) =>
-  dressFloor(floor, TILESET, config, seed);
+const dress = (floor: DungeonFloor, config: FloorDressingConfig = FLOOR_DRESSING, seed = SEED, extras: DressingExtras = {}) =>
+  dressFloor(floor, TILESET, config, seed, extras);
 
 const NO_DECALS: FloorDressingConfig = {
   ...FLOOR_DRESSING,
@@ -369,5 +395,104 @@ describe('FloorDressing — determinizm i poprawność danych', () => {
     expect(() => dressFloor(BOX, wrongBits, FLOOR_DRESSING, SEED)).toThrow(/bit S/);
     const noFloor: TilesetMeta = { ...TILESET, groups: { ...TILESET.groups, floor: [] } };
     expect(() => dressFloor(BOX, noFloor, FLOOR_DRESSING, SEED)).toThrow(/grupy „floor”/);
+  });
+});
+
+describe('FloorDressing — krok 19b: bruk, lico, łuki, pajęczyny', () => {
+  const cobble = groupFrames(FLOOR_DRESSING.corridorGroup);
+  const slabs = new Set([...groupFrames(FLOOR_DRESSING.floorGroup), ...groupFrames(FLOOR_DRESSING.floorMacroGroup)]);
+  const noCobwebs: FloorDressingConfig = { ...FLOOR_DRESSING, cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0 } };
+  const allCobwebs: FloorDressingConfig = { ...FLOOR_DRESSING, cobweb: { ...FLOOR_DRESSING.cobweb, chance: 1 } };
+
+  it('korytarze (poza pokojami) mają bruk, pokoje płyty', () => {
+    const d = dress(HALLS);
+    const r = HALLS.rooms[0]!;
+    for (let y = 0; y < HALLS.height; y++) {
+      for (let x = 0; x < HALLS.width; x++) {
+        if (HALLS.tiles[y * HALLS.width + x] === TileType.Wall) continue;
+        const inside = x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height;
+        expect((inside ? slabs : cobble).has(at(d.floorBase, x, y)), `(${x},${y})`).toBe(true);
+      }
+    }
+  });
+
+  it('łuk tylko nad przejściem szerokości 2 (północ), nie nad szerokim (południe) ani bocznym', () => {
+    const arch = TILESET.tiles.arch_2x1!;
+    const d = dress(HALLS, noCobwebs);
+    expect(at(d.overheadDecor, 4, 2)).toBe(arch.frames![0]![0]);
+    expect(at(d.overheadDecor, 5, 2)).toBe(arch.frames![0]![1]);
+    const decorated: string[] = [];
+    d.overheadDecor.frames.forEach((f, i) => {
+      if (f !== EMPTY_TILE) decorated.push(`${i % HALLS.width},${Math.floor(i / HALLS.width)}`);
+    });
+    expect(decorated.sort()).toEqual(['4,2', '5,2']);
+  });
+
+  it('łuki i pajęczyny leżą wyłącznie nad podłogą — nigdy na ścianie (bez kolizji)', () => {
+    for (const floor of [HALLS, ...sampleFloors([1, 5], 4)]) {
+      const d = dress(floor, allCobwebs);
+      d.overheadDecor.frames.forEach((f, i) => {
+        if (f !== EMPTY_TILE) expect(floor.tiles[i], `kafel ${i}`).not.toBe(TileType.Wall);
+      });
+    }
+  });
+
+  it('bez łuków nad kratami areny (nadproże zasłoniłoby pręty)', () => {
+    const arena = floorFromAscii(
+      ['##########', '####..####', '##......##', '##......##', '##########'],
+      [room(0, 2, 2, 6, 2, RoomKind.Boss)],
+    );
+    const d = dress(arena);
+    expect(d.gates.map((g) => `${g.x},${g.y}`).sort()).toEqual(['4,1', '5,1']);
+    expect(at(d.overheadDecor, 4, 1)).toBe(EMPTY_TILE);
+    expect(at(d.overheadDecor, 5, 1)).toBe(EMPTY_TILE);
+  });
+
+  it('pajęczyny w górnych narożnikach pokoju (przy szansie 1)', () => {
+    const d = dress(BOX, allCobwebs);
+    expect(at(d.overheadDecor, 3, 3)).toBe(frameOf('cobweb_nw'));
+    expect(at(d.overheadDecor, 6, 3)).toBe(frameOf('cobweb_ne'));
+    expect(at(d.overheadDecor, 3, 6)).toBe(EMPTY_TILE);
+  });
+
+  it('detale lica: tylko proste odcinki górnej ściany, nigdy na pochodni ani obok niej', () => {
+    const everywhere: FloorDressingConfig = { ...FLOOR_DRESSING, wallFace: { ...FLOOR_DRESSING.wallFace, chance: 1 } };
+    const d = dress(HALLS, everywhere, SEED, { torches: [{ x: 8, y: 2 }] });
+    const faces = groupFrames(FLOOR_DRESSING.wallFace.group);
+    const wall = (x: number, y: number) =>
+      x < 0 || y < 0 || x >= HALLS.width || y >= HALLS.height || HALLS.tiles[y * HALLS.width + x] === TileType.Wall;
+    const roomTopWall: number[] = [];
+    d.wallDecor.frames.forEach((f, i) => {
+      if (f === EMPTY_TILE) return;
+      const x = i % HALLS.width;
+      const y = Math.floor(i / HALLS.width);
+      expect(faces.has(f)).toBe(true);
+      // Reguła: prosty odcinek muru (mur z północy, wschodu i zachodu), pod spodem podłoga, z dala od pochodni.
+      expect(wall(x, y) && wall(x, y - 1) && wall(x - 1, y) && wall(x + 1, y), `(${x},${y})`).toBe(true);
+      expect(HALLS.tiles[(y + 1) * HALLS.width + x]).toBe(TileType.Floor);
+      expect(y === 2 && Math.abs(x - 8) <= 1, `(${x},${y}) przy pochodni`).toBe(false);
+      if (y === 2) roomTopWall.push(x);
+    });
+    // Górna ściana pokoju: lico nad podłogą mają kolumny 2–3 i 6–11; 3 i 6 sąsiadują z przejściem
+    // (mur nie ciągnie się w bok), 7–9 to pochodnia i jej sąsiedzi.
+    expect(roomTopWall).toEqual([2, 10, 11]);
+  });
+
+  it('wyłomy i gruz to najwyżej 10% wagi zwykłych nakładek (−60% w kroku 19b)', () => {
+    const weights = FLOOR_DRESSING.decalGroupWeights;
+    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    const heavy = (weights['decal.broken'] ?? 0) + (weights['decal.rubble'] ?? 0);
+    expect(heavy / total).toBeLessThanOrEqual(0.1);
+  });
+
+  it('nowe grupy z konfiguracji istnieją; łuki i pajęczyny w warstwie overheadDecor, detale lica w wallDecor', () => {
+    const { corridorGroup, wallFace, archGroup, cobweb, combatDecals } = FLOOR_DRESSING;
+    for (const g of [corridorGroup, wallFace.group, archGroup, cobweb.nwGroup, cobweb.neGroup, ...Object.values(combatDecals.groups)]) {
+      expect(TILESET.groups, g).toHaveProperty(g);
+    }
+    for (const g of [archGroup, cobweb.nwGroup, cobweb.neGroup]) {
+      for (const name of TILESET.groups[g]!) expect(TILESET.tiles[name]!.layer, name).toBe('overheadDecor');
+    }
+    for (const name of TILESET.groups[wallFace.group]!) expect(TILESET.tiles[name]!.layer).toBe('wallDecor');
   });
 });

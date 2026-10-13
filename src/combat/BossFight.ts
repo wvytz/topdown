@@ -13,6 +13,7 @@ import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { stairsCenter } from '@/dungeon/stairs';
 import type { CombatEffects } from '@/effects/CombatEffects';
+import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
 import type { Player } from '@/entities/Player';
 import { knockbackFrom } from '@/systems/CombatMath';
@@ -32,6 +33,8 @@ export interface BossFightDeps {
   readonly player: Player;
   readonly projectiles: ProjectileManager;
   readonly effects: CombatEffects;
+  /** Trwałe ślady walki: przypalenie po uderzeniu obszarowym, szlam po śmierci bossa. */
+  readonly decals: CombatDecals;
   readonly onPlayerHit: () => void;
   /** Wywoływane po pokonaniu bossa, z miejscem jego śmierci (tam wypadają łupy). */
   readonly onDefeated: (position: Vector2) => void;
@@ -179,6 +182,7 @@ export class BossFight {
       }
       gfx.destroy();
       effects.impact(strike.center.x, strike.center.y, strike.radius);
+      this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       if (isHitByAreaStrike(strike, player, player.radius)) {
         const hit = { damage: strike.damage, knockback: knockbackFrom(strike.center, player, strike.knockback) };
         if (player.takeHit(hit, now)) onPlayerHit();
@@ -204,6 +208,7 @@ export class BossFight {
           knockback: burst.knockback,
           lifetimeMs: burst.lifetimeMs,
           visual: BOSS_GLOB,
+          impactDecal: 'slime',
         });
       }
       return false;
@@ -214,6 +219,7 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
+    this.deps.decals.add('slime', boss.x, boss.y);
     for (const pending of [...this.strikes, ...this.bursts]) pending.gfx.destroy();
     this.strikes = [];
     this.bursts = [];

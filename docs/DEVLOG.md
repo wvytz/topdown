@@ -1181,6 +1181,79 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 19b — Ślady walki, bruk, detale lica, łuki i pajęczyny
+
+**Zlecenie właściciela:** krótki plan techniczny, potem wdrożenie. Commit kroku 19a wypchnięty jako `878100b`.
+
+**Wymagania właściciela i jak je spełniliśmy:**
+1. **Trwałe ślady walki w buforze kołowym FIFO** (150–200), na własnej głębokości: nad `floorDecal`, pod cieniami postaci.
+   - Czysty `systems/RingBuffer.ts`: `push` zwraca wypchnięty element, do tego `isFull` i `oldest`.
+   - `effects/CombatDecals.ts`: pula 180 obrazków; po zapełnieniu najstarszy jest używany ponownie (nowa klatka, pozycja i odbicie), więc w trakcie walki nic nie powstaje ani nie znika.
+   - Ślady tylko na podłodze, nigdy na ścianie.
+   - Głębokość `combatDecal` = 1,5: nad nakładkami (0,5) i schodami (1), pod cieniami środowiska (2), więc mur nadal je przyciemnia, i pod cieniami postaci (2,5).
+2. **Wyłomy −60%:** `decal.broken` 1 → 0,4 i `decal.rubble` 0,5 → 0,2. Test pilnuje, żeby ich łączny udział w wagach nakładek był ≤ 10%.
+3. **Łuki i pajęczyny tylko nad postaciami, bez kolizji:**
+   - w generatorze mają warstwę `overheadDecor`;
+   - FloorDressing oddaje osobną warstwę `overheadDecor` (głębokość 13,2) i kładzie ją wyłącznie na kaflach podłogi;
+   - kolizję `DungeonView` buduje tylko z `floor.tiles`.
+   - **Łuk:** nad przejściem dokładnie 2 kafle szerokim w górnej lub dolnej ścianie pokoju. Nie nad kratami areny, bo nadproże zasłoniłoby pręty.
+   - **Pajęczyna:** w górnym narożniku pokoju z murem z dwóch stron, szansa 35%.
+4. **Nowe kafle w palecie C:** bruk (3), detale lica (4), łuk 2×1, pajęczyny (2), ślady walki (3 rodzaje po 2). Arkusz ma 120 kafli w siatce 16×9.
+
+**Generator:**
+- **`cobble`:** kamienie w siatce 8 px (krawędzie kafla zawsze w fudze, więc bez szwów), ta sama rampa co płyty.
+- **`face_detail`:** sztandar (spływa przez krawędź muru), kratka odpływu, wnęka ze świecą, wypadnięta cegła.
+- **`arch`:** wierzch muru i lico z łukową dolną krawędzią.
+- **`cobweb`:** nici z narożnika, bez wypełnienia.
+- **`combat_mark`:**
+  - plama: rampa plam;
+  - przypalenie: sadza z rampy błota (pierwsza wersja w chłodnej szczelinie podłogi wyglądała jak niebieski pająk);
+  - szlam: rampa `SLIME` ze STYLEGUIDE §4.5, z obrysem najciemniejszym tonem.
+
+**FloorDressing:**
+- `dressFloor(…, extras)` przyjmuje `torches`: detal lica nigdy nie trafi na kafel z uchwytem pochodni ani obok niego. `GameScene` planuje pochodnie przed dekorowaniem.
+- Korytarze (podłoga poza prostokątami pokojów) dostają bruk. Wzory 2×2 tylko w pokojach.
+- Nowe warstwy: `wallDecor` (detale lica na prostych odcinkach muru z licem nad podłogą, także na ślepych końcach korytarzy) i `overheadDecor`.
+
+**Podpięcie śladów:**
+- `EnemyManager.kill`: plama;
+- `BossFight`: przypalenie po uderzeniu obszarowym, szlam po śmierci bossa;
+- `ProjectileManager`: pocisk z `impactDecal` zostawia ślad po zderzeniu ze ścianą albo wygaśnięciu, nie przy trafieniu gracza. Kule Novy bossa dostały `impactDecal: 'slime'`.
+
+**Testy: +50, razem 603.**
+- **`RingBuffer` (5):** do zapełnienia nic nie wypycha; FIFO; długi przebieg (1000 → zostaje 180 najnowszych); recykling najstarszego jako najnowszego; walidacja pojemności.
+- **FloorDressing (8):**
+  - bruk w korytarzach i płyty w pokojach;
+  - łuk tylko nad przejściem szerokości 2, nie nad szerokim ani bocznym;
+  - łuki i pajęczyny nigdy na ścianie;
+  - bez łuków nad kratami;
+  - pajęczyny w narożnikach;
+  - detale lica: reguła na każdym kafelku, dokładne kolumny i pominięcie pochodni;
+  - udział wyłomów ≤ 10%;
+  - nowe grupy istnieją, warstwy kafli `overheadDecor` i `wallDecor`.
+- **Czytelność WCAG na bruku (4):** każda postać spełnia progi także na bruku.
+- **Pozostałe:**
+  - testy per kafel dla 16 nowych kafli (+32);
+  - architektura +1;
+  - `flipX` dozwolony także dla śladów walki.
+- **Mapy testowe:** `BOX` ma teraz pokój. Nowa mapa `HALLS` (bez areny) ma wejścia szerokości 2 i 3 oraz korytarz.
+
+**Weryfikacja w grze** (port 5174, okno 1600×900, seed 11, piętro 1):
+- **Warstwy:** `wallDecor` 4 kafle (3,2), `overheadDecor` 14 kafli (13,2), wszystkie na podłodze i żaden w warstwie kolizji.
+- **Recykling puli:**
+  - 400 śladów → dokładnie 180 obiektów utworzonych i 220 ponownych użyć;
+  - lista obiektów sceny urosła tylko o 180;
+  - ślad na ścianie odrzucony;
+  - śmierć wroga (prawdziwe zdarzenie) użyła ponownie najstarszego śladu.
+- **Zrzuty:**
+  - pokój przy pełnej puli (180 śladów, test obciążeniowy);
+  - wejście do pokoju startowego: brukowany korytarz, łuk nad przejściem przykrywający górę gracza, dwie pochodnie, pajęczyny w obu górnych narożnikach;
+  - powiększenie płótna 4×: ostre kamienie bruku i krzywizna łuku.
+- **Wydajność przy pełnej puli:** krok gry 0,4 ms (mediana) i 0,6 ms (p95), wobec 0,3 i 0,5 ms w 19a.
+- Brak nowych błędów w konsoli; dwa stare wpisy z HMR pochodzą z kroku 18.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
@@ -1195,11 +1268,9 @@ Złota przybywa o +20% na każde piętro.
     - czy reguła widoku nie zmieniła odczuwalnie trudności z Kiterami;
     - czy martwa strefa 60×45 jest wygodna.
   - **Krok 19a (zrobiony):** mrok z winietą, pochodnie, pyłki, cienie postaci.
-  - **Krok 19b:**
-    - trwałe ślady walki (pula sprite'ów z limitem);
-    - detale na licu ściany (sztandar, kratka, wnęka);
-    - nadproża łuków i pajęczyny nad postaciami;
-    - bruk w korytarzach;
-    - przegląd częstości wyłomów w podłodze (ciemne „dziury” są dość krzykliwe).
+  - **Krok 19b (zrobiony):** ślady walki, bruk, detale lica, łuki i pajęczyny, mniej wyłomów.
+  - **Do oceny właściciela po testach:**
+    - gęstość detali lica (10%) i pajęczyn (35%);
+    - czy ślady po kulach Novy (12 naraz) nie są zbyt gęste w arenie.
   - **Później, za zgodą:** kolidujące rekwizyty, ozdobna obwódka areny, sprite kapliczki, przejścia materiałów (dual-grid).
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

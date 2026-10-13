@@ -5,6 +5,8 @@ import { Projectile } from '@/entities/Projectile';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { knockbackFrom, normalize } from '@/systems/CombatMath';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import type { CombatDecalKind } from '@/config/dressingConfig';
+import type { CombatDecals } from '@/effects/CombatDecals';
 
 export interface ProjectileSpec {
   readonly origin: Vector2;
@@ -16,22 +18,27 @@ export interface ProjectileSpec {
   readonly lifetimeMs: number;
   /** Wygląd z arkusza sprite'ów (np. kula maga); brak = domyślny pomarańczowy pocisk. */
   readonly visual?: { readonly texture: string; readonly animation: string };
+  /** Ślad na podłodze, gdy pocisk rozbije się o ścianę albo wygaśnie (np. szlam bossa). */
+  readonly impactDecal?: CombatDecalKind;
 }
 
 /** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
 export class ProjectileManager {
   private readonly group: Phaser.Physics.Arcade.Group;
+  /** Ślady zostawiane przez pociski (pocisk → rodzaj śladu); tylko pociski z `impactDecal`. */
+  private readonly impactDecals = new WeakMap<Projectile, CombatDecalKind>();
 
   constructor(
     private readonly scene: Phaser.Scene,
     walls: Phaser.Tilemaps.TilemapLayer,
     private readonly player: Player,
     private readonly onPlayerHit: () => void,
+    private readonly decals?: CombatDecals,
   ) {
     this.group = scene.physics.add.group({ classType: Projectile });
 
     scene.physics.add.collider(this.group, walls, (projectile) => {
-      if (projectile instanceof Projectile) projectile.destroy();
+      if (projectile instanceof Projectile) this.splash(projectile);
     });
     scene.physics.add.overlap(player, this.group, (_player, projectile) => {
       if (projectile instanceof Projectile) this.handlePlayerOverlap(projectile);
@@ -49,14 +56,22 @@ export class ProjectileManager {
     // Ciało zawsze o promieniu PROJECTILE_RADIUS, wyśrodkowane w klatce (kula maga ma 16×16).
     projectile.setCircle(PROJECTILE_RADIUS, projectile.width / 2 - PROJECTILE_RADIUS, projectile.height / 2 - PROJECTILE_RADIUS);
     if (spec.visual) projectile.play(spec.visual.animation);
+    if (spec.impactDecal) this.impactDecals.set(projectile, spec.impactDecal);
     const dir = normalize(spec.direction);
     projectile.setVelocity(dir.x * spec.speed, dir.y * spec.speed);
   }
 
   update(now: number): void {
     for (const child of this.group.getChildren()) {
-      if (child instanceof Projectile && now >= child.expiresAt) child.destroy();
+      if (child instanceof Projectile && now >= child.expiresAt) this.splash(child);
     }
+  }
+
+  /** Koniec lotu (ściana albo wygaśnięcie): ślad na podłodze, jeśli pocisk go zostawia. */
+  private splash(projectile: Projectile): void {
+    const kind = this.impactDecals.get(projectile);
+    if (kind) this.decals?.add(kind, projectile.x, projectile.y);
+    projectile.destroy();
   }
 
   private handlePlayerOverlap(projectile: Projectile): void {

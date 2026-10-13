@@ -7,6 +7,7 @@ import type { FloorDressingConfig } from '@/config/dressingConfig';
 import { STAIRS_SIZE } from '@/config/gameConfig';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
 import { isStairsTile } from '@/dungeon/stairs';
+import { roomContainsTile } from '@/dungeon/rooms';
 
 /** Brak kafla w warstwie. */
 export const EMPTY_TILE = -1;
@@ -42,8 +43,10 @@ export interface DressedStairs {
 
 /**
  * Wynik dekorowania piętra. Kolejność rysowania (od dołu): floorBase, floorDecal, floorFeature,
- * envShadow, walls, [postacie], overhead. `walls` zawiera wszystkie ściany; `overhead` to kopie ścian
- * z podłogą od północy, rysowane drugi raz nad postaciami (postać stoi „za” takim murem).
+ * envShadow, walls, wallDecor, [postacie], overhead, overheadDecor. `walls` zawiera wszystkie ściany;
+ * `overhead` to kopie ścian z podłogą od północy, rysowane drugi raz nad postaciami (postać stoi „za”
+ * takim murem). `overheadDecor` (łuki, pajęczyny) leży tylko nad kaflami podłogi i nie ma kolizji —
+ * kolizję buduje się wyłącznie z danych piętra.
  */
 export interface DressedFloor {
   readonly floorBase: DressedLayer;
@@ -51,7 +54,10 @@ export interface DressedFloor {
   readonly floorFeature: DressedLayer;
   readonly envShadow: DressedLayer;
   readonly walls: DressedLayer;
+  /** Detale na licach murów (sztandary, kratki, wnęki). */
+  readonly wallDecor: DressedLayer;
   readonly overhead: DressedLayer;
+  readonly overheadDecor: DressedLayer;
   readonly stairs: DressedStairs;
   readonly gates: readonly DressedGate[];
 }
@@ -102,9 +108,16 @@ class LayerBuilder {
   }
 }
 
+/** Dane spoza piętra, które dekorowanie musi uszanować. */
+export interface DressingExtras {
+  /** Kafle muru z uchwytem pochodni (LightPlanner) — bez detali lica w tym miejscu i obok. */
+  readonly torches?: readonly TilePoint[];
+}
+
 /**
- * Dekoruje piętro kaflami z arkusza: warianty podłogi i ścian, nakładki, cienie, schody, kraty.
- * Czysta funkcja: ten sam (piętro, arkusz, konfiguracja, seed) daje ten sam wynik.
+ * Dekoruje piętro kaflami z arkusza: warianty podłogi i ścian, nakładki, cienie, schody, kraty,
+ * detale lica, łuki i pajęczyny.
+ * Czysta funkcja: ten sam (piętro, arkusz, konfiguracja, seed, extras) daje ten sam wynik.
  * Losuje z własnego strumienia RNG (seed podaje wywołujący, z własną solą) — nie rusza zasad gry.
  */
 export function dressFloor(
@@ -112,6 +125,7 @@ export function dressFloor(
   tileset: TilesetMeta,
   config: FloorDressingConfig,
   seed: number,
+  extras: DressingExtras = {},
 ): DressedFloor {
   assertBits(tileset);
   const rng = createRng(seed);
@@ -123,18 +137,23 @@ export function dressFloor(
   const floorFeature = new LayerBuilder(width, height);
   const envShadow = new LayerBuilder(width, height);
   const walls = new LayerBuilder(width, height);
+  const wallDecor = new LayerBuilder(width, height);
   const overhead = new LayerBuilder(width, height);
+  const overheadDecor = new LayerBuilder(width, height);
 
   const gates = dressGates(ctx);
   const gateSet = new Set(gates.map((g) => g.y * width + g.x));
   const isPlain = (x: number, y: number) =>
     ctx.inBounds(x, y) && floor.tiles[y * width + x] === TileType.Floor && !gateSet.has(y * width + x);
+  const inRoom = (x: number, y: number) => floor.rooms.some((room) => roomContainsTile(room, { x, y }));
 
-  dressFloorBase(ctx, floorBase, isPlain);
+  dressFloorBase(ctx, floorBase, isPlain, inRoom);
   dressDecals(ctx, floorDecal, isPlain, clearZone(floor, gates, config.clearRadius));
   const stairs = dressStairs(ctx, floorFeature);
   dressEnvShadow(ctx, envShadow);
   dressWalls(ctx, walls, overhead);
+  dressWallFaces(ctx, wallDecor, extras.torches ?? [], isPlain);
+  dressOverheadDecor(ctx, overheadDecor, gateSet);
 
   return {
     floorBase: floorBase.build(),
@@ -142,7 +161,9 @@ export function dressFloor(
     floorFeature: floorFeature.build(),
     envShadow: envShadow.build(),
     walls: walls.build(),
+    wallDecor: wallDecor.build(),
     overhead: overhead.build(),
+    overheadDecor: overheadDecor.build(),
     stairs,
     gates,
   };
@@ -238,7 +259,12 @@ function assertBits(tileset: TilesetMeta): void {
 
 // ---------------- podłoga ----------------
 
-function dressFloorBase(ctx: DressingContext, layer: LayerBuilder, isPlain: (x: number, y: number) => boolean): void {
+function dressFloorBase(
+  ctx: DressingContext,
+  layer: LayerBuilder,
+  isPlain: (x: number, y: number) => boolean,
+  inRoom: (x: number, y: number) => boolean,
+): void {
   const { floor, config, rng } = ctx;
   // Najpierw wzory 2×2 w wolnych blokach zwykłej podłogi.
   for (let y = 0; y < floor.height - 1; y++) {
@@ -249,18 +275,21 @@ function dressFloorBase(ctx: DressingContext, layer: LayerBuilder, isPlain: (x: 
         [x, y + 1],
         [x + 1, y + 1],
       ] as const;
-      if (!block.every(([bx, by]) => isPlain(bx, by) && layer.isEmpty(bx, by))) continue;
+      // Wzory 2×2 tylko w pokojach — korytarze mają bruk.
+      if (!block.every(([bx, by]) => isPlain(bx, by) && inRoom(bx, by) && layer.isEmpty(bx, by))) continue;
       if (!rng.chance(config.macroChance)) continue;
       const name = ctx.pickVariant(config.floorMacroGroup, []);
       const tile = ctx.tile(name);
       placeTile(layer, x, y, name, tile, ctx.rollFlip(tile));
     }
   }
-  // Pod każdą nie-ścianą (także schodami i kratami) leży baza; bez powtórzeń z lewym i górnym sąsiadem.
+  // Pod każdą nie-ścianą (także schodami i kratami) leży baza: płyty w pokojach, bruk w korytarzach;
+  // bez powtórzeń z lewym i górnym sąsiadem.
   for (let y = 0; y < floor.height; y++) {
     for (let x = 0; x < floor.width; x++) {
       if (ctx.isWall(x, y) || !layer.isEmpty(x, y)) continue;
-      const name = ctx.pickVariant(config.floorGroup, [layer.nameAt(x - 1, y), layer.nameAt(x, y - 1)]);
+      const group = inRoom(x, y) ? config.floorGroup : config.corridorGroup;
+      const name = ctx.pickVariant(group, [layer.nameAt(x - 1, y), layer.nameAt(x, y - 1)]);
       const tile = ctx.tile(name);
       placeTile(layer, x, y, name, tile, ctx.rollFlip(tile));
     }
@@ -449,6 +478,71 @@ function dressWalls(ctx: DressingContext, walls: LayerBuilder, overhead: LayerBu
       walls.set(x, y, frame, false, name);
       // Mur z podłogą od północy zasłania postać stojącą za nim — druga kopia nad postaciami.
       if ((mask & N) === 0) overhead.set(x, y, frame, false, name);
+    }
+  }
+}
+
+// ---------------- detale lica i dekoracje nad postaciami (krok 19b) ----------------
+
+/**
+ * Detale na licu muru: tylko proste odcinki ściany z licem do pokoju (mur z północy, wschodu
+ * i zachodu, pod spodem zwykła podłoga), nigdy na kaflu z pochodnią ani tuż obok niej.
+ */
+function dressWallFaces(
+  ctx: DressingContext,
+  layer: LayerBuilder,
+  torches: readonly TilePoint[],
+  isPlain: (x: number, y: number) => boolean,
+): void {
+  const { floor, config, rng } = ctx;
+  const nearTorch = (x: number, y: number) => torches.some((t) => t.y === y && Math.abs(t.x - x) <= 1);
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      const straightFace = ctx.isWall(x, y) && ctx.isWall(x, y - 1) && ctx.isWall(x - 1, y) && ctx.isWall(x + 1, y);
+      if (!straightFace || !isPlain(x, y + 1) || nearTorch(x, y)) continue;
+      if (!rng.chance(config.wallFace.chance)) continue;
+      const name = ctx.pickVariant(config.wallFace.group, [layer.nameAt(x - 1, y), layer.nameAt(x - 2, y)]);
+      layer.set(x, y, ctx.tile(name).frame, false, name);
+    }
+  }
+}
+
+/**
+ * Łuki i pajęczyny — wyłącznie nad kaflami podłogi, w osobnej warstwie nad postaciami.
+ * Łuk: przejście dokładnie tak szerokie jak kafel łuku (2) w górnej lub dolnej ścianie pokoju,
+ * bez krat areny (nadproże zasłoniłoby pręty). Pajęczyna: górny narożnik pokoju z murem z dwóch stron.
+ */
+function dressOverheadDecor(ctx: DressingContext, layer: LayerBuilder, gateSet: ReadonlySet<number>): void {
+  const { floor, config, rng } = ctx;
+  const archName = ctx.pickVariant(config.archGroup, []);
+  const arch = ctx.tile(archName);
+  const isGate = (x: number, y: number) => gateSet.has(y * floor.width + x);
+  for (const room of floor.rooms) {
+    for (const y of [room.y - 1, room.y + room.height]) {
+      let x = room.x;
+      while (x < room.x + room.width) {
+        if (ctx.isWall(x, y)) {
+          x++;
+          continue;
+        }
+        const start = x;
+        while (x < room.x + room.width && !ctx.isWall(x, y)) x++;
+        const cells = Array.from({ length: x - start }, (_, i) => start + i);
+        const free = cells.every((cx) => !isGate(cx, y) && layer.isEmpty(cx, y));
+        if (cells.length === arch.w && ctx.isWall(start - 1, y) && ctx.isWall(x, y) && free) {
+          placeTile(layer, start, y, archName, arch, false);
+        }
+      }
+    }
+    const corners = [
+      { x: room.x, y: room.y, side: -1, group: config.cobweb.nwGroup },
+      { x: room.x + room.width - 1, y: room.y, side: 1, group: config.cobweb.neGroup },
+    ];
+    for (const c of corners) {
+      const tucked = ctx.isWall(c.x, c.y - 1) && ctx.isWall(c.x + c.side, c.y);
+      if (!tucked || ctx.isWall(c.x, c.y) || !layer.isEmpty(c.x, c.y) || !rng.chance(config.cobweb.chance)) continue;
+      const name = ctx.pickVariant(c.group, []);
+      layer.set(c.x, c.y, ctx.tile(name).frame, false, name);
     }
   }
 }

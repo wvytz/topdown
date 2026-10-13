@@ -96,6 +96,8 @@ GOLD = hexes('#5c4418', '#9a7424', '#d4a83a', '#f0d27a')
 BONE = hexes('#9c8f74', '#d8ccb0', '#e8e0c0')
 IRON = hexes('#3a3f4a', '#646c79', '#8d96a3')  # rampa pokrywy Trashcan Mana
 DIRT = hexes('#120c0a', '#261a13', '#37271c', '#523b29', '#6e5038')  # rampa kałuży Sludge Kinga
+# Szlam Sludge Kinga (STYLEGUIDE §4.5) — ślady po kulach bossa (krok 19b).
+SLIME = hexes('#1f1420', '#3b2140', '#5c3560', '#83558a', '#b88ab8')
 # Ogień pochodni (krok 19a): czerwień → pomarańcz → żółć złota → blask. Bez czystej bieli.
 FLAME = oks((.48, .150, 35), (.64, .160, 55), (.79, .140, 82), (.91, .075, 95))
 
@@ -119,6 +121,7 @@ class Palette:
     bone: tuple = BONE
     iron: tuple = IRON
     flame: tuple = FLAME
+    slime: tuple = SLIME
     outline: Color = OUT
 
     def colors(self):
@@ -818,6 +821,165 @@ def torch_flame(frame):
     return gen
 
 
+# ---------------- krok 19b: bruk, detale lica, łuki, pajęczyny, ślady walki ----------------
+def cobble(p, r):
+    """Bruk korytarza: nieregularne kamienie w siatce 8 px (krawędzie kafla zawsze w fudze, więc bez szwów).
+    Ta sama rampa co płyty, żeby czytelność postaci (WCAG) była taka sama jak w pokojach."""
+    F, img = p.floor, Img(T, T, p.floor[1])
+    for cy in range(0, T, 8):
+        for cx in range(0, T, 8):
+            base = p.floor_alt if r.random() < .4 else F[2]
+            w, h = 7 - r.randint(0, 1), 7 - r.randint(0, 1)
+            for y in range(h):
+                for x in range(w):
+                    if x in (0, w - 1) and y in (0, h - 1):
+                        continue  # zaokrąglone rogi kamienia
+                    c = F[3] if (y == 0 or x == 0) else base
+                    if (y == h - 1 or x == w - 1) and r.random() < .5:
+                        c = F[1]
+                    img.put(cx + 1 + x, cy + 1 + y, c)
+            if r.random() < .5:
+                img.put(cx + 2, cy + 2, F[4])
+    for _ in range(6):  # drobny żwir w fugach
+        img.put(r.randint(0, T - 1), r.randrange(0, T, 8), F[0])
+    return img
+
+
+def face_detail(kind):
+    """Detale na licu muru (wiersze 24–31 kafla ściany z licem od południa). Przezroczyste nakładki."""
+    def gen(p, r):
+        img, I, O = Img(T, T), p.iron, p.outline
+        fy = T - FACE
+        if kind == 'banner':  # sztandar na drążku, spływa przez krawędź muru na lico
+            for y in range(fy - 4, T - 1):
+                for x in range(12, 20):
+                    if y >= T - 3 and abs(x + .5 - 16) < (y - (T - 4)):
+                        continue  # wcięcie w kształcie V u dołu
+                    c = p.stain[1] if x < 18 else p.stain[0]
+                    if y == fy - 3:
+                        c = p.accent[1]
+                    img.put(x, y, c)
+            img.put(15, fy + 1, p.accent[2])
+            img.put(16, fy + 1, p.accent[2])
+            img.put(15, fy + 2, p.accent[1])
+            outline(img, O)
+            for x in range(10, 22):
+                img.put(x, fy - 5, I[1])
+        elif kind == 'grate':  # kratka odpływu
+            for y in range(fy + 2, fy + 7):
+                for x in range(11, 21):
+                    edge = y in (fy + 2, fy + 6) or x in (11, 20)
+                    if edge:
+                        c = I[2] if y == fy + 2 else I[1]
+                    else:
+                        c = I[0] if x % 2 else O
+                    img.put(x, y, c)
+        elif kind == 'alcove':  # wnęka ze świecą
+            for y in range(fy + 1, T - 1):
+                for x in range(12, 20):
+                    img.put(x, y, O if y > fy + 1 else p.wall_face[0])
+            for y in range(fy + 4, T - 1):
+                img.put(15, y, p.bone[1])
+                img.put(16, y, p.bone[0])
+            img.put(15, fy + 3, p.flame[2])
+            img.put(16, fy + 3, p.flame[1])
+            img.put(15, fy + 2, p.flame[3])
+        elif kind == 'brick':  # wypadnięta cegła
+            for y in range(fy + 1, fy + 3):
+                for x in range(6, 12):
+                    img.put(x, y, O)
+            img.put(7, T - 2, p.wall_top[2])
+            img.put(8, T - 2, p.wall_top[1])
+        return img
+    return gen
+
+
+def arch(p, r):
+    """Nadproże łuku nad przejściem szerokości 2 kafli: wierzch muru i lico z łukowatą dolną krawędzią.
+    Rysowane nad postaciami (overheadDecor) — przejście pod nim zostaje czytelne."""
+    W, Fc, O, img = p.wall_top, p.wall_face, p.outline, Img(2 * T, T)
+    for y in range(9):
+        off = 8 if (y // 4) % 2 else 0
+        for x in range(2 * T):
+            if y % 4 == 0 or (x + off) % 16 == 0:
+                c = W[1]
+            else:
+                c = W[3] if y % 4 == 1 else W[2]
+            img.put(x, y, c)
+    for x in range(2 * T):
+        img.put(x, 0, O)
+        img.put(x, 1, W[4])
+        t = (x + .5 - T) / T  # −1..1 przez szerokość łuku
+        bottom = 14 + round(8 * (1 - (1 - t * t) ** .5))  # wyżej w środku, niżej przy filarach
+        for y in range(9, bottom):
+            if y == 9 or (x + (6 if y > 12 else 0)) % 12 == 0:
+                c = Fc[0]
+            else:
+                c = Fc[2] if y in (10, 13) else Fc[1]
+            img.put(x, y, c)
+        img.put(x, bottom, O)
+    return img
+
+
+def cobweb(corner):
+    """Pajęczyna w górnym narożniku pokoju (nad postaciami). Cienkie nici, bez wypełnienia."""
+    def gen(p, r):
+        img = Img(T, T)
+        for a in (0, 22, 45, 68, 90):
+            for d in range(17):
+                img.put(round(d * math.cos(math.radians(a))), round(d * math.sin(math.radians(a))), p.bone[0])
+        for rad in (5, 9, 13):
+            for a in range(0, 91, 4):
+                x, y = round(rad * math.cos(math.radians(a))), round(rad * math.sin(math.radians(a)))
+                if img.get(x, y) == CLR:
+                    img.put(x, y, p.ash[0])
+        if corner == 'ne':
+            img.p = [list(reversed(row)) for row in img.p]
+        return img
+    return gen
+
+
+def combat_mark(kind):
+    """Trwałe ślady walki (pula w grze, najstarsze znikają): plama, przypalenie, szlam."""
+    def gen(p, r):
+        img = Img(T, T)
+        if kind == 'splat':
+            stain(img, p, r, 16, 16, r.uniform(4.5, 6))
+            for _ in range(5):
+                img.put(r.randint(7, 24), r.randint(7, 24), p.stain[0])
+        elif kind == 'scorch':
+            for y in range(T):
+                for x in range(T):
+                    dx, dy = x + .5 - 16, y + .5 - 16
+                    d = (dx * dx + dy * dy) ** .5
+                    reach = 8 + 3 * math.sin(math.atan2(dy, dx) * 5 + r.uniform(-.3, .3))
+                    # Sadza: ciepłe brązy rampy błota (chłodna szczelina podłogi wyglądała jak niebieski pająk).
+                    if d < reach * .45:
+                        img.put(x, y, p.dirt[1])
+                    elif d < reach * .75:
+                        img.put(x, y, p.dirt[2] if r.random() < .8 else p.dirt[1])
+                    elif d < reach and r.random() < .55:
+                        img.put(x, y, p.dirt[3])
+            for _ in range(5):
+                img.put(r.randint(8, 23), r.randint(8, 23), p.ash[0])
+        elif kind == 'slime':
+            S = p.slime
+            for y in range(T):
+                for x in range(T):
+                    d = ((x + .5 - 16) ** 2 + ((y + .5 - 16) * 1.35) ** 2) ** .5
+                    if d < 6.5 + r.uniform(-1, 1):
+                        img.put(x, y, S[2] if d < 4 else S[1])
+            img.put(14, 14, S[3])
+            img.put(15, 14, S[4])
+            for _ in range(3):
+                x, y = r.randint(6, 25), r.randint(8, 24)
+                img.put(x, y, S[1])
+                img.put(x + 1, y, S[2])
+            outline(img, S[0])
+        return img
+    return gen
+
+
 # ---------------- manifest ----------------
 @dataclass(frozen=True)
 class Entry:
@@ -876,6 +1038,17 @@ def manifest():
     m.append(Entry('stairs_open_2x2', stairs(True), 'floorFeature', 2, 2))
     m.append(Entry('seal_2x2', seal, 'floorFeature', 2, 2))
     m.append(Entry('torch_sconce', torch_sconce, 'wallDecor', group='torchSconce'))
+    for v in ('a', 'b', 'c'):
+        m.append(Entry(f'floor_cobble_{v}', cobble, 'floorBase', group='floorCobble', weight=1, flip_x=True))
+    for kind, weight in (('banner', 2), ('grate', 2), ('alcove', 1), ('brick', 3)):
+        m.append(Entry(f'face_{kind}', face_detail(kind), 'wallDecor', group='wallFace', weight=weight))
+    m.append(Entry('arch_2x1', arch, 'overheadDecor', 2, 1, group='overhead.arch'))
+    m.append(Entry('cobweb_nw', cobweb('nw'), 'overheadDecor', group='overhead.cobwebNW'))
+    m.append(Entry('cobweb_ne', cobweb('ne'), 'overheadDecor', group='overhead.cobwebNE'))
+    for kind in ('splat', 'scorch', 'slime'):
+        for v in ('a', 'b'):
+            m.append(Entry(f'combat_{kind}_{v}', combat_mark(kind), 'combatDecal', group=f'combat.{kind}',
+                           weight=1, flip_x=True))
     for frame in range(4):
         m.append(Entry(f'torch_flame_{frame}', torch_flame(frame), 'fx', group='torchFlame'))
     for name, gen, w in (('pillar', pillar('intact'), 1), ('pillar_cracked', pillar('cracked'), 1),

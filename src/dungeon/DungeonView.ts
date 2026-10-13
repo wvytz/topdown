@@ -10,8 +10,17 @@ import { TILESET_ASSET } from '@/config/tilesetConfig';
 import type { DressedFloor, DressedGate, DressedLayer, GateVisualState } from '@/dungeon/FloorDressing';
 import { EMPTY_TILE } from '@/dungeon/FloorDressing';
 
-type VisualLayer = 'floorBase' | 'floorDecal' | 'floorFeature' | 'envShadow' | 'walls' | 'overhead';
-const VISUAL_LAYERS: readonly VisualLayer[] = ['floorBase', 'floorDecal', 'floorFeature', 'envShadow', 'walls', 'overhead'];
+type VisualLayer = 'floorBase' | 'floorDecal' | 'floorFeature' | 'envShadow' | 'walls' | 'wallDecor' | 'overhead' | 'overheadDecor';
+const VISUAL_LAYERS: readonly VisualLayer[] = [
+  'floorBase',
+  'floorDecal',
+  'floorFeature',
+  'envShadow',
+  'walls',
+  'wallDecor',
+  'overhead',
+  'overheadDecor',
+];
 
 const pointKey = (p: TilePoint) => `${p.x},${p.y}`;
 

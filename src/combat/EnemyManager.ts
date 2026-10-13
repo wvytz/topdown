@@ -9,6 +9,7 @@ import type { EnemySpawn } from '@/dungeon/EncounterPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { hasLineOfSight } from '@/dungeon/lineOfSight';
 import type { CombatEffects } from '@/effects/CombatEffects';
+import type { CombatDecals } from '@/effects/CombatDecals';
 import type { EnemyAttackHandler } from '@/entities/Enemy';
 import { Enemy } from '@/entities/Enemy';
 import type { Player } from '@/entities/Player';
@@ -34,6 +35,8 @@ export interface EnemyManagerDeps {
   readonly player: Player;
   readonly projectiles: ProjectileManager;
   readonly effects: CombatEffects;
+  /** Trwałe ślady walki (plama w miejscu śmierci wroga). */
+  readonly decals: CombatDecals;
   readonly onPlayerHit: () => void;
   readonly onEnemyKilled: (enemy: Enemy) => void;
 }
@@ -128,6 +131,7 @@ export class EnemyManager implements EnemyAttackHandler {
 
   private kill(enemy: Enemy): void {
     this.deps.effects.deathBurst(enemy.x, enemy.y, enemy.definition.color, enemy.radius);
+    this.deps.decals.add('splat', enemy.x, enemy.y);
     this.enemies = this.enemies.filter((e) => e !== enemy);
     this.deps.onEnemyKilled(enemy);
     enemy.destroy();

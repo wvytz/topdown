@@ -123,9 +123,9 @@ describe('arkusz kafli: JSON zgodny z PNG', () => {
     expect(meta.torch.flameBaseY).toBeLessThan(S);
   });
 
-  it('odbijane mogą być tylko kafle bez kierunku światła w poziomie (podłoga, nakładki)', () => {
+  it('odbijane mogą być tylko kafle płaskie na podłodze (bazy, nakładki, ślady walki)', () => {
     for (const [name, t] of tiles) {
-      if (t.flipX) expect(['floorBase', 'floorDecal'], name).toContain(t.layer);
+      if (t.flipX) expect(['floorBase', 'floorDecal', 'combatDecal'], name).toContain(t.layer);
     }
   });
 });
@@ -217,6 +217,17 @@ describe('czytelność postaci na podłodze (STYLEGUIDE §6a)', () => {
 
   it.each(CHARACTERS)('%s: obrys ≥ 2:1, ciało ≥ 1,5:1 albo wyraźnie inna barwa', (_name, def) => {
     const r = readability(readPng(`${ROOT}public/${def.url}`), def.frameWidth, floor);
+    expect(r.outline).toBeGreaterThanOrEqual(READABILITY.outlineMin);
+    expect(r.passes, JSON.stringify(r)).toBe(true);
+  });
+
+  it.each(CHARACTERS)('%s: na bruku korytarza te same progi (krok 19b)', (_name, def) => {
+    const cobblePixels = (meta.groups.floorCobble ?? []).flatMap((name) => {
+      const t = meta.tiles[name]!;
+      return tilePixels(sheet, t.col, t.row);
+    });
+    expect(cobblePixels.length).toBeGreaterThan(0);
+    const r = readability(readPng(`${ROOT}public/${def.url}`), def.frameWidth, floorReference(cobblePixels));
     expect(r.outline).toBeGreaterThanOrEqual(READABILITY.outlineMin);
     expect(r.passes, JSON.stringify(r)).toBe(true);
   });
