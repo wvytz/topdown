@@ -794,11 +794,123 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 16 — Warstwa wizualna: generator kafli v2 i paleta „jasny piaskowiec”
+
+**Zlecenie właściciela:** docelowa warstwa wizualna (tło, głębia, kafelkowanie). Właściciel dostarczył arkusz kafli, JSON, generator w Pythonie i `STYLEGUIDE.md`. Najpierw analiza i plan na kroki 16–19, potem realizacja kroku 16.
+
+**Pomiary z analizy (podstawa decyzji):**
+- **Czytelność na podłodze v1:**
+  - podłoga v1 ma średnią jasność Y ≈ 0,033;
+  - ciało Demon Mage'a ma kontrast z podłogą 1,08:1, czyli praktycznie tę samą jasność;
+  - fuga płyt `#1f1c25` ma prawie kolor obrysu postaci `#1b1a22`, więc nawet obrys barbarzyńcy daje tylko 1,4:1;
+  - barwa podłogi (~258°) jest w rodzinie fioletu obu ciemnych wrogów.
+- **Ściany na wygenerowanych mapach** (20 seedów, piętra 1 i 7):
+  - ściany to 75% mapy, a 2/3 z nich leży dalej niż 2 kafle od podłogi;
+  - cztery proste maski (7, 11, 13, 14) to ~82% widocznych ścian;
+  - ~9% to narożniki, czyli maska 15 z podłogą po skosie, których 4-bitowy autotile nie odróżnia;
+  - warianty zniszczeń v1 trafiły w maski 0, 5 i 10, które prawie nie występują.
+
+**Decyzje właściciela (przed krokiem 16):**
+- **Zoom 2,0 (pixel-perfect)** zamiast 1,5. Zasięg Kiterów dostosujemy w logice AI, nie skalowaniem. Wdrożenie w kroku 18.
+- **Schody 2×2** (64×64 px). Wdrożenie w generatorze pięter i widoku w krokach 17–18.
+- **Cienie środowiska z jedną stałą alfą** — dopisane do STYLEGUIDE.
+- **Bez kolidujących obiektów** w krokach 16–19: tylko dekoracje bez wpływu na fizykę i linię wzroku.
+- **Paleta C, „jasny piaskowiec”**, wybrana z 4 makiet. Uzasadnienie: gwarancja czytelności walki (WCAG) w centrum akcji; mrok odzyskamy w kroku 19 oświetleniem i winietą.
+
+**Porządki w plikach:**
+- generator jest w `tools/tower_ruins_tiles.py`, a jego zależność (Pillow 11.0.0) w `tools/requirements.txt`;
+- styleguide jest w `docs/STYLEGUIDE.md`;
+- materiały v1 są w `tools/reference/`;
+- makiety i robocze arkusze trafiają do `tools/out/` (w `.gitignore`).
+
+**Generator v2:**
+- **Paleta to dane:** klasa `Palette` z rolami (podłoga, wierzch, lico i pasma muru, kurz, plamy). Rampy są budowane w OKLCH. Kolory wspólne obsady (złoto, kość, żelazo, błoto) pochodzą ze STYLEGUIDE. Funkcje rysujące nie znają żadnych hexów.
+- **Manifest i układ:** arkusz układa się sam (first-fit w 16 kolumnach). Układ jest wspólny dla wszystkich palet, więc zmiana palety lub biomu w grze to tylko inna tekstura przy tych samych indeksach.
+- **Stabilne seedy:** `crc32(biom/nazwa)`. Eksport jest deterministyczny: dwa uruchomienia dają identyczne pliki.
+- **JSON v2:**
+  - indeks klatki, części elementów wielokaflowych (`frames`), warstwa, waga, `flipX`;
+  - grupy wariantów;
+  - autotile jako dane: maska 4-bit, kafle narożników, pasma odległości, ściany „nad postaciami”, maska cieni.
+- **Walidator:**
+  - alfa tylko 0 lub 255, poza cieniami o stałej alfie;
+  - wszystkie kolory należą do palety;
+  - brak czystej czerni i bieli;
+  - podłoga nie używa barw zarezerwowanych (fiolet wrogów, zieleń magii).
+- **Tryb `--mockup`:**
+  - makieta pokoju z korytarzami w zoomie 2,0 z prawdziwymi sprite'ami: mag na zwykłej podłodze, w cieniu pod ścianą i przy kracie;
+  - zestawienie palet z wyliczonym kontrastem;
+  - pokazuje też przyszłe warstwy, łącznie ze ścianami rysowanymi nad postaciami.
+- **Fuga** jest o ton ciemniejsza od płyty, nie w kolorze obrysu. Światło z północy, więc odbijamy kafle tylko w poziomie.
+
+**Arkusz** `public/assets/tilesets/tower_ruins_tileset.{png,json}`: 99 kafli, siatka 16×8 (512×256 px):
+- **podłoga:**
+  - 8 baz: płyty 16 px, płyty 32 px, płyty mieszane, wytarty środek;
+  - 2 wzory 2×2 („wiatraczek”), które łamią siatkę 32 px;
+- **nakładki** (przezroczyste, na dowolną bazę): pęknięcia (także 2×1 i 1×2, przez krawędź kafla), wyłomy, gruz, plamy, okruchy, kurz pod ścianami w 3 kierunkach;
+- **ściany:**
+  - 16 masek;
+  - dla masek 7, 11, 13 i 14: drugi wariant oraz pęknięcie i wyłom;
+  - maska 15: 4 warianty i 15 kafli narożników wewnętrznych;
+  - pasma „przygaszone” (2 kafle od podłogi) i „głębia” (3+);
+- **cienie środowiska:** 7 kafli, alfa 0,4;
+- **krata:** pozioma i pionowa, każda otwarta, opadająca i zamknięta;
+- **schody 2×2** zapieczętowane i otwarte, pieczęć 2×2;
+- **rekwizyty z v1:** kolumny, przewrócona kolumna, gruz, kości;
+- `floor_pit` usunięty: wyglądał jak przepaść, a w grze nie ma spadania.
+
+**Paleta C — wynik (kontrast WCAG względem średniej jasności podłogi Y = 0,113):**
+
+| Postać | Obrys | Ciało | Δ barwy |
+|---|---|---|---|
+| Barbarzyńca | 2,68 | 2,58 | 5° |
+| Trashcan Man | 2,68 | 2,15 | 176° |
+| Demon Mage | 3,01 | 2,10 | 73° |
+| Sludge King | 2,68 | 1,53 | 97° |
+
+**STYLEGUIDE:**
+- §6: wyjątek dla cieni środowiska (kolor obrysu, stała alfa 0,4, bez gradientów);
+- nowa §6a „Kafle otoczenia”: światło z północy, tylko `flipX`, fuga ≠ obrys, barwy zarezerwowane, progi czytelności.
+
+**Testy: +208, razem 469** (`tests/assets/tileset.test.ts` i pomocniczy dekoder `tests/helpers/png.ts`, sam `node:zlib`):
+- **Zgodność JSON z PNG:**
+  - wymiary arkusza;
+  - indeks klatki i części każdego kafla;
+  - brak nachodzenia kafli;
+  - zawartość zgodna z warstwą: baza podłogi w pełni kryjąca, cienie tylko z alfą 0/0,4, reszta bez półprzezroczystości;
+  - grupy i autotile wskazują istniejące kafle;
+  - `flipX` tylko dla podłogi i nakładek.
+- **Czytelność (progi ze STYLEGUIDE §6a):**
+  - każda postać ma obrys ≥ 2:1 oraz ciało ≥ 1,5:1 albo różnicę barwy ≥ 60° przy nasyceniu ≥ 25%;
+  - obrys i ciało test wykrywa z obrazu: obrys to najczęstszy kolor krawędzi sylwetki;
+  - kontrolnie arkusz v1 z `tools/reference` nie spełnia progów dla żadnej postaci, więc test faktycznie rozróżnia.
+- Wartości z testu TS pokrywają się z wyliczeniami generatora.
+
+**Weryfikacja:**
+- `npm run build`: typy, 469 testów i build przechodzą;
+- makiety obejrzane w powiększeniu: narożniki wewnętrzne domykają obrys, krata, pasy cienia i przejście w głębię działają;
+- w grze jeszcze bez zmian, bo arkusz nie jest ładowany — to krok 18.
+
+**Uwaga techniczna:** generator wymaga Pillow (`python -m pip install -r tools/requirements.txt`).
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
 - **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
 - **Ewolucje przedmiotów: odrzucone na obecnym etapie** (decyzja właściciela). Nie komplikujemy sterowania ani działania broni; wzmacnianie kolejnymi kopiami zostaje.
 - **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
-- **Grafika (kroki 13 i 15):** gracz, Rusher, mag i boss mają sprite'y. Brakuje: kafli (ściany, podłoga, schody, kraty), łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
+- **Grafika (kroki 13, 15, 16):** gracz, Rusher, mag i boss mają sprite'y. Arkusz kafli jest gotowy (krok 16), ale gra go jeszcze nie ładuje. Brakuje: łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
+- **Plan warstwy wizualnej (zatwierdzony):**
+  - **Krok 17:** czysty `dungeon/FloorDressing.ts` (+ `PURE_FILES`, `config/dressingConfig.ts`): warstwy z `DungeonFloor` i JSON-a, własny strumień RNG, testy. Generator pięter rezerwuje 2×2 na schody.
+  - **Krok 18:**
+    - wielowarstwowy `DungeonView` (głębokości w `config/renderLayers.ts`), ładowanie arkusza w `BootScene`, krata i schody 2×2 z arkusza;
+    - zoom 2,0 (także skalowanie płótna całkowitymi krotnościami);
+    - dostosowanie zasięgu i aggro Kiterów do mniejszego pola widzenia.
+  - **Krok 19 (P1):**
+    - światło: pochodnie, poświata wokół gracza, winieta;
+    - animowane kafle, pyłki, trwałe ślady walki, cienie kontaktowe pod postaciami;
+    - nadproża łuków i pajęczyny nad postaciami;
+    - detale na licu ściany, bruk w korytarzach.
+  - **Później, za zgodą:** kolidujące rekwizyty, ozdobna obwódka areny, sprite kapliczki, przejścia materiałów (dual-grid).
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

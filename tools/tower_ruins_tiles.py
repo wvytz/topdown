@@ -1,0 +1,1192 @@
+"""
+Generator kafli „Tower Ruins” (v2).
+
+Użycie (z katalogu głównego repozytorium, wymaga Pillow — tools/requirements.txt):
+  python tools/tower_ruins_tiles.py --out public/assets/tilesets             # arkusz + JSON, paleta domyślna
+  python tools/tower_ruins_tiles.py --palette piaskowiec --out ...           # inna paleta
+  python tools/tower_ruins_tiles.py --mockup --out tools/out                 # makiety wszystkich kandydatek palet
+  python tools/tower_ruins_tiles.py --list                                   # lista palet
+
+Zasady:
+  - paleta to dane (role kolorów); funkcje rysujące nie znają żadnych hexów;
+  - układ arkusza wynika z manifestu i jest wspólny dla wszystkich palet (zmiana palety = inna tekstura, te same indeksy);
+  - seedy są stabilne: crc32(nazwa kafla), więc dopisanie kafla nie zmienia wyglądu pozostałych;
+  - światło pada z północy, dlatego kafle wolno odbijać tylko w poziomie (flipX);
+  - jedyna półprzezroczystość to cienie środowiska o stałej alfie ENV_SHADOW_ALPHA (STYLEGUIDE §6).
+"""
+import argparse
+import colorsys
+import json
+import math
+import os
+import random
+import sys
+import zlib
+from collections import Counter
+from dataclasses import dataclass
+
+from PIL import Image, ImageDraw, ImageFont
+
+T = 32
+FACE = 8  # wysokość lica ściany (południowa, widoczna strona) w pikselach
+COLUMNS = 16
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SPRITES_DIR = os.path.join(ROOT, 'public', 'assets', 'sprites')
+BIOME = 'tower_ruins'
+
+Color = tuple
+
+
+def hx(h):
+    h = h.lstrip('#')
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 255)
+
+
+def to_hex(c):
+    return '#%02x%02x%02x' % c[:3]
+
+
+def ok(L, C, h):
+    """OKLCH -> sRGB (RGBA). Rampy budujemy w OKLCH, bo jasność L jest tam równomierna dla oka."""
+    a, b = C * math.cos(math.radians(h)), C * math.sin(math.radians(h))
+    l_ = L + 0.3963377774 * a + 0.2158037573 * b
+    m_ = L - 0.1055613458 * a - 0.0638541728 * b
+    s_ = L - 0.0894841775 * a - 1.2914855480 * b
+    l, m, s = l_ ** 3, m_ ** 3, s_ ** 3
+    rgb = (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+           -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+           -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+
+    def enc(x):
+        x = max(0.0, min(1.0, x))
+        return int(round(255 * (12.92 * x if x <= 0.0031308 else 1.055 * x ** (1 / 2.4) - 0.055)))
+    return (enc(rgb[0]), enc(rgb[1]), enc(rgb[2]), 255)
+
+
+def oks(*specs):
+    return tuple(ok(*s) for s in specs)
+
+
+def hexes(*hs):
+    return tuple(hx(h) for h in hs)
+
+
+def luminance(c):
+    def lin(v):
+        v /= 255
+        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+
+
+def contrast(y1, y2):
+    hi, lo = max(y1, y2), min(y1, y2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def hue_sat(c):
+    h, _, s = colorsys.rgb_to_hls(c[0] / 255, c[1] / 255, c[2] / 255)
+    return h * 360, s
+
+
+CLR = (0, 0, 0, 0)
+OUT = hx('#1b1a22')
+ENV_SHADOW_ALPHA = 102  # 0.4
+# Kolory wspólne całej obsady (STYLEGUIDE §4.2) — nie zależą od palety biomu.
+GOLD = hexes('#5c4418', '#9a7424', '#d4a83a', '#f0d27a')
+BONE = hexes('#9c8f74', '#d8ccb0', '#e8e0c0')
+IRON = hexes('#3a3f4a', '#646c79', '#8d96a3')  # rampa pokrywy Trashcan Mana
+DIRT = hexes('#120c0a', '#261a13', '#37271c', '#523b29', '#6e5038')  # rampa kałuży Sludge Kinga
+
+
+# ---------------- palety ----------------
+@dataclass(frozen=True)
+class Palette:
+    key: str
+    label: str
+    floor: tuple       # 6: szczelina, fuga, płyta, krawędź jasna, blask, blask+
+    floor_alt: Color   # druga płyta (ok. 30% płyt)
+    wall_top: tuple    # 6: cień, fuga, blok, blok jasny, krawędź, blask
+    wall_block_alt: Color
+    wall_face: tuple   # 3: linia, lico, lico jasne
+    wall_fade: tuple   # 3: fuga, blok, światło — ściany 2 kafle od podłogi
+    deep: tuple        # 2: fuga, blok — masa ścian dalej niż 2 kafle od podłogi
+    stain: tuple       # 2: plama zewnętrzna, wewnętrzna
+    ash: tuple         # 2: kurz/popiół (nie magiczna zieleń)
+    dirt: tuple = DIRT
+    accent: tuple = GOLD
+    bone: tuple = BONE
+    iron: tuple = IRON
+    outline: Color = OUT
+
+    def colors(self):
+        out = set()
+        for v in self.__dict__.values():
+            if isinstance(v, tuple) and v and isinstance(v[0], tuple):
+                out.update(v)
+            elif isinstance(v, tuple) and len(v) == 4 and isinstance(v[0], int):
+                out.add(v)
+        return out
+
+
+PALETTES = {
+    # Punkt odniesienia: kolory arkusza v1 w nowej strukturze kafli.
+    'v1': Palette(
+        key='v1', label='v1 (obecna)',
+        floor=hexes('#1f1c25', '#2a2731', '#34313b', '#3f3b44', '#4c4649', '#5e5555'),
+        floor_alt=hx('#38343c'),
+        wall_top=hexes('#29242f', '#423c48', '#5a525e', '#736971', '#8f8286', '#ae9e98'),
+        wall_block_alt=hx('#62595f'),
+        wall_face=hexes('#29242f', '#423c48', '#4d4652'),
+        wall_fade=hexes('#1d1a22', '#2a2630', '#322d38'),
+        deep=hexes('#121016', '#18151c'),
+        stain=hexes('#2e1a20', '#3a1f26'),
+        ash=hexes('#5a5153', '#4a4448'),
+    ),
+    # A: neutralny, lekko ciepły szary kamień, podłoga ok. 2x jaśniejsza niż v1.
+    'szary_cieply': Palette(
+        key='szary_cieply', label='A: ciepły szary',
+        floor=oks((.30, .018, 250), (.36, .012, 240), (.42, .010, 70), (.465, .014, 72), (.51, .018, 75), (.56, .022, 78)),
+        floor_alt=ok(.405, .010, 65),
+        wall_top=oks((.28, .020, 260), (.38, .014, 250), (.52, .012, 70), (.58, .016, 72), (.66, .020, 75), (.74, .024, 78)),
+        wall_block_alt=ok(.545, .012, 68),
+        wall_face=oks((.25, .020, 265), (.31, .016, 260), (.36, .014, 250)),
+        wall_fade=oks((.21, .016, 265), (.27, .014, 260), (.30, .012, 255)),
+        deep=oks((.14, .012, 270), (.17, .012, 270)),
+        stain=oks((.31, .045, 20), (.35, .050, 22)),
+        ash=oks((.47, .012, 60), (.40, .010, 250)),
+    ),
+    # B: szarość z nutą zieleni — barwa najdalej od fioletu wrogów; ściany ciepłe dla odróżnienia od podłogi.
+    'szary_zielony': Palette(
+        key='szary_zielony', label='B: zielonkawy szary',
+        floor=oks((.30, .018, 230), (.36, .014, 200), (.42, .014, 150), (.465, .016, 140), (.51, .018, 120), (.56, .020, 100)),
+        floor_alt=ok(.405, .012, 155),
+        wall_top=oks((.28, .020, 260), (.38, .014, 250), (.52, .014, 75), (.58, .018, 75), (.66, .022, 78), (.74, .026, 80)),
+        wall_block_alt=ok(.545, .014, 72),
+        wall_face=oks((.25, .020, 265), (.31, .016, 255), (.36, .014, 240)),
+        wall_fade=oks((.21, .016, 265), (.27, .014, 255), (.30, .012, 245)),
+        deep=oks((.14, .012, 260), (.17, .012, 255)),
+        stain=oks((.31, .045, 20), (.35, .050, 22)),
+        ash=oks((.47, .012, 90), (.40, .010, 220)),
+    ),
+    # C: jasny, ciepły piaskowiec — najmocniejszy kontrast dla ciemnych wrogów, słabszy dla jasnych.
+    'piaskowiec': Palette(
+        key='piaskowiec', label='C: jasny piaskowiec',
+        floor=oks((.36, .020, 250), (.43, .016, 60), (.49, .024, 70), (.535, .028, 75), (.58, .032, 78), (.63, .034, 82)),
+        floor_alt=ok(.47, .022, 65),
+        wall_top=oks((.32, .020, 260), (.44, .018, 60), (.60, .024, 72), (.66, .028, 75), (.73, .030, 78), (.80, .030, 82)),
+        wall_block_alt=ok(.625, .024, 70),
+        wall_face=oks((.28, .020, 265), (.35, .018, 255), (.40, .016, 245)),
+        wall_fade=oks((.22, .016, 265), (.29, .014, 260), (.32, .014, 255)),
+        deep=oks((.14, .012, 270), (.17, .012, 270)),
+        stain=oks((.36, .050, 20), (.41, .050, 22)),
+        ash=oks((.55, .016, 65), (.49, .014, 250)),
+    ),
+}
+DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
+
+
+# ---------------- płótno ----------------
+class Img:
+    def __init__(s, w, h, fill=CLR):
+        s.w, s.h = w, h
+        s.p = [[fill] * w for _ in range(h)]
+
+    def get(s, x, y):
+        return s.p[y][x] if 0 <= x < s.w and 0 <= y < s.h else None
+
+    def put(s, x, y, c):
+        if 0 <= x < s.w and 0 <= y < s.h:
+            s.p[y][x] = c
+
+    def blit(s, o, ox, oy):
+        for y in range(o.h):
+            for x in range(o.w):
+                c = o.p[y][x]
+                if c[3]:
+                    s.put(ox + x, oy + y, c)
+
+    def pil(s):
+        im = Image.new('RGBA', (s.w, s.h))
+        im.putdata([c for row in s.p for c in row])
+        return im
+
+
+def outline(img, color):
+    """Obrys 1 px, 4-sąsiedztwo (STYLEGUIDE §3)."""
+    add = []
+    for y in range(img.h):
+        for x in range(img.w):
+            if img.p[y][x][3] == 0:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    c = img.get(x + dx, y + dy)
+                    if c and c[3] and c != color:
+                        add.append((x, y))
+                        break
+    for x, y in add:
+        img.put(x, y, color)
+
+
+def disc(img, cx, cy, rad, fn):
+    for y in range(img.h):
+        for x in range(img.w):
+            dx, dy = x + .5 - cx, y + .5 - cy
+            d = (dx * dx + dy * dy) ** .5
+            if d <= rad:
+                img.put(x, y, fn(dx, dy, d))
+
+
+# ---------------- podłoga ----------------
+def grid_slabs(w, h, size=16):
+    return [(x, y, size, size) for y in range(0, h, size) for x in range(0, w, size)]
+
+
+SLAB_LAYOUTS = {
+    'slab16': grid_slabs(T, T),
+    'slab32': [(0, 0, 32, 32)],
+    'mixed_h': [(0, 0, 32, 16), (0, 16, 16, 16), (16, 16, 16, 16)],
+    'mixed_v': [(0, 0, 16, 32), (16, 0, 16, 16), (16, 16, 16, 16)],
+    # Wzory 64x64 („wiatraczek”): płyty przechodzą przez krawędzie kafli i łamią siatkę 32 px.
+    'macro_a': [(0, 0, 40, 24), (40, 0, 24, 40), (0, 24, 24, 40), (24, 24, 16, 16), (24, 40, 40, 24)],
+    'macro_b': [(0, 0, 16, 48), (16, 0, 48, 16), (16, 16, 32, 32), (48, 16, 16, 48), (0, 48, 48, 16)],
+}
+
+
+def floor_slabs(p, r, slabs, w=T, h=T, img=None, worn=False):
+    """Płyty: fuga 1 px o ton ciemniejsza od płyty (nie kolor obrysu postaci!), krawędź oświetlona od północy i zachodu."""
+    img = img or Img(w, h)
+    F = p.floor
+    for (sx, sy, sw, sh) in slabs:
+        base = p.floor_alt if r.random() < .3 else F[2]
+        for y in range(sh):
+            for x in range(sw):
+                c = F[1] if (x == 0 or y == 0) else (F[3] if (x == 1 or y == 1) else base)
+                img.put(sx + x, sy + y, c)
+        img.put(sx + 2, sy + 1, F[4])
+        img.put(sx + 3, sy + 1, F[4])
+        area = sw * sh / 256
+        for _ in range(int(r.randint(4, 8) * area)):
+            img.put(sx + r.randint(3, sw - 3), sy + r.randint(3, sh - 3), r.choice([F[1], F[1], F[3]]))
+        if worn:  # wytarty środek: jaśniejsze drobiny tam, gdzie się chodzi
+            for _ in range(int(10 * area)):
+                x, y = sx + r.randint(4, sw - 4), sy + r.randint(4, sh - 4)
+                if img.get(x, y) == base:
+                    img.put(x, y, F[3])
+        for _ in range(r.randint(0, 2)):  # obtłuczone narożniki
+            img.put(sx + r.choice([1, sw - 1]), sy + r.choice([1, sh - 1]), F[0])
+    return img
+
+
+def crack(img, r, x, y, n, dx, dy, dark, lit, keep=None, lit_on_clear=False):
+    pts = []
+    for _ in range(n):
+        if keep and not keep(x, y):
+            break
+        img.put(x, y, dark)
+        pts.append((x, y))
+        if r.random() < .55:
+            x += dx
+        if r.random() < .55:
+            y += dy
+        if r.random() < .25:
+            x += r.choice([-1, 1]) if dx == 0 else 0
+            y += r.choice([-1, 1]) if dy == 0 else 0
+        if r.random() < .08 and n > 6:
+            crack(img, r, x, y, r.randint(3, 6), r.choice([-1, 1]), dy or 1, dark, lit, keep, lit_on_clear)
+    for (px, py) in pts:  # oświetlona dolna krawędź szczeliny
+        b = img.get(px, py + 1)
+        if b is not None and b != dark and (b[3] or lit_on_clear):
+            img.put(px, py + 1, lit)
+    return pts
+
+
+def hole(img, p, r, cx, cy, rad, pebbles=True):
+    """Wyłom w posadzce: cień pod północną krawędzią, oświetlona krawędź południowa."""
+    F, D = p.floor, p.dirt
+    inside = set()
+    for y in range(img.h):
+        for x in range(img.w):
+            if ((x - cx) ** 2 + (y - cy) ** 2) ** .5 < rad + r.uniform(-1.6, 1.6):
+                inside.add((x, y))
+    for (x, y) in inside:
+        img.put(x, y, D[2] if r.random() < .75 else D[1])
+    for (x, y) in inside:
+        if (x, y - 1) not in inside:
+            img.put(x, y, F[0])
+        elif (x, y - 2) not in inside:
+            img.put(x, y, D[1])
+        if (x, y + 1) not in inside and y + 1 < img.h:
+            img.put(x, y + 1, F[4])
+    if pebbles and inside:
+        pts = sorted(inside)
+        for _ in range(r.randint(3, 6)):
+            x, y = r.choice(pts)
+            if (x, y - 1) in inside and (x + 1, y) in inside and (x, y + 1) in inside:
+                img.put(x, y, D[4])
+                img.put(x + 1, y, D[3])
+                img.put(x, y + 1, D[1])
+    return inside
+
+
+def stain(img, p, r, cx, cy, rad):
+    for y in range(img.h):
+        for x in range(img.w):
+            d = ((x - cx) ** 2 + ((y - cy) * 1.3) ** 2) ** .5
+            if d < rad + r.uniform(-1.5, 1.5):
+                img.put(x, y, p.stain[1] if d < rad * .6 else p.stain[0])
+
+
+def pebble(img, x, y, size, pal):
+    """Drobny okruch kamienia, oświetlony od góry."""
+    for yy in range(size):
+        for xx in range(size + (1 if size > 1 else 0)):
+            img.put(x + xx, y + yy, pal[3] if yy == 0 else (pal[1] if yy == size - 1 else pal[2]))
+    if size > 1:
+        img.put(x, y, pal[4])
+
+
+def floor_base(style):
+    def gen(p, r):
+        if style == 'worn':
+            return floor_slabs(p, r, SLAB_LAYOUTS['slab16'], worn=True)
+        if style.startswith('macro'):
+            return floor_slabs(p, r, SLAB_LAYOUTS[style], 2 * T, 2 * T)
+        return floor_slabs(p, r, SLAB_LAYOUTS[style])
+    return gen
+
+
+def decal(kind):
+    """Przezroczyste nakładki na dowolną bazę podłogi."""
+    def gen(p, r):
+        F, W = p.floor, p.wall_top
+        lit = dict(dark=F[0], lit=F[4], lit_on_clear=True)
+        if kind == 'crack_a':
+            img = Img(T, T); crack(img, r, 3, 6, 26, 1, 1, **lit)
+        elif kind == 'crack_b':
+            img = Img(T, T); crack(img, r, 28, 2, 30, -1, 1, **lit); crack(img, r, 6, 20, 10, 1, 0, **lit)
+        elif kind == 'crack_c':
+            img = Img(T, T); crack(img, r, 10, 12, 12, 1, 1, **lit)
+        elif kind == 'crack_2x1':
+            img = Img(2 * T, T); crack(img, r, 2, 12, 70, 1, 0, keep=lambda x, y: 1 <= y < 30, **lit)
+        elif kind == 'crack_1x2':
+            img = Img(T, 2 * T); crack(img, r, 14, 1, 70, 0, 1, keep=lambda x, y: 1 <= x < 30, **lit)
+        elif kind == 'broken_a':
+            img = Img(T, T); hole(img, p, r, 22, 10, 6.5); crack(img, r, 15, 13, 12, -1, 1, **lit)
+        elif kind == 'broken_b':
+            img = Img(T, T); hole(img, p, r, 15, 17, 10.5)
+        elif kind == 'rubble':
+            img = Img(T, T); hole(img, p, r, 16, 16, 13.5, pebbles=False)
+            for _ in range(9):
+                pebble(img, r.randint(3, 26), r.randint(3, 26), r.choice([1, 2, 2, 3]), W)
+        elif kind in ('stain_a', 'stain_b'):
+            img = Img(T, T); stain(img, p, r, r.randint(12, 18), r.randint(13, 19), r.uniform(6, 9))
+        elif kind in ('debris_a', 'debris_b'):
+            img = Img(T, T)
+            for _ in range(7):
+                pebble(img, r.randint(2, 28), r.randint(2, 28), r.choice([1, 1, 2]), W)
+        elif kind.startswith('dust_'):  # kurz nawiany pod ścianę; gęstszy przy samej ścianie
+            img = Img(T, T); side = kind[-1]
+            for y in range(T):
+                for x in range(T):
+                    d = {'n': y, 'w': x, 'e': T - 1 - x}[side]
+                    if d < 8 and r.random() < .5 - d * .06:
+                        img.put(x, y, p.ash[0] if r.random() < .6 else p.ash[1])
+        else:
+            raise ValueError(kind)
+        return img
+    return gen
+
+
+# ---------------- ściany (autotile 4-bit: N1 E2 S4 W8 = sąsiad jest ścianą) ----------------
+def ashlar(img, r, mortar, block, lit, block_alt=None, edge_hi=None, specks=None):
+    """Ciosy 16x8 w układzie z przesunięciem — wierzch muru."""
+    for y in range(T):
+        off = 8 if (y // 8) % 2 else 0
+        for x in range(T):
+            lx, ly = (x + off) % 16, y % 8
+            if ly == 0 or lx == 0:
+                c = mortar
+            elif ly == 1:
+                c = lit
+            elif ly == 7:
+                c = mortar if lx > 1 else block
+            else:
+                c = block
+            img.put(x, y, c)
+    for row in range(4):
+        off = 8 if row % 2 else 0
+        for bx in range(-off, T, 16):
+            if block_alt and r.random() < .35:
+                for y in range(row * 8 + 2, row * 8 + 7):
+                    for x in range(bx + 1, bx + 16):
+                        if 0 <= x < T and img.get(x, y) == block:
+                            img.put(x, y, block_alt)
+            if edge_hi:
+                img.put(bx + 2, row * 8 + 1, edge_hi)
+    if specks:
+        for _ in range(10):
+            x, y = r.randint(1, 30), r.randint(1, 30)
+            if img.get(x, y) == block:
+                img.put(x, y, r.choice(specks))
+
+
+def wall_tile(mask, dmg=None, diag=0):
+    """diag (tylko dla maski 15): podłoga po skosie NE1 SE2 SW4 NW8 — domyka obrys w narożnikach."""
+    def gen(p, r):
+        wt, wf, O = p.wall_top, p.wall_face, p.outline
+        img = Img(T, T)
+        ashlar(img, r, wt[1], wt[2], wt[3], p.wall_block_alt, wt[4], (wt[1], wt[3]))
+        S, N, E, Wo = not mask & 4, not mask & 1, not mask & 2, not mask & 8
+        fy = T - FACE
+        if S:  # lico od południa — widoczny bok muru, w cieniu
+            for x in range(T):
+                img.put(x, fy - 1, wt[4])
+            for y in range(fy, T):
+                ly = y - fy
+                for x in range(T):
+                    if ly in (0, 3) or ly >= 6 or (x + (6 if ly > 3 else 0)) % 12 == 0:
+                        c = wf[0]
+                    elif ly in (1, 4):
+                        c = wf[2]
+                    else:
+                        c = wf[1]
+                    img.put(x, y, c)
+            for x in range(T):
+                img.put(x, T - 1, O)
+        if N:
+            for x in range(T):
+                img.put(x, 0, O)
+                img.put(x, 1, wt[5] if x % 9 == 3 else wt[4])
+        if Wo:
+            for y in range(T):
+                img.put(0, y, O)
+                if y > 0:
+                    img.put(1, y, wf[1] if (S and y >= fy) else wt[3])
+        if E:
+            for y in range(T):
+                img.put(T - 1, y, O)
+                img.put(T - 2, y, wf[0] if (S and y >= fy) else wt[1])
+        # zaokrąglone narożniki zewnętrzne
+        if N and Wo: img.put(0, 0, CLR); img.put(1, 1, O)
+        if N and E: img.put(T - 1, 0, CLR); img.put(T - 2, 1, O)
+        if S and Wo: img.put(0, T - 1, CLR); img.put(1, T - 2, O)
+        if S and E: img.put(T - 1, T - 1, CLR); img.put(T - 2, T - 2, O)
+        # narożniki wewnętrzne: krawędź boku muru obok lica sąsiada
+        if diag & 2:
+            for y in range(fy - 1, T): img.put(T - 1, y, O); img.put(T - 2, y, wt[1])
+        if diag & 4:
+            for y in range(fy - 1, T): img.put(0, y, O); img.put(1, y, wt[3])
+        if diag & 1: img.put(T - 1, 0, O)
+        if diag & 8: img.put(0, 0, O)
+        # zniszczenia tylko na wierzchu muru, nigdy na licu ani obrysie
+        y0, y1 = (3 if N else 1), (fy - 1 if S else T - 1)
+        x0, x1 = (3 if Wo else 1), (T - 3 if E else T - 1)
+        inside = lambda x, y: x0 <= x < x1 and y0 <= y < y1
+        if dmg == 'crack':
+            crack(img, r, x0 + 3, y0 + 1, 26, 1, 1, dark=wt[0], lit=wt[3], keep=inside)
+        elif dmg == 'chunk':
+            cx, cy = (x0 + x1) // 2 + r.randint(-4, 4), (y0 + y1) // 2
+            pts = {(x, y) for y in range(T) for x in range(T)
+                   if inside(x, y) and ((x - cx) ** 2 + (y - cy) ** 2) ** .5 < 5.5 + r.uniform(-1.4, 1.4)}
+            for (x, y) in pts:
+                img.put(x, y, wt[1] if r.random() < .7 else wt[0])
+            for (x, y) in pts:
+                if (x, y - 1) not in pts: img.put(x, y, wt[0])
+                if (x, y + 1) not in pts and inside(x, y + 1): img.put(x, y + 1, wt[4])
+            for (x, y) in r.sample(sorted(pts), min(4, len(pts))):
+                pebble(img, x, y, 1, wt)
+        elif dmg == 'ash':  # nawiany popiół, wyblakły — nie magiczna zieleń
+            for _ in range(40):
+                x, y = r.randint(x0, x1 - 1), r.randint(max(y0, 12), min(y1 - 1, 22))
+                img.put(x, y, r.choice(p.ash))
+        return img
+    return gen
+
+
+def wall_band(band):
+    """Masa muru z dala od podłogi: przygaszona (fade), potem prawie ciemność (deep). Ten sam rytm ciosów."""
+    def gen(p, r):
+        img = Img(T, T)
+        if band == 'fade':
+            ashlar(img, r, p.wall_fade[0], p.wall_fade[1], p.wall_fade[2], specks=(p.wall_fade[0],))
+        else:
+            ashlar(img, r, p.deep[0], p.deep[1], p.deep[1])
+        return img
+    return gen
+
+
+def env_shadow(mask):
+    """Cień środowiska na podłodze: N1 pas pod licem, E2/W8 wąski pas przy bocznej ścianie. Stała alfa."""
+    def gen(p, r):
+        img = Img(T, T)
+        c = p.outline[:3] + (ENV_SHADOW_ALPHA,)
+        for y in range(T):
+            for x in range(T):
+                if (mask & 1 and y < 5) or (mask & 8 and x < 2) or (mask & 2 and x >= T - 2):
+                    img.put(x, y, c)
+        return img
+    return gen
+
+
+# ---------------- krata areny ----------------
+def gate(orient, state):
+    """h = krata w poprzek korytarza N-S (widać pręty od frontu), v = w poprzek korytarza E-W (widać z boku).
+    Stany: open (tylko szczelina w posadzce), half (opada), closed."""
+    def gen(p, r):
+        img, I, F = Img(T, T), p.iron, p.floor
+        if orient == 'h':
+            if state != 'open':
+                bottom = 16 if state == 'closed' else 9
+                for bx in range(3, T, 8):
+                    for y in range(2, bottom + 1):
+                        img.put(bx, y, I[2]); img.put(bx + 1, y, I[1])
+                for by in ((5, 12) if state == 'closed' else (5,)):
+                    for x in range(T):
+                        img.put(x, by, I[2]); img.put(x, by + 1, I[0])
+            outline(img, p.outline)
+            for x in range(T):  # szczelina w posadzce
+                if not img.get(x, 17)[3]: img.put(x, 17, p.outline)
+                if not img.get(x, 18)[3]: img.put(x, 18, F[0])
+        else:
+            if state != 'open':
+                for y in range(T):
+                    tip = y % 8 in (3, 4)
+                    if state == 'closed' or tip:
+                        for x in range(14, 18):
+                            img.put(x, y, I[2] if tip else (I[1] if x < 16 else I[0]))
+            outline(img, p.outline)
+            for y in range(T):
+                for x, c in ((13, p.outline), (18, F[0])):
+                    if not img.get(x, y)[3]: img.put(x, y, c)
+        return img
+    return gen
+
+
+# ---------------- duże elementy podłogi (2x2) ----------------
+def seal(p, r):
+    W, G, F = p.wall_top, p.accent, p.floor
+    img = floor_slabs(p, r, grid_slabs(64, 64), 64, 64)
+    cx = cy = 32
+    for y in range(64):
+        for x in range(64):
+            dx, dy = x + .5 - cx, y + .5 - cy
+            d = (dx * dx + dy * dy) ** .5
+            if 25 <= d < 28: img.put(x, y, W[2] if d >= 27 else W[3])
+            elif 23.5 <= d < 25: img.put(x, y, G[1] if dy < 6 else G[0])
+            elif d < 23.5 and img.get(x, y) == F[0]: img.put(x, y, F[1])
+            if d < 23.5 and abs(abs(dx) - abs(dy)) < 1 and 6 < d < 20: img.put(x, y, G[0])
+            if d < 6: img.put(x, y, W[3] if d > 4.5 else (G[1] if d > 2 else G[2]))
+    img.put(31, 29, G[3]); img.put(32, 28, G[3])
+    for a in range(0, 360, 45):
+        x, y = int(cx + 26 * math.sin(math.radians(a))), int(cy - 26 * math.cos(math.radians(a)))
+        img.put(x, y, W[4]); img.put(x - 1, y, W[4])
+    for a in (40, 200, 300):  # wytarte przerwy w złotym pierścieniu
+        for k in range(-3, 4):
+            ang = math.radians(a + k * 2)
+            for rr in (23.6, 24.4):
+                img.put(int(cx + rr * math.sin(ang)), int(cy - rr * math.cos(ang)), F[1])
+    crack(img, r, 8, 10, 30, 1, 1, F[0], F[4])
+    crack(img, r, 56, 40, 18, -1, 1, F[0], F[4])
+    return img
+
+
+def stairs(open_):
+    def gen(p, r):
+        W, G, I, O = p.wall_top, p.accent, p.iron, p.outline
+        img = floor_slabs(p, r, grid_slabs(64, 64), 64, 64)
+        x0, x1, y0, y1 = 6, 58, 4, 60
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                img.put(x, y, W[2])
+        for x in range(x0, x1):
+            img.put(x, y0, O); img.put(x, y0 + 1, W[4]); img.put(x, y1 - 1, O); img.put(x, y1 - 2, W[1])
+        for y in range(y0, y1):
+            img.put(x0, y, O); img.put(x0 + 1, y, W[3]); img.put(x1 - 1, y, O); img.put(x1 - 2, y, W[1])
+        for (x, y) in ((x0, y0), (x1 - 1, y0), (x0, y1 - 1), (x1 - 1, y1 - 1)):
+            img.put(x, y, p.floor[1])
+        sx0, sx1, sy0, steps, sh = 11, 53, 9, 6, 8  # stopnie w górę ku północy => wyższe jaśniejsze
+        for i in range(steps):
+            yt = sy0 + i * sh
+            tread = W[4] if i == 0 else (W[3] if i < 3 else W[2])
+            riser = W[1] if i < 3 else W[0]
+            for y in range(yt, yt + sh):
+                ly = y - yt
+                for x in range(sx0, sx1):
+                    c = tread if ly < 5 else riser
+                    if ly == 0: c = W[5] if i < 2 else W[4]
+                    if ly == 5: c = W[0]
+                    img.put(x, y, c)
+            for (x, y) in ((sx0 + 7 + i * 3, yt + 2), (sx1 - 9 - i * 2, yt + 3)):
+                img.put(x, y, W[1])
+        for y in range(sy0, sy0 + steps * sh):
+            img.put(sx0 - 1, y, W[0]); img.put(sx0 - 2, y, W[1]); img.put(sx1, y, W[0]); img.put(sx1 + 1, y, W[0])
+        img.put(sx0, sy0 + 2 * sh, W[0]); img.put(sx1 - 1, sy0 + 4 * sh + 1, W[0]); img.put(sx1 - 2, sy0 + 4 * sh, W[0])
+        for (x, y) in ((8, 14), (8, 30), (8, 46), (55, 14), (55, 30), (55, 46)):  # runy na obramowaniu
+            for k in range(3):
+                img.put(x, y + k, G[2] if open_ else G[0])
+            if open_: img.put(x, y + 1, G[3])
+        if not open_:  # żelazne pręty i pieczęć
+            for bx in range(sx0 + 3, sx1, 7):
+                for y in range(sy0 - 2, sy0 + steps * sh):
+                    img.put(bx, y, O); img.put(bx + 1, y, I[1] if y % 8 == 0 else I[0])
+            for by in (sy0 + 10, sy0 + 34):
+                for x in range(sx0, sx1):
+                    img.put(x, by, O); img.put(x, by + 1, I[1]); img.put(x, by + 2, I[0])
+            for y in range(20, 40):
+                for x in range(22, 42):
+                    d = ((x + .5 - 32) ** 2 + (y + .5 - 30) ** 2) ** .5
+                    if d < 9: img.put(x, y, O if d > 8 else (G[1] if d > 6.5 else (G[0] if d > 3 else G[1])))
+            for (x, y) in ((31, 28), (32, 29), (31, 30), (32, 31)):
+                img.put(x, y, G[2])
+        else:
+            for x in range(sx0 + 4, sx1 - 4, 6):
+                img.put(x, sy0, G[2])
+        return img
+    return gen
+
+
+# ---------------- rekwizyty (przezroczyste, z obrysem) ----------------
+def pillar(kind):
+    def gen(p, r):
+        W, img = p.wall_top, Img(T, T)
+        for y in range(3, 29):
+            for x in range(3, 29):
+                c = W[2]
+                if y == 3 or x == 3: c = W[3]
+                if y == 4 and 4 <= x <= 27: c = W[4]
+                if y == 28 or x == 28: c = W[1]
+                if y == 27 and x > 3 and c == W[2]: c = W[1]
+                img.put(x, y, c)
+        for (x, y) in ((5, 5), (26, 5), (5, 26), (26, 26)):
+            img.put(x, y, W[1])
+
+        def cap(dx, dy, d):
+            if d > 10: return W[1] if dx + dy > 2 else W[4]
+            if 9 < d <= 10: return W[1] if dx + dy > 0 else W[3]
+            if 6 < d <= 7: return W[1]
+            if d <= 2.2: return W[5] if dy < 0 else W[2]
+            if d <= 6: return W[4] if dy < -1 else W[3]
+            return W[4] if dy < -3 else (W[3] if dy < 4 else W[2])
+        disc(img, 16, 16, 11, cap)
+        if kind == 'cracked':
+            crack(img, r, 9, 6, 22, 1, 1, W[0], W[4], keep=lambda x, y: bool(img.get(x, y) and img.get(x, y)[3]))
+            for (x, y) in ((3, 3), (4, 3), (3, 4), (28, 27), (28, 28), (27, 28), (26, 28)):
+                img.put(x, y, CLR)
+        if kind == 'stump':  # złamany trzon: chropowaty przekrój, brak narożników cokołu
+            for y in range(T):
+                for x in range(T):
+                    if (x < 9 and y > 20) or (x > 23 and y < 8) or (x + y > 52):
+                        img.put(x, y, CLR)
+
+            def rough(dx, dy, d):
+                v = r.random()
+                if d > 9.5: return W[1]
+                return W[4] if v < .15 else (W[3] if v < .55 else (W[2] if v < .85 else W[1]))
+            disc(img, 16, 15, 10.5, rough)
+            crack(img, r, 12, 10, 10, 1, 1, W[0], W[4], keep=lambda x, y: ((x - 16) ** 2 + (y - 15) ** 2) < 90)
+            for (px, py, s) in ((3, 24, 2), (8, 27, 3), (25, 22, 2), (27, 6, 1), (2, 13, 1)):
+                pebble(img, px, py, s, W)
+        outline(img, p.outline)
+        return img
+    return gen
+
+
+def rubble_prop(p, r):
+    W, img = p.wall_top, Img(T, T)
+    chunks = sorted([(r.randint(5, T - 10), r.randint(6, T - 10), r.choice([3, 4, 5, 5, 6])) for _ in range(9)],
+                    key=lambda c: c[1])
+    for (x, y, s) in chunks:
+        sh = r.randint(-1, 1)
+        for yy in range(s):
+            for xx in range(s + 2):
+                if (xx == 0 or xx == s + 1) and (yy == 0 or yy == s - 1):
+                    continue
+                c = W[3] if yy == 0 else (W[1] if yy >= s - 1 else W[2])
+                if xx == s + 1 and yy > 0: c = W[1]
+                img.put(x + xx + sh, y + yy, c)
+        img.put(x + 1 + sh, y, W[4])
+    for _ in range(6):
+        pebble(img, r.randint(2, T - 4), r.randint(2, T - 4), 1, W)
+    outline(img, p.outline)
+    return img
+
+
+def bones(p, r):
+    B, O, img = p.bone, p.outline, Img(T, T)
+    for y in range(8, 22):  # czaszka z góry, oczodoły na południe
+        for x in range(6, 18):
+            dx, dy = (x + .5 - 12) / 6, (y + .5 - 14) / 7
+            if dx * dx + dy * dy <= 1:
+                yy = y - 14
+                img.put(x, y, B[2] if yy < -2 else (B[1] if yy < 3 else B[0]))
+    for (x, y) in ((8, 15), (9, 15), (8, 16), (9, 16), (14, 15), (15, 15), (14, 16), (15, 16)):
+        img.put(x, y, O)
+    img.put(11, 18, B[0]); img.put(12, 18, B[0])
+    for x in range(8, 16):
+        img.put(x, 20, B[2] if x % 2 else B[0])
+    img.put(10, 10, B[2]); img.put(11, 9, B[2])
+    img.put(11, 12, B[0]); img.put(12, 13, B[0])
+    for i in range(14):  # kość udowa po skosie
+        x, y = 15 + i, 26 - i // 2
+        img.put(x, y, B[2]); img.put(x, y + 1, B[1]); img.put(x, y + 2, B[0])
+    for (x, y) in ((14, 25), (14, 27), (29, 18), (29, 20)):
+        img.put(x, y, B[1])
+    for (x, y) in ((22, 7), (23, 8), (24, 9), (24, 10)):
+        img.put(x, y, B[1]); img.put(x, y + 1, B[0])
+    for (x, y) in ((4, 26), (5, 27), (6, 27)):
+        img.put(x, y, B[1])
+    outline(img, O)
+    return img
+
+
+def fallen_pillar(p, r):
+    W, img = p.wall_top, Img(2 * T, T)
+    bands = [W[4]] * 2 + [W[3]] * 4 + [W[2]] * 6 + [W[1]] * 4
+    for x in range(8, 58):
+        for i, c in enumerate(bands):
+            if x in (8, 9) and i in (0, 15):
+                continue
+            img.put(x, 8 + i, c)
+    for x in range(10, 57):  # żłobkowanie
+        if img.get(x, 12) == W[3]: img.put(x, 12, W[2])
+        img.put(x, 18, W[1])
+    for jx in (22, 38):
+        for y in range(8, 24): img.put(jx, y, W[0] if y > 11 else W[1])
+        for y in range(9, 23): img.put(jx + 1, y, W[4] if y < 12 else W[3])
+    for y in range(8, 24):  # przekrój z lewej
+        for x in range(3, 10):
+            dx, dy = (x + .5 - 8) / 4.5, (y + .5 - 16) / 8
+            if dx * dx + dy * dy <= 1:
+                d = (dx * dx + dy * dy) ** .5
+                img.put(x, y, W[3] if d > .75 else (W[4] if d < .3 else W[2]))
+    for y in range(8, 24):  # poszarpany koniec z prawej
+        cut = 54 + r.randint(0, 4)
+        for x in range(cut, 62): img.put(x, y, CLR)
+        img.put(cut - 1, y, W[3] if r.random() < .5 else W[4])
+    crack(img, r, 30, 9, 12, 1, 1, W[0], W[4], keep=lambda x, y: 9 <= y <= 22)
+    pebble(img, 58, 25, 2, W); pebble(img, 61, 19, 1, W); pebble(img, 4, 26, 1, W)
+    outline(img, p.outline)
+    return img
+
+
+# ---------------- manifest ----------------
+@dataclass(frozen=True)
+class Entry:
+    name: str
+    gen: object
+    layer: str
+    w: int = 1
+    h: int = 1
+    group: str = None
+    weight: float = 0
+    flip_x: bool = False
+
+
+WALL_COMMON = (7, 11, 13, 14)  # ~82% widocznych ścian na wygenerowanych mapach (pomiar, krok 16)
+
+
+def manifest():
+    m = []
+    for name, style, weight in (('floor_slab16_a', 'slab16', 10), ('floor_slab16_b', 'slab16', 10),
+                                ('floor_slab16_c', 'slab16', 10), ('floor_slab32_a', 'slab32', 4),
+                                ('floor_slab32_b', 'slab32', 4), ('floor_mixed_h', 'mixed_h', 5),
+                                ('floor_mixed_v', 'mixed_v', 5), ('floor_worn', 'worn', 3)):
+        m.append(Entry(name, floor_base(style), 'floorBase', group='floor', weight=weight, flip_x=True))
+    for name, style in (('floor_macro_a_2x2', 'macro_a'), ('floor_macro_b_2x2', 'macro_b')):
+        m.append(Entry(name, floor_base(style), 'floorBase', 2, 2, group='floorMacro', weight=1, flip_x=True))
+    for kind, group, weight, w, h in (('crack_a', 'decal.crack', 3, 1, 1), ('crack_b', 'decal.crack', 3, 1, 1),
+                                      ('crack_c', 'decal.crack', 3, 1, 1), ('crack_2x1', 'decal.crackLong', 1, 2, 1),
+                                      ('crack_1x2', 'decal.crackLong', 1, 1, 2), ('broken_a', 'decal.broken', 1, 1, 1),
+                                      ('broken_b', 'decal.broken', 1, 1, 1), ('rubble', 'decal.rubble', 1, 1, 1),
+                                      ('stain_a', 'decal.stain', 1, 1, 1), ('stain_b', 'decal.stain', 1, 1, 1),
+                                      ('debris_a', 'decal.debris', 1, 1, 1), ('debris_b', 'decal.debris', 1, 1, 1),
+                                      ('dust_n', 'decal.dustN', 1, 1, 1), ('dust_w', 'decal.dustW', 1, 1, 1),
+                                      ('dust_e', 'decal.dustE', 1, 1, 1)):
+        suffix = f'_{w}x{h}' if (w, h) != (1, 1) and not kind.endswith(f'{w}x{h}') else ''
+        m.append(Entry(f'decal_{kind}{suffix}', decal(kind), 'floorDecal', w, h, group=group, weight=weight,
+                       flip_x=not kind.startswith('dust')))
+    for mask in range(16):
+        m.append(Entry(f'wall_{mask:02d}', wall_tile(mask), 'wall', group=f'wall.{mask}', weight=60))
+    for mask in WALL_COMMON:
+        m.append(Entry(f'wall_{mask:02d}_b', wall_tile(mask), 'wall', group=f'wall.{mask}', weight=30))
+        m.append(Entry(f'wall_{mask:02d}_crack', wall_tile(mask, 'crack'), 'wall', group=f'wall.{mask}', weight=6))
+        m.append(Entry(f'wall_{mask:02d}_chunk', wall_tile(mask, 'chunk'), 'wall', group=f'wall.{mask}', weight=4))
+    for suffix, dmg, weight in (('b', None, 30), ('crack', 'crack', 4), ('chunk', 'chunk', 3), ('ash', 'ash', 4)):
+        m.append(Entry(f'wall_15_{suffix}', wall_tile(15, dmg), 'wall', group='wall.15', weight=weight))
+    for diag in range(1, 16):
+        m.append(Entry(f'wall_15_d{diag:02d}', wall_tile(15, diag=diag), 'wall', group='wallDiag'))
+    for band in ('fade', 'deep'):
+        for v in ('a', 'b'):
+            m.append(Entry(f'wall_{band}_{v}', wall_band(band), 'wall', group=f'wallBand.{band}', weight=1))
+    for mask in (1, 2, 3, 8, 9, 10, 11):
+        m.append(Entry(f'shadow_{mask:02d}', env_shadow(mask), 'envShadow', group='envShadow'))
+    for orient in ('h', 'v'):
+        for state in ('open', 'half', 'closed'):
+            m.append(Entry(f'gate_{orient}_{state}', gate(orient, state), 'gate', group=f'gate.{orient}'))
+    m.append(Entry('stairs_sealed_2x2', stairs(False), 'floorFeature', 2, 2))
+    m.append(Entry('stairs_open_2x2', stairs(True), 'floorFeature', 2, 2))
+    m.append(Entry('seal_2x2', seal, 'floorFeature', 2, 2))
+    for name, gen, w in (('pillar', pillar('intact'), 1), ('pillar_cracked', pillar('cracked'), 1),
+                         ('pillar_stump', pillar('stump'), 1), ('fallen_pillar_2x1', fallen_pillar, 2),
+                         ('rubble_a', rubble_prop, 1), ('rubble_b', rubble_prop, 1), ('bones', bones, 1)):
+        m.append(Entry(name, gen, 'prop', w, 1, group='prop'))
+    return m
+
+
+def seed_of(name):
+    return zlib.crc32(f'{BIOME}/{name}'.encode())
+
+
+def render_tiles(p):
+    return {e.name: e.gen(p, random.Random(seed_of(e.name))) for e in manifest()}
+
+
+def pack(entries):
+    """Pierwsze wolne miejsce w kolejności manifestu (first-fit) — dopisane kafle nie przesuwają starych."""
+    used, pos = set(), {}
+    for e in entries:
+        i = 0
+        while True:
+            c, r = i % COLUMNS, i // COLUMNS
+            cells = [(c + dx, r + dy) for dy in range(e.h) for dx in range(e.w)]
+            if c + e.w <= COLUMNS and not any(cell in used for cell in cells):
+                used.update(cells)
+                pos[e.name] = (c, r)
+                break
+            i += 1
+    rows = max(r for (_, r) in used) + 1
+    return pos, rows
+
+
+def build_sheet(p):
+    entries, tiles = manifest(), render_tiles(p)
+    pos, rows = pack(entries)
+    sheet = Img(COLUMNS * T, rows * T)
+    meta = {
+        'version': 2, 'biome': BIOME, 'palette': p.key, 'image': f'{BIOME}_tileset.png',
+        'tileSize': T, 'columns': COLUMNS, 'rows': rows, 'envShadowAlpha': round(ENV_SHADOW_ALPHA / 255, 3),
+        'tiles': {}, 'groups': {},
+    }
+    for e in entries:
+        c, r = pos[e.name]
+        sheet.blit(tiles[e.name], c * T, r * T)
+        t = {'frame': r * COLUMNS + c, 'col': c, 'row': r, 'w': e.w, 'h': e.h, 'layer': e.layer}
+        if e.w > 1 or e.h > 1:  # indeksy części elementu wielokaflowego, wiersz po wierszu
+            t['frames'] = [[(r + dy) * COLUMNS + c + dx for dx in range(e.w)] for dy in range(e.h)]
+        if e.weight: t['weight'] = e.weight
+        if e.flip_x: t['flipX'] = True
+        meta['tiles'][e.name] = t
+        if e.group:
+            meta['groups'].setdefault(e.group, []).append(e.name)
+    meta['autotile'] = {
+        'wall': {
+            'bits': {'N': 1, 'E': 2, 'S': 4, 'W': 8}, 'meaning': 'bit ustawiony = sąsiad jest ścianą (brzeg mapy też)',
+            'variants': {str(m): f'wall.{m}' for m in range(16)},
+            'diagonal': {'appliesToMask': 15, 'bits': {'NE': 1, 'SE': 2, 'SW': 4, 'NW': 8},
+                         'tiles': {str(d): f'wall_15_d{d:02d}' for d in range(1, 16)}},
+            'bands': {'edge': 1, 'fade': 2, 'deep': 3, 'meaning': 'odległość Czebyszewa od najbliższej podłogi',
+                      'groups': {'fade': 'wallBand.fade', 'deep': 'wallBand.deep'}},
+            'overhead': 'ściany bez bitu N (podłoga od północy) rysujemy nad postaciami',
+        },
+        'envShadow': {'bits': {'N': 1, 'E': 2, 'W': 8}, 'meaning': 'sąsiad podłogi jest ścianą',
+                      'tiles': {str(m): f'shadow_{m:02d}' for m in (1, 2, 3, 8, 9, 10, 11)}},
+    }
+    return sheet, meta, tiles
+
+
+# ---------------- walidator (STYLEGUIDE) ----------------
+def validate(p, tiles):
+    errors, warnings = [], []
+    allowed = p.colors() | {CLR}
+    layer = {e.name: e.layer for e in manifest()}
+    for name, img in tiles.items():
+        bad_alpha, bad_color = 0, set()
+        for row in img.p:
+            for c in row:
+                if c[3] == 0:
+                    continue
+                if layer[name] == 'envShadow':
+                    if c[3] != ENV_SHADOW_ALPHA: bad_alpha += 1
+                    continue
+                if c[3] != 255: bad_alpha += 1
+                elif c not in allowed: bad_color.add(to_hex(c))
+        if bad_alpha: errors.append(f'{name}: {bad_alpha} px z niedozwoloną alfą')
+        if bad_color: errors.append(f'{name}: kolory spoza palety {sorted(bad_color)[:5]}')
+    for c in p.colors():
+        if c[:3] in ((0, 0, 0), (255, 255, 255)):
+            errors.append(f'paleta zawiera czystą czerń/biel {to_hex(c)}')
+    for c in (p.floor[2], p.floor_alt, p.floor[3]):
+        h, s = hue_sat(c)
+        if s >= .08 and 255 <= h <= 335:
+            warnings.append(f'podłoga {to_hex(c)} (barwa {h:.0f}°, nasycenie {s:.0%}) w rodzinie fioletu wrogów')
+        if s >= .4 and 80 <= h <= 130:
+            errors.append(f'podłoga {to_hex(c)} za blisko zieleni magii')
+    return errors, warnings
+
+
+# ---------------- makieta ----------------
+MOCKUP_MAP = [
+    "############################",
+    "############################",
+    "############################",
+    "############################",
+    "####......Ss.......#########",
+    "####......ss.......#########",
+    "####..P......Ll.P..#########",
+    "####...............g........",
+    "####...............g........",
+    "####..Oo...........#########",
+    "####..oo........p..#########",
+    "####.B...........R.#########",
+    "####...............#########",
+    "########GG##################",
+    "########..##################",
+    "########..##################",
+    "########..##################",
+]
+# (arkusz, rozmiar komórki, kolor obrysu z arkusza, kolumna klatki) — klatka 0, wiersze = kierunki N..NW
+SPRITES = {
+    'barbarian': ('blond-barbarian_walk.png', 48, '#1b1a22', 'Barbarzyńca'),
+    'trashcan': ('trashcan-man_walk.png', 48, '#1b1a22', 'Trashcan'),
+    'mage': ('demon-mage_float-cast.png', 48, '#140a12', 'Mag'),
+    'sludge': ('sludge-king_move-spit.png', 96, '#1b1a22', 'Sludge King'),
+    'orb': ('demon-mage_orb.png', 16, None, None),
+    'glob': ('sludge-king_glob.png', 16, None, None),
+}
+# (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
+MOCKUP_ACTORS = [
+    ('barbarian', 0, 368, 262, True),
+    ('trashcan', 6, 492, 296, True),
+    ('mage', 4, 232, 236, False),     # na zwykłej podłodze
+    ('mage', 3, 452, 150, False),     # w cieniu pod licem górnej ściany
+    ('mage', 6, 752, 252, False),     # w korytarzu przy kracie
+    ('sludge', 1, 400, 352, False),
+    ('orb', 0, 300, 246, False),
+    ('glob', 0, 430, 318, False),
+]
+
+
+def load_frame(key, row):
+    file, cell, _, _ = SPRITES[key]
+    im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
+    if key in ('orb', 'glob'):
+        row = 0
+    return im.crop((0, row * cell, cell, (row + 1) * cell))
+
+
+def weighted(rng, names, weights):
+    return rng.choices(names, weights=weights, k=1)[0]
+
+
+def compose_mockup(p, tiles, meta, seed=16):
+    rng = random.Random(seed)
+    grid = MOCKUP_MAP
+    H, Wd = len(grid), len(grid[0])
+    canvas = Image.new('RGBA', (Wd * T, H * T), p.deep[0])
+    pil = {n: img.pil() for n, img in tiles.items()}
+    flipped = {}
+
+    def put(name, cx, cy, flip=False):
+        im = pil[name]
+        if flip:
+            im = flipped.setdefault(name, im.transpose(Image.FLIP_LEFT_RIGHT))
+        canvas.alpha_composite(im, (cx * T, cy * T))
+
+    def wall(x, y):
+        return not (0 <= y < H and 0 <= x < Wd) or grid[y][x] == '#'
+
+    group = lambda g: (meta['groups'][g], [meta['tiles'][n].get('weight', 1) for n in meta['groups'][g]])
+    plain = lambda x, y: 0 <= y < H and 0 <= x < Wd and grid[y][x] == '.'
+
+    # 1. baza podłogi: najpierw wzory 2x2, potem ważone warianty bez powtórzeń z sąsiadem
+    base, macros = {}, 0
+    for _ in range(60):
+        x, y = rng.randrange(Wd - 1), rng.randrange(H - 1)
+        cells = [(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)]
+        if macros < 3 and all(plain(*c) and c not in base for c in cells):
+            for c in cells:
+                base[c] = '#macro'
+            put(weighted(rng, *group('floorMacro')), x, y)
+            macros += 1
+    names, weights = group('floor')
+    for y in range(H):
+        for x in range(Wd):
+            if wall(x, y) or (x, y) in base:
+                continue
+            for _ in range(4):
+                n = weighted(rng, names, weights)
+                if n not in (base.get((x - 1, y)), base.get((x, y - 1))):
+                    break
+            base[(x, y)] = n
+            put(n, x, y, rng.random() < .5)
+    # 2. nakładki
+    decal_groups = [('decal.crack', 4), ('decal.debris', 2), ('decal.stain', 1.5), ('decal.broken', 1), ('decal.rubble', .5)]
+    for y in range(H):
+        for x in range(Wd):
+            if not plain(x, y):
+                continue
+            if wall(x, y - 1) and rng.random() < .35: put('decal_dust_n', x, y)
+            if wall(x - 1, y) and rng.random() < .25: put('decal_dust_w', x, y)
+            if wall(x + 1, y) and rng.random() < .25: put('decal_dust_e', x, y)
+            if rng.random() < .10:
+                g = weighted(rng, [g for g, _ in decal_groups], [w for _, w in decal_groups])
+                put(weighted(rng, *group(g)), x, y, rng.random() < .5)
+    put('decal_crack_2x1', 12, 11)
+    put('decal_crack_1x2', 22 - 8, 8)
+    # 3. elementy podłogi
+    for y in range(H):
+        for x in range(Wd):
+            if grid[y][x] == 'S': put('stairs_sealed_2x2', x, y)
+            if grid[y][x] == 'O': put('seal_2x2', x, y)
+    # 4. cienie środowiska
+    for y in range(H):
+        for x in range(Wd):
+            if wall(x, y):
+                continue
+            m = (1 if wall(x, y - 1) else 0) | (2 if wall(x + 1, y) else 0) | (8 if wall(x - 1, y) else 0)
+            if m:
+                put(f'shadow_{m:02d}', x, y)
+    # 5. cienie kontaktowe postaci chodzących (w grze da je silnik)
+    shadow_layer = Image.new('RGBA', canvas.size, CLR)
+    d = ImageDraw.Draw(shadow_layer)
+    for key, row, cx, cy, walks in MOCKUP_ACTORS:
+        if walks:
+            d.ellipse((cx - 10, cy + 9, cx + 10, cy + 15), fill=p.outline[:3] + (ENV_SHADOW_ALPHA,))
+    canvas.alpha_composite(shadow_layer)
+    # 6. ściany: pasma odległości, maska, narożniki, ważone warianty
+    overhead = []
+    for y in range(H):
+        for x in range(Wd):
+            if not wall(x, y):
+                continue
+            dist = min([max(abs(dx), abs(dy)) for dy in range(-3, 4) for dx in range(-3, 4)
+                        if not wall(x + dx, y + dy)] or [3])
+            if dist >= 2:
+                put(weighted(rng, *group('wallBand.' + ('fade' if dist == 2 else 'deep'))), x, y)
+                continue
+            m = (1 if wall(x, y - 1) else 0) | (2 if wall(x + 1, y) else 0) | (4 if wall(x, y + 1) else 0) | (8 if wall(x - 1, y) else 0)
+            if m == 15:
+                dg = ((1 if not wall(x + 1, y - 1) else 0) | (2 if not wall(x + 1, y + 1) else 0)
+                      | (4 if not wall(x - 1, y + 1) else 0) | (8 if not wall(x - 1, y - 1) else 0))
+                name = f'wall_15_d{dg:02d}'
+            else:
+                name = weighted(rng, *group(f'wall.{m}'))
+            put(name, x, y)
+            if not m & 1:
+                overhead.append((name, x, y))
+    # 7. kraty i rekwizyty
+    props = {'P': 'pillar', 'p': 'pillar_stump', 'B': 'bones', 'R': 'rubble_a', 'L': 'fallen_pillar_2x1', 'G': 'gate_h_closed', 'g': 'gate_v_closed'}
+    for y in range(H):
+        for x in range(Wd):
+            if grid[y][x] in props:
+                put(props[grid[y][x]], x, y)
+    # 8. postacie (wg y), potem ściany nad postaciami
+    for key, row, cx, cy, _ in sorted(MOCKUP_ACTORS, key=lambda a: a[3]):
+        fr = load_frame(key, row)
+        canvas.alpha_composite(fr, (cx - fr.width // 2, cy - fr.height // 2))
+    for name, x, y in overhead:
+        put(name, x, y)
+    return canvas
+
+
+def sprite_metrics(p, tiles):
+    """Kontrast WCAG: obrys i dominujący ton ciała postaci względem średniej jasności podłogi."""
+    floor_img = tiles['floor_slab16_a']
+    px = [c for row in floor_img.p for c in row]
+    y_floor = sum(luminance(c) for c in px) / len(px)
+    floor_h, _ = hue_sat(p.floor[2])
+    res = []
+    for key in ('barbarian', 'trashcan', 'mage', 'sludge'):
+        file, cell, out_hex, label = SPRITES[key]
+        fr = load_frame(key, 4)
+        cnt = Counter(c for c in fr.getdata() if c[3] == 255 and to_hex(c) != out_hex and luminance(c) > .006)
+        body = cnt.most_common(1)[0][0]
+        c_out = contrast(luminance(hx(out_hex)), y_floor)
+        c_body = contrast(luminance(body), y_floor)
+        bh, bs = hue_sat(body)
+        dh = min(abs(bh - floor_h), 360 - abs(bh - floor_h))
+        ok_ = c_out >= 2.0 and (c_body >= 1.5 or (dh >= 60 and bs >= .25))
+        res.append((label, c_out, c_body, dh, ok_))
+    return y_floor, res
+
+
+def label_font(size):
+    """Czcionka systemowa z polskimi znakami; domyślna Pillow ich nie ma."""
+    for path in (r'C:\Windows\Fonts\segoeui.ttf', r'C:\Windows\Fonts\arial.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'):
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
+
+
+def run_mockups(out, keys):
+    os.makedirs(out, exist_ok=True)
+    panels, report = [], []
+    for key in keys:
+        p = PALETTES[key]
+        sheet, meta, tiles = build_sheet(p)
+        errors, warnings = validate(p, tiles)
+        mock = compose_mockup(p, tiles, meta)
+        mock.resize((mock.width * 2, mock.height * 2), Image.NEAREST).save(os.path.join(out, f'mockup_{key}.png'))
+        sheet.pil().save(os.path.join(out, f'sheet_{key}.png'))
+        y_floor, res = sprite_metrics(p, tiles)
+        line1 = f'{p.label}   (jasność podłogi Y={y_floor:.3f})'
+        stats = [f"{lab}: obrys {co:.1f} · ciało {cb:.1f} · Δbarwy {dh:.0f}° · {'OK' if k else 'SŁABO'}"
+                 for lab, co, cb, dh, k in res]
+        panels.append((mock, line1, '      '.join(stats[:2]) + '\n' + '      '.join(stats[2:])))
+        report.append((p, y_floor, res, errors, warnings))
+    # zestawienie 2x2 w skali 1x z opisem
+    band = 64
+    pw, ph = panels[0][0].width, panels[0][0].height + band
+    cols = 2
+    rows = (len(panels) + cols - 1) // cols
+    board = Image.new('RGBA', (pw * cols, ph * rows), (18, 16, 22, 255))
+    d = ImageDraw.Draw(board)
+    f1, f2 = label_font(18), label_font(13)
+    for i, (mock, l1, l2) in enumerate(panels):
+        ox, oy = (i % cols) * pw, (i // cols) * ph
+        d.text((ox + 10, oy + 4), l1, fill=(238, 241, 244, 255), font=f1)
+        d.multiline_text((ox + 10, oy + 28), l2, fill=(200, 200, 210, 255), font=f2, spacing=3)
+        board.alpha_composite(mock, (ox, oy + band))
+    board.save(os.path.join(out, 'mockup_compare.png'))
+    return report
+
+
+def main():
+    sys.stdout.reconfigure(encoding='utf-8')  # konsola Windows domyślnie nie ma polskich znaków
+    ap = argparse.ArgumentParser(description='Generator kafli Tower Ruins (v2)')
+    ap.add_argument('--out', default=os.path.join(ROOT, 'public', 'assets', 'tilesets'))
+    ap.add_argument('--palette', default=DEFAULT_PALETTE, choices=sorted(PALETTES))
+    ap.add_argument('--mockup', action='store_true', help='makiety wszystkich (lub --palettes) kandydatek palet')
+    ap.add_argument('--palettes', default=','.join(PALETTES), help='lista palet do makiet, rozdzielona przecinkami')
+    ap.add_argument('--list', action='store_true')
+    a = ap.parse_args()
+    if a.list:
+        for k, p in PALETTES.items():
+            print(f'{k:15s} {p.label}')
+        return 0
+    if a.mockup:
+        report = run_mockups(a.out, [k.strip() for k in a.palettes.split(',')])
+        status = 0
+        for p, y_floor, res, errors, warnings in report:
+            print(f'\n{p.label} [{p.key}]  podłoga Y={y_floor:.3f}')
+            for lab, co, cb, dh, k in res:
+                print(f"  {lab:12s} obrys {co:4.2f}  ciało {cb:4.2f}  Δbarwy {dh:5.1f}°  {'OK' if k else 'SŁABO'}")
+            for w in warnings: print('  uwaga:', w)
+            for e in errors: print('  BŁĄD:', e); status = 1
+        return status
+    p = PALETTES[a.palette]
+    sheet, meta, tiles = build_sheet(p)
+    errors, warnings = validate(p, tiles)
+    for w in warnings: print('uwaga:', w)
+    if errors:
+        for e in errors: print('BŁĄD:', e)
+        return 1
+    os.makedirs(a.out, exist_ok=True)
+    sheet.pil().save(os.path.join(a.out, meta['image']))
+    with open(os.path.join(a.out, f'{BIOME}_tileset.json'), 'w', encoding='utf-8') as f:
+        json.dump(meta, f, indent=1, ensure_ascii=False)
+    print(f"zapisano {meta['image']}: {len(meta['tiles'])} kafli, {COLUMNS}x{meta['rows']}, paleta {p.key}")
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

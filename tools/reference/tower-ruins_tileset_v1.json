@@ -1,0 +1,331 @@
+{
+ "tileSize": 32,
+ "columns": 8,
+ "tiles": {
+  "floor_a": {
+   "col": 0,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_b": {
+   "col": 1,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_c": {
+   "col": 2,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_crack_a": {
+   "col": 3,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_crack_b": {
+   "col": 4,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_broken_a": {
+   "col": 5,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_broken_b": {
+   "col": 6,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_rubble": {
+   "col": 7,
+   "row": 0,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_seal_2x2": {
+   "col": 0,
+   "row": 1,
+   "w": 2,
+   "h": 2,
+   "layer": "floor"
+  },
+  "stairs_up_sealed_2x2": {
+   "col": 2,
+   "row": 1,
+   "w": 2,
+   "h": 2,
+   "layer": "floor"
+  },
+  "stairs_up_open_2x2": {
+   "col": 4,
+   "row": 1,
+   "w": 2,
+   "h": 2,
+   "layer": "floor"
+  },
+  "floor_stain": {
+   "col": 6,
+   "row": 1,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_debris": {
+   "col": 7,
+   "row": 1,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_pit": {
+   "col": 6,
+   "row": 2,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "floor_crack_c": {
+   "col": 7,
+   "row": 2,
+   "w": 1,
+   "h": 1,
+   "layer": "floor"
+  },
+  "wall_00": {
+   "col": 0,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_01": {
+   "col": 1,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_02": {
+   "col": 2,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_03": {
+   "col": 3,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_04": {
+   "col": 4,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_05": {
+   "col": 5,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_06": {
+   "col": 6,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_07": {
+   "col": 7,
+   "row": 3,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_08": {
+   "col": 0,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_09": {
+   "col": 1,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_10": {
+   "col": 2,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_11": {
+   "col": 3,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_12": {
+   "col": 4,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_13": {
+   "col": 5,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_14": {
+   "col": 6,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_15": {
+   "col": 7,
+   "row": 4,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_15_crack": {
+   "col": 0,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_15_chunk": {
+   "col": 1,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_11_crack": {
+   "col": 2,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_10_crack": {
+   "col": 3,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_14_chunk": {
+   "col": 4,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_15_ash": {
+   "col": 5,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_00_crack": {
+   "col": 6,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "wall_05_chunk": {
+   "col": 7,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "layer": "wall"
+  },
+  "pillar": {
+   "col": 0,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "pillar_cracked": {
+   "col": 1,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "pillar_stump": {
+   "col": 2,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "fallen_pillar_2x1": {
+   "col": 3,
+   "row": 6,
+   "w": 2,
+   "h": 1,
+   "layer": "prop"
+  },
+  "rubble_a": {
+   "col": 5,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "rubble_b": {
+   "col": 6,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "bones": {
+   "col": 7,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  }
+ },
+ "autotile": {
+  "walls": "wall_<mask>, mask = N1 + E2 + S4 + W8 (bit set = neighbour is wall). Draw floor under walls; open outer corners are transparent."
+ }
+}

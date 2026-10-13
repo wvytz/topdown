@@ -34,6 +34,16 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - **Tempo walki jest zaakceptowane.** Balans stroimy później, gdy będzie gotowe podstawowe środowisko.
 - **Gra ma być wymagająca (krok 14).** Po przeglądzie balansu gra jest trudniejsza i właściciel to akceptuje. **Nie łagodź trudności** (HP/obrażenia wrogów, siła bossa, rzadkość leczenia) bez sygnału z testów właściciela.
 - **Sprite'y:** właściciel zapisuje je w `OneDrive\Pictures\sprites`; Claude kopiuje je do `public/assets/sprites` i opisuje w `config/spriteConfig.ts`.
+- **Kafle (krok 16):**
+  - generator `tools/tower_ruins_tiles.py` (Pillow, `tools/requirements.txt`) eksportuje do `public/assets/tilesets/`;
+  - arkusza nie edytujemy ręcznie, tylko przez generator;
+  - zasady pikseli są w `docs/STYLEGUIDE.md`.
+- **Warstwa wizualna (krok 16):**
+  - paleta C „jasny piaskowiec”: czytelność walki ma pierwszeństwo, a mrok daje światło i winieta;
+  - zoom 2,0 pixel-perfect;
+  - schody 2×2;
+  - cienie środowiska ze stałą alfą 0,4;
+  - dekoracje bez kolizji (kolidujące rekwizyty tylko za zgodą, bo zmieniają linię wzroku Kiterów).
 
 ## Znane pułapki
 
