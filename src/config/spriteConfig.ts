@@ -1,5 +1,7 @@
 import { BossAttackKind } from '@/core/bossTypes';
 import { EnemyType } from '@/core/combatTypes';
+import type { ItemId } from '@/core/lootTypes';
+import { ItemKind } from '@/core/lootTypes';
 
 /** Animacja w arkuszu: kolumny (klatki) w obrębie wiersza kierunku. */
 export interface SpriteAnimationDef {
@@ -169,4 +171,49 @@ export const BOSS_PROJECTILE_VISUAL = { sheet: 'sludgeGlob', animation: 'fly' } 
 /** Klucz animacji Phasera dla arkusza, animacji i kierunku. */
 export function animationKey(sheet: SpriteSheetId, animation: string, direction = 0): string {
   return `${SPRITE_SHEETS[sheet].key}-${animation}-${direction}`;
+}
+
+// ---------------- łupy, kapliczka, pocisk gracza, znacznik celowania (krok 20) ----------------
+
+/**
+ * Atlas z generatora tools/loot_sprites.py (paleta C): klatki nazwane, różne rozmiary
+ * (16×16 łupy i pociski, 32×32 kapliczka). Animacje 4-klatkowe w 6 kl./s jak postacie.
+ */
+export const LOOT_ATLAS = {
+  key: 'atlas-loot',
+  textureUrl: 'assets/sprites/loot.png',
+  atlasUrl: 'assets/sprites/loot.json',
+  fps: SPRITE_FPS,
+} as const;
+
+const numbered = (prefix: string, count: number): readonly string[] => Array.from({ length: count }, (_, i) => `${prefix}_${i}`);
+
+export const LOOT_FRAMES = {
+  coin: numbered('coin', 4),
+  potion: numbered('potion', 1),
+  shot: numbered('shot', 4),
+  shotPierce: numbered('shot_pierce', 4),
+  /** Znacznik celowania: 8 kierunków w kolejności wierszy postaci (N, NE, … NW). */
+  aim: numbered('aim', 8),
+  shrineActive: numbered('shrine_active', 4),
+  shrineUsed: numbered('shrine_used', 1),
+} as const;
+
+/** Animacje atlasu łupów: nazwa → klatki (zapętlone). */
+export const LOOT_ANIMATIONS = {
+  coin: LOOT_FRAMES.coin,
+  shot: LOOT_FRAMES.shot,
+  shotPierce: LOOT_FRAMES.shotPierce,
+  shrineActive: LOOT_FRAMES.shrineActive,
+} as const;
+
+export type LootAnimation = keyof typeof LOOT_ANIMATIONS;
+
+export function lootAnimationKey(name: LootAnimation | `item-${string}`): string {
+  return `${LOOT_ATLAS.key}-${name}`;
+}
+
+/** Klatki ikony przedmiotu: bazowy — 1 (statyczny), z efektem — 4 (iskra). */
+export function itemFrames(id: ItemId, kind: ItemKind): readonly string[] {
+  return numbered(`item_${id}`, kind === ItemKind.Effect ? 4 : 1);
 }

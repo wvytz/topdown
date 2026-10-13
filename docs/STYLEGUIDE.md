@@ -107,6 +107,16 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 - **Migotanie skokowe** w rytmie animacji (6 kl./s): promień światła przeskakuje między kilkoma wartościami, bez płynnego falowania.
 - **Dopuszczalna półprzezroczystość efektów:** warstwa mroku (alfa pasm), ciepła poświata pochodni (mieszanie ADD, stała alfa), pyłki (jedna stała alfa). Sprite'y postaci i kafle nadal tylko 0/255 (poza cieniami środowiska, §6).
 
+## 6c. Łupy, kapliczka i elementy interfejsu w świecie (krok 20)
+
+- **Generator:** `tools/loot_sprites.py` → atlas `public/assets/sprites/loot.{png,json}` (klatki nazwane). Ikony przedmiotów to siatki ASCII 12×12 w generatorze, łatwe do ręcznej poprawki.
+- **Rozmiary:** komórka 16×16 (moneta ok. 8 px, mikstura ok. 12 px, ikony przedmiotów ok. 14 px z obrysem), kapliczka 32×32 (jeden kafel). Na kartach nagrody ikona w skali 3× (całkowitej).
+- **Kolor przedmiotu** = ten sam co w HUD (`lootConfig`). Rampa 4 tonów z niego: cień chłodniejszy, światło cieplejsze. Test pilnuje zgodności kolorów.
+- **Przedmiot z efektem** ma złotą obwódkę `#d4a83a` na zewnątrz obrysu i iskrę. Przedmiot bazowy ma zwykły obrys i jest statyczny.
+- **Animacje 4 klatki, 6 kl./s:** obrót monety, iskra, puls kuli kapliczki, orb pocisku gracza. Bez pulsowania skalą i bez przezroczystości — iskry i blask to pełne piksele bez obrysu.
+- **Bez obrotu o dowolny kąt:** znacznik celowania ma 8 klatek kierunku (obrót co 45°, obrys po obrocie, jak postacie). Przebijający strzał to gwiazdka obracana klatkami co 45°.
+- **Czytelność:** te same progi WCAG co dla postaci (§6a), na płytach i na bruku.
+
 ## 6a. Kafle otoczenia
 
 - Kafel 32×32, generator `tools/tower_ruins_tiles.py` (paleta = dane, układ arkusza wspólny dla wszystkich palet).

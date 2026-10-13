@@ -1,15 +1,14 @@
 import Phaser from 'phaser';
-import { TextureKey } from '@/core/types';
+import { LOOT_ATLAS, LOOT_FRAMES, lootAnimationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 
 /** Widok kapliczki: postument + podpowiedź nad nim. Zasady ofiary są w systems/Shrine.ts. */
-export class Shrine extends Phaser.GameObjects.Image {
+export class Shrine extends Phaser.GameObjects.Sprite {
   private readonly prompt: Phaser.GameObjects.Text;
-  private readonly glow: Phaser.Tweens.Tween;
   private used = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, TextureKey.Shrine);
+    super(scene, x, y, LOOT_ATLAS.key, LOOT_FRAMES.shrineActive[0]);
     scene.add.existing(this);
     this.setDepth(RENDER_DEPTH.shrine);
 
@@ -26,7 +25,8 @@ export class Shrine extends Phaser.GameObjects.Image {
       .setDepth(RENDER_DEPTH.worldText)
       .setVisible(false);
 
-    this.glow = scene.tweens.add({ targets: this, alpha: 0.75, duration: 900, yoyo: true, repeat: -1 });
+    // Puls kuli: 4 klatki w 6 kl./s zamiast przezroczystości (STYLEGUIDE: piksele pełne).
+    this.play(lootAnimationKey('shrineActive'));
   }
 
   get isUsed(): boolean {
@@ -43,8 +43,8 @@ export class Shrine extends Phaser.GameObjects.Image {
 
   markUsed(): void {
     this.used = true;
-    this.glow.stop();
-    this.setTexture(TextureKey.ShrineUsed).setAlpha(1);
+    this.stop();
+    this.setFrame(LOOT_FRAMES.shrineUsed[0]!);
     this.hidePrompt();
   }
 }

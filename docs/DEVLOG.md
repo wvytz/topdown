@@ -1254,9 +1254,69 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 20 — Sprite'y łupów, kapliczki, pocisku gracza i znacznika celowania
+
+**Zlecenie właściciela:** zastąpić geometryczne placeholdery łupów (monety, mikstury, przedmioty) i kapliczki spójnymi sprite'ami w palecie C. Backlog uporządkowany commitem `87d120f`.
+
+**Decyzje właściciela:**
+- animacje 4 klatki w 6 kl./s (obrót monety, iskra, puls kapliczki);
+- do tego samego arkusza także pocisk gracza i znacznik celowania;
+- start od razu, równolegle z testami Kiterów i kamery.
+
+**Generator `tools/loot_sprites.py`:**
+- korzysta z palety C i narzędzi `tower_ruins_tiles.py` (rampy, obrys, `Img`);
+- wynik to atlas `public/assets/sprites/loot.{png,json}` (256×96, 59 nazwanych klatek, format JSON-hash Phasera);
+- **ikony przedmiotów** to siatki ASCII 12×12 (łatwe do ręcznej poprawki); rampa 4 tonów z koloru przedmiotu z `lootConfig` (konwersja sRGB → OKLCH). Generator zapisuje kolory w `meta.items`, a test porównuje je z grą;
+- **przedmioty z efektem:** złota obwódka i 4 klatki iskry (brak, punkt, krzyżyk, punkt). Bazowe: jedna klatka;
+- **moneta:** 4 klatki obrotu (tarcza → skos → krawędź → skos);
+- **mikstura:** kolba z korkiem, ciecz `#ff4f5e` — dawny `#d93a5a` miał na piaskowcu tylko 1,44:1 (test WCAG złapał to w trakcie pracy);
+- **kapliczka 32×32:** postument z palety C, złota kula z przerywanym pierścieniem blasku (4 klatki, blask bez obrysu), zgasła kula w wersji zużytej;
+- **pocisk gracza:** turkusowy orb z krążącym blaskiem (4 klatki). Pocisk przebijający (Szuriken) to gwiazdka obracana klatkami co 45°;
+- **znacznik celowania:** 8 klatek kierunku z obrotu co 45° (najbliższy sąsiad, obrys po obrocie — STYLEGUIDE §1);
+- **walidator:** brak pustych klatek, tylko alfa 0/255, brak czystej czerni i bieli.
+
+**Usunięte efekty sprzeczne z pixel artem:**
+- pulsowanie przedmiotów skalą do 1,25 — przedmioty wyróżniają teraz ikona, obwódka i iskra;
+- obrót znacznika celowania o dowolny kąt — teraz klatka wg `facingDirection`;
+- wirowanie przebijającego strzału (`setAngularVelocity`) — teraz animacja gwiazdki;
+- pulsowanie kapliczki przezroczystością — teraz klatki.
+
+**Kod:**
+- `config/spriteConfig.ts`: `LOOT_ATLAS`, `LOOT_FRAMES`, `LOOT_ANIMATIONS`, `lootAnimationKey`, `itemFrames`;
+- `effects/spriteAnimations.ts`: ładowanie atlasu i `registerLootAnimations` (także iskry każdego przedmiotu z efektem);
+- `Pickup` (teraz Sprite) z animacją wg rodzaju łupu i losową klatką startową; `itemIconFrame` dla kart nagrody;
+- `Shrine` (Sprite): puls klatkami, `markUsed` zatrzymuje animację i ustawia klatkę zgasłą;
+- `PlayerShotManager`: klatki atlasu, ciało o promieniu z konfiguracji wyśrodkowane w klatce 16×16;
+- `Player`: znacznik celowania z klatek kierunku;
+- `RewardScene`: ikona z atlasu w skali 3×;
+- `BootScene`: usunięte placeholdery (zostaje domyślny pocisk wroga); `TextureKey` bez nieużywanych kluczy.
+
+**STYLEGUIDE:** nowa §6c „Łupy, kapliczka i elementy interfejsu w świecie”.
+
+**Testy: +24, razem 627.**
+- **Atlas (`tests/assets/loot.test.ts`):**
+  - rozmiar z meta = PNG;
+  - każda klatka w obrazie, niepusta, alfa 0/255;
+  - gra używa tylko istniejących klatek;
+  - animacje po 4 klatki, znacznik 8 kierunków, 6 kl./s.
+- **Ikony:** 12 przedmiotów (bazowe 1 klatka, z efektem 4); wszystkie różne; kolory = `lootConfig`; złota obwódka tylko dla przedmiotów z efektem.
+- **Czytelność WCAG** monety, mikstury, pocisku, kapliczki i 12 ikon na płytach i na bruku (16 przypadków).
+- **Wspólny pomocnik `tests/helpers/readability.ts`:** progi, wykrywanie obrysu i ciała, ocena. Test arkusza kafli korzysta z niego bez zmiany wyników.
+
+**Weryfikacja w grze** (port 5174, okno 1600×900, seed 11):
+- **Łupy:** monety z animacją obrotu, mikstura i przedmioty bazowe statyczne w skali 1, przedmioty z efektem z iskrą.
+- **Znacznik celowania:** E → `aim_2`, S → `aim_4`, W → `aim_6`, N → `aim_0`, NE → `aim_1`, SW → `aim_5`, obrót zawsze 0.
+- **Strzały:** zwykły z animacją orbu, przebijający z gwiazdką; `angularVelocity` 0; ciało: promień 4, przesunięcie 4 w klatce 16×16.
+- **Kapliczka:** puls klatkami przy alfie 1; po `markUsed` animacja stoi, klatka `shrine_used_0`.
+- **Karta nagrody:** 3 ikony z atlasu w skali 3× (Elektryczna strzała, Serce, Wampirzy kieł).
+- **Zrzuty:** rząd łupów w powiększeniu płótna, kapliczka aktywna i zużyta, karty nagrody.
+- Brak nowych błędów w konsoli.
+
+---
+
 ## Znane ograniczenia i backlog
 
-Stan po domknięciu warstwy wizualnej (kroki 16–19, ostatni commit `d02f74b`).
+Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
 
 **1. Czeka na testy właściciela w grze**
 - **Kitery przy zoomie 2,0:** reguła widoku (krok 18) — strzelają tylko z ekranu, częściej z bliska w pionie. Czy trudność nie zmieniła się odczuwalnie?
@@ -1266,9 +1326,9 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19, ostatni commit `d02f74b`).
 - **Ostrzał bossa z korytarza (od kroku 9):** strzał budzi bossa, zanim opadną kraty.
 
 **2. Brakująca grafika**
-- **Łupy:** monety, mikstury i przedmioty to geometryczne placeholdery.
-- **Kapliczka:** geometryczna.
 - **Animacja ciosu barbarzyńcy:** sprite jest „bez miecza”, cios widać tylko jako efekt łuku.
+- **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
+- Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.
 
 **3. Odłożone — tylko za zgodą właściciela**
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.

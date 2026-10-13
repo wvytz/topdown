@@ -67,10 +67,7 @@ export class LootManager {
     const speed = PICKUP_CONFIG.scatterSpeed * (0.5 + Math.random() * 0.5);
     pickup.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
     pickup.setDrag(300, 300);
-
-    if (drop.kind === PickupKind.Item) {
-      // Przedmioty pulsują, żeby wyróżniały się na tle monet.
-      scene.tweens.add({ targets: pickup, scale: 1.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    }
+    // Bez pulsowania skalą (niecałkowita skala psuje piksele): przedmioty wyróżniają ikona,
+    // a przedmioty z efektem także złota obwódka i iskra (krok 20).
   }
 }

@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import type { RangedConfig, WeaponEffects } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
-import { TextureKey } from '@/core/types';
 import { Projectile } from '@/entities/Projectile';
 import { normalize } from '@/systems/CombatMath';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { LOOT_ATLAS, lootAnimationKey } from '@/config/spriteConfig';
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. */
 export type PlayerShotResolver = (shot: PlayerShot) => object | null;
@@ -28,7 +28,7 @@ export class PlayerShotManager {
   }
 
   fire(origin: Vector2, direction: Vector2, config: RangedConfig, effects: WeaponEffects): void {
-    const shot = new Projectile(this.scene, origin.x, origin.y, TextureKey.PlayerShot);
+    const shot = new Projectile(this.scene, origin.x, origin.y, LOOT_ATLAS.key);
     shot.damage = config.damage;
     shot.knockback = config.knockback;
     shot.expiresAt = this.scene.time.now + config.projectileLifetimeMs;
@@ -37,11 +37,13 @@ export class PlayerShotManager {
     shot.setDepth(RENDER_DEPTH.projectile);
 
     this.group.add(shot, true);
-    shot.setCircle(config.projectileRadius);
+    // Ciało o promieniu z konfiguracji, wyśrodkowane w klatce 16×16 atlasu.
+    const r = config.projectileRadius;
+    shot.setCircle(r, shot.width / 2 - r, shot.height / 2 - r);
     const dir = normalize(direction);
     shot.setVelocity(dir.x * config.projectileSpeed, dir.y * config.projectileSpeed);
-    // Przebijający pocisk obraca się jak szuriken (czysto wizualnie).
-    if (shot.pierceLeft > 0) shot.setAngularVelocity(720);
+    // Przebijający pocisk to gwiazdka „szurikena” obracana klatkami co 45° (bez obrotu o dowolny kąt).
+    shot.play(lootAnimationKey(shot.pierceLeft > 0 ? 'shotPierce' : 'shot'));
   }
 
   update(now: number, resolve: PlayerShotResolver): void {

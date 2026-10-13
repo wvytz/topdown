@@ -37,6 +37,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - **Kafle (krok 16):**
   - generator `tools/tower_ruins_tiles.py` (Pillow, `tools/requirements.txt`) eksportuje do `public/assets/tilesets/`;
   - arkusza nie edytujemy ręcznie, tylko przez generator;
+  - łupy, kapliczka, pocisk gracza i znacznik celowania: `tools/loot_sprites.py` → atlas `public/assets/sprites/loot.{png,json}` (krok 20);
   - zasady pikseli są w `docs/STYLEGUIDE.md`.
 - **Warstwa wizualna (krok 16):**
   - paleta C „jasny piaskowiec”: czytelność walki ma pierwszeństwo, a mrok daje światło i winieta;

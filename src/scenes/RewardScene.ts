@@ -3,7 +3,8 @@ import type { ItemId } from '@/core/lootTypes';
 import { ItemKind } from '@/core/lootTypes';
 import { SceneKey } from '@/core/types';
 import { BOSS_REWARD, ITEM_DEFINITIONS } from '@/config/lootConfig';
-import { itemTextureKey } from '@/entities/Pickup';
+import { itemIconFrame } from '@/entities/Pickup';
+import { LOOT_ATLAS } from '@/config/spriteConfig';
 
 export interface RewardSceneData {
   readonly choices: readonly ItemId[];
@@ -112,7 +113,7 @@ export class RewardScene extends Phaser.Scene {
     const parts = [
       card,
       this.add.text(x, top + 16, `[${index + 1}]`, { ...style, fontSize: '13px', color: '#8080a0' }).setOrigin(0.5, 0),
-      this.add.image(x, top + 72, itemTextureKey(itemId)).setScale(3),
+      this.add.image(x, top + 72, LOOT_ATLAS.key, itemIconFrame(itemId)).setScale(3),
       this.add.text(x, top + 122, item.name, { ...style, fontSize: '17px', color: '#ffffff' }).setOrigin(0.5, 0),
       this.add
         .text(x, top + 150, item.effect, {

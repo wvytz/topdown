@@ -6,8 +6,10 @@ import { ambientDarkness } from '@/systems/lighting';
 import { TILESET_ASSET } from '@/config/tilesetConfig';
 import { LIGHTING } from '@/config/lightingConfig';
 import type { Rgba, RgbaImage } from '../helpers/png';
-import { contrastRatio, hueSaturation, luminance, pixel, readPng } from '../helpers/png';
+import { contrastRatio, luminance, pixel, readPng } from '../helpers/png';
 import { TILESETS_DIR, loadTileset } from '../helpers/tileset';
+import type { FloorReference, Readability } from '../helpers/readability';
+import { READABILITY, evaluateReadability, floorReference, spriteColors } from '../helpers/readability';
 
 /**
  * Arkusz kafli z generatora (tools/tower_ruins_tiles.py): zgodność JSON z PNG
@@ -27,20 +29,6 @@ function tilePixels(img: RgbaImage, col: number, row: number, w = 1, h = 1, size
     for (let x = col * size; x < (col + w) * size; x++) out.push(pixel(img, x, y));
   }
   return out;
-}
-
-const hex = ([r, g, b]: Rgba) => `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-
-function mostCommon(pixels: readonly Rgba[]): Rgba {
-  const counts = new Map<string, { color: Rgba; n: number }>();
-  for (const p of pixels) {
-    const entry = counts.get(hex(p)) ?? { color: p, n: 0 };
-    entry.n++;
-    counts.set(hex(p), entry);
-  }
-  const best = [...counts.values()].sort((a, b) => b.n - a.n)[0];
-  if (!best) throw new Error('mostCommon: brak pikseli');
-  return best.color;
 }
 
 describe('arkusz kafli: JSON zgodny z PNG', () => {
@@ -132,69 +120,13 @@ describe('arkusz kafli: JSON zgodny z PNG', () => {
 
 // ---------------- czytelność postaci ----------------
 
-/** Progi ze STYLEGUIDE §6a (kontrast WCAG względem średniej jasności podłogi). */
-const READABILITY = { outlineMin: 2.0, bodyMin: 1.5, hueDeltaMin: 60, bodySaturationMin: 0.25 };
-
-interface FloorReference {
-  luminance: number;
-  hue: number;
-}
-
-function floorReference(pixels: readonly Rgba[]): FloorReference {
-  const mean = pixels.reduce((sum, p) => sum + luminance(p), 0) / pixels.length;
-  return { luminance: mean, hue: hueSaturation(mostCommon(pixels)).hue };
-}
-
-interface Readability {
-  outline: number;
-  body: number;
-  hueDelta: number;
-  bodySaturation: number;
-  passes: boolean;
-}
-
-/**
- * Obrys = najczęstszy kolor na krawędzi sylwetki (piksel kryjący z przezroczystym sąsiadem),
- * ciało = najczęstszy pozostały kolor kryjący (bez prawie czarnych akcentów).
- * Klatka 0 wiersza S — postać zwrócona do kamery.
- */
 /** Obrys i dominujący ton ciała postaci (klatka 0 wiersza S — postać zwrócona do kamery). */
 function characterColors(sprite: RgbaImage, frameSize: number): { outline: Rgba; body: Rgba } {
-  const row = 4;
-  const opaque = (x: number, y: number) =>
-    x >= 0 && y >= 0 && x < frameSize && y < frameSize && pixel(sprite, x, row * frameSize + y)[3] === 255;
-  const edge: Rgba[] = [];
-  const inner: Rgba[] = [];
-  for (let y = 0; y < frameSize; y++) {
-    for (let x = 0; x < frameSize; x++) {
-      if (!opaque(x, y)) continue;
-      const p = pixel(sprite, x, row * frameSize + y);
-      const onEdge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
-        const nx = x + dx!;
-        const ny = y + dy!;
-        return nx < 0 || ny < 0 || nx >= frameSize || ny >= frameSize || pixel(sprite, nx, row * frameSize + ny)[3] === 0;
-      });
-      (onEdge ? edge : inner).push(p);
-    }
-  }
-  const outline = mostCommon(edge);
-  return { outline, body: mostCommon(inner.filter((p) => hex(p) !== hex(outline) && luminance(p) > 0.006)) };
+  return spriteColors(sprite, { x: 0, y: 4 * frameSize, w: frameSize, h: frameSize });
 }
 
 function readability(sprite: RgbaImage, frameSize: number, floor: FloorReference): Readability {
-  const { outline: outlineColor, body } = characterColors(sprite, frameSize);
-  const { hue, saturation } = hueSaturation(body);
-  const rawDelta = Math.abs(hue - floor.hue);
-  const result = {
-    outline: contrastRatio(luminance(outlineColor), floor.luminance),
-    body: contrastRatio(luminance(body), floor.luminance),
-    hueDelta: Math.min(rawDelta, 360 - rawDelta),
-    bodySaturation: saturation,
-  };
-  const bodyReadable =
-    result.body >= READABILITY.bodyMin ||
-    (result.hueDelta >= READABILITY.hueDeltaMin && result.bodySaturation >= READABILITY.bodySaturationMin);
-  return { ...result, passes: result.outline >= READABILITY.outlineMin && bodyReadable };
+  return evaluateReadability(characterColors(sprite, frameSize), floor);
 }
 
 const CHARACTERS = [

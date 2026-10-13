@@ -1,12 +1,35 @@
 import type Phaser from 'phaser';
 import type { SpriteSheetDef, SpriteSheetId } from '@/config/spriteConfig';
-import { SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { LOOT_ANIMATIONS, LOOT_ATLAS, SPRITE_SHEETS, animationKey, itemFrames, lootAnimationKey } from '@/config/spriteConfig';
+import type { LootAnimation } from '@/config/spriteConfig';
+import { ITEM_POOL } from '@/config/lootConfig';
+import { ItemKind } from '@/core/lootTypes';
 import { sheetFrameIndex } from '@/systems/Facing';
 
 /** Ładuje wszystkie arkusze sprite'ów (wywoływać w preload sceny startowej). */
 export function loadSpriteSheets(scene: Phaser.Scene): void {
   for (const sheet of Object.values(SPRITE_SHEETS) as SpriteSheetDef[]) {
     scene.load.spritesheet(sheet.key, sheet.url, { frameWidth: sheet.frameWidth, frameHeight: sheet.frameHeight });
+  }
+  scene.load.atlas(LOOT_ATLAS.key, LOOT_ATLAS.textureUrl, LOOT_ATLAS.atlasUrl);
+}
+
+/** Animacje atlasu łupów (moneta, pociski, kapliczka) i iskry przedmiotów z efektem — 6 kl./s, w pętli. */
+export function registerLootAnimations(scene: Phaser.Scene): void {
+  const create = (key: string, frames: readonly string[]) => {
+    if (scene.anims.exists(key)) return;
+    scene.anims.create({
+      key,
+      frames: frames.map((frame) => ({ key: LOOT_ATLAS.key, frame })),
+      frameRate: LOOT_ATLAS.fps,
+      repeat: -1,
+    });
+  };
+  for (const [name, frames] of Object.entries(LOOT_ANIMATIONS) as Array<[LootAnimation, readonly string[]]>) {
+    create(lootAnimationKey(name), frames);
+  }
+  for (const item of ITEM_POOL) {
+    if (item.kind === ItemKind.Effect) create(lootAnimationKey(`item-${item.id}`), itemFrames(item.id, item.kind));
   }
 }
 

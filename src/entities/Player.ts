@@ -2,13 +2,13 @@ import Phaser from 'phaser';
 import type { Hit, PlayerCombatConfig, WeaponEffects } from '@/core/combatTypes';
 import { AttackPhase } from '@/core/combatTypes';
 import type { MovementIntent, PlayerStats, RangedHudData, Vector2 } from '@/core/types';
-import { TextureKey } from '@/core/types';
 import { PLAYER_SIZE } from '@/config/gameConfig';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { angleTo } from '@/systems/CombatMath';
 import { ChargePool } from '@/systems/ChargePool';
-import { PLAYER_VISUAL, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { LOOT_ATLAS, LOOT_FRAMES, PLAYER_VISUAL, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { facingDirection } from '@/systems/Facing';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
@@ -87,7 +87,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     attachGroundShadow(this, PLAYER_VISUAL.groundShadow);
     this.animator.play(PLAYER_VISUAL.idle);
 
-    this.aimMarker = scene.add.image(x, y, TextureKey.AimMarker).setDepth(RENDER_DEPTH.aimMarker);
+    this.aimMarker = scene.add.image(x, y, LOOT_ATLAS.key, LOOT_FRAMES.aim[0]).setDepth(RENDER_DEPTH.aimMarker);
   }
 
   get isDead(): boolean {
@@ -213,7 +213,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.x + Math.cos(this.aimAngle) * AIM_MARKER_DISTANCE,
       this.y + Math.sin(this.aimAngle) * AIM_MARKER_DISTANCE,
     );
-    this.aimMarker.setRotation(this.aimAngle);
+    // 8 klatek kierunku (obrót co 45° w arkuszu) zamiast obrotu o dowolny kąt.
+    const direction = facingDirection({ x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) });
+    if (direction !== null) this.aimMarker.setFrame(LOOT_FRAMES.aim[direction]!);
   }
 
   /** Barbarzyńca patrzy tam, gdzie celuje; idzie, gdy się porusza. */

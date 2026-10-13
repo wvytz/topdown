@@ -30,14 +30,8 @@ export enum SceneKey {
 }
 
 export enum TextureKey {
-  AimMarker = 'tex-aim-marker',
   Projectile = 'tex-projectile',
-  PlayerShot = 'tex-player-shot',
-  Coin = 'tex-coin',
-  HealthPotion = 'tex-health-potion',
-  Shrine = 'tex-shrine',
-  ShrineUsed = 'tex-shrine-used',
-  /** Pasek kafli: ściana, podłoga, zamknięte schody, otwarte schody. */
+  /** Arkusz kafli z generatora (public/assets/tilesets/tower_ruins_tileset.png). */
   Tileset = 'tex-tileset',
 }
 
