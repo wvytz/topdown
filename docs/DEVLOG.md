@@ -1256,21 +1256,29 @@ Złota przybywa o +20% na każde piętro.
 
 ## Znane ograniczenia i backlog
 
-- **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
-- **Imię gracza na tablicy rekordów:** obecnie zapisujemy tylko wynik, piętro i datę.
-- **Ewolucje przedmiotów: odrzucone na obecnym etapie** (decyzja właściciela). Nie komplikujemy sterowania ani działania broni; wzmacnianie kolejnymi kopiami zostaje.
-- **Ostrzał bossa z korytarza:** strzał budzi bossa przed opadnięciem krat; do sprawdzenia w grze (zob. krok 9).
-- **Grafika (kroki 13, 15, 16, 18):** gracz, Rusher, mag i boss mają sprite'y; mapa jest rysowana z arkusza kafli (krok 18). Brakuje: łupów, kapliczki i animacji ciosu barbarzyńcy (sprite jest „bez miecza” — cios pokazuje tylko efekt łuku).
-- **Plan warstwy wizualnej (zatwierdzony):**
-  - **Krok 17 (zrobiony):** czysty `FloorDressing` i schody 2×2.
-  - **Krok 18 (zrobiony):** wielowarstwowy widok, arkusz w grze, zoom 2,0, reguła widoku dla wrogów.
-  - **Do decyzji właściciela po testach zoomu 2,0:**
-    - czy reguła widoku nie zmieniła odczuwalnie trudności z Kiterami;
-    - czy martwa strefa 60×45 jest wygodna.
-  - **Krok 19a (zrobiony):** mrok z winietą, pochodnie, pyłki, cienie postaci.
-  - **Krok 19b (zrobiony):** ślady walki, bruk, detale lica, łuki i pajęczyny, mniej wyłomów.
-  - **Do oceny właściciela po testach:**
-    - gęstość detali lica (10%) i pajęczyn (35%);
-    - czy ślady po kulach Novy (12 naraz) nie są zbyt gęste w arenie.
-  - **Później, za zgodą:** kolidujące rekwizyty, ozdobna obwódka areny, sprite kapliczki, przejścia materiałów (dual-grid).
-- **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.
+Stan po domknięciu warstwy wizualnej (kroki 16–19, ostatni commit `d02f74b`).
+
+**1. Czeka na testy właściciela w grze**
+- **Kitery przy zoomie 2,0:** reguła widoku (krok 18) — strzelają tylko z ekranu, częściej z bliska w pionie. Czy trudność nie zmieniła się odczuwalnie?
+- **Martwa strefa kamery 60×45 px:** czy jest wygodna.
+- **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
+- **Ślady szlamu po Novie:** 12 naraz — czy nie zaśmiecają areny.
+- **Ostrzał bossa z korytarza (od kroku 9):** strzał budzi bossa, zanim opadną kraty.
+
+**2. Brakująca grafika**
+- **Łupy:** monety, mikstury i przedmioty to geometryczne placeholdery.
+- **Kapliczka:** geometryczna.
+- **Animacja ciosu barbarzyńcy:** sprite jest „bez miecza”, cios widać tylko jako efekt łuku.
+
+**3. Odłożone — tylko za zgodą właściciela**
+- **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.
+- **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
+- **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
+- **Imię gracza na tablicy rekordów:** dziś tylko wynik, piętro i data.
+- **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
+
+**4. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
+
+**5. Drobne uwagi techniczne**
+- **Boss bez reguły widoku:** arena (11–13 kafli) jest wyższa niż widok w pionie (ok. 8,4 kafla), więc uderzenie może spaść poza kadrem. Ataki są obszarowe i z telegrafem; regułę można dodać, jeśli testy pokażą problem.
+- **Pozostałości testów w panelu przeglądarki:** wpisy „0 złota” na tablicy rekordów i dwa stare wpisy w konsoli z przeładowań HMR w kroku 18. Gra działa poprawnie.
