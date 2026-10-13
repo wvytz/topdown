@@ -1060,6 +1060,127 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 19a — Światło: mrok z winietą, pochodnie, pyłki, cienie postaci
+
+**Zlecenie właściciela:** realizacja planu technicznego. Commit kroku 18 wypchnięty jako `836a9ae`.
+
+**Decyzje właściciela:**
+- podział kroku 19 na 19a (światło, winieta, pochodnie, pyłki, cienie) i 19b (ślady walki, detale ścian, bruk);
+- twarde pasma światła bez ditheringu (bez migotania pikseli);
+- pochodnie generowane proceduralnie w palecie C;
+- najwyżej 30% przyciemnienia na krawędziach kadru, z obrysem wrogów ≥ 2:1.
+
+**Wynik testu WCAG zmienił profil mroku.**
+- Mrok nakładany na GPU miesza kolory w sRGB, a to obniża kontrast obrysu szybciej, niż zakładał mój plan:
+
+  | Przyciemnienie | Najsłabszy obrys |
+  |---|---|
+  | 20% | 2,11 |
+  | 25% | 2,01 |
+  | 30% | 1,89 |
+
+- Obu warunków nie da się spełnić naraz w całym kadrze. Rozwiązanie zgodne z celem właściciela:
+  - 30% zostaje, ale tylko przy samych krawędziach kadru;
+  - w prostokącie, z którego wróg może atakować (`GUARANTEED_VIEW_HALF`, reguła widoku z kroku 18), mrok ma najwyżej 20%;
+  - stąd `edgeRadius` = 320 i 3 pasma: 10/20/30%.
+- Wróg, który dopiero podchodzi z samej krawędzi kadru, może tam mieć obrys 1,89:1, ale stamtąd nie atakuje.
+
+**Generator:**
+- rampa ognia `FLAME` w palecie: czerwień → pomarańcz → żółć → blask, bez bieli;
+- kafel `torch_sconce` (warstwa `wallDecor`): obejma na licu, trzon przed murem;
+- `torch_flame_0..3`: płomień z kołysaniem i oddechem ±1 px, bez ciemnego obrysu, bo świeci;
+- JSON dostał `colors` (mrok, popiół, ogień, obrys) i `torch.flameBaseY`, więc gra nie ma hexów zapisanych na sztywno;
+- arkusz ma teraz 104 kafle.
+
+**Warstwa czysta:**
+- **`systems/lighting.ts`:**
+  - `banded` (twarde pasma), `ambientDarkness` (mrok wokół gracza);
+  - `playerLightStrength` i `pointLightStrength` (siła światła do wycierania mroku);
+  - `darknessModifierProfile` („Mrok” w pasmach zamiast miękkiej krawędzi);
+  - `buildLightStamp` (stempel 2r × 2r z alfą pasm);
+  - `flickerRadius`, `lightTouchesView` (pomijanie świateł poza kadrem), `pixelEllipse` (maska cienia).
+- **`dungeon/LightPlanner.ts`** (w `PURE_FILES`):
+  - pochodnie tylko na prostych odcinkach górnej ściany pokoju (mur z trzech stron, pod spodem zwykła podłoga);
+  - tasowanie i zachłanny wybór z odstępem;
+  - limit 2 na pokój, 4 w arenie;
+  - własna sól `TORCH_SEED_SALT`.
+- **`config/lightingConfig.ts`:**
+  - profil mroku;
+  - pochodnia: promień 72, skoki −3/0/0/+3, 3 pasma, poświata 16%;
+  - pyłki: do 36 naraz, życie 3–6 s, alfa 0,55;
+  - cień postaci: alfa 0,4;
+  - `TORCH_PLACEMENT`.
+- **`spriteConfig`:** `groundShadow` dla bohatera i Rushera. Mag ma cień w sprite'cie, a boss kałużę, więc oba bez.
+- **`RENDER_DEPTH`:**
+  - `actorShadow` 2,5, `wallDecor` 3,2;
+  - `motes` 14: pod mrokiem, więc gasną na krawędziach;
+  - `darkness` 15;
+  - `torchGlow` 15,5 i `torchFlame` 15,6: świecą nad mrokiem.
+
+**Phaser:**
+- **`effects/LightingOverlay.ts`** (zastępuje `DarknessOverlay`):
+  - jedna RenderTexture w rozdzielczości świata, zakotwiczona w pełnych pikselach wokół gracza i pokrywająca kadr z luzem martwej strefy;
+  - co klatkę: `fill(kolor mroku, max)`, potem `erase` stempli gracza i pochodni w kadrze;
+  - składana w `POST_UPDATE` (po fizyce), więc światło nie zostaje klatkę za graczem;
+  - przy „Mroku” alfa 0,94, a pochodnie nie wycierają mroku, bo to mechanika piętra.
+- **`world/Torches.ts`:**
+  - uchwyt, animowany płomień (6 kl./s, losowa klatka startowa) i poświata ADD w kolorze ognia z palety;
+  - migotanie w rytmie klatek płomienia (`Math.random`, czysto wizualnie);
+  - przy „Mroku” poświata wyłączona, a płomienie widać przez mrok jako punkty orientacyjne.
+- **`effects/DustMotes.ts`:** jeden emiter, cząstki 1 px w kolorach popiołu; obszar emisji jedzie z kadrem, a cząstki zostają w świecie.
+- **`effects/GroundShadow.ts`:** pikselowa elipsa 22×12 w kolorze obrysu z alfą 0,4, idzie za postacią po fizyce i znika razem z nią.
+- **`effects/lightTextures.ts`:** tekstury ze stempli, tworzone raz na klucz.
+- **`BootScene`** ładuje arkusz także jako arkusz klatek 32×32 i rejestruje animację płomienia.
+
+**STYLEGUIDE:** nowa §6b „Światło i efekty otoczenia” — twarde pasma, rozdzielczość świata, limit mroku i strefa walki, płomienie bez obrysu, migotanie skokowe, dopuszczalna półprzezroczystość efektów.
+
+**Testy: +37, razem 553.**
+- **`lighting` (10):**
+  - pasma: pełne światło do promienia gracza, wartości nie maleją, nie przekraczają 30%, dokładnie 3 poziomy;
+  - siła światła gracza odwraca mrok;
+  - profil „Mroku”;
+  - pochodnia z 3 pasmami;
+  - stempel: wymiary i tylko poziomy pasm 0/85/170/255;
+  - migotanie tylko o wartości z konfiguracji;
+  - pomijanie świateł poza kadrem;
+  - symetryczna elipsa.
+- **`LightPlanner` (4):**
+  - dokładne kolumny na prostym odcinku muru obok wejścia;
+  - limit na pokój i odstęp;
+  - reguły na wygenerowanych piętrach;
+  - determinizm, dane piętra nietknięte.
+- **Czytelność w mroku (arkusz):**
+  - kolor mroku z palety;
+  - każda postać ma obrys ≥ 2:1 w całej strefie walki;
+  - pełne 30% przy krawędzi kadru;
+  - kontrolnie: przy 30% w strefie walki próg by nie przeszedł.
+- **Pozostałe:**
+  - arkusz: kafle pochodni i kolory;
+  - `RENDER_DEPTH`: kolejność nowych warstw;
+  - sprite'y: cień tylko dla chodzących;
+  - architektura: +3 czyste pliki;
+  - testy per kafel dla 5 nowych kafli arkusza (+10).
+
+**Weryfikacja w grze** (port 5174, emulowane okno 1600×900, ręczne `game.step()`):
+- **Piętro 1:**
+  - 11 pochodni, a promień skacze przy klatkach płomienia (72 → 75);
+  - pyłki na głębokości 14;
+  - 3 cienie postaci (gracz i Rushery).
+- **Piksele warstwy mroku:**
+
+  | Miejsce | Alfa |
+  |---|---|
+  | środek (gracz) | 0 |
+  | górna i dolna krawędź (153 px) | 0,1 |
+  | boczne krawędzie (264 px) | 0,3 |
+
+- **Powiększenie płótna 4×:** ostre pasma światła ze schodkowymi krawędziami, płomień i uchwyt w pikselach świata, ciepła poświata.
+- **„Mrok”** (seed 3, piętro 2): krawędź 0,94, środek 0, poświaty wyłączone, płomienie widoczne przez mrok.
+- **Wydajność:** mediana kroku gry 0,3 ms z oświetleniem wobec 0,2 ms bez (p95: 0,5 / 0,4 ms), czyli ok. 0,1 ms CPU na klatkę przy 11 pochodniach. GPU nie mierzone.
+- Brak nowych błędów w konsoli po świeżym przeładowaniu. Dwa stare wpisy pochodzą z HMR w trakcie edycji w kroku 18.
+
+---
+
 ## Znane ograniczenia i backlog
 
 - **Wyszukiwanie drogi (odłożone decyzją właściciela):** wrogowie i boss idą do celu po prostej, więc za rogiem mogą zahaczać o ściany.
@@ -1073,10 +1194,12 @@ Złota przybywa o +20% na każde piętro.
   - **Do decyzji właściciela po testach zoomu 2,0:**
     - czy reguła widoku nie zmieniła odczuwalnie trudności z Kiterami;
     - czy martwa strefa 60×45 jest wygodna.
-  - **Krok 19 (P1):**
-    - światło: pochodnie, poświata wokół gracza, winieta;
-    - animowane kafle, pyłki, trwałe ślady walki, cienie kontaktowe pod postaciami;
+  - **Krok 19a (zrobiony):** mrok z winietą, pochodnie, pyłki, cienie postaci.
+  - **Krok 19b:**
+    - trwałe ślady walki (pula sprite'ów z limitem);
+    - detale na licu ściany (sztandar, kratka, wnęka);
     - nadproża łuków i pajęczyny nad postaciami;
-    - detale na licu ściany, bruk w korytarzach.
+    - bruk w korytarzach;
+    - przegląd częstości wyłomów w podłodze (ciemne „dziury” są dość krzykliwe).
   - **Później, za zgodą:** kolidujące rekwizyty, ozdobna obwódka areny, sprite kapliczki, przejścia materiałów (dual-grid).
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`), co ułatwi drugiego gracza.

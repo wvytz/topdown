@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SPRITE_SHEETS } from '@/config/spriteConfig';
-import { TILE_SIZE } from '@/config/gameConfig';
+import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH, GUARANTEED_VIEW_HALF, TILE_SIZE } from '@/config/gameConfig';
+import { ambientDarkness } from '@/systems/lighting';
 import { TILESET_ASSET } from '@/config/tilesetConfig';
+import { LIGHTING } from '@/config/lightingConfig';
 import type { Rgba, RgbaImage } from '../helpers/png';
 import { contrastRatio, hueSaturation, luminance, pixel, readPng } from '../helpers/png';
 import { TILESETS_DIR, loadTileset } from '../helpers/tileset';
@@ -110,6 +112,17 @@ describe('arkusz kafli: JSON zgodny z PNG', () => {
     for (const group of Object.values(wall.bands.groups)) expect(meta.groups).toHaveProperty(group);
   });
 
+  it('pochodnia: uchwyt na licu muru, 4 klatki płomienia, kolory palety dla światła i pyłków', () => {
+    expect(meta.tiles.torch_sconce?.layer).toBe('wallDecor');
+    expect(meta.groups.torchFlame).toHaveLength(4);
+    for (const hexValue of [meta.colors.ambient, meta.colors.outline, ...meta.colors.ash, ...meta.colors.flame]) {
+      expect(hexValue).toMatch(/^#[0-9a-f]{6}$/);
+    }
+    expect(meta.colors.flame.length).toBeGreaterThanOrEqual(2);
+    expect(meta.torch.flameBaseY).toBeGreaterThan(0);
+    expect(meta.torch.flameBaseY).toBeLessThan(S);
+  });
+
   it('odbijane mogą być tylko kafle bez kierunku światła w poziomie (podłoga, nakładki)', () => {
     for (const [name, t] of tiles) {
       if (t.flipX) expect(['floorBase', 'floorDecal'], name).toContain(t.layer);
@@ -145,7 +158,8 @@ interface Readability {
  * ciało = najczęstszy pozostały kolor kryjący (bez prawie czarnych akcentów).
  * Klatka 0 wiersza S — postać zwrócona do kamery.
  */
-function readability(sprite: RgbaImage, frameSize: number, floor: FloorReference): Readability {
+/** Obrys i dominujący ton ciała postaci (klatka 0 wiersza S — postać zwrócona do kamery). */
+function characterColors(sprite: RgbaImage, frameSize: number): { outline: Rgba; body: Rgba } {
   const row = 4;
   const opaque = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < frameSize && y < frameSize && pixel(sprite, x, row * frameSize + y)[3] === 255;
@@ -163,8 +177,12 @@ function readability(sprite: RgbaImage, frameSize: number, floor: FloorReference
       (onEdge ? edge : inner).push(p);
     }
   }
-  const outlineColor = mostCommon(edge);
-  const body = mostCommon(inner.filter((p) => hex(p) !== hex(outlineColor) && luminance(p) > 0.006));
+  const outline = mostCommon(edge);
+  return { outline, body: mostCommon(inner.filter((p) => hex(p) !== hex(outline) && luminance(p) > 0.006)) };
+}
+
+function readability(sprite: RgbaImage, frameSize: number, floor: FloorReference): Readability {
+  const { outline: outlineColor, body } = characterColors(sprite, frameSize);
   const { hue, saturation } = hueSaturation(body);
   const rawDelta = Math.abs(hue - floor.hue);
   const result = {
@@ -209,5 +227,53 @@ describe('czytelność postaci na podłodze (STYLEGUIDE §6a)', () => {
     const v1Floor = floorReference([0, 1, 2].flatMap((col) => tilePixels(v1, col, 0)));
     const failing = CHARACTERS.filter(([, def]) => !readability(readPng(`${ROOT}public/${def.url}`), def.frameWidth, v1Floor).passes);
     expect(failing.length).toBe(CHARACTERS.length);
+  });
+});
+
+// ---------------- czytelność w mroku (krok 19a) ----------------
+
+/** Nałożenie warstwy mroku o alfie `a` w kolorze `ambient` (mieszanie jak na GPU, w sRGB). */
+function darken(c: Rgba, ambient: Rgba, a: number): Rgba {
+  const mix = (i: 0 | 1 | 2) => Math.round(c[i] * (1 - a) + ambient[i] * a);
+  return [mix(0), mix(1), mix(2), c[3]];
+}
+
+function hexToRgba(value: string): Rgba {
+  const n = Number.parseInt(value.slice(1), 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff, 255];
+}
+
+describe('czytelność w mroku: limit przyciemnienia kadru (krok 19a)', () => {
+  const ambient = hexToRgba(meta.colors.ambient);
+  const outlineRatioAt = (a: number, def: (typeof CHARACTERS)[number][1]) => {
+    const floorY = floorPixels.reduce((sum, p) => sum + luminance(darken(p, ambient, a)), 0) / floorPixels.length;
+    const { outline } = characterColors(readPng(`${ROOT}public/${def.url}`), def.frameWidth);
+    return contrastRatio(luminance(darken(outline, ambient, a)), floorY);
+  };
+
+  it('kolor mroku pochodzi z palety i jest ciemny (nie czysta czerń)', () => {
+    expect(meta.colors.ambient).toMatch(/^#[0-9a-f]{6}$/);
+    expect(meta.colors.ambient).not.toBe('#000000');
+    expect(luminance(ambient)).toBeLessThan(0.01);
+  });
+
+  // Strefa walki: prostokąt, z którego wróg może atakować (reguła widoku, krok 18). Mrok jest
+  // promienisty i rośnie z odległością, więc najmocniejszy jest w narożniku tego prostokąta.
+  const combatZoneDarkness = ambientDarkness(Math.hypot(GUARANTEED_VIEW_HALF.x, GUARANTEED_VIEW_HALF.y), LIGHTING.ambient);
+
+  it.each(CHARACTERS)('%s: w całej strefie walki obrys nadal ≥ 2:1', (_name, def) => {
+    expect(combatZoneDarkness).toBeLessThan(LIGHTING.ambient.maxDarkness);
+    expect(outlineRatioAt(combatZoneDarkness, def)).toBeGreaterThanOrEqual(READABILITY.outlineMin);
+  });
+
+  it('pełne 30% mroku tylko przy krawędziach kadru (winieta), nigdy więcej', () => {
+    const frameCorner = Math.hypot(GAME_WIDTH / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneWidth / 2, GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneHeight / 2);
+    expect(ambientDarkness(frameCorner, LIGHTING.ambient)).toBe(LIGHTING.ambient.maxDarkness);
+    expect(ambientDarkness(10_000, LIGHTING.ambient)).toBe(0.3);
+  });
+
+  it('próg rozróżnia: przy limicie 30% w strefie walki obrys spadłby poniżej 2:1', () => {
+    const failing = CHARACTERS.filter(([, def]) => outlineRatioAt(LIGHTING.ambient.maxDarkness, def) < READABILITY.outlineMin);
+    expect(failing.length).toBeGreaterThan(0);
   });
 });

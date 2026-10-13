@@ -891,45 +891,47 @@
     ]
    ]
   },
-  "pillar": {
+  "torch_sconce": {
    "frame": 103,
    "col": 7,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "wallDecor"
   },
-  "pillar_cracked": {
+  "torch_flame_0": {
    "frame": 104,
    "col": 8,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "fx"
   },
-  "pillar_stump": {
+  "torch_flame_1": {
    "frame": 105,
    "col": 9,
    "row": 6,
    "w": 1,
    "h": 1,
-   "layer": "prop"
+   "layer": "fx"
   },
-  "fallen_pillar_2x1": {
+  "torch_flame_2": {
    "frame": 106,
    "col": 10,
    "row": 6,
-   "w": 2,
+   "w": 1,
    "h": 1,
-   "layer": "prop",
-   "frames": [
-    [
-     106,
-     107
-    ]
-   ]
+   "layer": "fx"
   },
-  "rubble_a": {
+  "torch_flame_3": {
+   "frame": 107,
+   "col": 11,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "fx"
+  },
+  "pillar": {
    "frame": 108,
    "col": 12,
    "row": 6,
@@ -937,7 +939,7 @@
    "h": 1,
    "layer": "prop"
   },
-  "rubble_b": {
+  "pillar_cracked": {
    "frame": 109,
    "col": 13,
    "row": 6,
@@ -945,10 +947,48 @@
    "h": 1,
    "layer": "prop"
   },
-  "bones": {
+  "pillar_stump": {
    "frame": 110,
    "col": 14,
    "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "fallen_pillar_2x1": {
+   "frame": 119,
+   "col": 7,
+   "row": 7,
+   "w": 2,
+   "h": 1,
+   "layer": "prop",
+   "frames": [
+    [
+     119,
+     120
+    ]
+   ]
+  },
+  "rubble_a": {
+   "frame": 111,
+   "col": 15,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "rubble_b": {
+   "frame": 112,
+   "col": 0,
+   "row": 7,
+   "w": 1,
+   "h": 1,
+   "layer": "prop"
+  },
+  "bones": {
+   "frame": 121,
+   "col": 9,
+   "row": 7,
    "w": 1,
    "h": 1,
    "layer": "prop"
@@ -1110,6 +1150,15 @@
    "gate_v_half",
    "gate_v_closed"
   ],
+  "torchSconce": [
+   "torch_sconce"
+  ],
+  "torchFlame": [
+   "torch_flame_0",
+   "torch_flame_1",
+   "torch_flame_2",
+   "torch_flame_3"
+  ],
   "prop": [
    "pillar",
    "pillar_cracked",
@@ -1119,6 +1168,23 @@
    "rubble_b",
    "bones"
   ]
+ },
+ "colors": {
+  "ambient": "#07090e",
+  "ash": [
+   "#787068",
+   "#5b6168"
+  ],
+  "flame": [
+   "#a03317",
+   "#d36c00",
+   "#e7b140",
+   "#f1e2a9"
+  ],
+  "outline": "#1b1a22"
+ },
+ "torch": {
+  "flameBaseY": 13
  },
  "autotile": {
   "wall": {

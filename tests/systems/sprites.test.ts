@@ -77,6 +77,13 @@ describe('arkusze sprite’ów', () => {
     }
   });
 
+  it('cień od silnika mają tylko postacie chodzące (mag ma własny cień, boss kałużę)', () => {
+    expect(PLAYER_VISUAL.groundShadow).toBeDefined();
+    expect(ENEMY_VISUALS[EnemyType.Rusher].groundShadow).toBeDefined();
+    expect(ENEMY_VISUALS[EnemyType.Kiter].groundShadow).toBeUndefined();
+    expect('groundShadow' in BOSS_VISUAL).toBe(false);
+  });
+
   it('klucze animacji są unikalne dla arkusza, animacji i kierunku', () => {
     expect(animationKey('barbarian', 'walk', 2)).not.toBe(animationKey('barbarian', 'walk', 3));
     expect(animationKey('barbarian', 'walk', 2)).not.toBe(animationKey('trashcanMan', 'walk', 2));

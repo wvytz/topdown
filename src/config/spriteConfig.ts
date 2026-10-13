@@ -127,14 +127,27 @@ export interface EnemyVisual {
   readonly idle?: string;
   /** Animacja zamachu ataku (dopasowana czasem do windupMs). */
   readonly attack?: string;
+  /**
+   * Cień pod postacią chodzącą, rysowany przez silnik (STYLEGUIDE §6). Brak = postać ma własny
+   * cień w sprite'cie (lewitujący mag) albo podstawę z kałuży (boss). Wymiary i przesunięcie w px.
+   */
+  readonly groundShadow?: { readonly width: number; readonly height: number; readonly offsetX: number; readonly offsetY: number };
 }
 
+/** Cień pod postaciami 32 px (bohater, Rusher): lekko w dół, jak światło z północy. */
+const WALKER_SHADOW = { width: 22, height: 12, offsetX: 1, offsetY: 4 } as const;
+
 export const ENEMY_VISUALS: Readonly<Record<EnemyType, EnemyVisual>> = {
-  [EnemyType.Rusher]: { sheet: 'trashcanMan', move: 'walk', idle: 'idle' },
+  [EnemyType.Rusher]: { sheet: 'trashcanMan', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
   [EnemyType.Kiter]: { sheet: 'demonMage', move: 'float', attack: 'cast' },
 };
 
-export const PLAYER_VISUAL = { sheet: 'barbarian', move: 'walk', idle: 'idle' } as const satisfies EnemyVisual;
+export const PLAYER_VISUAL = {
+  sheet: 'barbarian',
+  move: 'walk',
+  idle: 'idle',
+  groundShadow: WALKER_SHADOW,
+} as const satisfies EnemyVisual;
 
 /** Pocisk maga: arkusz, animacja i przesunięcie startu przed maga (px, wg handoffu). */
 export const KITER_PROJECTILE_VISUAL = { sheet: 'demonOrb', animation: 'fly', forwardOffset: 13 } as const;

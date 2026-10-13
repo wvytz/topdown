@@ -22,6 +22,18 @@ describe('RENDER_DEPTH — kolejność rysowania', () => {
     }
   });
 
+  it('oświetlenie: cień postaci na podłodze pod ścianami; pyłki pod mrokiem; płomienie i poświata nad mrokiem', () => {
+    expect(RENDER_DEPTH.actorShadow).toBeGreaterThan(RENDER_DEPTH.envShadow);
+    expect(RENDER_DEPTH.actorShadow).toBeLessThan(RENDER_DEPTH.walls);
+    expect(RENDER_DEPTH.wallDecor).toBeGreaterThan(RENDER_DEPTH.walls);
+    expect(RENDER_DEPTH.wallDecor).toBeLessThan(RENDER_DEPTH.telegraph);
+    expect(RENDER_DEPTH.motes).toBeGreaterThan(RENDER_DEPTH.overhead);
+    expect(RENDER_DEPTH.motes).toBeLessThan(RENDER_DEPTH.darkness);
+    expect(RENDER_DEPTH.torchGlow).toBeGreaterThan(RENDER_DEPTH.darkness);
+    expect(RENDER_DEPTH.torchFlame).toBeGreaterThan(RENDER_DEPTH.torchGlow);
+    expect(RENDER_DEPTH.torchFlame).toBeLessThan(RENDER_DEPTH.worldText);
+  });
+
   it('mury nad postaciami: nad wszystkim z rozgrywki, pod mrokiem i napisami', () => {
     const gameplay = [RENDER_DEPTH.enemy, RENDER_DEPTH.boss, RENDER_DEPTH.player, RENDER_DEPTH.projectile, RENDER_DEPTH.slash];
     for (const depth of gameplay) expect(RENDER_DEPTH.overhead).toBeGreaterThan(depth);

@@ -15,6 +15,7 @@ import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
 import { Timer } from '@/systems/Timer';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { attachGroundShadow } from '@/effects/GroundShadow';
 
 /** Abstrakcyjne akcje gracza w danej klatce — produkuje je InputController. */
 export interface PlayerActions {
@@ -83,6 +84,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
     this.setDepth(RENDER_DEPTH.player);
     this.animator = new DirectionalAnimator(this, PLAYER_VISUAL.sheet);
+    attachGroundShadow(this, PLAYER_VISUAL.groundShadow);
     this.animator.play(PLAYER_VISUAL.idle);
 
     this.aimMarker = scene.add.image(x, y, TextureKey.AimMarker).setDepth(RENDER_DEPTH.aimMarker);

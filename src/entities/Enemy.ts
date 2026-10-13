@@ -19,6 +19,7 @@ import type { EnemyVisual } from '@/config/spriteConfig';
 import { ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { attachGroundShadow } from '@/effects/GroundShadow';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -61,6 +62,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(RENDER_DEPTH.enemy);
     this.visual = ENEMY_VISUALS[definition.type];
     this.animator = new DirectionalAnimator(this, this.visual.sheet);
+    if (this.visual.groundShadow) attachGroundShadow(this, this.visual.groundShadow);
     this.animator.play(this.visual.idle ?? this.visual.move);
   }
 

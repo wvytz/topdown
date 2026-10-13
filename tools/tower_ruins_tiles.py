@@ -96,6 +96,8 @@ GOLD = hexes('#5c4418', '#9a7424', '#d4a83a', '#f0d27a')
 BONE = hexes('#9c8f74', '#d8ccb0', '#e8e0c0')
 IRON = hexes('#3a3f4a', '#646c79', '#8d96a3')  # rampa pokrywy Trashcan Mana
 DIRT = hexes('#120c0a', '#261a13', '#37271c', '#523b29', '#6e5038')  # rampa kałuży Sludge Kinga
+# Ogień pochodni (krok 19a): czerwień → pomarańcz → żółć złota → blask. Bez czystej bieli.
+FLAME = oks((.48, .150, 35), (.64, .160, 55), (.79, .140, 82), (.91, .075, 95))
 
 
 # ---------------- palety ----------------
@@ -116,6 +118,7 @@ class Palette:
     accent: tuple = GOLD
     bone: tuple = BONE
     iron: tuple = IRON
+    flame: tuple = FLAME
     outline: Color = OUT
 
     def colors(self):
@@ -768,6 +771,53 @@ def fallen_pillar(p, r):
     return img
 
 
+# ---------------- pochodnie (krok 19a) ----------------
+TORCH_FLAME_BASE_Y = 13  # wiersz, w którym płomień styka się z głowicą pochodni (ten sam kafel co uchwyt)
+
+
+def torch_sconce(p, r):
+    """Uchwyt pochodni na licu muru: żelazna obejma na licu, drewniany trzon wystający przed mur."""
+    img, I, D = Img(T, T), p.iron, p.dirt
+    for y in range(25, 30):  # obejma na licu (lico zajmuje wiersze 24–31)
+        for x in range(13, 19):
+            img.put(x, y, I[2] if y == 25 else (I[0] if y == 29 else I[1]))
+    for y in range(TORCH_FLAME_BASE_Y + 2, 27):  # trzon
+        img.put(15, y, D[4])
+        img.put(16, y, D[3])
+    for x in range(14, 18):  # owinięta głowica
+        img.put(x, TORCH_FLAME_BASE_Y + 1, I[1])
+        img.put(x, TORCH_FLAME_BASE_Y + 2, D[2])
+    outline(img, p.outline)
+    return img
+
+
+def torch_flame(frame):
+    """Płomień w 4 klatkach (6 kl./s): kołysanie i oddech ±1 px. Świeci, więc bez ciemnego obrysu."""
+    sway = (0, 1, 0, -1)[frame]
+    height = (10, 11, 10, 9)[frame]
+
+    def gen(p, r):
+        img, Fl = Img(T, T), p.flame
+        for i in range(height):  # i = 0 przy głowicy, rośnie ku górze
+            t = i / max(1, height - 1)
+            half = 3 if t < .35 else (2 if t < .7 else (1 if t < .9 else 0))
+            cx = 16 + round(sway * t)
+            y = TORCH_FLAME_BASE_Y - i
+            for x in range(cx - half - 1, cx + half + 1):
+                d = abs(x + .5 - cx)
+                if half == 0:
+                    c = Fl[1]
+                elif d > half - .5:
+                    c = Fl[0]
+                elif d > half - 1.5:
+                    c = Fl[1]
+                else:
+                    c = Fl[3] if t < .3 else Fl[2]
+                img.put(x, y, c)
+        return img
+    return gen
+
+
 # ---------------- manifest ----------------
 @dataclass(frozen=True)
 class Entry:
@@ -825,6 +875,9 @@ def manifest():
     m.append(Entry('stairs_sealed_2x2', stairs(False), 'floorFeature', 2, 2))
     m.append(Entry('stairs_open_2x2', stairs(True), 'floorFeature', 2, 2))
     m.append(Entry('seal_2x2', seal, 'floorFeature', 2, 2))
+    m.append(Entry('torch_sconce', torch_sconce, 'wallDecor', group='torchSconce'))
+    for frame in range(4):
+        m.append(Entry(f'torch_flame_{frame}', torch_flame(frame), 'fx', group='torchFlame'))
     for name, gen, w in (('pillar', pillar('intact'), 1), ('pillar_cracked', pillar('cracked'), 1),
                          ('pillar_stump', pillar('stump'), 1), ('fallen_pillar_2x1', fallen_pillar, 2),
                          ('rubble_a', rubble_prop, 1), ('rubble_b', rubble_prop, 1), ('bones', bones, 1)):
@@ -877,6 +930,14 @@ def build_sheet(p):
         meta['tiles'][e.name] = t
         if e.group:
             meta['groups'].setdefault(e.group, []).append(e.name)
+    # Kolory palety dla efektów rysowanych w grze (światło, pyłki) — gra nie zna hexów na sztywno.
+    meta['colors'] = {
+        'ambient': to_hex(p.deep[0]),
+        'ash': [to_hex(c) for c in p.ash],
+        'flame': [to_hex(c) for c in p.flame],
+        'outline': to_hex(p.outline),
+    }
+    meta['torch'] = {'flameBaseY': TORCH_FLAME_BASE_Y}
     meta['autotile'] = {
         'wall': {
             'bits': {'N': 1, 'E': 2, 'S': 4, 'W': 8}, 'meaning': 'bit ustawiony = sąsiad jest ścianą (brzeg mapy też)',

@@ -98,6 +98,15 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 - Postacie lewitujące — cień wypalony w sprite'ie: elipsa `rgba(0,0,0,0.35)`, przesunięta w dół-prawo (+3, +5 px), pulsuje razem z unoszeniem. Wśród sprite'ów postaci to jedyne miejsce z półprzezroczystością.
 - **Wyjątek: cienie środowiska** (krok 16, decyzja właściciela). Cień kontaktowy pod licem ściany, przy bocznych ścianach i pod postaciami chodzącymi (rysowany przez silnik) ma kolor obrysu `#1b1a22` i **jedną stałą alfę 0,4** (102/255). Bez gradientów i bez ditheringu: kształt cienia buduje się z pełnych pikseli tej samej alfy.
 
+## 6b. Światło i efekty otoczenia (krok 19a)
+
+- **Twarde pasma, bez ditheringu** (decyzja właściciela: brak migotania pikseli przy ruchu). Mrok i światła mają 3–4 wyraźne stopnie jasności, nigdy gradient.
+- Wszystko rysujemy w **rozdzielczości świata** i w pełnych pikselach świata (przy zoomie 2 każdy piksel to blok 2×2, jak w kaflach).
+- **Mrok otoczenia:** kolor `deep` z palety biomu (nie czysta czerń). Najwyżej **30%** przyciemnienia na krawędziach kadru. W strefie, z której wróg może atakować, najwyżej 20%, bo tam obrys musi mieć ≥ 2:1 (test WCAG). Modyfikator „Mrok” jest mechaniką piętra i ten limit go nie dotyczy.
+- **Płomienie świecą:** bez ciemnego obrysu; krawędź płomienia rysuje najciemniejszy ton rampy ognia. Rysujemy je nad warstwą mroku.
+- **Migotanie skokowe** w rytmie animacji (6 kl./s): promień światła przeskakuje między kilkoma wartościami, bez płynnego falowania.
+- **Dopuszczalna półprzezroczystość efektów:** warstwa mroku (alfa pasm), ciepła poświata pochodni (mieszanie ADD, stała alfa), pyłki (jedna stała alfa). Sprite'y postaci i kafle nadal tylko 0/255 (poza cieniami środowiska, §6).
+
 ## 6a. Kafle otoczenia
 
 - Kafel 32×32, generator `tools/tower_ruins_tiles.py` (paleta = dane, układ arkusza wspólny dla wszystkich palet).

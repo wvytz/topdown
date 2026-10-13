@@ -55,7 +55,13 @@ import { NEW_RUN, RunState } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
-import { DarknessOverlay } from '@/effects/DarknessOverlay';
+import { DustMotes } from '@/effects/DustMotes';
+import { LightingOverlay } from '@/effects/LightingOverlay';
+import { hexColor } from '@/effects/lightTextures';
+import { LIGHTING, TORCH_PLACEMENT } from '@/config/lightingConfig';
+import { planTorches } from '@/dungeon/LightPlanner';
+import { darknessModifierProfile } from '@/systems/lighting';
+import { Torches } from '@/world/Torches';
 import {
   NO_FLOOR_EFFECTS,
   applyFloorToEnemyLoot,
@@ -74,6 +80,7 @@ const SHRINE_SEED_SALT = 0x5419;
 const REWARD_SEED_SALT = 0x4e3a;
 /** Dekorowanie piętra (czysto wizualne). */
 const DRESSING_SEED_SALT = 0xd2e5;
+const TORCH_SEED_SALT = 0x7042;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -95,7 +102,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private toast: { text: string; at: number; durationMs: number } | null = null;
   private floorModifier: FloorModifierDefinition | null = null;
   private floorEffects: FloorModifierEffects = NO_FLOOR_EFFECTS;
-  private darkness: DarknessOverlay | null = null;
+  private lighting!: LightingOverlay;
+  private torches!: Torches;
   private death: DeathSummary | null = null;
   private shrine!: ShrineSite;
   private arenaGates!: ArenaGates;
@@ -156,9 +164,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupCamera();
     this.setupDebugKeys();
 
-    const vision = this.floorEffects.visionRadius;
-    this.darkness = vision !== null ? new DarknessOverlay(this, vision) : null;
-    this.darkness?.follow(this.player);
+    this.setupLighting(tileset);
 
     if (!this.scene.isActive(SceneKey.Hud)) {
       const hudData: HudSceneData = { source: this };
@@ -189,7 +195,6 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.playerShots.update(time, (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot));
     this.loot.update(time);
     this.shrine.update(actions.interact);
-    this.darkness?.follow(this.player);
 
     if (this.player.isDead) this.handlePlayerDeath();
     else this.checkStairs();
@@ -450,6 +455,24 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private setupDebugKeys(): void {
     if (!import.meta.env.DEV) return;
     this.input.keyboard?.on('keydown-B', () => this.bossFight.debugDefeat());
+  }
+
+  /**
+   * Światło (krok 19a): mrok z winietą, pochodnie, pyłki. Przy modyfikatorze „Mrok” warstwa
+   * mroku jest prawie nieprzezroczysta, a pochodnie świecą tylko jako punkty (nie rozświetlają mroku).
+   */
+  private setupLighting(tileset: TilesetMeta): void {
+    const vision = this.floorEffects.visionRadius;
+    const profile = vision !== null ? darknessModifierProfile(vision, LIGHTING.darknessModifier) : LIGHTING.ambient;
+    const spots = planTorches(this.dungeon, TORCH_PLACEMENT, deriveSeed(this.dungeon.seed, TORCH_SEED_SALT));
+    this.torches = new Torches(this, spots, tileset, { glow: vision === null });
+    this.lighting = new LightingOverlay(this, profile, hexColor(tileset.colors.ambient), vision === null);
+    new DustMotes(this, tileset.colors.ash.map(hexColor), LIGHTING.motes);
+    // Po fizyce: światło gracza nie zostaje klatkę za nim.
+    const render = () => this.lighting.render(this.player, this.torches.lights);
+    render();
+    this.events.on(Phaser.Scenes.Events.POST_UPDATE, render);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, render));
   }
 
   private setupCamera(): void {

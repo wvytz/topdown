@@ -31,6 +31,15 @@ export interface TilesetMeta {
   readonly envShadowAlpha: number;
   readonly tiles: Readonly<Record<string, TilesetTile>>;
   readonly groups: Readonly<Record<string, readonly string[]>>;
+  /** Kolory palety dla efektów rysowanych w grze (hex): mrok, pyłki, ogień, obrys. */
+  readonly colors: {
+    readonly ambient: string;
+    readonly ash: readonly string[];
+    readonly flame: readonly string[];
+    readonly outline: string;
+  };
+  /** Pochodnia: wiersz kafla, w którym płomień styka się z głowicą (uchwyt i płomień dzielą kafel). */
+  readonly torch: { readonly flameBaseY: number };
   readonly autotile: {
     readonly wall: {
       /** Bit ustawiony = sąsiad jest ścianą (brzeg mapy też). */
