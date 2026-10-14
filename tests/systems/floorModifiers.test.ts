@@ -34,6 +34,17 @@ describe('floorModifierFor', () => {
     }
   });
 
+  it('filtr per piętro (krok 28a): wykluczone piętro nie dostaje modyfikatora, pozostałe losują jak bez filtra', () => {
+    const vision = FLOOR_MODIFIER_POOL.find((m) => m.effects.visionRadius != null)!;
+    const noVisionOn3 = (floor: number, m: (typeof FLOOR_MODIFIER_POOL)[number]) => floor !== 3 || m !== vision;
+    for (let seed = 1; seed < 200; seed++) {
+      expect(floorModifierFor(seed, 3, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG, noVisionOn3)).not.toBe(vision);
+      expect(floorModifierFor(seed, 2, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG, noVisionOn3)).toBe(
+        floorModifierFor(seed, 2, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG),
+      );
+    }
+  });
+
   it('jest deterministyczny dla tego samego runu i piętra', () => {
     const a = floorModifierFor(1234, 5, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG);
     const b = floorModifierFor(1234, 5, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG);

@@ -1,22 +1,21 @@
 import type { AmbientProfile } from '@/config/lightingConfig';
 
 /**
- * Krzywe światła w twardych pasmach (bez ditheringu) — czysta logika; Phaser tylko maluje
- * z nich tekstury i składa je w warstwie mroku.
+ * Krzywe światła — czysta logika; Phaser tylko maluje z nich tekstury i składa je w warstwie mroku.
+ * Od kroku 28a (decyzja właściciela) światło przechodzi płynnie: bez twardych pasm („kręgów”) z kroku 19a.
  */
 
-/** t ∈ [0, 1] zaokrąglone w górę do jednego z `bands` równych stopni (0 zostaje 0). */
-export function banded(t: number, bands: number): number {
-  const clamped = Math.min(1, Math.max(0, t));
-  if (clamped === 0) return 0;
-  return Math.ceil(clamped * bands - 1e-9) / bands;
+/** Płynne przejście t ∈ [0, 1] → [0, 1] (smoothstep): łagodny start i łagodne dojście do pełnej wartości. */
+export function smoothFalloff(t: number): number {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
 }
 
 /** Przyciemnienie (0–maxDarkness) w odległości `distance` px od gracza. */
 export function ambientDarkness(distance: number, profile: AmbientProfile): number {
-  const { fullLightRadius, edgeRadius, maxDarkness, bands } = profile;
+  const { fullLightRadius, edgeRadius, maxDarkness } = profile;
   if (distance <= fullLightRadius) return 0;
-  return banded((distance - fullLightRadius) / (edgeRadius - fullLightRadius), bands) * maxDarkness;
+  return smoothFalloff((distance - fullLightRadius) / (edgeRadius - fullLightRadius)) * maxDarkness;
 }
 
 /**
@@ -27,22 +26,21 @@ export function playerLightStrength(distance: number, profile: AmbientProfile): 
   return profile.maxDarkness === 0 ? 1 : 1 - ambientDarkness(distance, profile) / profile.maxDarkness;
 }
 
-/** Siła światła punktowego (pochodnia): 1 w środku, pasma do 0 na promieniu. */
-export function pointLightStrength(distance: number, radius: number, bands: number): number {
+/** Siła światła punktowego (pochodnia, latarnia): 1 w środku, płynnie do 0 na promieniu. */
+export function pointLightStrength(distance: number, radius: number): number {
   if (distance >= radius) return 0;
-  return banded(1 - distance / radius, bands);
+  return smoothFalloff(1 - distance / radius);
 }
 
-/** Profil modyfikatora „Mrok”: miękka krawędź zastąpiona pasmami na ostatnich `softEdge` promienia. */
+/** Profil modyfikatora „Mrok”: płynne przejście na ostatnich `softEdge` promienia widzenia. */
 export function darknessModifierProfile(
   visionRadius: number,
-  config: { readonly maxDarkness: number; readonly softEdge: number; readonly bands: number },
+  config: { readonly maxDarkness: number; readonly softEdge: number },
 ): AmbientProfile {
   return {
     fullLightRadius: visionRadius * (1 - config.softEdge),
     edgeRadius: visionRadius,
     maxDarkness: config.maxDarkness,
-    bands: config.bands,
   };
 }
 

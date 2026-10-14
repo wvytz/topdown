@@ -86,3 +86,14 @@ export const SPIDER_LAIR_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.18, group: 'wallFace.lair' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.7 },
 };
+
+/**
+ * Grzybnia (krok 28a): dalszy ciąg leża porośnięty grzybem — kępki grzybów i grzybnia na podłodze,
+ * mniej pancerzyków; grzyby półkowe i strzępki na licu; pajęczyny rzadsze niż w leżu.
+ */
+export const FUNGAL_GROVE_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalGroupWeights: { ...FLOOR_DRESSING.decalGroupWeights, 'decal.mushrooms': 3, 'decal.mycel': 2, 'decal.husk': 1 },
+  wallFace: { chance: 0.22, group: 'wallFace.fungus' },
+  cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.5 },
+};

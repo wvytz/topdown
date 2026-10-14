@@ -213,7 +213,7 @@ describe('czytelność w mroku: limit przyciemnienia kadru (krok 19a)', () => {
 
   it('pełne 30% mroku tylko przy krawędziach kadru (winieta), nigdy więcej', () => {
     const frameCorner = Math.hypot(GAME_WIDTH / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneWidth / 2, GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneHeight / 2);
-    expect(ambientDarkness(frameCorner, LIGHTING.ambient)).toBe(LIGHTING.ambient.maxDarkness);
+    expect(ambientDarkness(frameCorner, LIGHTING.ambient)).toBeCloseTo(LIGHTING.ambient.maxDarkness, 2);
     expect(ambientDarkness(10_000, LIGHTING.ambient)).toBe(0.3);
   });
 

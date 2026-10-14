@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -1907,6 +1907,116 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 28a — Grzybnia: paleta, arkusz kafli i mgła
+
+**Decyzje właściciela (cały biom, kroki 28a–…):** `#decyzja` `#grzybnia`
+- na razie proste biomy: **każdy biom to jedno piętro zakończone swoim bossem**; biomy-„fillery” (nawiązujące do poprzednich albo lekko zmodyfikowane) później;
+- Grzybnia: biom grzybowy, ciąg dalszy Pajęczego leża; boss to **Król Pająków zainfekowany grzybem**, zanim pożarła go królowa;
+- całe piętro porośnięte grzybami, estetyka fioletowa, ale ciemniejsza, z domieszką niebieskiego, unosząca się mgiełka;
+- ograniczone pole widzenia jak w „Mroku”, ale ogranicza je mgła;
+- boss: większy niż Matka Pająków, odwłok pokryty kościstym grzybem, chodzi na dwóch grubych łapach, pozostałe odnóża zwisają z boku i kłują jak wiele sztyletów;
+- wszystko (kafle, pułapki, efekty, wrogowie, boss) generujemy generatorami (decyzja po kroku 27: generator jako domyślna droga, ręczny rysunek tylko dla animacji, które z generatora wyjdą za słabe).
+
+**Moje propozycje, przyjęte bez sprzeciwu (do zmiany na sygnał właściciela):** `#grzybnia`
+- piętro 3 (2 — leże z Matką Pająków, 3 — Grzybnia z Królem);
+- mgła gęsta, ze świecącymi grzybami-latarniami zamiast pochodni;
+- pułapka: purchawki z trującą chmurą (status trucizny z kroku 27);
+- wrogowie: zarażony pająk (Rusher) i grzybiec plujący zarodnikami (Kiter).
+
+**Plan biomu:**
+- 28a — paleta, arkusz kafli, mgła (ten krok);
+- 28b — wrogowie: zarażony pająk i grzybiec;
+- 28c — purchawki;
+- 29 — Król Pająków (sprite'y, ataki, w tym kłucie sztyletami-odnóżami).
+
+**Generator (`tools/tower_ruins_tiles.py --biome fungal_grove`):**
+- paleta `grzybnia`:
+  - kamień w ciemnym fiolecie wpadającym w indygo (barwa 278–300°), mury ciemniejsze niż w leżu;
+  - plamy i posoka w ciemnym turkusie pleśni, zarodniki i strzępki w bladym liliowobłękitnym;
+  - kości i kapelusze w bladej kości z fioletem;
+  - „ogień” to bioluminescencja: cyjan zamiast płomienia (poświata latarni w grze też bierze tę barwę);
+- pierwsza wersja podłogi była za ciemna: kontrast obrysu postaci 1,92, a bruk 1,97 przy progu 2,0 (STYLEGUIDE §6a). Podłoga i fuga lekko rozjaśnione, teraz 2,14 i test bruku zielony. Mrok daje mgła, nie kafle;
+- dodatki: `extras = ('spider', 'fungus')` — biom dziedziczy z leża jaja, nici i pancerzyki, a do tego:
+  - `face_shelf` (kościste grzyby półkowe) i `face_hyphae` (strzępki ze świecącymi końcówkami) w grupie `wallFace.fungus`;
+  - `decal_mushrooms_a/b`: kępki grzybów z jedną świecącą plamką — punkt orientacyjny w mgle. Pierwsza wersja wyglądała jak iskierki, przerysowałem kapelusze;
+  - `decal_mycel_a/b`: grzybnia, cienkie rozgałęzione strzępki;
+  - pochodnie w tym biomie to **grzyby-latarnie**: uchwyt to kościsty trzon z lica (`lantern_stalk`), a 4 klatki płomienia to pulsujący, świecący kapelusz (`lantern_cap`);
+- arkusze ruin i leża po zmianach są identyczne co do bajtu (PNG i JSON);
+- wynik: `public/assets/tilesets/fungal_grove_tileset.{png,json}` (130 kafli).
+
+**Mgła (`config/lightingConfig.ts`, `FUNGAL_FOG`):**
+- ta sama warstwa co mrok (`LightingOverlay`), ale w kolorze mgły — głębokie indygo `#272449`, nie czerń;
+- wyraźnie ok. 2 kafle wokół bohatera, potem 4 twarde pasma do 88% na ok. 5 kaflach. Grzyby-latarnie rozwiewają mgłę wokół siebie;
+- pierwsza wersja (`#3c3a66`, 85%) była mleczna, przyciemniłem;
+- `effects/FogWisps.ts`: dryfujące obłoczki (twarde elipsy, stała alfa 0,14, warstwa pod mgłą);
+- zarodniki zamiast pyłków: więcej cząstek, wolniejszych;
+- `BiomeDefinition.fog` (pozostałe biomy: `null`);
+- **piętro z mgłą nie losuje „Mroku”**: `floorModifierFor` dostał filtr per piętro (`allowed`, `limitsVision`); pozostałe piętra losują dokładnie tak samo jak bez filtra (test). Na seedzie 7 piętro 3 miało wcześniej „Mrok”, teraz „Złotą żyłę”.
+
+**Config:** `FUNGAL_GROVE_TILESET_ASSET`, `FUNGAL_GROVE_DRESSING`:
+- kępki grzybów, grzybnia, mniej pancerzyków;
+- detale lica 22%;
+- pajęczyny w rogach 50%;
+
+`BIOME_BY_FLOOR[3] = FungalGrove`. Do kroku 28b wrogowie z leża (pająk, nietoperz), do kroku 29 na piętrze 3 walczy Strażnik.
+
+**Testy:**
+- `biomes.test.ts`:
+  - wybór piętra (2 leże, 3 Grzybnia);
+  - dekoracje Grzybni;
+  - mgła: jasny ton, a nie czerń, wyraźny widok przy bohaterze, gęstsza niż zwykły mrok i rzadsza niż „Mrok”;
+  - inne biomy bez mgły;
+  - czytelność bohatera, pająka, nietoperza i pajączka na podłodze i bruku Grzybni;
+- `floorModifiers.test.ts`: filtr per piętro.
+
+**Weryfikacja:**
+- `npm run build`: 759 testów zielonych;
+- w grze (`?seed=7&floor=3`): biom `fungal-grove`, 13 grzybów-latarni, modyfikator „Złota żyła”;
+- zrzuty ekranu:
+  - mgła w pasmach wokół bohatera, z poświatą latarni;
+  - grzyb-latarnia na licu, kępka grzybów, pajęczyna w rogu;
+  - pająk wyłaniający się z mgły;
+- brak błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#grzybnia`
+- gęstość i kolor mgły (czy nie za mleczna/za ciemna, czy widok 2 kafli to nie za mało);
+- czy grzyby-latarnie i kępki grzybów czytają się jako grzyby;
+- czy obłoczki mgły są widoczne.
+- **Znane ograniczenie:** Kitery mogą strzelać z mgły, zza granicy widoku — to część wyzwania biomu, do oceny w teście.
+
+---
+
+## Krok 28a (cd.) — Płynne światło zamiast kręgów
+
+**Ocena właściciela po teście Grzybni:** `#ocena` `#grzybnia` biom „uznajmy, że jest OK”. Do poprawy światło: „nie możemy mieć takich kręgów dookoła”. Po czasie irytuje, bo niezależnie od biomu efekt jest ten sam — „jakbyśmy byli jakąś tęczą światła”. Ma być płynne przejście.
+
+**Decyzja właściciela:** `#decyzja` światło przechodzi płynnie. Odwołuje decyzję z kroku 19a („twarde pasma, bez ditheringu”). Bez ditheringu zostaje.
+
+**Zmiana:**
+- `systems/lighting.ts`: `banded` zastąpione przez `smoothFalloff` (smoothstep — łagodny start przy bohaterze i łagodne wejście w pełny mrok);
+- wspólna krzywa dla mroku otoczenia (winieta 30%), mgły Grzybni, modyfikatora „Mrok” i świateł pochodni/latarni;
+- `bands` usunięte z `AmbientProfile`, `TorchLightConfig`, profilu „Mroku” i mgły; klucze tekstur stempli bez liczby pasm;
+- STYLEGUIDE §6b zaktualizowany (płynne światło, mgła biomu).
+
+**Testy (`lighting.test.ts`):**
+- zamiast „dokładnie N pasm” sprawdzam płynność:
+  - sąsiednie piksele różnią się najwyżej o największą stromość smoothstep;
+  - setki poziomów mroku;
+  - stempel pochodni ma ponad 100 poziomów alfy;
+- limity czytelności bez zmian: w strefie walki obrys ≥ 2:1, pełne 30% tylko w narożnikach kadru (teraz 29,9%, porównanie przybliżone).
+
+**Weryfikacja:**
+- `npm run build`: 759 testów zielonych;
+- zrzuty ekranu bez widocznych pierścieni:
+  - Grzybnia: mgła i latarnie (`?seed=7&floor=3`);
+  - leże: winieta (`?seed=7&floor=2`);
+  - „Mrok”: miękka krawędź (`?seed=3&floor=2`);
+- brak błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#grzybnia` czy przejście jest wystarczająco miękkie. Ewentualnie: szerszy pas przejścia albo inna krzywa.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -1939,6 +2049,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - jaskrawsza krew (feedback po kroku 24).
 
 **1. Następny etap (decyzja właściciela po kroku 27):** `#decyzja` nowe biomy i kolejne piętra — większy zbiór mechanik i poziomów tematycznych; strojenie wszystkiego później.
+
+**Grzybnia (piętro 3) w toku** `#grzybnia`: krok 28a zrobiony (paleta, kafle, mgła); właściciel uznał biom za OK, a światło po jego uwadze przechodzi płynnie (bez kręgów, we wszystkich biomach). Dalej: 28b — zarażony pająk i grzybiec; 28c — purchawki; 29 — Król Pająków zainfekowany grzybem (większy, kościsty grzyb na odwłoku, chód na dwóch grubych łapach, zwisające odnóża kłują jak sztylety).
 
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:

@@ -100,12 +100,13 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 
 ## 6b. Światło i efekty otoczenia (krok 19a)
 
-- **Twarde pasma, bez ditheringu** (decyzja właściciela: brak migotania pikseli przy ruchu). Mrok i światła mają 3–4 wyraźne stopnie jasności, nigdy gradient.
+- **Płynne przejście światła, bez ditheringu** (krok 28a, decyzja właściciela: twarde pasma z kroku 19a dawały irytujące „kręgi” wokół bohatera). Mrok, mgła i światła pochodni/latarni zmieniają się płynnie (smoothstep, `systems/lighting.ts`). Nadal bez ditheringu: gradient to alfa warstwy, a nie szachownica pikseli.
 - Wszystko rysujemy w **rozdzielczości świata** i w pełnych pikselach świata (przy zoomie 2 każdy piksel to blok 2×2, jak w kaflach).
 - **Mrok otoczenia:** kolor `deep` z palety biomu (nie czysta czerń). Najwyżej **30%** przyciemnienia na krawędziach kadru. W strefie, z której wróg może atakować, najwyżej 20%, bo tam obrys musi mieć ≥ 2:1 (test WCAG). Modyfikator „Mrok” jest mechaniką piętra i ten limit go nie dotyczy.
 - **Płomienie świecą:** bez ciemnego obrysu; krawędź płomienia rysuje najciemniejszy ton rampy ognia. Rysujemy je nad warstwą mroku.
 - **Migotanie skokowe** w rytmie animacji (6 kl./s): promień światła przeskakuje między kilkoma wartościami, bez płynnego falowania.
-- **Dopuszczalna półprzezroczystość efektów:** warstwa mroku (alfa pasm), ciepła poświata pochodni (mieszanie ADD, stała alfa), pyłki (jedna stała alfa). Sprite'y postaci i kafle nadal tylko 0/255 (poza cieniami środowiska, §6).
+- **Mgła biomu** (krok 28a, Grzybnia): ta sama warstwa co mrok, ale w jasnym kolorze mgły (głębokie indygo, nie czerń); obłoczki mgły to twarde elipsy ze stałą alfą.
+- **Dopuszczalna półprzezroczystość efektów:** warstwa mroku i mgły (płynna alfa), ciepła poświata pochodni (mieszanie ADD), pyłki, zarodniki i obłoczki mgły (jedna stała alfa). Sprite'y postaci i kafle nadal tylko 0/255 (poza cieniami środowiska, §6).
 
 ## 6c. Łupy, kapliczka i elementy interfejsu w świecie (krok 20)
 

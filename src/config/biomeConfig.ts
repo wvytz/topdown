@@ -1,17 +1,20 @@
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import type { FogConfig } from '@/config/lightingConfig';
+import { FUNGAL_FOG } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { CeilingDropConfig } from '@/systems/CeilingDrops';
 import type { CocoonConfig } from '@/systems/Cocoons';
 import type { StickyWebConfig } from '@/systems/StickyWebs';
 import { SPIDER_QUEEN } from '@/config/bossConfig';
-import { SPIDER_LAIR_TILESET_ASSET, TILESET_ASSET } from '@/config/tilesetConfig';
+import { FUNGAL_GROVE_TILESET_ASSET, SPIDER_LAIR_TILESET_ASSET, TILESET_ASSET } from '@/config/tilesetConfig';
 
 /** Biomy wieży (krok 23): wygląd piętra, a od kolejnych kroków także jego zasady. */
 export enum BiomeId {
   TowerRuins = 'tower-ruins',
   SpiderLair = 'spider-lair',
+  FungalGrove = 'fungal-grove',
 }
 
 export interface BiomeDefinition {
@@ -27,6 +30,8 @@ export interface BiomeDefinition {
   readonly cocoons: CocoonConfig | null;
   /** Lepkie pajęczyny na podłodze zwykłych pokojów (krok 23e); null = brak. */
   readonly stickyWebs: StickyWebConfig | null;
+  /** Mgła ograniczająca widok zamiast zwykłego mroku (krok 28a); null = zwykłe światło. */
+  readonly fog: FogConfig | null;
 }
 
 export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
@@ -39,6 +44,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
+    fog: null,
   },
   [BiomeId.SpiderLair]: {
     id: BiomeId.SpiderLair,
@@ -90,12 +96,30 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
       minGapTiles: 2,
       slow: { pct: 0.5, durationMs: 500 },
     },
+    fog: null,
+  },
+  // Grzybnia (krok 28a): piętro zainfekowanego Króla Pająków. Ciemny fiolet z błękitem, mgła ogranicza widok,
+  // grzyby-latarnie zamiast pochodni. Wrogowie, pułapki i Król w kolejnych krokach — do tego czasu wrogowie z leża.
+  [BiomeId.FungalGrove]: {
+    id: BiomeId.FungalGrove,
+    name: 'Grzybnia',
+    tileset: FUNGAL_GROVE_TILESET_ASSET,
+    dressing: FUNGAL_GROVE_DRESSING,
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.CaveSpider, [EnemyType.Kiter]: EnemyVariant.Bat },
+    ceilingDrops: null,
+    cocoons: null,
+    stickyWebs: null,
+    fog: FUNGAL_FOG,
   },
 };
 
-/** Biom na konkretnych piętrach; reszta to ruiny (krok 23a: pajęcze leże tylko na piętrze 2, z Matką Pająków). */
+/**
+ * Biom na konkretnych piętrach; reszta to ruiny. Każdy biom to jedno piętro zakończone swoim bossem
+ * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków.
+ */
 export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   2: BiomeId.SpiderLair,
+  3: BiomeId.FungalGrove,
 };
 
 export function biomeForFloor(floor: number): BiomeDefinition {

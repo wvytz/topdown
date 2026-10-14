@@ -34,6 +34,8 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - **Mało przeciwników:** podstawowe archetypy (Rusher, Kiter), 1–2 na pokój. Trudność rośnie przez statystyki.
 - **Tempo walki jest zaakceptowane.** Balans stroimy później, gdy będzie gotowe podstawowe środowisko.
 - **Gra ma być wymagająca (krok 14).** Po przeglądzie balansu gra jest trudniejsza i właściciel to akceptuje. **Nie łagodź trudności** (HP/obrażenia wrogów, siła bossa, rzadkość leczenia) bez sygnału z testów właściciela.
+- **Biomy (krok 28):** na razie każdy biom to jedno piętro zakończone swoim bossem (1 ruiny, 2 Pajęcze leże z Matką Pająków, 3 Grzybnia z Królem Pająków). Biomy-„fillery” później.
+- **Grafika (krok 28):** domyślnie wszystko generujemy generatorami w `tools/` (kafle, postacie, bossowie, efekty); właściciel ocenia podglądy. Ręczny rysunek tylko, gdy animacja z generatora wyjdzie za słabo.
 - **Sprite'y:** właściciel zapisuje je w `OneDrive\Pictures\sprites`; Claude kopiuje je do `public/assets/sprites` i opisuje w `config/spriteConfig.ts`.
 - **Kafle (krok 16):**
   - generator `tools/tower_ruins_tiles.py` (Pillow, `tools/requirements.txt`) eksportuje do `public/assets/tilesets/`;
@@ -45,6 +47,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
   - zoom 2,0 pixel-perfect;
   - schody 2×2;
   - cienie środowiska ze stałą alfą 0,4;
+  - światło (mrok, mgła, pochodnie) przechodzi płynnie — bez twardych pasm (decyzja z kroku 28a, odwołuje pasma z 19a);
   - dekoracje bez kolizji (kolidujące rekwizyty tylko za zgodą, bo zmieniają linię wzroku Kiterów).
 
 ## Znane pułapki

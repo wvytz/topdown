@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import type { AmbientProfile } from '@/config/lightingConfig';
-import { LIGHTING } from '@/config/lightingConfig';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { buildLightStamp, lightTouchesView, playerLightStrength, pointLightStrength } from '@/systems/lighting';
@@ -19,7 +18,7 @@ const MARGIN = 4;
 /**
  * Mrok i światła w jednej warstwie: co klatkę wypełniamy ją pełnym mrokiem w kolorze palety
  * i „wycieramy” (ERASE) stemple świateł — gracza i pochodni. Warstwa jest w rozdzielczości świata
- * i zakotwiczona w świecie (pełne piksele), więc przy zoomie 2 pasma są ostre jak kafle.
+ * i zakotwiczona w świecie (pełne piksele). Światło przechodzi płynnie (krok 28a), bez pasm.
  * Składana po fizyce (POST_UPDATE), żeby światło nie zostawało klatkę za graczem.
  */
 export class LightingOverlay {
@@ -39,10 +38,10 @@ export class LightingOverlay {
     this.halfW = Math.ceil(GAME_WIDTH / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneWidth / 2) + MARGIN;
     this.halfH = Math.ceil(GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneHeight / 2) + MARGIN;
     this.rt = scene.add.renderTexture(0, 0, this.halfW * 2, this.halfH * 2).setOrigin(0).setDepth(RENDER_DEPTH.darkness);
-    const { fullLightRadius, edgeRadius, maxDarkness, bands } = profile;
+    const { fullLightRadius, edgeRadius, maxDarkness } = profile;
     this.playerKey = stampTexture(
       scene,
-      `light-player-${fullLightRadius}-${edgeRadius}-${maxDarkness}-${bands}`,
+      `light-player-${fullLightRadius}-${edgeRadius}-${maxDarkness}`,
       () => buildLightStamp(edgeRadius, (d) => playerLightStrength(d, profile)),
       0xffffff,
     );
@@ -71,6 +70,5 @@ export class LightingOverlay {
 
 /** Stempel światła pochodni o danym promieniu (biały — do wycierania mroku i, z odcieniem, do poświaty). */
 export function torchLightKey(scene: Phaser.Scene, radius: number): string {
-  const { bands } = LIGHTING.torch;
-  return stampTexture(scene, `light-torch-${radius}-${bands}`, () => buildLightStamp(radius, (d) => pointLightStrength(d, radius, bands)), 0xffffff);
+  return stampTexture(scene, `light-torch-${radius}`, () => buildLightStamp(radius, (d) => pointLightStrength(d, radius)), 0xffffff);
 }

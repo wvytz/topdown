@@ -25,22 +25,31 @@ export const NO_FLOOR_EFFECTS: FloorModifierEffects = {
  * Modyfikator piętra: deterministyczny z seeda runu, nigdy ten sam dwa piętra z rzędu.
  * Liczony od pierwszego piętra z modyfikatorem w górę, więc nie wymaga pamiętania stanu między piętrami.
  * Zwraca null dla pięter przed `firstFloor` i dla pustej puli.
+ * `allowed` wyklucza modyfikatory na konkretnym piętrze (krok 28a: piętro z mgłą bez „Mroku”);
+ * piętra bez wykluczeń losują tak samo jak bez filtra.
  */
 export function floorModifierFor(
   runSeed: number,
   floor: number,
   pool: readonly FloorModifierDefinition[],
   config: FloorModifierConfig,
+  allowed: (floor: number, modifier: FloorModifierDefinition) => boolean = () => true,
 ): FloorModifierDefinition | null {
   let previous: FloorModifierDefinition | null = null;
   for (let current = config.firstFloor; current <= floor; current++) {
-    const candidates = pool.filter((modifier) => modifier !== previous);
-    const options = candidates.length > 0 ? candidates : pool;
+    const floorPool = pool.filter((modifier) => allowed(current, modifier));
+    const candidates = floorPool.filter((modifier) => modifier !== previous);
+    const options = candidates.length > 0 ? candidates : floorPool;
     if (options.length === 0) return null;
     const rng = createRng(deriveSeed(deriveSeed(runSeed, current), MODIFIER_SEED_SALT));
     previous = options[rng.int(0, options.length - 1)] ?? null;
   }
   return previous;
+}
+
+/** Czy modyfikator ogranicza widok (jak „Mrok”) — nie łączymy go z mgłą biomu. */
+export function limitsVision(modifier: FloorModifierDefinition): boolean {
+  return modifier.effects.visionRadius != null;
 }
 
 /** Pełny zestaw efektów (brakujące pola = bez zmian). */

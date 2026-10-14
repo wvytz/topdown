@@ -59,6 +59,7 @@ import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { DustMotes } from '@/effects/DustMotes';
+import { FogWisps } from '@/effects/FogWisps';
 import { LightingOverlay } from '@/effects/LightingOverlay';
 import { hexColor } from '@/effects/lightTextures';
 import { LIGHTING, TORCH_PLACEMENT } from '@/config/lightingConfig';
@@ -74,6 +75,7 @@ import {
   applyFloorToShrine,
   floorEffectsOf,
   floorModifierFor,
+  limitsVision,
 } from '@/systems/FloorModifiers';
 import { ArenaGates } from '@/world/ArenaGates';
 import { ShrineSite } from '@/world/ShrineSite';
@@ -175,7 +177,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     });
     this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset);
     this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
-    this.floorModifier = floorModifierFor(this.runSeed, this.floorNumber, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG);
+    // Piętro z mgłą (krok 28a) nie losuje „Mroku” — dwa ograniczenia widoku naraz byłyby nieczytelne.
+    this.floorModifier = floorModifierFor(
+      this.runSeed,
+      this.floorNumber,
+      FLOOR_MODIFIER_POOL,
+      FLOOR_MODIFIER_CONFIG,
+      (floor, modifier) => biomeForFloor(floor).fog === null || !limitsVision(modifier),
+    );
     this.floorEffects = floorEffectsOf(this.floorModifier);
 
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
@@ -545,13 +554,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /**
    * Światło (krok 19a): mrok z winietą, pochodnie, pyłki. Przy modyfikatorze „Mrok” warstwa
    * mroku jest prawie nieprzezroczysta, a pochodnie świecą tylko jako punkty (nie rozświetlają mroku).
+   * Biom z mgłą (krok 28a, Grzybnia): ta sama warstwa w kolorze mgły, z profilem mgły; latarnie ją
+   * rozwiewają, dochodzą dryfujące obłoczki i gęstsze zarodniki. „Mrok” ma pierwszeństwo przed mgłą.
    */
   private setupLighting(asset: TilesetAsset, tileset: TilesetMeta, torchSpots: readonly TorchSpot[]): void {
     const vision = this.floorEffects.visionRadius;
-    const profile = vision !== null ? darknessModifierProfile(vision, LIGHTING.darknessModifier) : LIGHTING.ambient;
+    const fog = vision === null ? this.biome.fog : null;
+    const profile = vision !== null ? darknessModifierProfile(vision, LIGHTING.darknessModifier) : (fog?.profile ?? LIGHTING.ambient);
+    const color = fog?.color ?? hexColor(tileset.colors.ambient);
     this.torches = new Torches(this, torchSpots, asset, tileset, { glow: vision === null });
-    this.lighting = new LightingOverlay(this, profile, hexColor(tileset.colors.ambient), vision === null);
-    new DustMotes(this, tileset.colors.ash.map(hexColor), LIGHTING.motes);
+    this.lighting = new LightingOverlay(this, profile, color, vision === null);
+    new DustMotes(this, tileset.colors.ash.map(hexColor), fog?.motes ?? LIGHTING.motes);
+    if (fog) new FogWisps(this, fog);
     // Po fizyce: światło gracza nie zostaje klatkę za nim.
     const render = () => this.lighting.render(this.player, this.torches.lights);
     render();

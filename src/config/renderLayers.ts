@@ -40,6 +40,8 @@ export const RENDER_DEPTH = {
   overheadDecor: 13.2,
   /** Pyłki w powietrzu: pod warstwą mroku (gasną na krawędziach), pod poświatą pochodni. */
   motes: 14,
+  /** Dryfujące obłoczki mgły (Grzybnia, krok 28a): nad postaciami, pod warstwą mgły. */
+  fogWisps: 14.5,
   /** Warstwa mroku i świateł (LightingOverlay); przy modyfikatorze „Mrok” prawie nieprzezroczysta. */
   darkness: 15,
   /** Ciepła poświata pochodni (mieszanie ADD) i same płomienie — świecą, więc nad mrokiem. */

@@ -208,6 +208,27 @@ PALETTES = {
         # Upiorny zielony ogień pochodni (poświata pochodni też bierze barwę z tej rampy).
         flame=oks((.46, .120, 155), (.62, .150, 150), (.79, .150, 140), (.91, .080, 130)),
     ),
+    # Grzybnia (krok 28a): piętro zainfekowanego Króla Pająków — fiolet ciemniejszy niż w leżu, z domieszką
+    # błękitu; zarodniki i strzępki bladoliliowe, światło to bioluminescencja grzybów (cyjan zamiast ognia).
+    # Podłoga ciemniejsza niż w leżu, ale postacie zachowują kontrast (pilnują testy czytelności).
+    'grzybnia': Palette(
+        key='grzybnia', label='Grzybnia: ciemny fiolet z błękitem, bioluminescencja',
+        floor=oks((.30, .056, 285), (.38, .060, 288), (.445, .062, 290), (.49, .064, 292), (.535, .064, 294), (.58, .060, 296)),
+        floor_alt=ok(.435, .066, 282),
+        wall_top=oks((.20, .060, 280), (.29, .068, 284), (.41, .076, 288), (.47, .078, 292), (.55, .072, 296), (.64, .062, 300)),
+        wall_block_alt=ok(.435, .080, 282),
+        wall_face=oks((.16, .056, 278), (.21, .064, 282), (.26, .068, 286)),
+        wall_fade=oks((.12, .046, 278), (.17, .052, 282), (.20, .056, 286)),
+        deep=oks((.09, .036, 275), (.11, .040, 278)),
+        # Plamy i posoka zarażonych: ciemny turkus pleśni.
+        stain=oks((.34, .060, 200), (.41, .070, 195)),
+        # Zarodniki, strzępki, kurz: blady liliowobłękitny.
+        ash=oks((.90, .022, 280), (.76, .032, 282)),
+        # Kapelusze i kościste grzyby: blada kość z fioletem.
+        bone=oks((.72, .030, 310), (.83, .026, 315), (.92, .014, 320)),
+        # Bioluminescencja: grzyby-latarnie zamiast pochodni (poświata gry też bierze barwę z tej rampy).
+        flame=oks((.48, .090, 230), (.63, .120, 220), (.80, .120, 205), (.92, .060, 195)),
+    ),
 }
 DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 
@@ -217,6 +238,8 @@ DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 BIOMES = {
     'tower_ruins': {'palette': 'piaskowiec', 'extras': (), 'reserved_hues': True},
     'spider_lair': {'palette': 'pajeczy', 'extras': ('spider',), 'reserved_hues': False},
+    # Grzybnia (krok 28a): dalszy ciąg leża (jaja, nici, pancerzyki) porośnięty grzybem; fiolet z wyboru właściciela.
+    'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
 }
 
 
@@ -430,6 +453,37 @@ def decal(kind):
                     for dx in range(-1, 2):
                         if abs(dy) < 2 or dx == 0:
                             img.put(cx + dx, cy + dy, p.bone[1] if dy < 0 else p.bone[0])
+        elif kind in ('mushrooms_a', 'mushrooms_b'):  # kępka grzybów (Grzybnia): kapelusz-półelipsa na trzonku
+            img = Img(T, T)
+            # (środek kapelusza x, y podstawy trzonka, promień kapelusza, wysokość trzonka)
+            spots = ([(10, 17, 3.5, 3), (16, 14, 2.5, 2), (14, 21, 2, 2)] if kind == 'mushrooms_a'
+                     else [(20, 22, 3, 3), (15, 24, 2, 2), (25, 25, 2, 1), (9, 11, 2.5, 2)])
+            for cx, base, rad, stem in sorted(spots, key=lambda sp: sp[1]):
+                shroom = Img(T, T)
+                for y in range(base - stem, base + 1):  # trzonek 2 px
+                    shroom.put(cx - 1, y, p.bone[1])
+                    shroom.put(cx, y, p.bone[0])
+                top = base - stem
+                for y in range(T):
+                    for x in range(T):
+                        nx, ny = (x + .5 - cx) / rad, (y + .5 - top) / (rad * .75)
+                        if ny <= .2 and nx * nx + ny * ny <= 1:
+                            shroom.put(x, y, p.bone[2] if nx + ny < -.5 else (p.bone[1] if nx < .4 else p.bone[0]))
+                outline(shroom, p.outline)
+                img.blit(shroom, 0, 0)
+            # Świecąca plamka na największym kapeluszu — punkt orientacyjny w mgle.
+            cx, base, rad, stem = spots[0]
+            img.put(cx, base - stem - 1, p.flame[2])
+        elif kind in ('mycel_a', 'mycel_b'):  # grzybnia: cienkie, rozgałęzione strzępki na podłodze (bez wypełnienia)
+            img = Img(T, T)
+            for _ in range(3 if kind == 'mycel_a' else 4):
+                x, y = r.uniform(4, 28), r.uniform(4, 28)
+                a = r.uniform(0, 2 * math.pi)
+                for i in range(r.randint(10, 16)):
+                    a += r.uniform(-.6, .6)
+                    x, y = x + math.cos(a), y + math.sin(a)
+                    if 1 <= x < T - 1 and 1 <= y < T - 1:
+                        img.put(int(x), int(y), p.ash[1] if i % 5 else p.ash[0])
         elif kind.startswith('dust_'):  # kurz nawiany pod ścianę; gęstszy przy samej ścianie
             img = Img(T, T); side = kind[-1]
             for y in range(T):
@@ -820,7 +874,10 @@ TORCH_FLAME_BASE_Y = 13  # wiersz, w którym płomień styka się z głowicą po
 
 
 def torch_sconce(p, r):
-    """Uchwyt pochodni na licu muru: żelazna obejma na licu, drewniany trzon wystający przed mur."""
+    """Uchwyt pochodni na licu muru: żelazna obejma na licu, drewniany trzon wystający przed mur.
+    W Grzybni (krok 28a): trzon grzyba-latarni wyrastający z lica — świecący kapelusz to „płomień”."""
+    if 'fungus' in BIOMES[BIOME]['extras']:
+        return lantern_stalk(p, r)
     img, I, D = Img(T, T), p.iron, p.dirt
     for y in range(25, 30):  # obejma na licu (lico zajmuje wiersze 24–31)
         for x in range(13, 19):
@@ -836,11 +893,14 @@ def torch_sconce(p, r):
 
 
 def torch_flame(frame):
-    """Płomień w 4 klatkach (6 kl./s): kołysanie i oddech ±1 px. Świeci, więc bez ciemnego obrysu."""
+    """Płomień w 4 klatkach (6 kl./s): kołysanie i oddech ±1 px. Świeci, więc bez ciemnego obrysu.
+    W Grzybni: świecący kapelusz grzyba-latarni, który powoli pulsuje."""
     sway = (0, 1, 0, -1)[frame]
     height = (10, 11, 10, 9)[frame]
 
     def gen(p, r):
+        if 'fungus' in BIOMES[BIOME]['extras']:
+            return lantern_cap(p, frame)
         img, Fl = Img(T, T), p.flame
         for i in range(height):  # i = 0 przy głowicy, rośnie ku górze
             t = i / max(1, height - 1)
@@ -860,6 +920,43 @@ def torch_flame(frame):
                 img.put(x, y, c)
         return img
     return gen
+
+
+def lantern_stalk(p, r):
+    """Grzyb-latarnia (Grzybnia): kościsty trzon wyrasta z lica i wygina się przed mur, pod kapeluszem."""
+    img, B = Img(T, T), p.bone
+    for y in range(TORCH_FLAME_BASE_Y + 1, 30):
+        x = 15 + (1 if y > 24 else 0)
+        img.put(x, y, B[1])
+        img.put(x + 1, y, B[0])
+    # Strzępki u nasady (w licu) i mały boczny grzybek.
+    for x, y in ((13, 28), (14, 29), (18, 29), (19, 28), (12, 27)):
+        img.put(x, y, p.ash[1])
+    for x, y, c in ((19, 22, B[2]), (20, 22, B[1]), (21, 22, B[0]), (20, 23, B[0])):
+        img.put(x, y, c)
+    outline(img, p.outline)
+    return img
+
+
+def lantern_cap(p, frame):
+    """Świecący kapelusz grzyba-latarni: półelipsa z blaszkami, oddech ±1 px i jaśniejsze plamki (bez obrysu)."""
+    Fl = p.flame
+    img = Img(T, T)
+    rx = (6, 6.5, 6, 5.5)[frame]
+    ry = (5, 5.5, 5, 4.5)[frame]
+    cx, base = 16, TORCH_FLAME_BASE_Y + .5
+    for y in range(T):
+        for x in range(T):
+            nx, ny = (x + .5 - cx) / rx, (y + .5 - base) / ry
+            if ny <= 0 and nx * nx + ny * ny <= 1:
+                d = nx * nx + ny * ny
+                img.put(x, y, Fl[0] if d > .7 else (Fl[1] if d > .35 else Fl[2]))
+    for x in range(int(cx - rx) + 1, int(cx + rx)):  # blaszki pod kapeluszem
+        img.put(x, TORCH_FLAME_BASE_Y + 1, Fl[0] if x % 2 else Fl[1])
+    for dx, dy in ((-3, -2), (2, -3), (0, -4)):  # świecące plamki — najjaśniejszy ton, migają między klatkami
+        if (dx + frame) % 3:
+            img.put(cx + dx, TORCH_FLAME_BASE_Y + dy, Fl[3])
+    return img
 
 
 # ---------------- krok 19b: bruk, detale lica, łuki, pajęczyny, ślady walki ----------------
@@ -946,6 +1043,24 @@ def face_detail(kind):
                 for y in range(fy - 1, fy + 5 + (x % 3)):
                     if img.get(x, y) == CLR:
                         img.put(x, y, p.ash[1])
+        elif kind == 'shelf':  # grzyby półkowe na licu (Grzybnia): trzy kościste półki, każda z obrysem
+            B = p.bone
+            for cx, cy, rx, ry in ((10.5, fy + 3.5, 4.2, 2.4), (18.5, fy + 2.5, 5.2, 2.8), (14.5, fy + 6, 3.4, 1.8)):
+                cap = Img(T, T)
+                for y in range(T):
+                    for x in range(T):
+                        nx, ny = (x + .5 - cx) / rx, (y + .5 - cy) / ry
+                        if nx * nx + ny * ny <= 1 and ny > -.95:
+                            cap.put(x, y, B[2] if ny < -.35 else (B[1] if ny < .45 else B[0]))
+                outline(cap, O)
+                img.blit(cap, 0, 0)
+            img.put(18, fy + 1, p.flame[2])  # świecąca plamka zarodników
+        elif kind == 'hyphae':  # strzępki zwisające z krawędzi muru na lico, ze świecącymi końcówkami
+            for x, length in ((6, 5), (9, 7), (13, 4), (17, 8), (20, 5), (24, 6), (27, 3)):
+                for i in range(length):
+                    xx = x + (1 if i > length // 2 and x % 2 else 0)
+                    img.put(xx, fy - 1 + i, p.ash[1] if i else p.ash[0])
+                img.put(x + (1 if x % 2 else 0), fy - 1 + length, p.flame[2])
         elif kind == 'brick':  # wypadnięta cegła
             for y in range(fy + 1, fy + 3):
                 for x in range(6, 12):
@@ -1125,6 +1240,14 @@ def manifest():
         for v in ('a', 'b'):
             m.append(Entry(f'decal_husk_{v}', decal(f'husk_{v}'), 'floorDecal', group='decal.husk', weight=1,
                            flip_x=True))
+    if 'fungus' in BIOMES[BIOME]['extras']:
+        # Grzybnia (krok 28a): grzyby półkowe i strzępki na licu, kępki grzybów i grzybnia na podłodze.
+        # Dopisane na końcu, więc kafle wspólne z leżem się nie przesuwają.
+        for kind, weight in (('shelf', 3), ('hyphae', 2)):
+            m.append(Entry(f'face_{kind}', face_detail(kind), 'wallDecor', group='wallFace.fungus', weight=weight))
+        for kind, group in (('mushrooms_a', 'decal.mushrooms'), ('mushrooms_b', 'decal.mushrooms'),
+                            ('mycel_a', 'decal.mycel'), ('mycel_b', 'decal.mycel')):
+            m.append(Entry(f'decal_{kind}', decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
     return m
 
 
@@ -1294,6 +1417,8 @@ MOCKUP_ACTORS_LAIR = [
 METRIC_CAST = {
     'tower_ruins': ('barbarian', 'trashcan', 'mage', 'sludge'),
     'spider_lair': ('barbarian_sword', 'cave_spider', 'bat', 'queen', 'spiderling'),
+    # Grzybnia (krok 28a): do kroków z wrogami i Królem obsada z leża.
+    'fungal_grove': ('barbarian_sword', 'cave_spider', 'bat', 'queen', 'spiderling'),
 }
 
 
@@ -1412,7 +1537,7 @@ def compose_mockup(p, tiles, meta, seed=16):
             if grid[y][x] in props:
                 put(props[grid[y][x]], x, y)
     # 8. postacie (wg y), potem ściany nad postaciami
-    actors = MOCKUP_ACTORS_LAIR if BIOME == 'spider_lair' else [(*a, 0) for a in MOCKUP_ACTORS]
+    actors = MOCKUP_ACTORS_LAIR if BIOME in ('spider_lair', 'fungal_grove') else [(*a, 0) for a in MOCKUP_ACTORS]
     for key, row, cx, cy, _, col in sorted(actors, key=lambda a: a[3]):
         fr = load_frame(key, row, col)
         canvas.alpha_composite(fr, (cx - fr.width // 2, cy - fr.height // 2))

@@ -23,6 +23,17 @@ export const TILESET_ASSET: TilesetAsset = {
   version: 2,
 };
 
+/** Grzybnia (krok 28a): `python tools/tower_ruins_tiles.py --biome fungal_grove`. Pochodnie to grzyby-latarnie. */
+export const FUNGAL_GROVE_TILESET_ASSET: TilesetAsset = {
+  imageKey: 'tex-tileset-fungal-grove',
+  jsonKey: 'json-tileset-fungal-grove',
+  sheetKey: 'sheet-tileset-fungal-grove',
+  imageUrl: 'assets/tilesets/fungal_grove_tileset.png',
+  jsonUrl: 'assets/tilesets/fungal_grove_tileset.json',
+  torchAnimation: 'torch-flame-fungal-grove',
+  version: 2,
+};
+
 /** Pajęcze leże (krok 23a): `python tools/tower_ruins_tiles.py --biome spider_lair`. */
 export const SPIDER_LAIR_TILESET_ASSET: TilesetAsset = {
   imageKey: 'tex-tileset-spider-lair',
