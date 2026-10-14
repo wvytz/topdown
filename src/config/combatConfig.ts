@@ -9,6 +9,7 @@ import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { EnemyVariantDefinition } from '@/systems/EnemyVariants';
 import type { EncounterConfig } from '@/dungeon/EncounterPlanner';
 import { GUARANTEED_VIEW_HALF } from '@/config/gameConfig';
+import { ITEM_EFFECTS } from '@/config/lootConfig';
 
 export const PLAYER_COMBAT: PlayerCombatConfig = {
   meleeDamage: 12,
@@ -103,6 +104,44 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       wave: { halfWidth: 13, halfDepth: 4 },
     },
   },
+  // Grzybnia (krok 28b): zarażony pająk gryzie jak Rusher, ale lekko zatruwa (2 co 0,5 s przez 1,5 s = 6).
+  [EnemyVariant.InfectedSpider]: {
+    type: EnemyType.Rusher,
+    color: 0x3a2f3c,
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 10,
+      range: 32,
+      hitRange: 42,
+      windupMs: 350,
+      cooldownMs: 1000,
+      knockback: 220,
+      status: { poison: { tickDamage: 2, tickMs: 500, durationMs: 1500 } },
+    },
+  },
+  // Grzybiec: kula zarodników słabsza od kuli maga (5), ale zatruwa jak Ognista pięść (12 w 2 s);
+  // wolniejsza (170 zamiast 240) i z dłuższym zamachem, żeby w mgle dało się ją zobaczyć i ominąć.
+  [EnemyVariant.Fungoid]: {
+    type: EnemyType.Kiter,
+    color: 0x8a4a2a,
+    attack: {
+      kind: EnemyAttackKind.Projectile,
+      damage: 5,
+      range: 280,
+      windupMs: 450,
+      cooldownMs: 1600,
+      knockback: 100,
+      projectileSpeed: 170,
+      projectileLifetimeMs: 2200,
+      status: {
+        poison: {
+          tickDamage: ITEM_EFFECTS.fireFist.tickDamage,
+          tickMs: ITEM_EFFECTS.fireFist.tickMs,
+          durationMs: ITEM_EFFECTS.fireFist.durationMs,
+        },
+      },
+    },
+  },
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */
@@ -130,6 +169,8 @@ export const ENEMY_STATUS_RESISTANCE: StatusResistance = {
 
 /** Gracz (krok 23d: spowolnienie z kokonów leża) — pełna siła spowolnienia; ogłuszeń gracz dziś nie dostaje. */
 export const PLAYER_STATUS_RESISTANCE: StatusResistance = {
+  // Krok 29: po paraliżu 2 s odporności — paraliż to kara za błąd, nie pętla bez wyjścia.
+  paralysisImmunityMs: 2000,
   stunMultiplier: 0,
   stunImmunityMs: 0,
   slowMultiplier: 1,

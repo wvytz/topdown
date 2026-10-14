@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2017,6 +2017,194 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 28b — Zarażony pająk i grzybiec (Grzybnia)
+
+**Zgodnie z zasadą małej liczby archetypów:** `#grzybnia` zarażony pająk to wariant Rushera, a grzybiec wariant Kitera. Logika AI bez zmian. Wyróżnik biomu: obaj zatruwają (status z kroku 27).
+
+**Generator `tools/grove_enemies.py`** (nowy; narzędzia z `lair_enemies.py`, `spider_sprites.py`, paleta `grzybnia`):
+- `infected-spider_walk.png` (48×48, 4 klatki chodu): pająk leża, na odwłoku trzy kościste kapelusze zamiast białych pręg, strzępki, cyjanowe oczy;
+- `fungoid_walk-spit.png` (48×48):
+  - kolumny 0–3 pełzanie, 4–7 plucie;
+  - rdzawy kapelusz z bladymi łatkami i jasnym rondem blaszek, za nim wloką się korzenie, cyjanowe oczy pod przednim rondem;
+  - przy pluciu kapelusz nabrzmiewa, a przed pyskiem rośnie zielony obłok;
+  - pierwsza wersja (nóżki po bokach) wyglądała jak żółw albo biedronka, więc ją przerobiłem;
+- `spore-ball.png` (16×16, 4 klatki): zielony rdzeń jadu w bladym obłoku. Ta sama zieleń co zatruty gracz;
+- pierwsza wersja kuli była szara i bez jadu, a obłok i korzenie wchodziły w margines — poprawione, walidator czysty.
+
+**Liczby (moje, `combatConfig.ENEMY_VARIANTS`, do strojenia w teście):**
+- zarażony pająk: walka Rushera (10 obrażeń) plus trucizna 2 co 0,5 s przez 1,5 s (6), słabsza niż Ognista pięść;
+- grzybiec: rytm i zachowanie Kitera; kula za 5 (mag 8), wolniejsza (170 zamiast 240), zamach 450 ms, odnowienie 1,6 s. Trucizna jak Ognista pięść: 3 co 0,5 s przez 2 s (12). Wolniejsza i z dłuższym zamachem, żeby w mgle dało się ją zobaczyć i ominąć.
+
+**Kod:**
+- `BaseAttackDefinition.status`: status z trafienia wroga;
+- `EnemyManager`: przenosi status w ugryzieniu i w pocisku;
+- `ProjectileSpec.status` → `Projectile.status`: trafienie pociskiem nakłada status;
+- `EnemyVariant.InfectedSpider` / `Fungoid`, arkusze, `ENEMY_VISUALS` (grzybiec ma płaski, szeroki cień), `ENEMY_PROJECTILE_VISUALS`;
+- `biomeConfig`: Grzybnia → zarażony pająk + grzybiec;
+- makieta generatora kafli mierzy czytelność nowych wrogów:
+  - bohater 2,18 / 3,17;
+  - pająk 2,18 / 1,75;
+  - grzybiec 2,18 / 1,16 — ciało czytelne dzięki barwie (rdza na fiolecie, Δ 132°).
+
+**Testy:**
+- `enemyVariants.test.ts`:
+  - mapowanie Grzybni;
+  - pająk = Rusher z trucizną słabszą niż Ognista pięść;
+  - grzybiec = Kiter ze słabszą i wolniejszą kulą, trucizna równa Ognistej pięści, wygląd pocisku;
+- `biomes.test.ts`: czytelność bohatera, zarażonego pająka i grzybca na podłodze i bruku Grzybni.
+
+**Weryfikacja:**
+- `npm run build`: 767 testów zielonych;
+- w grze (`?seed=7&floor=3`): 9 zarażonych pająków, 1 grzybiec;
+  - grzybiec gra animację plucia, kula `spore-ball` leci 170 px/s, trafienie −7 (5 po skalowaniu piętra i Złotej żyle) i trucizna po −3;
+  - ugryzienie pająka −14 z trucizną;
+  - zrzut ekranu: zatruty bohater migocze na zielono, zielone „-3”, grzybiec w mgle;
+- brak błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#grzybnia`
+- czy grzybiec czyta się jako grzyb;
+- siła trucizny obu wrogów (biom jest teraz wyraźnie trudniejszy od leża);
+- czy kulę zarodników widać w mgle.
+
+---
+
+## Krok 28b (cd.) — Mrok na krańcach kadru i klimat Grzybni
+
+**Ocena właściciela po teście (nagranie z gry):** `#ocena` `#grzybnia`
+- „kolejny raz problem z oświetleniem”: w pewnym momencie krańce ekranu się rozjaśniają; „może chodzi o jakieś granice”;
+- biomy powinny być tym mroczniejsze i pełniejsze, im głębiej wchodzimy;
+- podstawowe płytki upstrzone grzybem, naleciałością — „brakuje podstawowego klimatu”, nie chodzi o detale;
+- mury bardziej uszkodzone.
+
+**Decyzja:** `#decyzja` każdy kolejny biom jest mroczniejszy od poprzedniego (Grzybnia ciemniejsza niż leże).
+
+**Przyczyna rozjaśniania (błąd od kroku 19a, we wszystkich biomach):**
+- z nagrania (klatki 41–45 s i 49–53 s): warstwa mgły kończyła się ostrą krawędzią w 2/3 ekranu, dalej podłoga była odsłonięta;
+- warstwa mroku była wyśrodkowana na bohaterze, z zapasem tylko na martwą strefę kamery;
+- przy brzegu mapy kamera staje, a przy szybkim ruchu i dashu (lerp 0,12) zostaje w tyle — bohater schodził ze środka kadru i warstwa nie sięgała przeciwnego brzegu;
+- w zwykłym mroku (30%) błąd był ledwo widoczny, w gęstej mgle bije w oczy.
+
+**Poprawka:**
+- `systems/lighting.ts`: `overlayOrigin`. Warstwa jest wyśrodkowana na kadrze kamery (z poprzedniej klatki) i przycięta do granic świata jak kamera;
+- zapas 24 px na ruch kamery w jednej klatce (`LightingOverlay.MARGIN`); stempel światła bohatera nadal w jego pozycji;
+- test (`lighting.test.ts`): kadr po ruchu kamery o mniej niż zapas leży w całości pod warstwą — w środku mapy, przy brzegach i w narożnikach;
+- w grze: bohater pędzący 900 px/s od środka mapy przez wszystkie 4 narożniki — warstwa pokrywa kadr w 542 z 542 klatek.
+
+**Klimat Grzybni (generator kafli, tylko biom `fungal_grove`; arkusze ruin i leża identyczne co do bajtu):**
+- **podłoga zarośnięta:**
+  - kafle bazowe: pleśń w fugach (20%), zarodniki, rzadkie świecące drobiny (`overgrow`);
+  - duże, nieregularne plamy pleśni z prześwitami (`decal.mold`, 3 warianty, waga 5) i dwa razy więcej nakładek (`decalChance` 0,2);
+  - zamiast kurzu przy murach — pleśń wpełzająca z muru, gęsta przy ścianie, dalej strzępiaste języki (`decal.dust*`, szansa 80/70/70%);
+  - pierwsza wersja kładła plamy na każdym kaflu bazowym i wyszedł z tego powtarzalny wzór kropek (do tego za jasny turkus) — przeniosłem plamy do nakładek i wyciszyłem kolor pleśni;
+- **mury bardziej zniszczone:**
+  - pęknięte i wyszczerbione warianty losują się 4× częściej;
+  - pleśń w spoinach, plamy na blokach, zacieki na licu;
+  - mury ciemniejsze o ok. 0,04 jasności;
+- czytelność postaci bez zmian (obrys 2,16 ≥ 2,0).
+
+**Weryfikacja:**
+- `npm run build`: 769 testów zielonych;
+- w grze piętro 3 z pleśnią przy murach i na płytach. Panel przeglądarki był zbyt wąski na dokładną ocenę szczegółów — ocena w teście właściciela.
+
+**Do oceny w testach właściciela:** `#grzybnia`
+- czy krańce już się nie rozjaśniają;
+- czy podłoga i mury mają wystarczająco klimatu (ilość pleśni, zniszczenia);
+- czy biom jest wystarczająco mroczny.
+
+---
+
+## Krok 29 — Król Pająków: wygląd, ciosy i paraliż
+
+**Ocena i decyzje właściciela:** `#ocena` `#decyzja` `#grzybnia` `#krol-pajakow`
+- klimat Grzybni po kroku 28b (cd.) „bardzo na plus — właśnie o coś takiego chodziło”;
+- właściciel przygotował własny szkic Króla (ilustracja z ukosa, z przodu) i poprosił o niezależną propozycję Claude'a;
+- po porównaniu wybrał połączenie: generator i rzut z góry od Claude'a, wygląd ze szkicu. Ocena: „połączony król jest zajebisty”;
+- ciosy zostawił Claude'owi: „to pająk”, pamiętać o ciosach Królowej, użyć grzybów i konkretnych ograniczeń terenu — „żebyśmy czuli strach przed spotkaniem z nim”;
+- nowy status: **paraliż**, np. po rzuceniu kokonem albo po mocnym uderzeniu.
+
+**Wygląd (`tools/king_sprites.py` → `spider-king_walk-stab.png`, 128×128, 8 kierunków):**
+- z generatora: rzut z góry, chód na dwóch grubych łapach, po dwa zwisające odnóża-sztylety na stronę (opis właściciela z kroku 28), animacje;
+- ze szkicu właściciela:
+  - zielona, świecąca masa grzybni na odwłoku z bulwami zarodników;
+  - pomarańczowe grzyby półkowe na obrzeżu;
+  - jasnolawendowy pancerz z kępami mchu;
+  - dwa uniesione przednie odnóża-kosy z zakrzywionym, zakażonym ostrzem;
+  - osiem zielonych oczu;
+- kolumny 0–3 chód, 4–7 atak: zamach, lewe sztylety, prawe, uderzenie (kosy zbiegają się, wszystkie sztylety naprzód);
+- wcześniejsze wersje:
+  - moja pierwsza propozycja (kościste grzyby jak łuski szyszki, szara);
+  - druga (rdzawe brzegi, korona z kolców);
+  - pierwsza wersja połączona miała za krótkie ostrza kos;
+- pancerz rozjaśniony, bo test czytelności pokazał, że ciemny fiolet zlewa się z podłogą Grzybni (kontrast 1,06).
+
+**Paraliż (nowy status, `StatusApplication.paralysis`):**
+- gracz nie chodzi, nie atakuje, nie strzela i nie robi dasha; odrzut z trafienia nadal działa;
+- po paraliżu 2 s odporności (`PLAYER_STATUS_RESISTANCE.paralysisImmunityMs`), żeby Król nie zamknął gracza serią; nowy paraliż nie przedłuża trwającego;
+- wygląd: bladozielona barwa bohatera (`STATUS_TINTS.paralysis`) i napis „Paraliż!”.
+
+**Ciosy Króla (moje, `bossConfig.SPIDER_KING`, do strojenia w teście):**
+- **ścięcie kosami** (mechanika smagnięcia Królowej, `LashAttackDefinition.status` zamiast samej trucizny):
+  - z bliska (< 70 px), strefa do 80 px przed Królem;
+  - zamach 650 ms, 18 obrażeń, odrzut 320, paraliż 0,7 s;
+  - odstęp 1,4 s;
+- **grad sztyletów** (`BossAttackKind.Flurry`): 6 ukłuć (po wściekłości 8) w linii w stronę gracza, co 22 px i co 110 ms, każde 8;
+- **rzut kokonem** (`CocoonThrow`):
+  - kokon leci łukiem 650 ms na miejsce gracza; strefa lądowania widoczna od razu;
+  - 6 obrażeń i paraliż 1,2 s;
+  - po wściekłości drugi kokon 80 px za graczem, w drodze ucieczki (jak sieć Królowej);
+- **wysyp grzybni** (`Bloom`, teren):
+  - 3 płaty (po wściekłości 4): pierwszy pod graczem, reszta 55–100 px wokół;
+  - telegraf 800 ms, płat rośnie 14 → 40 px i leży 14 s;
+  - w płacie trucizna (2 co 0,5 s) i spowolnienie 35%; chroni tylko dash;
+  - arena z czasem zarasta (w teście do 6 płatów naraz);
+- wzór: grzybnia → sztylety → kokon; ścięcie poza wzorem, gdy gracz jest blisko;
+- Król cięższy od Królowej: promień 34, 420 HP (piętro 3: 546), chód 55, staje 52 px od gracza;
+- plansza: „Król Pająków — Zainfekowany Władca Grzybni”, przy wściekłości „Gniew Grzybni!”;
+- `BOSS_BY_FLOOR[3] = SPIDER_KING`.
+
+**Kod:**
+- czysto: `bossTypes` (`FlurryAttackDefinition`, `CocoonThrowDefinition`, `BloomAttackDefinition`, `ThrownObject`, `WebShot.look/status`, `BossAttackPlan.throws`), `bossAttacks` (`planFlurry`, `planCocoonThrow`, `planBloom`), `StatusEffects` (paraliż);
+- grafika: `tools/grove_enemies.py` → `mycelium-patch.png` (96×96, rozrost = hitbox płatu, pulsowanie bulw);
+- Phaser:
+  - `BossFight`: płaty sieci albo grzybni (`BOSS_PATCH_VISUALS`), trucizna terenu (`Player.applyTerrainStatus`);
+  - kokon w locie z klatek kokonu leża, pęka przy lądowaniu;
+  - napis paraliżu;
+- `Player`: paraliż blokuje ruch, dash, cios i strzał.
+
+**Testy:**
+- `SpiderKing.test.ts`:
+  - piętro 3 → Król;
+  - większy od Królowej;
+  - skalowanie;
+  - plany ścięcia, sztyletów, kokonu i grzybni;
+  - balans (z płatu pod sobą da się wyjść);
+  - wzór ataków;
+  - paraliż z odpornością, bez przedłużania;
+  - sprite płatu zgodny z hitboxem;
+- `biomes.test.ts`: czytelność Króla na podłodze Grzybni.
+
+**Weryfikacja:**
+- `npm run build`: 786 testów zielonych;
+- w grze (`?seed=7&floor=3`, gracz stoi 150 px od Króla):
+  - kolejno grzybnia, ścięcie (paraliż), sztylety, kokon;
+  - do 6 płatów grzybni naraz;
+  - paraliż po ścięciu;
+  - zrzut ekranu: strefa lądowania kokonu na bohaterze, kokon w locie, „Paraliż!”;
+- brak nowych błędów w konsoli (dwa stare wpisy z przeładowań HMR w trakcie zmian).
+
+**Uwagi z testu:** `#krol-pajakow`
+- gracz stojący blisko dostaje ścięcie z paraliżem co ok. 3 s, w przerwach między atakami ze wzoru — ostro, do oceny w teście właściciela;
+- kokon w 2 s odporności po ścięciu nie paraliżuje (zgodnie z zasadą);
+- Król nie ma jeszcze animacji śmierci (ginie od razu, plama) — kandydat na później.
+
+**Do oceny w testach właściciela:** `#krol-pajakow`
+- czy czuć strach (gęstość ciosów, zarastanie areny);
+- długość paraliżu (0,7 s / 1,2 s) i 2 s odporności;
+- siła ścięcia;
+- czy grad sztyletów i rzut kokonem są czytelne.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2050,7 +2238,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **1. Następny etap (decyzja właściciela po kroku 27):** `#decyzja` nowe biomy i kolejne piętra — większy zbiór mechanik i poziomów tematycznych; strojenie wszystkiego później.
 
-**Grzybnia (piętro 3) w toku** `#grzybnia`: krok 28a zrobiony (paleta, kafle, mgła); właściciel uznał biom za OK, a światło po jego uwadze przechodzi płynnie (bez kręgów, we wszystkich biomach). Dalej: 28b — zarażony pająk i grzybiec; 28c — purchawki; 29 — Król Pająków zainfekowany grzybem (większy, kościsty grzyb na odwłoku, chód na dwóch grubych łapach, zwisające odnóża kłują jak sztylety).
+**Grzybnia (piętro 3) w toku** `#grzybnia`: krok 28a zrobiony (paleta, kafle, mgła); właściciel uznał biom za OK, a światło po jego uwadze przechodzi płynnie (bez kręgów, we wszystkich biomach). Krok 28b zrobiony: zarażony pająk i grzybiec (obaj zatruwają). Po teście: naprawiony mrok na krańcach kadru (wszystkie biomy), Grzybnia zarośnięta pleśnią i z bardziej zniszczonymi murami. Krok 29: Król Pająków (wygląd połączony ze szkicu właściciela, ścięcie kosami, grad sztyletów, rzut kokonem, wysyp grzybni, nowy status paraliżu). Do zrobienia w Grzybni: purchawki (28c), animacja śmierci Króla. Dalej: 28b — zarażony pająk i grzybiec; 28c — purchawki; 29 — Król Pająków zainfekowany grzybem (większy, kościsty grzyb na odwłoku, chód na dwóch grubych łapach, zwisające odnóża kłują jak sztylety).
 
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:

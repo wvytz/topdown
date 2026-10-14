@@ -90,10 +90,24 @@ export const SPIDER_LAIR_DRESSING: FloorDressingConfig = {
 /**
  * Grzybnia (krok 28a): dalszy ciąg leża porośnięty grzybem — kępki grzybów i grzybnia na podłodze,
  * mniej pancerzyków; grzyby półkowe i strzępki na licu; pajęczyny rzadsze niż w leżu.
+ * Krok 28 (uwaga właściciela: „brakuje klimatu”): dwa razy więcej nakładek, w tym duże plamy pleśni,
+ * a pleśń wpełzająca z murów (kafle `decal.dust*` w tym biomie) przy większości ścian.
  */
 export const FUNGAL_GROVE_DRESSING: FloorDressingConfig = {
   ...FLOOR_DRESSING,
-  decalGroupWeights: { ...FLOOR_DRESSING.decalGroupWeights, 'decal.mushrooms': 3, 'decal.mycel': 2, 'decal.husk': 1 },
+  decalChance: 0.2,
+  decalGroupWeights: {
+    ...FLOOR_DRESSING.decalGroupWeights,
+    'decal.mold': 5,
+    'decal.mushrooms': 3,
+    'decal.mycel': 2,
+    'decal.husk': 1,
+  },
+  dust: {
+    north: { chance: 0.8, group: 'decal.dustN' },
+    west: { chance: 0.7, group: 'decal.dustW' },
+    east: { chance: 0.7, group: 'decal.dustE' },
+  },
   wallFace: { chance: 0.22, group: 'wallFace.fungus' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.5 },
 };

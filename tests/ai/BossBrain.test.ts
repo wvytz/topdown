@@ -108,7 +108,7 @@ describe('planBossAttack', () => {
       Math.round(BOSS.nova.telegraphMs * BOSS.enrage.telegraphMultiplier),
     );
     expect(attackLeadTimeMs(plan(BossAttackKind.Nova), 99_999)).toBe(0);
-    expect(attackLeadTimeMs({ kind: BossAttackKind.Slam, strikes: [], bursts: [], spawns: [], webs: [], leap: null, endsAt: 0 }, 0)).toBe(0);
+    expect(attackLeadTimeMs({ kind: BossAttackKind.Slam, strikes: [], bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: 0 }, 0)).toBe(0);
   });
 
   it('Uderzenie: jedna strefa wokół bossa, uderza po telegrafie', () => {

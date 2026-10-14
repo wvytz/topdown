@@ -2,6 +2,7 @@ import type {
   AreaStrike,
   BossAttackPlan,
   BossLeap,
+  ThrownObject,
   BossDefinition,
   ProjectileBurst,
   WebShot,
@@ -39,6 +40,12 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planLeap(ctx);
     case BossAttackKind.Lash:
       return planLash(ctx);
+    case BossAttackKind.Flurry:
+      return planFlurry(ctx);
+    case BossAttackKind.CocoonThrow:
+      return planCocoonThrow(ctx);
+    case BossAttackKind.Bloom:
+      return planBloom(ctx);
   }
 }
 
@@ -63,7 +70,7 @@ function planSlam(ctx: AttackPlanContext): BossAttackPlan {
     damage: slam.damage,
     knockback: slam.knockback,
   };
-  return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], spawns: [], webs: [], leap: null, endsAt: impactAt + slam.recoveryMs };
+  return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: impactAt + slam.recoveryMs };
 }
 
 function planNova(ctx: AttackPlanContext): BossAttackPlan {
@@ -87,7 +94,7 @@ function planNova(ctx: AttackPlanContext): BossAttackPlan {
     });
   }
   const lastFireAt = firstFireAt + (waves - 1) * nova.waveIntervalMs;
-  return { kind: BossAttackKind.Nova, strikes: [], bursts, spawns: [], webs: [], leap: null, endsAt: lastFireAt + nova.recoveryMs };
+  return { kind: BossAttackKind.Nova, strikes: [], bursts, spawns: [], webs: [], leap: null, throws: [], endsAt: lastFireAt + nova.recoveryMs };
 }
 
 function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
@@ -110,7 +117,7 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
     });
   }
   const lastImpactAt = firstImpactAt + (zoneCount - 1) * barrage.intervalMs;
-  return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], webs: [], leap: null, endsAt: lastImpactAt + barrage.recoveryMs };
+  return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: lastImpactAt + barrage.recoveryMs };
 }
 
 /**
@@ -137,7 +144,7 @@ function planBrood(ctx: AttackPlanContext): BossAttackPlan {
     };
   });
   const lastLandAt = spawns.at(-1)?.at ?? firstShadowAt;
-  return { kind: BossAttackKind.Brood, strikes: [], bursts: [], spawns, webs: [], leap: null, endsAt: lastLandAt + brood.recoveryMs };
+  return { kind: BossAttackKind.Brood, strikes: [], bursts: [], spawns, webs: [], leap: null, throws: [], endsAt: lastLandAt + brood.recoveryMs };
 }
 
 /**
@@ -158,7 +165,7 @@ function planLeap(ctx: AttackPlanContext): BossAttackPlan {
     damage: leapDef.damage,
     knockback: leapDef.knockback,
   };
-  return { kind: BossAttackKind.Leap, strikes: [strike], bursts: [], spawns: [], webs: [], leap, endsAt: landAt + leapDef.recoveryMs };
+  return { kind: BossAttackKind.Leap, strikes: [strike], bursts: [], spawns: [], webs: [], leap, throws: [], endsAt: landAt + leapDef.recoveryMs };
 }
 
 /**
@@ -179,9 +186,99 @@ function planLash(ctx: AttackPlanContext): BossAttackPlan {
     impactAt,
     damage: lash.damage,
     knockback: lash.knockback,
-    status: { poison: lash.poison },
+    status: lash.status,
   };
-  return { kind: BossAttackKind.Lash, strikes: [strike], bursts: [], spawns: [], webs: [], leap: null, endsAt: impactAt + lash.recoveryMs };
+  return { kind: BossAttackKind.Lash, strikes: [strike], bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: impactAt + lash.recoveryMs };
+}
+
+/** Kierunek boss → gracz (jednostkowy); gracz w miejscu bossa: w dół. */
+function towardTarget(ctx: AttackPlanContext): { x: number; y: number } {
+  const dx = ctx.target.x - ctx.self.x;
+  const dy = ctx.target.y - ctx.self.y;
+  const len = Math.hypot(dx, dy);
+  return len === 0 ? { x: 0, y: 1 } : { x: dx / len, y: dy / len };
+}
+
+/**
+ * Grad sztyletów (Król): ukłucia w linii boss → gracz (kierunek z chwili planu), od `startDistance`
+ * co `step` px, jedno po drugim co `intervalMs`. Po wściekłości dwa ukłucia więcej (dalej).
+ */
+function planFlurry(ctx: AttackPlanContext): BossAttackPlan {
+  const flurry = required(ctx.definition.flurry, BossAttackKind.Flurry, ctx);
+  const firstImpactAt = ctx.now + telegraph(ctx, flurry.telegraphMs);
+  const count = flurry.count + (ctx.enraged ? 2 : 0);
+  const dir = towardTarget(ctx);
+  const strikes: AreaStrike[] = Array.from({ length: count }, (_, i) => {
+    const d = flurry.startDistance + i * flurry.step;
+    return {
+      center: { x: ctx.self.x + dir.x * d, y: ctx.self.y + dir.y * d },
+      radius: flurry.radius,
+      telegraphStartAt: ctx.now + i * flurry.intervalMs,
+      impactAt: firstImpactAt + i * flurry.intervalMs,
+      damage: flurry.damage,
+      knockback: flurry.knockback,
+    };
+  });
+  const lastImpactAt = strikes.at(-1)?.impactAt ?? firstImpactAt;
+  return { kind: BossAttackKind.Flurry, strikes, bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: lastImpactAt + flurry.recoveryMs };
+}
+
+/**
+ * Rzut kokonem (Król): kokon leci na miejsce gracza z chwili planu (strefa lądowania widoczna od razu),
+ * przy lądowaniu obrażenia i paraliż. Po wściekłości dodatkowy kokon `behindDistance` za graczem
+ * (w drodze ucieczki, jak sieć Matki Pająków).
+ */
+function planCocoonThrow(ctx: AttackPlanContext): BossAttackPlan {
+  const def = required(ctx.definition.cocoonThrow, BossAttackKind.CocoonThrow, ctx);
+  const launchAt = ctx.now + telegraph(ctx, def.telegraphMs);
+  const landAt = launchAt + def.flightMs;
+  const dir = towardTarget(ctx);
+  const count = def.count + (ctx.enraged ? 1 : 0);
+  const targets = Array.from({ length: count }, (_, i) =>
+    i === 0 ? ctx.target : { x: ctx.target.x + dir.x * def.behindDistance, y: ctx.target.y + dir.y * def.behindDistance },
+  );
+  const throws: ThrownObject[] = targets.map((to) => ({ from: ctx.self, to, launchAt, landAt }));
+  const strikes: AreaStrike[] = targets.map((center) => ({
+    center,
+    radius: def.radius,
+    telegraphStartAt: ctx.now,
+    impactAt: landAt,
+    damage: def.damage,
+    knockback: def.knockback,
+    status: { paralysis: def.paralysis },
+  }));
+  return { kind: BossAttackKind.CocoonThrow, strikes, bursts: [], spawns: [], webs: [], leap: null, throws, endsAt: landAt + def.recoveryMs };
+}
+
+/**
+ * Wysyp grzybni (Król): pierwszy płat pod graczem, kolejne w losowych miejscach `ring` px wokół niego.
+ * Płaty to ten sam mechanizm co sieć Matki Pająków (rośnie, leży, spowalnia), ale bez lotu i z trucizną.
+ * Po wściekłości jeden płat więcej.
+ */
+function planBloom(ctx: AttackPlanContext): BossAttackPlan {
+  const bloom = required(ctx.definition.bloom, BossAttackKind.Bloom, ctx);
+  const landAt = ctx.now + telegraph(ctx, bloom.telegraphMs);
+  const count = bloom.count + (ctx.enraged ? 1 : 0);
+  const webs: WebShot[] = Array.from({ length: count }, (_, i) => {
+    const angle = ctx.rng.next() * Math.PI * 2;
+    const dist = i === 0 ? 0 : bloom.ring.min + ctx.rng.next() * (bloom.ring.max - bloom.ring.min);
+    const to = { x: ctx.target.x + Math.cos(angle) * dist, y: ctx.target.y + Math.sin(angle) * dist };
+    return {
+      from: to,
+      to,
+      telegraphStartAt: ctx.now,
+      launchAt: landAt,
+      landAt,
+      startRadius: bloom.startRadius,
+      maxRadius: bloom.maxRadius,
+      spreadMs: bloom.spreadMs,
+      expiresAt: landAt + bloom.durationMs,
+      slow: bloom.slow,
+      look: 'mycelium',
+      status: { poison: bloom.poison },
+    };
+  });
+  return { kind: BossAttackKind.Bloom, strikes: [], bursts: [], spawns: [], webs, leap: null, throws: [], endsAt: landAt + bloom.recoveryMs };
 }
 
 /** Postęp lotu skoku (0..1); poza lotem null. */
@@ -219,7 +316,7 @@ function planWeb(ctx: AttackPlanContext): BossAttackPlan {
       slow: web.slow,
     };
   });
-  return { kind: BossAttackKind.Web, strikes: [], bursts: [], spawns: [], webs, leap: null, endsAt: landAt + web.recoveryMs };
+  return { kind: BossAttackKind.Web, strikes: [], bursts: [], spawns: [], webs, leap: null, throws: [], endsAt: landAt + web.recoveryMs };
 }
 
 /** Promień plamy sieci w chwili `now` (0 przed wylądowaniem i po wygaśnięciu); rośnie liniowo przez `spreadMs`. */
@@ -259,6 +356,7 @@ export function attackLeadTimeMs(plan: BossAttackPlan, now: number): number {
     ...plan.spawns.map((spawn) => spawn.telegraphStartAt),
     ...plan.webs.map((web) => web.launchAt),
     ...(plan.leap ? [plan.leap.launchAt] : []),
+    ...plan.throws.map((thrown) => thrown.launchAt),
   ];
   if (moments.length === 0) return 0;
   return Math.max(0, Math.min(...moments) - now);

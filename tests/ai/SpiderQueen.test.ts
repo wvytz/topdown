@@ -300,9 +300,9 @@ describe('pajączek-kamikaze', () => {
 });
 
 describe('wybór i skalowanie bossa', () => {
-  it('Matka Pająków tylko na piętrze 2, reszta pięter ma Strażnika', () => {
+  it('Matka Pająków tylko na piętrze 2 (3 — Król Pająków), reszta pięter ma Strażnika', () => {
     expect(bossForFloor(2).id).toBe(BossId.SpiderQueen);
-    for (const floor of [1, 3, 4, 7]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
+    for (const floor of [1, 4, 7]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
     expect(bossForFloor(1)).toBe(FLOOR_GUARDIAN);
   });
 
@@ -312,7 +312,7 @@ describe('wybór i skalowanie bossa', () => {
     expect(scaled.spiderling.damage).toBe(scaleForFloor(QUEEN.spiderling.damage, 2, ENEMY_SCALING.damagePerFloor));
     expect(scaled.leap.damage).toBe(scaleForFloor(QUEEN.leap.damage, 2, ENEMY_SCALING.damagePerFloor));
     expect(scaled.lash.damage).toBe(scaleForFloor(QUEEN.lash.damage, 2, ENEMY_SCALING.damagePerFloor));
-    expect(scaled.lash.poison).toEqual(QUEEN.lash.poison); // trucizna = Ognista pięść, bez skalowania
+    expect(scaled.lash.status).toEqual(QUEEN.lash.status); // trucizna = Ognista pięść, bez skalowania
     expect(scaled.spiderling.primeMs).toBe(QUEEN.spiderling.primeMs);
     expect('slam' in scaled).toBe(false);
   });

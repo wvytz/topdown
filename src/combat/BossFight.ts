@@ -1,5 +1,14 @@
 import Phaser from 'phaser';
-import type { AreaStrike, BossAttackPlan, BossLeap, ProjectileBurst, SpiderlingDefinition, SummonSpawn, WebShot } from '@/core/bossTypes';
+import type {
+  AreaStrike,
+  BossAttackPlan,
+  BossLeap,
+  ProjectileBurst,
+  SpiderlingDefinition,
+  SummonSpawn,
+  ThrownObject,
+  WebShot,
+} from '@/core/bossTypes';
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
@@ -11,7 +20,9 @@ import {
   BOSS_LEAP_VISUAL,
   BOSS_PRESENCE_VISUAL,
   BOSS_PROJECTILE_VISUAL,
+  BOSS_PATCH_VISUALS,
   BOSS_WEB_VISUAL,
+  KING_COCOON_VISUAL,
   SPIDERLING_DROP_VISUAL,
   SPIDERLING_VISUAL,
   SPRITE_SHEETS,
@@ -76,6 +87,12 @@ interface PendingSpawn {
   view: CeilingFallView | null;
 }
 
+/** Kokon rzucony przez Króla (krok 29): lot łukiem; obrażenia i paraliż daje strefa w `strikes`. */
+interface PendingThrow {
+  readonly thrown: ThrownObject;
+  readonly sprite: Phaser.GameObjects.Sprite;
+}
+
 /** Królewski skok w toku: przysiad, lot, lądowanie (krok 26). */
 interface ActiveLeap {
   readonly leap: BossLeap;
@@ -97,6 +114,8 @@ interface PendingBurst {
 
 const BOSS_SEED_SALT = 0xb055;
 const BOSS_DEFAULT_ENRAGED_LABEL = 'wściekły!';
+/** Napis przy paraliżu (barwa jak STATUS_TINTS.paralysis). */
+const PARALYSIS_TEXT_COLOR = '#d4f0a8';
 const TELEGRAPH_COLOR = 0xff4040;
 /** Fale Novy to kule wyplute przez bossa (animowany sprite). */
 const BOSS_GLOB = {
@@ -114,6 +133,7 @@ export class BossFight {
   private strikes: PendingStrike[] = [];
   private bursts: PendingBurst[] = [];
   private webs: ThrownWeb[] = [];
+  private throws: PendingThrow[] = [];
   /** Wylęg z sufitu: zaplanowane cienie i spadające pajączki. */
   private spawns: PendingSpawn[] = [];
   private leap: ActiveLeap | null = null;
@@ -195,6 +215,7 @@ export class BossFight {
     this.updateBursts(now);
     this.updateSpawns(now);
     this.updateWebs(now);
+    this.updateThrows(now);
     this.spiderlings.update(now);
   }
 
@@ -256,6 +277,15 @@ export class BossFight {
       this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     for (const spawn of plan.spawns) this.spawns.push({ spawn, position: null, view: null });
+    for (const thrown of plan.throws) {
+      const { sheet, animation } = KING_COCOON_VISUAL;
+      const sprite = scene.add
+        .sprite(thrown.from.x, thrown.from.y, SPRITE_SHEETS[sheet].key)
+        .setDepth(RENDER_DEPTH.projectile)
+        .setVisible(false)
+        .play(animationKey(sheet, animation));
+      this.throws.push({ thrown, sprite });
+    }
     for (const shot of plan.webs) this.throwWeb(shot);
   }
 
@@ -436,8 +466,31 @@ export class BossFight {
         return true;
       }
       if (!web.patch) this.landWeb(web);
-      if (isInWebPatch(shot, player, now)) player.applyTerrainSlow(shot.slow, now);
+      if (isInWebPatch(shot, player, now)) {
+        player.applyTerrainSlow(shot.slow, now);
+        // Grzybnia Króla (krok 29) dodatkowo zatruwa — teren, więc chroni tylko dash.
+        if (shot.status) player.applyTerrainStatus(shot.status, now);
+      }
       return true;
+    });
+  }
+
+  /** Kokon w locie: łuk nad ziemią; przy lądowaniu pęka (klatki rozdarcia kokonu leża). */
+  private updateThrows(now: number): void {
+    this.throws = this.throws.filter(({ thrown, sprite }) => {
+      if (now < thrown.launchAt) return true;
+      if (now < thrown.landAt) {
+        const t = (now - thrown.launchAt) / (thrown.landAt - thrown.launchAt);
+        const lift = Math.sin(Math.PI * t) * KING_COCOON_VISUAL.arcHeight;
+        sprite
+          .setVisible(true)
+          .setPosition(Math.round(thrown.from.x + (thrown.to.x - thrown.from.x) * t), Math.round(thrown.from.y + (thrown.to.y - thrown.from.y) * t - lift));
+        return true;
+      }
+      sprite.setPosition(Math.round(thrown.to.x), Math.round(thrown.to.y)).setVisible(true);
+      sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
+      sprite.play(animationKey(KING_COCOON_VISUAL.sheet, 'burst'));
+      return false;
     });
   }
 
@@ -445,7 +498,7 @@ export class BossFight {
     const { shot } = web;
     web.marker.destroy();
     web.ball.destroy();
-    const { patch } = BOSS_WEB_VISUAL;
+    const patch = BOSS_PATCH_VISUALS[shot.look ?? 'web'];
     const sprite = this.deps.scene.add
       .sprite(Math.round(shot.to.x), Math.round(shot.to.y), SPRITE_SHEETS[patch.sheet].key)
       .setDepth(RENDER_DEPTH.floorHazard);
@@ -518,7 +571,12 @@ export class BossFight {
           knockback: knockbackFrom(strike.center, player, strike.knockback),
           ...(strike.status && { status: strike.status }),
         };
-        if (player.takeHit(hit, now)) onPlayerHit();
+        if (player.takeHit(hit, now)) {
+          onPlayerHit();
+          if (strike.status?.paralysis && player.isParalyzed(now)) {
+            effects.floatingText(player.x, player.y - player.radius - 8, 'Paraliż!', PARALYSIS_TEXT_COLOR);
+          }
+        }
       }
       return false;
     });
@@ -557,6 +615,8 @@ export class BossFight {
     this.bursts = [];
     // Sieci są częścią walki — znikają razem z Matką Pająków.
     for (const web of this.webs) this.removeWeb(web);
+    for (const { sprite } of this.throws) sprite.destroy();
+    this.throws = [];
     this.webs = [];
     // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
     this.spiderlings.clear();

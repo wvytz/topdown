@@ -16,6 +16,7 @@ Zasady:
 """
 import argparse
 import colorsys
+import dataclasses
 import json
 import math
 import os
@@ -215,13 +216,14 @@ PALETTES = {
         key='grzybnia', label='Grzybnia: ciemny fiolet z błękitem, bioluminescencja',
         floor=oks((.30, .056, 285), (.38, .060, 288), (.445, .062, 290), (.49, .064, 292), (.535, .064, 294), (.58, .060, 296)),
         floor_alt=ok(.435, .066, 282),
-        wall_top=oks((.20, .060, 280), (.29, .068, 284), (.41, .076, 288), (.47, .078, 292), (.55, .072, 296), (.64, .062, 300)),
-        wall_block_alt=ok(.435, .080, 282),
-        wall_face=oks((.16, .056, 278), (.21, .064, 282), (.26, .068, 286)),
+        # Mury ciemniejsze niż w leżu (krok 28: im głębiej, tym mroczniej).
+        wall_top=oks((.17, .056, 280), (.25, .064, 284), (.36, .072, 288), (.42, .074, 292), (.50, .070, 296), (.58, .060, 300)),
+        wall_block_alt=ok(.385, .076, 282),
+        wall_face=oks((.13, .050, 278), (.18, .058, 282), (.22, .062, 286)),
         wall_fade=oks((.12, .046, 278), (.17, .052, 282), (.20, .056, 286)),
         deep=oks((.09, .036, 275), (.11, .040, 278)),
-        # Plamy i posoka zarażonych: ciemny turkus pleśni.
-        stain=oks((.34, .060, 200), (.41, .070, 195)),
+        # Pleśń, plamy i posoka zarażonych: przygaszony, ciemny turkus (naleciałość, nie jaskrawa zieleń).
+        stain=oks((.31, .040, 225), (.37, .046, 215)),
         # Zarodniki, strzępki, kurz: blady liliowobłękitny.
         ash=oks((.90, .022, 280), (.76, .032, 282)),
         # Kapelusze i kościste grzyby: blada kość z fioletem.
@@ -484,6 +486,34 @@ def decal(kind):
                     x, y = x + math.cos(a), y + math.sin(a)
                     if 1 <= x < T - 1 and 1 <= y < T - 1:
                         img.put(int(x), int(y), p.ash[1] if i % 5 else p.ash[0])
+        elif kind.startswith('dust_') and 'fungus' in BIOMES[BIOME]['extras']:
+            # Grzybnia: zamiast kurzu pleśń wpełzająca z muru — gęsta przy ścianie, dalej strzępiaste języki.
+            img = Img(T, T); side = kind[-1]
+            tongues = [r.uniform(6, 15) for _ in range(T)]
+            for i in range(1, T):  # języki zmieniają długość płynnie wzdłuż muru
+                tongues[i] = tongues[i - 1] * .7 + tongues[i] * .3
+            for y in range(T):
+                for x in range(T):
+                    d, along = {'n': (y, x), 'w': (x, y), 'e': (T - 1 - x, y)}[side]
+                    reach = tongues[along]
+                    if d < reach and r.random() < 1.05 - d / reach:
+                        img.put(x, y, p.stain[0] if d > reach * .45 else p.stain[1])
+                    elif d < reach + 3 and r.random() < .12:
+                        img.put(x, y, p.ash[1])  # zarodniki na skraju
+        elif kind in ('mold_a', 'mold_b', 'mold_c'):  # Grzybnia: duża, nieregularna plama pleśni z prześwitami
+            img = Img(T, T)
+            blobs = [(r.uniform(11, 21), r.uniform(11, 21), r.uniform(7, 11))]
+            blobs += [(r.uniform(6, 26), r.uniform(6, 26), r.uniform(4, 7)) for _ in range(r.randint(1, 3))]
+            for y in range(1, T - 1):
+                for x in range(1, T - 1):
+                    best = min(math.hypot(x + .5 - cx, y + .5 - cy) / rad for cx, cy, rad in blobs)
+                    if best > 1 + r.uniform(-.2, .05) or r.random() < .18:
+                        continue
+                    img.put(x, y, p.stain[1] if best < .5 else p.stain[0])
+            for _ in range(r.randint(4, 8)):  # zarodniki na plamie
+                x, y = r.randrange(2, T - 2), r.randrange(2, T - 2)
+                if img.get(x, y)[3]:
+                    img.put(x, y, p.ash[1])
         elif kind.startswith('dust_'):  # kurz nawiany pod ścianę; gęstszy przy samej ścianie
             img = Img(T, T); side = kind[-1]
             for y in range(T):
@@ -1246,8 +1276,12 @@ def manifest():
         for kind, weight in (('shelf', 3), ('hyphae', 2)):
             m.append(Entry(f'face_{kind}', face_detail(kind), 'wallDecor', group='wallFace.fungus', weight=weight))
         for kind, group in (('mushrooms_a', 'decal.mushrooms'), ('mushrooms_b', 'decal.mushrooms'),
-                            ('mycel_a', 'decal.mycel'), ('mycel_b', 'decal.mycel')):
+                            ('mycel_a', 'decal.mycel'), ('mycel_b', 'decal.mycel'),
+                            ('mold_a', 'decal.mold'), ('mold_b', 'decal.mold'), ('mold_c', 'decal.mold')):
             m.append(Entry(f'decal_{kind}', decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+        # Mury Grzybni bardziej zniszczone: pęknięte i wyszczerbione warianty losują się 4× częściej.
+        m = [dataclasses.replace(e, weight=e.weight * 4)
+             if e.layer == 'wall' and e.name.endswith(('_crack', '_chunk')) else e for e in m]
     return m
 
 
@@ -1256,7 +1290,54 @@ def seed_of(name):
 
 
 def render_tiles(p):
-    return {e.name: e.gen(p, random.Random(seed_of(e.name))) for e in manifest()}
+    tiles = {}
+    for e in manifest():
+        img = e.gen(p, random.Random(seed_of(e.name)))
+        if 'fungus' in BIOMES[BIOME]['extras']:  # Grzybnia: porost na podłodze i murach (osobne ziarno)
+            overgrow(e, img, p, random.Random(seed_of(e.name + '/porost')))
+        tiles[e.name] = img
+    return tiles
+
+
+def overgrow(e, img, p, r):
+    """Grzybnia (krok 28): naleciałość na kaflach bazowych. Podłoga tylko delikatnie (pleśń w fugach, zarodniki,
+    rzadkie świecące drobiny) — duże plamy to nakładki `decal.mold` i pleśń wpełzająca z murów, bo na kaflu
+    bazowym powtarzałyby się jak wzór. Mury: pleśń w spoinach i plamy na wierzchu, zacieki na licu."""
+    S, A = p.stain, p.ash
+    if e.layer == 'floorBase':
+        cells = e.w * e.h
+        for y in range(img.h):  # pleśń w fugach
+            for x in range(img.w):
+                if img.get(x, y) == p.floor[1] and r.random() < .2:
+                    img.put(x, y, S[0])
+        for _ in range(cells * r.randint(3, 6)):  # zarodniki
+            x, y = r.randrange(img.w), r.randrange(img.h)
+            if img.get(x, y)[3]:
+                img.put(x, y, A[1])
+        if r.random() < .2 * cells:  # rzadka świecąca drobina
+            img.put(r.randrange(2, img.w - 2), r.randrange(2, img.h - 2), p.flame[1])
+    elif e.layer == 'wall':
+        wt = p.wall_top
+        face_top = T - FACE if img.get(4, T - 1) == p.outline else T  # kafel z licem od południa
+        for y in range(face_top):  # pleśń w spoinach wierzchu
+            for x in range(T):
+                if img.get(x, y) == wt[1] and r.random() < .3:
+                    img.put(x, y, S[0])
+        for _ in range(r.randint(1, 2)):  # plamy na blokach (z dala od obrysu)
+            cx, cy, rad = r.uniform(5, T - 5), r.uniform(5, max(6, face_top - 5)), r.uniform(2, 4)
+            for y in range(int(cy - rad) - 1, int(cy + rad) + 2):
+                for x in range(int(cx - rad) - 1, int(cx + rad) + 2):
+                    c = img.get(x, y)
+                    if c is None or c[3] == 0 or c == p.outline or y >= face_top - 1:
+                        continue
+                    if math.hypot(x + .5 - cx, y + .5 - cy) <= rad and r.random() < .8:
+                        img.put(x, y, S[0])
+        if face_top < T:  # zacieki pleśni na licu
+            for _ in range(r.randint(1, 3)):
+                x = r.randrange(3, T - 3)
+                for y in range(face_top, face_top + r.randint(2, FACE - 2)):
+                    if img.get(x, y) not in (None, p.outline, CLR):
+                        img.put(x, y, S[0])
 
 
 def pack(entries):
@@ -1388,6 +1469,10 @@ SPRITES = {
     'cave_spider': ('cave-spider_walk.png', 48, '#1b1a22', 'Pająk'),
     'bat': ('bat_fly-screech.png', 48, '#1b1a22', 'Nietoperz'),
     'bat_wave': ('bat_wave.png', 32, None, None),
+    # Wrogowie Grzybni (krok 28b, tools/grove_enemies.py).
+    'infected_spider': ('infected-spider_walk.png', 48, '#1b1a22', 'Zarażony pająk'),
+    'fungoid': ('fungoid_walk-spit.png', 48, '#1b1a22', 'Grzybiec'),
+    'spore_ball': ('spore-ball.png', 16, None, None),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -1417,8 +1502,8 @@ MOCKUP_ACTORS_LAIR = [
 METRIC_CAST = {
     'tower_ruins': ('barbarian', 'trashcan', 'mage', 'sludge'),
     'spider_lair': ('barbarian_sword', 'cave_spider', 'bat', 'queen', 'spiderling'),
-    # Grzybnia (krok 28a): do kroków z wrogami i Królem obsada z leża.
-    'fungal_grove': ('barbarian_sword', 'cave_spider', 'bat', 'queen', 'spiderling'),
+    # Grzybnia (krok 28b): zarażony pająk i grzybiec; Król Pająków w kroku 29.
+    'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
 }
 
 

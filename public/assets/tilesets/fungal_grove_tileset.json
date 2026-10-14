@@ -449,7 +449,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 24
   },
   "wall_07_chunk": {
    "frame": 51,
@@ -458,7 +458,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 16
   },
   "wall_11_b": {
    "frame": 52,
@@ -476,7 +476,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 24
   },
   "wall_11_chunk": {
    "frame": 54,
@@ -485,7 +485,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 16
   },
   "wall_13_b": {
    "frame": 55,
@@ -503,7 +503,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 24
   },
   "wall_13_chunk": {
    "frame": 57,
@@ -512,7 +512,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 16
   },
   "wall_14_b": {
    "frame": 58,
@@ -530,7 +530,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 24
   },
   "wall_14_chunk": {
    "frame": 60,
@@ -539,7 +539,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 16
   },
   "wall_15_b": {
    "frame": 61,
@@ -557,7 +557,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 16
   },
   "wall_15_chunk": {
    "frame": 63,
@@ -566,7 +566,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 3
+   "weight": 12
   },
   "wall_15_ash": {
    "frame": 64,
@@ -1244,6 +1244,36 @@
    "layer": "floorDecal",
    "weight": 1,
    "flipX": true
+  },
+  "decal_mold_a": {
+   "frame": 149,
+   "col": 5,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mold_b": {
+   "frame": 150,
+   "col": 6,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mold_c": {
+   "frame": 151,
+   "col": 7,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
   }
  },
  "groups": {
@@ -1471,6 +1501,11 @@
   "decal.mycel": [
    "decal_mycel_a",
    "decal_mycel_b"
+  ],
+  "decal.mold": [
+   "decal_mold_a",
+   "decal_mold_b",
+   "decal_mold_c"
   ]
  },
  "colors": {

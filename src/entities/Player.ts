@@ -198,6 +198,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
     }
 
+    // Paraliż (krok 29): bez ruchu, ataku, strzału i dasha; odrzut z trafienia nadal działa.
+    if (this.status.isParalyzed(now)) {
+      if (!this.knockbackStun.isActive(now)) this.setVelocity(0, 0);
+      this.updateVisuals(now);
+      this.animator.play(PLAYER_VISUAL.idle);
+      return { ...IDLE, poisonDamage };
+    }
+
     if (actions.dash) {
       const moving = actions.move.x !== 0 || actions.move.y !== 0;
       const direction = moving ? actions.move : { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
@@ -247,6 +255,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   isPoisoned(now: number): boolean {
     return this.status.isPoisoned(now);
+  }
+
+  isParalyzed(now: number): boolean {
+    return this.status.isParalyzed(now);
+  }
+
+  /**
+   * Status z terenu (grzybnia Króla, krok 29): działa także w nietykalności po trafieniu, chroni tylko dash
+   * — jak lepkie pajęczyny.
+   */
+  applyTerrainStatus(status: StatusApplication, now: number): boolean {
+    if (this.isDead || this.dash.isDashing(now)) return false;
+    this.status.apply(status, now);
+    return true;
   }
 
   private die(): void {

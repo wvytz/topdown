@@ -120,7 +120,11 @@ export class EnemyManager implements EnemyAttackHandler {
     const { player, scene } = this.deps;
     // Sprawdzamy w chwili uderzenia, nie zamachu — gracz może uciec z zasięgu podczas telegrafu.
     if (distance(enemy, player) > attack.hitRange) return;
-    const hit: Hit = { damage: attack.damage, knockback: knockbackFrom(enemy, player, attack.knockback) };
+    const hit: Hit = {
+      damage: attack.damage,
+      knockback: knockbackFrom(enemy, player, attack.knockback),
+      ...(attack.status && { status: attack.status }),
+    };
     if (player.takeHit(hit, scene.time.now)) this.deps.onPlayerHit();
   }
 
@@ -142,6 +146,7 @@ export class EnemyManager implements EnemyAttackHandler {
       knockback: attack.knockback,
       lifetimeMs: attack.projectileLifetimeMs,
       ...(attack.wave && { wave: attack.wave }),
+      ...(attack.status && { status: attack.status }),
     });
   }
 

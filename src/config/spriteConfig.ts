@@ -166,6 +166,50 @@ export const SPRITE_SHEETS = {
       fly: { frames: [0, 1, 2, 3], loop: true },
     },
   },
+  // Wrogowie Grzybni (krok 28b, tools/grove_enemies.py): zarażony pająk (chód), grzybiec (pełzanie + plucie)
+  // i jego kula zarodników.
+  infectedSpider: {
+    key: 'sheet-infected-spider',
+    url: 'assets/sprites/infected-spider_walk.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 192,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+    },
+  },
+  fungoid: {
+    key: 'sheet-fungoid',
+    url: 'assets/sprites/fungoid_walk-spit.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      crawl: { frames: [0, 1, 2, 3], loop: true },
+      // Plucie dopasowane do zamachu (windupMs) — kula wylatuje po ostatniej klatce.
+      spit: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  sporeBall: {
+    key: 'sheet-spore-ball',
+    url: 'assets/sprites/spore-ball.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 8,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
+    },
+  },
   // Boss „Matka Pająków” (krok 20b, tools/spider_sprites.py): komórka 96×96, 8 kierunków;
   // kolumny 0–3 chód, 4–7 złożenie pajączka (wylęga się 30 px za pivotem w kolumnie 7).
   spiderQueen: {
@@ -214,6 +258,38 @@ export const SPRITE_SHEETS = {
     fps: 3,
     animations: {
       // Tempo rozrostu ustawia gra tak, by trwał spreadMs (6 klatek).
+      grow: { frames: [0, 1, 2, 3, 4, 5], loop: false },
+      shimmer: { frames: [6, 7], loop: true },
+    },
+  },
+  // Król Pająków (krok 29, tools/king_sprites.py): 128×128, 8 kierunków; 0–3 chód na dwóch grubych łapach,
+  // 4–7 atak (zamach, sztylety lewe, prawe, uderzenie kosami — ostatnia klatka w chwili uderzenia).
+  spiderKing: {
+    key: 'sheet-spider-king',
+    url: 'assets/sprites/spider-king_walk-stab.png',
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 1024,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      stab: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Płat trującej grzybni Króla (krok 29, tools/grove_enemies.py): 96×96; 0–5 rozrost (promienie 14→40 px
+  // = bossConfig.SPIDER_KING.bloom), 6–7 pulsowanie bulw.
+  myceliumPatch: {
+    key: 'sheet-mycelium-patch',
+    url: 'assets/sprites/mycelium-patch.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 96,
+    directions: 1,
+    fps: 3,
+    animations: {
       grow: { frames: [0, 1, 2, 3, 4, 5], loop: false },
       shimmer: { frames: [6, 7], loop: true },
     },
@@ -328,6 +404,9 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.CaveSpider]: { sheet: 'caveSpider', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
   // Nietoperz lata: cień od silnika mniejszy i dalej pod nim.
   [EnemyVariant.Bat]: { sheet: 'bat', move: 'fly', attack: 'screech', groundShadow: { width: 14, height: 6, offsetX: 0, offsetY: 12 } },
+  [EnemyVariant.InfectedSpider]: { sheet: 'infectedSpider', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
+  // Grzybiec pełznie przy ziemi: szeroki, płaski cień pod kapeluszem.
+  [EnemyVariant.Fungoid]: { sheet: 'fungoid', move: 'crawl', attack: 'spit', groundShadow: { width: 20, height: 8, offsetX: 0, offsetY: 3 } },
 };
 
 /**
@@ -353,6 +432,7 @@ export const PLAYER_VISUAL = {
 export const ENEMY_PROJECTILE_VISUALS: Readonly<Partial<Record<EnemyVariant, EnemyProjectileVisual>>> = {
   [EnemyVariant.DemonMage]: { sheet: 'demonOrb', animation: 'fly', forwardOffset: 13, directional: false },
   [EnemyVariant.Bat]: { sheet: 'batWave', animation: 'fly', forwardOffset: 12, directional: true },
+  [EnemyVariant.Fungoid]: { sheet: 'sporeBall', animation: 'fly', forwardOffset: 12, directional: false },
 };
 
 export interface BossVisual extends EnemyVisual {
@@ -382,6 +462,17 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     attacks: { [BossAttackKind.Brood]: 'birth', [BossAttackKind.Lash]: 'lash' },
     deathDecal: 'splat',
     death: { sheet: 'spiderQueenDeath', animation: 'die' },
+  },
+  // Król Pająków (krok 29): atak „stab” (zamach → sztylety → kosy) przed ścięciem, gradem sztyletów i rzutem kokonem.
+  [BossId.SpiderKing]: {
+    sheet: 'spiderKing',
+    move: 'walk',
+    attacks: {
+      [BossAttackKind.Lash]: 'stab',
+      [BossAttackKind.Flurry]: 'stab',
+      [BossAttackKind.CocoonThrow]: 'stab',
+    },
+    deathDecal: 'splat',
   },
 };
 
@@ -415,6 +506,20 @@ export const BOSS_WEB_VISUAL = {
   patch: { sheet: 'bossWeb', grow: 'grow', shimmer: 'shimmer' },
   /** Wysokość łuku lotu kłębu (px, czysto wizualnie). */
   arcHeight: 36,
+} as const;
+
+/** Płaty z ataków bossów: sieć Matki Pająków i grzybnia Króla (ten sam mechanizm, inny arkusz). */
+export const BOSS_PATCH_VISUALS = {
+  web: BOSS_WEB_VISUAL.patch,
+  mycelium: { sheet: 'myceliumPatch', grow: 'grow', shimmer: 'shimmer' },
+} as const satisfies Record<'web' | 'mycelium', { readonly sheet: SpriteSheetId; readonly grow: string; readonly shimmer: string }>;
+
+/** Kokon rzucany przez Króla Pająków (krok 29): spoczynkowe klatki kokonu leża, lot łukiem. */
+export const KING_COCOON_VISUAL = {
+  sheet: 'cocoon',
+  animation: 'idle',
+  /** Wysokość łuku lotu (px, czysto wizualnie). */
+  arcHeight: 48,
 } as const;
 
 /** Królewski skok Matki Pająków (krok 26) — czysto wizualnie. */

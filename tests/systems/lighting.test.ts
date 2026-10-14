@@ -8,9 +8,11 @@ import {
   lightTouchesView,
   pixelEllipse,
   playerLightStrength,
+  overlayOrigin,
   pointLightStrength,
   smoothFalloff,
 } from '@/systems/lighting';
+import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 
 const AMBIENT = LIGHTING.ambient;
 
@@ -99,6 +101,40 @@ describe('światło punktowe i stemple', () => {
     expect(lightTouchesView({ x: 50, y: 200 }, 72, view)).toBe(true); // poza kadrem, ale światło sięga
     expect(lightTouchesView({ x: 20, y: 200 }, 72, view)).toBe(false);
     expect(lightTouchesView({ x: 300, y: 450 }, 72, view)).toBe(false);
+  });
+});
+
+describe('overlayOrigin — warstwa mroku pokrywa cały kadr (krok 28)', () => {
+  const viewW = GAME_WIDTH / CAMERA_CONFIG.zoom;
+  const viewH = GAME_HEIGHT / CAMERA_CONFIG.zoom;
+  const margin = 24; // jak MARGIN w LightingOverlay
+  const half = { x: Math.ceil(viewW / 2) + margin, y: Math.ceil(viewH / 2) + margin };
+  const world = { width: 2400, height: 1600 };
+  // Kadr kamery o środku (cx, cy), przycięty do granic świata.
+  const viewAt = (cx: number, cy: number) => {
+    const x = Math.max(0, Math.min(world.width - viewW, cx - viewW / 2));
+    const y = Math.max(0, Math.min(world.height - viewH, cy - viewH / 2));
+    return { x, y, cx: x + viewW / 2, cy: y + viewH / 2 };
+  };
+
+  it('kadr po ruchu kamery o mniej niż zapas leży w całości pod warstwą — także przy brzegach i w narożnikach', () => {
+    for (const cx of [0, 100, 300, 1200, 2200, 2400]) {
+      for (const cy of [0, 120, 800, 1500, 1600]) {
+        const before = viewAt(cx, cy);
+        const o = overlayOrigin({ x: before.cx, y: before.cy }, half, world);
+        for (const [dx, dy] of [[0, 0], [20, 20], [-20, -20], [20, -20], [-20, 20]] as const) {
+          const after = viewAt(before.cx + dx, before.cy + dy);
+          expect(o.x).toBeLessThanOrEqual(after.x);
+          expect(o.y).toBeLessThanOrEqual(after.y);
+          expect(o.x + half.x * 2).toBeGreaterThanOrEqual(after.x + viewW);
+          expect(o.y + half.y * 2).toBeGreaterThanOrEqual(after.y + viewH);
+        }
+      }
+    }
+  });
+
+  it('w środku mapy warstwa jest wyśrodkowana na kadrze', () => {
+    expect(overlayOrigin({ x: 1200, y: 800 }, half, world)).toEqual({ x: 1200 - half.x, y: 800 - half.y });
   });
 });
 

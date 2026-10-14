@@ -86,10 +86,12 @@ export const SPIDER_QUEEN = {
     damage: 10,
     knockback: 220,
     // Trucizna = podpalenie z jednej kopii Ognistej pięści (decyzja właściciela).
-    poison: {
-      tickDamage: ITEM_EFFECTS.fireFist.tickDamage,
-      tickMs: ITEM_EFFECTS.fireFist.tickMs,
-      durationMs: ITEM_EFFECTS.fireFist.durationMs,
+    status: {
+      poison: {
+        tickDamage: ITEM_EFFECTS.fireFist.tickDamage,
+        tickMs: ITEM_EFFECTS.fireFist.tickMs,
+        durationMs: ITEM_EFFECTS.fireFist.durationMs,
+      },
     },
   },
   leap: {
@@ -148,9 +150,88 @@ export const SPIDER_QUEEN = {
   },
 } satisfies BossDefinition;
 
-/** Boss na konkretnych piętrach; pozostałe piętra mają Strażnika (krok 22: Matka Pająków na piętrze 2). */
+/**
+ * „Król Pająków” (krok 29, Grzybnia): pająk zainfekowany grzybem — większy i cięższy od Matki Pająków.
+ * Ciosy (moje, do strojenia w teście właściciela):
+ * - ścięcie kosami z bliska (mechanika smagnięcia): mocny cios z paraliżem;
+ * - grad sztyletów: seria ukłuć w linii w stronę gracza;
+ * - rzut kokonem: kokon ląduje na graczu i paraliżuje (po wściekłości drugi za graczem);
+ * - wysyp grzybni: płaty trującej grzybni wokół gracza leżą długo — arena z czasem zarasta.
+ */
+export const SPIDER_KING = {
+  id: BossId.SpiderKing,
+  name: 'Król Pająków',
+  title: 'Zainfekowany Władca Grzybni',
+  enragedLabel: 'Gniew Grzybni!',
+  radius: 34,
+  color: 0x6a8a3a,
+  maxHp: 420,
+  // Ciężki: chodzi powoli, ale nie odpuszcza — podchodzi na odległość kos.
+  moveSpeed: 55,
+  engageDistance: 52,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1500,
+  pattern: [BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow],
+  // Ścięcie kosami: wolny, czytelny zamach, ale trafienie boli i paraliżuje.
+  lash: {
+    triggerRange: 70,
+    reach: 40,
+    radius: 40,
+    telegraphMs: 650,
+    recoveryMs: 600,
+    cooldownMs: 1400,
+    damage: 18,
+    knockback: 320,
+    status: { paralysis: { durationMs: 700 } },
+  },
+  flurry: {
+    count: 6,
+    startDistance: 30,
+    step: 22,
+    radius: 18,
+    intervalMs: 110,
+    telegraphMs: 500,
+    recoveryMs: 400,
+    damage: 8,
+    knockback: 140,
+  },
+  cocoonThrow: {
+    telegraphMs: 450,
+    flightMs: 650,
+    radius: 34,
+    count: 1,
+    behindDistance: 80,
+    paralysis: { durationMs: 1200 },
+    recoveryMs: 400,
+    damage: 6,
+    knockback: 0,
+  },
+  bloom: {
+    telegraphMs: 800,
+    count: 3,
+    ring: { min: 55, max: 100 },
+    startRadius: 14,
+    maxRadius: 40,
+    spreadMs: 1000,
+    durationMs: 14000,
+    poison: { tickDamage: 2, tickMs: 500, durationMs: 1000 },
+    slow: { pct: 0.35, durationMs: 400 },
+    recoveryMs: 300,
+  },
+  enrage: {
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.75,
+    restMultiplier: 0.6,
+  },
+} satisfies BossDefinition;
+
+/**
+ * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
+ * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia).
+ */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_QUEEN,
+  3: SPIDER_KING,
 };
 
 export function bossForFloor(floor: number): BossDefinition {
@@ -182,6 +263,8 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.barrage && { barrage: dmg(boss.barrage) }),
     ...(boss.leap && { leap: dmg(boss.leap) }),
     ...(boss.lash && { lash: dmg(boss.lash) }),
+    ...(boss.flurry && { flurry: dmg(boss.flurry) }),
+    ...(boss.cocoonThrow && { cocoonThrow: dmg(boss.cocoonThrow) }),
     ...(boss.spiderling && { spiderling: dmg(boss.spiderling) }),
   };
 }

@@ -142,12 +142,12 @@ describe('Grzybnia (krok 28a)', () => {
     for (const biome of Object.values(BIOMES)) if (biome.id !== BiomeId.FungalGrove) expect(biome.fog).toBeNull();
   });
 
-  // Postacie piętra 3 do czasu własnych wrogów Grzybni: bohater, pająk i nietoperz z leża, pajączek.
+  // Postacie piętra 3: bohater, zarażony pająk (Rusher), grzybiec (Kiter, krok 28b), Król Pająków (krok 29).
   const CHARACTERS = [
     ['Barbarzyńca', SPRITE_SHEETS.barbarian],
-    ['Pająk jaskiniowy', SPRITE_SHEETS.caveSpider],
-    ['Nietoperz', SPRITE_SHEETS.bat],
-    ['Pajączek', SPRITE_SHEETS.spiderling],
+    ['Zarażony pająk', SPRITE_SHEETS.infectedSpider],
+    ['Grzybiec', SPRITE_SHEETS.fungoid],
+    ['Król Pająków', SPRITE_SHEETS.spiderKing],
   ] as const;
 
   it.each(CHARACTERS)('%s: czytelny na podłodze i bruku Grzybni (STYLEGUIDE §6a)', (_name, def) => {

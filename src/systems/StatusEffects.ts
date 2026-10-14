@@ -42,7 +42,7 @@ class DamageOverTime {
 }
 
 /**
- * Statusy na celu: podpalenie, trucizna, spowolnienie, ogłuszenie. Czas przekazujemy jawnie (`now`, ms).
+ * Statusy na celu: podpalenie, trucizna, spowolnienie, ogłuszenie, paraliż (krok 29). Czas przekazujemy jawnie (`now`, ms).
  * Ten sam status się nie sumuje — silniejszy lub dłuższy zastępuje słabszy.
  */
 export class StatusEffects {
@@ -52,6 +52,8 @@ export class StatusEffects {
   private slowPct = 0;
   private stunUntil = -Infinity;
   private stunImmuneUntil = -Infinity;
+  private paralyzedUntil = -Infinity;
+  private paralysisImmuneUntil = -Infinity;
 
   constructor(private readonly resistance: StatusResistance) {}
 
@@ -74,6 +76,10 @@ export class StatusEffects {
         this.stunUntil = now + stunnedMs;
         this.stunImmuneUntil = this.stunUntil + this.resistance.stunImmunityMs;
       }
+    }
+    if (status.paralysis && status.paralysis.durationMs > 0 && now >= this.paralysisImmuneUntil && !this.isParalyzed(now)) {
+      this.paralyzedUntil = now + status.paralysis.durationMs;
+      this.paralysisImmuneUntil = this.paralyzedUntil + (this.resistance.paralysisImmunityMs ?? 0);
     }
     return { stunnedMs };
   }
@@ -103,6 +109,10 @@ export class StatusEffects {
 
   isSlowed(now: number): boolean {
     return now < this.slowUntil;
+  }
+
+  isParalyzed(now: number): boolean {
+    return now < this.paralyzedUntil;
   }
 
   isStunned(now: number): boolean {

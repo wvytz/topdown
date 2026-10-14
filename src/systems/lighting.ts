@@ -44,6 +44,25 @@ export function darknessModifierProfile(
   };
 }
 
+/**
+ * Lewy górny róg warstwy mroku (rozmiar 2·half) — wyśrodkowanej na kadrze kamery (z poprzedniej klatki),
+ * przyciętej do granic świata tak jak kamera. `half` ma zapas na ruch kamery w jednej klatce.
+ * Wcześniej warstwa była wyśrodkowana na bohaterze: przy brzegu mapy kamera staje, a przy szybkim ruchu
+ * (lerp, dash) zostaje w tyle — bohater schodził ze środka kadru i warstwa nie sięgała brzegu ekranu
+ * (krok 28: „rozjaśnianie na krańcach”).
+ */
+export function overlayOrigin(
+  viewCenter: { readonly x: number; readonly y: number },
+  half: { readonly x: number; readonly y: number },
+  world: { readonly width: number; readonly height: number },
+): { x: number; y: number } {
+  const clamp = (value: number, size: number, extent: number) => Math.max(0, Math.min(value, extent - size));
+  return {
+    x: clamp(Math.round(viewCenter.x) - half.x, half.x * 2, world.width),
+    y: clamp(Math.round(viewCenter.y) - half.y, half.y * 2, world.height),
+  };
+}
+
 /** Stempel światła: kwadrat 2r × 2r, alfa 0–255 z siły w środku każdego piksela. */
 export interface LightStamp {
   readonly size: number;

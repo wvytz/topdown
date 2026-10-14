@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Vector2 } from '@/core/types';
-import type { WaveShape } from '@/core/combatTypes';
+import type { StatusApplication, WaveShape } from '@/core/combatTypes';
 import { isHitByWave } from '@/systems/EnemyVariants';
 import type { Player } from '@/entities/Player';
 import { Projectile } from '@/entities/Projectile';
@@ -24,6 +24,8 @@ export interface ProjectileSpec {
   readonly impactDecal?: CombatDecalKind;
   /** Fala (nietoperz): trafia w całej szerokości półksiężyca zamiast w okręgu ciała. */
   readonly wave?: WaveShape;
+  /** Status nakładany trafieniem (krok 28b: trucizna kuli zarodników grzybca). */
+  readonly status?: StatusApplication;
 }
 
 /** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
@@ -56,6 +58,7 @@ export class ProjectileManager {
     projectile.damage = spec.damage;
     projectile.knockback = spec.knockback;
     projectile.expiresAt = this.scene.time.now + spec.lifetimeMs;
+    if (spec.status) projectile.status = spec.status;
     projectile.setDepth(RENDER_DEPTH.projectile);
 
     this.group.add(projectile, true);
@@ -97,7 +100,11 @@ export class ProjectileManager {
     const from = velocity
       ? { x: projectile.x - velocity.x, y: projectile.y - velocity.y }
       : { x: projectile.x, y: projectile.y };
-    const hit = { damage: projectile.damage, knockback: knockbackFrom(from, this.player, projectile.knockback) };
+    const hit = {
+      damage: projectile.damage,
+      knockback: knockbackFrom(from, this.player, projectile.knockback),
+      status: projectile.status,
+    };
 
     // Dash/nietykalność: pocisk przelatuje przez gracza.
     if (this.player.takeHit(hit, now)) {

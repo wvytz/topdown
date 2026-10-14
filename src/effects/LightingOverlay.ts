@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { AmbientProfile } from '@/config/lightingConfig';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { buildLightStamp, lightTouchesView, playerLightStrength, pointLightStrength } from '@/systems/lighting';
+import { buildLightStamp, lightTouchesView, overlayOrigin, playerLightStrength, pointLightStrength } from '@/systems/lighting';
 import { stampTexture } from '@/effects/lightTextures';
 
 /** Światło punktowe w świecie (pochodnia); promień zmienia się przy migotaniu. */
@@ -12,8 +12,8 @@ export interface PointLight {
   readonly radius: number;
 }
 
-/** Zapas (px świata) ponad kadr i martwą strefę kamery. */
-const MARGIN = 4;
+/** Zapas (px świata) ponad kadr: kamera z lerp przesuwa się w jednej klatce o mniej niż tyle. */
+const MARGIN = 24;
 
 /**
  * Mrok i światła w jednej warstwie: co klatkę wypełniamy ją pełnym mrokiem w kolorze palety
@@ -35,8 +35,8 @@ export class LightingOverlay {
     /** Czy pochodnie rozświetlają mrok (przy modyfikatorze „Mrok” nie — tam to mechanika piętra). */
     private readonly torchesLightUp: boolean,
   ) {
-    this.halfW = Math.ceil(GAME_WIDTH / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneWidth / 2) + MARGIN;
-    this.halfH = Math.ceil(GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom) + CAMERA_CONFIG.deadzoneHeight / 2) + MARGIN;
+    this.halfW = Math.ceil(GAME_WIDTH / (2 * CAMERA_CONFIG.zoom)) + MARGIN;
+    this.halfH = Math.ceil(GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom)) + MARGIN;
     this.rt = scene.add.renderTexture(0, 0, this.halfW * 2, this.halfH * 2).setOrigin(0).setDepth(RENDER_DEPTH.darkness);
     const { fullLightRadius, edgeRadius, maxDarkness } = profile;
     this.playerKey = stampTexture(
@@ -51,17 +51,19 @@ export class LightingOverlay {
   render(player: { readonly x: number; readonly y: number }, lights: readonly PointLight[]): void {
     const px = Math.round(player.x);
     const py = Math.round(player.y);
-    const ox = px - this.halfW;
-    const oy = py - this.halfH;
+    // Warstwa trzyma się kadru kamery (przycięta do granic świata jak kamera), a nie środka bohatera.
+    const camera = this.scene.cameras.main;
+    const view = { x: camera.worldView.centerX, y: camera.worldView.centerY };
+    const { x: ox, y: oy } = overlayOrigin(view, { x: this.halfW, y: this.halfH }, camera.getBounds());
     const rt = this.rt;
     rt.setPosition(ox, oy);
     rt.clear();
     rt.fill(this.ambientColor, this.profile.maxDarkness);
     rt.erase(this.playerKey, px - ox - this.playerHalf, py - oy - this.playerHalf);
     if (!this.torchesLightUp) return;
-    const view = { x: ox, y: oy, width: this.halfW * 2, height: this.halfH * 2 };
+    const area = { x: ox, y: oy, width: this.halfW * 2, height: this.halfH * 2 };
     for (const light of lights) {
-      if (!lightTouchesView(light, light.radius, view)) continue;
+      if (!lightTouchesView(light, light.radius, area)) continue;
       const half = Math.ceil(light.radius);
       rt.erase(torchLightKey(this.scene, light.radius), Math.round(light.x) - ox - half, Math.round(light.y) - oy - half);
     }

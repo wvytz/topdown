@@ -1,5 +1,5 @@
 /** Typy domenowe bossa — czyste dane, bez zależności od Phasera. */
-import type { PoisonEffect, StatusApplication } from '@/core/combatTypes';
+import type { ParalysisEffect, PoisonEffect, StatusApplication } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 
 export enum BossAttackKind {
@@ -15,14 +15,21 @@ export enum BossAttackKind {
   Web = 'web',
   /** Królewski skok (Matka Pająków, krok 26): przysiad, skok łukiem na miejsce gracza, fala przy lądowaniu. */
   Leap = 'leap',
-  /** Smagnięcie nogami (Matka Pająków, krok 27): cios wręcz z bliska, zatruwa gracza. */
+  /** Smagnięcie nogami (Matka Pająków, krok 27): cios wręcz z bliska, zatruwa gracza. U Króla: ścięcie kosami. */
   Lash = 'lash',
+  /** Grad sztyletów (Król Pająków, krok 29): seria ukłuć w linii w stronę gracza. */
+  Flurry = 'flurry',
+  /** Rzut kokonem (Król Pająków, krok 29): kokon ląduje na graczu i paraliżuje. */
+  CocoonThrow = 'cocoon-throw',
+  /** Wysyp grzybni (Król Pająków, krok 29): wokół gracza wyrastają trujące płaty grzybni (teren). */
+  Bloom = 'bloom',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
 export enum BossId {
   FloorGuardian = 'floor-guardian',
   SpiderQueen = 'spider-queen',
+  SpiderKing = 'spider-king',
 }
 
 export enum BossPhase {
@@ -125,7 +132,45 @@ export interface LashAttackDefinition extends BaseBossAttackDefinition {
   readonly reach: number;
   readonly radius: number;
   readonly cooldownMs: number;
+  /** Status trafienia: trucizna (Matka Pająków), paraliż (ścięcie Króla). */
+  readonly status: StatusApplication;
+}
+
+/** Grad sztyletów: `count` ukłuć w linii boss → gracz, od `startDistance` co `step` px, jedno po drugim. */
+export interface FlurryAttackDefinition extends BaseBossAttackDefinition {
+  readonly count: number;
+  readonly startDistance: number;
+  readonly step: number;
+  readonly radius: number;
+  readonly intervalMs: number;
+}
+
+/** Rzut kokonem: kokon leci łukiem na miejsce gracza; przy lądowaniu strefa obrażeń z paraliżem. */
+export interface CocoonThrowDefinition extends BaseBossAttackDefinition {
+  readonly flightMs: number;
+  readonly radius: number;
+  readonly paralysis: ParalysisEffect;
+  /** Ile kokonów (po wściekłości jeden więcej — dodatkowe lądują za graczem, w drodze ucieczki). */
+  readonly count: number;
+  /** Odległość dodatkowych kokonów za graczem (px, na linii boss → gracz, w wachlarzu). */
+  readonly behindDistance: number;
+}
+
+/**
+ * Wysyp grzybni: płaty wyrastają wokół gracza (pierwszy pod nim) po telegrafie, rosną i leżą długo.
+ * W płacie: trucizna i spowolnienie odnawiane co klatkę (teren — chroni tylko dash).
+ */
+export interface BloomAttackDefinition {
+  readonly telegraphMs: number;
+  readonly count: number;
+  readonly ring: { readonly min: number; readonly max: number };
+  readonly startRadius: number;
+  readonly maxRadius: number;
+  readonly spreadMs: number;
+  readonly durationMs: number;
   readonly poison: PoisonEffect;
+  readonly slow: { readonly pct: number; readonly durationMs: number };
+  readonly recoveryMs: number;
 }
 
 /** Pajączek-kamikaze: biegnie do gracza, po zapłonie wybucha. Ginie od jednego trafienia. */
@@ -178,6 +223,9 @@ export interface BossDefinition {
   readonly web?: WebAttackDefinition;
   readonly leap?: LeapAttackDefinition;
   readonly lash?: LashAttackDefinition;
+  readonly flurry?: FlurryAttackDefinition;
+  readonly cocoonThrow?: CocoonThrowDefinition;
+  readonly bloom?: BloomAttackDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -240,6 +288,18 @@ export interface WebShot {
   readonly spreadMs: number;
   readonly expiresAt: number;
   readonly slow: { readonly pct: number; readonly durationMs: number };
+  /** Wygląd płatu: sieć (Matka Pająków) albo grzybnia (Król). Brak = sieć. */
+  readonly look?: 'web' | 'mycelium';
+  /** Dodatkowy status w płacie (trucizna grzybni). */
+  readonly status?: StatusApplication;
+}
+
+/** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
+export interface ThrownObject {
+  readonly from: Vector2;
+  readonly to: Vector2;
+  readonly launchAt: number;
+  readonly landAt: number;
 }
 
 /** Pełny plan jednego ataku — wszystko z góry zaplanowane w czasie, wykonuje warstwa Phasera. */
@@ -250,6 +310,7 @@ export interface BossAttackPlan {
   readonly spawns: readonly SummonSpawn[];
   readonly webs: readonly WebShot[];
   readonly leap: BossLeap | null;
+  readonly throws: readonly ThrownObject[];
   /** Kiedy boss może znów się ruszać. */
   readonly endsAt: number;
 }

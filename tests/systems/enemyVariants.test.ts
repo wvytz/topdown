@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BIOMES, BiomeId } from '@/config/biomeConfig';
 import { ENEMY_DEFINITIONS, ENEMY_VARIANTS } from '@/config/combatConfig';
 import { ENEMY_PROJECTILE_VISUALS, ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { ITEM_EFFECTS } from '@/config/lootConfig';
 import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
 import { enemyDefinitionFor, isHitByWave } from '@/systems/EnemyVariants';
 
@@ -81,5 +82,44 @@ describe('isHitByWave — fala-półksiężyc', () => {
     const east = { x: 5, y: 0 }; // kierunek nie musi być znormalizowany
     expect(isHitByWave({ x: 0, y: 0 }, east, shape, { x: 0, y: 13 }, 0)).toBe(true);
     expect(isHitByWave({ x: 0, y: 0 }, east, shape, { x: 13, y: 0 }, 0)).toBe(false);
+  });
+});
+
+describe('wrogowie Grzybni (krok 28b)', () => {
+  it('Grzybnia: zarażony pająk (Rusher) i grzybiec (Kiter)', () => {
+    expect(BIOMES[BiomeId.FungalGrove].enemyVariants).toEqual({
+      [EnemyType.Rusher]: EnemyVariant.InfectedSpider,
+      [EnemyType.Kiter]: EnemyVariant.Fungoid,
+    });
+  });
+
+  it('zarażony pająk: walka Rushera, ugryzienie lekko zatruwa (słabiej niż Ognista pięść)', () => {
+    const spider = def(EnemyType.Rusher, EnemyVariant.InfectedSpider);
+    const rusher = ENEMY_DEFINITIONS[EnemyType.Rusher];
+    expect(spider.behaviour).toEqual(rusher.behaviour);
+    expect({ ...spider.attack, status: undefined }).toEqual({ ...rusher.attack, status: undefined });
+    const poison = spider.attack.status?.poison;
+    expect(poison).toBeDefined();
+    const total = (p: { tickDamage: number; tickMs: number; durationMs: number }) => p.tickDamage * Math.floor(p.durationMs / p.tickMs);
+    expect(total(poison!)).toBeLessThan(total(ITEM_EFFECTS.fireFist));
+    expect(ENEMY_VISUALS[EnemyVariant.InfectedSpider].sheet).toBe('infectedSpider');
+  });
+
+  it('grzybiec: rytm Kitera, kula zarodników słabsza i wolniejsza od kuli maga, zatruwa jak Ognista pięść', () => {
+    const fungoid = def(EnemyType.Kiter, EnemyVariant.Fungoid);
+    const mage = ENEMY_DEFINITIONS[EnemyType.Kiter];
+    expect(fungoid.behaviour).toEqual(mage.behaviour);
+    if (fungoid.attack.kind !== EnemyAttackKind.Projectile || mage.attack.kind !== EnemyAttackKind.Projectile) throw new Error('Kiter strzela');
+    expect(fungoid.attack.damage).toBeLessThan(mage.attack.damage);
+    expect(fungoid.attack.projectileSpeed).toBeLessThan(mage.attack.projectileSpeed);
+    expect(fungoid.attack.wave).toBeUndefined();
+    expect(fungoid.attack.status?.poison).toEqual({
+      tickDamage: ITEM_EFFECTS.fireFist.tickDamage,
+      tickMs: ITEM_EFFECTS.fireFist.tickMs,
+      durationMs: ITEM_EFFECTS.fireFist.durationMs,
+    });
+    const spit = ENEMY_PROJECTILE_VISUALS[EnemyVariant.Fungoid]!;
+    expect(spit.directional).toBe(false);
+    expect(SPRITE_SHEETS[spit.sheet].animations).toHaveProperty(spit.animation);
   });
 });

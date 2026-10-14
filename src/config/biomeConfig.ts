@@ -99,13 +99,13 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     fog: null,
   },
   // Grzybnia (krok 28a): piętro zainfekowanego Króla Pająków. Ciemny fiolet z błękitem, mgła ogranicza widok,
-  // grzyby-latarnie zamiast pochodni. Wrogowie, pułapki i Król w kolejnych krokach — do tego czasu wrogowie z leża.
+  // grzyby-latarnie zamiast pochodni. Wrogowie (krok 28b): zarażony pająk (Rusher) i grzybiec (Kiter) — obaj zatruwają.
   [BiomeId.FungalGrove]: {
     id: BiomeId.FungalGrove,
     name: 'Grzybnia',
     tileset: FUNGAL_GROVE_TILESET_ASSET,
     dressing: FUNGAL_GROVE_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.CaveSpider, [EnemyType.Kiter]: EnemyVariant.Bat },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.InfectedSpider, [EnemyType.Kiter]: EnemyVariant.Fungoid },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,

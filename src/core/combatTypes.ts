@@ -15,6 +15,10 @@ export enum EnemyVariant {
   DemonMage = 'demon-mage',
   CaveSpider = 'cave-spider',
   Bat = 'bat',
+  /** Grzybnia (krok 28b): pająk porośnięty grzybem (Rusher), ugryzienie zatruwa. */
+  InfectedSpider = 'infected-spider',
+  /** Grzybnia (krok 28b): grzybiec plujący kulą zarodników (Kiter), trafienie zatruwa. */
+  Fungoid = 'fungoid',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
@@ -54,6 +58,11 @@ export interface StunEffect {
   readonly durationMs: number;
 }
 
+/** Paraliż (krok 29, Król Pająków): cel nie chodzi, nie atakuje, nie strzela i nie robi dasha. */
+export interface ParalysisEffect {
+  readonly durationMs: number;
+}
+
 /** Trucizna (krok 27, Matka Pająków): obrażenia co `tickMs` przez `durationMs` — mechanika jak podpalenie. */
 export type PoisonEffect = BurnEffect;
 
@@ -61,6 +70,7 @@ export type PoisonEffect = BurnEffect;
 export interface StatusApplication {
   readonly burn?: BurnEffect;
   readonly poison?: PoisonEffect;
+  readonly paralysis?: ParalysisEffect;
   readonly slow?: SlowEffect;
   readonly stun?: StunEffect;
 }
@@ -73,6 +83,8 @@ export interface StatusResistance {
   readonly stunImmunityMs: number;
   /** Mnożnik siły spowolnienia. */
   readonly slowMultiplier: number;
+  /** Po paraliżu cel jest na niego odporny przez ten czas (krok 29: Król nie zamknie gracza serią). */
+  readonly paralysisImmunityMs?: number;
 }
 
 /** Pojedyncze trafienie: ile obrażeń i jaki odrzut (px/s) otrzymuje cel. */
@@ -112,6 +124,8 @@ interface BaseAttackDefinition {
   /** Czas od rozpoczęcia ataku do gotowości następnego. */
   readonly cooldownMs: number;
   readonly knockback: number;
+  /** Status nakładany trafieniem (krok 28b: trucizna wrogów Grzybni). */
+  readonly status?: StatusApplication;
 }
 
 export interface MeleeAttackDefinition extends BaseAttackDefinition {
