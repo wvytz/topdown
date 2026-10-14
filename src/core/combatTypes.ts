@@ -6,6 +6,17 @@ export enum EnemyType {
   Kiter = 'kiter',
 }
 
+/**
+ * Wariant archetypu w biomie (krok 23b): wygląd, kolor i ewentualnie inny atak, ta sama logika AI.
+ * Ruiny: Trashcan Man (Rusher), Demon Mage (Kiter). Pajęcze leże: pająk jaskiniowy, nietoperz.
+ */
+export enum EnemyVariant {
+  TrashcanMan = 'trashcan-man',
+  DemonMage = 'demon-mage',
+  CaveSpider = 'cave-spider',
+  Bat = 'bat',
+}
+
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
 export enum EnemyState {
   Idle = 'idle',
@@ -105,10 +116,20 @@ export interface MeleeAttackDefinition extends BaseAttackDefinition {
   readonly hitRange: number;
 }
 
+/** Kształt fali (półksiężyc) w układzie lotu: szeroka w poprzek, wąska wzdłuż. */
+export interface WaveShape {
+  /** Połowa szerokości w poprzek lotu (px). */
+  readonly halfWidth: number;
+  /** Połowa grubości wzdłuż lotu (px). */
+  readonly halfDepth: number;
+}
+
 export interface ProjectileAttackDefinition extends BaseAttackDefinition {
   readonly kind: EnemyAttackKind.Projectile;
   readonly projectileSpeed: number;
   readonly projectileLifetimeMs: number;
+  /** Fala zamiast kulki (nietoperz): trafia w całej szerokości półksiężyca. */
+  readonly wave?: WaveShape;
 }
 
 export type EnemyAttackDefinition = MeleeAttackDefinition | ProjectileAttackDefinition;
@@ -143,6 +164,7 @@ export interface EnemyViewRule {
 
 export interface EnemyDefinition {
   readonly type: EnemyType;
+  readonly variant: EnemyVariant;
   readonly radius: number;
   readonly color: number;
   readonly maxHp: number;

@@ -5,7 +5,8 @@ import type {
   PlayerCombatConfig,
   StatusResistance,
 } from '@/core/combatTypes';
-import { EnemyAttackKind, EnemyType } from '@/core/combatTypes';
+import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
+import type { EnemyVariantDefinition } from '@/systems/EnemyVariants';
 import type { EncounterConfig } from '@/dungeon/EncounterPlanner';
 import { GUARANTEED_VIEW_HALF } from '@/config/gameConfig';
 
@@ -38,6 +39,7 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
 export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
   [EnemyType.Rusher]: {
     type: EnemyType.Rusher,
+    variant: EnemyVariant.TrashcanMan,
     radius: 11,
     color: 0xd9534f,
     maxHp: 30,
@@ -55,6 +57,7 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
   },
   [EnemyType.Kiter]: {
     type: EnemyType.Kiter,
+    variant: EnemyVariant.DemonMage,
     radius: 10,
     color: 0x9b6bd6,
     maxHp: 20,
@@ -72,6 +75,32 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
       knockback: 120,
       projectileSpeed: 240,
       projectileLifetimeMs: 2000,
+    },
+  },
+};
+
+/**
+ * Warianty archetypów (krok 23b). Bez nadpisań = statystyki i atak archetypu.
+ * Nietoperz: ten sam rytm i obrażenia co mag, ale fala-półksiężyc (26 px szerokości) — trudniej ją ominąć
+ * bokiem, więc leci wolniej; przez dash przelatuje jak każdy pocisk.
+ */
+export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinition>> = {
+  [EnemyVariant.TrashcanMan]: { type: EnemyType.Rusher },
+  [EnemyVariant.DemonMage]: { type: EnemyType.Kiter },
+  [EnemyVariant.CaveSpider]: { type: EnemyType.Rusher, color: 0x3c272a },
+  [EnemyVariant.Bat]: {
+    type: EnemyType.Kiter,
+    color: 0x4a3644,
+    attack: {
+      kind: EnemyAttackKind.Projectile,
+      damage: 8,
+      range: 280,
+      windupMs: 400,
+      cooldownMs: 1500,
+      knockback: 120,
+      projectileSpeed: 200,
+      projectileLifetimeMs: 2000,
+      wave: { halfWidth: 13, halfDepth: 4 },
     },
   },
 };

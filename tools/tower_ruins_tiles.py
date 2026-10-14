@@ -1261,6 +1261,10 @@ SPRITES = {
     'barbarian_sword': ('blond-barbarian_walk-attack.png', 48, '#1b1a22', 'Barbarzyńca'),
     'queen': ('spider-queen_move-birth.png', 96, '#1b1a22', 'Matka Pająków'),
     'spiderling': ('spiderling_walk-prime.png', 48, '#1b1a22', 'Pajączek'),
+    # Wrogowie leża (krok 23b, tools/lair_enemies.py).
+    'cave_spider': ('cave-spider_walk.png', 48, '#1b1a22', 'Pająk'),
+    'bat': ('bat_fly-screech.png', 48, '#1b1a22', 'Nietoperz'),
+    'bat_wave': ('bat_wave.png', 32, None, None),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -1273,23 +1277,23 @@ MOCKUP_ACTORS = [
     ('orb', 0, 300, 246, False),
     ('glob', 0, 430, 318, False),
 ]
-# Obsada leża: (sprite, wiersz kierunku, środek x, środek y, chodzi, kolumna klatki). Rusher i Kiter
-# to na razie Trashcan i mag — skórki pająka i nietoperza przyjdą w kroku 23b.
+# Obsada leża: (sprite, wiersz kierunku, środek x, środek y, chodzi, kolumna klatki).
+# Rusher = pająk jaskiniowy, Kiter = nietoperz z falą (krok 23b).
 MOCKUP_ACTORS_LAIR = [
     ('barbarian_sword', 2, 368, 262, True, 4),       # cios w stronę pajączków
     ('spiderling', 6, 430, 270, True, 0),
     ('spiderling', 7, 452, 236, True, 1),
     ('spiderling', 5, 470, 300, True, 6),            # zapłon
     ('queen', 6, 560, 300, False, 5),                # złożenie pajączka
-    ('trashcan', 6, 300, 330, True, 0),
-    ('mage', 4, 232, 236, False, 0),
-    ('mage', 6, 752, 252, False, 0),
-    ('orb', 0, 300, 246, False, 0),
+    ('cave_spider', 1, 300, 330, True, 1),
+    ('bat', 2, 232, 236, False, 6),                  # skrzek
+    ('bat', 6, 752, 252, False, 1),
+    ('bat_wave', 2, 290, 238, False, 0),
 ]
 # Postacie mierzone pod kątem czytelności na palecie biomu.
 METRIC_CAST = {
     'tower_ruins': ('barbarian', 'trashcan', 'mage', 'sludge'),
-    'spider_lair': ('barbarian_sword', 'trashcan', 'mage', 'queen', 'spiderling'),
+    'spider_lair': ('barbarian_sword', 'cave_spider', 'bat', 'queen', 'spiderling'),
 }
 
 
@@ -1297,7 +1301,7 @@ def load_frame(key, row, col=0):
     file, cell, _, _ = SPRITES[key]
     im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
     if key in ('orb', 'glob'):
-        row = 0
+        row = 0  # bez kierunków
     return im.crop((col * cell, row * cell, (col + 1) * cell, (row + 1) * cell))
 
 

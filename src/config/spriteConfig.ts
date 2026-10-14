@@ -1,6 +1,6 @@
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import type { CombatDecalKind } from '@/config/dressingConfig';
-import { EnemyType } from '@/core/combatTypes';
+import { EnemyVariant } from '@/core/combatTypes';
 import type { ItemId } from '@/core/lootTypes';
 import { ItemKind } from '@/core/lootTypes';
 
@@ -120,6 +120,50 @@ export const SPRITE_SHEETS = {
       fly: { frames: [0, 1, 2, 3], loop: true },
     },
   },
+  // Pajęcze leże (krok 23b, tools/lair_enemies.py): pająk jaskiniowy (Rusher) i nietoperz (Kiter) z falą.
+  caveSpider: {
+    key: 'sheet-cave-spider',
+    url: 'assets/sprites/cave-spider_walk.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 192,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+    },
+  },
+  bat: {
+    key: 'sheet-bat',
+    url: 'assets/sprites/bat_fly-screech.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
+      // Skrzek dopasowany do zamachu (windupMs) — fala wylatuje po ostatniej klatce.
+      screech: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Fala: 8 kierunków lotu (wiersze, bez obrotu o dowolny kąt), 4 klatki migotania.
+  batWave: {
+    key: 'sheet-bat-wave',
+    url: 'assets/sprites/bat_wave.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 128,
+    sheetHeight: 256,
+    directions: 8,
+    fps: 10,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
+    },
+  },
   // Boss „Matka Pająków” (krok 20b, tools/spider_sprites.py): komórka 96×96, 8 kierunków;
   // kolumny 0–3 chód, 4–7 złożenie pajączka (wylęga się 30 px za pivotem w kolumnie 7).
   spiderQueen: {
@@ -189,10 +233,25 @@ export interface EnemyVisual {
 /** Cień pod postaciami 32 px (bohater, Rusher): lekko w dół, jak światło z północy. */
 const WALKER_SHADOW = { width: 22, height: 12, offsetX: 1, offsetY: 4 } as const;
 
-export const ENEMY_VISUALS: Readonly<Record<EnemyType, EnemyVisual>> = {
-  [EnemyType.Rusher]: { sheet: 'trashcanMan', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
-  [EnemyType.Kiter]: { sheet: 'demonMage', move: 'float', attack: 'cast' },
+/** Wygląd każdego wariantu wroga (krok 23b: warianty biomów). */
+export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
+  [EnemyVariant.TrashcanMan]: { sheet: 'trashcanMan', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
+  [EnemyVariant.DemonMage]: { sheet: 'demonMage', move: 'float', attack: 'cast' },
+  [EnemyVariant.CaveSpider]: { sheet: 'caveSpider', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
+  // Nietoperz lata: cień od silnika mniejszy i dalej pod nim.
+  [EnemyVariant.Bat]: { sheet: 'bat', move: 'fly', attack: 'screech', groundShadow: { width: 14, height: 6, offsetX: 0, offsetY: 12 } },
 };
+
+/**
+ * Pocisk wariantu strzelającego: arkusz, animacja, przesunięcie startu przed strzelca (px)
+ * i czy arkusz ma wiersze kierunków lotu (fala nietoperza).
+ */
+export interface EnemyProjectileVisual {
+  readonly sheet: SpriteSheetId;
+  readonly animation: string;
+  readonly forwardOffset: number;
+  readonly directional: boolean;
+}
 
 export const PLAYER_VISUAL = {
   sheet: 'barbarian',
@@ -202,8 +261,11 @@ export const PLAYER_VISUAL = {
   groundShadow: WALKER_SHADOW,
 } as const satisfies EnemyVisual;
 
-/** Pocisk maga: arkusz, animacja i przesunięcie startu przed maga (px, wg handoffu). */
-export const KITER_PROJECTILE_VISUAL = { sheet: 'demonOrb', animation: 'fly', forwardOffset: 13 } as const;
+/** Pociski wariantów strzelających: kula maga (wg handoffu), fala nietoperza. */
+export const ENEMY_PROJECTILE_VISUALS: Readonly<Partial<Record<EnemyVariant, EnemyProjectileVisual>>> = {
+  [EnemyVariant.DemonMage]: { sheet: 'demonOrb', animation: 'fly', forwardOffset: 13, directional: false },
+  [EnemyVariant.Bat]: { sheet: 'batWave', animation: 'fly', forwardOffset: 12, directional: true },
+};
 
 export interface BossVisual extends EnemyVisual {
   readonly attack: string;

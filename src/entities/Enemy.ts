@@ -49,7 +49,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly animator: DirectionalAnimator;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: EnemyDefinition) {
-    super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.type].sheet].key);
+    super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.variant].sheet].key);
     this.definition = definition;
     this.health = new Health(definition.maxHp);
     this.brain = new EnemyBrain(definition.behaviour, definition.attack.range, ENEMY_VIEW_RULE);
@@ -60,7 +60,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // Klatka 48×48 z postacią pośrodku — okrągłe ciało o promieniu z definicji, wyśrodkowane.
     this.setCircle(definition.radius, this.width / 2 - definition.radius, this.height / 2 - definition.radius);
     this.setDepth(RENDER_DEPTH.enemy);
-    this.visual = ENEMY_VISUALS[definition.type];
+    this.visual = ENEMY_VISUALS[definition.variant];
     this.animator = new DirectionalAnimator(this, this.visual.sheet);
     if (this.visual.groundShadow) attachGroundShadow(this, this.visual.groundShadow);
     this.animator.play(this.visual.idle ?? this.visual.move);

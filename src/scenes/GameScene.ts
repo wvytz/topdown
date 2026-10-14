@@ -17,6 +17,7 @@ import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { CAMERA_CONFIG, PLAYER_BASE_STATS, getDungeonConfigForFloor } from '@/config/gameConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
+import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
 import { PLAYER_COMBAT, getEncounterConfigForFloor } from '@/config/combatConfig';
 import {
@@ -32,6 +33,7 @@ import {
   STAT_LIMITS,
 } from '@/config/lootConfig';
 import { BossFight } from '@/combat/BossFight';
+import { CeilingDropManager } from '@/combat/CeilingDropManager';
 import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
@@ -83,6 +85,7 @@ const REWARD_SEED_SALT = 0x4e3a;
 /** Dekorowanie piętra (czysto wizualne). */
 const DRESSING_SEED_SALT = 0xd2e5;
 const TORCH_SEED_SALT = 0x7042;
+const CEILING_DROP_SEED_SALT = 0xce11;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -96,6 +99,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private projectiles!: ProjectileManager;
   private playerShots!: PlayerShotManager;
   private bossFight!: BossFight;
+  /** Pająki z sufitu — tylko w biomie, który je ma (krok 23c). */
+  private ceilingDrops: CeilingDropManager | null = null;
   private loot!: LootManager;
   private lootRng!: Rng;
   private effects!: CombatEffects;
@@ -105,6 +110,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private floorModifier: FloorModifierDefinition | null = null;
   private floorEffects: FloorModifierEffects = NO_FLOOR_EFFECTS;
   private lighting!: LightingOverlay;
+  /** Biom piętra: arkusz kafli, dekorowanie, warianty wrogów. */
+  private biome!: BiomeDefinition;
   private torches!: Torches;
   private combatDecals!: CombatDecals;
   private death: DeathSummary | null = null;
@@ -149,6 +156,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const generator = new DungeonGenerator(getDungeonConfigForFloor(this.floorNumber));
     this.dungeon = generator.generate(deriveSeed(this.runSeed, this.floorNumber));
     const biome = biomeForFloor(this.floorNumber);
+    this.biome = biome;
     const tileset = this.cache.json.get(biome.tileset.jsonKey) as TilesetMeta;
     // Pochodnie przed dekorowaniem: detale lica muru omijają kafle z uchwytem.
     const torchSpots = planTorches(this.dungeon, TORCH_PLACEMENT, deriveSeed(this.dungeon.seed, TORCH_SEED_SALT));
@@ -198,6 +206,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     }
     this.resolveDashStrike(time);
     this.enemies.update(time);
+    this.ceilingDrops?.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
@@ -295,6 +304,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       floor: this.dungeon,
       floorNumber: this.floorNumber,
       floorEffects: this.floorEffects,
+      enemyVariants: this.biome.enemyVariants,
       walls: this.dungeonView.collisionLayer,
       player: this.player,
       projectiles: this.projectiles,
@@ -307,6 +317,21 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
     this.enemies.spawnAll(planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng));
+
+    const drops = this.biome.ceilingDrops;
+    this.ceilingDrops = drops
+      ? new CeilingDropManager({
+          scene: this,
+          floor: this.dungeon,
+          floorNumber: this.floorNumber,
+          config: drops,
+          rng: createRng(deriveSeed(this.dungeon.seed, CEILING_DROP_SEED_SALT)),
+          player: this.player,
+          enemies: this.enemies,
+          effects: this.effects,
+          onPlayerHit,
+        })
+      : null;
 
     this.bossFight = new BossFight({
       scene: this,

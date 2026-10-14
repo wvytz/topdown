@@ -96,11 +96,11 @@ describe('pajęcze leże', () => {
     expect(floorDecor.some((group) => /web|cocoon|kokon/i.test(group))).toBe(false);
   });
 
-  // Postacie piętra 2: bohater, Rusher, Kiter, Matka Pająków i pajączek (Sludge King tu nie występuje).
+  // Postacie piętra 2: bohater, pająk (Rusher), nietoperz (Kiter), Matka Pająków i pajączek.
   const CHARACTERS = [
     ['Barbarzyńca', SPRITE_SHEETS.barbarian],
-    ['Rusher', SPRITE_SHEETS.trashcanMan],
-    ['Kiter', SPRITE_SHEETS.demonMage],
+    ['Pająk jaskiniowy', SPRITE_SHEETS.caveSpider],
+    ['Nietoperz', SPRITE_SHEETS.bat],
     ['Matka Pająków', SPRITE_SHEETS.spiderQueen],
     ['Pajączek', SPRITE_SHEETS.spiderling],
   ] as const;

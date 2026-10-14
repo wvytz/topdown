@@ -1511,6 +1511,99 @@ Złota przybywa o +20% na każde piętro.
 - w grze piętro 2 ma arkusz leża (tekstura warstw, animacja pochodni leża, 13 pochodni), a piętro 1 nadal ruiny; brak błędów w konsoli;
 - zrzut ekranu: fioletowy kamień, białe pajęczyny w narożnikach, zielony płomień pochodni, pancerzyki.
 
+## Krok 23b — Pająk (Rusher) i nietoperz z falą (Kiter) w Pajęczym leżu
+
+**Zgodnie z zasadą małej liczby archetypów:** pająk jaskiniowy to wariant Rushera, a nietoperz wariant Kitera. Logika AI bez zmian.
+
+**Generator `tools/lair_enemies.py`** (narzędzia i rampy z `tower_ruins_tiles.py` / `spider_sprites.py`, obrót co 45°, obrys po obrocie):
+- `cave-spider_walk.png` (48×48): chód na 4 klatkach;
+  - ciemna chityna jak u Matki Pająków, białe szewrony na odwłoku, zielone oczy;
+  - bez worka-bomby, żeby nie mylił się z pajączkiem-kamikaze;
+  - nogi skrócone, żeby po obrocie po skosie mieściły się w marginesie 8 px;
+- `bat_fly-screech.png` (48×48):
+  - kolumny 0–3 lot (skrzydła góra → dół), 4–7 skrzek (skrzydła rozpostarte, zielony pysk, zalążek fali w kolumnach 6–7);
+  - ciemna błona, białe kości palców, zielone oczy;
+- `bat_wave.png` (32×32): zielono-biały półksiężyc; 8 wierszy kierunku lotu zamiast obrotu o dowolny kąt (jak znacznik celowania), 4 klatki migotania;
+- walidator: alfa 0/255, bez czystej czerni i bieli, margines.
+
+**Warstwa czysta:**
+- `EnemyVariant` (Trashcan, mag, pająk jaskiniowy, nietoperz); `EnemyDefinition.variant`;
+- `ProjectileAttackDefinition.wave` (`WaveShape`: połowa szerokości i grubości);
+- `systems/EnemyVariants.ts`:
+  - `enemyDefinitionFor`: statystyki archetypu z nadpisaniami wariantu; wariant innego archetypu to błąd;
+  - `isHitByWave`: trafienie w układzie lotu, szeroko w poprzek, wąsko wzdłuż.
+
+**Konfiguracja:**
+- `combatConfig.ENEMY_VARIANTS`:
+  - pająk = Rusher z innym kolorem;
+  - nietoperz = Kiter (te same obrażenia 8, zasięg, zamach 400 ms, odnowienie 1,5 s) z falą szerokości 26 px i grubości 8 px, wolniejszą (200 zamiast 240), bo trudniej ją ominąć bokiem;
+- `biomeConfig`: `enemyVariants` per biom (ruiny: Trashcan i mag, leże: pająk i nietoperz);
+- `spriteConfig`:
+  - arkusze `caveSpider`, `bat`, `batWave`;
+  - `ENEMY_VISUALS` per wariant (nietoperz ma mały cień od silnika 12 px pod sobą, bo lata);
+  - `ENEMY_PROJECTILE_VISUALS` zamiast `KITER_PROJECTILE_VISUAL`.
+
+**Phaser:**
+- `EnemyManager` tworzy wrogów w wariancie biomu; fala dostaje wiersz kierunku lotu (`facingDirection`);
+- `ProjectileManager`: fale trafiają przez `isHitByWave` (nie przez okrągłe ciało fizyczne); dash i nietykalność przepuszczają falę, która leci dalej;
+- `Enemy` bierze wygląd z wariantu;
+- makieta leża w generatorze kafli pokazuje pająka, nietoperza w trakcie skrzeku i falę.
+
+**Testy:**
+- `enemyVariants.test.ts` (9 testów): mapowanie biomów, warianty bez zmian = archetyp, pająk = Rusher, nietoperz = Kiter z wolniejszą falą, błąd przy złym archetypie, wygląd pocisków, kształt i obrót fali;
+- czytelność pająka i nietoperza na podłodze i bruku leża (`biomes.test.ts`); pomiar generatora: pająk obrys 2,24 / ciało 1,8, nietoperz 2,24 / 2,16;
+- `sprites.test.ts`: wygląd wszystkich wariantów.
+
+**Weryfikacja:**
+- `npm run build`: 688 testów zielonych;
+- w grze (`?seed=7&floor=2`): 6 pająków i 2 nietoperze;
+  - nietoperz skrzeczy 400 ms, fala leci we właściwym kierunku (wiersz 3 = SE), trafienie −9 HP (8 po skalowaniu piętra), rytm ok. 1,5 s;
+  - dash w bok: fala mija gracza bez obrażeń; dash prosto przez falę: bez obrażeń, fala leci dalej;
+  - dash pod kątem 45° do lotu fali może zostawić gracza na jej torze po końcu nietykalności (150 ms) — wtedy trafia;
+- brak błędów w konsoli.
+
+## Krok 23c — Pająki spadające z sufitu (Pajęcze leże)
+
+**Decyzja właściciela (krok 23a):** pająki spadają losowo z sufitu; spadek zapowiada rosnący cień na płytce; przy lądowaniu ranią gracza stojącego w cieniu, potem walczą jak Rusher.
+
+**Reguły i liczby (moje, w `biomeConfig`, do strojenia w testach właściciela):**
+- tylko w biomie z `ceilingDrops` (leże); tylko w zwykłych pokojach — pokój startowy zostaje spokojny, arena należy do Matki Pająków;
+- pierwszy zrzut 2,5 s po wejściu do pokoju, potem co 5–9 s; najwyżej 2 na pokój (powrót do pokoju nie odnawia limitu) i 3 zrzucone żywe naraz;
+- miejsce: 0–40 px od gracza, na podłodze tego samego pokoju (6 prób, bez miejsca zrzut przepada);
+- telegraf 1,1 s: cień rośnie do promienia 16 px; pająk widoczny na nici w ostatnich 220 ms;
+- lądowanie: 12 obrażeń i odrzut 200 dla gracza w cieniu (skalowane z piętrem jak u wrogów), potem zwykły Rusher w wariancie biomu (pająk jaskiniowy), z normalnymi łupami.
+
+**Warstwa czysta:** `systems/CeilingDrops.ts`:
+- `CeilingDropPlanner`: kiedy i gdzie; stan per pokój; własny strumień RNG (`CEILING_DROP_SEED_SALT`);
+- `dropShadowRadius`: cień do rysowania.
+
+**Phaser:**
+- `combat/CeilingDropManager.ts`:
+  - pokój pod graczem (tylko `RoomKind.Normal`);
+  - cień w kolorze obrysu z alfą cieni 0,4 (elipsa jak cienie postaci) i cienki czerwony obrys strefy, jak inne telegrafy;
+  - spadający pająk (klatka S z arkusza wariantu) na białej nici;
+  - lądowanie: błysk, trafienie, `EnemyManager.spawnAt`;
+- `EnemyManager`: `spawnAt` (wspólne ze `spawnAll`) i `variantOf`;
+- `GameScene`: menedżer tylko, gdy biom ma zrzuty.
+
+**Testy:** `ceilingDrops.test.ts` (9 testów):
+- pierwsze opóźnienie, rytm i limit na pokój; korytarz bez zrzutów;
+- osobne limity pokojów bez odnawiania; limit żywych nie zużywa limitu pokoju;
+- miejsce blisko gracza i tylko dozwolone; determinizm;
+- wzrost cienia; zrzuty tylko w leżu; telegraf daje czas na ucieczkę (200 px/s × 1,1 s ≫ promień).
+
+**Weryfikacja:**
+- `npm run build`: 698 testów zielonych;
+- w grze (`?seed=7&floor=2`, zwykły pokój, pozostali wrogowie usunięci):
+  - pierwszy zrzut po 2,5 s, lądowanie 1,1 s później, potem pająk atakuje co ~1 s;
+  - drugi zrzut po ~5 s, potem limit pokoju;
+  - zrzut wprost na gracza: −13 HP przy lądowaniu;
+  - spadający pająk widoczny przez ostatnie 220 ms;
+  - zrzut ekranu z pająkiem spadającym na cień;
+- brak błędów w konsoli.
+
+**Do oceny w testach właściciela:** częstotliwość zrzutów, czy cień 16 px jest wystarczająco czytelny pod bohaterem (cień rysuje się pod postaciami, a obrys strefy przy graczu częściowo zasłania sprite).
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -1525,12 +1618,30 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] **Przedmioty bazowe bez pulsowania** (krok 20): dobrze widoczne na podłodze.
 - [x] **Ogólnie:** gameplay czytelny i w pełni płynny.
 
-**1. Plan na kolejną sesję**
-- **Pajęczy biom — dalsze kroki** (zakres ustalony w kroku 23a):
-  - **23b:** pająk jako skórka Rushera, nietoperz jako wariant Kitera z lecącym półksiężycem (sprite'y z generatora, logika pocisku-łuku z testami);
-  - **23c:** pająki spadające z sufitu: rosnący cień (telegraf), obrażenia przy lądowaniu, potem Rusher; losowo w zasięgu gracza, z limitem;
-  - **23d:** kokony: wybuch przy bliskim kontakcie i spowolnienie gracza;
-  - **23e:** lepkie pajęczyny na podłodze: spowalniają tylko gracza, dash bez spowolnienia.
+**1. Plan na kolejną sesję — start od kroku 23d (kokony)**
+- **Stan po kroku 23c:** piętro 2 to Pajęcze leże, gotowe są:
+  - arkusz kafli (fiolet, zieleń, biel);
+  - Matka Pająków z pajączkami;
+  - pająk jaskiniowy (Rusher) i nietoperz z falą (Kiter);
+  - pająki spadające z sufitu.
+- **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają tylko w trybie dev.
+- **23d — kokony** (decyzja właściciela z kroku 23a: „kokony, które przy bliskim kontakcie eksplodują i spowalniają gracza”):
+  - **Do ustalenia z właścicielem na starcie:**
+    - gdzie stoją (zwykłe pokoje leża, ile na pokój);
+    - czy wybuch też rani, czy tylko spowalnia;
+    - siła i czas spowolnienia;
+    - czy gracz może je zniszczyć z dystansu (strzał) bez spowolnienia;
+    - czy kokon blokuje ruch i linię wzroku. Kolidujące rekwizyty wymagają zgody właściciela (krok 16), bo zmieniają linię wzroku Kiterów.
+  - **Wskazówki techniczne:**
+    - spowolnienie gracza: sprawdzić `systems/StatusEffects.ts` (wrogowie mają już `slow`);
+    - planowanie miejsc: czysty planer jak `ShrinePlanner` / `LightPlanner`, z własną solą RNG;
+    - sprite'y kokonu i wybuchu: generator w palecie leża (np. rozszerzenie `tools/lair_enemies.py`);
+    - dekoracje leża celowo nie mają kokonów (krok 23a), więc kokon na podłodze zawsze jest elementem rozgrywki.
+- **23e — lepkie pajęczyny na podłodze:** spowalniają tylko gracza, dash przechodzi bez spowolnienia. Wygląd nie może przypominać dekoracji, a w leżu nie ma pajęczyn na podłodze jako ozdoby (krok 23a).
+- **Do oceny w testach właściciela** (piętro 2):
+  - rytm wylęgu Matki Pająków (krok 22);
+  - fala nietoperza (krok 23b);
+  - częstotliwość zrzutów pająków i czytelność cienia pod bohaterem (krok 23c).
 - **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.
 - **Ewentualne uszczelnienie areny przed ostrzałem bossa z korytarza** (otwarte od kroku 9):
   - **Problem:** strzał budzi i rani bossa, zanim gracz wejdzie na arenę, a kraty opadają dopiero wtedy, gdy gracz jest w środku.

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { EnemyType } from '@/core/combatTypes';
+import { EnemyVariant } from '@/core/combatTypes';
 import { BOSS_VISUALS, ENEMY_VISUALS, PLAYER_VISUAL, SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { BossId } from '@/core/bossTypes';
 import type { SpriteSheetDef } from '@/config/spriteConfig';
@@ -72,7 +72,7 @@ describe('arkusze sprite’ów', () => {
     const visuals = [
       PLAYER_VISUAL,
       ...Object.values(BossId).map((id) => BOSS_VISUALS[id]),
-      ...Object.values(EnemyType).map((type) => ENEMY_VISUALS[type]),
+      ...Object.values(EnemyVariant).map((variant) => ENEMY_VISUALS[variant]),
     ];
     for (const visual of visuals) {
       const animations: Readonly<Record<string, unknown>> = SPRITE_SHEETS[visual.sheet].animations;
@@ -84,8 +84,9 @@ describe('arkusze sprite’ów', () => {
 
   it('cień od silnika mają tylko postacie chodzące (mag ma własny cień, boss kałużę)', () => {
     expect(PLAYER_VISUAL.groundShadow).toBeDefined();
-    expect(ENEMY_VISUALS[EnemyType.Rusher].groundShadow).toBeDefined();
-    expect(ENEMY_VISUALS[EnemyType.Kiter].groundShadow).toBeUndefined();
+    expect(ENEMY_VISUALS[EnemyVariant.TrashcanMan].groundShadow).toBeDefined();
+    expect(ENEMY_VISUALS[EnemyVariant.DemonMage].groundShadow).toBeUndefined();
+    expect(ENEMY_VISUALS[EnemyVariant.CaveSpider].groundShadow).toBeDefined();
     for (const id of Object.values(BossId)) expect(BOSS_VISUALS[id].groundShadow).toBeUndefined();
     expect(SPIDERLING_VISUAL.groundShadow).toBeDefined();
   });

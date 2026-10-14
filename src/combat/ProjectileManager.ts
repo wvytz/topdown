@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import type { Vector2 } from '@/core/types';
+import type { WaveShape } from '@/core/combatTypes';
+import { isHitByWave } from '@/systems/EnemyVariants';
 import type { Player } from '@/entities/Player';
 import { Projectile } from '@/entities/Projectile';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
@@ -20,6 +22,8 @@ export interface ProjectileSpec {
   readonly visual?: { readonly texture: string; readonly animation: string };
   /** Ślad na podłodze, gdy pocisk rozbije się o ścianę albo wygaśnie (np. szlam bossa). */
   readonly impactDecal?: CombatDecalKind;
+  /** Fala (nietoperz): trafia w całej szerokości półksiężyca zamiast w okręgu ciała. */
+  readonly wave?: WaveShape;
 }
 
 /** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
@@ -27,6 +31,8 @@ export class ProjectileManager {
   private readonly group: Phaser.Physics.Arcade.Group;
   /** Ślady zostawiane przez pociski (pocisk → rodzaj śladu); tylko pociski z `impactDecal`. */
   private readonly impactDecals = new WeakMap<Projectile, CombatDecalKind>();
+  /** Kształt fal — trafienie liczymy sami (czysta funkcja), nie przez okrągłe ciało fizyczne. */
+  private readonly waves = new WeakMap<Projectile, WaveShape>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -41,7 +47,7 @@ export class ProjectileManager {
       if (projectile instanceof Projectile) this.splash(projectile);
     });
     scene.physics.add.overlap(player, this.group, (_player, projectile) => {
-      if (projectile instanceof Projectile) this.handlePlayerOverlap(projectile);
+      if (projectile instanceof Projectile && !this.waves.has(projectile)) this.handlePlayerOverlap(projectile);
     });
   }
 
@@ -57,13 +63,23 @@ export class ProjectileManager {
     projectile.setCircle(PROJECTILE_RADIUS, projectile.width / 2 - PROJECTILE_RADIUS, projectile.height / 2 - PROJECTILE_RADIUS);
     if (spec.visual) projectile.play(spec.visual.animation);
     if (spec.impactDecal) this.impactDecals.set(projectile, spec.impactDecal);
+    if (spec.wave) this.waves.set(projectile, spec.wave);
     const dir = normalize(spec.direction);
     projectile.setVelocity(dir.x * spec.speed, dir.y * spec.speed);
   }
 
   update(now: number): void {
-    for (const child of this.group.getChildren()) {
-      if (child instanceof Projectile && now >= child.expiresAt) this.splash(child);
+    for (const child of [...this.group.getChildren()]) {
+      if (!(child instanceof Projectile)) continue;
+      if (now >= child.expiresAt) {
+        this.splash(child);
+        continue;
+      }
+      const wave = this.waves.get(child);
+      const velocity = child.body?.velocity;
+      if (wave && velocity && isHitByWave(child, velocity, wave, this.player, this.player.radius)) {
+        this.handlePlayerOverlap(child);
+      }
     }
   }
 

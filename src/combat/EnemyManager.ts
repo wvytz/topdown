@@ -2,9 +2,12 @@ import Phaser from 'phaser';
 import type { Hit, MeleeAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
-import { ENEMY_DEFINITIONS, ENEMY_SCALING } from '@/config/combatConfig';
+import { ENEMY_DEFINITIONS, ENEMY_SCALING, ENEMY_VARIANTS } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { KITER_PROJECTILE_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { ENEMY_PROJECTILE_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import type { EnemyType, EnemyVariant } from '@/core/combatTypes';
+import { enemyDefinitionFor } from '@/systems/EnemyVariants';
+import { facingDirection } from '@/systems/Facing';
 import type { EnemySpawn } from '@/dungeon/EncounterPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { hasLineOfSight } from '@/dungeon/lineOfSight';
@@ -31,6 +34,8 @@ export interface EnemyManagerDeps {
   readonly floorNumber: number;
   /** Modyfikator piętra (prędkość, HP, obrażenia zwykłych wrogów). */
   readonly floorEffects: FloorModifierEffects;
+  /** Warianty archetypów w biomie piętra (wygląd i ewentualnie atak). */
+  readonly enemyVariants: Readonly<Record<EnemyType, EnemyVariant>>;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
   readonly player: Player;
   readonly projectiles: ProjectileManager;
@@ -57,14 +62,22 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   spawnAll(spawns: readonly EnemySpawn[]): void {
-    for (const spawn of spawns) {
-      const scaled = scaleEnemyForFloor(ENEMY_DEFINITIONS[spawn.type], this.deps.floorNumber, ENEMY_SCALING);
-      const definition = applyFloorToEnemy(scaled, this.deps.floorEffects);
-      const position = DungeonView.tileToWorldCenter(spawn.tile);
-      const enemy = new Enemy(this.deps.scene, position.x, position.y, definition);
-      this.group.add(enemy);
-      this.enemies.push(enemy);
-    }
+    for (const spawn of spawns) this.spawnAt(spawn.type, DungeonView.tileToWorldCenter(spawn.tile));
+  }
+
+  /** Wróg archetypu w wariancie biomu, ze skalowaniem piętra i modyfikatorem (także pająk z sufitu). */
+  spawnAt(type: EnemyType, position: Vector2): Enemy {
+    const base = enemyDefinitionFor(ENEMY_DEFINITIONS[type], this.deps.enemyVariants[type], ENEMY_VARIANTS);
+    const scaled = scaleEnemyForFloor(base, this.deps.floorNumber, ENEMY_SCALING);
+    const definition = applyFloorToEnemy(scaled, this.deps.floorEffects);
+    const enemy = new Enemy(this.deps.scene, position.x, position.y, definition);
+    this.group.add(enemy);
+    this.enemies.push(enemy);
+    return enemy;
+  }
+
+  variantOf(type: EnemyType): EnemyVariant {
+    return this.deps.enemyVariants[type];
   }
 
   update(now: number): void {
@@ -113,19 +126,22 @@ export class EnemyManager implements EnemyAttackHandler {
 
   fireProjectile(enemy: Enemy, attack: ProjectileAttackDefinition, target: Vector2): void {
     const direction = directionTo(enemy, target);
-    // Kula maga startuje kawałek przed nim (wg handoffu sprite'ów), w kierunku rzutu.
-    const offset = KITER_PROJECTILE_VISUAL.forwardOffset;
+    // Pocisk startuje kawałek przed strzelcem (wg sprite'ów), w kierunku rzutu.
+    const look = ENEMY_PROJECTILE_VISUALS[enemy.definition.variant];
+    const offset = look?.forwardOffset ?? 0;
+    // Fala ma wiersze kierunków lotu (8 klatek obrotu co 45°), kula maga jest bez kierunków.
+    const row = look?.directional ? (facingDirection(direction) ?? 0) : 0;
     this.deps.projectiles.fire({
       origin: { x: enemy.x + direction.x * offset, y: enemy.y + direction.y * offset },
       direction,
-      visual: {
-        texture: SPRITE_SHEETS[KITER_PROJECTILE_VISUAL.sheet].key,
-        animation: animationKey(KITER_PROJECTILE_VISUAL.sheet, KITER_PROJECTILE_VISUAL.animation),
-      },
+      ...(look && {
+        visual: { texture: SPRITE_SHEETS[look.sheet].key, animation: animationKey(look.sheet, look.animation, row) },
+      }),
       speed: attack.projectileSpeed,
       damage: attack.damage,
       knockback: attack.knockback,
       lifetimeMs: attack.projectileLifetimeMs,
+      ...(attack.wave && { wave: attack.wave }),
     });
   }
 
