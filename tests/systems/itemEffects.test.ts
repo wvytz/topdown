@@ -3,7 +3,7 @@ import type { Hit, StatusResistance } from '@/core/combatTypes';
 import { ItemId, ItemKind } from '@/core/lootTypes';
 import type { Vector2 } from '@/core/types';
 import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
-import { ENEMY_STATUS_RESISTANCE, PLAYER_COMBAT } from '@/config/combatConfig';
+import { ENEMY_STATUS_RESISTANCE, PLAYER_COMBAT, PLAYER_STATUS_RESISTANCE } from '@/config/combatConfig';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import { ITEM_DEFINITIONS, ITEM_EFFECTS, ITEM_POOL, STAT_LIMITS } from '@/config/lootConfig';
 import { AttackCycle } from '@/systems/AttackCycle';
@@ -142,6 +142,16 @@ describe('StatusEffects', () => {
     expect(status.takeBurnDamage(2000)).toBe(9); // tyknięcia 1000, 1500, 2000
     expect(status.takeBurnDamage(5000)).toBe(0);
     expect(status.isBurning(2000)).toBe(false);
+  });
+
+  it('trucizna (krok 27): tyka jak podpalenie, niezależnie od niego', () => {
+    const status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
+    status.apply({ poison: { tickDamage: 3, tickMs: 500, durationMs: 2000 }, burn: { tickDamage: 5, tickMs: 500, durationMs: 1000 } }, 0);
+    expect(status.isPoisoned(0)).toBe(true);
+    expect(status.takePoisonDamage(2000)).toBe(12);
+    expect(status.takeBurnDamage(2000)).toBe(10);
+    expect(status.isPoisoned(2000)).toBe(false);
+    expect(status.takePoisonDamage(5000)).toBe(0);
   });
 
   it('ponowne podpalenie odświeża czas, ale nie przyspiesza tykania', () => {

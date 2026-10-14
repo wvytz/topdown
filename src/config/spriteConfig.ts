@@ -170,10 +170,10 @@ export const SPRITE_SHEETS = {
   // kolumny 0–3 chód, 4–7 złożenie pajączka (wylęga się 30 px za pivotem w kolumnie 7).
   spiderQueen: {
     key: 'sheet-spider-queen',
-    url: 'assets/sprites/spider-queen_move-birth.png',
+    url: 'assets/sprites/spider-queen_move-birth-lash.png',
     frameWidth: 96,
     frameHeight: 96,
-    sheetWidth: 768,
+    sheetWidth: 1152,
     sheetHeight: 768,
     directions: 8,
     fps: SPRITE_FPS,
@@ -181,6 +181,8 @@ export const SPRITE_SHEETS = {
       walk: { frames: [0, 1, 2, 3], loop: true },
       // Czas złożenia dopasowujemy do wylęgu z planu ataku — pajączek pojawia się na ostatniej klatce.
       birth: { frames: [4, 5, 6, 7], loop: false },
+      // Krok 27: smagnięcie przednimi nogami — zamach, uniesienie, cios; ostatnia klatka w chwili uderzenia.
+      lash: { frames: [8, 9, 10, 11], loop: false },
     },
   },
   // Śmierć Matki Pająków (krok 24, tools/spider_sprites.py): 96×96, 8 kierunków (zostaje kierunek z chwili
@@ -354,9 +356,8 @@ export const ENEMY_PROJECTILE_VISUALS: Readonly<Partial<Record<EnemyVariant, Ene
 };
 
 export interface BossVisual extends EnemyVisual {
-  readonly attack: string;
-  /** Ataki z animacją `attack`; pozostałe (np. uderzenie Strażnika) mają tylko telegraf. */
-  readonly attackKinds: readonly BossAttackKind[];
+  /** Animacja przed atakiem danego rodzaju; ataki bez wpisu (np. uderzenie Strażnika) mają tylko telegraf. */
+  readonly attacks: Readonly<Partial<Record<BossAttackKind, string>>>;
   /** Trwały ślad w miejscu śmierci bossa. */
   readonly deathDecal: CombatDecalKind;
   /** Animacja śmierci (arkusz kierunkowy); brak = tylko błysk i ślad. Nagroda czeka na jej koniec. */
@@ -366,21 +367,19 @@ export interface BossVisual extends EnemyVisual {
 /**
  * Wygląd bossów. Strażnik (Sludge King) pluje przed atakami z pociskami / strefami na odległość;
  * uderzenie wokół siebie nie ma plucia — jego telegraf jest czytelny sam w sobie.
- * Matka Pająków składa pajączki — animacja złożenia kończy się w chwili wylęgu.
+ * Matka Pająków: zew (złożenie) kończy się z pierwszym cieniem wylęgu, smagnięcie — w chwili uderzenia.
  */
 export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
   [BossId.FloorGuardian]: {
     sheet: 'sludgeKing',
     move: 'move',
-    attack: 'spit',
-    attackKinds: [BossAttackKind.Nova, BossAttackKind.Barrage],
+    attacks: { [BossAttackKind.Nova]: 'spit', [BossAttackKind.Barrage]: 'spit' },
     deathDecal: 'slime',
   },
   [BossId.SpiderQueen]: {
     sheet: 'spiderQueen',
     move: 'walk',
-    attack: 'birth',
-    attackKinds: [BossAttackKind.Brood],
+    attacks: { [BossAttackKind.Brood]: 'birth', [BossAttackKind.Lash]: 'lash' },
     deathDecal: 'splat',
     death: { sheet: 'spiderQueenDeath', animation: 'die' },
   },
@@ -416,6 +415,32 @@ export const BOSS_WEB_VISUAL = {
   patch: { sheet: 'bossWeb', grow: 'grow', shimmer: 'shimmer' },
   /** Wysokość łuku lotu kłębu (px, czysto wizualnie). */
   arcHeight: 36,
+} as const;
+
+/** Królewski skok Matki Pająków (krok 26) — czysto wizualnie. */
+export const BOSS_LEAP_VISUAL = {
+  /** Wysokość łuku lotu (px). */
+  arcHeight: 44,
+  /** Skala sprite'a w szczycie lotu (bliżej kamery). */
+  apexScale: 1.18,
+  /** Przysiad przed skokiem: spłaszczenie (scaleX, scaleY). */
+  crouch: { x: 1.08, y: 0.88 },
+  /** Cień pod lecącą królową (elipsa, px). */
+  shadow: { width: 52, height: 22 },
+  /** Wstrząs kamery przy lądowaniu. */
+  landShake: { durationMs: 220, intensity: 0.008 },
+} as const;
+
+/** Wylęg z sufitu (krok 26): pajączek widoczny na nici w końcówce cienia; promień pełnego cienia. */
+export const SPIDERLING_DROP_VISUAL = {
+  fallMs: 220,
+  shadowRadius: 10,
+} as const;
+
+/** Wejście bossa na arenę i wściekłość — wstrząs kamery (królewski zew Matki Pająków). */
+export const BOSS_PRESENCE_VISUAL = {
+  introShake: { durationMs: 450, intensity: 0.006 },
+  enrageShake: { durationMs: 600, intensity: 0.01 },
 } as const;
 
 /** Pocisk bossa (fale Novy). */

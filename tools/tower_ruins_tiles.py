@@ -1259,7 +1259,7 @@ SPRITES = {
     'glob': ('sludge-king_glob.png', 16, None, None),
     # Pajęcze leże (krok 23a): bohater z mieczem (krok 21), Matka Pająków i pajączki (krok 20b/22).
     'barbarian_sword': ('blond-barbarian_walk-attack.png', 48, '#1b1a22', 'Barbarzyńca'),
-    'queen': ('spider-queen_move-birth.png', 96, '#1b1a22', 'Matka Pająków'),
+    'queen': ('spider-queen_move-birth-lash.png', 96, '#1b1a22', 'Matka Pająków'),
     'spiderling': ('spiderling_walk-prime.png', 48, '#1b1a22', 'Pajączek'),
     # Wrogowie leża (krok 23b, tools/lair_enemies.py).
     'cave_spider': ('cave-spider_walk.png', 48, '#1b1a22', 'Pająk'),

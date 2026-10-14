@@ -1,5 +1,5 @@
 import type { BossAttackPlan, BossDefinition } from '@/core/bossTypes';
-import { BossPhase } from '@/core/bossTypes';
+import { BossAttackKind, BossPhase } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import type { MovementIntent, Vector2 } from '@/core/types';
 import { directionTo, distance } from '@/systems/CombatMath';
@@ -17,6 +17,8 @@ export interface BossBrainInput {
 
 export interface BossDecision {
   readonly move: MovementIntent;
+  /** Prędkość ruchu (px/s) — sprint z daleka, chód z bliska. */
+  readonly speed: number;
   /** Nowy atak do wykonania (tylko w klatce, w której się zaczyna). */
   readonly newAttack: BossAttackPlan | null;
   readonly enraged: boolean;
@@ -34,6 +36,7 @@ export class BossBrain {
   private patternIndex = 0;
   private nextAttackAt = Infinity;
   private currentAttack: BossAttackPlan | null = null;
+  private nextLashAt = 0;
 
   constructor(
     private readonly definition: BossDefinition,
@@ -60,38 +63,51 @@ export class BossBrain {
 
   think(input: BossBrainInput): BossDecision {
     const enraged = input.hpRatio <= this.definition.enrage.hpThreshold;
-    if (this.phase === BossPhase.Dormant) return { move: STOP, newAttack: null, enraged };
+    const stand = (newAttack: BossAttackPlan | null): BossDecision => ({ move: STOP, speed: 0, newAttack, enraged });
+    if (this.phase === BossPhase.Dormant) return stand(null);
 
-    if (this.currentAttack && input.now < this.currentAttack.endsAt) {
-      return { move: STOP, newAttack: null, enraged };
-    }
+    if (this.currentAttack && input.now < this.currentAttack.endsAt) return stand(null);
     this.currentAttack = null;
 
     if (input.now >= this.nextAttackAt) {
       const kind = this.definition.pattern[this.patternIndex % this.definition.pattern.length];
       this.patternIndex++;
       if (kind !== undefined) {
-        const plan = planBossAttack({
-          kind,
-          definition: this.definition,
-          self: input.self,
-          target: input.target,
-          now: input.now,
-          enraged,
-          rng: this.rng,
-          summonsAlive: input.summonsAlive ?? 0,
-        });
+        const plan = this.plan(kind, input, enraged);
         const rest = this.definition.restBetweenAttacksMs * (enraged ? this.definition.enrage.restMultiplier : 1);
         this.currentAttack = plan;
         this.nextAttackAt = plan.endsAt + rest;
-        return { move: STOP, newAttack: plan, enraged };
+        return stand(plan);
       }
     }
 
-    const move =
-      distance(input.self, input.target) > this.definition.engageDistance
-        ? directionTo(input.self, input.target)
-        : STOP;
-    return { move, newAttack: null, enraged };
+    // Smagnięcie poza wzorem: gracz w zasięgu nóg i minął odstęp. Atak ze wzoru czeka do końca smagnięcia.
+    const gap = distance(input.self, input.target);
+    const lash = this.definition.lash;
+    if (lash && gap <= lash.triggerRange && input.now >= this.nextLashAt) {
+      const plan = this.plan(BossAttackKind.Lash, input, enraged);
+      this.currentAttack = plan;
+      this.nextLashAt = plan.endsAt + lash.cooldownMs;
+      this.nextAttackAt = Math.max(this.nextAttackAt, plan.endsAt);
+      return stand(plan);
+    }
+
+    if (gap <= this.definition.engageDistance) return stand(null);
+    const sprint = this.definition.sprint;
+    const speed = sprint && gap > sprint.distance ? sprint.speed : this.definition.moveSpeed;
+    return { move: directionTo(input.self, input.target), speed, newAttack: null, enraged };
+  }
+
+  private plan(kind: BossAttackKind, input: BossBrainInput, enraged: boolean): BossAttackPlan {
+    return planBossAttack({
+      kind,
+      definition: this.definition,
+      self: input.self,
+      target: input.target,
+      now: input.now,
+      enraged,
+      rng: this.rng,
+      summonsAlive: input.summonsAlive ?? 0,
+    });
   }
 }

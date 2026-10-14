@@ -92,6 +92,10 @@ export interface HudToast {
 
 export interface BossHudData {
   readonly name: string;
+  /** Tytuł na planszy otwierającej walkę (null = bez planszy). */
+  readonly title: string | null;
+  /** Dopisek przy imieniu po wściekłości. */
+  readonly enragedLabel: string;
   readonly hp: number;
   readonly maxHp: number;
   readonly enraged: boolean;

@@ -1,4 +1,4 @@
-import type { StatusApplication, StatusResistance } from '@/core/combatTypes';
+import type { BurnEffect, StatusApplication, StatusResistance } from '@/core/combatTypes';
 
 /** Wynik nałożenia statusów — encja może zareagować (np. boss odkłada atak o czas ogłuszenia). */
 export interface StatusApplyResult {
@@ -7,14 +7,47 @@ export interface StatusApplyResult {
 }
 
 /**
- * Statusy na celu: podpalenie, spowolnienie, ogłuszenie. Czas przekazujemy jawnie (`now`, ms).
+ * Obrażenia rozłożone w czasie (podpalenie, trucizna): ponowne nałożenie przedłuża czas,
+ * silniejsze tyknięcie zastępuje słabsze.
+ */
+class DamageOverTime {
+  private until = -Infinity;
+  private tickDamage = 0;
+  private tickMs = 0;
+  private nextAt = Infinity;
+
+  apply(effect: BurnEffect, now: number): void {
+    if (effect.tickDamage <= 0) return;
+    const wasActive = this.isActive(now);
+    if (!wasActive) this.nextAt = now + effect.tickMs;
+    this.until = Math.max(this.until, now + effect.durationMs);
+    this.tickDamage = wasActive ? Math.max(this.tickDamage, effect.tickDamage) : effect.tickDamage;
+    this.tickMs = effect.tickMs;
+  }
+
+  /** Obrażenia należne do chwili `now` (nadrabia tyknięcia, jeśli klatki były rzadkie). */
+  takeDamage(now: number): number {
+    let damage = 0;
+    while (this.nextAt <= now && this.nextAt <= this.until) {
+      damage += this.tickDamage;
+      this.nextAt += this.tickMs;
+    }
+    if (now >= this.until) this.nextAt = Infinity;
+    return damage;
+  }
+
+  isActive(now: number): boolean {
+    return now < this.until;
+  }
+}
+
+/**
+ * Statusy na celu: podpalenie, trucizna, spowolnienie, ogłuszenie. Czas przekazujemy jawnie (`now`, ms).
  * Ten sam status się nie sumuje — silniejszy lub dłuższy zastępuje słabszy.
  */
 export class StatusEffects {
-  private burnUntil = -Infinity;
-  private burnTickDamage = 0;
-  private burnTickMs = 0;
-  private nextBurnAt = Infinity;
+  private readonly burn = new DamageOverTime();
+  private readonly poison = new DamageOverTime();
   private slowUntil = -Infinity;
   private slowPct = 0;
   private stunUntil = -Infinity;
@@ -25,13 +58,8 @@ export class StatusEffects {
   apply(status: StatusApplication | undefined, now: number): StatusApplyResult {
     if (!status) return { stunnedMs: 0 };
 
-    if (status.burn && status.burn.tickDamage > 0) {
-      const wasBurning = this.isBurning(now);
-      if (!wasBurning) this.nextBurnAt = now + status.burn.tickMs;
-      this.burnUntil = Math.max(this.burnUntil, now + status.burn.durationMs);
-      this.burnTickDamage = wasBurning ? Math.max(this.burnTickDamage, status.burn.tickDamage) : status.burn.tickDamage;
-      this.burnTickMs = status.burn.tickMs;
-    }
+    if (status.burn) this.burn.apply(status.burn, now);
+    if (status.poison) this.poison.apply(status.poison, now);
 
     if (status.slow && status.slow.pct > 0) {
       const pct = Math.min(1, status.slow.pct * this.resistance.slowMultiplier);
@@ -52,13 +80,12 @@ export class StatusEffects {
 
   /** Obrażenia od podpalenia należne do chwili `now` (nadrabia tyknięcia, jeśli klatki były rzadkie). */
   takeBurnDamage(now: number): number {
-    let damage = 0;
-    while (this.nextBurnAt <= now && this.nextBurnAt <= this.burnUntil) {
-      damage += this.burnTickDamage;
-      this.nextBurnAt += this.burnTickMs;
-    }
-    if (now >= this.burnUntil) this.nextBurnAt = Infinity;
-    return damage;
+    return this.burn.takeDamage(now);
+  }
+
+  /** Obrażenia od trucizny należne do chwili `now`. */
+  takePoisonDamage(now: number): number {
+    return this.poison.takeDamage(now);
   }
 
   /** Mnożnik prędkości ruchu (1 = bez spowolnienia). */
@@ -67,7 +94,11 @@ export class StatusEffects {
   }
 
   isBurning(now: number): boolean {
-    return now < this.burnUntil;
+    return this.burn.isActive(now);
+  }
+
+  isPoisoned(now: number): boolean {
+    return this.poison.isActive(now);
   }
 
   isSlowed(now: number): boolean {

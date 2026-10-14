@@ -54,9 +54,13 @@ export interface StunEffect {
   readonly durationMs: number;
 }
 
-/** Efekty statusu nakładane trafieniem (z przedmiotów gracza). */
+/** Trucizna (krok 27, Matka Pająków): obrażenia co `tickMs` przez `durationMs` — mechanika jak podpalenie. */
+export type PoisonEffect = BurnEffect;
+
+/** Efekty statusu nakładane trafieniem (z przedmiotów gracza, trucizna z ciosu Matki Pająków). */
 export interface StatusApplication {
   readonly burn?: BurnEffect;
+  readonly poison?: PoisonEffect;
   readonly slow?: SlowEffect;
   readonly stun?: StunEffect;
 }

@@ -17,6 +17,11 @@ const TEXT_Y = CHARGES_Y + CHARGE_HEIGHT + 4;
 const BOSS_BAR_WIDTH = 420;
 const BOSS_BAR_HEIGHT = 12;
 const BOSS_BAR_Y = 470;
+/** Plansza bossa (wejście na arenę, wściekłość): czas, pojawianie się i wygasanie. */
+const BANNER_MS = 3000;
+const BANNER_FADE_IN_MS = 300;
+const BANNER_FADE_OUT_MS = 900;
+const BANNER_Y = 150;
 /** Podium (3) + separator + wiersz bieżącego runu. */
 const DEATH_ROWS = 5;
 
@@ -43,6 +48,11 @@ export class HudScene extends Phaser.Scene {
   private goldText!: Phaser.GameObjects.Text;
   private itemsText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
+  private bannerTitle!: Phaser.GameObjects.Text;
+  private bannerSubtitle!: Phaser.GameObjects.Text;
+  private bannerStartedAt = -Infinity;
+  /** Co już ogłoszono w tej walce (przebudzenie, wściekłość) — plansza pokazuje się raz. */
+  private bannerBoss: BossHudData | null = null;
 
   constructor() {
     super(SceneKey.Hud);
@@ -82,6 +92,15 @@ export class HudScene extends Phaser.Scene {
       .text(this.scale.width / 2, BOSS_BAR_Y - 22, '', { ...style, fontSize: '15px', color: '#ffb0a0' })
       .setOrigin(0.5, 0)
       .setVisible(false);
+
+    this.bannerTitle = this.add
+      .text(this.scale.width / 2, BANNER_Y, '', { ...style, fontSize: '30px', color: '#f0d27a', strokeThickness: 6 })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    this.bannerSubtitle = this.add
+      .text(this.scale.width / 2, BANNER_Y + 30, '', { ...style, fontSize: '16px', color: '#d8c0ff' })
+      .setOrigin(0.5)
+      .setAlpha(0);
 
     const help = 'WASD — ruch · LPM — atak · PPM — strzał · Spacja — dash · E — kapliczka';
     const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
@@ -124,6 +143,31 @@ export class HudScene extends Phaser.Scene {
 
     this.updateDeathPanel(hud.death);
     this.drawBossBar(hud.boss);
+    this.updateBanner(hud.boss);
+  }
+
+  /** Plansza: imię i tytuł bossa przy przebudzeniu, okrzyk przy wściekłości (tylko bossowie z tytułem). */
+  private updateBanner(boss: BossHudData | null): void {
+    const now = this.time.now;
+    const previous = this.bannerBoss;
+    this.bannerBoss = boss;
+    if (boss?.title) {
+      if (!previous) this.showBanner(boss.name, boss.title, now);
+      else if (boss.enraged && !previous.enraged) this.showBanner(boss.enragedLabel, boss.name, now);
+    }
+    const age = now - this.bannerStartedAt;
+    const alpha =
+      age < 0 || age >= BANNER_MS
+        ? 0
+        : Math.min(1, age / BANNER_FADE_IN_MS, (BANNER_MS - age) / BANNER_FADE_OUT_MS);
+    this.bannerTitle.setAlpha(alpha);
+    this.bannerSubtitle.setAlpha(alpha);
+  }
+
+  private showBanner(title: string, subtitle: string, now: number): void {
+    this.bannerTitle.setText(title);
+    this.bannerSubtitle.setText(subtitle);
+    this.bannerStartedAt = now;
   }
 
   /** Ładunki strzału: pełne segmenty + częściowo wypełniony segment, który się ładuje. */
@@ -192,7 +236,7 @@ export class HudScene extends Phaser.Scene {
 
     const x = (this.scale.width - BOSS_BAR_WIDTH) / 2;
     const ratio = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
-    this.bossNameText.setText(boss.enraged ? `${boss.name} — wściekły!` : boss.name);
+    this.bossNameText.setText(boss.enraged ? `${boss.name} — ${boss.enragedLabel}` : boss.name);
     this.bars.fillStyle(0x000000, 0.6).fillRect(x - 2, BOSS_BAR_Y - 2, BOSS_BAR_WIDTH + 4, BOSS_BAR_HEIGHT + 4);
     this.bars.fillStyle(0x3a1010, 1).fillRect(x, BOSS_BAR_Y, BOSS_BAR_WIDTH, BOSS_BAR_HEIGHT);
     this.bars.fillStyle(boss.enraged ? 0xff5a36 : 0xc0392b, 1).fillRect(x, BOSS_BAR_Y, BOSS_BAR_WIDTH * ratio, BOSS_BAR_HEIGHT);

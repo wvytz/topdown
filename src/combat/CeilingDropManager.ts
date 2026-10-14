@@ -1,12 +1,12 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import type { Vector2 } from '@/core/types';
 import { ENEMY_SCALING } from '@/config/combatConfig';
-import { RENDER_DEPTH } from '@/config/renderLayers';
-import { ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { ENEMY_VISUALS } from '@/config/spriteConfig';
+import { CeilingFallView } from '@/combat/CeilingFallView';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
 import type { CombatEffects } from '@/effects/CombatEffects';
@@ -16,7 +16,6 @@ import type { Player } from '@/entities/Player';
 import type { CeilingDrop, CeilingDropConfig } from '@/systems/CeilingDrops';
 import { CeilingDropPlanner, dropShadowRadius } from '@/systems/CeilingDrops';
 import { knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
-import { sheetFrameIndex } from '@/systems/Facing';
 
 export interface CeilingDropDeps {
   readonly scene: Phaser.Scene;
@@ -32,21 +31,8 @@ export interface CeilingDropDeps {
 
 interface PendingDrop {
   readonly drop: CeilingDrop;
-  readonly shadow: Phaser.GameObjects.Graphics;
-  readonly faller: Phaser.GameObjects.Image;
-  readonly thread: Phaser.GameObjects.Graphics;
+  readonly view: CeilingFallView;
 }
-
-/** Kolor cienia = obrys postaci (STYLEGUIDE §6), stała alfa cieni. */
-const SHADOW_COLOR = 0x1b1a22;
-const SHADOW_ALPHA = 0.4;
-const TELEGRAPH_COLOR = 0xff4040;
-/** Biała nić, na której spada pająk (paleta leża). */
-const THREAD_COLOR = 0xe9e3f0;
-/** Wysokość (px), z której zaczyna się widoczny spadek. */
-const FALL_HEIGHT = 64;
-/** Stopa sprite'a na środku cienia (pająk patrzy w dół — wiersz S). */
-const FALLING_ROW = 4;
 
 /**
  * Pająki z sufitu (krok 23c): planer (czysty) decyduje kiedy i gdzie; tutaj rosnący cień z czerwonym
@@ -100,42 +86,18 @@ export class CeilingDropManager {
   }
 
   private start(drop: CeilingDrop): void {
-    const { scene } = this.deps;
     const visual = ENEMY_VISUALS[this.deps.enemies.variantOf(EnemyType.Rusher)];
-    const sheet = SPRITE_SHEETS[visual.sheet];
-    const frame = sheetFrameIndex(FALLING_ROW, 0, sheet.sheetWidth / sheet.frameWidth);
-    this.pending.push({
-      drop,
-      shadow: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph),
-      thread: scene.add.graphics().setDepth(RENDER_DEPTH.projectile),
-      faller: scene.add.image(drop.position.x, drop.position.y, sheet.key, frame).setDepth(RENDER_DEPTH.projectile).setVisible(false),
-    });
+    this.pending.push({ drop, view: new CeilingFallView(this.deps.scene, drop.position, visual.sheet) });
   }
 
-  private draw({ drop, shadow, faller, thread }: PendingDrop, now: number): void {
-    const { x, y } = drop.position;
-    const r = dropShadowRadius(drop, now);
-    shadow.clear();
-    shadow.lineStyle(1, TELEGRAPH_COLOR, 0.6).strokeCircle(x, y, drop.radius);
-    // Cień w rzucie z góry: elipsa spłaszczona jak cienie postaci.
-    shadow.fillStyle(SHADOW_COLOR, SHADOW_ALPHA).fillEllipse(x, y, r * 2, r * 1.3);
-
+  private draw({ drop, view }: PendingDrop, now: number): void {
     const { fallMs } = this.deps.config;
     const fallStart = drop.landAt - fallMs;
-    thread.clear();
-    if (now < fallStart) {
-      faller.setVisible(false);
-      return;
-    }
-    const height = Math.round(FALL_HEIGHT * (1 - (now - fallStart) / fallMs));
-    faller.setVisible(true).setPosition(Math.round(x), Math.round(y - height));
-    thread.lineStyle(1, THREAD_COLOR, 0.8).lineBetween(Math.round(x), Math.round(y - height - FALL_HEIGHT), Math.round(x), Math.round(y - height));
+    view.draw(dropShadowRadius(drop, now), drop.radius, now < fallStart ? null : (now - fallStart) / fallMs);
   }
 
-  private land({ drop, shadow, faller, thread }: PendingDrop, now: number): void {
-    shadow.destroy();
-    thread.destroy();
-    faller.destroy();
+  private land({ drop, view }: PendingDrop, now: number): void {
+    view.destroy();
     const { player, effects, onPlayerHit, enemies } = this.deps;
     effects.impact(drop.position.x, drop.position.y, drop.radius);
     if (!player.isDead && Math.hypot(player.x - drop.position.x, player.y - drop.position.y) <= drop.radius + player.radius) {

@@ -1,4 +1,5 @@
 /** Typy domenowe bossa — czyste dane, bez zależności od Phasera. */
+import type { PoisonEffect, StatusApplication } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 
 export enum BossAttackKind {
@@ -12,6 +13,10 @@ export enum BossAttackKind {
   Brood = 'brood',
   /** Rzut siecią (Matka Pająków, krok 25): lepka sieć ląduje za plecami gracza i się rozrasta. */
   Web = 'web',
+  /** Królewski skok (Matka Pająków, krok 26): przysiad, skok łukiem na miejsce gracza, fala przy lądowaniu. */
+  Leap = 'leap',
+  /** Smagnięcie nogami (Matka Pająków, krok 27): cios wręcz z bliska, zatruwa gracza. */
+  Lash = 'lash',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -57,18 +62,33 @@ export interface BarrageAttackDefinition extends BaseBossAttackDefinition {
   readonly intervalMs: number;
 }
 
+/**
+ * Wylęg z sufitu (krok 26): boss wydaje zew, potem pajączki spadają po kolei pierścieniem wokół gracza.
+ * Każdy cień pojawia się wokół AKTUALNEJ pozycji gracza (pierścień „goni” uciekającego).
+ */
 export interface BroodAttackDefinition {
   /** Ile pajączków na jeden wylęg (po wściekłości jeden więcej). */
   readonly count: number;
   /** Limit żywych pajączków — wylęg dokłada tylko do limitu. */
   readonly maxAlive: number;
-  /** Czas złożenia (animacja wylęgu): pajączki pojawiają się na jego końcu. */
+  /** Czas zewu (animacja złożenia): pierwszy cień pojawia się na jego końcu. */
   readonly birthMs: number;
-  /** Odległość miejsca wylęgu za bossem (od strony przeciwnej do gracza). */
-  readonly spawnDistance: number;
-  /** Rozrzut kolejnych pajączków wokół kierunku „za bossem” (stopnie, cały wachlarz). */
-  readonly spreadDeg: number;
+  /** Odległość miejsc lądowania od gracza (px). */
+  readonly ringRadius: number;
+  /** Losowe odchylenie każdego miejsca od równego podziału pierścienia (stopnie, ±). */
+  readonly ringJitterDeg: number;
+  /** Odstęp między kolejnymi zrzutami. */
+  readonly dropIntervalMs: number;
+  /** Czas rosnącego cienia do lądowania pajączka. */
+  readonly fallMs: number;
   readonly recoveryMs: number;
+}
+
+/** Królewski skok: przysiad (telegraf strefy lądowania), lot łukiem, fala uderzeniowa przy lądowaniu. */
+export interface LeapAttackDefinition extends BaseBossAttackDefinition {
+  readonly flightMs: number;
+  /** Promień fali przy lądowaniu (strefa obrażeń). */
+  readonly radius: number;
 }
 
 /**
@@ -94,6 +114,18 @@ export interface WebAttackDefinition {
   /** Spowolnienie odnawiane co klatkę w plamie (`durationMs` = klejenie po wyjściu). */
   readonly slow: { readonly pct: number; readonly durationMs: number };
   readonly recoveryMs: number;
+}
+
+/**
+ * Smagnięcie nogami: atak poza wzorem — boss uderza, gdy gracz jest bliżej niż `triggerRange`
+ * i minął `cooldownMs`. Strefa przed bossem (środek `reach` px w stronę gracza, promień `radius`).
+ */
+export interface LashAttackDefinition extends BaseBossAttackDefinition {
+  readonly triggerRange: number;
+  readonly reach: number;
+  readonly radius: number;
+  readonly cooldownMs: number;
+  readonly poison: PoisonEffect;
 }
 
 /** Pajączek-kamikaze: biegnie do gracza, po zapłonie wybucha. Ginie od jednego trafienia. */
@@ -122,12 +154,18 @@ export interface BossEnrageConfig {
 export interface BossDefinition {
   readonly id: BossId;
   readonly name: string;
+  /** Tytuł pod imieniem na planszy otwierającej walkę (HUD); brak = bez planszy. */
+  readonly title?: string;
+  /** Dopisek przy imieniu na pasku HP po wściekłości (domyślnie „wściekły!”). */
+  readonly enragedLabel?: string;
   readonly radius: number;
   readonly color: number;
   readonly maxHp: number;
   readonly moveSpeed: number;
   /** Boss podchodzi do gracza, dopóki nie znajdzie się bliżej niż ten dystans. */
   readonly engageDistance: number;
+  /** Sprint (krok 27): dalej niż `distance` od gracza boss biegnie z prędkością `speed`. */
+  readonly sprint?: { readonly speed: number; readonly distance: number };
   readonly openingDelayMs: number;
   readonly restBetweenAttacksMs: number;
   /** Sekwencja ataków powtarzana w kółko (wg GDD: sekwencyjne ataki obszarowe). */
@@ -138,6 +176,8 @@ export interface BossDefinition {
   readonly barrage?: BarrageAttackDefinition;
   readonly brood?: BroodAttackDefinition;
   readonly web?: WebAttackDefinition;
+  readonly leap?: LeapAttackDefinition;
+  readonly lash?: LashAttackDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -151,6 +191,8 @@ export interface AreaStrike {
   readonly impactAt: number;
   readonly damage: number;
   readonly knockback: number;
+  /** Status nakładany trafieniem (trucizna smagnięcia). */
+  readonly status?: StatusApplication;
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -167,10 +209,23 @@ export interface ProjectileBurst {
   readonly fireAt: number;
 }
 
-/** Pajączek do wypuszczenia w chwili `at` w miejscu `position`. */
+/**
+ * Pajączek spadający z sufitu: w `telegraphStartAt` cień pojawia się w miejscu gracz + `offset`
+ * (pozycja gracza z tej chwili), w `at` pajączek ląduje.
+ */
 export interface SummonSpawn {
-  readonly position: Vector2;
+  readonly offset: Vector2;
+  readonly telegraphStartAt: number;
   readonly at: number;
+}
+
+/** Skok bossa `from` → `to` w [`launchAt`, `landAt`]; uderzenie przy lądowaniu to osobna strefa w `strikes`. */
+export interface BossLeap {
+  readonly from: Vector2;
+  readonly to: Vector2;
+  readonly telegraphStartAt: number;
+  readonly launchAt: number;
+  readonly landAt: number;
 }
 
 /** Rzucona sieć: lot `from` → `to` w [`launchAt`, `landAt`], potem plama rośnie i leży do `expiresAt`. */
@@ -194,6 +249,7 @@ export interface BossAttackPlan {
   readonly bursts: readonly ProjectileBurst[];
   readonly spawns: readonly SummonSpawn[];
   readonly webs: readonly WebShot[];
+  readonly leap: BossLeap | null;
   /** Kiedy boss może znów się ruszać. */
   readonly endsAt: number;
 }

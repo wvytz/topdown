@@ -7,7 +7,9 @@ Użycie (z katalogu głównego repozytorium):
   python tools/spider_sprites.py --preview tools/out   # dodatkowo podglądy 4x na podłodze z palety C
 
 Arkusze (STYLEGUIDE §2, §8, §10):
-  spider-queen_move-birth.png  96x96, 8 kierunków; kolumny 0–3 chód, 4–7 złożenie pajączka (wylęga się w kolumnie 7)
+  spider-queen_move-birth-lash.png  96x96, 8 kierunków; kolumny 0–3 chód, 4–7 złożenie pajączka (wylęga się
+                               w kolumnie 7), 8–11 smagnięcie przednimi nogami (krok 27: zamach, uniesienie, cios
+                               jadowymi pazurami — ostatnia klatka = chwila uderzenia)
   spiderling_walk-prime.png    48x48, 8 kierunków; kolumny 0–3 bieg, 4–7 „zapłon” przed wybuchem (bez pętli)
   spiderling_burst.png         48x48, bez kierunków; 4 klatki wybuchu (bez pętli)
   spider-queen_death.png       96x96, 8 kierunków (krok 24); 0 wzdrygnięcie, 1–3 nogi się podkulają, jaja gasną,
@@ -39,6 +41,8 @@ CHITIN = (ok(.17, .020, 290), ok(.23, .026, 330), ok(.30, .032, 10), ok(.39, .03
 EYE = (ok(.50, .170, 25), ok(.64, .200, 28), ok(.86, .070, 60))
 # Akcent 2: jaja i odwłok pajączka — ogień pochodni (FLAME): to, co świeci, wybucha.
 EGG = FLAME
+# Krok 27: jad na pazurach smagnięcia — upiorna zieleń leża (paleta „pajeczy”), ta sama co kokony i pajęczyny.
+VENOM = trt.PALETTES['pajeczy'].flame
 
 
 # ---------------- narzędzia rysunku ----------------
@@ -121,8 +125,21 @@ QUEEN_SKULL = [  # znak na odwłoku (kość) — dominująca cecha obok jaj, 9x9
 QUEEN_EGGS = [(-12, 10), (-6, 14), (0, 15.5), (6, 14), (12, 10)]  # względem środka odwłoka
 
 
+# Smagnięcie (krok 27): przednia noga (kolano, stopa) w kolejnych klatkach; przyczep bez zmian.
+LASH_FRONT_LEG = [
+    ((70, 24), (73, 19)),   # 8: zamach — nogi szeroko na boki
+    ((63, 18), (65, 15)),   # 9: uniesienie nad głowę (skrót perspektywy: noga krótsza)
+    ((61, 16), (56, 12)),   # 10: cios — pazury schodzą przed kły
+    ((58, 18), (52, 13)),   # 11: uderzenie — pazury skrzyżowane przed paszczą
+]
+
+
 def queen_frame(f):
-    """f 0–3: chód (dwie grupy nóg naprzemiennie), f 4–7: złożenie pajączka."""
+    """f 0–3: chód (dwie grupy nóg naprzemiennie), f 4–7: złożenie pajączka, f 8–11: smagnięcie."""
+    if f >= 8:
+        i = f - 8
+        return queen_pose(fangs=(1, 1, 2, 2)[i], splay=(1, 0, 0, 0)[i], glow=(0, 0, 1, 1)[i],
+                          front_leg=LASH_FRONT_LEG[i], venom=i >= 2)
     walk = f < 4
     return queen_pose(
         swell=(0, 0, 0, 0, 1, 2, -1, 0)[f],           # odwłok nabrzmiewa i się kurczy
@@ -148,9 +165,10 @@ def curl_leg(pts, t, c):
 
 
 def queen_pose(swell=0, glow=0, splay=0, fangs=0, step=0, spinnerets=False, baby=False,
-               curl=0.0, eyes=1, eggs='whole', ichor=0):
+               curl=0.0, eyes=1, eggs='whole', ichor=0, front_leg=None, venom=False):
     """Poza Matki Pająków na N. curl 0–1: podkulenie nóg; eyes 0 = zgasłe; eggs: whole/dim/broken;
-    ichor: promień kałuży posoki pod ciałem (0 = brak)."""
+    ichor: promień kałuży posoki pod ciałem (0 = brak); front_leg: (kolano, stopa) przedniej nogi
+    (smagnięcie, obie strony lustrzanie); venom: pazury przednich nóg w kolorze jadu."""
     img = Img(BOSS, BOSS)
     c = BOSS / 2
 
@@ -170,14 +188,17 @@ def queen_pose(swell=0, glow=0, splay=0, fangs=0, step=0, spinnerets=False, baby
             k2 = (k[0] + sx, k[1] + dy * .5 - (splay if i == 0 else 0))
             t2 = (t[0] + sx, t[1] + dy + (splay if i == 3 else 0) - (splay if i == 0 else 0))
             pts = [a, k2, t2]
+            if front_leg and i == 0:
+                pts = [a, *front_leg]
             if curl:
                 pts = curl_leg(pts, curl, c)
             if side < 0:
                 pts = [mirror(p, c) for p in pts]
-            claw = lerp(pts[1], pts[2], .78)
+            # Jadowy pazur smagnięcia dłuższy — czytelny w ruchu.
+            claw = lerp(pts[1], pts[2], .5 if venom and i == 0 else .78)
             stroke(img, [pts[0], pts[1]], 3.2, CHITIN[2], edge=CHITIN[3])
             stroke(img, [pts[1], claw], 2.4, CHITIN[2])
-            stroke(img, [claw, pts[2]], 2.2, BONE[1])
+            stroke(img, [claw, pts[2]], 2.2, VENOM[2] if venom and i == 0 else BONE[1])
             img.put(int(pts[1][0]), int(pts[1][1]), CHITIN[0])  # staw kolana — najciemniejszy ton materiału
 
     # Odwłok
@@ -431,7 +452,7 @@ def directional_sheet(size, frame_fn, cols=8):
 
 
 def build():
-    queen, qf = directional_sheet(BOSS, queen_frame)
+    queen, qf = directional_sheet(BOSS, queen_frame, cols=12)
     death, df = directional_sheet(BOSS, queen_death_frame)
     baby, bf = directional_sheet(SMALL, spiderling_frame)
     burst = Img(SMALL * 4, SMALL)
@@ -441,7 +462,7 @@ def build():
         burst.blit(img, f * SMALL, 0)
         uf.append((f'burst{f}', img))
     return {
-        'spider-queen_move-birth.png': (queen, qf, BOSS),
+        'spider-queen_move-birth-lash.png': (queen, qf, BOSS),
         'spider-queen_death.png': (death, df, BOSS),
         'spiderling_walk-prime.png': (baby, bf, SMALL),
         'spiderling_burst.png': (burst, uf, SMALL),

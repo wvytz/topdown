@@ -93,6 +93,8 @@ const STICKY_WEB_SEED_SALT = 0x3eb5;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
+/** Liczby obrażeń od trucizny nad graczem — zieleń jadu (krok 27). */
+const POISON_TEXT_COLOR = '#8cff6a';
 
 export class GameScene extends Phaser.Scene implements HudSource {
   private player!: Player;
@@ -207,6 +209,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     const actions = this.inputController.getActions();
     const turn = this.player.tick(actions, time);
+    if (turn.poisonDamage > 0) {
+      this.effects.floatingText(this.player.x, this.player.y - this.player.radius, `-${turn.poisonDamage}`, POISON_TEXT_COLOR);
+    }
     if (turn.struck) this.resolvePlayerStrike(time);
     if (turn.shot) {
       const { x, y, combatConfig, effects } = this.player;

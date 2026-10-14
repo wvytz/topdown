@@ -22,6 +22,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
    - `npm run build` (typy + testy + build);
    - sprawdzenie w przeglądarce: `window.__game` w trybie dev, ręczne `game.step()`, gdy panel jest w tle.
 6. **Po każdym kroku dopisz sekcję „Krok N” do `docs/DEVLOG.md`**: co powstało, decyzje, testy, weryfikacja. Zaktualizuj backlog.
+   - Wpisy właściciela oznaczaj znacznikami (legenda na górze DEVLOG): `#ocena` (feedback po testach), `#decyzja` (decyzje projektowe) i temat, np. `#matka-pajakow`, `#pajecze-leze`; nowy biom albo boss dostaje własny znacznik tematu.
 7. **Git i GitHub:** repozytorium prywatne `github.com/wvytz/topdown`, gałąź `main`. Commit i push robimy tylko na prośbę („wrzuć na githuba”). Opis commita po polsku, w stylu „Krok N: …”.
 
 ## Decyzje projektowe właściciela

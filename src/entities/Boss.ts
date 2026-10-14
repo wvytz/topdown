@@ -99,7 +99,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       summonsAlive,
     });
     this.enraged = decision.enraged;
-    const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
+    const speed = decision.speed * this.status.speedMultiplier(now);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
     this.updateAnimation(target, decision.newAttack, now);
     this.updateTint(now);
@@ -130,20 +130,18 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   }
 
   /**
-   * W walce boss zawsze patrzy na gracza (uśpiony — przodem do kamery). Przed atakami z `attackKinds`
-   * gra animację ataku (plucie, złożenie pajączka): trwa do pierwszego wystrzału / wybuchu / wylęgu,
+   * W walce boss zawsze patrzy na gracza (uśpiony — przodem do kamery). Przed atakami z `attacks`
+   * gra ich animację (plucie, zew, smagnięcie): trwa do pierwszego wystrzału / wybuchu / wylęgu,
    * a ostatnia klatka trzyma się do końca ataku. Pusty wylęg (limit pajączków) nie ma animacji.
    */
   private updateAnimation(target: Vector2, newAttack: BossAttackPlan | null, now: number): void {
     if (this.isFighting) this.animator.face({ x: target.x - this.x, y: target.y - this.y });
 
-    const animated =
-      newAttack !== null &&
-      this.visual.attackKinds.includes(newAttack.kind) &&
-      newAttack.strikes.length + newAttack.bursts.length + newAttack.spawns.length > 0;
-    if (newAttack && animated) {
+    const animation = newAttack ? this.visual.attacks[newAttack.kind] : undefined;
+    const hasEvents = newAttack !== null && newAttack.strikes.length + newAttack.bursts.length + newAttack.spawns.length > 0;
+    if (newAttack && animation && hasEvents) {
       this.attackPoseUntil = newAttack.endsAt;
-      this.animator.restart(this.visual.attack, attackLeadTimeMs(newAttack, now));
+      this.animator.restart(animation, attackLeadTimeMs(newAttack, now));
       return;
     }
     if (now < this.attackPoseUntil) return;

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { EnemyVariant } from '@/core/combatTypes';
 import { BOSS_VISUALS, ENEMY_VISUALS, PLAYER_VISUAL, SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import type { SpriteSheetId } from '@/config/spriteConfig';
 import { BossId } from '@/core/bossTypes';
 import type { SpriteSheetDef } from '@/config/spriteConfig';
 import { facingDirection, sheetFrameIndex } from '@/systems/Facing';
@@ -69,16 +70,18 @@ describe('arkusze sprite’ów', () => {
   });
 
   it('gracz, każdy wróg i boss używają istniejących animacji', () => {
-    const visuals = [
-      PLAYER_VISUAL,
-      ...Object.values(BossId).map((id) => BOSS_VISUALS[id]),
-      ...Object.values(EnemyVariant).map((variant) => ENEMY_VISUALS[variant]),
-    ];
+    const visuals = [PLAYER_VISUAL, ...Object.values(EnemyVariant).map((variant) => ENEMY_VISUALS[variant])];
+    const expectAnimations = (sheet: SpriteSheetId, names: readonly (string | undefined)[]) => {
+      const animations: Readonly<Record<string, unknown>> = SPRITE_SHEETS[sheet].animations;
+      for (const name of names) if (name !== undefined) expect(animations, `${sheet}.${name}`).toHaveProperty(name);
+    };
     for (const visual of visuals) {
-      const animations: Readonly<Record<string, unknown>> = SPRITE_SHEETS[visual.sheet].animations;
-      for (const name of [visual.move, 'idle' in visual ? visual.idle : undefined, 'attack' in visual ? visual.attack : undefined]) {
-        if (name !== undefined) expect(animations, `${visual.sheet}.${name}`).toHaveProperty(name);
-      }
+      expectAnimations(visual.sheet, [visual.move, 'idle' in visual ? visual.idle : undefined, 'attack' in visual ? visual.attack : undefined]);
+    }
+    // Bossowie: ruch i animacja każdego ataku z `attacks`.
+    for (const id of Object.values(BossId)) {
+      const boss = BOSS_VISUALS[id];
+      expectAnimations(boss.sheet, [boss.move, ...Object.values(boss.attacks)]);
     }
   });
 

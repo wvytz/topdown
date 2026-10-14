@@ -1,14 +1,24 @@
 import Phaser from 'phaser';
-import type { AreaStrike, BossAttackPlan, ProjectileBurst, SpiderlingDefinition, SummonSpawn, WebShot } from '@/core/bossTypes';
+import type { AreaStrike, BossAttackPlan, BossLeap, ProjectileBurst, SpiderlingDefinition, SummonSpawn, WebShot } from '@/core/bossTypes';
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room } from '@/core/dungeonTypes';
-import type { Vector2 } from '@/core/types';
+import type { BossHudData, Vector2 } from '@/core/types';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
-import { BOSS_PROJECTILE_VISUAL, BOSS_WEB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
-import { isHitByAreaStrike, isInWebPatch, webFlightProgress } from '@/ai/bossAttacks';
+import {
+  BOSS_LEAP_VISUAL,
+  BOSS_PRESENCE_VISUAL,
+  BOSS_PROJECTILE_VISUAL,
+  BOSS_WEB_VISUAL,
+  SPIDERLING_DROP_VISUAL,
+  SPIDERLING_VISUAL,
+  SPRITE_SHEETS,
+  animationKey,
+} from '@/config/spriteConfig';
+import { isHitByAreaStrike, isInWebPatch, leapProgress, webFlightProgress } from '@/ai/bossAttacks';
+import { CeilingFallView } from '@/combat/CeilingFallView';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { SpiderlingSwarm, drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -44,12 +54,7 @@ export interface BossFightDeps {
   readonly onDefeated: (position: Vector2) => void;
 }
 
-export interface BossStatus {
-  readonly name: string;
-  readonly hp: number;
-  readonly maxHp: number;
-  readonly enraged: boolean;
-}
+export type BossStatus = BossHudData;
 
 interface PendingStrike {
   readonly strike: AreaStrike;
@@ -64,8 +69,26 @@ interface ThrownWeb {
   patch: Phaser.GameObjects.Sprite | null;
 }
 
-/** Krok przy dosuwaniu miejsca lądowania sieci do wnętrza areny (px). */
-const WEB_CLAMP_STEP = 8;
+/** Pajączek z wylęgu (krok 26): cień pojawia się w `telegraphStartAt` — dopiero wtedy znamy miejsce. */
+interface PendingSpawn {
+  readonly spawn: SummonSpawn;
+  position: Vector2 | null;
+  view: CeilingFallView | null;
+}
+
+/** Królewski skok w toku: przysiad, lot, lądowanie (krok 26). */
+interface ActiveLeap {
+  readonly leap: BossLeap;
+  readonly shadow: Phaser.GameObjects.Graphics;
+}
+
+/** Krok przy dosuwaniu miejsc (sieć, pajączek, lądowanie skoku) do wnętrza areny (px). */
+const CLAMP_STEP = 8;
+/** Cień lecącej królowej = cienie postaci (STYLEGUIDE §6). */
+const LEAP_SHADOW_COLOR = 0x1b1a22;
+const LEAP_SHADOW_ALPHA = 0.4;
+/** Kolejność kierunków wypchnięcia gracza spod lądującej królowej (w krokach po 45° od preferowanego). */
+const PUSH_OUT_STEPS = [0, 1, -1, 2, -2, 3, -3, 4] as const;
 
 interface PendingBurst {
   readonly burst: ProjectileBurst;
@@ -73,6 +96,7 @@ interface PendingBurst {
 }
 
 const BOSS_SEED_SALT = 0xb055;
+const BOSS_DEFAULT_ENRAGED_LABEL = 'wściekły!';
 const TELEGRAPH_COLOR = 0xff4040;
 /** Fale Novy to kule wyplute przez bossa (animowany sprite). */
 const BOSS_GLOB = {
@@ -90,8 +114,12 @@ export class BossFight {
   private strikes: PendingStrike[] = [];
   private bursts: PendingBurst[] = [];
   private webs: ThrownWeb[] = [];
-  /** Wylęg zaplanowany na koniec złożenia (pajączek pojawia się dopiero wtedy). */
-  private spawns: SummonSpawn[] = [];
+  /** Wylęg z sufitu: zaplanowane cienie i spadające pajączki. */
+  private spawns: PendingSpawn[] = [];
+  private leap: ActiveLeap | null = null;
+  /** Wstrząs „zewu” przy przebudzeniu i przy wściekłości — po razie na walkę. */
+  private introduced = false;
+  private wasEnraged = false;
   /** Żywe pajączki-kamikaze z telegrafem zapłonu. */
   private readonly spiderlings: SpiderlingSwarm;
   private readonly spiderlingDefinition: SpiderlingDefinition | null;
@@ -130,7 +158,15 @@ export class BossFight {
   getStatus(): BossStatus | null {
     const boss = this.boss;
     if (!boss || !boss.isFighting) return null;
-    return { name: boss.definition.name, hp: boss.health.value, maxHp: boss.health.max, enraged: boss.isEnraged };
+    const { name, title, enragedLabel } = boss.definition;
+    return {
+      name,
+      title: title ?? null,
+      enragedLabel: enragedLabel ?? BOSS_DEFAULT_ENRAGED_LABEL,
+      hp: boss.health.value,
+      maxHp: boss.health.max,
+      enraged: boss.isEnraged,
+    };
   }
 
   update(now: number): void {
@@ -152,6 +188,8 @@ export class BossFight {
 
     const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length);
     if (plan) this.schedule(plan);
+    this.updatePresence(boss);
+    this.updateLeap(boss, now);
 
     this.updateStrikes(now);
     this.updateBursts(now);
@@ -207,25 +245,144 @@ export class BossFight {
 
   private schedule(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
-    for (const strike of plan.strikes) {
+    // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
+    const planned = plan.leap;
+    const landing = planned ? this.startLeap(planned) : null;
+    for (const planStrike of plan.strikes) {
+      const strike = landing && planStrike.center === planned?.to ? { ...planStrike, center: landing } : planStrike;
       this.strikes.push({ strike, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     for (const burst of plan.bursts) {
       this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
-    this.spawns.push(...plan.spawns);
+    for (const spawn of plan.spawns) this.spawns.push({ spawn, position: null, view: null });
     for (const shot of plan.webs) this.throwWeb(shot);
+  }
+
+  /** Wstrząs kamery przy przebudzeniu i przy wejściu we wściekłość (napis daje HUD). */
+  private updatePresence(boss: Boss): void {
+    const camera = this.deps.scene.cameras.main;
+    const { introShake, enrageShake } = BOSS_PRESENCE_VISUAL;
+    if (boss.isFighting && !this.introduced) {
+      this.introduced = true;
+      camera.shake(introShake.durationMs, introShake.intensity);
+    }
+    if (boss.isEnraged && !this.wasEnraged) camera.shake(enrageShake.durationMs, enrageShake.intensity);
+    this.wasEnraged = boss.isEnraged;
+  }
+
+  /**
+   * Skok: miejsce lądowania, w którym boss się nie mieści (przy ścianie), dosuwamy do środka areny.
+   * Zwraca faktyczne miejsce lądowania — tam też trafia strefa uderzenia.
+   */
+  private startLeap(planned: BossLeap): Vector2 {
+    const radius = this.boss?.radius ?? 0;
+    const center = stairsCenter(this.deps.floor);
+    const anchor = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };
+    const to = this.clampToward(planned.to, anchor, (point) => this.circleFits(point, radius));
+    this.leap = { leap: { ...planned, to }, shadow: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) };
+    return to;
+  }
+
+  /**
+   * Przysiad (spłaszczenie), lot łukiem (ciało wyłączone — królowa przelatuje nad graczem), cień na ziemi,
+   * lądowanie z wstrząsem. Obrażenia zadaje strefa uderzenia (`updateStrikes`).
+   */
+  private updateLeap(boss: Boss, now: number): void {
+    const active = this.leap;
+    if (!active) return;
+    const { leap, shadow } = active;
+    const v = BOSS_LEAP_VISUAL;
+    if (now < leap.launchAt) {
+      boss.setScale(v.crouch.x, v.crouch.y);
+      return;
+    }
+    const t = leapProgress(leap, now);
+    if (t !== null) {
+      (boss.body as Phaser.Physics.Arcade.Body).enable = false;
+      const ground = { x: leap.from.x + (leap.to.x - leap.from.x) * t, y: leap.from.y + (leap.to.y - leap.from.y) * t };
+      const arc = Math.sin(Math.PI * t);
+      boss.setScale(1 + (v.apexScale - 1) * arc);
+      boss.setPosition(Math.round(ground.x), Math.round(ground.y - arc * v.arcHeight));
+      // Cień kurczy się w szczycie lotu (królowa wyżej), rośnie przy lądowaniu.
+      const size = 1 - 0.3 * arc;
+      shadow
+        .clear()
+        .fillStyle(LEAP_SHADOW_COLOR, LEAP_SHADOW_ALPHA)
+        .fillEllipse(ground.x, ground.y, v.shadow.width * size, v.shadow.height * size);
+      return;
+    }
+    this.finishLeap(boss);
+    this.deps.scene.cameras.main.shake(v.landShake.durationMs, v.landShake.intensity);
+  }
+
+  /** Królowa na ziemi w miejscu lądowania (także gdy zginie w locie). */
+  private finishLeap(boss: Boss): void {
+    const active = this.leap;
+    if (!active) return;
+    active.shadow.destroy();
+    this.leap = null;
+    boss.setScale(1);
+    const { to, from } = active.leap;
+    const body = boss.body as Phaser.Physics.Arcade.Body;
+    body.enable = true;
+    body.reset(to.x, to.y);
+    this.pushPlayerOutOf(to, from, boss.radius);
+  }
+
+  /**
+   * Królowa wylądowała na graczu: wypychamy go poza jej ciało (kolizja nie rozdzieli ciał o wspólnym
+   * środku), w stronę od niej, a przy wspólnym środku — dalej w kierunku lotu. Gdy w tę stronę jest mur,
+   * próbujemy kolejnych kierunków co 45° — nigdy w mur ani poza arenę. Odrzut strefy uderzenia liczony
+   * jest już od nowej pozycji, więc ma kierunek.
+   */
+  private pushPlayerOutOf(center: Vector2, from: Vector2, radius: number): void {
+    const { player } = this.deps;
+    const minDistance = radius + player.radius + 1;
+    let dx = player.x - center.x;
+    let dy = player.y - center.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist >= minDistance || player.isDead) return;
+    if (dist < 1) {
+      dx = center.x - from.x;
+      dy = center.y - from.y;
+    }
+    const base = Math.hypot(dx, dy) < 1 ? Math.PI / 2 : Math.atan2(dy, dx);
+    for (const step of PUSH_OUT_STEPS) {
+      const angle = base + (step * Math.PI) / 4;
+      const target = { x: center.x + Math.cos(angle) * minDistance, y: center.y + Math.sin(angle) * minDistance };
+      if (!this.circleFits(target, player.radius)) continue;
+      (player.body as Phaser.Physics.Arcade.Body).reset(target.x, target.y);
+      return;
+    }
+  }
+
+  /** Okrągłe ciało mieści się na arenie: narożniki kwadratu wpisanego w okrąg nie wchodzą w mur. */
+  private circleFits(point: Vector2, radius: number): boolean {
+    const r = radius * 0.8;
+    return [
+      { x: point.x - r, y: point.y - r },
+      { x: point.x + r, y: point.y - r },
+      { x: point.x - r, y: point.y + r },
+      { x: point.x + r, y: point.y + r },
+    ].every((corner) => this.isArenaWalkable(corner));
+  }
+
+  /** Przesuwa `point` krokami w stronę `anchor`, aż spełni `ok` (najdalej do samego `anchor`). */
+  private clampToward(point: Vector2, anchor: Vector2, ok: (p: Vector2) => boolean): Vector2 {
+    let p = point;
+    const total = Math.hypot(anchor.x - p.x, anchor.y - p.y);
+    for (let d = 0; d < total && !ok(p); d += CLAMP_STEP) {
+      const t = CLAMP_STEP / Math.max(CLAMP_STEP, Math.hypot(anchor.x - p.x, anchor.y - p.y));
+      p = { x: p.x + (anchor.x - p.x) * t, y: p.y + (anchor.y - p.y) * t };
+    }
+    return p;
   }
 
   /** Miejsce lądowania poza areną (gracz przy ścianie) dosuwamy w stronę gracza, aż trafi na podłogę areny. */
   private throwWeb(planned: WebShot): void {
     const { scene, player } = this.deps;
-    let to = planned.to;
-    const toPlayer = Math.hypot(player.x - to.x, player.y - to.y);
-    for (let d = 0; d < toPlayer && !this.isArenaFloor(to); d += WEB_CLAMP_STEP) {
-      const t = WEB_CLAMP_STEP / Math.max(WEB_CLAMP_STEP, Math.hypot(player.x - to.x, player.y - to.y));
-      to = { x: to.x + (player.x - to.x) * t, y: to.y + (player.y - to.y) * t };
-    }
+    const to = this.clampToward(planned.to, { x: player.x, y: player.y }, (p) => this.isArenaFloor(p));
     const shot: WebShot = { ...planned, to };
     const { ball } = BOSS_WEB_VISUAL;
     this.webs.push({
@@ -241,9 +398,21 @@ export class BossFight {
   }
 
   private isArenaFloor(point: Vector2): boolean {
+    return this.arenaTile(point) === TileType.Floor;
+  }
+
+  /** Bez muru (zablokowane schody nie kolidują) — tu boss może stanąć. */
+  private isArenaWalkable(point: Vector2): boolean {
+    const tile = this.arenaTile(point);
+    return tile !== null && tile !== TileType.Wall;
+  }
+
+  /** Kafel pod punktem, jeśli leży na arenie; null poza nią. */
+  private arenaTile(point: Vector2): TileType | null {
     const tile = DungeonView.worldToTile(point.x, point.y);
     const { floor } = this.deps;
-    return roomContainsTile(this.arena, tile) && floor.tiles[tile.y * floor.width + tile.x] === TileType.Floor;
+    if (!roomContainsTile(this.arena, tile)) return null;
+    return floor.tiles[tile.y * floor.width + tile.x] ?? null;
   }
 
   /** Znacznik lądowania, lot kłębu łukiem, rozrost plamy i spowolnienie gracza w niej (dash przechodzi). */
@@ -294,21 +463,43 @@ export class BossFight {
     web.patch?.destroy();
   }
 
-  /** Wylęg w zaplanowanej chwili; miejsce poza areną (boss przy ścianie) zastępuje pozycja bossa. */
+  /**
+   * Wylęg z sufitu: w chwili cienia miejsce = gracz + przesunięcie z planu (pierścień „goni” gracza),
+   * dosunięte w stronę gracza, jeśli wypada poza podłogę areny. Rosnący cień, w końcówce pajączek
+   * na nici; przy lądowaniu dołącza do roju. Lądowanie nie rani — zagrożeniem jest wybuch.
+   */
   private updateSpawns(now: number): void {
-    const boss = this.boss;
     const definition = this.spiderlingDefinition;
-    if (!boss || !definition) {
-      this.spawns = [];
+    if (!this.boss || !definition) {
+      this.clearSpawns();
       return;
     }
-    this.spawns = this.spawns.filter((spawn) => {
-      if (now < spawn.at) return true;
-      const inArena = roomContainsTile(this.arena, DungeonView.worldToTile(spawn.position.x, spawn.position.y));
-      const at = inArena ? spawn.position : { x: boss.x, y: boss.y };
-      this.spiderlings.spawn(at, definition, now);
+    const { player, scene } = this.deps;
+    const { fallMs, shadowRadius } = SPIDERLING_DROP_VISUAL;
+    this.spawns = this.spawns.filter((pending) => {
+      const { spawn } = pending;
+      if (now < spawn.telegraphStartAt) return true;
+      if (!pending.position) {
+        const target = { x: player.x, y: player.y };
+        const wanted = { x: target.x + spawn.offset.x, y: target.y + spawn.offset.y };
+        pending.position = this.clampToward(wanted, target, (p) => this.isArenaFloor(p));
+        pending.view = new CeilingFallView(scene, pending.position, SPIDERLING_VISUAL.sheet);
+      }
+      if (now < spawn.at) {
+        const t = (now - spawn.telegraphStartAt) / (spawn.at - spawn.telegraphStartAt);
+        const fallStart = spawn.at - fallMs;
+        pending.view?.draw(shadowRadius * Math.min(1, t), null, now < fallStart ? null : (now - fallStart) / fallMs);
+        return true;
+      }
+      pending.view?.destroy();
+      this.spiderlings.spawn(pending.position, definition, now);
       return false;
     });
+  }
+
+  private clearSpawns(): void {
+    for (const pending of this.spawns) pending.view?.destroy();
+    this.spawns = [];
   }
 
   private updateStrikes(now: number): void {
@@ -322,7 +513,11 @@ export class BossFight {
       effects.impact(strike.center.x, strike.center.y, strike.radius);
       this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       if (isHitByAreaStrike(strike, player, player.radius)) {
-        const hit = { damage: strike.damage, knockback: knockbackFrom(strike.center, player, strike.knockback) };
+        const hit = {
+          damage: strike.damage,
+          knockback: knockbackFrom(strike.center, player, strike.knockback),
+          ...(strike.status && { status: strike.status }),
+        };
         if (player.takeHit(hit, now)) onPlayerHit();
       }
       return false;
@@ -365,7 +560,9 @@ export class BossFight {
     this.webs = [];
     // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
     this.spiderlings.clear();
-    this.spawns = [];
+    this.clearSpawns();
+    // Śmierć w locie: zwłoki na ziemi, w miejscu lądowania.
+    this.finishLeap(boss);
     const position: Vector2 = { x: boss.x, y: boss.y };
     const { visual, facing } = boss;
     boss.destroy();

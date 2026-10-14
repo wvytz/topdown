@@ -6,6 +6,10 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Zasady kodu:** [`docs/ZASADY_KODU.md`](ZASADY_KODU.md)
 - **Instrukcje dla Claude:** [`CLAUDE.md`](../CLAUDE.md), wczytywane automatycznie w każdej sesji
 - **Repozytorium:** `github.com/wvytz/topdown` (prywatne)
+- **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
+  - `#ocena` — oceny i feedback właściciela po testach w grze;
+  - `#decyzja` — decyzje projektowe właściciela;
+  - temat, np. `#matka-pajakow`, `#pajecze-leze` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -354,7 +358,7 @@ Złota przybywa o +20% na każde piętro.
 
 **Cel:** walka z bossem bez odwrotu. Po rozpoczęciu walki wejścia do areny zamykają kraty, a po zwycięstwie kraty się podnoszą.
 
-**Decyzja właściciela:** wyszukiwanie drogi dla wrogów odkładamy na później, bo na razie jest mało istotne.
+**Decyzja właściciela:** `#decyzja` wyszukiwanie drogi dla wrogów odkładamy na później, bo na razie jest mało istotne.
 
 **Warstwa czysta: `dungeon/arenaGates.ts`** (dopisany do `PURE_FILES` w teście architektury):
 - **`findRoomEntrances(floor, room)`:** kafle podłogi w pierścieniu tuż za obrysem pokoju, łącznie z narożnikami (przejście po skosie). To są miejsca na kraty.
@@ -399,7 +403,7 @@ Złota przybywa o +20% na każde piętro.
 
 **Cel:** druga broń gracza pod PPM, z własnym ograniczeniem niezależnym od ciosu wręcz.
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja`
 - Strzał ma **ładunki odnawiające się z czasem**: 3 ładunki, każdy wraca po 1,4 s.
 - Odrzucone warianty: osobny cooldown (za mało decyzji) i amunicja z łupów (zmieniałaby ekonomię łupów).
 
@@ -463,7 +467,7 @@ Złota przybywa o +20% na każde piętro.
 
 **Cel:** 7 nowych, rzadszych przedmiotów, które zmieniają działanie broni, a nie tylko liczby.
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja`
 - **Zmiana zasady puli.** Do 5 bazowych przedmiotów dochodzi 7 z efektem. Pula ma teraz 12 pozycji i jest opisana w CLAUDE.md.
 - **Przedmioty:**
   - trzy zamówione przez właściciela: Szuriken, Elektryczna strzała, Ognista pięść;
@@ -549,7 +553,7 @@ Złota przybywa o +20% na każde piętro.
 
 **Cel (GDD §2.5):** piętra różnią się nie tylko liczbami. Każde piętro od drugiego ma jeden modyfikator.
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja`
 - Pula 6 modyfikatorów zaakceptowana w całości, razem z Mrokiem.
 - **Ewolucje przedmiotów odrzucone na obecnym etapie.** Nie komplikujemy sterowania ani działania broni, a wzmacnianie kolejnymi kopiami zostaje. Zmiana jest zapisana w CLAUDE.md i w backlogu.
 
@@ -605,7 +609,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 12 — Karty nagrody za bossa
 
-**Cel (decyzja właściciela):** po pokonaniu bossa gra się zatrzymuje, a gracz wybiera jeden z 3 losowych przedmiotów.
+**Cel (decyzja właściciela):** `#decyzja` po pokonaniu bossa gra się zatrzymuje, a gracz wybiera jeden z 3 losowych przedmiotów.
 
 **Zasady:**
 - **Karty:**
@@ -743,7 +747,7 @@ Złota przybywa o +20% na każde piętro.
 
 **Do decyzji właściciela (backlog):** ostrzał bossa z korytarza przed opadnięciem krat.
 
-**Ocena właściciela po teście:** gra wydaje się trudniejsza, co mu się podoba — kierunek jest dobry. Nie łagodzimy trudności przy kolejnych zmianach bez sygnału z testów.
+**Ocena właściciela po teście:** `#ocena` gra wydaje się trudniejsza, co mu się podoba — kierunek jest dobry. Nie łagodzimy trudności przy kolejnych zmianach bez sygnału z testów.
 
 ---
 
@@ -810,7 +814,7 @@ Złota przybywa o +20% na każde piętro.
   - ~9% to narożniki, czyli maska 15 z podłogą po skosie, których 4-bitowy autotile nie odróżnia;
   - warianty zniszczeń v1 trafiły w maski 0, 5 i 10, które prawie nie występują.
 
-**Decyzje właściciela (przed krokiem 16):**
+**Decyzje właściciela (przed krokiem 16):** `#decyzja`
 - **Zoom 2,0 (pixel-perfect)** zamiast 1,5. Zasięg Kiterów dostosujemy w logice AI, nie skalowaniem. Wdrożenie w kroku 18.
 - **Schody 2×2** (64×64 px). Wdrożenie w generatorze pięter i widoku w krokach 17–18.
 - **Cienie środowiska z jedną stałą alfą** — dopisane do STYLEGUIDE.
@@ -1016,7 +1020,7 @@ Złota przybywa o +20% na każde piętro.
   - kosztem są cienkie czarne pasy przy krawędziach okna.
 - **Mrok:** promień widoczności 150 → 112 px świata, czyli na ekranie tyle samo co wcześniej. To przeliczenie, a nie zmiana trudności.
 
-**Reguła widoku dla wrogów (decyzja właściciela: zasięg Kiterów w logice AI):**
+**Reguła widoku dla wrogów (decyzja właściciela: zasięg Kiterów w logice AI):** `#decyzja`
 - **Problem:** przy zoomie 2 widać tylko 480×270 px świata, a Kiter strzela z 280 px (już przy 1,5 mógł strzelać spoza ekranu w pionie).
 - **`GUARANTEED_VIEW_HALF`** (`config/gameConfig.ts`): prostokąt wokół gracza, który zawsze jest na ekranie, czyli widok minus luz martwej strefy (210 × 112,5 px).
 - **`ENEMY_VIEW_RULE`** (`config/combatConfig.ts`, typ `EnemyViewRule`): margines 16 px i zapas ucieczki 8 px.
@@ -1064,7 +1068,7 @@ Złota przybywa o +20% na każde piętro.
 
 **Zlecenie właściciela:** realizacja planu technicznego. Commit kroku 18 wypchnięty jako `836a9ae`.
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja`
 - podział kroku 19 na 19a (światło, winieta, pochodnie, pyłki, cienie) i 19b (ślady walki, detale ścian, bruk);
 - twarde pasma światła bez ditheringu (bez migotania pikseli);
 - pochodnie generowane proceduralnie w palecie C;
@@ -1258,7 +1262,7 @@ Złota przybywa o +20% na każde piętro.
 
 **Zlecenie właściciela:** zastąpić geometryczne placeholdery łupów (monety, mikstury, przedmioty) i kapliczki spójnymi sprite'ami w palecie C. Backlog uporządkowany commitem `87d120f`.
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja`
 - animacje 4 klatki w 6 kl./s (obrót monety, iskra, puls kapliczki);
 - do tego samego arkusza także pocisk gracza i znacznik celowania;
 - start od razu, równolegle z testami Kiterów i kamery.
@@ -1324,7 +1328,7 @@ Złota przybywa o +20% na każde piętro.
 
 | Plik | Komórka · pivot | Kolumny |
 |---|---|---|
-| `spider-queen_move-birth.png` (768×768) | 96×96 · 48,48 | 0–3 chód, 4–7 złożenie pajączka (wylęg 30 px za pivotem w kolumnie 7) |
+| `spider-queen_move-birth.png` (768×768; od kroku 27 `spider-queen_move-birth-lash.png`, 1152×768) | 96×96 · 48,48 | 0–3 chód, 4–7 złożenie pajączka (wylęg 30 px za pivotem w kolumnie 7) |
 | `spiderling_walk-prime.png` (384×384) | 48×48 · 24,24 | 0–3 bieg, 4–7 zapłon (telegraf wybuchu) |
 | `spiderling_burst.png` (192×48) | 48×48 · 24,24 | 0–3 wybuch, bez kierunków |
 
@@ -1366,7 +1370,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 21 — Miecz i animacja ciosu barbarzyńcy
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja`
 - klatki z generatora Pythona (jak pochodnie i łupy), nie ręcznie;
 - cios: 4 klatki po 80 ms, czyli razem dokładnie `attackCooldownMs` (320 ms);
 - miecz zawsze w dłoni, także przy chodzie i staniu.
@@ -1403,11 +1407,11 @@ Złota przybywa o +20% na każde piętro.
 - `npm run build`: 631 testów zielonych;
 - w grze (ręczne `game.step()`): po kliknięciu klatki 4→7 po ok. 80 ms, potem powrót do stania;
 - podgląd arkusza 4x i animowany GIF w `tools/out/`;
-- **ocena właściciela:** miecz wygląda dobrze, zostaje bez zmian.
+- **ocena właściciela:** `#ocena` miecz wygląda dobrze, zostaje bez zmian.
 
 ## Krok 22 — Boss „Matka Pająków” na piętrze 2
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja` `#matka-pajakow`
 - boss sam nie zasypuje ekranu pociskami: w stałym rytmie wypluwa pajączki, które są zagrożeniem i żywą tarczą;
 - pajączki wybuchają po chwili i zadają obrażenia; giną od jednego uderzenia, a zabite nie wybuchają;
 - Matka Pająków tylko na piętrze 2, pozostałe piętra mają Strażnika;
@@ -1465,7 +1469,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 23a — Pajęczy biom: config biomów i arkusz „Pajęcze leże”
 
-**Decyzje właściciela (cały biom, kroki 23a–e):**
+**Decyzje właściciela (cały biom, kroki 23a–e):** `#decyzja` `#pajecze-leze`
 - biom tylko na piętrze 2 (razem z Matką Pająków);
 - nowy arkusz kafli (chłodny, szaro-liliowy kamień) i pajęcze dekoracje;
 - trzymamy się małej liczby archetypów: pająki to Rushery, nietoperz z falą uderzeniową to wariant Kitera (lecący półksiężyc);
@@ -1564,7 +1568,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 23c — Pająki spadające z sufitu (Pajęcze leże)
 
-**Decyzja właściciela (krok 23a):** pająki spadają losowo z sufitu; spadek zapowiada rosnący cień na płytce; przy lądowaniu ranią gracza stojącego w cieniu, potem walczą jak Rusher.
+**Decyzja właściciela (krok 23a):** `#decyzja` `#pajecze-leze` pająki spadają losowo z sufitu; spadek zapowiada rosnący cień na płytce; przy lądowaniu ranią gracza stojącego w cieniu, potem walczą jak Rusher.
 
 **Reguły i liczby (moje, w `biomeConfig`, do strojenia w testach właściciela):**
 - tylko w biomie z `ceilingDrops` (leże); tylko w zwykłych pokojach — pokój startowy zostaje spokojny, arena należy do Matki Pająków;
@@ -1608,7 +1612,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 23d — Kokony (Pajęcze leże)
 
-**Decyzje właściciela (na starcie kroku):**
+**Decyzje właściciela (na starcie kroku):** `#decyzja` `#pajecze-leze`
 - 0–2 kokony w zwykłym pokoju leża;
 - wybuch spowalnia i wypuszcza pajączka-kamikaze (sam wybuch nie rani);
 - strzał i cios niszczą kokon (z dystansu bez spowolnienia);
@@ -1653,7 +1657,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 23e — Lepkie pajęczyny (Pajęcze leże)
 
-**Decyzje właściciela:**
+**Decyzje właściciela:** `#decyzja` `#pajecze-leze`
 - z kroku 23a: spowalniają tylko gracza, dash przechodzi bez spowolnienia, wygląd nie może przypominać dekoracji;
 - na starcie kroku: 0–2 w zwykłym pokoju, losowo 1×1 albo 2×2 kafle, spowolnienie 50% w środku i jeszcze 0,5 s po wyjściu, pajęczyn nie da się zniszczyć.
 
@@ -1695,7 +1699,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 24 — Klatki śmierci Matki Pająków
 
-**Feedback właściciela po testach leża (kroki 23a–e):** biom „zajebisty”, dobry feel, spowolnienie fajne, postacie wyglądają super; spadanie pająków z sufitu to dokładnie ta mechanika, o którą chodziło. Następny krok wskazany przez właściciela: klatki śmierci Matki Pająków (backlog p. 3).
+**Feedback właściciela po testach leża (kroki 23a–e):** `#ocena` `#pajecze-leze` biom „zajebisty”, dobry feel, spowolnienie fajne, postacie wyglądają super; spadanie pająków z sufitu to dokładnie ta mechanika, o którą chodziło. Następny krok wskazany przez właściciela: klatki śmierci Matki Pająków (backlog p. 3).
 
 **Animacja (moje decyzje):** osobny arkusz `spider-queen_death.png` (96×96, 8 kierunków — zostaje kierunek z chwili śmierci), 8 klatek w 8 kl./s = 1 s, bez pętli:
 - 0: wzdrygnięcie (nogi rozrzucone, kły rozwarte, jaja rozbłyskują);
@@ -1730,7 +1734,7 @@ Złota przybywa o +20% na każde piętro.
 
 ## Krok 25 — Rzut siecią Matki Pająków
 
-**Feedback właściciela po kroku 24:**
+**Feedback właściciela po kroku 24:** `#ocena` `#matka-pajakow`
 - animacja śmierci „w sam raz”; krew mogłaby być jaskrawsza, ale to detal na później (backlog);
 - walka z Matką Pająków jest za łatwa. Prośba: nowy atak — sieć rzucana za plecy gracza, która się rozprzestrzenia (jak dawny rozrzut wybuchów Strażnika), żeby było mniej czasu na reakcję, a pajączki szybciej dobiegały.
 
@@ -1766,11 +1770,148 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 26 — Królewska Matka Pająków: wylęg z sufitu, królewski skok, plansza
+
+**Feedback właściciela na starcie kroku:** `#ocena` `#matka-pajakow`
+- królowa ma być „bardziej królewska”, a walka bardziej wymagająca;
+- sieci za plecami są fajne (odległość 85 px zostaje);
+- pajączki powinny spadać z sufitu — gracz ma się poczuć osaczony.
+
+**Wylęg z sufitu (zastępuje wylęg za bossem, liczby moje w `SPIDER_QUEEN.brood`):**
+- królowa wydaje zew (animacja złożenia, 667 ms), potem pajączki spadają **po kolei** co 160 ms, pierścieniem 64 px wokół gracza;
+- kąty równo podzielone od losowego początku, odchylenie ±20° — z każdej strony jest pajączek;
+- miejsce każdego cienia liczone wokół **aktualnej** pozycji gracza w chwili jego pojawienia się, więc pierścień „goni” uciekającego;
+- cień rośnie 600 ms (bez czerwonego obrysu — lądowanie nie rani, zagrożeniem jest wybuch), pajączek widoczny na nici w ostatnich 220 ms;
+- 4 pajączki (wściekłość: 5), limit żywych 8 (wcześniej 2/3 i 6);
+- miejsce poza podłogą areny gra dosuwa w stronę gracza (jak sieć);
+- kokony leża bez zmian (osobna ścieżka w `SpiderlingSwarm`).
+
+**Królewski skok (`BossAttackKind.Leap`, `SPIDER_QUEEN.leap`):**
+- od razu czerwona strefa lądowania (52 px) na miejscu gracza z chwili planu;
+- przysiad 650 ms (królowa spłaszczona), lot łukiem 450 ms (44 px w górę, skala 1,18 w szczycie, cień na ziemi), lądowanie: 16 obrażeń (skalowane z piętrem), odrzut 300, wstrząs kamery;
+- po lądowaniu królowa stoi 500 ms — okno na kontrę wręcz;
+- wściekłość: krótszy przysiad (mnożnik telegrafu);
+- w locie ciało fizyczne wyłączone (przelatuje nad graczem); lądowanie przy murze gra dosuwa do środka areny razem ze strefą;
+- królowa lądująca na graczu wypycha go poza swoje ciało (kierunek od niej, przy wspólnym środku — kierunek lotu; nigdy w mur, kolejne kierunki co 45°).
+
+**Rytm:** wzór zew → sieć → skok, przerwa między atakami 2200 → 1600 ms.
+
+**Królewskość:**
+- `BossDefinition.title` / `enragedLabel`: plansza w HUD przy przebudzeniu („Matka Pająków — Królowa Pajęczego Leża”), przy wściekłości „Królewski gniew!” (plansza i pasek HP zamiast „wściekły!”); Strażnik bez planszy;
+- wstrząs kamery przy przebudzeniu i przy wściekłości (`BOSS_PRESENCE_VISUAL`).
+
+**Kod:**
+- czysto: `bossTypes` (`LeapAttackDefinition`, `BossLeap`, `BossAttackPlan.leap`, `SummonSpawn` z przesunięciem względem gracza i chwilą cienia), `bossAttacks` (`planBrood` od nowa, `planLeap`, `leapProgress`, `attackLeadTimeMs` liczy od pierwszego cienia/wybicia), `scaleBossForFloor` skaluje skok;
+- Phaser: `combat/CeilingFallView.ts` — widok spadania z sufitu wspólny dla zrzutów leża (krok 23c, `CeilingDropManager` przepięty bez zmian w wyglądzie) i wylęgu; `BossFight` (wylęg, skok, wypchnięcie, wstrząsy, wspólne `clampToward`); `HudScene` (plansza); wygląd w `spriteConfig` (`BOSS_LEAP_VISUAL`, `SPIDERLING_DROP_VISUAL`, `BOSS_PRESENCE_VISUAL`).
+
+**Testy (`SpiderQueen.test.ts`):**
+- wylęg: czasy cieni i lądowań po kolei, pierścień o promieniu `ringRadius`, brak dużej luki w pierścieniu (20 seedów), wściekłość, limit żywych, balans (lądowanie poza zasięgiem zapłonu, cień daje czas na ucieczkę);
+- rytm zew → sieć → skok w `BossBrain`;
+- skok: czasy, strefa na miejscu gracza, `leapProgress`, wściekłość, balans (uważny gracz zdąży wyjść ze strefy), skalowanie obrażeń.
+
+**Weryfikacja:**
+- `npm run build`: 742 testy zielone;
+- w grze (`?seed=7&floor=2`, ręczne `game.step()`):
+  - plansza z tytułem przy wejściu, wstrząs;
+  - 4 cienie po kolei wokół gracza (co ~150 ms), pajączki zjeżdżają na niciach i otaczają gracza; stojący gracz −13 HP;
+  - skok na stojącego gracza: −18 HP, gracz wypchnięty 50 px od środka królowej, ciało bossa znów włączone;
+  - skok na gracza w dwóch narożnikach i przy ścianie areny: lądowanie odsunięte od muru, gracz zostaje na podłodze areny;
+  - wściekłość: „Królewski gniew!” na planszy i pasku;
+  - zrzuty ekranu: pierścień pajączków z siecią za plecami, królowa w locie nad strefą;
+- brak błędów w konsoli.
+- **Uwaga z testu:** w jednym przebiegu, gdy pętla gry ruszyła na żywo bez sterowania (przed poprawką wypchnięcia), gracz znalazł się w murze poza areną. Po poprawce (wypchnięcie tylko na podłogę areny) nie powtórzyło się w testach przy ścianach — do obserwacji w testach właściciela.
+
+**Do oceny w testach właściciela:** czy walka jest teraz wymagająca; gęstość pierścienia (4/5 pajączków, 64 px, co 160 ms); siła i telegraf skoku (650 ms + 450 ms, 16 obrażeń); czy plansza nie zasłania walki (3 s, nad środkiem ekranu).
+
+---
+
+## Krok 27 — Matka Pająków poluje: sprint, smagnięcie nogami, trucizna
+
+**Feedback właściciela po kroku 26:** `#ocena` `#matka-pajakow` walka dalej za łatwa. Prośba:
+- królowa dostaje przyspieszenie, żeby mogła doskoczyć do gracza;
+- dostaje atak wręcz nogami z prostą animacją;
+- trafienie nakłada truciznę zadającą tyle, co podpalenie z Ognistej pięści.
+
+**Pościg (liczby moje):**
+- zamiast trzymać dystans 150 px królowa poluje:
+  - dalej niż 110 px od gracza: sprint 150 px/s;
+  - bliżej: chód 70 px/s (wcześniej 45);
+  - staje 44 px od gracza, czyli tuż przy nim (ciała stykają się przy 40 px);
+- sprint jest wolniejszy niż gracz (200), więc biegnący gracz ucieknie. Gracz spowolniony siecią (100) już nie;
+- nowe pola `BossDefinition.sprint` i `BossDecision.speed`.
+
+**Smagnięcie nogami (`BossAttackKind.Lash`, `SPIDER_QUEEN.lash`):**
+- atak poza wzorem: królowa smaga, gdy gracz jest bliżej niż 56 px i od poprzedniego smagnięcia minęło 900 ms;
+- atak ze wzoru (zew, sieć, skok) ma pierwszeństwo, jeśli nadszedł jego czas, a po smagnięciu czeka do jego końca;
+- strefa przed królową:
+  - środek 34 px w stronę gracza, promień 30, czyli zasięg do 64 px;
+  - zamach 420 ms (po wściekłości 315), potem 10 obrażeń (skalowane z piętrem) i odrzut 220;
+  - po ciosie 350 ms przerwy;
+- zamach wydłużony z 380 ms: test balansu pokazał, że po wściekłości gracz nie zdążyłby wyjść ze strefy z krawędzi zasięgu.
+
+**Trucizna:**
+- `StatusApplication.poison` (ten sam kształt co podpalenie), w `StatusEffects` wspólne `DamageOverTime` dla podpalenia i trucizny;
+- liczby wzięte wprost z `ITEM_EFFECTS.fireFist`: 3 obrażenia co 500 ms przez 2 s, łącznie 12. Bez skalowania z piętrem;
+- `AreaStrike.status`: strefa przekazuje status w trafieniu. `Player.takeHit` nakłada status z trafienia;
+- trucizna tyka w `Player.tick` także w nietykalności, bo to status, a nie nowe trafienie, i może zabić (`Player.die`);
+- wygląd:
+  - gracz migocze na zielono (`STATUS_TINTS.poison`, wspólne `statusTint`; spowolnienie dalej na niebiesko);
+  - zielone liczby obrażeń nad graczem.
+
+**Animacja (`tools/spider_sprites.py`):**
+- arkusz `spider-queen_move-birth.png` zastąpiony przez `spider-queen_move-birth-lash.png`: 12 kolumn (1152×768), kolumny 0–7 bez zmian;
+- kolumny 8–11 to smagnięcie przednimi nogami:
+  - zamach szeroko na boki;
+  - uniesienie (skrót perspektywy);
+  - cios: pazury schodzą przed kły;
+  - uderzenie: pazury skrzyżowane przed paszczą;
+- w ostatnich dwóch klatkach pazury są wydłużone i mają kolor jadu (zieleń palety leża);
+- animacja rozciągnięta na czas zamachu, więc ostatnia klatka wypada w chwili uderzenia;
+- pozostałe arkusze generatora wychodzą bajt w bajt takie same;
+- `BossVisual.attacks` (mapa rodzaj ataku → animacja) zastępuje `attack` + `attackKinds`. Strażnik: Nova i Barrage → plucie. Królowa: zew → złożenie, smagnięcie → `lash`.
+
+**Testy:**
+- `SpiderQueen.test.ts` (krok 27):
+  - sprint z daleka i chód z bliska;
+  - sprint wolniejszy niż gracz, ale szybszy niż gracz w sieci;
+  - plan smagnięcia: strefa przed królową, trucizna równa Ognistej pięści, strefa sięga gracza;
+  - odstęp między smagnięciami, a poza zasięgiem brak smagnięcia;
+  - pierwszeństwo ataku ze wzoru;
+  - balans: uważny gracz zdąży wyjść ze strefy;
+  - skalowanie obrażeń smagnięcia bez skalowania trucizny;
+- `itemEffects.test.ts`: trucizna tyka jak podpalenie, niezależnie od niego;
+- `sprites.test.ts`: animacje wszystkich ataków bossów istnieją.
+
+**Weryfikacja:**
+- `npm run build`: 749 testów zielonych;
+- w grze (`?seed=7&floor=2`, ręczne `game.step()`, gracz stoi w miejscu, wzór odsunięty):
+  - sprint 150 px/s z 133 px, od 108 px chód 70;
+  - smagnięcie na 54 px z animacją `lash`: −11 HP i trucizna, tyknięcia po −3;
+  - kolejne smagnięcia co ~1,7 s: stojący gracz spadł ze 100 do 40 HP w 6 s;
+  - zrzut ekranu: strefa smagnięcia pod nogami królowej, zielone „-3” nad graczem;
+- brak błędów w konsoli.
+
+**Do oceny w testach właściciela:**
+- czy walka jest teraz wymagająca;
+- prędkość sprintu (150) i próg (110 px);
+- zasięg, zamach i odstęp smagnięć;
+- czytelność animacji smagnięcia (jest prosta; przy 96 px ruch nóg jest subtelny, czytelność daje głównie czerwona strefa).
+
+**Ocena właściciela po teście kroków 26–27:** `#ocena` `#matka-pajakow`
+- sprint w porządku; królowa trafia, kiedy gracz się zagapi;
+- smagnięcie: da się uciec, ciosy nie padają za często, czerwona strefa w porządku;
+- trucizna i obrażenia w porządku;
+- animacja smagnięcia „tak średnio” — słabo widać, właściciel dostrzegł ją dopiero przy drugim trafieniu; zostaje na razie;
+- wypychanie gracza przy ścianie po skoku niesprawdzone w teście właściciela (nie walczył przy ścianie);
+- ogólnie walka „się zagęściła”; **decyzja:** Matkę Pająków odkładamy, wrócimy przy strojeniu.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
 
-**Ocena właściciela po testach w grze (po kroku 20) — zaakceptowane:**
+**Ocena właściciela po testach w grze (po kroku 20) — zaakceptowane:** `#ocena`
 - [x] **Miecz barbarzyńcy (krok 21):** wygląd chodu i ciosu zaakceptowany.
 - [x] **Kitery przy zoomie 2,0:** czytelność i zachowanie w porządku; reguła widoku (krok 18) zostaje.
 - [x] **Martwa strefa kamery 60×45 px:** wygodna.
@@ -1778,26 +1919,28 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] **Przedmioty bazowe bez pulsowania** (krok 20): dobrze widoczne na podłodze.
 - [x] **Ogólnie:** gameplay czytelny i w pełni płynny.
 
-**Ocena właściciela po testach leża (po kroku 23e) — zaakceptowane:**
+**Ocena właściciela po testach leża (po kroku 23e) — zaakceptowane:** `#ocena` `#pajecze-leze`
 - [x] **Pajęcze leże:** feel, spowolnienie (kokony, pajęczyny), wygląd postaci, pająki z sufitu.
 
-**Ocena właściciela po teście walki z Matką Pająków (po kroku 25):**
+**Ocena właściciela po teście walki z Matką Pająków (po kroku 25):** `#ocena` `#matka-pajakow`
 - **Plama sieci:** wielkość (promień 60 px) w porządku.
-- **Odległość lądowania sieci za bohaterem (85 px) do poprawy.** Na starcie sesji dopytać właściciela, w którą stronę: bliżej (sieć pod nogami / tuż za plecami) czy dalej.
+- **Odległość lądowania sieci za bohaterem (85 px):** po kroku 26 zostaje — właściciel: „pajęczyny za naszymi plecami są fajne”.
 - **Walka dalej „banalnie łatwa”.** Pomysły właściciela (do doprecyzowania na starcie kroku 26):
-  - pajączki nie powinny wyskakiwać wszystkie naraz (dziś wylęg 2, po wściekłości 3, w jednej chwili) — może po kolei albo w rozrzucie po arenie;
+  - pajączki nie powinny wyskakiwać wszystkie naraz — zrobione w kroku 26 (spadają po kolei z sufitu pierścieniem wokół gracza);
   - pajączki mogłyby mieć skok do bohatera (doskok z dystansu zamiast samego biegu).
 - Zasada „nie łagodzimy trudności” obowiązuje — tu kierunek jest odwrotny: walka ma być trudniejsza.
 
-**1. Plan na kolejną sesję — krok 26: trudniejsza walka z Matką Pająków (nowe okno kontekstu)**
-- **Najpierw ustalić z właścicielem:**
-  - odległość lądowania sieci (bliżej czy dalej niż 85 px; ewentualnie z wyprzedzeniem ruchu gracza);
-  - wylęg: po kolei (odstęp między pajączkami) czy w rozrzucie po arenie (np. z sufitu/ścian, jak zrzuty z kroku 23c);
-  - skok pajączka: zasięg, telegraf (np. przykucnięcie + linia skoku), czy skok zastępuje bieg, czy jest dodatkiem przy średnim dystansie; czy wybuch następuje po wylądowaniu.
-- **Gdzie w kodzie:** `config/bossConfig.ts` (`SPIDER_QUEEN`: `brood`, `web`, `spiderling`), `ai/bossAttacks.ts` (`planBrood`, `planWeb`), `ai/SpiderlingBrain.ts` (fazy pajączka — skok jako nowa faza), `combat/SpiderlingSwarm.ts` (wykonanie, telegraf), testy `tests/ai/SpiderQueen.test.ts`.
-- **Uwaga:** pajączki z kokonów (krok 23d) używają tej samej definicji i `SpiderlingSwarm` — zmiana skoku obejmie też je (ustalić, czy tak ma być).
+**Ocena właściciela po teście kroków 26–27:** `#ocena` `#matka-pajakow` walka „się zagęściła”; sprint, smagnięcie, strefa i trucizna w porządku. Matka Pająków **odłożona** — wracamy przy strojeniu. Szczegóły na końcu sekcji „Krok 27”.
 
-**Wcześniejsze kandydatury na kolejne kroki** (po kroku 26, wybiera właściciel):
+**Matka Pająków — do zrobienia przy powrocie** `#matka-pajakow`:
+- animacja smagnięcia jest słabo widoczna (właściciel zauważył ją przy drugim trafieniu) — wyraźniejszy ruch nóg albo błysk pazurów;
+- sprawdzić wypychanie gracza przy ścianie po skoku (raz w moich testach gracz trafił w mur, przed poprawką);
+- niezrealizowany pomysł: skok pajączka do bohatera;
+- jaskrawsza krew (feedback po kroku 24).
+
+**1. Następny etap (decyzja właściciela po kroku 27):** `#decyzja` nowe biomy i kolejne piętra — większy zbiór mechanik i poziomów tematycznych; strojenie wszystkiego później.
+
+**Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:
   - arkusz kafli (fiolet, zieleń, biel);
   - Matka Pająków z pajączkami;
@@ -1807,7 +1950,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - lepkie pajęczyny.
 - **Kandydaci na kolejny krok** (wybiera właściciel): powrót do „Mroku” (p. 2), kolejny biom, ewentualne strojenie liczb leża.
 - **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają tylko w trybie dev.
-- **Do oceny w testach właściciela:** trudność walki z Matką Pająków po dodaniu rzutu siecią (krok 25). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
+- **Do oceny w testach właściciela:** trudność walki z Matką Pająków po kroku 27 (pościg, smagnięcie, trucizna). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
 - **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.
 - **Ewentualne uszczelnienie areny przed ostrzałem bossa z korytarza** (otwarte od kroku 9):
   - **Problem:** strzał budzi i rani bossa, zanim gracz wejdzie na arenę, a kraty opadają dopiero wtedy, gdy gracz jest w środku.

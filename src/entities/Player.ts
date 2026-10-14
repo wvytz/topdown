@@ -17,7 +17,7 @@ import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
-import { STATUS_TINTS } from '@/effects/statusTints';
+import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
 
@@ -40,9 +40,11 @@ export interface PlayerTickResult {
   readonly struck: boolean;
   /** Kierunek wystrzelonego pocisku; null, gdy gracz nie strzelił. */
   readonly shot: Vector2 | null;
+  /** Obrażenia od trucizny w tej klatce (0 = brak) — scena pokazuje liczbę nad graczem. */
+  readonly poisonDamage: number;
 }
 
-const IDLE: PlayerTickResult = { struck: false, shot: null };
+const IDLE: PlayerTickResult = { struck: false, shot: null, poisonDamage: 0 };
 const KNOCKBACK_STUN_MS = 120;
 const AIM_MARKER_DISTANCE = 22;
 
@@ -62,7 +64,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private shotCycle: AttackCycle;
   private readonly invulnerability = new Timer();
   private readonly knockbackStun = new Timer();
-  /** Statusy na graczu (krok 23d: spowolnienie z kokonów); dash ich nie spowalnia. */
+  /** Statusy na graczu: spowolnienie (kokony, pajęczyny, krok 23d), trucizna (Matka Pająków, krok 27); dash nie spowalnia. */
   private readonly status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
   private readonly aimMarker: Phaser.GameObjects.Image;
   private aimAngle = 0;
@@ -186,6 +188,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return IDLE;
     }
 
+    // Trucizna tyka niezależnie od nietykalności (to status, nie nowe trafienie) i może zabić.
+    const poisonDamage = this.status.takePoisonDamage(now);
+    if (poisonDamage > 0) {
+      this.health.takeDamage(poisonDamage);
+      if (this.isDead) {
+        this.die();
+        return { ...IDLE, poisonDamage };
+      }
+    }
+
     if (actions.dash) {
       const moving = actions.move.x !== 0 || actions.move.y !== 0;
       const direction = moving ? actions.move : { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
@@ -208,7 +220,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.updateVisuals(now);
     this.updateAnimation(actions, now, swingStarted);
-    return { struck, shot };
+    return { struck, shot, poisonDamage };
   }
 
   /** Strzał wymaga odstępu od poprzedniego i wolnego ładunku. */
@@ -226,14 +238,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.invulnerability.start(now, this.combat.invulnerabilityMs);
     this.knockbackStun.start(now, KNOCKBACK_STUN_MS);
     this.setVelocity(hit.knockback.x, hit.knockback.y);
+    // Status z trafienia (trucizna smagnięcia Matki Pająków).
+    this.status.apply(hit.status, now);
 
-    if (this.isDead) {
-      this.setVelocity(0, 0);
-      this.setTint(0x555555).setAlpha(1);
-      this.animator.stop();
-      this.aimMarker.setVisible(false);
-    }
+    if (this.isDead) this.die();
     return true;
+  }
+
+  isPoisoned(now: number): boolean {
+    return this.status.isPoisoned(now);
+  }
+
+  private die(): void {
+    this.setVelocity(0, 0);
+    this.setTint(0x555555).setAlpha(1);
+    this.animator.stop();
+    this.aimMarker.setVisible(false);
   }
 
   private updateAimMarker(): void {
@@ -261,7 +281,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private updateVisuals(now: number): void {
-    if (this.status.isSlowed(now)) this.setTint(STATUS_TINTS.slow);
+    // Trucizna migocze na zielono, spowolnienie barwi na niebiesko (statusTint).
+    const tint = statusTint(this.status, now);
+    if (tint !== null) this.setTint(tint);
     else this.clearTint();
     if (this.dash.isDashing(now)) {
       this.setAlpha(0.5);
