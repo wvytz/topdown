@@ -2,10 +2,10 @@ import Phaser from 'phaser';
 import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
 import { TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
-import { TextureKey } from '@/core/types';
 import { ARENA_GATES } from '@/config/bossConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import type { TilesetAsset } from '@/config/tilesetConfig';
 import { TILESET_ASSET } from '@/config/tilesetConfig';
 import type { DressedFloor, DressedGate, DressedLayer, GateVisualState } from '@/dungeon/FloorDressing';
 import { EMPTY_TILE } from '@/dungeon/FloorDressing';
@@ -44,12 +44,13 @@ export class DungeonView {
     floor: DungeonFloor,
     private readonly dressed: DressedFloor,
     tileset: TilesetMeta,
+    asset: TilesetAsset,
   ) {
     if (tileset.version !== TILESET_ASSET.version || tileset.tileSize !== TILE_SIZE) {
       throw new Error(`DungeonView: arkusz v${tileset.version} ${tileset.tileSize}px, oczekiwano v${TILESET_ASSET.version} ${TILE_SIZE}px.`);
     }
     const map = scene.make.tilemap({ tileWidth: TILE_SIZE, tileHeight: TILE_SIZE, width: floor.width, height: floor.height });
-    const tiles = map.addTilesetImage(tileset.biome, TextureKey.Tileset, TILE_SIZE, TILE_SIZE, 0, 0, 0);
+    const tiles = map.addTilesetImage(tileset.biome, asset.imageKey, TILE_SIZE, TILE_SIZE, 0, 0, 0);
     if (!tiles) throw new Error('DungeonView: nie udało się utworzyć tilesetu.');
     const blank = (name: string, depth: number) => {
       const layer = map.createBlankLayer(name, tiles);

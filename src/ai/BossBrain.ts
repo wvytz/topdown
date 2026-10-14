@@ -11,6 +11,8 @@ export interface BossBrainInput {
   readonly now: number;
   /** Aktualne HP / maks. HP (0..1). */
   readonly hpRatio: number;
+  /** Żywe pajączki z wylęgów (Matka Pająków); brak = 0. */
+  readonly summonsAlive?: number;
 }
 
 export interface BossDecision {
@@ -77,6 +79,7 @@ export class BossBrain {
           now: input.now,
           enraged,
           rng: this.rng,
+          summonsAlive: input.summonsAlive ?? 0,
         });
         const rest = this.definition.restBetweenAttacksMs * (enraged ? this.definition.enrage.restMultiplier : 1);
         this.currentAttack = plan;

@@ -31,8 +31,6 @@ export enum SceneKey {
 
 export enum TextureKey {
   Projectile = 'tex-projectile',
-  /** Arkusz kafli z generatora (public/assets/tilesets/tower_ruins_tileset.png). */
-  Tileset = 'tex-tileset',
 }
 
 /** Dane przekazywane przy (re)starcie GameScene. */

@@ -9,6 +9,7 @@ import { angleTo } from '@/systems/CombatMath';
 import { ChargePool } from '@/systems/ChargePool';
 import { LOOT_ATLAS, LOOT_FRAMES, PLAYER_VISUAL, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { facingDirection } from '@/systems/Facing';
+import { playerAnimationState } from '@/systems/PlayerAnimation';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
@@ -173,13 +174,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocity(velocity.x, velocity.y);
     }
 
-    if (actions.attack) this.attackCycle.tryStart(now);
+    const swingStarted = actions.attack && this.attackCycle.tryStart(now);
     const struck = this.attackCycle.consumeRelease(now);
 
     const shot = actions.shoot && this.tryShoot(now) ? { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) } : null;
 
     this.updateVisuals(now);
-    this.updateAnimation(actions);
+    this.updateAnimation(actions, now, swingStarted);
     return { struck, shot };
   }
 
@@ -218,11 +219,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (direction !== null) this.aimMarker.setFrame(LOOT_FRAMES.aim[direction]!);
   }
 
-  /** Barbarzyńca patrzy tam, gdzie celuje; idzie, gdy się porusza. */
-  private updateAnimation(actions: PlayerActions): void {
+  /** Barbarzyńca patrzy tam, gdzie celuje; idzie, gdy się porusza; cios trwa cały cykl ataku. */
+  private updateAnimation(actions: PlayerActions, now: number, swingStarted: boolean): void {
     this.animator.face({ x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) });
     const moving = actions.move.x !== 0 || actions.move.y !== 0;
-    this.animator.play(moving ? PLAYER_VISUAL.move : PLAYER_VISUAL.idle);
+    const state = playerAnimationState(this.attackCycle.phase(now), moving);
+    if (state === 'attack') {
+      const duration = this.combat.attackCooldownMs;
+      if (swingStarted) this.animator.restart(PLAYER_VISUAL.attack, duration);
+      else this.animator.play(PLAYER_VISUAL.attack, duration);
+      return;
+    }
+    this.animator.play(state === 'move' ? PLAYER_VISUAL.move : PLAYER_VISUAL.idle);
   }
 
   private updateVisuals(now: number): void {

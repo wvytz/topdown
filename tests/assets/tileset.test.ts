@@ -134,6 +134,8 @@ const CHARACTERS = [
   ['Trashcan Man (Rusher)', SPRITE_SHEETS.trashcanMan],
   ['Demon Mage (Kiter)', SPRITE_SHEETS.demonMage],
   ['Sludge King (boss)', SPRITE_SHEETS.sludgeKing],
+  ['Matka Pająków (boss)', SPRITE_SHEETS.spiderQueen],
+  ['Pajączek-kamikaze', SPRITE_SHEETS.spiderling],
 ] as const;
 
 const floorPixels = (meta.groups.floor ?? []).flatMap((name) => {

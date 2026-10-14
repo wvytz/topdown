@@ -1,4 +1,5 @@
-import { BossAttackKind } from '@/core/bossTypes';
+import { BossAttackKind, BossId } from '@/core/bossTypes';
+import type { CombatDecalKind } from '@/config/dressingConfig';
 import { EnemyType } from '@/core/combatTypes';
 import type { ItemId } from '@/core/lootTypes';
 import { ItemKind } from '@/core/lootTypes';
@@ -30,18 +31,21 @@ export interface SpriteSheetDef {
 export const SPRITE_FPS = 6;
 
 export const SPRITE_SHEETS = {
+  // Generator tools/barbarian_sword.py (krok 21): chód z mieczem (0–3) i cios od prawej do lewej (4–7).
   barbarian: {
     key: 'sheet-blond-barbarian',
-    url: 'assets/sprites/blond-barbarian_walk.png',
+    url: 'assets/sprites/blond-barbarian_walk-attack.png',
     frameWidth: 48,
     frameHeight: 48,
-    sheetWidth: 192,
+    sheetWidth: 384,
     sheetHeight: 384,
     directions: 8,
     fps: SPRITE_FPS,
     animations: {
       walk: { frames: [0, 1, 2, 3], loop: true },
       idle: { frames: [0], loop: false },
+      // Czas ciosu = attackCooldownMs (4 × 80 ms przy 320 ms) — wyjątek od 6 kl./s, logika walki nadrzędna.
+      attack: { frames: [4, 5, 6, 7], loop: false },
     },
   },
   trashcanMan: {
@@ -116,6 +120,52 @@ export const SPRITE_SHEETS = {
       fly: { frames: [0, 1, 2, 3], loop: true },
     },
   },
+  // Boss „Matka Pająków” (krok 20b, tools/spider_sprites.py): komórka 96×96, 8 kierunków;
+  // kolumny 0–3 chód, 4–7 złożenie pajączka (wylęga się 30 px za pivotem w kolumnie 7).
+  spiderQueen: {
+    key: 'sheet-spider-queen',
+    url: 'assets/sprites/spider-queen_move-birth.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      // Czas złożenia dopasowujemy do wylęgu z planu ataku — pajączek pojawia się na ostatniej klatce.
+      birth: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Pajączek-kamikaze: 48×48, 8 kierunków; 0–3 bieg, 4–7 zapłon (telegraf wybuchu, bez pętli).
+  spiderling: {
+    key: 'sheet-spiderling',
+    url: 'assets/sprites/spiderling_walk-prime.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      run: { frames: [0, 1, 2, 3], loop: true },
+      prime: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  spiderlingBurst: {
+    key: 'sheet-spiderling-burst',
+    url: 'assets/sprites/spiderling_burst.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 192,
+    sheetHeight: 48,
+    directions: 1,
+    // Wybuch szybszy niż chód: 4 klatki w ok. 330 ms.
+    fps: 12,
+    animations: {
+      burst: { frames: [0, 1, 2, 3], loop: false },
+    },
+  },
 } as const satisfies Readonly<Record<string, SpriteSheetDef>>;
 
 export type SpriteSheetId = keyof typeof SPRITE_SHEETS;
@@ -148,22 +198,51 @@ export const PLAYER_VISUAL = {
   sheet: 'barbarian',
   move: 'walk',
   idle: 'idle',
+  attack: 'attack',
   groundShadow: WALKER_SHADOW,
 } as const satisfies EnemyVisual;
 
 /** Pocisk maga: arkusz, animacja i przesunięcie startu przed maga (px, wg handoffu). */
 export const KITER_PROJECTILE_VISUAL = { sheet: 'demonOrb', animation: 'fly', forwardOffset: 13 } as const;
 
+export interface BossVisual extends EnemyVisual {
+  readonly attack: string;
+  /** Ataki z animacją `attack`; pozostałe (np. uderzenie Strażnika) mają tylko telegraf. */
+  readonly attackKinds: readonly BossAttackKind[];
+  /** Trwały ślad w miejscu śmierci bossa. */
+  readonly deathDecal: CombatDecalKind;
+}
+
 /**
- * Boss: ruch w pętli; plucie przed atakami z pociskami / strefami na odległość.
- * Uderzenie (strefa wokół bossa) nie ma plucia — jego telegraf jest czytelny sam w sobie.
+ * Wygląd bossów. Strażnik (Sludge King) pluje przed atakami z pociskami / strefami na odległość;
+ * uderzenie wokół siebie nie ma plucia — jego telegraf jest czytelny sam w sobie.
+ * Matka Pająków składa pajączki — animacja złożenia kończy się w chwili wylęgu.
  */
-export const BOSS_VISUAL = {
-  sheet: 'sludgeKing',
-  move: 'move',
-  attack: 'spit',
-  attackKinds: [BossAttackKind.Nova, BossAttackKind.Barrage],
-} as const satisfies EnemyVisual & { readonly attackKinds: readonly BossAttackKind[] };
+export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
+  [BossId.FloorGuardian]: {
+    sheet: 'sludgeKing',
+    move: 'move',
+    attack: 'spit',
+    attackKinds: [BossAttackKind.Nova, BossAttackKind.Barrage],
+    deathDecal: 'slime',
+  },
+  [BossId.SpiderQueen]: {
+    sheet: 'spiderQueen',
+    move: 'walk',
+    attack: 'birth',
+    attackKinds: [BossAttackKind.Brood],
+    deathDecal: 'splat',
+  },
+};
+
+/** Pajączek: bieg, zapłon (telegraf) i osobny arkusz wybuchu; cień od silnika (chodzi po ziemi). */
+export const SPIDERLING_VISUAL = {
+  sheet: 'spiderling',
+  move: 'run',
+  prime: 'prime',
+  burst: { sheet: 'spiderlingBurst', animation: 'burst' },
+  groundShadow: { width: 14, height: 8, offsetX: 1, offsetY: 3 },
+} as const satisfies EnemyVisual & { readonly prime: string; readonly burst: { readonly sheet: SpriteSheetId; readonly animation: string } };
 
 /** Pocisk bossa (fale Novy). */
 export const BOSS_PROJECTILE_VISUAL = { sheet: 'sludgeGlob', animation: 'fly' } as const;

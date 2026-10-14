@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import type { BossAttackKind, BossAttackPlan, BossDefinition } from '@/core/bossTypes';
+import type { BossAttackPlan, BossDefinition } from '@/core/bossTypes';
 import { BossPhase } from '@/core/bossTypes';
 import { attackLeadTimeMs } from '@/ai/bossAttacks';
-import { BOSS_VISUAL, SPRITE_SHEETS } from '@/config/spriteConfig';
+import type { BossVisual } from '@/config/spriteConfig';
+import { BOSS_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import type { DamageResult, Hit } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
@@ -29,12 +30,14 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   readonly status = new StatusEffects(BOSS_STATUS_RESISTANCE);
   private enraged = false;
   private readonly animator: DirectionalAnimator;
+  readonly visual: BossVisual;
   /** Do kiedy trwa animacja ataku (plucie trzyma ostatnią klatkę do końca ataku). */
   private attackPoseUntil = -Infinity;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: BossDefinition, rng: Rng) {
-    super(scene, x, y, SPRITE_SHEETS[BOSS_VISUAL.sheet].key);
+    super(scene, x, y, SPRITE_SHEETS[BOSS_VISUALS[definition.id].sheet].key);
     this.definition = definition;
+    this.visual = BOSS_VISUALS[definition.id];
     this.health = new Health(definition.maxHp);
     this.brain = new BossBrain(definition, rng);
 
@@ -46,8 +49,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     this.setImmovable(true);
     this.setPushable(false);
     this.setDepth(RENDER_DEPTH.boss);
-    this.animator = new DirectionalAnimator(this, BOSS_VISUAL.sheet);
-    this.animator.play(BOSS_VISUAL.move);
+    this.animator = new DirectionalAnimator(this, this.visual.sheet);
+    this.animator.play(this.visual.move);
   }
 
   get radius(): number {
@@ -70,8 +73,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     this.brain.activate(now);
   }
 
-  /** Zwraca nowy plan ataku, jeśli boss właśnie go rozpoczyna. */
-  tick(target: Vector2, now: number): BossAttackPlan | null {
+  /** Zwraca nowy plan ataku, jeśli boss właśnie go rozpoczyna. `summonsAlive` — żywe pajączki z wylęgów. */
+  tick(target: Vector2, now: number, summonsAlive = 0): BossAttackPlan | null {
     if (this.isDead) {
       this.setVelocity(0, 0);
       return null;
@@ -88,6 +91,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       target,
       now,
       hpRatio: this.health.value / this.health.max,
+      summonsAlive,
     });
     this.enraged = decision.enraged;
     const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
@@ -121,19 +125,24 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   }
 
   /**
-   * W walce boss zawsze patrzy na gracza (uśpiony — przodem do kamery). Przed Novą i Ostrzałem pluje:
-   * animacja trwa do pierwszego wystrzału/wybuchu, a ostatnia klatka trzyma się do końca ataku.
+   * W walce boss zawsze patrzy na gracza (uśpiony — przodem do kamery). Przed atakami z `attackKinds`
+   * gra animację ataku (plucie, złożenie pajączka): trwa do pierwszego wystrzału / wybuchu / wylęgu,
+   * a ostatnia klatka trzyma się do końca ataku. Pusty wylęg (limit pajączków) nie ma animacji.
    */
   private updateAnimation(target: Vector2, newAttack: BossAttackPlan | null, now: number): void {
     if (this.isFighting) this.animator.face({ x: target.x - this.x, y: target.y - this.y });
 
-    if (newAttack && (BOSS_VISUAL.attackKinds as readonly BossAttackKind[]).includes(newAttack.kind)) {
+    const animated =
+      newAttack !== null &&
+      this.visual.attackKinds.includes(newAttack.kind) &&
+      newAttack.strikes.length + newAttack.bursts.length + newAttack.spawns.length > 0;
+    if (newAttack && animated) {
       this.attackPoseUntil = newAttack.endsAt;
-      this.animator.restart(BOSS_VISUAL.attack, attackLeadTimeMs(newAttack, now));
+      this.animator.restart(this.visual.attack, attackLeadTimeMs(newAttack, now));
       return;
     }
     if (now < this.attackPoseUntil) return;
-    this.animator.play(BOSS_VISUAL.move);
+    this.animator.play(this.visual.move);
   }
 
   private updateTint(now: number): void {

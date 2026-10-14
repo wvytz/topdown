@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { EnemyType } from '@/core/combatTypes';
-import { BOSS_VISUAL, ENEMY_VISUALS, PLAYER_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { BOSS_VISUALS, ENEMY_VISUALS, PLAYER_VISUAL, SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { BossId } from '@/core/bossTypes';
 import type { SpriteSheetDef } from '@/config/spriteConfig';
 import { facingDirection, sheetFrameIndex } from '@/systems/Facing';
 
@@ -68,7 +69,11 @@ describe('arkusze sprite’ów', () => {
   });
 
   it('gracz, każdy wróg i boss używają istniejących animacji', () => {
-    const visuals = [PLAYER_VISUAL, BOSS_VISUAL, ...Object.values(EnemyType).map((type) => ENEMY_VISUALS[type])];
+    const visuals = [
+      PLAYER_VISUAL,
+      ...Object.values(BossId).map((id) => BOSS_VISUALS[id]),
+      ...Object.values(EnemyType).map((type) => ENEMY_VISUALS[type]),
+    ];
     for (const visual of visuals) {
       const animations: Readonly<Record<string, unknown>> = SPRITE_SHEETS[visual.sheet].animations;
       for (const name of [visual.move, 'idle' in visual ? visual.idle : undefined, 'attack' in visual ? visual.attack : undefined]) {
@@ -81,7 +86,16 @@ describe('arkusze sprite’ów', () => {
     expect(PLAYER_VISUAL.groundShadow).toBeDefined();
     expect(ENEMY_VISUALS[EnemyType.Rusher].groundShadow).toBeDefined();
     expect(ENEMY_VISUALS[EnemyType.Kiter].groundShadow).toBeUndefined();
-    expect('groundShadow' in BOSS_VISUAL).toBe(false);
+    for (const id of Object.values(BossId)) expect(BOSS_VISUALS[id].groundShadow).toBeUndefined();
+    expect(SPIDERLING_VISUAL.groundShadow).toBeDefined();
+  });
+
+  it('pajączek: zapłon i wybuch to istniejące animacje', () => {
+    const own: Readonly<Record<string, unknown>> = SPRITE_SHEETS[SPIDERLING_VISUAL.sheet].animations;
+    expect(own).toHaveProperty(SPIDERLING_VISUAL.move);
+    expect(own).toHaveProperty(SPIDERLING_VISUAL.prime);
+    const burst: Readonly<Record<string, unknown>> = SPRITE_SHEETS[SPIDERLING_VISUAL.burst.sheet].animations;
+    expect(burst).toHaveProperty(SPIDERLING_VISUAL.burst.animation);
   });
 
   it('klucze animacji są unikalne dla arkusza, animacji i kierunku', () => {

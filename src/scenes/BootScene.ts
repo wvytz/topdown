@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { FloorSceneData } from '@/core/types';
 import { SceneKey, TextureKey } from '@/core/types';
-import { TILESET_ASSET } from '@/config/tilesetConfig';
+import { BIOMES } from '@/config/biomeConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import { registerTorchAnimation } from '@/world/Torches';
@@ -17,17 +17,22 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     loadSpriteSheets(this);
-    this.load.image(TILESET_ASSET.imageKey, TILESET_ASSET.imageUrl);
-    this.load.json(TILESET_ASSET.jsonKey, TILESET_ASSET.jsonUrl);
-    this.load.spritesheet(TILESET_ASSET.sheetKey, TILESET_ASSET.imageUrl, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
+    // Arkusze kafli wszystkich biomów (krok 23a) — piętro wybiera swój w GameScene.
+    for (const { tileset } of Object.values(BIOMES)) {
+      this.load.image(tileset.imageKey, tileset.imageUrl);
+      this.load.json(tileset.jsonKey, tileset.jsonUrl);
+      this.load.spritesheet(tileset.sheetKey, tileset.imageUrl, { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
+    }
   }
 
   create(): void {
     registerSpriteAnimations(this);
     registerLootAnimations(this);
-    registerTorchAnimation(this, this.cache.json.get(TILESET_ASSET.jsonKey) as TilesetMeta);
+    for (const { tileset } of Object.values(BIOMES)) {
+      registerTorchAnimation(this, tileset, this.cache.json.get(tileset.jsonKey) as TilesetMeta);
+    }
     this.generatePlaceholderTextures();
-    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: NEW_RUN };
+    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: NEW_RUN, ...devStartOverrides() };
     this.scene.start(SceneKey.Game, startData);
   }
 
@@ -41,4 +46,16 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture(TextureKey.Projectile, p * 2, p * 2);
     g.destroy();
   }
+}
+
+/** Tylko w trybie dev: `?seed=3&floor=2` w adresie startuje run od danego seeda i piętra (testy modyfikatorów). */
+function devStartOverrides(): Partial<Pick<FloorSceneData, 'runSeed' | 'floor'>> {
+  if (!import.meta.env.DEV) return {};
+  const params = new URLSearchParams(window.location.search);
+  const seed = Number(params.get('seed'));
+  const floor = Number(params.get('floor'));
+  return {
+    ...(params.has('seed') && Number.isInteger(seed) ? { runSeed: seed >>> 0 } : {}),
+    ...(params.has('floor') && Number.isInteger(floor) && floor >= 1 ? { floor } : {}),
+  };
 }

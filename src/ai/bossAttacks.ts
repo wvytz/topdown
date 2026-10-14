@@ -16,6 +16,8 @@ export interface AttackPlanContext {
   readonly now: number;
   readonly enraged: boolean;
   readonly rng: Rng;
+  /** Żywe pajączki z poprzednich wylęgów (limit `brood.maxAlive`). */
+  readonly summonsAlive?: number;
 }
 
 /** Buduje plan ataku (strefy, fale pocisków, czasy). Czysta funkcja — poza RNG nie ma stanu. */
@@ -27,7 +29,15 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planNova(ctx);
     case BossAttackKind.Barrage:
       return planBarrage(ctx);
+    case BossAttackKind.Brood:
+      return planBrood(ctx);
   }
+}
+
+/** Atak z `pattern` bez definicji to błąd konfiguracji bossa. */
+function required<T>(value: T | undefined, kind: BossAttackKind, ctx: AttackPlanContext): T {
+  if (value === undefined) throw new Error(`Boss „${ctx.definition.name}”: atak ${kind} bez definicji.`);
+  return value;
 }
 
 function telegraph(ctx: AttackPlanContext, baseMs: number): number {
@@ -35,7 +45,7 @@ function telegraph(ctx: AttackPlanContext, baseMs: number): number {
 }
 
 function planSlam(ctx: AttackPlanContext): BossAttackPlan {
-  const slam = ctx.definition.slam;
+  const slam = required(ctx.definition.slam, BossAttackKind.Slam, ctx);
   const impactAt = ctx.now + telegraph(ctx, slam.telegraphMs);
   const strike: AreaStrike = {
     center: ctx.self,
@@ -45,11 +55,11 @@ function planSlam(ctx: AttackPlanContext): BossAttackPlan {
     damage: slam.damage,
     knockback: slam.knockback,
   };
-  return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], endsAt: impactAt + slam.recoveryMs };
+  return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], spawns: [], endsAt: impactAt + slam.recoveryMs };
 }
 
 function planNova(ctx: AttackPlanContext): BossAttackPlan {
-  const nova = ctx.definition.nova;
+  const nova = required(ctx.definition.nova, BossAttackKind.Nova, ctx);
   const waves = nova.waves + (ctx.enraged ? 1 : 0);
   const firstFireAt = ctx.now + telegraph(ctx, nova.telegraphMs);
   const halfStep = Math.PI / nova.projectileCount;
@@ -69,11 +79,11 @@ function planNova(ctx: AttackPlanContext): BossAttackPlan {
     });
   }
   const lastFireAt = firstFireAt + (waves - 1) * nova.waveIntervalMs;
-  return { kind: BossAttackKind.Nova, strikes: [], bursts, endsAt: lastFireAt + nova.recoveryMs };
+  return { kind: BossAttackKind.Nova, strikes: [], bursts, spawns: [], endsAt: lastFireAt + nova.recoveryMs };
 }
 
 function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
-  const barrage = ctx.definition.barrage;
+  const barrage = required(ctx.definition.barrage, BossAttackKind.Barrage, ctx);
   const firstImpactAt = ctx.now + telegraph(ctx, barrage.telegraphMs);
   const zoneCount = barrage.zoneCount + (ctx.enraged ? 1 : 0);
 
@@ -92,7 +102,32 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
     });
   }
   const lastImpactAt = firstImpactAt + (zoneCount - 1) * barrage.intervalMs;
-  return { kind: BossAttackKind.Barrage, strikes, bursts: [], endsAt: lastImpactAt + barrage.recoveryMs };
+  return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], endsAt: lastImpactAt + barrage.recoveryMs };
+}
+
+/**
+ * Wylęg: pajączki pojawiają się za bossem (po stronie przeciwnej do gracza) na końcu złożenia,
+ * w wachlarzu `spreadDeg`. Liczba tylko do limitu żywych; przy pełnym limicie wylęg jest pusty
+ * (boss i tak odczekuje swój rytm).
+ */
+function planBrood(ctx: AttackPlanContext): BossAttackPlan {
+  const brood = required(ctx.definition.brood, BossAttackKind.Brood, ctx);
+  const at = ctx.now + telegraph(ctx, brood.birthMs);
+  const wanted = brood.count + (ctx.enraged ? 1 : 0);
+  const count = Math.max(0, Math.min(wanted, brood.maxAlive - (ctx.summonsAlive ?? 0)));
+
+  const dx = ctx.self.x - ctx.target.x;
+  const dy = ctx.self.y - ctx.target.y;
+  const back = dx === 0 && dy === 0 ? Math.PI / 2 : Math.atan2(dy, dx);
+  const spread = (brood.spreadDeg * Math.PI) / 180;
+  const spawns = Array.from({ length: count }, (_, i) => {
+    const angle = count === 1 ? back : back - spread / 2 + (spread * i) / (count - 1);
+    return {
+      position: { x: ctx.self.x + Math.cos(angle) * brood.spawnDistance, y: ctx.self.y + Math.sin(angle) * brood.spawnDistance },
+      at,
+    };
+  });
+  return { kind: BossAttackKind.Brood, strikes: [], bursts: [], spawns, endsAt: at + brood.recoveryMs };
 }
 
 /** Czy okrągły cel zostaje trafiony przez strefę (okręgi się przecinają). */
@@ -101,12 +136,16 @@ export function isHitByAreaStrike(strike: AreaStrike, target: Vector2, targetRad
 }
 
 /**
- * Czas od `now` do pierwszego „wybuchu” ataku: wystrzału fali albo uderzenia strefy.
+ * Czas od `now` do pierwszego „wybuchu” ataku: wystrzału fali, uderzenia strefy albo wylęgu.
  * Warstwa widoku dopasowuje do niego animację ataku (np. plucie kończy się w chwili wystrzału).
  * 0, gdy plan nie ma żadnego zdarzenia albo pierwsze już minęło.
  */
 export function attackLeadTimeMs(plan: BossAttackPlan, now: number): number {
-  const moments = [...plan.bursts.map((burst) => burst.fireAt), ...plan.strikes.map((strike) => strike.impactAt)];
+  const moments = [
+    ...plan.bursts.map((burst) => burst.fireAt),
+    ...plan.strikes.map((strike) => strike.impactAt),
+    ...plan.spawns.map((spawn) => spawn.at),
+  ];
   if (moments.length === 0) return 0;
   return Math.max(0, Math.min(...moments) - now);
 }

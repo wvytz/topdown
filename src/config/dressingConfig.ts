@@ -74,3 +74,15 @@ export const FLOOR_DRESSING: FloorDressingConfig = {
     v: { open: 'gate_v_open', half: 'gate_v_half', closed: 'gate_v_closed' },
   },
 };
+
+/**
+ * Pajęcze leże (krok 23a): więcej pajęczyn w narożnikach (nad postaciami), jaja i zwisające nici na licu,
+ * wyblakłe pancerzyki na podłodze. Celowo bez pajęczyn i kokonów na podłodze — te będą elementami
+ * rozgrywki (kroki 23d–e) i gracz nie może ich mylić z dekoracją.
+ */
+export const SPIDER_LAIR_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalGroupWeights: { ...FLOOR_DRESSING.decalGroupWeights, 'decal.husk': 2.5 },
+  wallFace: { chance: 0.18, group: 'wallFace.lair' },
+  cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.7 },
+};

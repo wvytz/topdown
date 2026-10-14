@@ -32,7 +32,7 @@ FACE = 8  # wysokość lica ściany (południowa, widoczna strona) w pikselach
 COLUMNS = 16
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPRITES_DIR = os.path.join(ROOT, 'public', 'assets', 'sprites')
-BIOME = 'tower_ruins'
+BIOME = 'tower_ruins'  # ustawiany z --biome (krok 23a); od niego zależą nazwy plików i ziarna kafli
 
 Color = tuple
 
@@ -187,8 +187,37 @@ PALETTES = {
         stain=oks((.36, .050, 20), (.41, .050, 22)),
         ash=oks((.55, .016, 65), (.49, .014, 250)),
     ),
+    # Pajęcze leże (krok 23a, poprawka właściciela): fiolet, zieleń i biel — mroczne leże w starej wieży.
+    # Zasady biomu inne niż w ruinach: fioletowy kamień, zielona posoka i upiorny zielony ogień, białe nici i jaja.
+    # Jasność podłogi jak w C — kontrast obrysu postaci zostaje (pilnują testy czytelności).
+    'pajeczy': Palette(
+        key='pajeczy', label='Pajęcze leże: fiolet, zieleń, biel',
+        floor=oks((.32, .066, 300), (.39, .068, 305), (.465, .070, 310), (.51, .072, 312), (.555, .072, 315), (.60, .068, 318)),
+        floor_alt=ok(.44, .074, 300),
+        wall_top=oks((.24, .070, 295), (.34, .080, 300), (.47, .090, 305), (.53, .092, 310), (.61, .086, 314), (.70, .074, 318)),
+        wall_block_alt=ok(.495, .094, 300),
+        wall_face=oks((.19, .066, 295), (.25, .076, 300), (.30, .080, 305)),
+        wall_fade=oks((.15, .056, 295), (.20, .062, 300), (.23, .066, 305)),
+        deep=oks((.10, .040, 300), (.13, .046, 300)),
+        # Posoka i plamy: ciemna, trująca zieleń (daleko od jasnej zieleni magii #9cff57).
+        stain=oks((.38, .090, 155), (.45, .105, 150)),
+        # Nici, kurz i pajęczyny: biel z lekkim fioletem.
+        ash=oks((.93, .014, 305), (.80, .022, 305)),
+        # Jaja i kości: zielonkawa biel.
+        bone=oks((.80, .030, 150), (.89, .022, 145), (.95, .012, 130)),
+        # Upiorny zielony ogień pochodni (poświata pochodni też bierze barwę z tej rampy).
+        flame=oks((.46, .120, 155), (.62, .150, 150), (.79, .150, 140), (.91, .080, 130)),
+    ),
 }
 DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
+
+# Biomy (krok 23a): paleta domyślna i dodatkowe kafle. Ruiny bez dodatków — arkusz bez zmian.
+# `reserved_hues`: czy podłoga omija barwy zarezerwowane (fiolet wrogów, zieleń magii). W leżu nie —
+# decyzja właściciela: ten biom ma być fioletowo-zielony.
+BIOMES = {
+    'tower_ruins': {'palette': 'piaskowiec', 'extras': (), 'reserved_hues': True},
+    'spider_lair': {'palette': 'pajeczy', 'extras': ('spider',), 'reserved_hues': False},
+}
 
 
 # ---------------- płótno ----------------
@@ -389,6 +418,18 @@ def decal(kind):
             img = Img(T, T)
             for _ in range(7):
                 pebble(img, r.randint(2, 28), r.randint(2, 28), r.choice([1, 1, 2]), W)
+        elif kind in ('husk_a', 'husk_b'):  # wyschnięte pancerzyki ofiar pająków (pajęcze leże): odwłok i nóżki
+            img = Img(T, T)
+            spots = [(10, 11), (21, 20)] if kind == 'husk_a' else [(9, 20), (19, 9), (23, 22)]
+            for cx, cy in spots:
+                # Wyblakłe (kość + szare nóżki), żeby nie myliły się z żywymi, ciemnymi pająkami.
+                for dx, dy in ((-3, -2), (-3, 0), (-3, 2), (3, -2), (3, 0), (3, 2)):
+                    img.put(cx + dx, cy + dy, p.ash[1])
+                    img.put(cx + dx + (1 if dx < 0 else -1), cy + dy // 2, p.ash[1])
+                for dy in range(-2, 3):
+                    for dx in range(-1, 2):
+                        if abs(dy) < 2 or dx == 0:
+                            img.put(cx + dx, cy + dy, p.bone[1] if dy < 0 else p.bone[0])
         elif kind.startswith('dust_'):  # kurz nawiany pod ścianę; gęstszy przy samej ścianie
             img = Img(T, T); side = kind[-1]
             for y in range(T):
@@ -884,6 +925,27 @@ def face_detail(kind):
             img.put(15, fy + 3, p.flame[2])
             img.put(16, fy + 3, p.flame[1])
             img.put(15, fy + 2, p.flame[3])
+        elif kind == 'eggs':  # skupisko jaj przyklejone do lica (pajęcze leże); każde jajo z własnym obrysem
+            B = p.bone
+            for cx, cy, rx, ry in ((11.5, fy + 4.5, 2.2, 2.6), (16.5, fy + 3.5, 2.4, 2.9), (21.5, fy + 4.5, 2.0, 2.4)):
+                egg = Img(T, T)
+                for y in range(T):
+                    for x in range(T):
+                        nx, ny = (x + .5 - cx) / rx, (y + .5 - cy) / ry
+                        if nx * nx + ny * ny <= 1:
+                            egg.put(x, y, B[2] if nx + ny < -.6 else B[1] if nx + ny < .7 else B[0])
+                outline(egg, O)
+                img.blit(egg, 0, 0)
+        elif kind == 'webdrape':  # pajęczyna zwisająca z krawędzi muru na lico: dwie nici i pasma
+            for x in range(4, 29):
+                t = (x - 4) / 24
+                img.put(x, fy - 1 + round(4 * math.sin(math.pi * t)), p.ash[0])
+                if 8 <= x <= 24:
+                    img.put(x, fy + 1 + round(3 * math.sin(math.pi * (x - 8) / 16)), p.ash[0])
+            for x in (6, 11, 16, 21, 26):
+                for y in range(fy - 1, fy + 5 + (x % 3)):
+                    if img.get(x, y) == CLR:
+                        img.put(x, y, p.ash[1])
         elif kind == 'brick':  # wypadnięta cegła
             for y in range(fy + 1, fy + 3):
                 for x in range(6, 12):
@@ -1055,6 +1117,14 @@ def manifest():
                          ('pillar_stump', pillar('stump'), 1), ('fallen_pillar_2x1', fallen_pillar, 2),
                          ('rubble_a', rubble_prop, 1), ('rubble_b', rubble_prop, 1), ('bones', bones, 1)):
         m.append(Entry(name, gen, 'prop', w, 1, group='prop'))
+    if 'spider' in BIOMES[BIOME]['extras']:
+        # Pajęcze leże: dopisane na końcu (first-fit), więc nie przesuwają kafli wspólnych z ruinami.
+        # Własna grupa lica: w leżu detale ruin (sztandary, wnęki) nie pasują.
+        for kind, weight in (('eggs', 3), ('webdrape', 2)):
+            m.append(Entry(f'face_{kind}', face_detail(kind), 'wallDecor', group='wallFace.lair', weight=weight))
+        for v in ('a', 'b'):
+            m.append(Entry(f'decal_husk_{v}', decal(f'husk_{v}'), 'floorDecal', group='decal.husk', weight=1,
+                           flip_x=True))
     return m
 
 
@@ -1148,6 +1218,8 @@ def validate(p, tiles):
     for c in p.colors():
         if c[:3] in ((0, 0, 0), (255, 255, 255)):
             errors.append(f'paleta zawiera czystą czerń/biel {to_hex(c)}')
+    if not BIOMES[BIOME]['reserved_hues']:
+        return errors, warnings
     for c in (p.floor[2], p.floor_alt, p.floor[3]):
         h, s = hue_sat(c)
         if s >= .08 and 255 <= h <= 335:
@@ -1185,6 +1257,10 @@ SPRITES = {
     'sludge': ('sludge-king_move-spit.png', 96, '#1b1a22', 'Sludge King'),
     'orb': ('demon-mage_orb.png', 16, None, None),
     'glob': ('sludge-king_glob.png', 16, None, None),
+    # Pajęcze leże (krok 23a): bohater z mieczem (krok 21), Matka Pająków i pajączki (krok 20b/22).
+    'barbarian_sword': ('blond-barbarian_walk-attack.png', 48, '#1b1a22', 'Barbarzyńca'),
+    'queen': ('spider-queen_move-birth.png', 96, '#1b1a22', 'Matka Pająków'),
+    'spiderling': ('spiderling_walk-prime.png', 48, '#1b1a22', 'Pajączek'),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -1197,14 +1273,32 @@ MOCKUP_ACTORS = [
     ('orb', 0, 300, 246, False),
     ('glob', 0, 430, 318, False),
 ]
+# Obsada leża: (sprite, wiersz kierunku, środek x, środek y, chodzi, kolumna klatki). Rusher i Kiter
+# to na razie Trashcan i mag — skórki pająka i nietoperza przyjdą w kroku 23b.
+MOCKUP_ACTORS_LAIR = [
+    ('barbarian_sword', 2, 368, 262, True, 4),       # cios w stronę pajączków
+    ('spiderling', 6, 430, 270, True, 0),
+    ('spiderling', 7, 452, 236, True, 1),
+    ('spiderling', 5, 470, 300, True, 6),            # zapłon
+    ('queen', 6, 560, 300, False, 5),                # złożenie pajączka
+    ('trashcan', 6, 300, 330, True, 0),
+    ('mage', 4, 232, 236, False, 0),
+    ('mage', 6, 752, 252, False, 0),
+    ('orb', 0, 300, 246, False, 0),
+]
+# Postacie mierzone pod kątem czytelności na palecie biomu.
+METRIC_CAST = {
+    'tower_ruins': ('barbarian', 'trashcan', 'mage', 'sludge'),
+    'spider_lair': ('barbarian_sword', 'trashcan', 'mage', 'queen', 'spiderling'),
+}
 
 
-def load_frame(key, row):
+def load_frame(key, row, col=0):
     file, cell, _, _ = SPRITES[key]
     im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
     if key in ('orb', 'glob'):
         row = 0
-    return im.crop((0, row * cell, cell, (row + 1) * cell))
+    return im.crop((col * cell, row * cell, (col + 1) * cell, (row + 1) * cell))
 
 
 def weighted(rng, names, weights):
@@ -1314,8 +1408,9 @@ def compose_mockup(p, tiles, meta, seed=16):
             if grid[y][x] in props:
                 put(props[grid[y][x]], x, y)
     # 8. postacie (wg y), potem ściany nad postaciami
-    for key, row, cx, cy, _ in sorted(MOCKUP_ACTORS, key=lambda a: a[3]):
-        fr = load_frame(key, row)
+    actors = MOCKUP_ACTORS_LAIR if BIOME == 'spider_lair' else [(*a, 0) for a in MOCKUP_ACTORS]
+    for key, row, cx, cy, _, col in sorted(actors, key=lambda a: a[3]):
+        fr = load_frame(key, row, col)
         canvas.alpha_composite(fr, (cx - fr.width // 2, cy - fr.height // 2))
     for name, x, y in overhead:
         put(name, x, y)
@@ -1329,7 +1424,7 @@ def sprite_metrics(p, tiles):
     y_floor = sum(luminance(c) for c in px) / len(px)
     floor_h, _ = hue_sat(p.floor[2])
     res = []
-    for key in ('barbarian', 'trashcan', 'mage', 'sludge'):
+    for key in METRIC_CAST[BIOME]:
         file, cell, out_hex, label = SPRITES[key]
         fr = load_frame(key, 4)
         cnt = Counter(c for c in fr.getdata() if c[3] == 255 and to_hex(c) != out_hex and luminance(c) > .006)
@@ -1388,11 +1483,15 @@ def main():
     sys.stdout.reconfigure(encoding='utf-8')  # konsola Windows domyślnie nie ma polskich znaków
     ap = argparse.ArgumentParser(description='Generator kafli Tower Ruins (v2)')
     ap.add_argument('--out', default=os.path.join(ROOT, 'public', 'assets', 'tilesets'))
-    ap.add_argument('--palette', default=DEFAULT_PALETTE, choices=sorted(PALETTES))
+    ap.add_argument('--biome', default='tower_ruins', choices=sorted(BIOMES))
+    ap.add_argument('--palette', default=None, choices=sorted(PALETTES), help='domyślnie paleta biomu')
     ap.add_argument('--mockup', action='store_true', help='makiety wszystkich (lub --palettes) kandydatek palet')
     ap.add_argument('--palettes', default=','.join(PALETTES), help='lista palet do makiet, rozdzielona przecinkami')
     ap.add_argument('--list', action='store_true')
     a = ap.parse_args()
+    global BIOME
+    BIOME = a.biome
+    a.palette = a.palette or BIOMES[BIOME]['palette']
     if a.list:
         for k, p in PALETTES.items():
             print(f'{k:15s} {p.label}')

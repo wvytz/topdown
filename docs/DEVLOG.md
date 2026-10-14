@@ -1312,6 +1312,205 @@ Złota przybywa o +20% na każde piętro.
 - **Zrzuty:** rząd łupów w powiększeniu płótna, kapliczka aktywna i zużyta, karty nagrody.
 - Brak nowych błędów w konsoli.
 
+## Krok 20b — Sprite'y bossa „Matka Pająków” i pajączków-kamikaze
+
+**Zlecenie właściciela:** zestaw sprite'ów nowego bossa: wielki pająk, który w trakcie walki wypuszcza małe pajączki, a one wybuchają przy graczu. Styl zgodny ze STYLEGUIDE. Tylko grafika, bez logiki.
+
+**Generator `tools/spider_sprites.py`:**
+- korzysta z narzędzi `tower_ruins_tiles.py` i `loot_sprites.py` (`Img`, `outline`, `rotate45`, `ok`, rampy `BONE`, `FLAME`, `DIRT`);
+- postać rysuje raz na N, 8 kierunków powstaje z obrotu co 45°, obrys `#1b1a22` po obrocie.
+
+**Arkusze w `public/assets/sprites/`:**
+
+| Plik | Komórka · pivot | Kolumny |
+|---|---|---|
+| `spider-queen_move-birth.png` (768×768) | 96×96 · 48,48 | 0–3 chód, 4–7 złożenie pajączka (wylęg 30 px za pivotem w kolumnie 7) |
+| `spiderling_walk-prime.png` (384×384) | 48×48 · 24,24 | 0–3 bieg, 4–7 zapłon (telegraf wybuchu) |
+| `spiderling_burst.png` (192×48) | 48×48 · 24,24 | 0–3 wybuch, bez kierunków |
+
+**Decyzje:**
+- **Chityna:** rampa 5 tonów, cień chłodny (granat-fiolet), światło ciepłe (rdzawy brąz).
+- **Akcenty, tylko 2:** czerwone oczy oraz rampa ognia pochodni `FLAME` na jajach bossa, worku-bombie pajączka i w wybuchu. Zasada: „co świeci, to wybucha”.
+- **Dominująca cecha bossa:** odwłok z kościaną czaszką i wieńcem jaj.
+- **Pajączek:** pomarańczowy worek z ciemną klepsydrą. Pierwsza wersja z pręgami wyglądała jak pszczoła, więc ją odrzuciłem.
+- **Zapłon:** puls jasnością rampy (pomarańcz → biel kości), bez przezroczystości i bez skalowania.
+- **Wybuch:** ogień bez obrysu, z krawędzią w najciemniejszym tonie rampy (§6b). Dym pasmowy z rampy błota, bez ditheringu. Odłamki chityny mają obrys.
+- **Cień:** brak wypalonego cienia; cień daje silnik.
+
+**Walidator generatora:**
+- brak pustych klatek;
+- alfa tylko 0/255;
+- brak czystej czerni i bieli;
+- sylwetka w marginesie 8 px (wybuch zwolniony z tego warunku).
+
+**Czytelność na płycie palety C:**
+- obrys 2,73 : 1 (próg ≥ 2,0);
+- ciało `#3c272a` 2,19 : 1 (próg ≥ 1,5).
+
+**Dokumentacja:** artefakt Design System „Matka Pająków” zawiera:
+- paletę jako tokeny;
+- zasady animacji;
+- podglądy animowane z prędkością gry (6 kl./s);
+- arkusze i GIF-y.
+
+**Weryfikacja:**
+- generator przechodzi walidację;
+- podglądy obejrzane w powiększeniu na podłodze palety C;
+- kodu TS nie zmieniono, więc w tym kroku nie było `npm run build`.
+
+**Nie zrobione (wymaga decyzji właściciela):**
+- logika bossa i pajączków;
+- wpisy w `spriteConfig.ts`;
+- liczby w `src/config`: czas złożenia i zapłonu, promień wybuchu (ogień w klatce 2 ma ok. 17 px);
+- klatki śmierci bossa.
+
+## Krok 21 — Miecz i animacja ciosu barbarzyńcy
+
+**Decyzje właściciela:**
+- klatki z generatora Pythona (jak pochodnie i łupy), nie ręcznie;
+- cios: 4 klatki po 80 ms, czyli razem dokładnie `attackCooldownMs` (320 ms);
+- miecz zawsze w dłoni, także przy chodzie i staniu.
+
+**Generator `tools/barbarian_sword.py`:**
+- źródło: wiersz N arkusza z paczki (`blond-barbarian_walk.png`, „bez miecza”), rozebrany z obrysu;
+- obrót tego źródła odtwarza pozostałe wiersze paczki (różnice tylko w pojedynczych pikselach cieniowania, obejrzane w powiększeniu), więc chód wygląda jak dotąd;
+- **chód (kolumny 0–3):** miecz w prawej pięści, ostrze 6 px na wprost; pięść wykrywana automatycznie w każdej klatce;
+- **cios (kolumny 4–7):** prawe przedramię zastąpione nowym (skóra 3 px, karwasz z futra, pięść), ostrze 7 px; pięść zatacza łuk przed głową od prawej do lewej:
+  - 4 zamach z prawej, 5 ostrze na wprost (chwila trafienia), 6 przeciągnięcie w lewo, 7 powrót;
+- paleta ostrza ze STYLEGUIDE §4.4 (dotąd „wyłączona”), jelec w kolorze pasa;
+- 8 kierunków z obrotu co 45°, obrys po obrocie;
+- walidator: alfa 0/255, brak czystej czerni i bieli, cały sprite w promieniu 21,5 px od pivota (nie dotyka krawędzi komórki po obrocie);
+- wynik: `public/assets/sprites/blond-barbarian_walk-attack.png` (384×384). Stary arkusz zostaje jako źródło generatora.
+
+**Warstwa czysta:**
+- `systems/PlayerAnimation.ts` → `playerAnimationState(fazaAtaku, ruch)`: cios ma pierwszeństwo przed chodem przez cały cykl ataku.
+
+**Konfiguracja:**
+- `spriteConfig`: arkusz barbarzyńcy wskazuje nowy plik, animacja `attack` (kolumny 4–7), `PLAYER_VISUAL.attack`.
+
+**Phaser:**
+- `Player.updateAnimation`: nowy cios restartuje animację z czasem `attackCooldownMs` z bieżącego wyposażenia, więc przyspiesza razem z przedmiotami;
+- obrót celownika w trakcie ciosu zmienia wiersz bez cofania klatki (`DirectionalAnimator`);
+- łuk `CombatEffects.slash` zostaje jako telegraf zasięgu.
+
+**STYLEGUIDE:** paleta ostrza włączona; w §11 dopisane wyjątki barbarzyńcy (tempo ciosu, ostrze w marginesie).
+
+**Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`).
+
+**Testy:** `PlayerAnimation.test.ts` (3 testy: wybór animacji, cios trwa dokładnie `attackCooldownMs`, trafienie w pierwszej klatce). Istniejące testy sprawdzają wymiary nowego arkusza, animacje `PLAYER_VISUAL` i czytelność barbarzyńcy na podłodze.
+
+**Weryfikacja:**
+- `npm run build`: 631 testów zielonych;
+- w grze (ręczne `game.step()`): po kliknięciu klatki 4→7 po ok. 80 ms, potem powrót do stania;
+- podgląd arkusza 4x i animowany GIF w `tools/out/`;
+- **ocena właściciela:** miecz wygląda dobrze, zostaje bez zmian.
+
+## Krok 22 — Boss „Matka Pająków” na piętrze 2
+
+**Decyzje właściciela:**
+- boss sam nie zasypuje ekranu pociskami: w stałym rytmie wypluwa pajączki, które są zagrożeniem i żywą tarczą;
+- pajączki wybuchają po chwili i zadają obrażenia; giną od jednego uderzenia, a zabite nie wybuchają;
+- Matka Pająków tylko na piętrze 2, pozostałe piętra mają Strażnika;
+- exploit z ostrzałem bossa z korytarza zostaje do odwołania;
+- następny etap: pajęczy biom.
+
+**Warstwa czysta:**
+- **`core/bossTypes.ts`:**
+  - `BossId` (wygląd i ślady po walce zależą od bossa);
+  - atak `BossAttackKind.Brood` z `BroodAttackDefinition`, pajączek `SpiderlingDefinition`;
+  - definicje ataków w `BossDefinition` są opcjonalne: wymagane tylko te z `pattern`, brak definicji to głośny błąd konfiguracji;
+  - plan ataku ma `spawns` (pajączek, miejsce, chwila).
+- **`ai/bossAttacks.ts` → `planBrood`:**
+  - pajączki pojawiają się na końcu złożenia, za bossem (po stronie przeciwnej do gracza), w wachlarzu `spreadDeg`;
+  - liczba tylko do limitu żywych `maxAlive`; przy pełnym limicie wylęg jest pusty (bez animacji), a boss odczekuje rytm;
+  - wściekłość jak u Strażnika: +1 pajączek, krótsze złożenie, krótsza przerwa.
+- **`ai/BossBrain.ts`:** wejście `summonsAlive`; boss podchodzi tylko do `engageDistance` (150 px), czyli trzyma dystans.
+- **`ai/SpiderlingBrain.ts`:** pościg → zapłon (przy graczu w `primeRange` albo po `fuseMs` od wylęgu) → wybuch po `primeMs`.
+
+**Konfiguracja (`config/bossConfig.ts`):**
+- `SPIDER_QUEEN`: 300 HP (piętro 2: 345), wylęg 2 pajączki co ok. 3,2 s, limit 6;
+- pajączek: 1 HP, prędkość 135, zapłon przy 36 px albo po 3,5 s, zapłon 667 ms, wybuch 40 px za 12 (skalowane z piętrem);
+- `BOSS_BY_FLOOR` / `bossForFloor`: piętro 2 → Matka Pająków, reszta → Strażnik. Pod biom wystarczy rozszerzyć tę mapę;
+- `scaleBossForFloor` jest generyczne i skaluje też obrażenia wybuchu pajączków.
+
+**Sprite'y (`spriteConfig`):**
+- arkusze z kroku 20b: `spiderQueen` (chód, złożenie), `spiderling` (bieg, zapłon), `spiderlingBurst` (wybuch, 12 kl./s);
+- `BOSS_VISUALS` per `BossId` zastępuje `BOSS_VISUAL`; Strażnik bez zmian, Matka Pająków gra złożenie przed wylęgiem;
+- `SPIDERLING_VISUAL`: cień od silnika 14×8;
+- ślad po śmierci bossa z wyglądu: szlam (Strażnik), plama (Matka Pająków).
+
+**Phaser:**
+- `entities/Spiderling.ts`: ciało fizyczne, animacje biegu i zapłonu (czas zapłonu = `primeMs`), każde trafienie zabija;
+- `BossFight`:
+  - wylęg w zaplanowanej chwili; miejsce poza areną (boss przy ścianie) zastępuje pozycja bossa;
+  - telegraf zapłonu: czerwona strefa wybuchu jak przy atakach Strażnika;
+  - wybuch: arkusz wybuchu, przypalenie, obrażenia i odrzut gracza;
+  - cios, strzał i Burzowy pęd trafiają pajączki i bossa; strzał trafia najbliższy cel, więc pajączek zasłania matkę;
+  - zabity pajączek: plama, bez wybuchu; po śmierci bossa giną wszystkie pajączki, a niewyklute się nie pojawiają.
+
+**Testy:**
+- `SpiderQueen.test.ts` (13 testów): miejsce i chwila wylęgu, wachlarz, wściekłość, limit żywych, sam rytm wylęgu i dystans, błąd przy brakującej definicji, pościg, zapłon i wybuch pajączka, zapalnik, wybór bossa na piętro, skalowanie;
+- czytelność Matki Pająków i pajączka na podłodze i bruku (testy z kroku 16);
+- `sprites.test.ts`: animacje wszystkich bossów i pajączka istnieją.
+
+**Weryfikacja:**
+- `npm run build`: 658 testów zielonych;
+- w grze (`?seed=7&floor=2`, ręczne `game.step()`):
+  - złożenie startuje 0,9 s po wejściu na arenę, 2 pajączki pojawiają się na końcu złożenia, rytm ok. 3,2 s;
+  - pajączki dobiegają, odpalają zapłon z czerwoną strefą i wybuchają: gracz −13 HP (drugi wybuch w tej samej chwili blokuje nietykalność po trafieniu);
+  - cios w podbiegające pajączki zabił oba bez wybuchu, HP gracza bez zmian;
+  - zrzut ekranu: boss, pasek HP, pajączki w zapłonie.
+
+**Do oceny w testach właściciela:** rytm wylęgu, limit 6 pajączków, siła wybuchu, czy boss z pustymi rękami (sam nie atakuje) nie jest za łatwy przy grze strzałami z dystansu.
+
+## Krok 23a — Pajęczy biom: config biomów i arkusz „Pajęcze leże”
+
+**Decyzje właściciela (cały biom, kroki 23a–e):**
+- biom tylko na piętrze 2 (razem z Matką Pająków);
+- nowy arkusz kafli (chłodny, szaro-liliowy kamień) i pajęcze dekoracje;
+- trzymamy się małej liczby archetypów: pająki to Rushery, nietoperz z falą uderzeniową to wariant Kitera (lecący półksiężyc);
+- pająki spadają losowo z sufitu: rosnący cień na płytce, przy lądowaniu ranią stojącego w cieniu;
+- kokony wybuchają przy bliskim kontakcie i spowalniają gracza;
+- lepkie pajęczyny na podłodze spowalniają tylko gracza; dash przechodzi bez spowolnienia.
+
+**Generator `tools/tower_ruins_tiles.py`:**
+- opcja `--biome` (`tower_ruins` domyślnie, `spider_lair`): od niej zależą nazwy plików, ziarna kafli i dodatki manifestu;
+- arkusz ruin wygenerowany po zmianach jest identyczny co do piksela, a JSON bez zmian;
+- paleta `pajeczy` (po poprawce właściciela: „ma być fioletowo, zielono, biało, jak z mrocznego leża pająków w starej wieży”):
+  - fioletowy kamień (barwa 295–320°); podłoga tylko nieco ciemniejsza niż w C, a mury ciemniejsze i mocniej nasycone (mrok bez utraty czytelności walki);
+  - zieleń: posoka i plamy (ciemna, daleko od zieleni magii) oraz upiorny zielony ogień pochodni; poświata i mrok biorą barwy z palety;
+  - biel: nici, pajęczyny, kurz i zielonkawobiałe jaja;
+  - wyjątek biomu od barw zarezerwowanych (fiolet wrogów, zieleń magii): opcja `reserved_hues` w `BIOMES` generatora i zapis w STYLEGUIDE;
+  - pierwsza wersja (chłodny, prawie szary kamień) odrzucona przez właściciela;
+- dodatki leża, dopisane na końcu manifestu, więc kafle wspólne z ruinami się nie przesuwają:
+  - `face_eggs` (skupisko jaj, każde z obrysem) i `face_webdrape` (nici zwisające z krawędzi muru) w grupie `wallFace.lair`;
+  - `decal_husk_a/b`: wyblakłe pancerzyki; pierwsza, ciemna wersja wyglądała jak żywe pajączki, więc ją odrzuciłem;
+- celowo bez pajęczyn i kokonów na podłodze, bo w krokach 23d–e będą elementami rozgrywki;
+- wynik: `public/assets/tilesets/spider_lair_tileset.{png,json}` (124 kafle);
+- makieta (`run_mockups`) ma obsadę per biom: w leżu bohater z mieczem, Matka Pająków w trakcie złożenia i pajączki (jeden w zapłonie); Rusher i Kiter to do kroku 23b Trashcan i mag. Pomiar czytelności obejmuje też Matkę Pająków i pajączka (obrys 2,24, ciało 1,8);
+- czytelność na fioletowej podłodze (pomiar generatora): bohater obrys 2,24 / ciało 3,08, Rusher 2,24 / 2,57, mag 2,52 / 1,76 (próg 2,0 / 1,5). Sludge King wypada słabo, ale w leżu nie występuje; Kiter piętra 2 stanie się nietoperzem w kroku 23b.
+
+**Warstwa czysta / config:**
+- `config/biomeConfig.ts`: `BiomeId`, `BIOMES` (arkusz i dekorowanie), `BIOME_BY_FLOOR` (piętro 2 → leże), `biomeForFloor`;
+- `tilesetConfig`: `TilesetAsset` (klucze tekstur, URL-e, animacja pochodni); `TILESET_ASSET` = ruiny, `SPIDER_LAIR_TILESET_ASSET` = leże;
+- `dressingConfig`: `SPIDER_LAIR_DRESSING`: pajęczyny w rogach 70% (ruiny 35%), detale lica 18% z grupy leża, pancerzyki na podłodze.
+
+**Phaser:**
+- `BootScene` ładuje arkusze wszystkich biomów i rejestruje animację pochodni każdego;
+- `GameScene` wybiera biom piętra; `DungeonView`, `CombatDecals` i `Torches` dostają arkusz biomu zamiast stałej;
+- usunięty nieużywany `TextureKey.Tileset`.
+
+**Testy:** `tests/assets/biomes.test.ts`:
+- wybór biomu per piętro, unikalne klucze;
+- każdy arkusz zgodny z formatem i ma wszystkie grupy używane przez swoje dekorowanie;
+- dekoracje leża nie udają elementów rozgrywki;
+- czytelność postaci piętra 2 (bohater, Rusher, Kiter, Matka Pająków, pajączek) na podłodze i bruku leża.
+
+**Weryfikacja:**
+- `npm run build`: 672 testy zielone;
+- w grze piętro 2 ma arkusz leża (tekstura warstw, animacja pochodni leża, 13 pochodni), a piętro 1 nadal ruiny; brak błędów w konsoli;
+- zrzut ekranu: fioletowy kamień, białe pajęczyny w narożnikach, zielony płomień pochodni, pancerzyki.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -1319,18 +1518,20 @@ Złota przybywa o +20% na każde piętro.
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
 
 **Ocena właściciela po testach w grze (po kroku 20) — zaakceptowane:**
+- [x] **Miecz barbarzyńcy (krok 21):** wygląd chodu i ciosu zaakceptowany.
 - [x] **Kitery przy zoomie 2,0:** czytelność i zachowanie w porządku; reguła widoku (krok 18) zostaje.
 - [x] **Martwa strefa kamery 60×45 px:** wygodna.
 - [x] **Ślady szlamu po Novie:** nie przeszkadzają w odbiorze areny.
 - [x] **Przedmioty bazowe bez pulsowania** (krok 20): dobrze widoczne na podłodze.
 - [x] **Ogólnie:** gameplay czytelny i w pełni płynny.
 
-**1. Plan na kolejną sesję — Krok 21**
-- **Animacja ciosu barbarzyńcy.** Sprite jest „bez miecza”, a cios widać dziś tylko jako efekt łuku (`CombatEffects.slash`). Do ustalenia przed startem:
-  - czy właściciel dostarczy klatki ciosu do `OneDrive\Pictures\sprites`, czy generujemy je proceduralnie w palecie C, jak pochodnie i łupy;
-  - format zgodny ze STYLEGUIDE: 8 kierunków z obrotu, 4 klatki ataku w kolumnach 4–7, 6 kl./s;
-  - zgranie z logiką: animacja dopasowana do `attackCooldownMs` i chwili trafienia, a logika walki zostaje nadrzędna (jak u maga i bossa);
-  - łuk ciosu zostaje jako czytelny telegraf zasięgu.
+**1. Plan na kolejną sesję**
+- **Pajęczy biom — dalsze kroki** (zakres ustalony w kroku 23a):
+  - **23b:** pająk jako skórka Rushera, nietoperz jako wariant Kitera z lecącym półksiężycem (sprite'y z generatora, logika pocisku-łuku z testami);
+  - **23c:** pająki spadające z sufitu: rosnący cień (telegraf), obrażenia przy lądowaniu, potem Rusher; losowo w zasięgu gracza, z limitem;
+  - **23d:** kokony: wybuch przy bliskim kontakcie i spowolnienie gracza;
+  - **23e:** lepkie pajęczyny na podłodze: spowalniają tylko gracza, dash bez spowolnienia.
+- **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.
 - **Ewentualne uszczelnienie areny przed ostrzałem bossa z korytarza** (otwarte od kroku 9):
   - **Problem:** strzał budzi i rani bossa, zanim gracz wejdzie na arenę, a kraty opadają dopiero wtedy, gdy gracz jest w środku.
   - **Najpierw** sprawdzić w grze, czy da się na tym realnie zyskać (boss podchodzi do gracza).
@@ -1341,12 +1542,17 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Mrok — wrócić w innym momencie** (feedback testera: światło na piętrze „Mrok” zbyt jasne, wrogowie mają się pokazywać dopiero w świetle bohatera):
+  - próba „pełna czerń poza kręgiem + promień 96 px” została odrzucona przez właściciela po teście w grze i cofnięta;
+  - do ustalenia przy powrocie: jak ma wyglądać efekt, czy dotyczy tylko „Mroku”, czy też zwykłych pięter.
+- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 
 **3. Brakująca grafika**
-- **Animacja ciosu barbarzyńcy:** zaplanowana w kroku 21 (wyżej).
+- Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.
+- **Boss „Matka Pająków”:** wdrożony w kroku 22. Brak tylko klatek śmierci (dziś błysk i plama).
 
 **4. Odłożone — tylko za zgodą właściciela**
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.

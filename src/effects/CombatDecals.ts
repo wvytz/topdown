@@ -5,7 +5,7 @@ import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { CombatDecalKind, FloorDressingConfig } from '@/config/dressingConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { TILESET_ASSET } from '@/config/tilesetConfig';
+import type { TilesetAsset } from '@/config/tilesetConfig';
 import { RingBuffer } from '@/systems/RingBuffer';
 
 /**
@@ -22,6 +22,7 @@ export class CombatDecals {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly floor: DungeonFloor,
+    private readonly asset: TilesetAsset,
     tileset: TilesetMeta,
     config: FloorDressingConfig['combatDecals'],
   ) {
@@ -52,7 +53,7 @@ export class CombatDecals {
       image = this.ring.oldest()!;
       this.recycled++;
     } else {
-      image = this.scene.add.image(0, 0, TILESET_ASSET.sheetKey, frame).setDepth(RENDER_DEPTH.combatDecal);
+      image = this.scene.add.image(0, 0, this.asset.sheetKey, frame).setDepth(RENDER_DEPTH.combatDecal);
       this.created++;
     }
     image.setFrame(frame).setPosition(Math.round(x), Math.round(y)).setFlipX(Math.random() < 0.5);

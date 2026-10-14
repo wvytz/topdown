@@ -108,7 +108,7 @@ describe('planBossAttack', () => {
       Math.round(BOSS.nova.telegraphMs * BOSS.enrage.telegraphMultiplier),
     );
     expect(attackLeadTimeMs(plan(BossAttackKind.Nova), 99_999)).toBe(0);
-    expect(attackLeadTimeMs({ kind: BossAttackKind.Slam, strikes: [], bursts: [], endsAt: 0 }, 0)).toBe(0);
+    expect(attackLeadTimeMs({ kind: BossAttackKind.Slam, strikes: [], bursts: [], spawns: [], endsAt: 0 }, 0)).toBe(0);
   });
 
   it('Uderzenie: jedna strefa wokół bossa, uderza po telegrafie', () => {
@@ -145,7 +145,8 @@ describe('planBossAttack', () => {
   });
 
   it('każdy atak kończy się po swoim ostatnim uderzeniu', () => {
-    for (const kind of Object.values(BossAttackKind)) {
+    // Ataki Strażnika (wylęg Matki Pająków ma własne testy w SpiderQueen.test.ts).
+    for (const kind of BOSS.pattern) {
       for (const enraged of [false, true]) {
         const p = plan(kind, enraged);
         const lastImpact = Math.max(...p.strikes.map((s) => s.impactAt), ...p.bursts.map((b) => b.fireAt));

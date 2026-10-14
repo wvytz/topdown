@@ -72,7 +72,7 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 | Futro | `#8a6a44` · `#634a2e` |
 | Pas / ćwieki | `#5a3a22` · `#c9ccd2` |
 | Buty | `#7d5a3c` · `#5b3e27` |
-| Ostrze (wyłączone) | `#d7dde4` · `#8f99a6` |
+| Ostrze (od kroku 21) | `#d7dde4` · `#8f99a6`, jelec `#5a3a22` |
 
 ### 4.5 Sludge King
 
@@ -123,6 +123,9 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 - Światło pada z **północy** (oświetlone krawędzie południowe, cień pod krawędzią północną). Kafle wolno odbijać tylko w poziomie; odbicie w pionie i obrót psują światło.
 - Fuga podłogi jest o jeden ton ciemniejsza od płyty, **nigdy w kolorze obrysu postaci** — inaczej sylwetki przyklejają się do siatki.
 - Podłoga nie używa barw zarezerwowanych: fioletu wrogów, zieleni magii `#9cff57`, złota łupów. Pilnuje tego walidator generatora.
+  - **Wyjątek: Pajęcze leże** (krok 23a, decyzja właściciela) — ten biom ma być fioletowo-zielono-biały: fioletowy kamień,
+    ciemna zielona posoka, upiorny zielony ogień pochodni, białe nici i jaja. Walidator nie sprawdza tam barw zarezerwowanych;
+    zostaje warunek czytelności (obrys postaci ≥ 2:1 do jasności podłogi), pilnowany testami.
 - Czytelność postaci na podłodze (kontrast WCAG względem średniej jasności podłogi): obrys ≥ 2,0 : 1 oraz ciało ≥ 1,5 : 1 albo różnica barwy ≥ 60° przy nasyceniu ciała ≥ 25%.
 
 ## 7. Sylwetka i czytelność
@@ -157,6 +160,9 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 
 - **Demon Mage** ma własny, cieplejszy obrys `#140a12` i nasycony zielony akcent `#9cff57` — kolor magii zarezerwowany wyłącznie dla niego.
 - Kolor skóry koszulki Trashcan Mana jest zmienną wariantu, nie stałą palety.
+- **Barbarzyńca z mieczem** (krok 21, `tools/barbarian_sword.py`):
+  - cios trwa tyle, co `attackCooldownMs` (4 × 80 ms przy 320 ms), a nie 6 kl./s — logika walki jest nadrzędna;
+  - ostrze może wejść w margines 8 px, ale cały sprite mieści się w promieniu 21,5 px od pivota, więc po obrocie nie wychodzi poza komórkę.
 
 ## 12. Checklista nowego sprite'a
 

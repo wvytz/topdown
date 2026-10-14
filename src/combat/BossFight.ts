@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import type { AreaStrike, BossAttackPlan, ProjectileBurst } from '@/core/bossTypes';
+import type { AreaStrike, BossAttackPlan, ProjectileBurst, SpiderlingDefinition, SummonSpawn } from '@/core/bossTypes';
 import type { DungeonFloor, Room } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { FLOOR_GUARDIAN, scaleBossForFloor } from '@/config/bossConfig';
-import { BOSS_PROJECTILE_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { BOSS_PROJECTILE_VISUAL, SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { isHitByAreaStrike } from '@/ai/bossAttacks';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -16,6 +16,7 @@ import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
 import type { Player } from '@/entities/Player';
+import { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
@@ -59,6 +60,8 @@ interface PendingBurst {
 
 const BOSS_SEED_SALT = 0xb055;
 const TELEGRAPH_COLOR = 0xff4040;
+/** Plama po zabitym pajączku (kolor chityny bossa). */
+const SPIDERLING_DEATH_COLOR = 0x7a3a4a;
 /** Fale Novy to kule wyplute przez bossa (animowany sprite). */
 const BOSS_GLOB = {
   texture: SPRITE_SHEETS[BOSS_PROJECTILE_VISUAL.sheet].key,
@@ -74,13 +77,20 @@ export class BossFight {
   private readonly arena: Room;
   private strikes: PendingStrike[] = [];
   private bursts: PendingBurst[] = [];
+  /** Wylęg zaplanowany na koniec złożenia (pajączek pojawia się dopiero wtedy). */
+  private spawns: SummonSpawn[] = [];
+  /** Żywe pajączki-kamikaze z telegrafem zapłonu. */
+  private spiderlings: Array<{ readonly spiderling: Spiderling; readonly gfx: Phaser.GameObjects.Graphics }> = [];
+  private readonly spiderlingDefinition: SpiderlingDefinition | null;
+  private readonly spiderlingGroup: Phaser.Physics.Arcade.Group;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
     this.arena = arena;
 
-    const definition = scaleBossForFloor(FLOOR_GUARDIAN, deps.floorNumber, ENEMY_SCALING);
+    const definition = scaleBossForFloor(bossForFloor(deps.floorNumber), deps.floorNumber, ENEMY_SCALING);
+    this.spiderlingDefinition = definition.spiderling ?? null;
     const center = stairsCenter(deps.floor);
     const spawn = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };
     const rng = createRng(deriveSeed(deps.floor.seed, BOSS_SEED_SALT));
@@ -89,6 +99,8 @@ export class BossFight {
 
     deps.scene.physics.add.collider(boss, deps.walls);
     deps.scene.physics.add.collider(deps.player, boss);
+    this.spiderlingGroup = deps.scene.physics.add.group();
+    deps.scene.physics.add.collider(this.spiderlingGroup, deps.walls);
   }
 
   /** Walka trwa (boss obudzony i żywy). */
@@ -125,37 +137,55 @@ export class BossFight {
       return;
     }
 
-    const plan = boss.tick({ x: player.x, y: player.y }, now);
+    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.length + this.spawns.length);
     if (plan) this.schedule(plan);
 
     this.updateStrikes(now);
     this.updateBursts(now);
+    this.updateSpawns(now);
+    this.updateSpiderlings(now);
   }
 
-  /** Cios gracza — zwraca liczbę trafionych (0 lub 1). */
+  /** Cele gracza: pajączki (żywa tarcza) i boss. */
+  private targets(): Array<Boss | Spiderling> {
+    const living = this.spiderlings.map(({ spiderling }) => spiderling);
+    return this.boss ? [...living, this.boss] : living;
+  }
+
+  /** Cios gracza — zwraca liczbę trafionych (boss i pajączki w łuku). */
   resolvePlayerMelee(swing: MeleeSwing): number {
     if (!this.boss) return 0;
-    const { hit, killed } = resolveMeleeSwing(swing, [this.boss]);
-    if (killed.length > 0) this.defeat();
+    const { hit, killed } = resolveMeleeSwing(swing, this.targets());
+    this.handleKills(killed);
     return hit.length;
   }
 
-  /** Pocisk gracza — zwraca bossa, jeśli go trafił (trafienie budzi go jak cios wręcz). */
-  resolvePlayerShot(shot: PlayerShot): Boss | null {
-    const boss = this.boss;
-    if (!boss) return null;
-    const result = resolvePlayerShot(shot, [boss]);
-    if (result?.died) this.defeat();
-    return result ? boss : null;
+  /**
+   * Pocisk gracza trafia najbliższy cel — pajączek między graczem a bossem przyjmuje strzał na siebie.
+   * Zwraca trafiony cel (trafienie budzi bossa jak cios wręcz).
+   */
+  resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | null {
+    if (!this.boss) return null;
+    const result = resolvePlayerShot(shot, this.targets());
+    if (result?.died) this.handleKills([result.target]);
+    return result?.target ?? null;
   }
 
-  /** Burzowy pęd przez bossa. */
+  /** Burzowy pęd przez bossa i pajączki. */
   resolveDashSweep(sweep: DashSweep, alreadyHit: Set<object>): void {
     const boss = this.boss;
     if (!boss) return;
-    const { hit, killed } = resolveDashSweep(sweep, [boss], alreadyHit);
-    if (hit.length > 0) this.deps.effects.floatingText(boss.x, boss.y - boss.radius, `-${sweep.damage}`, '#b8a8ff');
-    if (killed.length > 0) this.defeat();
+    const { hit, killed } = resolveDashSweep(sweep, this.targets(), alreadyHit);
+    if (hit.includes(boss)) this.deps.effects.floatingText(boss.x, boss.y - boss.radius, `-${sweep.damage}`, '#b8a8ff');
+    this.handleKills(killed);
+  }
+
+  /** Zabity pajączek ginie bez wybuchu; zabity boss kończy walkę. */
+  private handleKills(killed: readonly (Boss | Spiderling)[]): void {
+    for (const target of killed) {
+      if (target instanceof Spiderling) this.removeSpiderling(target, false);
+    }
+    if (this.boss && killed.includes(this.boss)) this.defeat();
   }
 
   /** Tylko do debugowania (klawisz B w trybie dev). */
@@ -171,6 +201,77 @@ export class BossFight {
     for (const burst of plan.bursts) {
       this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
+    this.spawns.push(...plan.spawns);
+  }
+
+  /** Wylęg w zaplanowanej chwili; miejsce poza areną (boss przy ścianie) zastępuje pozycja bossa. */
+  private updateSpawns(now: number): void {
+    const boss = this.boss;
+    const definition = this.spiderlingDefinition;
+    if (!boss || !definition) {
+      this.spawns = [];
+      return;
+    }
+    this.spawns = this.spawns.filter((spawn) => {
+      if (now < spawn.at) return true;
+      const inArena = roomContainsTile(this.arena, DungeonView.worldToTile(spawn.position.x, spawn.position.y));
+      const at = inArena ? spawn.position : { x: boss.x, y: boss.y };
+      const spiderling = new Spiderling(this.deps.scene, at.x, at.y, definition, now);
+      this.spiderlingGroup.add(spiderling);
+      this.spiderlings.push({ spiderling, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+      return false;
+    });
+  }
+
+  /** Pościg, telegraf zapłonu (strefa wybuchu) i wybuch raniący gracza. */
+  private updateSpiderlings(now: number): void {
+    const { player, onPlayerHit } = this.deps;
+    const target: Vector2 = { x: player.x, y: player.y };
+    for (const { spiderling, gfx } of [...this.spiderlings]) {
+      const decision = spiderling.tick(target, now);
+      const definition = spiderling.definition;
+      const blast: AreaStrike = {
+        center: { x: spiderling.x, y: spiderling.y },
+        radius: definition.blastRadius,
+        telegraphStartAt: spiderling.explosionAt - definition.primeMs,
+        impactAt: spiderling.explosionAt,
+        damage: definition.damage,
+        knockback: definition.knockback,
+      };
+      if (!decision.explode) {
+        if (Number.isFinite(spiderling.explosionAt)) drawAreaTelegraph(gfx, blast, now);
+        continue;
+      }
+      this.deps.effects.impact(blast.center.x, blast.center.y, blast.radius);
+      this.deps.decals.add('scorch', blast.center.x, blast.center.y);
+      this.playBurst(blast.center);
+      if (!player.isDead && isHitByAreaStrike(blast, player, player.radius)) {
+        const hit = { damage: blast.damage, knockback: knockbackFrom(blast.center, player, blast.knockback) };
+        if (player.takeHit(hit, now)) onPlayerHit();
+      }
+      this.removeSpiderling(spiderling, true);
+    }
+  }
+
+  /** Arkusz wybuchu pajączka (bez kierunków), usuwany po ostatniej klatce. */
+  private playBurst(at: Vector2): void {
+    const { sheet, animation } = SPIDERLING_VISUAL.burst;
+    const sprite = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
+    sprite.play(animationKey(sheet, animation));
+  }
+
+  /** Usuwa pajączka; zabity (nie wybuchły) zostawia plamę. */
+  private removeSpiderling(spiderling: Spiderling, exploded: boolean): void {
+    const index = this.spiderlings.findIndex((entry) => entry.spiderling === spiderling);
+    if (index < 0) return;
+    const [entry] = this.spiderlings.splice(index, 1);
+    entry?.gfx.destroy();
+    if (!exploded) {
+      this.deps.effects.deathBurst(spiderling.x, spiderling.y, SPIDERLING_DEATH_COLOR, spiderling.radius * 1.5);
+      this.deps.decals.add('splat', spiderling.x, spiderling.y);
+    }
+    spiderling.destroy();
   }
 
   private updateStrikes(now: number): void {
@@ -219,10 +320,13 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
-    this.deps.decals.add('slime', boss.x, boss.y);
+    this.deps.decals.add(boss.visual.deathDecal, boss.x, boss.y);
     for (const pending of [...this.strikes, ...this.bursts]) pending.gfx.destroy();
     this.strikes = [];
     this.bursts = [];
+    // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
+    for (const { spiderling } of [...this.spiderlings]) this.removeSpiderling(spiderling, false);
+    this.spawns = [];
     const position: Vector2 = { x: boss.x, y: boss.y };
     boss.destroy();
     this.boss = null;

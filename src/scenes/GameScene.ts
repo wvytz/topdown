@@ -16,8 +16,8 @@ import { PickupKind } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { CAMERA_CONFIG, PLAYER_BASE_STATS, getDungeonConfigForFloor } from '@/config/gameConfig';
-import { FLOOR_DRESSING } from '@/config/dressingConfig';
-import { TILESET_ASSET } from '@/config/tilesetConfig';
+import type { TilesetAsset } from '@/config/tilesetConfig';
+import { biomeForFloor } from '@/config/biomeConfig';
 import { PLAYER_COMBAT, getEncounterConfigForFloor } from '@/config/combatConfig';
 import {
   BOSS_LOOT,
@@ -148,14 +148,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
   create(): void {
     const generator = new DungeonGenerator(getDungeonConfigForFloor(this.floorNumber));
     this.dungeon = generator.generate(deriveSeed(this.runSeed, this.floorNumber));
-    const tileset = this.cache.json.get(TILESET_ASSET.jsonKey) as TilesetMeta;
+    const biome = biomeForFloor(this.floorNumber);
+    const tileset = this.cache.json.get(biome.tileset.jsonKey) as TilesetMeta;
     // Pochodnie przed dekorowaniem: detale lica muru omijają kafle z uchwytem.
     const torchSpots = planTorches(this.dungeon, TORCH_PLACEMENT, deriveSeed(this.dungeon.seed, TORCH_SEED_SALT));
-    const dressed = dressFloor(this.dungeon, tileset, FLOOR_DRESSING, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT), {
+    const dressed = dressFloor(this.dungeon, tileset, biome.dressing, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT), {
       torches: torchSpots,
     });
-    this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset);
-    this.combatDecals = new CombatDecals(this, this.dungeon, tileset, FLOOR_DRESSING.combatDecals);
+    this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset);
+    this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
     this.floorModifier = floorModifierFor(this.runSeed, this.floorNumber, FLOOR_MODIFIER_POOL, FLOOR_MODIFIER_CONFIG);
     this.floorEffects = floorEffectsOf(this.floorModifier);
 
@@ -172,7 +173,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupCamera();
     this.setupDebugKeys();
 
-    this.setupLighting(tileset, torchSpots);
+    this.setupLighting(biome.tileset, tileset, torchSpots);
 
     if (!this.scene.isActive(SceneKey.Hud)) {
       const hudData: HudSceneData = { source: this };
@@ -471,10 +472,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
    * Światło (krok 19a): mrok z winietą, pochodnie, pyłki. Przy modyfikatorze „Mrok” warstwa
    * mroku jest prawie nieprzezroczysta, a pochodnie świecą tylko jako punkty (nie rozświetlają mroku).
    */
-  private setupLighting(tileset: TilesetMeta, torchSpots: readonly TorchSpot[]): void {
+  private setupLighting(asset: TilesetAsset, tileset: TilesetMeta, torchSpots: readonly TorchSpot[]): void {
     const vision = this.floorEffects.visionRadius;
     const profile = vision !== null ? darknessModifierProfile(vision, LIGHTING.darknessModifier) : LIGHTING.ambient;
-    this.torches = new Torches(this, torchSpots, tileset, { glow: vision === null });
+    this.torches = new Torches(this, torchSpots, asset, tileset, { glow: vision === null });
     this.lighting = new LightingOverlay(this, profile, hexColor(tileset.colors.ambient), vision === null);
     new DustMotes(this, tileset.colors.ash.map(hexColor), LIGHTING.motes);
     // Po fizyce: światło gracza nie zostaje klatkę za nim.

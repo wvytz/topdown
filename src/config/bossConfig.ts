@@ -1,10 +1,11 @@
 import type { BossDefinition } from '@/core/bossTypes';
-import { BossAttackKind } from '@/core/bossTypes';
+import { BossAttackKind, BossId } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
 import { scaleForFloor } from '@/systems/CombatMath';
 
 /** Pierwszy boss: „Strażnik Piętra”. Sekwencja: uderzenie → pierścień pocisków → ostrzał stref. */
-export const FLOOR_GUARDIAN: BossDefinition = {
+export const FLOOR_GUARDIAN = {
+  id: BossId.FloorGuardian,
   name: 'Strażnik Piętra',
   radius: 26,
   color: 0xb5452a,
@@ -47,7 +48,60 @@ export const FLOOR_GUARDIAN: BossDefinition = {
     telegraphMultiplier: 0.75,
     restMultiplier: 0.6,
   },
+} satisfies BossDefinition;
+
+/**
+ * „Matka Pająków” (krok 22): sama nie atakuje — w stałym rytmie składa za sobą pajączki-kamikaze,
+ * które są zagrożeniem i żywą tarczą (strzał trafia najbliższy cel). Trzyma dystans od gracza.
+ * Rytm wylęgu ≈ złożenie + odpoczynek po nim + przerwa między atakami.
+ */
+export const SPIDER_QUEEN = {
+  id: BossId.SpiderQueen,
+  name: 'Matka Pająków',
+  radius: 28,
+  color: 0x7a3a4a,
+  maxHp: 300,
+  moveSpeed: 45,
+  engageDistance: 150,
+  openingDelayMs: 900,
+  restBetweenAttacksMs: 2200,
+  pattern: [BossAttackKind.Brood],
+  brood: {
+    count: 2,
+    maxAlive: 6,
+    // 4 klatki złożenia w 6 kl./s; pajączek wylęga się 30 px za pivotem (sprite, kolumna 7).
+    birthMs: 667,
+    spawnDistance: 30,
+    spreadDeg: 70,
+    recoveryMs: 300,
+  },
+  spiderling: {
+    radius: 8,
+    maxHp: 1,
+    moveSpeed: 135,
+    primeRange: 36,
+    fuseMs: 3500,
+    // 4 klatki zapłonu w 6 kl./s.
+    primeMs: 667,
+    blastRadius: 40,
+    damage: 12,
+    knockback: 240,
+  },
+  enrage: {
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.75,
+    restMultiplier: 0.6,
+  },
+} satisfies BossDefinition;
+
+/** Boss na konkretnych piętrach; pozostałe piętra mają Strażnika (krok 22: Matka Pająków na piętrze 2). */
+export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
+  2: SPIDER_QUEEN,
 };
+
+export function bossForFloor(floor: number): BossDefinition {
+  return BOSS_BY_FLOOR[floor] ?? FLOOR_GUARDIAN;
+}
 
 /** Kraty areny bossa. */
 export const ARENA_GATES = {
@@ -62,15 +116,17 @@ export const ARENA_GATES = {
   frameMs: 90,
 } as const;
 
-/** Skalowanie HP i obrażeń wszystkich ataków bossa do piętra. */
-export function scaleBossForFloor(boss: BossDefinition, floor: number, scaling: EnemyScalingConfig): BossDefinition {
-  const dmg = (value: number): number => scaleForFloor(value, floor, scaling.damagePerFloor);
+/** Skalowanie HP i obrażeń wszystkich ataków bossa (także wybuchów pajączków) do piętra. */
+export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: number, scaling: EnemyScalingConfig): T {
+  const dmg = <A extends { readonly damage: number }>(attack: A | undefined): A | undefined =>
+    attack && { ...attack, damage: scaleForFloor(attack.damage, floor, scaling.damagePerFloor) };
   return {
     ...boss,
     maxHp: scaleForFloor(boss.maxHp, floor, scaling.hpPerFloor),
-    slam: { ...boss.slam, damage: dmg(boss.slam.damage) },
-    nova: { ...boss.nova, damage: dmg(boss.nova.damage) },
-    barrage: { ...boss.barrage, damage: dmg(boss.barrage.damage) },
+    ...(boss.slam && { slam: dmg(boss.slam) }),
+    ...(boss.nova && { nova: dmg(boss.nova) }),
+    ...(boss.barrage && { barrage: dmg(boss.barrage) }),
+    ...(boss.spiderling && { spiderling: dmg(boss.spiderling) }),
   };
 }
 

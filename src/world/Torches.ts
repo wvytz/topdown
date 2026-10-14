@@ -4,22 +4,20 @@ import { LIGHTING } from '@/config/lightingConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { SPRITE_FPS } from '@/config/spriteConfig';
-import { TILESET_ASSET } from '@/config/tilesetConfig';
+import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { TorchSpot } from '@/dungeon/LightPlanner';
 import type { PointLight } from '@/effects/LightingOverlay';
 import { torchLightKey } from '@/effects/LightingOverlay';
 import { hexColor } from '@/effects/lightTextures';
 import { flickerRadius } from '@/systems/lighting';
 
-export const TORCH_FLAME_ANIMATION = 'torch-flame';
-
-/** Animacja płomienia z klatek arkusza (grupa „torchFlame”), 6 kl./s jak postacie. Wywoływane raz w BootScene. */
-export function registerTorchAnimation(scene: Phaser.Scene, tileset: TilesetMeta): void {
-  if (scene.anims.exists(TORCH_FLAME_ANIMATION)) return;
+/** Animacja płomienia z klatek arkusza (grupa „torchFlame”), 6 kl./s jak postacie. Raz na arkusz, w BootScene. */
+export function registerTorchAnimation(scene: Phaser.Scene, asset: TilesetAsset, tileset: TilesetMeta): void {
+  if (scene.anims.exists(asset.torchAnimation)) return;
   const frames = (tileset.groups.torchFlame ?? []).map((name) => tileset.tiles[name]?.frame ?? 0);
   scene.anims.create({
-    key: TORCH_FLAME_ANIMATION,
-    frames: scene.anims.generateFrameNumbers(TILESET_ASSET.sheetKey, { frames }),
+    key: asset.torchAnimation,
+    frames: scene.anims.generateFrameNumbers(asset.sheetKey, { frames }),
     frameRate: SPRITE_FPS,
     repeat: -1,
   });
@@ -37,7 +35,13 @@ interface MutableLight extends PointLight {
 export class Torches {
   readonly lights: readonly PointLight[];
 
-  constructor(scene: Phaser.Scene, spots: readonly TorchSpot[], tileset: TilesetMeta, options: { readonly glow: boolean }) {
+  constructor(
+    scene: Phaser.Scene,
+    spots: readonly TorchSpot[],
+    asset: TilesetAsset,
+    tileset: TilesetMeta,
+    options: { readonly glow: boolean },
+  ) {
     const sconceFrame = tileset.tiles.torch_sconce?.frame;
     if (sconceFrame === undefined) throw new Error('Torches: brak kafla „torch_sconce” w arkuszu.');
     const { radius, flickerOffsets, glowAlpha } = LIGHTING.torch;
@@ -47,9 +51,9 @@ export class Torches {
     for (const spot of spots) {
       const x = spot.x * TILE_SIZE;
       const y = spot.y * TILE_SIZE;
-      scene.add.image(x, y, TILESET_ASSET.sheetKey, sconceFrame).setOrigin(0).setDepth(RENDER_DEPTH.wallDecor);
-      const flame = scene.add.sprite(x, y, TILESET_ASSET.sheetKey).setOrigin(0).setDepth(RENDER_DEPTH.torchFlame);
-      flame.play({ key: TORCH_FLAME_ANIMATION, startFrame: Math.floor(Math.random() * 4) });
+      scene.add.image(x, y, asset.sheetKey, sconceFrame).setOrigin(0).setDepth(RENDER_DEPTH.wallDecor);
+      const flame = scene.add.sprite(x, y, asset.sheetKey).setOrigin(0).setDepth(RENDER_DEPTH.torchFlame);
+      flame.play({ key: asset.torchAnimation, startFrame: Math.floor(Math.random() * 4) });
 
       const light: MutableLight = { x: x + TILE_SIZE / 2, y: y + tileset.torch.flameBaseY - 3, radius };
       lights.push(light);
