@@ -1,11 +1,15 @@
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { SPRITE_SHEETS } from '@/config/spriteConfig';
+import { pixel, readPng } from '../helpers/png';
 import { BossBrain } from '@/ai/BossBrain';
-import { attackLeadTimeMs, planBossAttack } from '@/ai/bossAttacks';
+import { attackLeadTimeMs, isInWebPatch, planBossAttack, webFlightProgress, webPatchRadius } from '@/ai/bossAttacks';
 import { SpiderlingBrain, SpiderlingPhase } from '@/ai/SpiderlingBrain';
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import { createRng } from '@/core/random';
 import { FLOOR_GUARDIAN, SPIDER_QUEEN as QUEEN, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { ENEMY_SCALING } from '@/config/combatConfig';
+import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import { scaleForFloor } from '@/systems/CombatMath';
 
 const SELF = { x: 0, y: 0 };
@@ -65,23 +69,25 @@ describe('Matka Pająków — wylęg', () => {
     }
   });
 
-  it('BossBrain: boss tylko wylęga, w stałym rytmie, i trzyma dystans od gracza', () => {
+  it('BossBrain: wylęg na przemian z rzutem siecią, w stałym rytmie; boss trzyma dystans od gracza', () => {
     const brain = new BossBrain(QUEEN, createRng(1));
     brain.activate(0);
-    const starts: number[] = [];
-    for (let now = 0; now < 12_000; now += FRAME) {
+    const starts: Array<{ kind: BossAttackKind; at: number }> = [];
+    for (let now = 0; now < 16_000; now += FRAME) {
       const decision = brain.think({ self: SELF, target: { x: 100, y: 0 }, now, hpRatio: 1, summonsAlive: 0 });
-      if (decision.newAttack) {
-        expect(decision.newAttack.kind).toBe(BossAttackKind.Brood);
-        starts.push(now);
-      }
+      if (decision.newAttack) starts.push({ kind: decision.newAttack.kind, at: now });
       if (!decision.newAttack) expect(decision.move).toEqual({ x: 0, y: 0 }); // 100 px < engageDistance
     }
-    const rhythm = QUEEN.brood.birthMs + QUEEN.brood.recoveryMs + QUEEN.restBetweenAttacksMs;
-    expect(starts.length).toBeGreaterThanOrEqual(3);
+    expect(starts.length).toBeGreaterThanOrEqual(4);
+    const length = {
+      [BossAttackKind.Brood]: QUEEN.brood.birthMs + QUEEN.brood.recoveryMs,
+      [BossAttackKind.Web]: QUEEN.web.telegraphMs + QUEEN.web.flightMs + QUEEN.web.recoveryMs,
+    } as Record<BossAttackKind, number>;
+    starts.forEach(({ kind }, i) => expect(kind).toBe(i % 2 === 0 ? BossAttackKind.Brood : BossAttackKind.Web));
     for (let i = 1; i < starts.length; i++) {
-      expect(starts[i]! - starts[i - 1]!).toBeGreaterThanOrEqual(rhythm);
-      expect(starts[i]! - starts[i - 1]!).toBeLessThan(rhythm + FRAME);
+      const rhythm = length[starts[i - 1]!.kind] + QUEEN.restBetweenAttacksMs;
+      expect(starts[i]!.at - starts[i - 1]!.at).toBeGreaterThanOrEqual(rhythm);
+      expect(starts[i]!.at - starts[i - 1]!.at).toBeLessThan(rhythm + FRAME);
     }
   });
 
@@ -89,6 +95,65 @@ describe('Matka Pająków — wylęg', () => {
     expect(() =>
       planBossAttack({ kind: BossAttackKind.Slam, definition: QUEEN, self: SELF, target: PLAYER_EAST, now: 0, enraged: false, rng: createRng(1) }),
     ).toThrow(/slam/);
+  });
+});
+
+describe('Matka Pająków — rzut siecią (krok 25)', () => {
+  const W = QUEEN.web;
+  const web = (now: number, enraged = false, target = PLAYER_EAST) =>
+    planBossAttack({ kind: BossAttackKind.Web, definition: QUEEN, self: SELF, target, now, enraged, rng: createRng(1) });
+
+  it('sieć ląduje behindDistance ZA graczem (po stronie przeciwnej do bossa), po zamachu i locie', () => {
+    const plan = web(1000);
+    expect(plan.webs).toHaveLength(W.count);
+    const shot = plan.webs[0]!;
+    expect(shot.to.x).toBeCloseTo(PLAYER_EAST.x + W.behindDistance);
+    expect(shot.to.y).toBeCloseTo(0);
+    expect(shot.launchAt).toBe(1000 + W.telegraphMs);
+    expect(shot.landAt).toBe(shot.launchAt + W.flightMs);
+    expect(shot.expiresAt).toBe(shot.landAt + W.durationMs);
+    expect(plan.endsAt).toBe(shot.landAt + W.recoveryMs);
+    expect(attackLeadTimeMs(plan, 1000)).toBe(W.telegraphMs);
+  });
+
+  it('wściekłość: o jedną sieć więcej, w wachlarzu za graczem, i krótszy zamach', () => {
+    const plan = web(0, true);
+    expect(plan.webs).toHaveLength(W.count + 1);
+    for (const shot of plan.webs) {
+      expect(Math.hypot(shot.to.x - PLAYER_EAST.x, shot.to.y - PLAYER_EAST.y)).toBeCloseTo(W.behindDistance);
+      expect(shot.to.x).toBeGreaterThan(PLAYER_EAST.x); // zawsze za graczem
+    }
+    const [a, b] = plan.webs;
+    const angle = (s: typeof a) => Math.atan2(s!.to.y - PLAYER_EAST.y, s!.to.x - PLAYER_EAST.x);
+    expect(Math.abs(angle(a) - angle(b)) * (180 / Math.PI)).toBeCloseTo(W.fanDeg);
+    expect(a!.launchAt).toBe(Math.round(W.telegraphMs * QUEEN.enrage.telegraphMultiplier));
+  });
+
+  it('gracz w miejscu bossa: rzut i tak ma kierunek', () => {
+    expect(web(0, false, SELF).webs[0]!.to).not.toEqual(SELF);
+  });
+
+  it('plama: brak w locie, rośnie od startRadius do maxRadius, potem leży do wygaśnięcia', () => {
+    const shot = web(0).webs[0]!;
+    expect(webPatchRadius(shot, shot.landAt - 1)).toBe(0);
+    expect(webFlightProgress(shot, shot.launchAt)).toBe(0);
+    expect(webFlightProgress(shot, shot.landAt)).toBeNull();
+    expect(webPatchRadius(shot, shot.landAt)).toBe(W.startRadius);
+    expect(webPatchRadius(shot, shot.landAt + W.spreadMs / 2)).toBeCloseTo((W.startRadius + W.maxRadius) / 2);
+    expect(webPatchRadius(shot, shot.landAt + W.spreadMs)).toBe(W.maxRadius);
+    expect(webPatchRadius(shot, shot.expiresAt)).toBe(0);
+    const edge = { x: shot.to.x + W.maxRadius, y: shot.to.y };
+    expect(isInWebPatch(shot, edge, shot.landAt)).toBe(false);
+    expect(isInWebPatch(shot, edge, shot.landAt + W.spreadMs)).toBe(true);
+  });
+
+  it('balans: sieć odcina ucieczkę — gracz uciekający od bossa wbiega w plamę', () => {
+    // Gracz ucieka od bossa przez cały zamach i lot (bez dasha) — plama po rozroście sięga jego drogi.
+    const shot = web(0).webs[0]!;
+    const run = (PLAYER_BASE_STATS.moveSpeed * shot.landAt) / 1000;
+    expect(Math.abs(run - W.behindDistance)).toBeLessThan(W.maxRadius);
+    // Plama nie ląduje na graczu, który stoi — ma czas zareagować.
+    expect(W.behindDistance).toBeGreaterThan(W.startRadius + 12);
   });
 });
 
@@ -141,5 +206,25 @@ describe('wybór i skalowanie bossa', () => {
     expect(scaled.spiderling.damage).toBe(scaleForFloor(QUEEN.spiderling.damage, 2, ENEMY_SCALING.damagePerFloor));
     expect(scaled.spiderling.primeMs).toBe(QUEEN.spiderling.primeMs);
     expect('slam' in scaled).toBe(false);
+  });
+});
+
+describe('sieć Matki Pająków — sprite zgodny z hitboxem plamy', () => {
+  it('promień narysowanej sieci w klatkach rozrostu = startRadius … maxRadius (±3 px na obrys i postrzępienie)', () => {
+    const sheet = SPRITE_SHEETS.bossWeb;
+    const png = readPng(fileURLToPath(new URL(`../../public/${sheet.url}`, import.meta.url)));
+    const frames = sheet.animations.grow.frames;
+    frames.forEach((column, i) => {
+      const expected = QUEEN.web.startRadius + ((QUEEN.web.maxRadius - QUEEN.web.startRadius) * i) / (frames.length - 1);
+      const c = sheet.frameWidth / 2;
+      let maxDist = 0;
+      for (let y = 0; y < sheet.frameHeight; y++) {
+        for (let x = 0; x < sheet.frameWidth; x++) {
+          if (pixel(png, column * sheet.frameWidth + x, y)[3] === 0) continue;
+          maxDist = Math.max(maxDist, Math.hypot(x + 0.5 - c, y + 0.5 - c));
+        }
+      }
+      expect(Math.abs(maxDist - expected)).toBeLessThanOrEqual(3);
+    });
   });
 });

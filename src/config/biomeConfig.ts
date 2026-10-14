@@ -3,6 +3,9 @@ import type { FloorDressingConfig } from '@/config/dressingConfig';
 import { FLOOR_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { CeilingDropConfig } from '@/systems/CeilingDrops';
+import type { CocoonConfig } from '@/systems/Cocoons';
+import type { StickyWebConfig } from '@/systems/StickyWebs';
+import { SPIDER_QUEEN } from '@/config/bossConfig';
 import { SPIDER_LAIR_TILESET_ASSET, TILESET_ASSET } from '@/config/tilesetConfig';
 
 /** Biomy wieży (krok 23): wygląd piętra, a od kolejnych kroków także jego zasady. */
@@ -20,6 +23,10 @@ export interface BiomeDefinition {
   readonly enemyVariants: Readonly<Record<EnemyType, EnemyVariant>>;
   /** Pająki spadające z sufitu (krok 23c); null = brak. */
   readonly ceilingDrops: CeilingDropConfig | null;
+  /** Kokony na podłodze zwykłych pokojów (krok 23d); null = brak. */
+  readonly cocoons: CocoonConfig | null;
+  /** Lepkie pajęczyny na podłodze zwykłych pokojów (krok 23e); null = brak. */
+  readonly stickyWebs: StickyWebConfig | null;
 }
 
 export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
@@ -30,6 +37,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     dressing: FLOOR_DRESSING,
     enemyVariants: { [EnemyType.Rusher]: EnemyVariant.TrashcanMan, [EnemyType.Kiter]: EnemyVariant.DemonMage },
     ceilingDrops: null,
+    cocoons: null,
+    stickyWebs: null,
   },
   [BiomeId.SpiderLair]: {
     id: BiomeId.SpiderLair,
@@ -52,6 +61,34 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
       damage: 12,
       knockback: 200,
       placementTries: 6,
+    },
+    // Kokony (decyzje właściciela, krok 23d): 0–2 w zwykłym pokoju, bez kolizji; podejście budzi kokon,
+    // a po krótkim telegrafie wybuch spowalnia gracza w strefie i wypuszcza pajączka-kamikaze.
+    // Cios, strzał lub dash rozrywa kokon od razu — z dystansu bez spowolnienia.
+    cocoons: {
+      perRoom: { min: 0, max: 2 },
+      wallMarginTiles: 1,
+      centerClearTiles: 1,
+      minSpacingTiles: 3,
+      radius: 9,
+      // Budzi go dopiero bliski kontakt; telegraf krótszy niż reakcja + ucieczka chodem (dash zdąży).
+      triggerRadius: 26,
+      fuseMs: 300,
+      blastRadius: 48,
+      slow: { pct: 0.4, durationMs: 2500 },
+      spiderlings: 1,
+      spiderling: SPIDER_QUEEN.spiderling,
+    },
+    // Lepkie pajęczyny (decyzje właściciela, krok 23e): 0–2 w zwykłym pokoju, losowo 1×1 albo 2×2,
+    // trwałe (nie da się ich zniszczyć). Spowalniają tylko gracza: 50% w środku i jeszcze 0,5 s po wyjściu;
+    // dash przechodzi bez spowolnienia.
+    stickyWebs: {
+      perRoom: { min: 0, max: 2 },
+      largeChance: 0.5,
+      wallMarginTiles: 1,
+      centerClearTiles: 1,
+      minGapTiles: 2,
+      slow: { pct: 0.5, durationMs: 500 },
     },
   },
 };

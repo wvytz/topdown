@@ -18,6 +18,11 @@ export class DirectionalAnimator {
     private readonly sheet: SpriteSheetId,
   ) {}
 
+  /** Bieżący kierunek (wiersz arkusza: 0 = N … 7 = NW). */
+  get facing(): number {
+    return this.direction;
+  }
+
   /** Kierunek patrzenia; wektor zerowy zachowuje poprzedni. */
   face(vector: Vector2): void {
     this.direction = facingDirection(vector) ?? this.direction;

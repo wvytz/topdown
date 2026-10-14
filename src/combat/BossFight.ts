@@ -1,14 +1,16 @@
 import Phaser from 'phaser';
-import type { AreaStrike, BossAttackPlan, ProjectileBurst, SpiderlingDefinition, SummonSpawn } from '@/core/bossTypes';
+import type { AreaStrike, BossAttackPlan, ProjectileBurst, SpiderlingDefinition, SummonSpawn, WebShot } from '@/core/bossTypes';
+import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
-import { BOSS_PROJECTILE_VISUAL, SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
-import { isHitByAreaStrike } from '@/ai/bossAttacks';
+import { BOSS_PROJECTILE_VISUAL, BOSS_WEB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { isHitByAreaStrike, isInWebPatch, webFlightProgress } from '@/ai/bossAttacks';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
+import { SpiderlingSwarm, drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { stairsCenter } from '@/dungeon/stairs';
@@ -16,7 +18,7 @@ import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
 import type { Player } from '@/entities/Player';
-import { Spiderling } from '@/entities/Spiderling';
+import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
@@ -25,6 +27,7 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import type { CombatDecalKind } from '@/config/dressingConfig';
 
 export interface BossFightDeps {
   readonly scene: Phaser.Scene;
@@ -53,6 +56,17 @@ interface PendingStrike {
   readonly gfx: Phaser.GameObjects.Graphics;
 }
 
+/** Rzucona sieć: znacznik lądowania, kłąb w locie, potem plama (krok 25). */
+interface ThrownWeb {
+  readonly shot: WebShot;
+  readonly marker: Phaser.GameObjects.Graphics;
+  readonly ball: Phaser.GameObjects.Sprite;
+  patch: Phaser.GameObjects.Sprite | null;
+}
+
+/** Krok przy dosuwaniu miejsca lądowania sieci do wnętrza areny (px). */
+const WEB_CLAMP_STEP = 8;
+
 interface PendingBurst {
   readonly burst: ProjectileBurst;
   readonly gfx: Phaser.GameObjects.Graphics;
@@ -60,8 +74,6 @@ interface PendingBurst {
 
 const BOSS_SEED_SALT = 0xb055;
 const TELEGRAPH_COLOR = 0xff4040;
-/** Plama po zabitym pajączku (kolor chityny bossa). */
-const SPIDERLING_DEATH_COLOR = 0x7a3a4a;
 /** Fale Novy to kule wyplute przez bossa (animowany sprite). */
 const BOSS_GLOB = {
   texture: SPRITE_SHEETS[BOSS_PROJECTILE_VISUAL.sheet].key,
@@ -77,12 +89,14 @@ export class BossFight {
   private readonly arena: Room;
   private strikes: PendingStrike[] = [];
   private bursts: PendingBurst[] = [];
+  private webs: ThrownWeb[] = [];
   /** Wylęg zaplanowany na koniec złożenia (pajączek pojawia się dopiero wtedy). */
   private spawns: SummonSpawn[] = [];
   /** Żywe pajączki-kamikaze z telegrafem zapłonu. */
-  private spiderlings: Array<{ readonly spiderling: Spiderling; readonly gfx: Phaser.GameObjects.Graphics }> = [];
+  private readonly spiderlings: SpiderlingSwarm;
   private readonly spiderlingDefinition: SpiderlingDefinition | null;
-  private readonly spiderlingGroup: Phaser.Physics.Arcade.Group;
+  /** Trwa animacja śmierci — boss już nie walczy, ale nagroda i kraty czekają na jej koniec. */
+  private dying = false;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -99,8 +113,7 @@ export class BossFight {
 
     deps.scene.physics.add.collider(boss, deps.walls);
     deps.scene.physics.add.collider(deps.player, boss);
-    this.spiderlingGroup = deps.scene.physics.add.group();
-    deps.scene.physics.add.collider(this.spiderlingGroup, deps.walls);
+    this.spiderlings = new SpiderlingSwarm(deps);
   }
 
   /** Walka trwa (boss obudzony i żywy). */
@@ -108,9 +121,9 @@ export class BossFight {
     return this.boss?.isFighting ?? false;
   }
 
-  /** Boss pokonany — na tym piętrze nie będzie już walki. */
+  /** Boss pokonany (po animacji śmierci) — na tym piętrze nie będzie już walki. */
   get isDefeated(): boolean {
-    return this.boss === null;
+    return this.boss === null && !this.dying;
   }
 
   /** Stan dla HUD — null, dopóki walka się nie zaczęła lub po zwycięstwie. */
@@ -137,18 +150,19 @@ export class BossFight {
       return;
     }
 
-    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.length + this.spawns.length);
+    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length);
     if (plan) this.schedule(plan);
 
     this.updateStrikes(now);
     this.updateBursts(now);
     this.updateSpawns(now);
-    this.updateSpiderlings(now);
+    this.updateWebs(now);
+    this.spiderlings.update(now);
   }
 
   /** Cele gracza: pajączki (żywa tarcza) i boss. */
   private targets(): Array<Boss | Spiderling> {
-    const living = this.spiderlings.map(({ spiderling }) => spiderling);
+    const living = this.spiderlings.living;
     return this.boss ? [...living, this.boss] : living;
   }
 
@@ -182,9 +196,7 @@ export class BossFight {
 
   /** Zabity pajączek ginie bez wybuchu; zabity boss kończy walkę. */
   private handleKills(killed: readonly (Boss | Spiderling)[]): void {
-    for (const target of killed) {
-      if (target instanceof Spiderling) this.removeSpiderling(target, false);
-    }
+    this.spiderlings.handleKills(killed);
     if (this.boss && killed.includes(this.boss)) this.defeat();
   }
 
@@ -202,6 +214,84 @@ export class BossFight {
       this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     this.spawns.push(...plan.spawns);
+    for (const shot of plan.webs) this.throwWeb(shot);
+  }
+
+  /** Miejsce lądowania poza areną (gracz przy ścianie) dosuwamy w stronę gracza, aż trafi na podłogę areny. */
+  private throwWeb(planned: WebShot): void {
+    const { scene, player } = this.deps;
+    let to = planned.to;
+    const toPlayer = Math.hypot(player.x - to.x, player.y - to.y);
+    for (let d = 0; d < toPlayer && !this.isArenaFloor(to); d += WEB_CLAMP_STEP) {
+      const t = WEB_CLAMP_STEP / Math.max(WEB_CLAMP_STEP, Math.hypot(player.x - to.x, player.y - to.y));
+      to = { x: to.x + (player.x - to.x) * t, y: to.y + (player.y - to.y) * t };
+    }
+    const shot: WebShot = { ...planned, to };
+    const { ball } = BOSS_WEB_VISUAL;
+    this.webs.push({
+      shot,
+      marker: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph),
+      ball: scene.add
+        .sprite(shot.from.x, shot.from.y, SPRITE_SHEETS[ball.sheet].key)
+        .setDepth(RENDER_DEPTH.projectile)
+        .setVisible(false)
+        .play(animationKey(ball.sheet, ball.animation)),
+      patch: null,
+    });
+  }
+
+  private isArenaFloor(point: Vector2): boolean {
+    const tile = DungeonView.worldToTile(point.x, point.y);
+    const { floor } = this.deps;
+    return roomContainsTile(this.arena, tile) && floor.tiles[tile.y * floor.width + tile.x] === TileType.Floor;
+  }
+
+  /** Znacznik lądowania, lot kłębu łukiem, rozrost plamy i spowolnienie gracza w niej (dash przechodzi). */
+  private updateWebs(now: number): void {
+    const { player } = this.deps;
+    this.webs = this.webs.filter((web) => {
+      const { shot } = web;
+      if (now >= shot.expiresAt) {
+        this.removeWeb(web);
+        return false;
+      }
+      if (now < shot.landAt) {
+        drawWebMarker(web.marker, shot);
+        const t = webFlightProgress(shot, now);
+        if (t !== null) {
+          const lift = Math.sin(Math.PI * t) * BOSS_WEB_VISUAL.arcHeight;
+          web.ball
+            .setVisible(true)
+            .setPosition(Math.round(shot.from.x + (shot.to.x - shot.from.x) * t), Math.round(shot.from.y + (shot.to.y - shot.from.y) * t - lift));
+        }
+        return true;
+      }
+      if (!web.patch) this.landWeb(web);
+      if (isInWebPatch(shot, player, now)) player.applyTerrainSlow(shot.slow, now);
+      return true;
+    });
+  }
+
+  private landWeb(web: ThrownWeb): void {
+    const { shot } = web;
+    web.marker.destroy();
+    web.ball.destroy();
+    const { patch } = BOSS_WEB_VISUAL;
+    const sprite = this.deps.scene.add
+      .sprite(Math.round(shot.to.x), Math.round(shot.to.y), SPRITE_SHEETS[patch.sheet].key)
+      .setDepth(RENDER_DEPTH.floorHazard);
+    const growKey = animationKey(patch.sheet, patch.grow);
+    const growFrames = this.deps.scene.anims.get(growKey)?.frames.length ?? 1;
+    // Klatki rozrostu odpowiadają promieniowi plamy (webPatchRadius) — tempo z spreadMs.
+    sprite.play({ key: growKey, frameRate: (growFrames * 1000) / shot.spreadMs });
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.play(animationKey(patch.sheet, patch.shimmer)));
+    web.patch = sprite;
+  }
+
+  private removeWeb(web: ThrownWeb): void {
+    web.marker.destroy();
+    web.ball.destroy();
+    web.patch?.destroy();
   }
 
   /** Wylęg w zaplanowanej chwili; miejsce poza areną (boss przy ścianie) zastępuje pozycja bossa. */
@@ -216,62 +306,9 @@ export class BossFight {
       if (now < spawn.at) return true;
       const inArena = roomContainsTile(this.arena, DungeonView.worldToTile(spawn.position.x, spawn.position.y));
       const at = inArena ? spawn.position : { x: boss.x, y: boss.y };
-      const spiderling = new Spiderling(this.deps.scene, at.x, at.y, definition, now);
-      this.spiderlingGroup.add(spiderling);
-      this.spiderlings.push({ spiderling, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+      this.spiderlings.spawn(at, definition, now);
       return false;
     });
-  }
-
-  /** Pościg, telegraf zapłonu (strefa wybuchu) i wybuch raniący gracza. */
-  private updateSpiderlings(now: number): void {
-    const { player, onPlayerHit } = this.deps;
-    const target: Vector2 = { x: player.x, y: player.y };
-    for (const { spiderling, gfx } of [...this.spiderlings]) {
-      const decision = spiderling.tick(target, now);
-      const definition = spiderling.definition;
-      const blast: AreaStrike = {
-        center: { x: spiderling.x, y: spiderling.y },
-        radius: definition.blastRadius,
-        telegraphStartAt: spiderling.explosionAt - definition.primeMs,
-        impactAt: spiderling.explosionAt,
-        damage: definition.damage,
-        knockback: definition.knockback,
-      };
-      if (!decision.explode) {
-        if (Number.isFinite(spiderling.explosionAt)) drawAreaTelegraph(gfx, blast, now);
-        continue;
-      }
-      this.deps.effects.impact(blast.center.x, blast.center.y, blast.radius);
-      this.deps.decals.add('scorch', blast.center.x, blast.center.y);
-      this.playBurst(blast.center);
-      if (!player.isDead && isHitByAreaStrike(blast, player, player.radius)) {
-        const hit = { damage: blast.damage, knockback: knockbackFrom(blast.center, player, blast.knockback) };
-        if (player.takeHit(hit, now)) onPlayerHit();
-      }
-      this.removeSpiderling(spiderling, true);
-    }
-  }
-
-  /** Arkusz wybuchu pajączka (bez kierunków), usuwany po ostatniej klatce. */
-  private playBurst(at: Vector2): void {
-    const { sheet, animation } = SPIDERLING_VISUAL.burst;
-    const sprite = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
-    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
-    sprite.play(animationKey(sheet, animation));
-  }
-
-  /** Usuwa pajączka; zabity (nie wybuchły) zostawia plamę. */
-  private removeSpiderling(spiderling: Spiderling, exploded: boolean): void {
-    const index = this.spiderlings.findIndex((entry) => entry.spiderling === spiderling);
-    if (index < 0) return;
-    const [entry] = this.spiderlings.splice(index, 1);
-    entry?.gfx.destroy();
-    if (!exploded) {
-      this.deps.effects.deathBurst(spiderling.x, spiderling.y, SPIDERLING_DEATH_COLOR, spiderling.radius * 1.5);
-      this.deps.decals.add('splat', spiderling.x, spiderling.y);
-    }
-    spiderling.destroy();
   }
 
   private updateStrikes(now: number): void {
@@ -320,32 +357,46 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
-    this.deps.decals.add(boss.visual.deathDecal, boss.x, boss.y);
     for (const pending of [...this.strikes, ...this.bursts]) pending.gfx.destroy();
     this.strikes = [];
     this.bursts = [];
+    // Sieci są częścią walki — znikają razem z Matką Pająków.
+    for (const web of this.webs) this.removeWeb(web);
+    this.webs = [];
     // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
-    for (const { spiderling } of [...this.spiderlings]) this.removeSpiderling(spiderling, false);
+    this.spiderlings.clear();
     this.spawns = [];
     const position: Vector2 = { x: boss.x, y: boss.y };
+    const { visual, facing } = boss;
     boss.destroy();
     this.boss = null;
+    if (!visual.death) {
+      this.finishDefeat(visual.deathDecal, position);
+      return;
+    }
+    // Animacja śmierci w kierunku z chwili śmierci; nagroda (łupy, karty, schody, kraty) po jej końcu.
+    this.dying = true;
+    const { sheet, animation } = visual.death;
+    const corpse = this.deps.scene.add.sprite(position.x, position.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.boss);
+    corpse.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      corpse.destroy();
+      this.dying = false;
+      this.finishDefeat(visual.deathDecal, position);
+    });
+    corpse.play(animationKey(sheet, animation, facing));
+  }
+
+  private finishDefeat(decal: CombatDecalKind, position: Vector2): void {
+    this.deps.decals.add(decal, position.x, position.y);
     this.deps.onDefeated(position);
   }
 }
 
-/** Obrys strefy + wypełnienie rosnące do chwili uderzenia. */
-function drawAreaTelegraph(gfx: Phaser.GameObjects.Graphics, strike: AreaStrike, now: number): void {
+/** Miejsce lądowania sieci: cienki czerwony obrys pełnego zasięgu i znacznik środka. */
+function drawWebMarker(gfx: Phaser.GameObjects.Graphics, shot: WebShot): void {
   gfx.clear();
-  if (now < strike.telegraphStartAt) return;
-  const progress = Phaser.Math.Clamp(
-    (now - strike.telegraphStartAt) / (strike.impactAt - strike.telegraphStartAt),
-    0,
-    1,
-  );
-  gfx.lineStyle(2, TELEGRAPH_COLOR, 0.8).strokeCircle(strike.center.x, strike.center.y, strike.radius);
-  gfx.fillStyle(TELEGRAPH_COLOR, 0.12).fillCircle(strike.center.x, strike.center.y, strike.radius);
-  gfx.fillStyle(TELEGRAPH_COLOR, 0.3).fillCircle(strike.center.x, strike.center.y, strike.radius * progress);
+  gfx.lineStyle(1, TELEGRAPH_COLOR, 0.6).strokeCircle(shot.to.x, shot.to.y, shot.maxRadius);
+  gfx.fillStyle(TELEGRAPH_COLOR, 0.25).fillCircle(shot.to.x, shot.to.y, shot.startRadius);
 }
 
 /** Pulsujący pierścień wokół bossa przed wystrzałem fali. */

@@ -8,6 +8,8 @@ import { ItemKind } from '@/core/lootTypes';
 export interface SpriteAnimationDef {
   readonly frames: readonly number[];
   readonly loop: boolean;
+  /** Własne tempo animacji; brak = `fps` arkusza. */
+  readonly fps?: number;
 }
 
 /**
@@ -181,6 +183,50 @@ export const SPRITE_SHEETS = {
       birth: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Śmierć Matki Pająków (krok 24, tools/spider_sprites.py): 96×96, 8 kierunków (zostaje kierunek z chwili
+  // śmierci); 0 wzdrygnięcie, 1–3 podkulanie nóg, 4 pęknięte jaja, 5–7 rozpad w posokę. Potem plama `splat`.
+  spiderQueenDeath: {
+    key: 'sheet-spider-queen-death',
+    url: 'assets/sprites/spider-queen_death.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      // 8 klatek w 8 kl./s = 1 s, bez pętli.
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 8 },
+    },
+  },
+  // Sieć rzucona przez Matkę Pająków (krok 25, tools/lair_enemies.py): 128×128; 0–5 rozrost (promienie
+  // klatek = startRadius → maxRadius z bossConfig.web), 6–7 błysk kropli przy pełnym rozmiarze.
+  bossWeb: {
+    key: 'sheet-boss-web',
+    url: 'assets/sprites/boss-web.png',
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 1024,
+    sheetHeight: 128,
+    directions: 1,
+    fps: 3,
+    animations: {
+      // Tempo rozrostu ustawia gra tak, by trwał spreadMs (6 klatek).
+      grow: { frames: [0, 1, 2, 3, 4, 5], loop: false },
+      shimmer: { frames: [6, 7], loop: true },
+    },
+  },
+  webBall: {
+    key: 'sheet-web-ball',
+    url: 'assets/sprites/web-ball.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 12,
+    animations: { spin: { frames: [0, 1, 2, 3], loop: true } },
+  },
   // Pajączek-kamikaze: 48×48, 8 kierunków; 0–3 bieg, 4–7 zapłon (telegraf wybuchu, bez pętli).
   spiderling: {
     key: 'sheet-spiderling',
@@ -209,6 +255,46 @@ export const SPRITE_SHEETS = {
     animations: {
       burst: { frames: [0, 1, 2, 3], loop: false },
     },
+  },
+  // Kokon leża (krok 23d, tools/lair_enemies.py): 32×32, bez kierunków.
+  cocoon: {
+    key: 'sheet-cocoon',
+    url: 'assets/sprites/cocoon.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 256,
+    sheetHeight: 32,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      idle: { frames: [0, 1], loop: true },
+      // Telegraf (300 ms) i rozdarcie szybciej niż spoczynek, żeby zmieściły się w czasie gry.
+      fuse: { frames: [2, 3], loop: true, fps: 14 },
+      burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
+    },
+  },
+  // Lepkie pajęczyny leża (krok 23e, tools/lair_enemies.py): 1×1 i 2×2 kafle; błysk wędruje po kroplach kleju.
+  stickyWebSmall: {
+    key: 'sheet-sticky-web-small',
+    url: 'assets/sprites/sticky-web_small.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 128,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 3,
+    animations: { shimmer: { frames: [0, 1, 2, 3], loop: true } },
+  },
+  stickyWebLarge: {
+    key: 'sheet-sticky-web-large',
+    url: 'assets/sprites/sticky-web_large.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    sheetWidth: 256,
+    sheetHeight: 64,
+    directions: 1,
+    fps: 3,
+    animations: { shimmer: { frames: [0, 1, 2, 3], loop: true } },
   },
 } as const satisfies Readonly<Record<string, SpriteSheetDef>>;
 
@@ -273,6 +359,8 @@ export interface BossVisual extends EnemyVisual {
   readonly attackKinds: readonly BossAttackKind[];
   /** Trwały ślad w miejscu śmierci bossa. */
   readonly deathDecal: CombatDecalKind;
+  /** Animacja śmierci (arkusz kierunkowy); brak = tylko błysk i ślad. Nagroda czeka na jej koniec. */
+  readonly death?: { readonly sheet: SpriteSheetId; readonly animation: string };
 }
 
 /**
@@ -294,6 +382,7 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     attack: 'birth',
     attackKinds: [BossAttackKind.Brood],
     deathDecal: 'splat',
+    death: { sheet: 'spiderQueenDeath', animation: 'die' },
   },
 };
 
@@ -305,6 +394,29 @@ export const SPIDERLING_VISUAL = {
   burst: { sheet: 'spiderlingBurst', animation: 'burst' },
   groundShadow: { width: 14, height: 8, offsetX: 1, offsetY: 3 },
 } as const satisfies EnemyVisual & { readonly prime: string; readonly burst: { readonly sheet: SpriteSheetId; readonly animation: string } };
+
+/** Kokon: spoczynek, telegraf, rozdarcie; ostatnia klatka rozdarcia (strzępy) zostaje na podłodze. */
+export const COCOON_VISUAL = {
+  sheet: 'cocoon',
+  idle: 'idle',
+  fuse: 'fuse',
+  burst: 'burst',
+  groundShadow: { width: 16, height: 6, offsetX: 1, offsetY: 9 },
+} as const;
+
+/** Lepka pajęczyna: arkusz wg rozmiaru w kaflach. */
+export const STICKY_WEB_VISUAL = {
+  sheets: { 1: 'stickyWebSmall', 2: 'stickyWebLarge' },
+  animation: 'shimmer',
+} as const satisfies { readonly sheets: Readonly<Record<1 | 2, SpriteSheetId>>; readonly animation: string };
+
+/** Rzut siecią Matki Pająków: kłąb w locie i rosnąca plama. */
+export const BOSS_WEB_VISUAL = {
+  ball: { sheet: 'webBall', animation: 'spin' },
+  patch: { sheet: 'bossWeb', grow: 'grow', shimmer: 'shimmer' },
+  /** Wysokość łuku lotu kłębu (px, czysto wizualnie). */
+  arcHeight: 36,
+} as const;
 
 /** Pocisk bossa (fale Novy). */
 export const BOSS_PROJECTILE_VISUAL = { sheet: 'sludgeGlob', animation: 'fly' } as const;

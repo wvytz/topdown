@@ -1606,6 +1606,166 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 23d — Kokony (Pajęcze leże)
+
+**Decyzje właściciela (na starcie kroku):**
+- 0–2 kokony w zwykłym pokoju leża;
+- wybuch spowalnia i wypuszcza pajączka-kamikaze (sam wybuch nie rani);
+- strzał i cios niszczą kokon (z dystansu bez spowolnienia);
+- kokon bez kolizji — nie zmienia linii wzroku Kiterów.
+
+**Reguły i liczby (moje, w `biomeConfig.cocoons`, do strojenia w testach właściciela):**
+- miejsce: zwykłe pokoje (nie startowy, nie arena), 1 kafel od ścian (nie w przejściu), poza środkiem 3×3 (kapliczka), odstęp ≥ 3 kafle między kokonami;
+- budzi go bliski kontakt: gracz ≤ 26 px od środka; telegraf 300 ms (kokon drży, czerwona strefa jak u pajączka);
+- wybuch: strefa 48 px, spowolnienie 40% na 2,5 s, 1 pajączek (definicja z Matki Pająków, obrażenia skalowane z piętrem);
+- trafienie (cios, strzał, Burzowy pęd) rozrywa kokon od razu; dash i nietykalność chronią przed spowolnieniem, jak przed obrażeniami;
+- ostatnia klatka rozdarcia (strzępy) zostaje na podłodze — pęknięty kokon wygląda inaczej niż cały.
+
+**Warstwa czysta:**
+- `dungeon/CocoonPlanner.ts`: `planCocoons` (własna sól RNG `COCOON_SEED_SALT`), dopisany do `PURE_FILES`;
+- `systems/Cocoons.ts`: `CocoonConfig`, `CocoonState` (śpi → drży → wybuch, tylko raz), `cocoonBlastCatches`.
+
+**Grafika:** `tools/lair_enemies.py` → `cocoon.png` (32×32, bez kierunków): 0–1 spoczynek z pulsującym zielonym szwem, 2–3 drżenie, 4–7 rozdarcie. `SpriteAnimationDef.fps` — własne tempo animacji (drżenie 14 kl./s, rozdarcie 12 kl./s).
+
+**Phaser:**
+- `combat/SpiderlingSwarm.ts`: pajączki-kamikaze wydzielone z `BossFight` (pościg, telegraf, wybuch, plamy) — wspólne dla Matki Pająków i kokonów; `BossFight` bez zmian w zachowaniu;
+- `entities/Cocoon.ts`: sprite bez ciała fizycznego, cel `MeleeTarget`;
+- `combat/CocoonManager.ts`: rozmieszczenie, telegraf, wybuch, rozstrzyganie ciosu/strzału/dasha (kokon nie liczy się do Wampirzego kła);
+- `Player`: `StatusEffects` gracza (`PLAYER_STATUS_RESISTANCE`), `applySlow`, mnożnik prędkości chodu (dash bez zmian), niebieska barwa w czasie spowolnienia;
+- `GameScene`: menedżer tylko, gdy biom ma kokony.
+
+**Testy:** `CocoonPlanner.test.ts` (3) i `cocoons.test.ts` (8):
+- miejsca tylko w zwykłych pokojach, marginesy, środek wolny, odstęp, limit na pokój, część pokojów pusta; determinizm;
+- budzenie bliskością, jeden wybuch po telegrafie, trafienie rozrywa od razu (też w trakcie telegrafu), martwy gracz nie budzi;
+- balans: po reakcji ~200 ms chód nie wystarcza do ucieczki, dash wystarcza; strzał sięga spoza strefy; spowolnienie < 100%.
+
+**Weryfikacja:**
+- `npm run build`: 713 testów zielonych;
+- w grze (`?seed=7&floor=2`, ręczne `game.step()`): 6 kokonów na piętrze;
+  - zbliżenie: animacja drżenia, wybuch po 300 ms, gracz spowolniony (mnożnik 0,6), pajączek wybucha przy graczu (−13 HP);
+  - strzał z 130 px: kokon pęka, pajączek wychodzi, gracz bez spowolnienia;
+  - zrzut ekranu: kokony czytelne na podłodze leża;
+- brak nowych błędów w konsoli (jedyny wpis to skutek mojej ręcznej ingerencji w listę wrogów w teście, przed przeładowaniem).
+
+**Do oceny w testach właściciela:** zasięg budzenia (26 px) i telegraf 300 ms, siła/czas spowolnienia, czy strzępy po kokonie są czytelne.
+
+---
+
+## Krok 23e — Lepkie pajęczyny (Pajęcze leże)
+
+**Decyzje właściciela:**
+- z kroku 23a: spowalniają tylko gracza, dash przechodzi bez spowolnienia, wygląd nie może przypominać dekoracji;
+- na starcie kroku: 0–2 w zwykłym pokoju, losowo 1×1 albo 2×2 kafle, spowolnienie 50% w środku i jeszcze 0,5 s po wyjściu, pajęczyn nie da się zniszczyć.
+
+**Reguły (moje, w `biomeConfig.stickyWebs`):**
+- miejsce: zwykłe pokoje, cała pajęczyna na podłodze, 1 kafel od ścian, poza środkiem 3×3 (kapliczka), przerwa ≥ 2 kafle od innych pajęczyn i od kokonów (dwie pułapki naraz byłyby nieczytelne); szansa na 2×2 = 50%;
+- „w pajęczynie” = środek gracza w jej kwadracie; spowolnienie odnawiane co klatkę, więc `durationMs` (0,5 s) to czas klejenia po wyjściu;
+- to teren, nie atak: działa także w nietykalności po trafieniu (`Player.applyTerrainSlow`), chroni tylko dash;
+- wrogów nie spowalnia, nie ma kolizji.
+
+**Warstwa czysta:**
+- `dungeon/StickyWebPlanner.ts`: `planStickyWebs` (sól `STICKY_WEB_SEED_SALT`, omija kafle kokonów), dopisany do `PURE_FILES`;
+- `systems/StickyWebs.ts`: `StickyWebConfig`, `webGap` (przerwa między kwadratami kafli), `isInStickyWeb`.
+
+**Grafika:** `tools/lair_enemies.py` → `sticky-web_small.png` (32×32) i `sticky-web_large.png` (64×64), po 4 klatki w 3 kl./s: pełna okrągła sieć z obrysem i zielonymi kroplami kleju, po których wędruje błysk. Narożne pajęczyny-dekoracje to trójkąty bez obrysu przy murach, więc się nie mylą.
+
+**Phaser:**
+- `world/StickyWebField.ts`: sprite'y na nowej głębokości `RENDER_DEPTH.floorHazard` (1,6: nad śladami walki, pod cieniami) i spowalnianie gracza;
+- `CocoonManager.tiles`: kafle kokonów dla planera pajęczyn;
+- `GameScene`: pole pajęczyn tylko, gdy biom je ma.
+
+**Testy:** `StickyWebPlanner.test.ts` (3) i `stickyWebs.test.ts` (4):
+- cała pajęczyna na podłodze zwykłego pokoju, marginesy, wolny środek, limit na pokój, przerwy od pajęczyn i kokonów, oba rozmiary, pokoje bez pajęczyn; determinizm;
+- strefa na granicach kafli (1×1 i 2×2), `webGap`;
+- spowolnienie trwa w pajęczynie i dokładnie 0,5 s po wyjściu;
+- przejście przez 2×2 trwa < 1 s (spowalnia, nie przykleja).
+
+**Weryfikacja:**
+- `npm run build`: 726 testów zielonych;
+- w grze (`?seed=7&floor=2`, ręczne `game.step()`): 3 pajęczyny na piętrze (na tym seedzie wszystkie 1×1);
+  - w pajęczynie mnożnik prędkości 0,5;
+  - po wyjściu spowolnienie jeszcze po 0,3 s, zniknęło po 0,55 s;
+  - dash przez pajęczynę bez spowolnienia;
+  - zrzut ekranu: pajęczyna czytelna na podłodze leża, obok spadający pająk;
+- brak nowych błędów w konsoli.
+
+**Do oceny w testach właściciela:** siła spowolnienia, czytelność małej pajęczyny 1×1, czy pajęczyn nie jest za mało/za dużo.
+
+---
+
+## Krok 24 — Klatki śmierci Matki Pająków
+
+**Feedback właściciela po testach leża (kroki 23a–e):** biom „zajebisty”, dobry feel, spowolnienie fajne, postacie wyglądają super; spadanie pająków z sufitu to dokładnie ta mechanika, o którą chodziło. Następny krok wskazany przez właściciela: klatki śmierci Matki Pająków (backlog p. 3).
+
+**Animacja (moje decyzje):** osobny arkusz `spider-queen_death.png` (96×96, 8 kierunków — zostaje kierunek z chwili śmierci), 8 klatek w 8 kl./s = 1 s, bez pętli:
+- 0: wzdrygnięcie (nogi rozrzucone, kły rozwarte, jaja rozbłyskują);
+- 1–3: nogi się podkulają (klasyczna poza martwego pająka), oczy i jaja gasną, odwłok wiotczeje, pojawia się posoka;
+- 4: odwłok flaczeje, jaja pękają (skorupki z kości);
+- 5–7: kałuża posoki rośnie, ciało rozpada się blokami 3×3 (pełne piksele, bez przezroczystości);
+- po animacji zostaje dotychczasowa plama `splat`. Zwłok nie zostawiam na stałe: boss ginie gdziekolwiek na arenie, a duży sprite nad podłogą mógłby zasłonić schody.
+- Posoka ma własną rampę `ICHOR` (ciemna rdzawa czerwień chityny) — nie myli się z ogniem jaj ani z zielenią leża.
+
+**Generator:** `tools/spider_sprites.py` — rysowanie królowej wydzielone do `queen_pose(...)` z parametrami (podkulenie nóg `curl_leg`, zgasłe oczy, przygaszone/pęknięte jaja, kałuża), `queen_frame` korzysta z niego; arkusz chodu i złożenia wychodzi bajt w bajt taki sam jak wcześniej.
+
+**Gra:**
+- `BossVisual.death` (opcjonalne): Matka Pająków ma animację, Strażnik dalej ginie od razu (błysk + ślad);
+- `BossFight.defeat`: boss znika z walki od razu (bez celów i ataków, pajączki giną), animacja gra w kierunku `Boss.facing` (`DirectionalAnimator.facing`); łupy, odblokowanie schodów, podniesienie krat i karty nagrody dopiero po jej końcu (`isDefeated` = po animacji). Wcześniej karty zatrzymałyby scenę w pierwszej klatce animacji;
+- `GameScene`: karty nagrody tylko, jeśli gracz żyje (mógł zginąć w trakcie animacji od pocisku w locie).
+
+**Testy:** `sprites.test.ts` — animacja śmierci bossa jest kierunkowa, jednorazowa i trwa 0,6–1,5 s (nagroda na nią czeka); rozmiar nowego arkusza sprawdza istniejący test arkuszy.
+
+**Weryfikacja:**
+- `npm run build`: 729 testów zielonych;
+- w grze (`?seed=7&floor=2`, klawisz B / `debugDefeat`):
+  - animacja trwa 1000 ms w kierunku z chwili śmierci (S i E);
+  - w trakcie: kraty zamknięte, schody zamknięte, bez kart;
+  - po niej: plama, 6 łupów, schody otwarte, karty nagrody;
+  - zrzut ekranu w trakcie animacji (podkulone nogi);
+- Strażnik (`?seed=7&floor=1`): ginie od razu jak dotąd;
+- brak nowych błędów w konsoli.
+
+**Do oceny w testach właściciela:** czy 1 s śmierci nie jest za długo przed nagrodą, czy rozpad w posokę się podoba (alternatywa: zwłoki zostają na stałe pod schodami).
+
+---
+
+## Krok 25 — Rzut siecią Matki Pająków
+
+**Feedback właściciela po kroku 24:**
+- animacja śmierci „w sam raz”; krew mogłaby być jaskrawsza, ale to detal na później (backlog);
+- walka z Matką Pająków jest za łatwa. Prośba: nowy atak — sieć rzucana za plecy gracza, która się rozprzestrzenia (jak dawny rozrzut wybuchów Strażnika), żeby było mniej czasu na reakcję, a pajączki szybciej dobiegały.
+
+**Atak „Sieć” (`BossAttackKind.Web`, liczby moje w `SPIDER_QUEEN.web`):**
+- wzór ataków: wylęg na przemian z rzutem siecią;
+- miejsce: 85 px **za graczem** na linii boss → gracz (tam, dokąd gracz ucieka); od razu czerwony znacznik (obrys pełnego zasięgu + środek);
+- zamach 300 ms, lot kłębu łukiem 350 ms (skrócone przy strojeniu: test pokazał, że przy dłuższym czasie uciekający gracz przebiega za plamę);
+- po wylądowaniu plama rośnie z 20 do 60 px w 700 ms i leży 6 s; w środku spowolnienie 50% + 0,5 s klejenia (jak pajęczyny leża), dash przechodzi; nie zadaje obrażeń;
+- wściekłość: dwie sieci w wachlarzu 70° za graczem i krótszy zamach (mnożnik telegrafu);
+- miejsce poza areną (gracz przy ścianie) gra dosuwa w stronę gracza, aż trafi na podłogę areny;
+- sieci znikają razem z Matką Pająków.
+
+**Warstwa czysta:** `bossTypes` (`WebAttackDefinition`, `WebShot`, `BossAttackPlan.webs`), `bossAttacks.ts`: `planWeb`, `webPatchRadius`, `isInWebPatch`, `webFlightProgress`; `attackLeadTimeMs` uwzględnia rzut.
+
+**Grafika (`tools/lair_enemies.py`):** `boss-web.png` (128×128: 6 klatek rozrostu o promieniach 20→60 px = hitbox plamy, 2 klatki błysku) i `web-ball.png` (16×16, kłąb w locie, 4 klatki obrotu). Sieć ma ten sam styl co lepkie pajęczyny leża — gracz od razu wie, że spowalnia.
+
+**Phaser (`BossFight`):** znacznik, lot po łuku (wysokość 36 px, czysto wizualnie), rozrost w tempie `spreadMs` (frameRate liczony z liczby klatek), błysk w pętli, `Player.applyTerrainSlow` w plamie.
+
+**Testy:**
+- `SpiderQueen.test.ts`: wylęg na przemian z siecią w stałym rytmie; lądowanie za graczem i czasy; wściekłość (2 sieci, wachlarz, krótszy zamach); kierunek przy graczu w miejscu bossa; rozrost i wygasanie plamy; balans (uciekający gracz wbiega w plamę, stojącego nie trafia od razu);
+- zgodność sprite'a z hitboxem: promień narysowanej sieci w każdej klatce rozrostu = promień plamy (±3 px).
+
+**Weryfikacja:**
+- `npm run build`: 739 testów zielonych;
+- w grze (`?seed=7&floor=2`, ręczne `game.step()`, gracz 110 px pod bossem):
+  - po wylęgu rzut siecią; miejsce 77 px za graczem (dosunięte o 8 px od ściany areny);
+  - kłąb w locie nad ziemią; plama rośnie, potem błysk w pętli;
+  - gracz w plamie spowolniony; plama znika po 6 s; po pokonaniu bossa sieci znikają;
+  - zrzut ekranu: sieć przy wejściu do areny, w drodze ucieczki;
+- brak błędów w konsoli.
+
+**Do oceny w testach właściciela:** czy walka jest teraz wystarczająco trudna; odległość za graczem (85 px), rozmiar (60 px) i czas plamy (6 s).
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -1618,30 +1778,36 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] **Przedmioty bazowe bez pulsowania** (krok 20): dobrze widoczne na podłodze.
 - [x] **Ogólnie:** gameplay czytelny i w pełni płynny.
 
-**1. Plan na kolejną sesję — start od kroku 23d (kokony)**
-- **Stan po kroku 23c:** piętro 2 to Pajęcze leże, gotowe są:
+**Ocena właściciela po testach leża (po kroku 23e) — zaakceptowane:**
+- [x] **Pajęcze leże:** feel, spowolnienie (kokony, pajęczyny), wygląd postaci, pająki z sufitu.
+
+**Ocena właściciela po teście walki z Matką Pająków (po kroku 25):**
+- **Plama sieci:** wielkość (promień 60 px) w porządku.
+- **Odległość lądowania sieci za bohaterem (85 px) do poprawy.** Na starcie sesji dopytać właściciela, w którą stronę: bliżej (sieć pod nogami / tuż za plecami) czy dalej.
+- **Walka dalej „banalnie łatwa”.** Pomysły właściciela (do doprecyzowania na starcie kroku 26):
+  - pajączki nie powinny wyskakiwać wszystkie naraz (dziś wylęg 2, po wściekłości 3, w jednej chwili) — może po kolei albo w rozrzucie po arenie;
+  - pajączki mogłyby mieć skok do bohatera (doskok z dystansu zamiast samego biegu).
+- Zasada „nie łagodzimy trudności” obowiązuje — tu kierunek jest odwrotny: walka ma być trudniejsza.
+
+**1. Plan na kolejną sesję — krok 26: trudniejsza walka z Matką Pająków (nowe okno kontekstu)**
+- **Najpierw ustalić z właścicielem:**
+  - odległość lądowania sieci (bliżej czy dalej niż 85 px; ewentualnie z wyprzedzeniem ruchu gracza);
+  - wylęg: po kolei (odstęp między pajączkami) czy w rozrzucie po arenie (np. z sufitu/ścian, jak zrzuty z kroku 23c);
+  - skok pajączka: zasięg, telegraf (np. przykucnięcie + linia skoku), czy skok zastępuje bieg, czy jest dodatkiem przy średnim dystansie; czy wybuch następuje po wylądowaniu.
+- **Gdzie w kodzie:** `config/bossConfig.ts` (`SPIDER_QUEEN`: `brood`, `web`, `spiderling`), `ai/bossAttacks.ts` (`planBrood`, `planWeb`), `ai/SpiderlingBrain.ts` (fazy pajączka — skok jako nowa faza), `combat/SpiderlingSwarm.ts` (wykonanie, telegraf), testy `tests/ai/SpiderQueen.test.ts`.
+- **Uwaga:** pajączki z kokonów (krok 23d) używają tej samej definicji i `SpiderlingSwarm` — zmiana skoku obejmie też je (ustalić, czy tak ma być).
+
+**Wcześniejsze kandydatury na kolejne kroki** (po kroku 26, wybiera właściciel):
+- **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:
   - arkusz kafli (fiolet, zieleń, biel);
   - Matka Pająków z pajączkami;
   - pająk jaskiniowy (Rusher) i nietoperz z falą (Kiter);
-  - pająki spadające z sufitu.
+  - pająki spadające z sufitu;
+  - kokony;
+  - lepkie pajęczyny.
+- **Kandydaci na kolejny krok** (wybiera właściciel): powrót do „Mroku” (p. 2), kolejny biom, ewentualne strojenie liczb leża.
 - **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają tylko w trybie dev.
-- **23d — kokony** (decyzja właściciela z kroku 23a: „kokony, które przy bliskim kontakcie eksplodują i spowalniają gracza”):
-  - **Do ustalenia z właścicielem na starcie:**
-    - gdzie stoją (zwykłe pokoje leża, ile na pokój);
-    - czy wybuch też rani, czy tylko spowalnia;
-    - siła i czas spowolnienia;
-    - czy gracz może je zniszczyć z dystansu (strzał) bez spowolnienia;
-    - czy kokon blokuje ruch i linię wzroku. Kolidujące rekwizyty wymagają zgody właściciela (krok 16), bo zmieniają linię wzroku Kiterów.
-  - **Wskazówki techniczne:**
-    - spowolnienie gracza: sprawdzić `systems/StatusEffects.ts` (wrogowie mają już `slow`);
-    - planowanie miejsc: czysty planer jak `ShrinePlanner` / `LightPlanner`, z własną solą RNG;
-    - sprite'y kokonu i wybuchu: generator w palecie leża (np. rozszerzenie `tools/lair_enemies.py`);
-    - dekoracje leża celowo nie mają kokonów (krok 23a), więc kokon na podłodze zawsze jest elementem rozgrywki.
-- **23e — lepkie pajęczyny na podłodze:** spowalniają tylko gracza, dash przechodzi bez spowolnienia. Wygląd nie może przypominać dekoracji, a w leżu nie ma pajęczyn na podłodze jako ozdoby (krok 23a).
-- **Do oceny w testach właściciela** (piętro 2):
-  - rytm wylęgu Matki Pająków (krok 22);
-  - fala nietoperza (krok 23b);
-  - częstotliwość zrzutów pająków i czytelność cienia pod bohaterem (krok 23c).
+- **Do oceny w testach właściciela:** trudność walki z Matką Pająków po dodaniu rzutu siecią (krok 25). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
 - **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.
 - **Ewentualne uszczelnienie areny przed ostrzałem bossa z korytarza** (otwarte od kroku 9):
   - **Problem:** strzał budzi i rani bossa, zanim gracz wejdzie na arenę, a kraty opadają dopiero wtedy, gdy gracz jest w środku.
@@ -1658,12 +1824,14 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - do ustalenia przy powrocie: jak ma wyglądać efekt, czy dotyczy tylko „Mroku”, czy też zwykłych pięter.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
+- **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
 **3. Brakująca grafika**
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.
-- **Boss „Matka Pająków”:** wdrożony w kroku 22. Brak tylko klatek śmierci (dziś błysk i plama).
+- **Boss „Matka Pająków”:** wdrożony w kroku 22, klatki śmierci w kroku 24.
+- **Strażnik (Sludge King):** bez animacji śmierci (błysk i plama szlamu) — można dorobić tak samo jak w kroku 24.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.

@@ -65,6 +65,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     return this.brain.currentPhase === BossPhase.Fighting;
   }
 
+  /** Kierunek patrzenia (wiersz arkusza) — animacja śmierci zachowuje go. */
+  get facing(): number {
+    return this.animator.facing;
+  }
+
   get isEnraged(): boolean {
     return this.enraged;
   }

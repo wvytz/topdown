@@ -99,6 +99,23 @@ describe('arkusze sprite’ów', () => {
     expect(burst).toHaveProperty(SPIDERLING_VISUAL.burst.animation);
   });
 
+  it('animacja śmierci bossa: kierunkowa (zachowuje kierunek), jednorazowa, ok. 1 s', () => {
+    const queen = BOSS_VISUALS[BossId.SpiderQueen].death;
+    expect(queen).toBeDefined();
+    for (const id of Object.values(BossId)) {
+      const death = BOSS_VISUALS[id].death;
+      if (!death) continue;
+      const sheet: SpriteSheetDef = SPRITE_SHEETS[death.sheet];
+      expect(sheet.directions).toBe(8);
+      const animation = sheet.animations[death.animation]!;
+      expect(animation.loop).toBe(false);
+      const durationMs = (animation.frames.length * 1000) / (animation.fps ?? sheet.fps);
+      // Nagroda czeka na koniec animacji — ma być wyraźna, ale nie dłuższa niż ok. 1,5 s.
+      expect(durationMs).toBeGreaterThanOrEqual(600);
+      expect(durationMs).toBeLessThanOrEqual(1500);
+    }
+  });
+
   it('klucze animacji są unikalne dla arkusza, animacji i kierunku', () => {
     expect(animationKey('barbarian', 'walk', 2)).not.toBe(animationKey('barbarian', 'walk', 3));
     expect(animationKey('barbarian', 'walk', 2)).not.toBe(animationKey('trashcanMan', 'walk', 2));

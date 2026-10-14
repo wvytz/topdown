@@ -128,6 +128,13 @@ export const ENEMY_STATUS_RESISTANCE: StatusResistance = {
   slowMultiplier: 1,
 };
 
+/** Gracz (krok 23d: spowolnienie z kokonów leża) — pełna siła spowolnienia; ogłuszeń gracz dziś nie dostaje. */
+export const PLAYER_STATUS_RESISTANCE: StatusResistance = {
+  stunMultiplier: 0,
+  stunImmunityMs: 0,
+  slowMultiplier: 1,
+};
+
 /**
  * Celowo mało przeciwników: 1–2 na pokój. Liczba rośnie tylko razem z liczbą pokojów,
  * a trudność głównie przez ENEMY_SCALING (HP/obrażenia).

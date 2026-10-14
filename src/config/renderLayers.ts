@@ -9,6 +9,8 @@ export const RENDER_DEPTH = {
   floorFeature: 1,
   /** Trwałe ślady walki: nad nakładkami i schodami, pod cieniami (mur nadal je przyciemnia). */
   combatDecal: 1.5,
+  /** Lepkie pajęczyny na podłodze (krok 23e): element rozgrywki, nad śladami walki, pod cieniami. */
+  floorHazard: 1.6,
   envShadow: 2,
   /** Cień pod chodzącą postacią (rysowany przez silnik, STYLEGUIDE §6). */
   actorShadow: 2.5,

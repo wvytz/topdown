@@ -3,6 +3,7 @@ import type {
   BossAttackPlan,
   BossDefinition,
   ProjectileBurst,
+  WebShot,
 } from '@/core/bossTypes';
 import { BossAttackKind } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
@@ -31,6 +32,8 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planBarrage(ctx);
     case BossAttackKind.Brood:
       return planBrood(ctx);
+    case BossAttackKind.Web:
+      return planWeb(ctx);
   }
 }
 
@@ -55,7 +58,7 @@ function planSlam(ctx: AttackPlanContext): BossAttackPlan {
     damage: slam.damage,
     knockback: slam.knockback,
   };
-  return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], spawns: [], endsAt: impactAt + slam.recoveryMs };
+  return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], spawns: [], webs: [], endsAt: impactAt + slam.recoveryMs };
 }
 
 function planNova(ctx: AttackPlanContext): BossAttackPlan {
@@ -79,7 +82,7 @@ function planNova(ctx: AttackPlanContext): BossAttackPlan {
     });
   }
   const lastFireAt = firstFireAt + (waves - 1) * nova.waveIntervalMs;
-  return { kind: BossAttackKind.Nova, strikes: [], bursts, spawns: [], endsAt: lastFireAt + nova.recoveryMs };
+  return { kind: BossAttackKind.Nova, strikes: [], bursts, spawns: [], webs: [], endsAt: lastFireAt + nova.recoveryMs };
 }
 
 function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
@@ -102,7 +105,7 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
     });
   }
   const lastImpactAt = firstImpactAt + (zoneCount - 1) * barrage.intervalMs;
-  return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], endsAt: lastImpactAt + barrage.recoveryMs };
+  return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], webs: [], endsAt: lastImpactAt + barrage.recoveryMs };
 }
 
 /**
@@ -127,7 +130,58 @@ function planBrood(ctx: AttackPlanContext): BossAttackPlan {
       at,
     };
   });
-  return { kind: BossAttackKind.Brood, strikes: [], bursts: [], spawns, endsAt: at + brood.recoveryMs };
+  return { kind: BossAttackKind.Brood, strikes: [], bursts: [], spawns, webs: [], endsAt: at + brood.recoveryMs };
+}
+
+/**
+ * Rzut siecią: miejsce lądowania `behindDistance` za graczem na linii boss → gracz (tam, dokąd gracz
+ * ucieka); kolejne sieci w wachlarzu `fanDeg` wokół tego kierunku, w tej samej odległości od gracza.
+ */
+function planWeb(ctx: AttackPlanContext): BossAttackPlan {
+  const web = required(ctx.definition.web, BossAttackKind.Web, ctx);
+  const launchAt = ctx.now + telegraph(ctx, web.telegraphMs);
+  const landAt = launchAt + web.flightMs;
+  const count = web.count + (ctx.enraged ? 1 : 0);
+
+  const dx = ctx.target.x - ctx.self.x;
+  const dy = ctx.target.y - ctx.self.y;
+  const away = dx === 0 && dy === 0 ? Math.PI / 2 : Math.atan2(dy, dx);
+  const fan = (web.fanDeg * Math.PI) / 180;
+  const webs: WebShot[] = Array.from({ length: count }, (_, i) => {
+    const angle = count === 1 ? away : away - fan / 2 + (fan * i) / (count - 1);
+    return {
+      from: ctx.self,
+      to: { x: ctx.target.x + Math.cos(angle) * web.behindDistance, y: ctx.target.y + Math.sin(angle) * web.behindDistance },
+      telegraphStartAt: ctx.now,
+      launchAt,
+      landAt,
+      startRadius: web.startRadius,
+      maxRadius: web.maxRadius,
+      spreadMs: web.spreadMs,
+      expiresAt: landAt + web.durationMs,
+      slow: web.slow,
+    };
+  });
+  return { kind: BossAttackKind.Web, strikes: [], bursts: [], spawns: [], webs, endsAt: landAt + web.recoveryMs };
+}
+
+/** Promień plamy sieci w chwili `now` (0 przed wylądowaniem i po wygaśnięciu); rośnie liniowo przez `spreadMs`. */
+export function webPatchRadius(web: WebShot, now: number): number {
+  if (now < web.landAt || now >= web.expiresAt) return 0;
+  const t = Math.min(1, (now - web.landAt) / web.spreadMs);
+  return web.startRadius + (web.maxRadius - web.startRadius) * t;
+}
+
+/** Czy punkt (środek gracza) jest w plamie sieci. */
+export function isInWebPatch(web: WebShot, point: Vector2, now: number): boolean {
+  const r = webPatchRadius(web, now);
+  return r > 0 && Math.hypot(point.x - web.to.x, point.y - web.to.y) <= r;
+}
+
+/** Postęp lotu kłębu sieci (0..1); poza lotem null. */
+export function webFlightProgress(web: WebShot, now: number): number | null {
+  if (now < web.launchAt || now >= web.landAt) return null;
+  return (now - web.launchAt) / (web.landAt - web.launchAt);
 }
 
 /** Czy okrągły cel zostaje trafiony przez strefę (okręgi się przecinają). */
@@ -145,6 +199,7 @@ export function attackLeadTimeMs(plan: BossAttackPlan, now: number): number {
     ...plan.bursts.map((burst) => burst.fireAt),
     ...plan.strikes.map((strike) => strike.impactAt),
     ...plan.spawns.map((spawn) => spawn.at),
+    ...plan.webs.map((web) => web.launchAt),
   ];
   if (moments.length === 0) return 0;
   return Math.max(0, Math.min(...moments) - now);

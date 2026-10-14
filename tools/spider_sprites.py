@@ -10,6 +10,9 @@ Arkusze (STYLEGUIDE §2, §8, §10):
   spider-queen_move-birth.png  96x96, 8 kierunków; kolumny 0–3 chód, 4–7 złożenie pajączka (wylęga się w kolumnie 7)
   spiderling_walk-prime.png    48x48, 8 kierunków; kolumny 0–3 bieg, 4–7 „zapłon” przed wybuchem (bez pętli)
   spiderling_burst.png         48x48, bez kierunków; 4 klatki wybuchu (bez pętli)
+  spider-queen_death.png       96x96, 8 kierunków (krok 24); 0 wzdrygnięcie, 1–3 nogi się podkulają, jaja gasną,
+                               4 odwłok flaczeje, jaja pękają, 5 posoka, 6–7 ciało rozpada się w posokę
+                               (po animacji gra zostawia plamę `splat`)
 
 Postać rysujemy raz, na północ, w przestrzeni lokalnej; kierunki z obrotu (najbliższy sąsiad), obrys po obrocie.
 """
@@ -120,14 +123,40 @@ QUEEN_EGGS = [(-12, 10), (-6, 14), (0, 15.5), (6, 14), (12, 10)]  # względem ś
 
 def queen_frame(f):
     """f 0–3: chód (dwie grupy nóg naprzemiennie), f 4–7: złożenie pajączka."""
+    walk = f < 4
+    return queen_pose(
+        swell=(0, 0, 0, 0, 1, 2, -1, 0)[f],           # odwłok nabrzmiewa i się kurczy
+        glow=(0, 0, 0, 0, 1, 2, 2, 1)[f],             # jaja jaśnieją przed wylęgiem
+        splay=(0, 0, 0, 0, 1, 2, 2, 1)[f],            # nogi rozstawione przy wysiłku
+        fangs=(0, 0, 0, 0, 0, 1, 1, 1)[f],            # kły rozwarte
+        step=(0, -3, 0, 3)[f] if walk else 0,
+        spinnerets=f in (6, 7),
+        baby=f == 7,
+    )
+
+
+# Śmierć (krok 24): posoka — ciemna, rdzawa czerwień chityny (nie ogień jaj, nie zieleń leża).
+ICHOR = (ok(.24, .060, 15), ok(.31, .075, 20), ok(.38, .085, 25))
+
+
+def curl_leg(pts, t, c):
+    """Martwy pająk podkula nogi: kolano wraca ku przyczepowi, stopa zawija się pod ciało."""
+    a, k, f = pts
+    k2 = lerp(k, lerp(a, k, .55), t)
+    tuck = lerp(lerp(a, k2, .5), (c, c + 6), .35)
+    return [a, k2, lerp(f, tuck, t)]
+
+
+def queen_pose(swell=0, glow=0, splay=0, fangs=0, step=0, spinnerets=False, baby=False,
+               curl=0.0, eyes=1, eggs='whole', ichor=0):
+    """Poza Matki Pająków na N. curl 0–1: podkulenie nóg; eyes 0 = zgasłe; eggs: whole/dim/broken;
+    ichor: promień kałuży posoki pod ciałem (0 = brak)."""
     img = Img(BOSS, BOSS)
     c = BOSS / 2
-    walk = f < 4
-    swell = (0, 0, 0, 0, 1, 2, -1, 0)[f]           # odwłok nabrzmiewa i się kurczy
-    glow = (0, 0, 0, 0, 1, 2, 2, 1)[f]             # jaja jaśnieją przed wylęgiem
-    splay = (0, 0, 0, 0, 1, 2, 2, 1)[f]            # nogi rozstawione przy wysiłku
-    fangs = (0, 0, 0, 0, 0, 1, 1, 1)[f]            # kły rozwarte
-    step = (0, -3, 0, 3)[f] if walk else 0
+
+    if ichor:
+        ellipse(img, c + 2, 50, ichor, ichor * .8,
+                lambda nx, ny: ICHOR[0] if nx * nx + ny * ny > .55 else (ICHOR[2] if nx < -.2 and ny < -.2 else ICHOR[1]))
 
     ab_cx, ab_cy = c, 58
     rx, ry = 16 + (1 if swell > 1 else 0), 17 + swell
@@ -141,6 +170,8 @@ def queen_frame(f):
             k2 = (k[0] + sx, k[1] + dy * .5 - (splay if i == 0 else 0))
             t2 = (t[0] + sx, t[1] + dy + (splay if i == 3 else 0) - (splay if i == 0 else 0))
             pts = [a, k2, t2]
+            if curl:
+                pts = curl_leg(pts, curl, c)
             if side < 0:
                 pts = [mirror(p, c) for p in pts]
             claw = lerp(pts[1], pts[2], .78)
@@ -167,6 +198,16 @@ def queen_frame(f):
                 img.put(int(ab_cx) - 4 + xx, int(ab_cy) - 7 + yy, sk[ch])
     # Jaja (czerwone złoto pochodni) na tylnym brzegu odwłoka
     for i, (ex, ey) in enumerate(QUEEN_EGGS):
+        if eggs != 'whole':  # przy śmierci gasną, potem pękają (skorupki z kości)
+            ey2 = ey + swell * .8
+            ex2, ey2 = int(ab_cx + ex), int(ab_cy + ey2)
+            if eggs == 'dim':
+                ellipse(img, ex2 + .5, ey2 + .5, 2.4, 2.4, lambda nx, ny: EGG[0])
+            else:
+                for dx, dy in ((-1, 0), (1, -1), (0, 1)):
+                    img.put(ex2 + dx, ey2 + dy, BONE[1])
+                img.put(ex2, ey2, ICHOR[1])
+            continue
         er = 2.6 + (.4 if glow and i % 2 == 0 else 0)
         base = EGG[1 + min(glow, 1)]
         hi = EGG[3] if glow > 1 else EGG[2]
@@ -177,7 +218,7 @@ def queen_frame(f):
     sp_y = int(ab_cy + ry) - 1
     img.put(int(c) - 1, sp_y, CHITIN[0])
     img.put(int(c), sp_y, CHITIN[0])
-    if f in (6, 7):
+    if spinnerets:
         img.put(int(c) - 1, sp_y - 1, EGG[2])
         img.put(int(c), sp_y - 1, EGG[2])
 
@@ -192,21 +233,52 @@ def queen_frame(f):
         stroke(img, [(bx, 26), (bx + s * fangs, 21)], 2.4, BONE[1])
         img.put(int(bx + s * fangs - .5), 20, BONE[0])
         stroke(img, [(c + s * 7, 27), (c + s * 9.5, 22)], 2.2, CHITIN[3])
-    # Oczy: 2 duże, 2 średnie, 4 małe — wszystkie w środku sylwetki
+    # Oczy: 2 duże, 2 średnie, 4 małe — wszystkie w środku sylwetki (martwe: ton cienia chityny)
+    if not eyes:
+        EYE_ = (CHITIN[1], CHITIN[0], CHITIN[1])
+    else:
+        EYE_ = EYE
     for s in (1, -1):
         for (ex, ey) in ((2, 28), (2, 29)):
-            img.put(int(c + (s * ex if s > 0 else s * ex - 1)), ey, EYE[1])
-            img.put(int(c + (s * (ex + 1) if s > 0 else s * (ex + 1) - 1)), ey, EYE[1] if ey == 29 else EYE[2])
-        img.put(int(c + (5 if s > 0 else -6)), 28, EYE[1])
-        img.put(int(c + (4 if s > 0 else -5)), 31, EYE[0])
-        img.put(int(c + (6 if s > 0 else -7)), 31, EYE[0])
-        img.put(int(c + (6 if s > 0 else -7)), 26, EYE[0])
+            img.put(int(c + (s * ex if s > 0 else s * ex - 1)), ey, EYE_[1])
+            img.put(int(c + (s * (ex + 1) if s > 0 else s * (ex + 1) - 1)), ey, EYE_[1] if ey == 29 else EYE_[2])
+        img.put(int(c + (5 if s > 0 else -6)), 28, EYE_[1])
+        img.put(int(c + (4 if s > 0 else -5)), 31, EYE_[0])
+        img.put(int(c + (6 if s > 0 else -7)), 31, EYE_[0])
+        img.put(int(c + (6 if s > 0 else -7)), 26, EYE_[0])
 
     # Kolumna 7: pajączek wyłania się spod odwłoka (punkt spawnu: SPAWN_BACK px za pivotem)
-    if f == 7:
-        baby = spiderling_body(0, prime=0, scale=.75)
-        img.blit(crop_center(baby, 24, 24, 13), int(c) - 13, int(c + SPAWN_BACK) - 13)
+    if baby:
+        hatchling = spiderling_body(0, prime=0, scale=.75)
+        img.blit(crop_center(hatchling, 24, 24, 13), int(c) - 13, int(c + SPAWN_BACK) - 13)
     return img
+
+
+def crumble(img, amount, seed):
+    """Rozpad ciała: znikają całe bloki 3×3 sylwetki (bez półprzezroczystości), kałuża posoki zostaje."""
+    r = random.Random(seed)
+    for by in range(0, img.h, 3):
+        for bx in range(0, img.w, 3):
+            if r.random() >= amount:
+                continue
+            for y in range(by, min(by + 3, img.h)):
+                for x in range(bx, min(bx + 3, img.w)):
+                    p = img.get(x, y)
+                    if p and p[3] and p not in ICHOR:
+                        img.put(x, y, ICHOR[1] if r.random() < .35 else (0, 0, 0, 0))
+    return img
+
+
+def queen_death_frame(f):
+    """Śmierć Matki Pająków (8 klatek, bez pętli)."""
+    if f == 0:  # wzdrygnięcie: nogi rozrzucone, kły rozwarte
+        return queen_pose(splay=3, fangs=1, swell=1, glow=2)
+    if f <= 3:  # podkulanie nóg, gasnące oczy i jaja, odwłok wiotczeje
+        return queen_pose(curl=(.3, .6, .85)[f - 1], swell=(0, -1, -2)[f - 1], eyes=f < 3, eggs='dim', ichor=(0, 0, 11)[f - 1])
+    if f == 4:  # odwłok flaczeje, jaja pękają
+        return queen_pose(curl=1, swell=-3, eyes=0, eggs='broken', ichor=15)
+    img = queen_pose(curl=1, swell=-3, eyes=0, eggs='broken', ichor=(18, 22, 24)[f - 5])
+    return crumble(img, (0, .35, .7)[f - 5], 2400 + f)
 
 
 def crop_center(img, cx, cy, r):
@@ -360,6 +432,7 @@ def directional_sheet(size, frame_fn, cols=8):
 
 def build():
     queen, qf = directional_sheet(BOSS, queen_frame)
+    death, df = directional_sheet(BOSS, queen_death_frame)
     baby, bf = directional_sheet(SMALL, spiderling_frame)
     burst = Img(SMALL * 4, SMALL)
     uf = []
@@ -369,6 +442,7 @@ def build():
         uf.append((f'burst{f}', img))
     return {
         'spider-queen_move-birth.png': (queen, qf, BOSS),
+        'spider-queen_death.png': (death, df, BOSS),
         'spiderling_walk-prime.png': (baby, bf, SMALL),
         'spiderling_burst.png': (burst, uf, SMALL),
     }

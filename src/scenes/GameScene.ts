@@ -34,6 +34,7 @@ import {
 } from '@/config/lootConfig';
 import { BossFight } from '@/combat/BossFight';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
+import { CocoonManager } from '@/combat/CocoonManager';
 import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
@@ -76,6 +77,7 @@ import {
 } from '@/systems/FloorModifiers';
 import { ArenaGates } from '@/world/ArenaGates';
 import { ShrineSite } from '@/world/ShrineSite';
+import { StickyWebField } from '@/world/StickyWebField';
 
 /** Sole dla RNG — każdy system losuje ze swojego strumienia, niezależnie od pozostałych. */
 const ENCOUNTER_SEED_SALT = 0xe11e;
@@ -86,6 +88,8 @@ const REWARD_SEED_SALT = 0x4e3a;
 const DRESSING_SEED_SALT = 0xd2e5;
 const TORCH_SEED_SALT = 0x7042;
 const CEILING_DROP_SEED_SALT = 0xce11;
+const COCOON_SEED_SALT = 0xc0c0;
+const STICKY_WEB_SEED_SALT = 0x3eb5;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -101,6 +105,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private bossFight!: BossFight;
   /** Pająki z sufitu — tylko w biomie, który je ma (krok 23c). */
   private ceilingDrops: CeilingDropManager | null = null;
+  /** Kokony na podłodze — tylko w biomie, który je ma (krok 23d). */
+  private cocoons: CocoonManager | null = null;
+  /** Lepkie pajęczyny na podłodze — tylko w biomie, który je ma (krok 23e). */
+  private stickyWebs: StickyWebField | null = null;
   private loot!: LootManager;
   private lootRng!: Rng;
   private effects!: CombatEffects;
@@ -207,10 +215,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.resolveDashStrike(time);
     this.enemies.update(time);
     this.ceilingDrops?.update(time);
+    this.cocoons?.update(time);
+    this.stickyWebs?.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
-    this.playerShots.update(time, (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot));
+    this.playerShots.update(
+      time,
+      (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? null,
+    );
     this.loot.update(time);
     this.shrine.update(actions.interact);
 
@@ -268,7 +281,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
     const arc = Phaser.Math.DegToRad(combat.meleeArcDeg);
     this.effects.slash(swing.origin.x, swing.origin.y, swing.angle, combat.meleeRange, arc);
-    const hits = this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing);
+    const hits =
+      this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing) + (this.cocoons?.resolvePlayerMelee(swing) ?? 0);
 
     // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów),
     // najwyżej raz na meleeHealCooldownMs.
@@ -291,6 +305,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const sweep = { center: { x: this.player.x, y: this.player.y }, radius: this.player.radius, damage, now };
     this.enemies.resolveDashSweep(sweep, this.dashHits);
     this.bossFight.resolveDashSweep(sweep, this.dashHits);
+    this.cocoons?.resolveDashSweep(sweep, this.dashHits);
   }
 
   private setupCombat(): void {
@@ -333,6 +348,34 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
+    const cocoons = this.biome.cocoons;
+    this.cocoons = cocoons
+      ? new CocoonManager({
+          scene: this,
+          floor: this.dungeon,
+          floorNumber: this.floorNumber,
+          config: cocoons,
+          rng: createRng(deriveSeed(this.dungeon.seed, COCOON_SEED_SALT)),
+          walls: this.dungeonView.collisionLayer,
+          player: this.player,
+          effects: this.effects,
+          decals: this.combatDecals,
+          onPlayerHit,
+        })
+      : null;
+
+    const webs = this.biome.stickyWebs;
+    this.stickyWebs = webs
+      ? new StickyWebField({
+          scene: this,
+          floor: this.dungeon,
+          config: webs,
+          rng: createRng(deriveSeed(this.dungeon.seed, STICKY_WEB_SEED_SALT)),
+          player: this.player,
+          avoid: this.cocoons?.tiles ?? [],
+        })
+      : null;
+
     this.bossFight = new BossFight({
       scene: this,
       floor: this.dungeon,
@@ -346,7 +389,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onDefeated: (position) => {
         this.unlockStairs();
         this.dropLoot(position, BOSS_LOOT);
-        this.offerBossReward();
+        // Animacja śmierci bossa trwa chwilę — gracz mógł w tym czasie zginąć (np. od pocisku w locie).
+        if (!this.player.isDead) this.offerBossReward();
       },
     });
 

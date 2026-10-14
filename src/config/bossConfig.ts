@@ -65,7 +65,25 @@ export const SPIDER_QUEEN = {
   engageDistance: 150,
   openingDelayMs: 900,
   restBetweenAttacksMs: 2200,
-  pattern: [BossAttackKind.Brood],
+  // Krok 25 (feedback właściciela: walka za łatwa): wylęg na przemian z rzutem siecią za plecy gracza —
+  // sieć odcina ucieczkę i spowalnia, pajączki szybciej dobiegają.
+  pattern: [BossAttackKind.Brood, BossAttackKind.Web],
+  web: {
+    // Krótki zamach i lot: mało czasu na reakcję (feedback właściciela).
+    telegraphMs: 300,
+    flightMs: 350,
+    behindDistance: 85,
+    count: 1,
+    fanDeg: 70,
+    // Klatki rozrostu w arkuszu boss-web.png mają promienie startRadius..maxRadius (tools/lair_enemies.py).
+    startRadius: 20,
+    maxRadius: 60,
+    spreadMs: 700,
+    durationMs: 6000,
+    // Jak lepkie pajęczyny leża (krok 23e).
+    slow: { pct: 0.5, durationMs: 500 },
+    recoveryMs: 300,
+  },
   brood: {
     count: 2,
     maxAlive: 6,

@@ -10,6 +10,8 @@ export enum BossAttackKind {
   Barrage = 'barrage',
   /** Wylęg (Matka Pająków): boss składa za sobą pajączki-kamikaze. */
   Brood = 'brood',
+  /** Rzut siecią (Matka Pająków, krok 25): lepka sieć ląduje za plecami gracza i się rozrasta. */
+  Web = 'web',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -69,6 +71,31 @@ export interface BroodAttackDefinition {
   readonly recoveryMs: number;
 }
 
+/**
+ * Rzut siecią: boss celuje za plecy gracza (dalej od siebie, w stronę ucieczki), kłąb sieci leci
+ * łukiem i po wylądowaniu rozrasta się w lepką plamę spowalniającą gracza (jak pajęczyny leża).
+ */
+export interface WebAttackDefinition {
+  /** Zamach przed rzutem — miejsce lądowania jest już oznaczone. */
+  readonly telegraphMs: number;
+  readonly flightMs: number;
+  /** Odległość miejsca lądowania za graczem (px, na linii boss → gracz). */
+  readonly behindDistance: number;
+  /** Ile sieci w rzucie (po wściekłości jedna więcej) … */
+  readonly count: number;
+  /** … rozstawionych w wachlarzu za graczem (stopnie, cały wachlarz). */
+  readonly fanDeg: number;
+  /** Promień plamy tuż po wylądowaniu i po rozroście (px). */
+  readonly startRadius: number;
+  readonly maxRadius: number;
+  readonly spreadMs: number;
+  /** Jak długo plama leży od wylądowania. */
+  readonly durationMs: number;
+  /** Spowolnienie odnawiane co klatkę w plamie (`durationMs` = klejenie po wyjściu). */
+  readonly slow: { readonly pct: number; readonly durationMs: number };
+  readonly recoveryMs: number;
+}
+
 /** Pajączek-kamikaze: biegnie do gracza, po zapłonie wybucha. Ginie od jednego trafienia. */
 export interface SpiderlingDefinition {
   readonly radius: number;
@@ -110,6 +137,7 @@ export interface BossDefinition {
   readonly nova?: NovaAttackDefinition;
   readonly barrage?: BarrageAttackDefinition;
   readonly brood?: BroodAttackDefinition;
+  readonly web?: WebAttackDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -145,12 +173,27 @@ export interface SummonSpawn {
   readonly at: number;
 }
 
+/** Rzucona sieć: lot `from` → `to` w [`launchAt`, `landAt`], potem plama rośnie i leży do `expiresAt`. */
+export interface WebShot {
+  readonly from: Vector2;
+  readonly to: Vector2;
+  readonly telegraphStartAt: number;
+  readonly launchAt: number;
+  readonly landAt: number;
+  readonly startRadius: number;
+  readonly maxRadius: number;
+  readonly spreadMs: number;
+  readonly expiresAt: number;
+  readonly slow: { readonly pct: number; readonly durationMs: number };
+}
+
 /** Pełny plan jednego ataku — wszystko z góry zaplanowane w czasie, wykonuje warstwa Phasera. */
 export interface BossAttackPlan {
   readonly kind: BossAttackKind;
   readonly strikes: readonly AreaStrike[];
   readonly bursts: readonly ProjectileBurst[];
   readonly spawns: readonly SummonSpawn[];
+  readonly webs: readonly WebShot[];
   /** Kiedy boss może znów się ruszać. */
   readonly endsAt: number;
 }

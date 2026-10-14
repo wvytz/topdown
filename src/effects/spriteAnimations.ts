@@ -47,7 +47,7 @@ export function registerSpriteAnimations(scene: Phaser.Scene): void {
             key: sheet.key,
             frame: sheetFrameIndex(direction, column, columns),
           })),
-          frameRate: sheet.fps,
+          frameRate: animation.fps ?? sheet.fps,
           repeat: animation.loop ? -1 : 0,
         });
       }

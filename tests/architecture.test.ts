@@ -21,6 +21,8 @@ const PURE_FILES = [
   'dungeon/stairs.ts',
   'dungeon/FloorDressing.ts',
   'dungeon/LightPlanner.ts',
+  'dungeon/CocoonPlanner.ts',
+  'dungeon/StickyWebPlanner.ts',
 ];
 
 const isPure = (path: string): boolean =>

@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import type { Hit, PlayerCombatConfig, WeaponEffects } from '@/core/combatTypes';
+import type { Hit, PlayerCombatConfig, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import { AttackPhase } from '@/core/combatTypes';
 import type { MovementIntent, PlayerStats, RangedHudData, Vector2 } from '@/core/types';
 import { PLAYER_SIZE } from '@/config/gameConfig';
+import { PLAYER_STATUS_RESISTANCE } from '@/config/combatConfig';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { angleTo } from '@/systems/CombatMath';
@@ -14,7 +15,9 @@ import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
+import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
+import { STATUS_TINTS } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
 
@@ -59,6 +62,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private shotCycle: AttackCycle;
   private readonly invulnerability = new Timer();
   private readonly knockbackStun = new Timer();
+  /** Statusy na graczu (krok 23d: spowolnienie z kokonów); dash ich nie spowalnia. */
+  private readonly status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
   private readonly aimMarker: Phaser.GameObjects.Image;
   private aimAngle = 0;
   private readonly animator: DirectionalAnimator;
@@ -134,6 +139,27 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     };
   }
 
+  /** Spowolnienie z otoczenia (kokon). W trakcie dasha i nietykalności nie działa — jak obrażenia. */
+  applySlow(slow: NonNullable<StatusApplication['slow']>, now: number): boolean {
+    if (this.isDead || this.isInvulnerable(now)) return false;
+    this.status.apply({ slow }, now);
+    return true;
+  }
+
+  /**
+   * Spowolnienie z terenu (lepka pajęczyna): działa także w nietykalności po trafieniu,
+   * bo to podłoże, nie atak — chroni przed nim tylko dash.
+   */
+  applyTerrainSlow(slow: NonNullable<StatusApplication['slow']>, now: number): boolean {
+    if (this.isDead || this.dash.isDashing(now)) return false;
+    this.status.apply({ slow }, now);
+    return true;
+  }
+
+  isSlowed(now: number): boolean {
+    return this.status.isSlowed(now);
+  }
+
   heal(amount: number): void {
     this.health.heal(amount);
   }
@@ -171,7 +197,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocity(velocity.x, velocity.y);
     } else if (!this.knockbackStun.isActive(now)) {
       const velocity = computeVelocity(actions.move, this.stats);
-      this.setVelocity(velocity.x, velocity.y);
+      const slow = this.status.speedMultiplier(now);
+      this.setVelocity(velocity.x * slow, velocity.y * slow);
     }
 
     const swingStarted = actions.attack && this.attackCycle.tryStart(now);
@@ -234,6 +261,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private updateVisuals(now: number): void {
+    if (this.status.isSlowed(now)) this.setTint(STATUS_TINTS.slow);
+    else this.clearTint();
     if (this.dash.isDashing(now)) {
       this.setAlpha(0.5);
     } else if (this.invulnerability.isActive(now)) {
