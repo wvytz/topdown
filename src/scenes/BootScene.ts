@@ -7,6 +7,7 @@ import type { TilesetMeta } from '@/core/tilesetTypes';
 import { registerTorchAnimation } from '@/world/Torches';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { newRun } from '@/systems/RunState';
+import { parseStartOverrides } from '@/systems/startOverrides';
 import { DEFAULT_HERO, parseHeroId } from '@/config/heroConfig';
 import { loadSpriteSheets, registerLootAnimations, registerSpriteAnimations } from '@/effects/spriteAnimations';
 
@@ -41,7 +42,9 @@ export class BootScene extends Phaser.Scene {
     this.generatePlaceholderTextures();
     // Bohater z adresu (`?hero=sorceress`) pomija ekran wyboru; bez niego wybór i tak nadpisze domyślnego.
     const hero = heroParam() ?? DEFAULT_HERO;
-    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: newRun(hero), ...devStartOverrides() };
+    // `?floor=`/`?seed=` działają też na Pages, ale wtedy run jest testowy (krok 41g).
+    const { practice, ...overrides } = parseStartOverrides(window.location.search);
+    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: newRun(hero, practice), ...overrides };
     if (this.scene.isActive(SceneKey.Splash)) {
       this.registry.set(BOOT_START_DATA_KEY, startData);
       this.scene.stop();
@@ -73,18 +76,6 @@ export function startFirstFloor(scene: Phaser.Scene, data: FloorSceneData): void
     scene.scene.start(SceneKey.Game, data);
     return;
   }
-  const select: HeroSelectData = { runSeed: data.runSeed, floor: data.floor };
+  const select: HeroSelectData = { runSeed: data.runSeed, floor: data.floor, practice: data.run.practice ?? false };
   scene.scene.start(SceneKey.Select, select);
-}
-
-/** Tylko w trybie dev: `?seed=3&floor=2` w adresie startuje run od danego seeda i piętra (testy modyfikatorów). */
-function devStartOverrides(): Partial<Pick<FloorSceneData, 'runSeed' | 'floor'>> {
-  if (!import.meta.env.DEV) return {};
-  const params = new URLSearchParams(window.location.search);
-  const seed = Number(params.get('seed'));
-  const floor = Number(params.get('floor'));
-  return {
-    ...(params.has('seed') && Number.isInteger(seed) ? { runSeed: seed >>> 0 } : {}),
-    ...(params.has('floor') && Number.isInteger(floor) && floor >= 1 ? { floor } : {}),
-  };
 }

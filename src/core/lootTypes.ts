@@ -118,4 +118,6 @@ export interface RunSnapshot {
   readonly items: readonly ItemId[];
   /** null = pełne HP (początek runu). */
   readonly hp: number | null;
+  /** Run testowy (start z `?floor=`/`?seed=`, krok 41g): wynik nie trafia na tablicę. */
+  readonly practice?: boolean;
 }

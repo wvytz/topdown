@@ -42,6 +42,7 @@ const HEADERS: Record<DeathSummary['source'], string> = {
   local: 'NAJLEPSZE WSPINACZKI',
   pending: 'NAJLEPSZE WSPINACZKI · ŁĄCZENIE…',
   shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
+  practice: 'RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ',
 };
 
 function formatScoreRow(row: RankedEntry): string {
@@ -202,7 +203,7 @@ export class DeathScreen {
   /** Wynik i tablica albo pole na imię (pierwsza śmierć bez zapamiętanego imienia). */
   private fill(death: DeathSummary): void {
     this.shownFor = death;
-    const place = death.nameEntry === null ? ` · MIEJSCE ${death.rank}` : '';
+    const place = death.nameEntry === null && death.source !== 'practice' ? ` · MIEJSCE ${death.rank}` : '';
     this.score.setText(`WYNIK: ${death.score} ZŁOTA · PIĘTRO ${death.floor}${place}`);
     if (death.nameEntry !== null) {
       this.header.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');

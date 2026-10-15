@@ -160,7 +160,7 @@ export class HeroSelectScene extends Phaser.Scene {
     this.starting = true;
     const hero = this.cards[this.selected]!.hero;
     this.lastHero.save(hero);
-    const start: FloorSceneData = { runSeed: this.selectData.runSeed, floor: this.selectData.floor, run: newRun(hero) };
+    const start: FloorSceneData = { runSeed: this.selectData.runSeed, floor: this.selectData.floor, run: newRun(hero, this.selectData.practice ?? false) };
     this.cameras.main.fadeOut(L.fadeMs, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(SceneKey.Game, start));
   }

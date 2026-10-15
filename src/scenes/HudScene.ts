@@ -137,7 +137,7 @@ export class HudScene extends Phaser.Scene {
       this.hintText.setText(`Wrogowie: ${hud.enemiesAlive} · znajdź komnatę bossa (zakratowane schody)`).setColor('#a0a0b0');
     }
 
-    this.goldText.setText(`Złoto (wynik): ${hud.gold}`);
+    this.goldText.setText(hud.practice ? `Złoto: ${hud.gold} (run testowy — bez wyniku)` : `Złoto (wynik): ${hud.gold}`);
     this.itemsText.setText(hud.items.map((i) => (i.count > 1 ? `${i.name} ×${i.count}` : i.name)).join(' · '));
 
     // Komunikat wygasa w ostatniej sekundzie wyświetlania.

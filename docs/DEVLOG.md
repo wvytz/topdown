@@ -3041,6 +3041,21 @@ Makieta generatora:
 
 ---
 
+## Krok 41g — Run testowy z adresu na Pages `#pieklo`
+
+Właściciel chce testować od razu ostatnie piętro na Pages. `?floor=N` i `?seed=N` działają teraz także w buildzie produkcyjnym, ale taki run jest **testowy**: wynik nie trafia ani na lokalną, ani na wspólną tablicę.
+
+- `systems/startOverrides.ts` (czysty): `parseStartOverrides(search)` → `{ runSeed?, floor?, practice }`; `practice` = podany seed albo piętro > 1 (`?floor=1` to zwykły run). Zastępuje `BootScene.devStartOverrides`.
+- `RunSnapshot.practice` (opcjonalne) przechodzi przez `newRun(hero, practice)`, ekran wyboru bohatera (`HeroSelectData.practice`) i kolejne piętra (`RunState.snapshot`).
+- `GameScene.handlePlayerDeath`: run testowy pomija zapis i pytanie o imię; ekran śmierci ma źródło `practice` — nagłówek „RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ”, bez miejsca. R/C po śmierci zaczynają zwykły run.
+- HUD: „Złoto: N (run testowy — bez wyniku)”; komunikat na start piętra, gdy nie ma modyfikatora.
+
+**Testy:** `tests/systems/startOverrides.test.ts` (parsowanie, błędne wartości, znacznik przez piętra). Build: 1019 testów.
+
+**Weryfikacja:** build produkcyjny `?floor=6&hero=sorceress` — od razu piętro 6; dev `?floor=5` → wybór bohatera → piętro 5, po śmierci panel „RUN TESTOWY”, `death.source = 'practice'`, bez błędów w konsoli.
+
+Adresy dla testerów: `https://wvytz.github.io/topdown/?floor=5` (Strażnik Bram), `?floor=6` (Kat Otchłani); `&hero=sorceress` pomija wybór bohatera.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -3103,7 +3118,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - kokony;
   - lepkie pajęczyny.
 - **Kandydaci na kolejny krok** (wybiera właściciel): powrót do „Mroku” (p. 2), kolejny biom, ewentualne strojenie liczb leża.
-- **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają tylko w trybie dev.
+- **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają też na Pages jako run testowy (bez zapisu wyniku, krok 41g).
 - **Do oceny w testach właściciela:** trudność walki z Matką Pająków po kroku 27 (pościg, smagnięcie, trucizna). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
 - **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.
 - **Ewentualne uszczelnienie areny przed ostrzałem bossa z korytarza** (otwarte od kroku 9):
@@ -3119,7 +3134,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ekran śmierci (krok 35):** `#ekran-smierci` siła przyciemnienia (62%), tempo i zasięg rozkładu napisu (30% bloków w 7 s), ilość krwi.
 - **Ekran startowy (krok 34):** `#ekran-startowy` długość (ok. 2,8 s), siła wstrząsu i błysku, czytelność tła — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
-- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
+- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (także na Pages jako run testowy bez zapisu wyniku, `systems/startOverrides.ts`, krok 41g). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 

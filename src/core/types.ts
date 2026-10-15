@@ -43,6 +43,8 @@ export interface HeroSelectData {
   readonly floor: number;
   /** Bohater zaznaczony na starcie (np. po śmierci); brak = ostatnio wybrany. */
   readonly preselect?: HeroId;
+  /** Run testowy z adresu (krok 41g). */
+  readonly practice?: boolean;
 }
 
 export interface FloorSceneData {
@@ -77,6 +79,8 @@ export interface HudData {
   /** null, gdy walka z bossem nie trwa. */
   readonly boss: BossHudData | null;
   readonly gold: number;
+  /** Run testowy z adresu (krok 41g) — wynik nie trafia na tablicę. */
+  readonly practice: boolean;
   readonly items: readonly HudItem[];
   /** Ostatni komunikat (np. zdobyty przedmiot); null, gdy nic do pokazania. */
   readonly toast: HudToast | null;
@@ -97,7 +101,7 @@ export interface DeathSummary {
   readonly rank: number;
   readonly board: ScoreboardView;
   /** Skąd tablica: lokalna, wspólna albo lokalna w oczekiwaniu na wspólną. */
-  readonly source: 'local' | 'pending' | 'shared';
+  readonly source: 'local' | 'pending' | 'shared' | 'practice';
   /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
   readonly nameEntry: string | null;
 }

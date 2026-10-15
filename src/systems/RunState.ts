@@ -1,19 +1,21 @@
 import type { ItemId, RunSnapshot } from '@/core/lootTypes';
 import { HeroId } from '@/core/heroTypes';
 
-export const NEW_RUN: RunSnapshot = { hero: HeroId.Barbarian, gold: 0, items: [], hp: null };
+export const NEW_RUN: RunSnapshot = { hero: HeroId.Barbarian, gold: 0, items: [], hp: null, practice: false };
 
-/** Nowy run wybranym bohaterem. */
-export const newRun = (hero: HeroId): RunSnapshot => ({ ...NEW_RUN, hero });
+/** Nowy run wybranym bohaterem; `practice` = run testowy z adresu (wynik nie trafia na tablicę). */
+export const newRun = (hero: HeroId, practice = false): RunSnapshot => ({ ...NEW_RUN, hero, practice });
 
 /** Postęp runu (złoto, przedmioty) — żyje przez jedno piętro, przenoszony jako RunSnapshot. */
 export class RunState {
   readonly hero: HeroId;
+  readonly practice: boolean;
   private goldAmount: number;
   private readonly itemIds: ItemId[];
 
   constructor(snapshot: RunSnapshot) {
     this.hero = snapshot.hero;
+    this.practice = snapshot.practice ?? false;
     this.goldAmount = snapshot.gold;
     this.itemIds = [...snapshot.items];
   }
@@ -50,6 +52,6 @@ export class RunState {
   }
 
   snapshot(hp: number | null): RunSnapshot {
-    return { hero: this.hero, gold: this.goldAmount, items: [...this.itemIds], hp };
+    return { hero: this.hero, gold: this.goldAmount, items: [...this.itemIds], hp, practice: this.practice };
   }
 }

@@ -242,6 +242,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     if (this.floorModifier) {
       this.showToast(`${this.floorModifier.name}: ${this.floorModifier.description}`, FLOOR_MODIFIER_TOAST_MS);
+    } else if (this.run.practice) {
+      this.showToast('Run testowy — wynik nie trafi na tablicę');
     }
     this.cameras.main.fadeIn(250, 0, 0, 0);
   }
@@ -305,6 +307,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       isPlayerDead: ready && this.player.isDead,
       boss: ready ? this.bossFight.getStatus() : null,
       gold: this.run.gold,
+      practice: this.run.practice,
       items: this.run.itemCounts().map(({ id, count }) => ({
         name: ITEM_DEFINITIONS[id].name,
         count,
@@ -671,6 +674,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     // Złoto w chwili śmierci to wynik runu.
     const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now() };
+    // Run testowy (start z adresu, krok 41g): bez zapisu i bez pytania o imię.
+    if (this.run.practice) {
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'practice', nameEntry: null };
+      this.awaitNewRun();
+      return;
+    }
     const remembered = this.playerName.load();
     if (remembered) {
       this.recordDeath({ ...base, name: remembered });
@@ -710,7 +719,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
       });
     }
 
-    // Nowa wspinaczka: nowy seed, piętro 1, pusty run.
+    this.awaitNewRun();
+  }
+
+  /** Po śmierci: R — nowa wspinaczka (nowy seed, piętro 1, pusty, zwykły run), C — zmiana bohatera. */
+  private awaitNewRun(): void {
     const freshSeed = (Date.now() ^ this.runSeed) >>> 0;
     this.input.keyboard?.once('keydown-R', () => {
       // Ten sam bohater co w zakończonym runie.
