@@ -34,6 +34,7 @@ export enum SceneKey {
   Hud = 'HudScene',
   Reward = 'RewardScene',
   Touch = 'TouchScene',
+  Perf = 'PerfScene',
 }
 
 export enum TextureKey {

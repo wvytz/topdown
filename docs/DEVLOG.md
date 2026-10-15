@@ -3216,6 +3216,17 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Do oceny w testach właściciela** `#sterowanie`: wygoda gałek (rozmiar, martwa strefa, pływające czy stałe), siła wspomagania (czy nie łagodzi gry), promień jako przełącznik, klawisz blokady (L/Shift), czytelność HUD na telefonie (płótno nadal skaluje się w całkowitych krotnościach — na telefonie zostają pasy), wydajność światła na telefonie.
 
+## Krok 49a — Licznik FPS i pingu (gałąź testowa) `#sterowanie`
+
+**Ocena właściciela** `#ocena` `#sterowanie`: „gra laguje […] nie da się płynnie poruszać” — prośba o dyskretny licznik FPS i pingu w prawym górnym rogu na gałęzi testowej.
+
+- `scenes/PerfScene.ts` (aktywna od startu, nad wszystkim): średni FPS i **najdłuższa klatka** z ostatniej sekundy (`systems/FrameStats.ts`, czysty), ping, renderer (WebGL/Canvas). Liczby w `config/perfConfig.ts`.
+- Czasy klatek mierzone z `performance.now()`, bo delta Phasera jest wygładzana i ukrywa pojedyncze szarpnięcia; najdłuższa klatka > 34 ms barwi licznik na czerwono. Napis odświeżany co 250 ms (przerysowanie tekstu co klatkę samo kosztuje na telefonie).
+- **Ping** = czas zapytania HEAD do serwera, z którego wczytano grę (co 2 s). Gra działa w całości w przeglądarce, więc ping nie wpływa na płynność — pokazuje tylko jakość połączenia z serwerem (np. `dev:phone` przez Wi-Fi).
+- **Jak czytać:** niski FPS przy WebGL — za ciężkie rysowanie (podejrzane światło i mgła); „Canvas” — przeglądarka nie dała WebGL, wszystko liczy procesor; dobry FPS, ale duże „max” — pojedyncze przycięcia (np. sprzątanie pamięci).
+
+**Testy:** `tests/systems/frameStats.test.ts` (60 FPS, długa klatka wypada z okna, błędne czasy). Weryfikacja: licznik widoczny w rogu, bez błędów w konsoli (Chromium bez GPU w chmurze ma ok. 15 FPS — to nie jest pomiar telefonu).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
