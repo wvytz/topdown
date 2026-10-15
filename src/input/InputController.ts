@@ -3,7 +3,7 @@ import type { MovementIntent, Vector2 } from '@/core/types';
 import type { AimSource } from '@/config/inputConfig';
 import { AIM_POINT_DISTANCE } from '@/config/inputConfig';
 import type { PlayerActions } from '@/entities/Player';
-import { keyboardAimDirection } from '@/systems/Aim';
+import { keyboardAimDirection, touchAimDirection } from '@/systems/Aim';
 import { directionTo } from '@/systems/CombatMath';
 import { touchState } from '@/input/TouchState';
 
@@ -94,7 +94,7 @@ export class InputController {
     this.shootClickQueued = false;
 
     const attack = Boolean(mouse?.leftButtonDown()) || this.attackKey.isDown || touchState.aim !== null;
-    const shoot = mouseShoot || keyboardShoot || touchState.shoot;
+    const shoot = mouseShoot || keyboardShoot || touchState.shoot || taps.shot;
 
     return {
       move,
@@ -123,11 +123,11 @@ export class InputController {
       if (toCursor.x !== 0 || toCursor.y !== 0) this.lastAim = toCursor;
       return { x: point.x, y: point.y };
     }
-    if (source === 'touch' && touchState.aim) {
-      this.lastAim = touchState.aim;
+    if (source === 'touch') {
+      this.lastAim = touchAimDirection(touchState.shotAim, touchState.aim, move, this.lastAim);
     } else {
-      // Klawiatura (i dotyk bez gałki celowania): celujemy tam, dokąd idziemy; L/Shift trzyma kierunek.
-      const locked = source === 'keyboard' && this.lockKeys.some((key) => key.isDown);
+      // Klawiatura: celujemy tam, dokąd idziemy; L/Shift trzyma kierunek.
+      const locked = this.lockKeys.some((key) => key.isDown);
       this.lastAim = keyboardAimDirection(move, locked, this.lastAim);
     }
     return { x: origin.x + this.lastAim.x * AIM_POINT_DISTANCE, y: origin.y + this.lastAim.y * AIM_POINT_DISTANCE };

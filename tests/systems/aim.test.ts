@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AIM_ASSIST, TOUCH_STICK } from '@/config/inputConfig';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
-import { assistAimDirection, keyboardAimDirection, stickState, stickToMovement } from '@/systems/Aim';
+import { assistAimDirection, keyboardAimDirection, stickState, stickToMovement, touchAimDirection } from '@/systems/Aim';
 
 const ORIGIN = { x: 100, y: 100 };
 const RIGHT = { x: 1, y: 0 };
@@ -85,5 +85,23 @@ describe('assistAimDirection — wspomaganie celowania', () => {
 
   it('cios wręcz trafia i bez wspomagania: błąd 8 kierunków (22,5°) mieści się w łuku miecza', () => {
     expect(PLAYER_COMBAT.meleeArcDeg / 2).toBeGreaterThan(22.5);
+  });
+});
+
+describe('touchAimDirection — celowanie gałkami dotykowymi', () => {
+  const LEFT = { x: -1, y: 0 };
+  const UP = { x: 0, y: -1 };
+
+  it('gałka strzału ma pierwszeństwo: obrót o 180° i salwa jednym kciukiem', () => {
+    expect(touchAimDirection(LEFT, RIGHT, { x: 1, y: 0 }, RIGHT)).toBe(LEFT);
+  });
+
+  it('bez gałki strzału celuje gałka ataku', () => {
+    expect(touchAimDirection(null, UP, { x: 1, y: 0 }, RIGHT)).toBe(UP);
+  });
+
+  it('bez gałek: kierunek ruchu, a na postoju poprzedni kierunek', () => {
+    expect(touchAimDirection(null, null, { x: 0, y: 1 }, RIGHT)).toEqual({ x: 0, y: 1 });
+    expect(touchAimDirection(null, null, { x: 0, y: 0 }, LEFT)).toBe(LEFT);
   });
 });

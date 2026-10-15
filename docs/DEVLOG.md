@@ -3227,6 +3227,19 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** `tests/systems/frameStats.test.ts` (60 FPS, długa klatka wypada z okna, błędne czasy). Weryfikacja: licznik widoczny w rogu, bez błędów w konsoli (Chromium bez GPU w chmurze ma ok. 15 FPS — to nie jest pomiar telefonu).
 
+## Krok 49b — Przycisk strzału jako gałka (gałąź testowa) `#sterowanie`
+
+**Ocena właściciela** `#ocena` `#sterowanie`: na PC bez lagów; na telefonie „sterowanie jest toporne — błyskawiczny obrót w przeciwnym kierunku i salwa strzał jest praktycznie niemożliwa”. Przyczyna: strzał leciał tam, gdzie celowała prawa gałka, a ten sam kciuk musiał trzymać gałkę i nacisnąć STRZAŁ.
+
+- **STRZAŁ / PROMIEŃ to teraz gałka** (jak w Brawl Stars): kciuk na przycisku i przeciągnięcie w stronę celu — postać od razu się obraca i strzela, dopóki kciuk jest przytrzymany. Obrót o 180° i salwa jednym ruchem kciuka.
+- Strzał rusza dopiero po przeciągnięciu (poza martwą strefą) albo po 150 ms przytrzymania (wtedy w bieżącym kierunku) — pierwszy pocisk nie leci w starą stronę. Krótkie stuknięcie = jeden strzał w bieżącym kierunku (`TOUCH_SHOT_HOLD_MS`).
+- Promień Czarodziejki działa tak samo (przytrzymaj i prowadź kciukiem) — **zastępuje przełącznik z kroku 49**.
+- Kierunek na dotyku: gałka strzału > gałka ataku > kierunek ruchu > poprzedni kierunek (`touchAimDirection`, czysta). Wspomaganie celowania dotyku (±12°) działa też na strzał z gałki.
+
+**Testy:** `touchAimDirection` (pierwszeństwo gałki strzału, gałka ataku, ruch, postój). Build: 1090 testów.
+
+**Weryfikacja** (emulacja Pixel 7, dotyk przez CDP): celowanie w prawo, potem przytrzymanie STRZAŁ i przeciągnięcie w lewo — kierunek −180°, pierwszy strzał dopiero po zjechaniu kciuka, salwa zużywa wszystkie ładunki; samo stuknięcie — jeden strzał. Bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

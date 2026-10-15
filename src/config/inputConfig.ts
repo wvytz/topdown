@@ -41,6 +41,13 @@ export const TOUCH_STICK = {
   moveZoneWidth: 0.45,
 } as const;
 
+/**
+ * Przycisk strzału jako gałka (krok 49b): strzał czeka, aż kciuk zjedzie z przycisku w stronę celu
+ * albo przytrzyma go tyle ms (strzał w bieżącym kierunku) — pierwszy pocisk nie leci w starą stronę.
+ * Krótkie stuknięcie = jeden strzał w bieżącym kierunku.
+ */
+export const TOUCH_SHOT_HOLD_MS = 150;
+
 /** Przyciski dotykowe (px płótna): środek liczony od prawego dolnego rogu. */
 export const TOUCH_BUTTONS = {
   radius: 30,

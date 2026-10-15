@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKey } from '@/core/types';
 import { DEATH_TIMING } from '@/config/deathScreenConfig';
-import { TOUCH_BUTTONS, TOUCH_DEATH_BUTTONS, TOUCH_STICK } from '@/config/inputConfig';
+import { TOUCH_BUTTONS, TOUCH_SHOT_HOLD_MS, TOUCH_DEATH_BUTTONS, TOUCH_STICK } from '@/config/inputConfig';
 import { touchState } from '@/input/TouchState';
 import type { GameScene } from '@/scenes/GameScene';
 import { stickState, stickToMovement } from '@/systems/Aim';
@@ -35,7 +35,7 @@ const STICK_ALPHA = 0.3;
 
 /**
  * Sterowanie dotykowe (krok 49): pływające gałki (lewa — ruch, prawa — celowanie i atak) i przyciski
- * strzału/promienia, zrywu i interakcji. Scena nad grą i HUD-em; tylko zapisuje touchState i rysuje.
+ * strzału/promienia (przytrzymaj i przeciągnij — kierunek strzału), zrywu i interakcji. Scena nad grą i HUD-em; tylko zapisuje touchState i rysuje.
  * Pokazuje się po pierwszym dotyku ekranu; mysz i klawiatura jej nie widzą.
  */
 export class TouchScene extends Phaser.Scene {
@@ -44,10 +44,13 @@ export class TouchScene extends Phaser.Scene {
   private deathLabels: Phaser.GameObjects.Text[] = [];
   private moveStick: Stick | null = null;
   private aimStick: Stick | null = null;
-  /** Palec na przycisku strzału (barbarzyńca strzela, dopóki trzyma). */
-  private shootPointer: number | null = null;
-  /** Czarodziejka: promień włączany i wyłączany stuknięciem — oba kciuki zostają na gałkach. */
-  private beamOn = false;
+  /**
+   * Przycisk strzału działa jak gałka (krok 49b): przytrzymanie strzela (salwa / promień), przeciągnięcie
+   * od przycisku wybiera kierunek — obrót o 180° i salwa jednym kciukiem. Bez przeciągnięcia — bieżący kierunek.
+   */
+  private shotStick: Stick | null = null;
+  /** Kiedy kciuk dotknął przycisku strzału (ms, performance.now). */
+  private shotDownAt = 0;
   private sorceress = false;
   private deathButtons: DeathButton[] = [];
   /** Od kiedy ekran śmierci czeka na gracza — przyciski wchodzą razem z napisem, nie pod kciukiem z walki. */
@@ -74,6 +77,9 @@ export class TouchScene extends Phaser.Scene {
     this.scene.bringToTop();
     const game = this.playingScene();
     if (!game) this.releaseAll();
+    else if (this.shotStick && !touchState.shoot && performance.now() - this.shotDownAt >= TOUCH_SHOT_HOLD_MS) {
+      touchState.shoot = true;
+    }
     this.layoutDeathButtons();
     this.draw(game !== null);
   }
@@ -103,15 +109,17 @@ export class TouchScene extends Phaser.Scene {
     const button = this.buttonAt(pointer.x, pointer.y);
     if (button === 'dash') {
       touchState.queueDash();
-      // Zryw przerywa promień — wyłączamy go, żeby nie wrócił sam po zrywie.
-      this.setBeam(false);
     } else if (button === 'interact') {
       touchState.queueInteract();
     } else if (button === 'shoot') {
-      if (this.sorceress) this.setBeam(!this.beamOn);
-      else {
-        this.shootPointer = pointer.id;
-        touchState.shoot = true;
+      if (!this.shotStick) {
+        // Środek gałki w środku przycisku: kierunek to strona, w którą kciuk zjedzie z przycisku.
+        const c = this.buttonCenter('shoot');
+        this.shotStick = { pointerId: pointer.id, originX: c.x, originY: c.y, knobX: c.x, knobY: c.y };
+        this.shotDownAt = performance.now();
+        // Strzał rusza dopiero po przeciągnięciu albo przytrzymaniu (update) — nie w starą stronę.
+        touchState.shoot = false;
+        touchState.shotAim = null;
       }
     } else if (pointer.x < this.scale.width * TOUCH_STICK.moveZoneWidth) {
       if (!this.moveStick) this.moveStick = this.newStick(pointer);
@@ -128,6 +136,10 @@ export class TouchScene extends Phaser.Scene {
     } else if (this.aimStick?.pointerId === pointer.id) {
       const stick = this.updateStick(this.aimStick, pointer);
       touchState.aim = stick.strength > 0 ? stick.direction : null;
+    } else if (this.shotStick?.pointerId === pointer.id) {
+      const stick = this.updateStick(this.shotStick, pointer);
+      touchState.shotAim = stick.strength > 0 ? stick.direction : null;
+      if (touchState.shotAim) touchState.shoot = true;
     }
   }
 
@@ -140,9 +152,12 @@ export class TouchScene extends Phaser.Scene {
       this.aimStick = null;
       touchState.aim = null;
     }
-    if (this.shootPointer === pointer.id) {
-      this.shootPointer = null;
-      touchState.shoot = this.beamOn;
+    if (this.shotStick?.pointerId === pointer.id) {
+      // Krótkie stuknięcie bez przeciągnięcia: jeden strzał w bieżącym kierunku.
+      if (!touchState.shoot) touchState.queueShot();
+      this.shotStick = null;
+      touchState.shoot = false;
+      touchState.shotAim = null;
     }
   }
 
@@ -162,16 +177,10 @@ export class TouchScene extends Phaser.Scene {
     return state;
   }
 
-  private setBeam(on: boolean): void {
-    this.beamOn = on && this.sorceress;
-    touchState.shoot = this.beamOn || this.shootPointer !== null;
-  }
-
   private releaseAll(): void {
     this.moveStick = null;
     this.aimStick = null;
-    this.shootPointer = null;
-    this.beamOn = false;
+    this.shotStick = null;
     touchState.release();
   }
 
@@ -244,7 +253,7 @@ export class TouchScene extends Phaser.Scene {
       label.setPosition(c.x, c.y);
     }
     if (!playing) return;
-    for (const stick of [this.moveStick, this.aimStick]) {
+    for (const stick of [this.moveStick, this.aimStick, this.shotStick]) {
       if (!stick) continue;
       g.fillStyle(0x202030, STICK_ALPHA).fillCircle(stick.originX, stick.originY, TOUCH_STICK.radius);
       g.lineStyle(2, 0xe8e8f0, 0.4).strokeCircle(stick.originX, stick.originY, TOUCH_STICK.radius);

@@ -76,3 +76,12 @@ export function assistAimDirection(
   }
   return best ?? direction;
 }
+
+/**
+ * Dotyk (krok 49b): kierunek celowania z gałek. Pierwszeństwo ma gałka strzału (przycisk STRZAŁ/PROMIEŃ
+ * przeciągnięty w stronę celu — natychmiastowy obrót i salwa jednym kciukiem), potem gałka ataku,
+ * a bez nich — kierunek ruchu albo poprzedni kierunek.
+ */
+export function touchAimDirection(shot: Vector2 | null, attack: Vector2 | null, move: MovementIntent, previous: Vector2): Vector2 {
+  return shot ?? attack ?? keyboardAimDirection(move, false, previous);
+}
