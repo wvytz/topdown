@@ -141,3 +141,18 @@ describe('flowGroupOf — grupy liter spływające w swoim tempie', () => {
     expect(new Set(F.groups.map(pattern)).size).toBe(F.groups.length);
   });
 });
+
+describe('pas za napisem (krok 43)', () => {
+  const B = DEATH_LAYOUT.band;
+
+  it('pełna czerń zaczyna się tuż pod HUD-em i obejmuje cały napis', () => {
+    expect(B.top + B.fadeTopPx).toBe(128);
+    const half = ((7 - title.top) * DEATH_LAYOUT.title.unit * T.titleToScale) / 2;
+    expect(B.top + B.fadeTopPx).toBeLessThanOrEqual(DEATH_LAYOUT.title.centerY - half);
+  });
+
+  it('sięga o połowę dalej w dół niż w kroku 40 (dół 271), w stronę tablicy', () => {
+    expect(B.bottom).toBe(271 + 75);
+    expect(B.bottom).toBeGreaterThan(DEATH_LAYOUT.score.y);
+  });
+});

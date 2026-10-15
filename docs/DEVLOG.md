@@ -2888,6 +2888,26 @@ Makieta generatora:
 
 ---
 
+## Krok 43 — Ekran śmierci: szerszy czarny pas
+
+**Prośba właściciela:** `#decyzja` `#ekran-smierci`
+- przyciemniony pas za napisem rozszerzyć w górę **tuż do dolnego końca HUD-u** i **o połowę w stronę tablicy rekordów**.
+
+**Zmiana:**
+- pełna czerń zaczyna się na y = 128 (koniec listy przedmiotów w HUD), nad nią tylko 12 px rozmycia;
+- dół pasa 271 → 346 px (o połowę dawnej wysokości 150 px), z 46 px rozmycia — pas obejmuje teraz także wynik i ozdobnik;
+- napis i tablica bez zmian.
+
+**Kod:** `DEATH_LAYOUT.band` = `top`, `bottom`, `fadeTopPx`, `fadeBottomPx` zamiast środka i wysokości; tekstura pasa z osobnym rozmyciem góry i dołu.
+
+**Testy (+2):** pełna czerń od dołu HUD-u i obejmuje napis po urośnięciu; dół pasa 346 px, poniżej wyniku.
+
+**Weryfikacja:** `npm run build`; zrzut z przeglądarki po 7 s. Wdrożone na GitHub Pages.
+
+**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — do sprawdzenia w testach.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

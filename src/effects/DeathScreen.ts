@@ -54,7 +54,7 @@ export class DeathScreen {
 
     this.dim = scene.add.rectangle(0, 0, width, height, P.void).setOrigin(0);
     this.vignette = scene.add.image(width / 2, height / 2, this.vignetteTexture(width, height));
-    this.band = scene.add.image(width / 2, L.band.centerY, this.bandTexture(width));
+    this.band = scene.add.image(width / 2, L.band.top, this.bandTexture(width)).setOrigin(0.5, 0);
     this.glow = scene.add.image(L.centerX, L.title.centerY, this.glowTexture());
     const { unit, gap } = L.title;
     this.titleText = pixelText('POLEGŁEŚ', gap);
@@ -183,18 +183,19 @@ export class DeathScreen {
     return this.scene.add.container(L.centerX, L.ornament.y, parts);
   }
 
-  /** Pas przez środek ekranu: czerń gęstnieje ku środkowi, krawędzie rozmyte w pionie. */
+  /** Pas przez ekran: pełna czerń od dołu HUD-u w stronę tablicy, krótkie rozmycie u góry, dłuższe u dołu. */
   private bandTexture(width: number): string {
     const textures = this.scene.textures;
     if (textures.exists(BAND_TEXTURE)) return BAND_TEXTURE;
-    const h = L.band.height;
+    const { top, bottom, fadeTopPx, fadeBottomPx } = L.band;
+    const h = bottom - top;
     const canvas = textures.createCanvas(BAND_TEXTURE, width, h);
     const ctx = canvas?.getContext();
     if (!canvas || !ctx) return BAND_TEXTURE;
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, 'rgba(7, 6, 11, 0)');
-    grad.addColorStop(0.3, 'rgba(7, 6, 11, 1)');
-    grad.addColorStop(0.7, 'rgba(7, 6, 11, 1)');
+    grad.addColorStop(fadeTopPx / h, 'rgba(7, 6, 11, 1)');
+    grad.addColorStop(1 - fadeBottomPx / h, 'rgba(7, 6, 11, 1)');
     grad.addColorStop(1, 'rgba(7, 6, 11, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, h);
