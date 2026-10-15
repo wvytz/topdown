@@ -2791,6 +2791,33 @@ Makieta generatora:
 
 ---
 
+## Krok 39 — Ekran śmierci: napis ociekający krwią na plamie
+
+**Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
+- rozpadające się słowo (kroki 35 i 38) „nie podoba się zupełnie”; wersja na czerwonym tle „jakoś wyglądała”;
+- napis ma raczej **ociekać krwią**, dookoła **plama**, całość **bardziej przyciemniona**.
+
+**Co widać:**
+- gra pod spodem przyciemniona do 80% (było 62%), krawędzie w winiecie zakrzepłej krwi; wrogowie dalej się ruszają, ale ledwo prześwitują;
+- 0,25 s: **POLEGŁEŚ** uderza (skala 2,2 → 1), czerwony błysk, wstrząs, chmura kropel;
+- w tej samej chwili za napisem **rozpryskuje się plama krwi**: zwarty eliptyczny rdzeń, nieregularny brzeg, oderwane krople i smugi rozbryzgu; brzeg ciemniejszy (blood-0), wnętrze blood-1 z połyskiem świeżej krwi;
+- litery czerwone (od eye-2 do ciemnej krwi), z obrysem i wytłoczeniem w zakrzepłą krew — napis zostaje cały, **nie rozpada się**;
+- **krew spływa z liter:** 13 strug z dolnych krawędzi, każda zaczyna w innej chwili (0,5–1,7 s), rośnie 1,5–4,5 s do 18–84 px i zwalnia; na czubku kropla; z pełnej strugi co 1,3–3,2 s odrywa się kropla i spada;
+- wynik, czerwony ozdobnik, „NAJLEPSZE WSPINACZKI” i wiersze tablicy jak wcześniej, niżej (pod strugami); „R — NOWA WSPINACZKA” miga.
+
+**Usunięte:** rozkład napisu (wypalanie, `planCrumble`, `splitIntoBlocks`), popiół, zaćmienie w ozdobniku.
+
+**Kod:**
+- `config/deathScreenConfig.ts`: paleta krwi (`blood0–2`), `DEATH_DRIPS`, `DEATH_SPLAT`, przyciemnienie 0,8, układ niżej;
+- `systems/deathScreen.ts`: `deathFrame` (+ `splatScale`), `planDrips` (strugi: start, czas, długość, okres kropel), `dripLength`, `dropsReleased`, `planSplat` (plama w komórkach z tonem brzeg/wnętrze/połysk);
+- `effects/DeathScreen.ts`: plama rysowana raz do tekstury, strugi w kontenerze napisu (skalują się z nim), krople.
+
+**Testy (`deathScreen.test.ts`, 15):** litery; przyciemnienie 0,75–0,9; uderzenie i błysk; rozprysk plamy; kolejność tablicy; strugi deterministyczne, z dolnych krawędzi, w granicach configu, rosną i stają, krople dopiero z pełnej strugi; plama deterministyczna, szersza niż napis i w ekranie, brzeg = komórki z pustym sąsiadem, rozbryzg wokół; grawitacja.
+
+**Weryfikacja:** `npm run build` (898 testów); przeglądarka (śmierć przez `window.__game`) — zrzuty po 0,6 / 2,5 / 7 s; R startuje nowy run; brak błędów w konsoli. Wdrożone na GitHub Pages.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2866,7 +2893,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Ekran śmierci (krok 38):** `#ekran-smierci` ton TOP / DOWN (popiół zamiast krwi); siła przyciemnienia (62%), tempo i zasięg wypalania napisu (30% bloków w 7 s), ilość popiołu.
+- **Ekran śmierci (krok 39):** `#ekran-smierci` napis ociekający krwią na plamie; siła przyciemnienia (80%), wielkość plamy, długość i tempo strug.
 - **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
