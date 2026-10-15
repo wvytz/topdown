@@ -2638,7 +2638,11 @@ Makieta generatora:
 
 **Weryfikacja w przeglądarce:** `npm run dev` z `VITE_SCORES_URL` na lokalnym serwerze z kodem workera i atrapą D1. Śmierć → panel imienia (wpisane „Wi<c>io” daje „Wicio”) → Enter → wpis trafia do bazy, panel pokazuje „WSZYSCY GRACZE” i miejsce 2 za wpisem z bazy. Bez błędów w konsoli gry.
 
-**Do zrobienia przez właściciela:** wdrożyć workera wg `worker/README.md`, wpisać adres do `.env.production`, `npm run deploy:pages`.
+**Wdrożenie (zrobione):**
+- Konto Cloudflare właściciela, subdomena workers.dev `wvytz`.
+- Baza D1 `tower-crawler-scores` (id w `worker/wrangler.toml`), schemat nałożony `--remote`.
+- Worker: https://tower-crawler-scores.wvytz.workers.dev (`GET/POST /scores`).
+- `.env.production` z `VITE_SCORES_URL` jest w repozytorium (adres nie jest tajny); gra na GitHub Pages wdrożona z nim przez `npm run deploy:pages`.
 
 **Ograniczenie:** wynik liczy przeglądarka, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury.
 

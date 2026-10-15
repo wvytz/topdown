@@ -9,5 +9,4 @@ ALLOWED_ORIGINS = "https://wvytz.github.io,http://localhost:5173"
 [[d1_databases]]
 binding = "DB"
 database_name = "tower-crawler-scores"
-# Uzupełnij po `npx wrangler d1 create tower-crawler-scores`.
-database_id = "WSTAW_ID_BAZY"
+database_id = "98c0f8f3-a6e3-4fa6-b67f-5a2981ecfed2"
