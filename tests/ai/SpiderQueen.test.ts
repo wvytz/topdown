@@ -75,7 +75,7 @@ describe('Matka Pająków — wylęg z sufitu (krok 26)', () => {
     expect((PLAYER_BASE_STATS.moveSpeed * B.fallMs) / 1000).toBeGreaterThan(B.ringRadius);
   });
 
-  it('BossBrain: zew → sieć → skok w stałym rytmie; boss trzyma dystans od gracza', () => {
+  it('BossBrain: zew, sieć i skok (każdy raz na rundę) w stałym rytmie; boss idzie do gracza', () => {
     const brain = new BossBrain(QUEEN, createRng(1));
     brain.activate(0);
     const starts: Array<{ kind: BossAttackKind; at: number; endsAt: number }> = [];
@@ -85,8 +85,10 @@ describe('Matka Pająków — wylęg z sufitu (krok 26)', () => {
       if (!decision.newAttack && decision.speed > 0) expect(decision.move.x).toBeCloseTo(1); // idzie do gracza
     }
     expect(starts.length).toBeGreaterThanOrEqual(6);
-    const order = [BossAttackKind.Brood, BossAttackKind.Web, BossAttackKind.Leap];
-    starts.forEach(({ kind }, i) => expect(kind).toBe(order[i % order.length]));
+    expect(starts[0]!.kind).toBe(BossAttackKind.Brood);
+    const sorted = [...QUEEN.pattern].sort();
+    expect(starts.slice(0, 3).map((s) => s.kind).sort()).toEqual(sorted);
+    expect(starts.slice(3, 6).map((s) => s.kind).sort()).toEqual(sorted);
     for (let i = 1; i < starts.length; i++) {
       const rhythm = starts[i - 1]!.endsAt + QUEEN.restBetweenAttacksMs;
       expect(starts[i]!.at).toBeGreaterThanOrEqual(rhythm);

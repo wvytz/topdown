@@ -1,5 +1,5 @@
 import type { BossDefinition } from '@/core/bossTypes';
-import { BossAttackKind, BossId } from '@/core/bossTypes';
+import { BossAttackKind, BossId, PatternOrder } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
 import { scaleForFloor } from '@/systems/CombatMath';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
@@ -16,6 +16,8 @@ export const FLOOR_GUARDIAN = {
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1100,
   pattern: [BossAttackKind.Slam, BossAttackKind.Nova, BossAttackKind.Barrage],
+  // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
+  patternOrder: PatternOrder.Shuffled,
   slam: {
     radius: 100,
     telegraphMs: 900,
@@ -75,6 +77,8 @@ export const SPIDER_QUEEN = {
   restBetweenAttacksMs: 1600,
   // Krok 25: sieć za plecy gracza odcina ucieczkę; krok 26: wylęg z sufitu osacza, a skok karze stanie w miejscu.
   pattern: [BossAttackKind.Brood, BossAttackKind.Web, BossAttackKind.Leap],
+  // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
+  patternOrder: PatternOrder.Shuffled,
   lash: {
     // Gracz bliżej niż 56 px od środka królowej; strefa sięga 34 + 30 = 64 px.
     triggerRange: 56,
@@ -172,6 +176,8 @@ export const SPIDER_KING = {
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1500,
   pattern: [BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow],
+  // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
+  patternOrder: PatternOrder.Shuffled,
   // Ścięcie kosami: wolny, czytelny zamach, ale trafienie boli i paraliżuje.
   lash: {
     triggerRange: 70,

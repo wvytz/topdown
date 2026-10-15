@@ -1,9 +1,10 @@
 import type { BossAttackPlan, BossDefinition } from '@/core/bossTypes';
-import { BossAttackKind, BossPhase } from '@/core/bossTypes';
+import { BossAttackKind, BossPhase, PatternOrder } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import type { MovementIntent, Vector2 } from '@/core/types';
 import { directionTo, distance } from '@/systems/CombatMath';
 import { planBossAttack } from '@/ai/bossAttacks';
+import { AttackPattern } from '@/ai/attackPattern';
 
 export interface BossBrainInput {
   readonly self: Vector2;
@@ -27,13 +28,14 @@ export interface BossDecision {
 const STOP: MovementIntent = { x: 0, y: 0 };
 
 /**
- * Boss: uśpiony do wejścia gracza na arenę, potem cyklicznie wykonuje sekwencję ataków.
+ * Boss: uśpiony do wejścia gracza na arenę, potem cyklicznie wykonuje ataki ze wzoru (po kolei albo
+ * w lekko losowej kolejności — `patternOrder`, krok 31).
  * W trakcie ataku stoi w miejscu; między atakami powoli podchodzi do gracza.
  * Poniżej progu HP wpada we wściekłość: krótsze telegrafy i przerwy, mocniejsze ataki.
  */
 export class BossBrain {
   private phase = BossPhase.Dormant;
-  private patternIndex = 0;
+  private readonly pattern: AttackPattern;
   private nextAttackAt = Infinity;
   private currentAttack: BossAttackPlan | null = null;
   private nextLashAt = 0;
@@ -41,7 +43,9 @@ export class BossBrain {
   constructor(
     private readonly definition: BossDefinition,
     private readonly rng: Rng,
-  ) {}
+  ) {
+    this.pattern = new AttackPattern(definition.pattern, definition.patternOrder ?? PatternOrder.Fixed, rng);
+  }
 
   get currentPhase(): BossPhase {
     return this.phase;
@@ -70,9 +74,8 @@ export class BossBrain {
     this.currentAttack = null;
 
     if (input.now >= this.nextAttackAt) {
-      const kind = this.definition.pattern[this.patternIndex % this.definition.pattern.length];
-      this.patternIndex++;
-      if (kind !== undefined) {
+      const kind = this.pattern.next();
+      if (kind !== null) {
         const plan = this.plan(kind, input, enraged);
         const rest = this.definition.restBetweenAttacksMs * (enraged ? this.definition.enrage.restMultiplier : 1);
         this.currentAttack = plan;

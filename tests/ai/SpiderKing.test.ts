@@ -105,7 +105,7 @@ describe('Król Pająków — ataki', () => {
     expect((PLAYER_BASE_STATS.moveSpeed * (KING.bloom.telegraphMs * KING.enrage.telegraphMultiplier - 200)) / 1000).toBeGreaterThan(KING.bloom.startRadius + 12);
   });
 
-  it('wzór: grzybnia → sztylety → kokon, w stałym rytmie (gracz poza zasięgiem kos)', () => {
+  it('wzór: zaczyna od grzybni, potem grzybnia, sztylety i kokon w każdej rundzie (gracz poza zasięgiem kos)', () => {
     const brain = new BossBrain(KING, createRng(1));
     brain.activate(0);
     const kinds: BossAttackKind[] = [];
@@ -113,10 +113,8 @@ describe('Król Pająków — ataki', () => {
       const d = brain.think({ self: SELF, target: { x: 0, y: 200 }, now, hpRatio: 1 });
       if (d.newAttack) kinds.push(d.newAttack.kind);
     }
-    expect(kinds.slice(0, 6)).toEqual([
-      BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow,
-      BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow,
-    ]);
+    expect(kinds[0]).toBe(BossAttackKind.Bloom);
+    for (const round of [kinds.slice(0, 3), kinds.slice(3, 6)]) expect([...round].sort()).toEqual([...KING.pattern].sort());
   });
 });
 

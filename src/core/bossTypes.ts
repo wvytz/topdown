@@ -32,6 +32,17 @@ export enum BossId {
   SpiderKing = 'spider-king',
 }
 
+/** Kolejność ataków ze wzoru (krok 31). */
+export enum PatternOrder {
+  /** Zawsze po kolei, w kółko. */
+  Fixed = 'fixed',
+  /**
+   * „Worek”: w każdej rundzie każdy atak raz, w losowej kolejności; ten sam atak nigdy dwa razy z rzędu
+   * (także na styku rund), a pierwszy atak walki to zawsze pierwszy ze wzoru — podpis bossa.
+   */
+  Shuffled = 'shuffled',
+}
+
 export enum BossPhase {
   /** Czeka, aż gracz wejdzie na arenę. */
   Dormant = 'dormant',
@@ -215,6 +226,8 @@ export interface BossDefinition {
   readonly restBetweenAttacksMs: number;
   /** Sekwencja ataków powtarzana w kółko (wg GDD: sekwencyjne ataki obszarowe). */
   readonly pattern: readonly BossAttackKind[];
+  /** Kolejność ataków ze wzoru; brak = po kolei (krok 31). */
+  readonly patternOrder?: PatternOrder;
   /** Definicje ataków — wymagane tylko te, których używa `pattern`. */
   readonly slam?: SlamAttackDefinition;
   readonly nova?: NovaAttackDefinition;

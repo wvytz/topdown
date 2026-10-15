@@ -2341,6 +2341,57 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 31 — Lekko losowa kolejność ataków bossów
+
+**Ocena i prośba właściciela:** `#ocena` `#mrok` `#krol-pajakow`
+- test „Mroku” (krok 30) „jest super”;
+- boss „wydaje się fajny”, ale nie powinien zawsze używać umiejętności po kolei — kolejność ma być „drobinę losowa”.
+
+**Reguła („worek”, moja, dla wszystkich trzech bossów):** `#decyzja`
+- w każdej rundzie boss używa każdego ataku ze wzoru dokładnie raz, w losowej kolejności. Żaden atak nie znika na długo, a gracz nie zna kolejności;
+- ten sam atak nigdy nie pada dwa razy z rzędu, także na styku rund;
+- pierwszy atak walki zostaje stały — „podpis” bossa:
+  - Strażnik: uderzenie;
+  - Królowa: wylęg;
+  - Król: grzybnia;
+- losowanie z RNG bossa (deterministyczne dla seeda);
+- smagnięcie Królowej i ścięcie Króla działają jak dotąd, poza wzorem;
+- rytm (przerwy, wściekłość) bez zmian.
+
+**Kod:**
+- `core/bossTypes`: `PatternOrder` (`Fixed`, `Shuffled`), `BossDefinition.patternOrder` (brak = po kolei);
+- `ai/attackPattern.ts`: `AttackPattern`, czyli kolejka ataków (po kolei albo „worek”);
+- `BossBrain` bierze z niej kolejny atak zamiast liczyć indeks wzoru;
+- `bossConfig`: `patternOrder: Shuffled` u Strażnika, Matki Pająków i Króla.
+
+**Testy:**
+- `attackPattern.test.ts` (7):
+  - po kolei;
+  - każda runda ma każdy atak;
+  - pierwszy atak stały, bez powtórzeń z rzędu (50 seedów);
+  - pojawia się wszystkie 6 możliwych kolejności rundy;
+  - determinizm;
+  - wzór pusty i jednoelementowy;
+  - wszyscy bossowie mają losową kolejność;
+- testy rytmu Strażnika, Królowej i Króla sprawdzają teraz pierwszy atak i komplet ataków w rundzie zamiast stałej kolejności.
+
+**Weryfikacja:**
+- `npm run build`: 814 testów zielonych;
+- w grze (`?seed=7&floor=3`, Król, gracz 150 px od niego, 45 s), ataki ze wzoru po rundach:
+  1. grzybnia, kokon, sztylety;
+  2. kokon, grzybnia, sztylety;
+  3. grzybnia, sztylety, kokon;
+  4. sztylety, kokon, grzybnia;
+  5. sztylety, grzybnia, kokon;
+- między nimi ścięcia kosami (Król podchodzi do gracza);
+- w konsoli dwa wpisy z chwili przeładowania HMR w trakcie zmian (moduł bez dopisanego jeszcze importu); po przeładowaniu walka działa.
+
+**Do oceny w testach właściciela:** `#krol-pajakow` `#matka-pajakow`
+- czy to wystarczająco losowe;
+- alternatywa: w pełni losowy wybór bez powtórzeń z rzędu, ale wtedy atak może nie wystąpić przez kilka rund.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2376,7 +2427,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Zostaje animacja śmierci Króla (dziś ginie od razu i zostaje plama).
 
-**Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, czeka na test — potem kolejny biom.
+**Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, test właściciela: „super” — potem kolejny biom. Krok 31: lekko losowa kolejność ataków bossów.
 
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:
@@ -2400,7 +2451,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Do oceny w teście właściciela.
+- **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
