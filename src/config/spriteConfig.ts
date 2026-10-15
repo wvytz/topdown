@@ -314,6 +314,36 @@ export const SPRITE_SHEETS = {
       die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 8 },
     },
   },
+  // Śmierć Króla Pająków (krok 40, tools/king_sprites.py): 128×128, 8 kierunków; 0 wzdrygnięcie z rozbłyskiem
+  // bulw, 1–3 podkulanie łap i opadanie kos, 4 pęknięte bulwy (zarodniki), 5–7 rozpad w kałużę soku. Potem `splat`.
+  spiderKingDeath: {
+    key: 'sheet-spider-king-death',
+    url: 'assets/sprites/spider-king_death.png',
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 1024,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 8 },
+    },
+  },
+  // Śmierć Strażnika (krok 40, tools/sludge_death.py): 96×96, 8 kierunków; 0 ryk agonii, 1–3 ciało osiada,
+  // 4–6 tonie w kałuży szlamu, 7 sama kałuża. Potem `slime`.
+  sludgeKingDeath: {
+    key: 'sheet-sludge-king-death',
+    url: 'assets/sprites/sludge-king_death.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 8 },
+    },
+  },
   // Sieć rzucona przez Matkę Pająków (krok 25, tools/lair_enemies.py): 128×128; 0–5 rozrost (promienie
   // klatek = startRadius → maxRadius z bossConfig.web), 6–7 błysk kropli przy pełnym rozmiarze.
   bossWeb: {
@@ -666,6 +696,7 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     move: 'move',
     attacks: { [BossAttackKind.Nova]: 'spit', [BossAttackKind.Barrage]: 'spit' },
     deathDecal: 'slime',
+    death: { sheet: 'sludgeKingDeath', animation: 'die' },
   },
   [BossId.SpiderQueen]: {
     sheet: 'spiderQueen',
@@ -684,6 +715,7 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.CocoonThrow]: 'stab',
     },
     deathDecal: 'splat',
+    death: { sheet: 'spiderKingDeath', animation: 'die' },
   },
   // Grzybowy Pożeracz (krok 39): zamach łapami, kąsanie, uczta (karmienie) i ryk zewu; skok bez animacji (przysiad).
   [BossId.FungalDevourer]: {

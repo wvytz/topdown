@@ -103,8 +103,10 @@ describe('arkusze sprite’ów', () => {
   });
 
   it('animacja śmierci bossa: kierunkowa (zachowuje kierunek), jednorazowa, ok. 1 s', () => {
-    const queen = BOSS_VISUALS[BossId.SpiderQueen].death;
-    expect(queen).toBeDefined();
+    // Matka Pająków (krok 24), Król Pająków i Strażnik (krok 40) mają własną animację śmierci.
+    for (const id of [BossId.SpiderQueen, BossId.SpiderKing, BossId.FloorGuardian]) {
+      expect(BOSS_VISUALS[id].death, id).toBeDefined();
+    }
     for (const id of Object.values(BossId)) {
       const death = BOSS_VISUALS[id].death;
       if (!death) continue;

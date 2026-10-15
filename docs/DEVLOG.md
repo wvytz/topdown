@@ -2883,6 +2883,28 @@ Makieta generatora:
 
 ---
 
+## Krok 40 — Animacje śmierci Króla Pająków i Strażnika `#krol-pajakow` `#grzybnia`
+
+**Prośba właściciela:** `#decyzja` animacje śmierci Króla Pająków i Strażnika (backlog p. 3) — do tej pory ginęli od razu (błysk i plama).
+
+**Animacje (moje decyzje, jak u Matki Pająków w kroku 24):** osobne arkusze, 8 kierunków (zostaje kierunek z chwili śmierci), 8 klatek w 8 kl./s = 1 s, bez pętli; nagroda (łupy, karty, schody, kraty) po końcu animacji — mechanizm z kroku 24 bez zmian.
+- **Król Pająków** (`spider-king_death.png`, 128×128): 0 wzdrygnięcie (kosy i sztylety w górę, bulwy rozbłyskują); 1–3 grube łapy i sztylety się podkulają, kosy opadają na ciało, bulwy gasną do tonów mchu, oczy gasną, wycieka sok; 4 pęknięte bulwy — chmura zarodników (pełne piksele bez obrysu, §6c); 5–7 rozpad blokami 3×3 w kałużę soku. Sok grzybni ma własną rampę `SAP` (ciemna, mszysta zieleń). Potem plama `splat`.
+- **Strażnik** (`sludge-king_death.png`, 96×96): 0 ryk agonii (otwarta paszcza i uniesione ręce z klatki plucia); 1–3 ciało osiada i rozlewa się, oczy gasną; 4–6 resztka tonie w kałuży szlamu z bąblami; 7 sama kałuża. Kałuża ma nieregularny brzeg, a fiolet przechodzi w brąz ditheringiem Bayera 4×4 (szlam to materiał amorficzny, §5). Potem plama `slime`.
+
+**Generatory:**
+- `tools/king_sprites.py`: rysowanie Króla wydzielone do `king_pose(...)` (podkulenie, opadanie kos, zgasłe bulwy i oczy, kałuża soku); arkusz chodu i ataku wychodzi piksel w piksel taki sam jak z poprzedniej wersji generatora. Zapisany w repo arkusz chodu różni się od wyniku generatora o 15 pikseli (stara różnica między systemami) — nie nadpisywałem go.
+- `tools/sludge_death.py` (nowy): Strażnik nie ma generatora (sprite z paczki), więc klatki powstają z wiersza N arkusza z paczki — ciało i kałuża błota rozdzielone po rampie kałuży (§4.5), ciało skalowane w dół i osiadające, kałuża szlamu rośnie; 8 kierunków z obrotu, obrys po obrocie.
+
+**Gra:** `BOSS_VISUALS` — Król i Strażnik dostali `death` (arkusze `spiderKingDeath`, `sludgeKingDeath`).
+
+**Testy:** `sprites.test.ts` — animację śmierci mają Matka Pająków, Król Pająków i Strażnik; każda kierunkowa, jednorazowa, 0,6–1,5 s; wymiary nowych arkuszy. `npm run build`: 959 testów.
+
+**Weryfikacja w przeglądarce** (`?seed=7&floor=1` i `floor=3`, `debugDefeat`): animacja gra w kierunku z chwili śmierci, w trakcie bez kart; po niej plama, karty nagrody (`RewardScene`). Bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** czy zarodniki Króla są wystarczająco widoczne na podłodze Grzybni i czy kałuża Strażnika nie jest za duża.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2916,7 +2938,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **1. Następny etap (decyzja właściciela po kroku 27):** `#decyzja` nowe biomy i kolejne piętra — większy zbiór mechanik i poziomów tematycznych; strojenie wszystkiego później.
 
-**Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Zostaje animacja śmierci Króla (dziś ginie od razu i zostaje plama).
+**Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Animacja śmierci Króla: krok 40.
 
 **Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, test właściciela: „super” — potem kolejny biom. Krok 31: lekko losowa kolejność ataków bossów.
 
@@ -2971,7 +2993,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.
 - **Boss „Matka Pająków”:** wdrożony w kroku 22, klatki śmierci w kroku 24.
-- **Strażnik (Sludge King):** bez animacji śmierci (błysk i plama szlamu) — można dorobić tak samo jak w kroku 24.
+- **Strażnik (Sludge King) i Król Pająków:** animacje śmierci zrobione w kroku 40. Grzybowy Pożeracz nadal ginie bez animacji.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.
