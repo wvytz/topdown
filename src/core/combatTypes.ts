@@ -23,6 +23,10 @@ export enum EnemyVariant {
   Zombie = 'zombie',
   /** Cmentarzysko (krok 32b): siewca — zombie z kapeluszem grzyba zamiast głowy (Kiter), pluje kulą zarodników. */
   Sower = 'sower',
+  /** Piekło (krok 41d): piekielny ogar (Rusher) — skok-szarża po prostej, zostawia smugę żaru. */
+  Hellhound = 'hellhound',
+  /** Piekło (krok 41d): kultysta popiołu (Kiter) — rzuca łukiem bombę smolną, po wybuchu płonie kałuża. */
+  Cultist = 'cultist',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
@@ -42,6 +46,10 @@ export enum AttackPhase {
 export enum EnemyAttackKind {
   Melee = 'melee',
   Projectile = 'projectile',
+  /** Skok-szarża po prostej w miejsce gracza z chwili zamachu (ogar, krok 41d). */
+  Pounce = 'pounce',
+  /** Rzut łukiem w miejsce gracza z chwili rzutu; strefa upadku widoczna w locie (kultysta, krok 41d). */
+  Lob = 'lob',
 }
 
 /** Podpalenie: obrażenia co `tickMs` przez `durationMs`. Ponowne podpalenie odświeża czas. */
@@ -154,7 +162,38 @@ export interface ProjectileAttackDefinition extends BaseAttackDefinition {
   readonly wave?: WaveShape;
 }
 
-export type EnemyAttackDefinition = MeleeAttackDefinition | ProjectileAttackDefinition;
+/** Płonący ślad na podłodze (smuga ogara, kałuża smoły): parzy gracza jak teren, wrogów nie. */
+export interface FirePatchDefinition {
+  readonly radius: number;
+  readonly durationMs: number;
+  readonly damage: number;
+}
+
+export interface PounceAttackDefinition extends BaseAttackDefinition {
+  readonly kind: EnemyAttackKind.Pounce;
+  /** Prędkość skoku (px/s). */
+  readonly speed: number;
+  /** Najdalszy skok (px) — cel dalej niż to skraca skok do tej długości. */
+  readonly maxDistance: number;
+  /** Trafia gracza, gdy środki są bliżej niż tyle + promień gracza (raz na skok). */
+  readonly hitRadius: number;
+  /** Po chybionym skoku stoi tyle ms (okno na kontrę). */
+  readonly missRecoveryMs: number;
+  /** Smuga żaru: plamy co `spacing` px wzdłuż toru skoku. */
+  readonly trail: FirePatchDefinition & { readonly spacing: number };
+}
+
+export interface LobAttackDefinition extends BaseAttackDefinition {
+  readonly kind: EnemyAttackKind.Lob;
+  /** Czas lotu bomby (ms) — tyle trwa telegraf strefy upadku. */
+  readonly flightMs: number;
+  /** Promień wybuchu (obrażenia `damage`). */
+  readonly blastRadius: number;
+  /** Kałuża płonącej smoły po wybuchu. */
+  readonly patch: FirePatchDefinition;
+}
+
+export type EnemyAttackDefinition = MeleeAttackDefinition | ProjectileAttackDefinition | PounceAttackDefinition | LobAttackDefinition;
 
 /** Utrzymywanie dystansu przez przeciwników dystansowych. */
 export interface KitingBehaviour {

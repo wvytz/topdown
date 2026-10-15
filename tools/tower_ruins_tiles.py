@@ -1963,6 +1963,10 @@ SPRITES = {
     # Druga bohaterka (krok 36, tools/sorceress_sprites.py).
     'sorceress': ('sorceress_walk-cast.png', 48, '#1b1a22', 'Czarodziejka'),
     'sorceress_orb': ('sorceress_orb.png', 16, None, None),
+    # Wrogowie Piekła (krok 41d, tools/infernal_enemies.py).
+    'hellhound': ('hellhound_run-pounce.png', 48, '#1b1a22', 'Ogar'),
+    'cultist': ('cultist_walk-throw.png', 48, '#1b1a22', 'Kultysta'),
+    'tar_bomb': ('tar-bomb.png', 16, None, None),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -1997,14 +2001,15 @@ MOCKUP_ACTORS_GRAVE = [
     ('sower', 6, 752, 252, True, 0),
     ('spore_ball', 0, 290, 238, False, 0),
 ]
-# Piekło (krok 41a): obaj bohaterowie; wrogowie zastępczy z Cmentarzyska do czasu własnych.
+# Piekło (krok 41a): obaj bohaterowie; wrogowie biomu z kroku 41d — ogar (Rusher) i kultysta (Kiter).
 MOCKUP_ACTORS_INFERNAL = [
     ('barbarian_sword', 2, 368, 262, True, 4),
     ('sorceress', 1, 300, 330, True, 0),
     ('sorceress_orb', 0, 318, 312, False, 0),
-    ('zombie', 6, 452, 236, True, 6),
-    ('sower', 2, 232, 236, True, 6),
-    ('sower', 6, 752, 252, True, 0),
+    ('hellhound', 6, 452, 236, True, 5),              # skok
+    ('cultist', 2, 232, 236, True, 6),                # rzut
+    ('cultist', 6, 752, 252, True, 0),
+    ('tar_bomb', 0, 262, 230, False, 0),
 ]
 # Nakładki biomu na makiecie: (kafel, x, y) w kaflach.
 MOCKUP_BIOME_DECALS = {
@@ -2028,14 +2033,14 @@ METRIC_CAST = {
     # Grzybnia (krok 28b): zarażony pająk i grzybiec; Król Pająków w kroku 29.
     'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
     'graveyard': ('barbarian_sword', 'zombie', 'sower'),
-    'infernal': ('barbarian_sword', 'sorceress', 'zombie', 'sower'),
+    'infernal': ('barbarian_sword', 'sorceress', 'hellhound', 'cultist'),
 }
 
 
 def load_frame(key, row, col=0):
     file, cell, _, _ = SPRITES[key]
     im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
-    if key in ('orb', 'glob', 'sorceress_orb'):
+    if key in ('orb', 'glob', 'sorceress_orb', 'tar_bomb'):
         row = 0  # bez kierunków
     return im.crop((col * cell, row * cell, (col + 1) * cell, (row + 1) * cell))
 

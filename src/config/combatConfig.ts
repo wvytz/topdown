@@ -180,6 +180,44 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       },
     },
   },
+  // Piekło (krok 41d, propozycja przyjęta przez właściciela). Piekielny ogar: szybszy od innych Rusherów;
+  // z dystansu skacze po prostej w miejsce gracza z chwili zamachu (telegraf: linia i przysiad), chybiony
+  // skok zostawia go na chwilę bez ruchu. Za skokiem zostaje smuga żaru.
+  [EnemyVariant.Hellhound]: {
+    type: EnemyType.Rusher,
+    color: 0x8a5a40,
+    moveSpeed: 150,
+    attack: {
+      kind: EnemyAttackKind.Pounce,
+      damage: 12,
+      range: 110,
+      windupMs: 450,
+      cooldownMs: 1800,
+      knockback: 240,
+      speed: 460,
+      maxDistance: 140,
+      hitRadius: 14,
+      missRecoveryMs: 700,
+      trail: { spacing: 14, radius: 9, durationMs: 1500, damage: 4 },
+    },
+  },
+  // Kultysta popiołu: rzuca łukiem bombę smolną w miejsce gracza; strefa upadku widoczna przez cały lot,
+  // po wybuchu płonie kałuża (odcina drogę, zagania na paleniska).
+  [EnemyVariant.Cultist]: {
+    type: EnemyType.Kiter,
+    color: 0xa09070,
+    attack: {
+      kind: EnemyAttackKind.Lob,
+      damage: 10,
+      range: 230,
+      windupMs: 550,
+      cooldownMs: 2400,
+      knockback: 160,
+      flightMs: 750,
+      blastRadius: 30,
+      patch: { radius: 26, durationMs: 2500, damage: 4 },
+    },
+  },
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */

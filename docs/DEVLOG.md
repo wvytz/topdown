@@ -2967,6 +2967,35 @@ Makieta generatora:
 
 ---
 
+## Krok 41d — Wrogowie Piekła: piekielny ogar i kultysta popiołu `#pieklo`
+
+**Decyzje właściciela:** `#decyzja` `#pieklo` `#kat-otchlani`
+- moja propozycja wrogów przyjęta: **piekielny ogar** (Rusher) i **kultysta popiołu** (Kiter);
+- piętro 5 kończy mniejszy boss — **Strażnik Bram** (opcja A: wariant Kata z samą tarczą i wirującym łańcuchem, uczy obchodzenia tarczy); Kat Otchłani na końcu piętra 6.
+
+**Zasady (`systems/HellAttacks.ts`, liczby w `combatConfig` → `ENEMY_VARIANTS`):**
+- nowe rodzaje ataku wrogów: `Pounce` (skok) i `Lob` (rzut łukiem); wariant może mieć własną prędkość (`moveSpeed`);
+- **ogar:** chód 150 (zwykły Rusher 115). Z odległości ≤ 110 px zamach 450 ms — przysiad, czerwona linia do miejsca gracza z początku zamachu; potem skok po prostej (460 px/s, najdalej 140 px). Trafia raz (12 obrażeń); dash i nietykalność = chybienie, a chybiony ogar stoi 0,7 s (okno na kontrę). Skoku nie przerywa trafienie. Za skokiem co 14 px zostaje **smuga żaru** (1,5 s, parzy po 4);
+- **kultysta:** z odległości ≤ 230 px zamach 550 ms, potem bomba smolna leci łukiem 750 ms w miejsce gracza z chwili rzutu; **strefa upadku** wypełnia się przez cały lot; wybuch 10 obrażeń w promieniu 30 px, potem **płonąca kałuża** (2,5 s, parzy po 4) — odcina drogę i zagania na paleniska;
+- płonące ślady to teren: parzą gracza, którego środek jest w środku (przez trafienie z nietykalnością — najwyżej raz na jej czas); wrogów nie.
+
+**Wygląd (`tools/infernal_enemies.py`):**
+- `hellhound_run-pounce.png` — popielata sierść (jaśniejsza od podłogi), żarząca się szczelina wzdłuż grzbietu, czerwone oczy; 0–3 bieg, 4 przysiad (oczy rozbłyskują), 5–6 lot, 7 lądowanie;
+- `cultist_walk-throw.png` — szaty z wypłowiałego popiołu, czerwona szarfa, ciemny kaptur z żarzącymi się oczami, żelazne naczynie ze smołą; 4–7 rzut;
+- `tar-bomb.png` — garnek ze smołą, iskra lontu; w locie unosi się łukiem nad swoim cieniem;
+- ogień na podłodze rysuje silnik (koła żaru, ADD, stała alfa — jak paleniska);
+- czytelność na palecie A: ogar obrys 2,19 / ciało 1,68, kultysta 2,19 / 1,85 (testy i makieta).
+
+**Testy:** `tests/systems/hellAttacks.test.ts` (warianty w Piekle, szybszy ogar, rodzaje ataku, czas na reakcję; lądowanie i czas skoku, punkty smugi; łuk rzutu; płonące ślady), `biomes.test.ts` — czytelność ogara i kultysty. `npm run build`: 995 testów.
+
+**Weryfikacja w przeglądarce** (`?seed=7&floor=5`): ogar celuje (linia, zamach), skacze i zostawia żar; bomby kultysty lecą łukiem, strefa upadku się wypełnia, po wybuchu płonie kałuża; bez błędów w konsoli.
+
+**Ograniczenie:** obrażenia smugi i kałuży nie rosną z piętrem (rośnie tylko cios/wybuch, jak u innych wrogów).
+
+**Do oceny w testach właściciela:** zasięg i tempo skoku, czas postoju po chybieniu, częstotliwość bomb, czas palenia się kałuż.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

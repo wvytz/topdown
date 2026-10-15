@@ -266,6 +266,55 @@ export const SPRITE_SHEETS = {
       spit: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Wrogowie Piekła (krok 41d, tools/infernal_enemies.py): 48×48, 8 kierunków.
+  // Ogar: 0–3 bieg, 4 przysiad (zamach), 5–6 lot w skoku, 7 lądowanie / postój po chybieniu.
+  hellhound: {
+    key: 'sheet-hellhound',
+    url: 'assets/sprites/hellhound_run-pounce.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      run: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      crouch: { frames: [4], loop: false },
+      leap: { frames: [5, 6], loop: true, fps: 12 },
+      land: { frames: [7], loop: false },
+    },
+  },
+  // Kultysta: 0–3 chód, 4–7 rzut (bomba wylatuje po kolumnie 7).
+  cultist: {
+    key: 'sheet-cultist',
+    url: 'assets/sprites/cultist_walk-throw.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      throw: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Bomba smolna kultysty: bez obrotu, iskra lontu migocze.
+  tarBomb: {
+    key: 'sheet-tar-bomb',
+    url: 'assets/sprites/tar-bomb.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 10,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
+    },
+  },
   sporeBall: {
     key: 'sheet-spore-ball',
     url: 'assets/sprites/spore-ball.png',
@@ -615,6 +664,9 @@ export interface EnemyVisual {
   readonly idle?: string;
   /** Animacja zamachu ataku (dopasowana czasem do windupMs). */
   readonly attack?: string;
+  /** Ogar (krok 41d): lot w skoku i lądowanie (także postój po chybionym skoku). */
+  readonly leap?: string;
+  readonly land?: string;
   /**
    * Cień pod postacią chodzącą, rysowany przez silnik (STYLEGUIDE §6). Brak = postać ma własny
    * cień w sprite'cie (lewitujący mag) albo podstawę z kałuży (boss). Wymiary i przesunięcie w px.
@@ -637,7 +689,27 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.Fungoid]: { sheet: 'fungoid', move: 'crawl', attack: 'spit', groundShadow: { width: 20, height: 8, offsetX: 0, offsetY: 3 } },
   [EnemyVariant.Zombie]: { sheet: 'zombie', move: 'walk', idle: 'idle', attack: 'claw', groundShadow: WALKER_SHADOW },
   [EnemyVariant.Sower]: { sheet: 'sower', move: 'walk', attack: 'spit', groundShadow: WALKER_SHADOW },
+  [EnemyVariant.Hellhound]: {
+    sheet: 'hellhound',
+    move: 'run',
+    idle: 'idle',
+    attack: 'crouch',
+    leap: 'leap',
+    land: 'land',
+    groundShadow: WALKER_SHADOW,
+  },
+  [EnemyVariant.Cultist]: { sheet: 'cultist', move: 'walk', idle: 'idle', attack: 'throw', groundShadow: WALKER_SHADOW },
 };
+
+/**
+ * Rzuty łukiem (krok 41d): wygląd bomby, start przed rzucającym i wysokość łuku (wizualnie — bomba unosi się
+ * nad swoim cieniem). Ogień na podłodze rysuje silnik: koła w kolorach żaru (ADD, stała alfa — §6b).
+ */
+export const LOB_VISUALS: Readonly<Partial<Record<EnemyVariant, { readonly sheet: SpriteSheetId; readonly animation: string; readonly forwardOffset: number; readonly arcHeight: number }>>> = {
+  [EnemyVariant.Cultist]: { sheet: 'tarBomb', animation: 'fly', forwardOffset: 12, arcHeight: 28 },
+};
+
+export const FIRE_PATCH_VISUAL = { outer: 0xa82010, inner: 0xe0701c, alpha: 0.3, innerScale: 0.55 } as const;
 
 /**
  * Pocisk wariantu strzelającego: arkusz, animacja, przesunięcie startu przed strzelca (px)

@@ -9,6 +9,8 @@ export interface EnemyVariantDefinition {
   readonly color?: number;
   /** Inny atak (np. fala nietoperza zamiast kuli maga). */
   readonly attack?: EnemyAttackDefinition;
+  /** Inna prędkość ruchu (px/s; np. szybszy ogar, krok 41d). */
+  readonly moveSpeed?: number;
 }
 
 /**
@@ -27,6 +29,7 @@ export function enemyDefinitionFor(
     variant,
     ...(def.color !== undefined && { color: def.color }),
     ...(def.attack && { attack: def.attack }),
+    ...(def.moveSpeed !== undefined && { moveSpeed: def.moveSpeed }),
   };
 }
 

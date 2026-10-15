@@ -247,12 +247,12 @@ describe('Piekło (krok 41a)', () => {
     expect(haze.motes.gravityY).toBeLessThan(0);
   });
 
-  // Postacie piętra 5: obaj bohaterowie i wrogowie zastępczy (zarażony, mag demonów).
+  // Postacie pięter 5–6: obaj bohaterowie i wrogowie Piekła (krok 41d).
   const CHARACTERS = [
     ['Barbarzyńca', SPRITE_SHEETS.barbarian],
     ['Czarodziejka', SPRITE_SHEETS.sorceress],
-    ['Zarażony', SPRITE_SHEETS.zombie],
-    ['Mag demonów', SPRITE_SHEETS.demonMage],
+    ['Piekielny ogar', SPRITE_SHEETS.hellhound],
+    ['Kultysta popiołu', SPRITE_SHEETS.cultist],
   ] as const;
 
   it.each(CHARACTERS)('%s: czytelny na podłodze i bruku piekła (STYLEGUIDE §6a)', (_name, def) => {

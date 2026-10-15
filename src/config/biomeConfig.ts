@@ -168,14 +168,14 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     braziers: null,
   },
   // Piekło (krok 41a, prośba właściciela): krwisty, demoniczny biom z pomarańczowym żarem; paleta A
-  // „krwawy bazalt” (wybór właściciela). Wrogowie zastępczy do czasu własnych: zarażony (Rusher) i mag
-  // demonów (Kiter); boss do czasu Kata Otchłani: Strażnik.
+  // „krwawy bazalt” (wybór właściciela). Wrogowie (krok 41d): piekielny ogar (Rusher) i kultysta popiołu
+  // (Kiter); boss do czasu Kata Otchłani: Strażnik.
   [BiomeId.Infernal]: {
     id: BiomeId.Infernal,
     name: 'Piekło',
     tileset: INFERNAL_TILESET_ASSET,
     dressing: INFERNAL_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Zombie, [EnemyType.Kiter]: EnemyVariant.DemonMage },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Hellhound, [EnemyType.Kiter]: EnemyVariant.Cultist },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,

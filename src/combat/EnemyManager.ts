@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import type { Hit, MeleeAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
+import type { Hit, LobAttackDefinition, MeleeAttackDefinition, PounceAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 import { ENEMY_DEFINITIONS, ENEMY_SCALING, ENEMY_VARIANTS } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { ENEMY_PROJECTILE_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { ENEMY_PROJECTILE_VISUALS, FIRE_PATCH_VISUAL, LOB_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { RENDER_DEPTH } from '@/config/renderLayers';
+import { FirePatchField, lobPosition, trailPoints } from '@/systems/HellAttacks';
 import type { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
 import { facingDirection } from '@/systems/Facing';
@@ -48,15 +50,34 @@ export interface EnemyManagerDeps {
   readonly onEnemyKilled: (enemy: Enemy) => void;
 }
 
+/** Bomba smolna w locie (krok 41d). */
+interface LobbedBomb {
+  readonly attack: LobAttackDefinition;
+  readonly from: Vector2;
+  readonly to: Vector2;
+  readonly launchAt: number;
+  readonly landAt: number;
+  readonly arcHeight: number;
+  readonly sprite: Phaser.GameObjects.Sprite;
+  readonly shadow: Phaser.GameObjects.Ellipse;
+}
+
 /** Spawnuje przeciwników, karmi ich percepcją i rozstrzyga trafienia w obie strony. */
 export class EnemyManager implements EnemyAttackHandler {
   private readonly group: Phaser.Physics.Arcade.Group;
   private enemies: Enemy[] = [];
+  /** Wrogowie Piekła (krok 41d): płonące ślady, bomby w locie, telegrafy skoków i upadków. */
+  private readonly firePatches = new FirePatchField();
+  private bombs: LobbedBomb[] = [];
+  private readonly telegraphs: Phaser.GameObjects.Graphics;
+  private readonly fire: Phaser.GameObjects.Graphics;
 
   constructor(private readonly deps: EnemyManagerDeps) {
     this.group = deps.scene.physics.add.group();
     deps.scene.physics.add.collider(this.group, deps.walls);
     deps.scene.physics.add.collider(this.group, this.group);
+    this.telegraphs = deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph);
+    this.fire = deps.scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash).setBlendMode(Phaser.BlendModes.ADD);
   }
 
   get aliveCount(): number {
@@ -100,6 +121,104 @@ export class EnemyManager implements EnemyAttackHandler {
       const canSeeTarget = !player.isDead && hasLineOfSight(floor, enemy, target, TILE_SIZE);
       enemy.tick({ target, canSeeTarget }, now, this);
     }
+    this.updateHellAttacks(now);
+  }
+
+  /** Bomby w locie, płonące ślady i telegrafy (skok: linia do celu; rzut: strefa upadku). */
+  private updateHellAttacks(now: number): void {
+    const { player } = this.deps;
+    this.telegraphs.clear();
+    for (const enemy of this.enemies) {
+      const aim = enemy.pounceTelegraph;
+      if (aim) this.telegraphs.lineStyle(2, 0xff3b30, 0.7).lineBetween(enemy.x, enemy.y, aim.x, aim.y);
+    }
+    this.bombs = this.bombs.filter((bomb) => {
+      const progress = (now - bomb.launchAt) / (bomb.landAt - bomb.launchAt);
+      if (progress >= 1) {
+        this.landBomb(bomb, now);
+        return false;
+      }
+      const at = lobPosition(bomb.from, bomb.to, progress, bomb.arcHeight);
+      bomb.sprite.setPosition(Math.round(at.x), Math.round(at.y - at.height));
+      bomb.shadow.setPosition(Math.round(at.x), Math.round(at.y));
+      // Ta sama czerwona strefa co telegrafy bossów: wypełnia się do chwili upadku.
+      this.drawLandingZone(bomb, now);
+      return true;
+    });
+    const damage = this.firePatches.update(player.isDead ? null : player, now);
+    if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit();
+    this.drawFirePatches(now);
+  }
+
+  private drawLandingZone(bomb: LobbedBomb, now: number): void {
+    const radius = bomb.attack.blastRadius;
+    const { x, y } = bomb.to;
+    const progress = Phaser.Math.Clamp((now - bomb.launchAt) / (bomb.landAt - bomb.launchAt), 0, 1);
+    this.telegraphs.lineStyle(2, 0xff3b30, 0.8).strokeCircle(x, y, radius);
+    this.telegraphs.fillStyle(0xff3b30, 0.12).fillCircle(x, y, radius);
+    this.telegraphs.fillStyle(0xff3b30, 0.3).fillCircle(x, y, radius * progress);
+  }
+
+  private drawFirePatches(now: number): void {
+    const { outer, inner, alpha, innerScale } = FIRE_PATCH_VISUAL;
+    this.fire.clear();
+    // Migotanie skokowe w rytmie animacji (efekt czysto wizualny).
+    const flicker = Math.floor(now / 160) % 2 === 0 ? 0 : -1;
+    for (const patch of this.firePatches.patches) {
+      this.fire.fillStyle(outer, alpha).fillCircle(patch.center.x, patch.center.y, patch.radius + flicker);
+      this.fire.fillStyle(inner, alpha).fillCircle(patch.center.x, patch.center.y, patch.radius * innerScale + flicker);
+    }
+  }
+
+  private landBomb(bomb: LobbedBomb, now: number): void {
+    const { player, effects } = this.deps;
+    bomb.sprite.destroy();
+    bomb.shadow.destroy();
+    effects.impact(bomb.to.x, bomb.to.y, bomb.attack.blastRadius);
+    if (!player.isDead && distance(bomb.to, player) <= bomb.attack.blastRadius + player.radius) {
+      const hit: Hit = { damage: bomb.attack.damage, knockback: knockbackFrom(bomb.to, player, bomb.attack.knockback) };
+      if (player.takeHit(hit, now)) this.deps.onPlayerHit();
+    }
+    this.firePatches.add(bomb.to, bomb.attack.patch, now);
+  }
+
+  pounceHit(enemy: Enemy, attack: PounceAttackDefinition): boolean {
+    const { player, scene } = this.deps;
+    if (player.isDead || distance(enemy, player) > attack.hitRadius + player.radius) return false;
+    const hit: Hit = { damage: attack.damage, knockback: knockbackFrom(enemy, player, attack.knockback) };
+    // Dash i nietykalność chronią: wtedy skok jest chybiony (postój ogara).
+    if (!player.takeHit(hit, scene.time.now)) return false;
+    this.deps.onPlayerHit();
+    return true;
+  }
+
+  pounceTrail(_enemy: Enemy, attack: PounceAttackDefinition, from: Vector2, to: Vector2): void {
+    const now = this.deps.scene.time.now;
+    for (const point of trailPoints(from, to, attack.trail.spacing)) this.firePatches.add(point, attack.trail, now);
+  }
+
+  lobBomb(enemy: Enemy, attack: LobAttackDefinition, target: Vector2): void {
+    const { scene } = this.deps;
+    const look = LOB_VISUALS[enemy.definition.variant];
+    const dir = directionTo(enemy, target);
+    const offset = look?.forwardOffset ?? 0;
+    const from = { x: enemy.x + dir.x * offset, y: enemy.y + dir.y * offset };
+    const now = scene.time.now;
+    const texture = look ? SPRITE_SHEETS[look.sheet].key : SPRITE_SHEETS.tarBomb.key;
+    const sprite = scene.add.sprite(from.x, from.y, texture).setDepth(RENDER_DEPTH.projectile);
+    if (look) sprite.play(animationKey(look.sheet, look.animation));
+    // Cień na podłodze: bomba leci łukiem nad nim (stała alfa jak cienie postaci).
+    const shadow = scene.add.ellipse(from.x, from.y, 10, 5, 0x1b1a22, 0.4).setDepth(RENDER_DEPTH.actorShadow);
+    this.bombs.push({
+      attack,
+      from,
+      to: { x: target.x, y: target.y },
+      launchAt: now,
+      landAt: now + attack.flightMs,
+      arcHeight: look?.arcHeight ?? 24,
+      sprite,
+      shadow,
+    });
   }
 
   /** Cios gracza — trafia wszystkich przeciwników w łuku. Zwraca liczbę trafionych. */
