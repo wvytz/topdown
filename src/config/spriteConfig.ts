@@ -1,6 +1,7 @@
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import type { CombatDecalKind } from '@/config/dressingConfig';
 import { EnemyVariant } from '@/core/combatTypes';
+import { HeroId } from '@/core/heroTypes';
 import type { ItemId } from '@/core/lootTypes';
 import { ItemKind } from '@/core/lootTypes';
 
@@ -94,6 +95,8 @@ export const SPRITE_SHEETS = {
       walk: { frames: [0, 1, 2, 3], loop: true },
       idle: { frames: [0], loop: false },
       cast: { frames: [4, 5, 6, 7], loop: false },
+      // Promień (PPM, krok 35): kostur wysunięty, kryształ pulsuje między jasnym a rozbłyskiem.
+      channel: { frames: [5, 6], loop: true },
     },
   },
   // Kula energii Czarodziejki (ten sam generator): okrągła, bez obrotu.
@@ -557,6 +560,33 @@ export const PLAYER_VISUAL = {
   attack: 'attack',
   groundShadow: WALKER_SHADOW,
 } as const satisfies EnemyVisual;
+
+/** Wygląd bohatera; Czarodziejka ma dodatkowo animację promienia. */
+export interface HeroVisual extends EnemyVisual {
+  readonly attack: string;
+  readonly idle: string;
+  readonly channel?: string;
+  readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
+}
+
+/** Wygląd grywalnych bohaterów (krok 35). */
+export const HERO_VISUALS: Readonly<Record<HeroId, HeroVisual>> = {
+  [HeroId.Barbarian]: PLAYER_VISUAL,
+  [HeroId.Sorceress]: {
+    sheet: 'sorceress',
+    move: 'walk',
+    idle: 'idle',
+    attack: 'cast',
+    channel: 'channel',
+    groundShadow: WALKER_SHADOW,
+  },
+};
+
+/** Kula energii Czarodziejki: okrągła, bez kierunków (także na orbicie). */
+export const SORCERESS_ORB_VISUAL = { sheet: 'sorceressOrb', animation: 'fly' } as const satisfies {
+  sheet: SpriteSheetId;
+  animation: string;
+};
 
 /** Pociski wariantów strzelających: kula maga (wg handoffu), fala nietoperza. */
 export const ENEMY_PROJECTILE_VISUALS: Readonly<Partial<Record<EnemyVariant, EnemyProjectileVisual>>> = {

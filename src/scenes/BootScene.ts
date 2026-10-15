@@ -6,7 +6,8 @@ import { TILE_SIZE } from '@/config/gameConfig';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import { registerTorchAnimation } from '@/world/Torches';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
-import { NEW_RUN } from '@/systems/RunState';
+import { newRun } from '@/systems/RunState';
+import { heroFromParam } from '@/config/heroConfig';
 import { loadSpriteSheets, registerLootAnimations, registerSpriteAnimations } from '@/effects/spriteAnimations';
 
 /** Ładuje arkusze sprite'ów i kafli, generuje placeholderowe tekstury (geometria) i przechodzi do gry. */
@@ -32,7 +33,9 @@ export class BootScene extends Phaser.Scene {
       registerTorchAnimation(this, tileset, this.cache.json.get(tileset.jsonKey) as TilesetMeta);
     }
     this.generatePlaceholderTextures();
-    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: NEW_RUN, ...devStartOverrides() };
+    // Wybór bohatera (krok 35): do czasu ekranu wyboru parametr adresu `?hero=sorceress`, działa też na Pages.
+    const hero = heroFromParam(new URLSearchParams(window.location.search).get('hero'));
+    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: newRun(hero), ...devStartOverrides() };
     this.scene.start(SceneKey.Game, startData);
   }
 

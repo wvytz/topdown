@@ -1,11 +1,23 @@
 import Phaser from 'phaser';
-import type { RangedConfig, WeaponEffects } from '@/core/combatTypes';
+import type { RangedConfig, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { Projectile } from '@/entities/Projectile';
 import { normalize } from '@/systems/CombatMath';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { LOOT_ATLAS, lootAnimationKey } from '@/config/spriteConfig';
+
+/** Parametry lotu i trafienia pocisku gracza (strzał barbarzyńcy albo kula Czarodziejki). */
+export type ShotSpec = Pick<RangedConfig, 'damage' | 'knockback' | 'projectileSpeed' | 'projectileLifetimeMs' | 'projectileRadius'>;
+
+/** Wygląd pocisku z arkusza (kula Czarodziejki); brak = pocisk z atlasu łupów. */
+export interface ShotLook {
+  readonly texture: string;
+  readonly animation: string;
+  /** Statusy kuli: wszystkie efekty broni (strzał + cios), bo kule są jej bronią główną. */
+  readonly status: StatusApplication;
+  readonly vampiric: boolean;
+}
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. */
 export type PlayerShotResolver = (shot: PlayerShot) => object | null;
@@ -27,13 +39,14 @@ export class PlayerShotManager {
     });
   }
 
-  fire(origin: Vector2, direction: Vector2, config: RangedConfig, effects: WeaponEffects): void {
-    const shot = new Projectile(this.scene, origin.x, origin.y, LOOT_ATLAS.key);
+  fire(origin: Vector2, direction: Vector2, config: ShotSpec, effects: WeaponEffects, look?: ShotLook): void {
+    const shot = new Projectile(this.scene, origin.x, origin.y, look?.texture ?? LOOT_ATLAS.key);
     shot.damage = config.damage;
     shot.knockback = config.knockback;
     shot.expiresAt = this.scene.time.now + config.projectileLifetimeMs;
-    shot.status = effects.shotStatus;
+    shot.status = look?.status ?? effects.shotStatus;
     shot.pierceLeft = effects.shotPierce;
+    shot.vampiric = look?.vampiric ?? false;
     shot.setDepth(RENDER_DEPTH.projectile);
 
     this.group.add(shot, true);
@@ -43,7 +56,8 @@ export class PlayerShotManager {
     const dir = normalize(direction);
     shot.setVelocity(dir.x * config.projectileSpeed, dir.y * config.projectileSpeed);
     // Przebijający pocisk to gwiazdka „szurikena” obracana klatkami co 45° (bez obrotu o dowolny kąt).
-    shot.play(lootAnimationKey(shot.pierceLeft > 0 ? 'shotPierce' : 'shot'));
+    if (look) shot.play(look.animation);
+    else shot.play(lootAnimationKey(shot.pierceLeft > 0 ? 'shotPierce' : 'shot'));
   }
 
   update(now: number, resolve: PlayerShotResolver): void {
@@ -64,6 +78,7 @@ export class PlayerShotManager {
         now,
         status: child.status,
         ignore: child.hitTargets,
+        vampiric: child.vampiric,
       });
       if (!target) continue;
       child.hitTargets.add(target);

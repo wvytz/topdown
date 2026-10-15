@@ -23,6 +23,8 @@ import type { FloorModifierEffects } from '@/core/floorModifierTypes';
 import { applyFloorToEnemy } from '@/systems/FloorModifiers';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { BeamStrike } from '@/systems/Sorcery';
+import { resolveBeam } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
@@ -103,6 +105,13 @@ export class EnemyManager implements EnemyAttackHandler {
   /** Cios gracza — trafia wszystkich przeciwników w łuku. Zwraca liczbę trafionych. */
   resolvePlayerMelee(swing: MeleeSwing): number {
     const { hit, killed } = resolveMeleeSwing(swing, [...this.enemies]);
+    for (const enemy of killed) this.kill(enemy);
+    return hit.length;
+  }
+
+  /** Promień Czarodziejki (krok 35): rani wszystkich na odcinku; zwraca liczbę trafionych. */
+  resolvePlayerBeam(beam: BeamStrike): number {
+    const { hit, killed } = resolveBeam(beam, [...this.enemies]);
     for (const enemy of killed) this.kill(enemy);
     return hit.length;
   }

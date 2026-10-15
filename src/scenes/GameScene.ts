@@ -16,11 +16,16 @@ import { PickupKind } from '@/core/lootTypes';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
-import { CAMERA_CONFIG, PLAYER_BASE_STATS, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { CAMERA_CONFIG, getDungeonConfigForFloor } from '@/config/gameConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
-import { PLAYER_COMBAT, getEncounterConfigForFloor } from '@/config/combatConfig';
+import { getEncounterConfigForFloor } from '@/config/combatConfig';
+import { HERO_DEFINITIONS } from '@/config/heroConfig';
+import { RENDER_DEPTH } from '@/config/renderLayers';
+import { SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import type { BeamStrike } from '@/systems/Sorcery';
+import { beamReach, crystalPoint } from '@/systems/Sorcery';
 import {
   BOSS_LOOT,
   BOSS_REWARD,
@@ -54,9 +59,9 @@ import { rollItemChoices } from '@/systems/RewardChoice';
 import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
-import { computeLoadout } from '@/systems/PlayerLoadout';
+import { computeHeroLoadout } from '@/systems/PlayerLoadout';
 import { Timer } from '@/systems/Timer';
-import { NEW_RUN, RunState } from '@/systems/RunState';
+import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { SharedHighscores } from '@/persistence/SharedHighscores';
 import { createRemoteScoreSource } from '@/persistence/remoteScores';
@@ -145,6 +150,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dashHitsFor = -1;
   /** Wampirzy kieł: odstęp między leczeniami za cios. */
   private healCooldown = new Timer();
+  /** Promień Czarodziejki (krok 35) — rysowany co klatkę, gdy świeci. */
+  private beamGfx: Phaser.GameObjects.Graphics | null = null;
   private readonly highscores = new SharedHighscores(
     new HighscoreStorage(HighscoreStorage.browserStorage(), HIGHSCORE_CONFIG.maxEntries, HIGHSCORE_CONFIG.podiumSize),
     createRemoteScoreSource(),
@@ -180,6 +187,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.dashHits = new Set();
     this.dashHitsFor = -1;
     this.healCooldown = new Timer();
+    // Restart sceny niszczy obiekty — grafika promienia powstanie od nowa.
+    this.beamGfx = null;
   }
 
   create(): void {
@@ -208,7 +217,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
 
     const spawn = DungeonView.tileToWorldCenter(this.dungeon.playerSpawn);
-    this.player = new Player(this, spawn.x, spawn.y, this.currentLoadout(), this.startHp);
+    this.player = new Player(this, spawn.x, spawn.y, this.run.hero, this.currentLoadout(), this.startHp);
     this.physics.add.collider(this.player, this.dungeonView.collisionLayer);
 
     this.setupCombat();
@@ -244,6 +253,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const { x, y, combatConfig, effects } = this.player;
       this.playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, effects);
     }
+    if (turn.orb) this.fireOrb(turn.orb);
+    this.updateBeam(turn.beam, turn.beamTicks, time);
     this.resolveDashStrike(time);
     this.enemies.update(time);
     this.ceilingDrops?.update(time);
@@ -255,7 +266,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.projectiles.update(time);
     this.playerShots.update(
       time,
-      (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? null,
+      (shot) => {
+        const target =
+          this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? null;
+        if (target && shot.vampiric) this.tryVampireHeal(time);
+        return target;
+      },
     );
     this.loot.update(time);
     this.shrine.update(actions.interact);
@@ -271,11 +287,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
       floor: this.floorNumber,
       floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
-      maxHp: ready ? this.player.health.max : PLAYER_BASE_STATS.maxHp,
+      maxHp: ready ? this.player.health.max : this.hero.stats.maxHp,
       dashReadiness: ready ? this.player.dashReadiness(this.time.now) : 1,
       ranged: ready
         ? this.player.rangedStatus(this.time.now)
-        : { charges: PLAYER_COMBAT.ranged.maxCharges, maxCharges: PLAYER_COMBAT.ranged.maxCharges, rechargeProgress: 1 },
+        : { charges: this.heroCharges, maxCharges: this.heroCharges, rechargeProgress: 1 },
+      beam: ready ? this.player.beamStatus(this.time.now) : null,
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       isPlayerDead: ready && this.player.isDead,
@@ -292,8 +309,96 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private currentLoadout(): PlayerLoadout {
-    const loadout = computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
+    const loadout = computeHeroLoadout(this.hero, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
     return applyFloorToLoadout(loadout, this.floorEffects);
+  }
+
+  private get hero() {
+    return HERO_DEFINITIONS[this.run.hero];
+  }
+
+  /** Segmenty HUD przed zbudowaniem gracza: kule Czarodziejki albo ładunki strzału. */
+  private get heroCharges(): number {
+    return this.hero.sorcery?.orbs.maxOrbs ?? this.hero.combat.ranged.maxCharges;
+  }
+
+  /** Kula Czarodziejki wylatuje z kryształu; niesie wszystkie efekty broni z przedmiotów. */
+  private fireOrb(direction: Vector2): void {
+    const orbs = this.player.sorceryConfig?.orbs;
+    if (!orbs) return;
+    const { effects } = this.player;
+    const origin = crystalPoint(this.player, Math.atan2(direction.y, direction.x), orbs.forwardOffset, orbs.sideOffset);
+    this.playerShots.fire(
+      origin,
+      direction,
+      {
+        damage: orbs.damage,
+        knockback: orbs.knockback,
+        projectileSpeed: orbs.speed,
+        projectileLifetimeMs: orbs.lifetimeMs,
+        projectileRadius: orbs.radius,
+      },
+      effects,
+      {
+        texture: SPRITE_SHEETS[SORCERESS_ORB_VISUAL.sheet].key,
+        animation: animationKey(SORCERESS_ORB_VISUAL.sheet, SORCERESS_ORB_VISUAL.animation),
+        status: { ...effects.shotStatus, ...effects.meleeStatus },
+        vampiric: effects.meleeHeal > 0,
+      },
+    );
+  }
+
+  /** Promień Czarodziejki: rysunek co klatkę, obrażenia w klatkach z tickiem; zatrzymuje się na ścianie. */
+  private updateBeam(active: boolean, ticks: number, now: number): void {
+    const config = this.player.sorceryConfig?.beam;
+    if (!active || !config) {
+      this.beamGfx?.clear();
+      return;
+    }
+    const angle = this.player.getAimAngle();
+    const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+    const from = crystalPoint(this.player, angle, config.forwardOffset, config.sideOffset);
+    const walls = this.dungeonView.collisionLayer;
+    const blocked = (p: Vector2): boolean => walls.getTileAtWorldXY(p.x, p.y)?.collides ?? false;
+    const length = blocked(from) ? 0 : beamReach(from, angle, config.range, blocked);
+    const to = { x: from.x + dir.x * length, y: from.y + dir.y * length };
+    this.drawBeam(from, to);
+    for (let i = 0; i < ticks; i++) {
+      const beam: BeamStrike = {
+        from,
+        to,
+        halfWidth: config.halfWidth,
+        damage: config.damagePerTick,
+        knockback: config.knockback,
+        now,
+        source: { x: this.player.x, y: this.player.y },
+      };
+      this.enemies.resolvePlayerBeam(beam);
+      this.bossFight.resolvePlayerBeam(beam);
+      this.cocoons?.resolvePlayerBeam(beam);
+      this.puffballs?.resolvePlayerBeam(beam);
+    }
+  }
+
+  /** Promień w kolorach kryształu (pełne kolory, bez przezroczystości); rdzeń migocze tylko wizualnie. */
+  private drawBeam(from: Vector2, to: Vector2): void {
+    const gfx = this.beamGfx ?? (this.beamGfx = this.add.graphics().setDepth(RENDER_DEPTH.slash));
+    const core = Math.random() < 0.5 ? 1 : 2;
+    gfx.clear();
+    gfx.lineStyle(5, 0x1d7f9c, 1).lineBetween(from.x, from.y, to.x, to.y);
+    gfx.lineStyle(3, 0x39c0d8, 1).lineBetween(from.x, from.y, to.x, to.y);
+    gfx.lineStyle(core, 0xe4fbfb, 1).lineBetween(from.x, from.y, to.x, to.y);
+    gfx.fillStyle(0x8ae6ef, 1).fillCircle(to.x, to.y, 3);
+    gfx.fillStyle(0xe4fbfb, 1).fillCircle(from.x, from.y, 2);
+  }
+
+  /** Wampirzy kieł: leczenie za trafienie (raz na cios lub kulę), najwyżej raz na meleeHealCooldownMs. */
+  private tryVampireHeal(now: number): void {
+    const { meleeHeal: heal, meleeHealCooldownMs } = this.player.effects;
+    if (heal <= 0 || this.player.health.isFull || this.healCooldown.isActive(now)) return;
+    this.healCooldown.start(now, meleeHealCooldownMs);
+    this.player.heal(heal);
+    this.effects.floatingText(this.player.x, this.player.y - 14, `+${heal}`, '#ff6b8a');
   }
 
   /** Wywoływane po pokonaniu bossa — zamyka pętlę piętra. */
@@ -318,14 +423,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing) + (this.cocoons?.resolvePlayerMelee(swing) ?? 0) +
       (this.puffballs?.resolvePlayerMelee(swing) ?? 0);
 
-    // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów),
-    // najwyżej raz na meleeHealCooldownMs.
-    const { meleeHeal: heal, meleeHealCooldownMs } = this.player.effects;
-    if (hits > 0 && heal > 0 && !this.player.health.isFull && !this.healCooldown.isActive(now)) {
-      this.healCooldown.start(now, meleeHealCooldownMs);
-      this.player.heal(heal);
-      this.effects.floatingText(this.player.x, this.player.y - 14, `+${heal}`, '#ff6b8a');
-    }
+    // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów).
+    if (hits > 0) this.tryVampireHeal(now);
   }
 
   /** Burzowy pęd: w trakcie dasha gracz rani dotkniętych wrogów (każdego raz na dash). */
@@ -590,7 +689,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     // Nowa wspinaczka: nowy seed, piętro 1, pusty run.
     this.input.keyboard?.once('keydown-R', () => {
-      const fresh: FloorSceneData = { runSeed: (Date.now() ^ this.runSeed) >>> 0, floor: 1, run: NEW_RUN };
+      // Ten sam bohater co w zakończonym runie.
+      const fresh: FloorSceneData = { runSeed: (Date.now() ^ this.runSeed) >>> 0, floor: 1, run: newRun(this.run.hero) };
       this.scene.restart(fresh);
     });
   }

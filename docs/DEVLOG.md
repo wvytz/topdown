@@ -2677,6 +2677,35 @@ Makieta generatora:
 
 ---
 
+## Krok 35 — Czarodziejka: mechanika (kule i promień) `#czarodziejka`
+
+**Decyzja właściciela:** `#decyzja` `#czarodziejka`
+- **LPM — kule energii:** 3 kule krążą wokół Czarodziejki; atak wypuszcza jedną w stronę celownika (przytrzymanie = seria), pusta orbita odnawia się po ok. 1,5 s.
+- **PPM — ciągły promień:** świeci, póki przycisk jest wciśnięty, i spowalnia Czarodziejkę; puszczenie blokuje go na ok. 1,5 s.
+- **Profil:** mniej HP i wolniejszy chód niż barbarzyńca.
+
+**Zrobione (warstwa czysta):**
+- `core/heroTypes.ts`: `HeroId` (barbarzyńca, Czarodziejka), konfiguracja kul i promienia, definicja bohatera.
+- `config/heroConfig.ts`: `HERO_DEFINITIONS` (Czarodziejka: 75 HP, chód 175; kule: 14 obrażeń, 3 kule, odnowienie 1500 ms, rzut 320 ms z wylotem po 240 ms; promień: 150 px, 5 obrażeń co 200 ms, ruch ×0,5, najdłużej 2,5 s, blokada 1500 ms) i `heroFromParam`.
+- `systems/Sorcery.ts`: przedmioty u Czarodziejki, orbita kul, `BeamChannel` (świecenie, ticki obrażeń, limit, blokada, przerwanie), zasięg promienia do ściany, trafienia na odcinku, punkt kryształu.
+- Bohater jest w `RunSnapshot`: przechodzi między piętrami, a „R” po śmierci zaczyna nowy run tym samym bohaterem.
+- `computeHeroLoadout`; modyfikator piętra wydłuża też odnawianie kul i blokadę promienia.
+
+**Zrobione (Phaser):**
+- `Player`: wygląd bohatera z `HERO_VISUALS`. U Czarodziejki LPM rzuca kulę (animacja rzutu, kula wylatuje z kryształu w klatce 7), PPM świeci promieniem (animacja `channel`, klatki 5–6). Dash i paraliż przerywają promień, w trakcie promienia nie rzuca kul. Gotowe kule krążą wokół postaci.
+- `GameScene`: kule lecą przez `PlayerShotManager` (sprite `sorceress_orb`), promień rysuje grafika w kolorach kryształu i rani przez `resolvePlayerBeam` we wszystkich menedżerach celów (wrogowie, boss, kokony, purchawki); promień kończy się na ścianie i kracie.
+- HUD: segmenty pod paskiem dasha to kule; pod nimi pasek promienia (świeci: pozostały czas, blokada: odnowienie). Podpowiedź sterowania zależy od bohatera.
+- **Przedmioty u Czarodziejki** (bez nowych przedmiotów): kule są jej bronią główną, więc biorą Ostrze (+obrażenia), Rękawice (szybszy rzut), Kołczan (+1 kula, ten sam limit 6), Szuriken (przebicie), Elektryczną strzałę, Lodowy odłamek, Ognistą pięść (statusy) i Wampirzy kieł (leczenie za trafienie kulą). Promień to umiejętność bazowa, bez efektów przedmiotów.
+- **Wybór bohatera na razie z adresu:** `?hero=sorceress` (działa też na GitHub Pages). Ekran wyboru to kolejny krok.
+
+**Testy:** `tests/systems/sorcery.test.ts` (profil bohaterów, bohater w `RunSnapshot`, przedmioty, limit kul, modyfikator piętra, orbita, promień: ticki, puszczenie, limit, przerwanie, ściana, trafienia, punkt kryształu, parametr adresu). `npm run build`: 896 testów.
+
+**Weryfikacja w przeglądarce** (Playwright na `npm run dev`, `?hero=sorceress&seed=7`): 75/75 HP, chód 175, 3 kule na orbicie; seria LPM zużywa kule, które wracają po jednej; kula zabiera wrogowi 14 HP; promień w 0,45 s zadaje 3 × 5 obrażeń, zatrzymuje się na ścianie, a po puszczeniu ponowne wciśnięcie w trakcie blokady nic nie robi. Barbarzyńca bez zmian (cios, 3 strzały). Bez błędów w konsoli.
+
+**Do oceny właściciela:** tempo i siła kul i promienia (wszystkie liczby w `config/heroConfig.ts`), limit promienia 2,5 s (mój dodatek — bez niego promień świeciłby bez końca), czy promień ma brać jakieś efekty przedmiotów.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2758,7 +2787,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
 **3. Brakująca grafika**
-- **Czarodziejka (krok 34):** sprite'y gotowe; brakuje logiki drugiej bohaterki (wybór postaci, atak kulami: obrażenia, tor lotu, liczby w `src/config/`).
+- **Czarodziejka (kroki 34–35):** sprite'y i mechanika gotowe; brakuje ekranu wyboru postaci (na razie `?hero=sorceress`) i ewentualnie bohatera na liście wyników.
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.

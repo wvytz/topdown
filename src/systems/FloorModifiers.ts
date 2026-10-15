@@ -80,13 +80,18 @@ export function applyFloorToEnemyLoot(table: LootTable, effects: FloorModifierEf
 export function applyFloorToLoadout(loadout: PlayerLoadout, effects: FloorModifierEffects): PlayerLoadout {
   const m = effects.playerRechargeMultiplier;
   if (m === 1) return loadout;
-  const { combat } = loadout;
+  const { combat, sorcery } = loadout;
   return {
     ...loadout,
     combat: {
       ...combat,
       dash: { ...combat.dash, cooldownMs: Math.round(combat.dash.cooldownMs * m) },
       ranged: { ...combat.ranged, rechargeMs: Math.round(combat.ranged.rechargeMs * m) },
+    },
+    // Czarodziejka: odnawianie kul i blokada promienia tak jak ładunki strzału.
+    sorcery: sorcery && {
+      orbs: { ...sorcery.orbs, rechargeMs: Math.round(sorcery.orbs.rechargeMs * m) },
+      beam: { ...sorcery.beam, lockoutMs: Math.round(sorcery.beam.lockoutMs * m) },
     },
   };
 }

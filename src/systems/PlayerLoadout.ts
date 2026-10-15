@@ -1,6 +1,8 @@
 import type { PlayerCombatConfig, WeaponEffects } from '@/core/combatTypes';
+import type { HeroDefinition, SorceryConfig } from '@/core/heroTypes';
 import type { ItemDefinition, ItemEffectsConfig, ItemId, StatLimits, StatModifiers } from '@/core/lootTypes';
 import type { PlayerStats } from '@/core/types';
+import { applySorceryModifiers } from '@/systems/Sorcery';
 import { computeWeaponEffects } from '@/systems/WeaponEffects';
 
 /** Finalne statystyki gracza po zastosowaniu przedmiotów. */
@@ -9,6 +11,8 @@ export interface PlayerLoadout {
   readonly combat: PlayerCombatConfig;
   /** Efekty broni z przedmiotów z efektem (przebicie, podpalenie, ogłuszenie…). */
   readonly effects: WeaponEffects;
+  /** Zestaw Czarodziejki po przedmiotach; null = barbarzyńca (cios i strzał). */
+  readonly sorcery: SorceryConfig | null;
 }
 
 const NO_MODIFIERS: StatModifiers = {
@@ -46,6 +50,7 @@ export function computeLoadout(
   definitions: Readonly<Record<ItemId, ItemDefinition>>,
   limits: StatLimits,
   effectsConfig: ItemEffectsConfig,
+  baseSorcery: SorceryConfig | null = null,
 ): PlayerLoadout {
   const mods = sumModifiers(itemIds, definitions);
   const cooldownMultiplier = (pct: number): number => Math.max(limits.minCooldownMultiplier, 1 + pct);
@@ -72,5 +77,17 @@ export function computeLoadout(
       ranged: { ...baseCombat.ranged, maxCharges },
     },
     effects: computeWeaponEffects(itemIds, effectsConfig),
+    sorcery: baseSorcery && applySorceryModifiers(baseSorcery, mods, limits),
   };
+}
+
+/** Loadout wybranego bohatera: jego bazowe statystyki i zestaw + przedmioty. */
+export function computeHeroLoadout(
+  hero: HeroDefinition,
+  itemIds: readonly ItemId[],
+  definitions: Readonly<Record<ItemId, ItemDefinition>>,
+  limits: StatLimits,
+  effectsConfig: ItemEffectsConfig,
+): PlayerLoadout {
+  return computeLoadout(hero.stats, hero.combat, itemIds, definitions, limits, effectsConfig, hero.sorcery);
 }

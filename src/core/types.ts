@@ -41,6 +41,13 @@ export interface FloorSceneData {
   readonly run: RunSnapshot;
 }
 
+/** Promień Czarodziejki w HUD: świeci (pasek = pozostały czas) albo odnawia się po zgaśnięciu. */
+export interface BeamHudData {
+  readonly active: boolean;
+  /** 0..1: w trakcie promienia — ile zostało z limitu; poza nim — postęp odnowienia (1 = gotowy). */
+  readonly readiness: number;
+}
+
 export interface HudData {
   readonly floor: number;
   /** Modyfikator bieżącego piętra; null na piętrach bez modyfikatora. */
@@ -51,6 +58,8 @@ export interface HudData {
   readonly dashReadiness: number;
   /** Ładunki strzału (PPM). */
   readonly ranged: RangedHudData;
+  /** Promień Czarodziejki; null u barbarzyńcy. */
+  readonly beam: BeamHudData | null;
   readonly enemiesAlive: number;
   readonly stairsUnlocked: boolean;
   readonly isPlayerDead: boolean;

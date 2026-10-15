@@ -34,6 +34,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
   - Ekran śmierci pokazuje top 3 i miejsce bieżącego runu.
   - Ofiara w kapliczce celowo obniża wynik.
 - **Pula przedmiotów (krok 10):** 5 bazowych (Ostrze, Serce, Buty, Rękawice, Klepsydra) i 7 rzadszych z efektem broni (Szuriken, Elektryczna strzała, Ognista pięść, Kołczan, Wampirzy kieł, Burzowy pęd, Lodowy odłamek). Łupy i kapliczka losują z całej puli. Kolejne kopie przedmiotu z efektem go wzmacniają (bez ewolucji zmieniających sterowanie — odrzucone na obecnym etapie). Przedmiot za bossa gracz wybiera z 3 kart. **Nie dodawaj nowych rodzajów przedmiotów bez pytania.**
+- **Bohaterowie (krok 35):** barbarzyńca i Czarodziejka (`config/heroConfig.ts`). Czarodziejka ma mniej HP i wolniejszy chód; LPM — 3 kule energii na orbicie, atak wypuszcza jedną (pusta orbita wraca po ok. 1,5 s); PPM — ciągły promień spowalniający ją samą, puszczenie blokuje go na ok. 1,5 s. Na razie wybór przez `?hero=sorceress`.
 - **Mało przeciwników:** podstawowe archetypy (Rusher, Kiter), 1–2 na pokój. Trudność rośnie przez statystyki.
 - **Tempo walki jest zaakceptowane.** Balans stroimy później, gdy będzie gotowe podstawowe środowisko.
 - **Gra ma być wymagająca (krok 14).** Po przeglądzie balansu gra jest trudniejsza i właściciel to akceptuje. **Nie łagodź trudności** (HP/obrażenia wrogów, siła bossa, rzadkość leczenia) bez sygnału z testów właściciela.

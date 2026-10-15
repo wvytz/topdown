@@ -48,6 +48,8 @@ import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { BeamStrike } from '@/systems/Sorcery';
+import { resolveBeam } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
@@ -260,6 +262,14 @@ export class BossFight {
   resolvePlayerMelee(swing: MeleeSwing): number {
     if (!this.boss) return 0;
     const { hit, killed } = resolveMeleeSwing(swing, this.targets());
+    this.handleKills(killed);
+    return hit.filter((t) => !(t instanceof LarderCocoon)).length;
+  }
+
+  /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
+  resolvePlayerBeam(beam: BeamStrike): number {
+    if (!this.boss) return 0;
+    const { hit, killed } = resolveBeam(beam, this.targets());
     this.handleKills(killed);
     return hit.filter((t) => !(t instanceof LarderCocoon)).length;
   }

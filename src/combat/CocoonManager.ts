@@ -19,6 +19,8 @@ import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { BeamStrike } from '@/systems/Sorcery';
+import { resolveBeam } from '@/systems/Sorcery';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 
@@ -92,6 +94,12 @@ export class CocoonManager {
   /** Cios gracza — liczba trafionych pajączków (kokon nie liczy się do Wampirzego kła). */
   resolvePlayerMelee(swing: MeleeSwing): number {
     const { hit, killed } = resolveMeleeSwing(swing, this.targets());
+    this.swarm.handleKills(killed);
+    return hit.filter((t) => !(t instanceof Cocoon)).length;
+  }
+
+  resolvePlayerBeam(beam: BeamStrike): number {
+    const { hit, killed } = resolveBeam(beam, this.targets());
     this.swarm.handleKills(killed);
     return hit.filter((t) => !(t instanceof Cocoon)).length;
   }
