@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -3161,6 +3161,31 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 - `HudData.onStairs`; `GameScene.checkStairs(interact)`.
 
 **Weryfikacja w przeglądarce:** `?floor=2&seed=7` — po pokonaniu Matki Pająków i wyborze nagrody: obok schodów nic się nie dzieje, na schodach napis i podpowiedź, bez E piętro się nie zmienia, po E przejście na piętro 3; bez błędów w konsoli. Build: 1049 testów (zmiana tylko w warstwie Phasera).
+
+## Krok 48 — Pułapki i urny w ruinach `#ruiny`
+
+**Ocena i decyzja właściciela** `#ocena` `#decyzja` `#ruiny`: „pierwszy poziom wydaje się całkowicie pusty i nie ma w nim żadnego wyzwania”. Z propozycji (pułapki, rzeczy do rozbicia, zasadzka, życie w tle) — pułapki i rzeczy do rozbicia („najwyżej potem usuniemy”), **bez beczek z prochem** („nie chcę odtrącać na początku graczy”). Na razie tylko biom ruin (piętro 1, w pętli 7, 13…).
+
+**Płyty z kolcami** (`systems/Traps.ts`, `dungeon/TrapPlanner.ts → planSpikeStrips`):
+- w 35% zwykłych pokojów (krótszy bok ≥ 5) pas płyt w poprzek pokoju przez jego środek — żeby przejść, trzeba go przekroczyć;
+- dwie grupy naprzemiennie (pół cyklu przesunięcia): nigdy obie naraz w górze, więc zawsze jest przejście w rytmie;
+- cykl 1,6 s schowane → 0,6 s ostrzeżenie (płyta drży, groty w otworach, czerwona ramka) → 0,9 s wysunięte; 10 obrażeń (rośnie z piętrem), raz na wysunięcie; **ranią też wrogów** — można ich wciągać.
+
+**Strzałki** (`planDartTraps`, `DartTrapState`):
+- w 30% zwykłych pokojów otwór w litym murze (nie w wejściu) i linia strzału przez cały pokój (≥ 6 kafli); płyta naciskowa 2–3 kafle od muru;
+- nadepnięcie → otwór się żarzy i widać linię strzału (0,45 s) → salwa 3 strzałek co 0,16 s (9 obrażeń, rosną z piętrem) → 2,5 s odpoczynku i zejście z płyty; ranią tylko gracza, dash przelatuje jak przez każdy pocisk.
+
+**Urny i skrzynie** (`planBreakables`, `combat/BreakableManager.ts`): w 90% pokojów (zwykłych i startowym) 1–3 przy ścianach, nie przed wejściami i nie na pułapkach; bez kolizji; każde trafienie rozbija; szczątki zostają; łup `BREAKABLE_LOOT`: 60% na 1–2 złota (skaluje się z piętrem), 6% na małą miksturę (10 HP), bez przedmiotów.
+
+**Grafika:** generator `tools/ruins_props.py` → `ruins-traps.png` (płyta z kolcami: schowane, 2 klatki ostrzeżenia, w połowie, wysunięte; płyta naciskowa i wciśnięta; otwór i otwór uzbrojony), `dart.png`, `ruins-breakables.png` (2 urny, skrzynia, szczątki). Kamień płyt chłodniejszy i ciemniejszy od piaskowca — pułapka czytelna.
+
+**Kod:** `combat/TrapManager.ts`, `BiomeDefinition.traps`/`breakables` (ruiny; reszta `null`), `ProjectileSpec.rotation` (strzałka grotem do przodu), własne sole RNG (kolce `0x5b1e`, strzałki `0xda27`, urny `0xb7ea`); kolejne planery omijają kapliczkę i wcześniejsze kafle.
+
+**Testy:** `tests/systems/traps.test.ts` (tylko ruiny, cykl kolców, grupy nigdy razem w górze, jedno trafienie na cykl, stany pułapki ze strzałkami), `tests/dungeon/TrapPlanner.test.ts` (pas w zwykłych pokojach, naprzemienne grupy, otwór w murze, linia po podłodze z płytą, z dala od kolców; urny przy ścianach, nie przed wejściami, deterministycznie); `TrapPlanner.ts` w `PURE_FILES`. Build: 1066 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=1&seed=3` — dwa pasy kolców wysuwające się na zmianę z ostrzeżeniem; pułapka ze strzałkami: nadepnięcie, żar w otworze, salwa strzałek przez pokój (gracz 90 → 71 HP); urny przy ścianach; bez błędów w konsoli.
+
+**Do oceny w testach właściciela** `#ruiny`: częstość i siła pułapek, czy pojawiać je też w innych biomach; ilość urn i łupu.
 
 ## Znane ograniczenia i backlog
 

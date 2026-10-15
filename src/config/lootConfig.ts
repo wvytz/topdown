@@ -218,3 +218,12 @@ export const SECRET_ROOM_CONFIG: SecretRoomConfig = {
   cocoons: { min: 4, max: 6 },
   wallMargin: 1,
 };
+
+/** Urny i skrzynie w ruinach (krok 48): drobne złoto, rzadko mała mikstura, bez przedmiotów. */
+export const BREAKABLE_LOOT: LootTable = {
+  gold: { min: 1, max: 2 },
+  goldChance: 0.6,
+  healthChance: 0.06,
+  healthAmount: 10,
+  itemChance: 0,
+};

@@ -632,6 +632,58 @@ export const SPRITE_SHEETS = {
       burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
     },
   },
+  // Pułapki ruin (krok 48, tools/ruins_props.py): 32×32 (kafel), bez kierunków.
+  ruinsTraps: {
+    key: 'sheet-ruins-traps',
+    url: 'assets/sprites/ruins-traps.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 288,
+    sheetHeight: 32,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      spikeDown: { frames: [0], loop: false },
+      // Ostrzeżenie: płyta drży (szybko).
+      spikeWarn: { frames: [1, 2], loop: true, fps: 14 },
+      spikeUp: { frames: [3, 4], loop: false, fps: 16 },
+      plate: { frames: [5], loop: false },
+      platePressed: { frames: [6], loop: false },
+      shooter: { frames: [7], loop: false },
+      shooterArmed: { frames: [8], loop: false },
+    },
+  },
+  // Urny i skrzynie ruin (krok 48): 0–2 całe, 3–5 szczątki (trwały ślad).
+  ruinsBreakables: {
+    key: 'sheet-ruins-breakables',
+    url: 'assets/sprites/ruins-breakables.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 192,
+    sheetHeight: 32,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      urn0: { frames: [0], loop: false },
+      urn1: { frames: [1], loop: false },
+      crate: { frames: [2], loop: false },
+      urn0Broken: { frames: [3], loop: false },
+      urn1Broken: { frames: [4], loop: false },
+      crateBroken: { frames: [5], loop: false },
+    },
+  },
+  // Strzałka pułapki (krok 48): grot w prawo, obracana o 90°.
+  dart: {
+    key: 'sheet-dart',
+    url: 'assets/sprites/dart.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 16,
+    sheetHeight: 16,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: { fly: { frames: [0], loop: false } },
+  },
   // Palenisko Piekła (krok 41b, tools/brazier_sprites.py): 48×48, bez kierunków; 0–3 tlenie, 4–7 ostrzeżenie
   // (tempo z czasu ostrzeżenia), 8–11 buchnięcie (tempo z czasu buchnięcia).
   brazier: {
@@ -880,6 +932,18 @@ export const FIRE_RING_VISUAL = { fill: 0xa82010, fillAlpha: 0.4, edge: 0xe0701c
 
 /** Tarcza bossa: łuk chronionego stożka rysowany przed bossem (cienki, w kolorze żaru, stała alfa). */
 export const SHIELD_ARC_VISUAL = { color: 0xe0701c, alpha: 0.45, width: 2, gap: 6 } as const;
+
+/** Pułapki i rzeczy do rozbicia ruin (krok 48). */
+export const TRAP_VISUAL = {
+  sheet: 'ruinsTraps',
+  breakables: 'ruinsBreakables',
+  dart: 'dart',
+  /** Czerwona ramka płyty w ostrzeżeniu (jak telegrafy ataków). */
+  warnColor: 0xff3b30,
+  warnAlpha: 0.55,
+  /** Linia strzału uzbrojonej pułapki. */
+  lineAlpha: 0.35,
+} as const;
 
 /** Ukryta komnata (krok 46): odsłonięcie i kokony skarbu (wygląd kokonu leża). */
 export const SECRET_ROOM_VISUAL = {

@@ -1,4 +1,5 @@
 import { TOWER_CONFIG } from '@/config/towerConfig';
+import type { BreakableConfig, DartConfig, SpikeConfig } from '@/systems/Traps';
 import { floorInLoop } from '@/systems/TowerLoop';
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
@@ -48,6 +49,10 @@ export interface BiomeDefinition {
   readonly fog: FogConfig | null;
   /** Buchające paleniska na środku zwykłych pokojów (krok 41b); null = brak. */
   readonly braziers: BrazierConfig | null;
+  /** Pułapki ruin (krok 48): pasy kolców i strzałki z murów; null = brak. */
+  readonly traps: { readonly spikes: SpikeConfig | null; readonly darts: DartConfig | null } | null;
+  /** Urny i skrzynie do rozbicia (krok 48); null = brak. */
+  readonly breakables: BreakableConfig | null;
 }
 
 export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
@@ -63,6 +68,30 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     puffballs: null,
     fog: null,
     braziers: null,
+    // Krok 48 (właściciel: „pierwszy poziom wydaje się pusty i bez wyzwania”). Kolce i strzałki ostrzegają
+    // wyraźnie i ranią umiarkowanie — wyzwanie, ale nie kara dla nowych graczy.
+    traps: {
+      spikes: {
+        roomChance: 0.35,
+        minShortSide: 5,
+        timing: { downMs: 1600, warnMs: 600, upMs: 900 },
+        damage: 10,
+        knockback: 160,
+      },
+      darts: {
+        roomChance: 0.3,
+        plateDistance: { min: 2, max: 3 },
+        minLine: 6,
+        windupMs: 450,
+        volley: 3,
+        volleyIntervalMs: 160,
+        cooldownMs: 2500,
+        damage: 9,
+        knockback: 140,
+        speed: 360,
+      },
+    },
+    breakables: { roomChance: 0.9, perRoom: { min: 1, max: 3 }, crateChance: 0.35, urnVariants: 2, radius: 9 },
   },
   [BiomeId.SpiderLair]: {
     id: BiomeId.SpiderLair,
@@ -117,6 +146,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     puffballs: null,
     fog: null,
     braziers: null,
+    traps: null,
+    breakables: null,
   },
   // Grzybnia (krok 28a): piętro zainfekowanego Króla Pająków. Ciemny fiolet z błękitem, mgła ogranicza widok,
   // grzyby-latarnie zamiast pochodni. Wrogowie (krok 28b): zarażony pająk (Rusher) i grzybiec (Kiter) — obaj zatruwają.
@@ -152,6 +183,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     },
     fog: FUNGAL_FOG,
     braziers: null,
+    traps: null,
+    breakables: null,
   },
   // Cmentarzysko (krok 32a): ludzki biom nad Grzybnią — tu upadli zatruci; jedni się rozkładają, inni zmieniają
   // w grzybowe zombie. Grzyb ledwo dociera. Paleta C „trupia zieleń” (wybór właściciela), świece zamiast
@@ -168,6 +201,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     puffballs: null,
     fog: GRAVEYARD_MIST,
     braziers: null,
+    traps: null,
+    breakables: null,
   },
   // Piekło (krok 41a, prośba właściciela): krwisty, demoniczny biom z pomarańczowym żarem; paleta A
   // „krwawy bazalt” (wybór właściciela). Wrogowie (krok 41d): piekielny ogar (Rusher) i kultysta popiołu
@@ -196,6 +231,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
       idlePerFloor: 0.7,
       minIdleMs: 1800,
     },
+    traps: null,
+    breakables: null,
   },
 };
 

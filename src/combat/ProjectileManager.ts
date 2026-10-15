@@ -28,6 +28,8 @@ export interface ProjectileSpec {
   readonly status?: StatusApplication;
   /** Wywołanie po trafieniu gracza (krok 42: wampiryczna elita leczy się z trafienia pociskiem). */
   readonly onHit?: (damage: number) => void;
+  /** Obrót sprite'a (radiany) — strzałka pułapki leci grotem do przodu (krok 48). */
+  readonly rotation?: number;
 }
 
 /** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
@@ -68,6 +70,7 @@ export class ProjectileManager {
     // Ciało zawsze o promieniu PROJECTILE_RADIUS, wyśrodkowane w klatce (kula maga ma 16×16).
     projectile.setCircle(PROJECTILE_RADIUS, projectile.width / 2 - PROJECTILE_RADIUS, projectile.height / 2 - PROJECTILE_RADIUS);
     if (spec.visual) projectile.play(spec.visual.animation);
+    if (spec.rotation !== undefined) projectile.setRotation(spec.rotation);
     if (spec.impactDecal) this.impactDecals.set(projectile, spec.impactDecal);
     if (spec.wave) this.waves.set(projectile, spec.wave);
     if (spec.onHit) this.hitCallbacks.set(projectile, spec.onHit);

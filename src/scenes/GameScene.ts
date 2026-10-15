@@ -26,6 +26,9 @@ import { carveArenaGalleries } from '@/dungeon/ArenaGalleries';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 import { disguiseFloor, secretArea } from '@/dungeon/SecretRoom';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
+import { TrapManager } from '@/combat/TrapManager';
+import { BreakableManager } from '@/combat/BreakableManager';
+import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
@@ -34,6 +37,7 @@ import type { BeamStrike } from '@/systems/Sorcery';
 import { beamReach, crystalPoint } from '@/systems/Sorcery';
 import {
   BOSS_LOOT,
+  BREAKABLE_LOOT,
   BOSS_REWARD,
   ENEMY_LOOT,
   HIGHSCORE_CONFIG,
@@ -123,6 +127,9 @@ const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
 const SECRET_ROOM_SEED_SALT = 0x5ec7;
+const SPIKE_SEED_SALT = 0x5b1e;
+const DART_SEED_SALT = 0xda27;
+const BREAKABLE_SEED_SALT = 0xb7ea;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -148,6 +155,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private puffballs: PuffballManager | null = null;
   private secretArea: SecretArea | null = null;
   private secretRoom: SecretRoomManager | null = null;
+  private traps: TrapManager | null = null;
+  private breakables: BreakableManager | null = null;
   private braziers: BrazierManager | null = null;
   private loot!: LootManager;
   private lootRng!: Rng;
@@ -218,6 +227,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.healCooldown = new Timer();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
+    this.traps = null;
+    this.breakables = null;
     // Restart sceny niszczy obiekty — grafika promienia powstanie od nowa.
     this.beamGfx = null;
   }
@@ -264,6 +275,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupLoot();
     this.setupShrine();
     this.setupSecretRoom();
+    this.setupRuinsProps();
     this.createStairsPrompt();
     this.inputController = new InputController(this);
     this.setupCamera();
@@ -306,6 +318,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stickyWebs?.update(time);
     this.puffballs?.update(time);
     this.secretRoom?.update();
+    this.traps?.update(time);
+    this.breakables?.update();
     this.braziers?.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
@@ -314,7 +328,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       time,
       (shot) => {
         const target =
-          this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? null;
+          this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? null;
         if (target && shot.vampiric) this.tryVampireHeal(time);
         return target;
       },
@@ -426,6 +440,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.cocoons?.resolvePlayerBeam(beam);
       this.puffballs?.resolvePlayerBeam(beam);
       this.secretRoom?.resolvePlayerBeam(beam);
+      this.breakables?.resolvePlayerBeam(beam);
     }
   }
 
@@ -472,6 +487,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing) + (this.cocoons?.resolvePlayerMelee(swing) ?? 0) +
       (this.puffballs?.resolvePlayerMelee(swing) ?? 0);
     this.secretRoom?.resolvePlayerMelee(swing);
+    this.breakables?.resolvePlayerMelee(swing);
 
     // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów).
     if (hits > 0) this.tryVampireHeal(now);
@@ -491,6 +507,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.cocoons?.resolveDashSweep(sweep, this.dashHits);
     this.puffballs?.resolveDashSweep(sweep, this.dashHits);
     this.secretRoom?.resolveDashSweep(sweep, this.dashHits);
+    this.breakables?.resolveDashSweep(sweep, this.dashHits);
   }
 
   private setupCombat(): void {
@@ -656,6 +673,42 @@ export class GameScene extends Phaser.Scene implements HudSource {
           onRevealed: () => this.showToast('Ukryta komnata! Rozbij kokony — w jednym jest skarb.', SECRET_ROOM_VISUAL.toastMs),
         })
       : null;
+  }
+
+  /**
+   * Pułapki i urny ruin (krok 48): pas kolców, strzałki z murów, urny i skrzynie do rozbicia. Każdy planer ma
+   * własny strumień RNG; kolejne omijają kafle poprzednich i kapliczkę.
+   */
+  private setupRuinsProps(): void {
+    const { traps, breakables } = this.biome;
+    const seed = this.dungeon.seed;
+    const shrine = planShrineLocation(this.dungeon, createRng(deriveSeed(seed, SHRINE_SEED_SALT)));
+    const avoid: TilePoint[] = shrine ? [shrine] : [];
+    const plates = traps?.spikes ? planSpikeStrips(this.dungeon, traps.spikes, createRng(deriveSeed(seed, SPIKE_SEED_SALT)), avoid) : [];
+    avoid.push(...plates.map((p) => p.tile));
+    const darts = traps?.darts ? planDartTraps(this.dungeon, traps.darts, createRng(deriveSeed(seed, DART_SEED_SALT)), avoid) : [];
+    for (const dart of darts) avoid.push(...dart.line);
+    if (traps) {
+      this.traps = new TrapManager({
+        scene: this,
+        floorNumber: this.floorNumber,
+        spikes: traps.spikes ? { config: traps.spikes, plates } : null,
+        darts: traps.darts ? { config: traps.darts, traps: darts } : null,
+        player: this.player,
+        enemies: () => this.enemies.living,
+        projectiles: this.projectiles,
+        onPlayerHit: () => this.effects.playerHit(),
+      });
+    }
+    if (breakables) {
+      this.breakables = new BreakableManager({
+        scene: this,
+        spots: planBreakables(this.dungeon, breakables, createRng(deriveSeed(seed, BREAKABLE_SEED_SALT)), avoid),
+        radius: breakables.radius,
+        effects: this.effects,
+        onBroken: (at) => this.dropLoot(at, BREAKABLE_LOOT),
+      });
+    }
   }
 
   private setupLoot(): void {

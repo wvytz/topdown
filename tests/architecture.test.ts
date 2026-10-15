@@ -29,6 +29,7 @@ const PURE_FILES = [
   'dungeon/ArenaGalleries.ts',
   'dungeon/bossRoomRule.ts',
   'dungeon/SecretRoom.ts',
+  'dungeon/TrapPlanner.ts',
 ];
 
 const isPure = (path: string): boolean =>
