@@ -1,3 +1,4 @@
+import type { SecretRoomConfig } from '@/dungeon/SecretRoom';
 import { EnemyType } from '@/core/combatTypes';
 import type { ItemDefinition, ItemEffectsConfig, LootScalingConfig, LootTable, StatLimits } from '@/core/lootTypes';
 import { ItemId, ItemKind } from '@/core/lootTypes';
@@ -210,3 +211,10 @@ export const PICKUP_CONFIG = {
   /** Ile monet maksymalnie wypada z jednej kwoty złota. */
   maxCoinsPerDrop: 5,
 } as const;
+
+/** Ukryta komnata za areną (krok 46): widać ją z 2 kafli; 4–6 kokonów, jeden z losowym przedmiotem. */
+export const SECRET_ROOM_CONFIG: SecretRoomConfig = {
+  revealRadius: 2,
+  cocoons: { min: 4, max: 6 },
+  wallMargin: 1,
+};

@@ -881,6 +881,19 @@ export const FIRE_RING_VISUAL = { fill: 0xa82010, fillAlpha: 0.4, edge: 0xe0701c
 /** Tarcza bossa: łuk chronionego stożka rysowany przed bossem (cienki, w kolorze żaru, stała alfa). */
 export const SHIELD_ARC_VISUAL = { color: 0xe0701c, alpha: 0.45, width: 2, gap: 6 } as const;
 
+/** Ukryta komnata (krok 46): odsłonięcie i kokony skarbu (wygląd kokonu leża). */
+export const SECRET_ROOM_VISUAL = {
+  /** Zapas (kafle) wokół komnaty przy podmianie obrazu — cienie i mury sąsiadów też się zmieniają. */
+  redrawMargin: 3,
+  cocoonRadius: 9,
+  revealFlashRadius: 40,
+  prizeFlashRadius: 26,
+  shakeMs: 180,
+  shakeIntensity: 0.004,
+  emptyText: '#9c8f74',
+  toastMs: 3000,
+} as const;
+
 /** Oznaczenie elity (krok 42): pierścień pod stopami (pulsuje), nazwa cech nad głową. */
 export const ELITE_VISUAL = {
   ringGap: 5,

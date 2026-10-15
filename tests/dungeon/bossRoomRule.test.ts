@@ -19,7 +19,7 @@ describe('arena na końcu piętra (krok 45)', () => {
         expect(check.endRoomId ?? undefined).toBe(floor.endRoomId);
         if (floor.endRoomId !== undefined) {
           withEnd++;
-          expect(floor.rooms[floor.endRoomId]!.kind).toBe(RoomKind.Normal);
+          expect(floor.rooms[floor.endRoomId]!.kind).toBe(RoomKind.Secret);
           expect(floor.endRoomId).not.toBe(floor.startRoomId);
         }
         total++;

@@ -3136,7 +3136,21 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja w przeglądarce:** `?floor=3&seed=7` — mapa z gry: arena z jednym korytarzem wejściowym i ślepym pokojem końcowym obok, reszta piętra omija arenę; bez błędów w konsoli.
 
-**Do decyzji później:** co ma być w pokoju końcowym (dziś zwykły pokój) — np. nagroda albo schody.
+**Pokój końcowy:** ukryta komnata z kokonami skarbu (krok 46).
+
+## Krok 46 — Ukryta komnata za areną `#wieza`
+
+**Pomysł właściciela** `#decyzja` `#wieza`: w pokoju końcowym za areną (krok 45) ukryta komnata — pokazuje się dopiero, gdy do niej podejdziesz (widać ją z 2 kratek w każdym kierunku). W środku kokony do rozbicia, które nie zachowują się jak inne kokony; tylko z jednego wypada losowy przedmiot.
+
+- Pokój końcowy ma nowy rodzaj `RoomKind.Secret` — planery (wrogowie, kapliczka, kokony leża, purchawki, paleniska, pajęczyny) go pomijają.
+- **Przebranie** (`dungeon/SecretRoom.ts`, czyste): `secretArea` — komnata i korytarz do areny; `disguiseFloor` — te kafle jako mur. Piętro rysujemy z przebrania (także pochodnie planowane na przebraniu), kolizja i reszta logiki używa prawdziwych kafli. Krata wejścia do komnaty działa jak każda krata areny, ale jej obraz jest ukryty do odsłonięcia (`DungeonView.hiddenGates`, stan pamiętany).
+- **Odsłonięcie:** gdy gracz stanie na kaflu najwyżej 2 kafle (Czebyszew) od komnaty (`revealMask`), `DungeonView.revealSecret` podmienia obraz w prostokącie komnaty z zapasem 3 kafli tylko tam, gdzie prawdziwy obraz różni się od przebrania; błysk, lekki wstrząs, komunikat „Ukryta komnata! Rozbij kokony — w jednym jest skarb.”
+- **Kokony skarbu** (`entities/TreasureCocoon.ts`, `combat/SecretRoomManager.ts`): 4–6 na losowych kaflach komnaty (z odstępem od ścian), wygląd kokonu leża, nie budzą się i nic z nich nie wyskakuje; każde trafienie (cios, kula, strzał, promień, dash) rozbija kokon. Z jednego wypada losowy przedmiot z całej puli (wagi jak łupy), pozostałe — „pusto”. Własny strumień RNG (sól `0x5ec7`).
+- Liczby: `SECRET_ROOM_CONFIG` (`config/lootConfig.ts`), wygląd: `SECRET_ROOM_VISUAL`.
+
+**Testy:** `tests/dungeon/SecretRoom.test.ts` — obszar (cała komnata i korytarz, bez areny, styka się z areną), przebranie, maska 2 kafli, brak wrogów i kapliczki w komnacie, plan kokonów (zakres, różne kafle, odstęp od ścian, jeden z przedmiotem); `SecretRoom.ts` w `PURE_FILES`. Build: 1049 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=3&seed=7` — z areny w miejscu komnaty lity mur; 2 kafle od niej mur znika, widać korytarz z kratą i komnatę, komunikat; 4 kokony, po rozbiciu z jednego wypadł przedmiot (Elektryczna strzała), reszta „pusto”; bez błędów w konsoli.
 
 ## Znane ograniczenia i backlog
 

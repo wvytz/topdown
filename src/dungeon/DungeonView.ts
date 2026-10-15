@@ -38,13 +38,22 @@ export class DungeonView {
   private readonly gates: ReadonlyMap<string, DressedGate>;
   /** Jedna klatka dla wszystkich kafli kolizji — putTileAt nadaje jej kolizję także później (kraty). */
   private readonly collisionFrame: number;
+  private readonly layers = new Map<VisualLayer, Phaser.Tilemaps.TilemapLayer>();
+  /** Kraty ukrytej komnaty (krok 46): nierysowane, dopóki komnata jest ukryta; stan pamiętamy. */
+  private readonly hiddenGates = new Set<string>();
+  private readonly gateStates = new Map<string, GateVisualState>();
 
+  /**
+   * `dressed` to obraz piętra (z ukrytą komnatą w przebraniu muru), `floor` — prawdziwe kafle do kolizji.
+   * `secret.dressed` to obraz bez przebrania: z niego pochodzą kraty i kafle podmieniane przy odsłonięciu.
+   */
   constructor(
     private readonly scene: Phaser.Scene,
     floor: DungeonFloor,
     private readonly dressed: DressedFloor,
     tileset: TilesetMeta,
     asset: TilesetAsset,
+    private readonly secret: { readonly dressed: DressedFloor; readonly tiles: ReadonlySet<number> } | null = null,
   ) {
     if (tileset.version !== TILESET_ASSET.version || tileset.tileSize !== TILE_SIZE) {
       throw new Error(`DungeonView: arkusz v${tileset.version} ${tileset.tileSize}px, oczekiwano v${TILESET_ASSET.version} ${TILE_SIZE}px.`);
@@ -58,7 +67,7 @@ export class DungeonView {
       return layer.setDepth(depth);
     };
 
-    const layers = new Map<VisualLayer, Phaser.Tilemaps.TilemapLayer>();
+    const layers = this.layers;
     for (const name of VISUAL_LAYERS) {
       const layer = blank(name, RENDER_DEPTH[name]);
       fillLayer(layer, dressed[name]);
@@ -68,8 +77,16 @@ export class DungeonView {
 
     // Kraty: na start podniesione (widać tylko szczelinę w posadzce).
     this.gateLayer = blank('gates', RENDER_DEPTH.gates);
-    for (const gate of dressed.gates) this.gateLayer.putTileAt(gate.frames.open, gate.x, gate.y, false);
-    this.gates = new Map(dressed.gates.map((g) => [pointKey(g), g]));
+    const gates = secret ? secret.dressed.gates : dressed.gates;
+    for (const gate of gates) {
+      this.gateStates.set(pointKey(gate), 'open');
+      if (secret?.tiles.has(gate.y * floor.width + gate.x)) {
+        this.hiddenGates.add(pointKey(gate));
+        continue;
+      }
+      this.gateLayer.putTileAt(gate.frames.open, gate.x, gate.y, false);
+    }
+    this.gates = new Map(gates.map((g) => [pointKey(g), g]));
 
     // Kolizja na osobnej, niewidocznej warstwie logicznej.
     this.collisionFrame = dressed.walls.frames.find((f) => f !== EMPTY_TILE) ?? 0;
@@ -111,9 +128,43 @@ export class DungeonView {
   }
 
   private animateGate(gate: DressedGate, states: readonly GateVisualState[]): void {
+    const key = pointKey(gate);
+    this.gateStates.set(key, states[states.length - 1]!);
     states.forEach((state, i) => {
-      this.scene.time.delayedCall(i * ARENA_GATES.frameMs, () => this.gateLayer.putTileAt(gate.frames[state], gate.x, gate.y, false));
+      this.scene.time.delayedCall(i * ARENA_GATES.frameMs, () => {
+        if (!this.hiddenGates.has(key)) this.gateLayer.putTileAt(gate.frames[state], gate.x, gate.y, false);
+      });
     });
+  }
+
+  /**
+   * Odsłonięcie ukrytej komnaty (krok 46): w prostokącie `bounds` kafle przebrania podmieniamy na prawdziwy obraz
+   * (tylko tam, gdzie się różnią), a jej krata pojawia się w bieżącym stanie.
+   */
+  revealSecret(bounds: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }): void {
+    if (!this.secret) return;
+    for (const name of VISUAL_LAYERS) {
+      const layer = this.layers.get(name)!;
+      const real: DressedLayer = this.secret.dressed[name];
+      const shown: DressedLayer = this.dressed[name];
+      for (let y = bounds.y; y < bounds.y + bounds.height; y++) {
+        for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
+          const i = y * real.width + x;
+          if (real.frames[i] === shown.frames[i] && real.flipX[i] === shown.flipX[i]) continue;
+          if (real.frames[i] === EMPTY_TILE) {
+            layer.removeTileAt(x, y);
+            continue;
+          }
+          const tile = layer.putTileAt(real.frames[i]!, x, y, false);
+          tile.flipX = real.flipX[i] === 1;
+        }
+      }
+    }
+    for (const key of this.hiddenGates) {
+      const gate = this.gates.get(key)!;
+      this.gateLayer.putTileAt(gate.frames[this.gateStates.get(key) ?? 'open'], gate.x, gate.y, false);
+    }
+    this.hiddenGates.clear();
   }
 
   static tileToWorldCenter(point: TilePoint): { x: number; y: number } {

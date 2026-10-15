@@ -15,6 +15,8 @@ export enum RoomKind {
   Start = 'start',
   Normal = 'normal',
   Boss = 'boss',
+  /** Ukryta komnata za areną (krok 46): bez wrogów i rekwizytów planerów, z kokonami skarbu. */
+  Secret = 'secret',
 }
 
 /** Pozycja w siatce kafelków (nie w pikselach). */
@@ -68,6 +70,6 @@ export interface DungeonFloor {
   readonly bossRoomId: number;
   readonly playerSpawn: TilePoint;
   readonly stairs: TilePoint;
-  /** Pokój końcowy za areną (krok 45) — osiągalny tylko przez nią; brak = arena to koniec piętra. */
+  /** Pokój końcowy za areną (krok 45) — osiągalny tylko przez nią; ukryta komnata (krok 46). Brak = arena to koniec piętra. */
   readonly endRoomId?: number;
 }

@@ -23,10 +23,13 @@ import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
 import { bossForFloor } from '@/config/bossConfig';
 import { carveArenaGalleries } from '@/dungeon/ArenaGalleries';
+import type { SecretArea } from '@/dungeon/SecretRoom';
+import { disguiseFloor, secretArea } from '@/dungeon/SecretRoom';
+import { SecretRoomManager } from '@/combat/SecretRoomManager';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { ELITE_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { ELITE_VISUAL, SECRET_ROOM_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { BeamStrike } from '@/systems/Sorcery';
 import { beamReach, crystalPoint } from '@/systems/Sorcery';
 import {
@@ -118,6 +121,7 @@ const STICKY_WEB_SEED_SALT = 0x3eb5;
 const PUFFBALL_SEED_SALT = 0x9bff;
 const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
+const SECRET_ROOM_SEED_SALT = 0x5ec7;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -141,6 +145,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private stickyWebs: StickyWebField | null = null;
   /** Purchawki z trującą chmurą — tylko w biomie, który je ma (krok 28c). */
   private puffballs: PuffballManager | null = null;
+  private secretArea: SecretArea | null = null;
+  private secretRoom: SecretRoomManager | null = null;
   private braziers: BrazierManager | null = null;
   private loot!: LootManager;
   private lootRng!: Rng;
@@ -205,6 +211,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.dashHitsFor = -1;
     this.healCooldown = new Timer();
     this.galleryEnemies = new Set();
+    this.secretRoom = null;
     // Restart sceny niszczy obiekty — grafika promienia powstanie od nowa.
     this.beamGfx = null;
   }
@@ -220,12 +227,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const biome = biomeForFloor(this.floorNumber);
     this.biome = biome;
     const tileset = this.cache.json.get(biome.tileset.jsonKey) as TilesetMeta;
+    // Ukryta komnata (krok 46): rysujemy piętro z komnatą w przebraniu muru; prawdziwy obraz czeka na odsłonięcie.
+    this.secretArea = secretArea(this.dungeon);
+    const shown = this.secretArea ? disguiseFloor(this.dungeon, this.secretArea) : this.dungeon;
     // Pochodnie przed dekorowaniem: detale lica muru omijają kafle z uchwytem.
-    const torchSpots = planTorches(this.dungeon, TORCH_PLACEMENT, deriveSeed(this.dungeon.seed, TORCH_SEED_SALT));
-    const dressed = dressFloor(this.dungeon, tileset, biome.dressing, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT), {
-      torches: torchSpots,
-    });
-    this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset);
+    const torchSpots = planTorches(shown, TORCH_PLACEMENT, deriveSeed(this.dungeon.seed, TORCH_SEED_SALT));
+    const dress = (floor: DungeonFloor) =>
+      dressFloor(floor, tileset, biome.dressing, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT), { torches: torchSpots });
+    const dressed = dress(shown);
+    const secret = this.secretArea ? { dressed: dress(this.dungeon), tiles: this.secretArea.tiles } : null;
+    this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset, secret);
     this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
     // Piętro z mgłą (krok 28a) nie losuje „Mroku” — dwa ograniczenia widoku naraz byłyby nieczytelne.
     this.floorModifier = floorModifierFor(
@@ -246,6 +257,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupCombat();
     this.setupLoot();
     this.setupShrine();
+    this.setupSecretRoom();
     this.inputController = new InputController(this);
     this.setupCamera();
     this.setupDebugKeys();
@@ -286,6 +298,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.cocoons?.update(time);
     this.stickyWebs?.update(time);
     this.puffballs?.update(time);
+    this.secretRoom?.update();
     this.braziers?.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
@@ -294,7 +307,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       time,
       (shot) => {
         const target =
-          this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? null;
+          this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? null;
         if (target && shot.vampiric) this.tryVampireHeal(time);
         return target;
       },
@@ -404,6 +417,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.bossFight.resolvePlayerBeam(beam);
       this.cocoons?.resolvePlayerBeam(beam);
       this.puffballs?.resolvePlayerBeam(beam);
+      this.secretRoom?.resolvePlayerBeam(beam);
     }
   }
 
@@ -449,6 +463,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const hits =
       this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing) + (this.cocoons?.resolvePlayerMelee(swing) ?? 0) +
       (this.puffballs?.resolvePlayerMelee(swing) ?? 0);
+    this.secretRoom?.resolvePlayerMelee(swing);
 
     // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów).
     if (hits > 0) this.tryVampireHeal(now);
@@ -467,6 +482,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.bossFight.resolveDashSweep(sweep, this.dashHits);
     this.cocoons?.resolveDashSweep(sweep, this.dashHits);
     this.puffballs?.resolveDashSweep(sweep, this.dashHits);
+    this.secretRoom?.resolveDashSweep(sweep, this.dashHits);
   }
 
   private setupCombat(): void {
@@ -615,6 +631,23 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.galleryEnemies.add(this.enemies.spawnAt(galleries.enemy, at));
       this.effects.impact(at.x, at.y, TILE_SIZE * 0.5);
     }
+  }
+
+  /** Ukryta komnata za areną (krok 46): odsłania się z bliska, kokony skarbu — w jednym przedmiot. */
+  private setupSecretRoom(): void {
+    this.secretRoom = this.secretArea
+      ? new SecretRoomManager({
+          scene: this,
+          floor: this.dungeon,
+          area: this.secretArea,
+          view: this.dungeonView,
+          player: this.player,
+          effects: this.effects,
+          rng: createRng(deriveSeed(this.dungeon.seed, SECRET_ROOM_SEED_SALT)),
+          dropLoot: (at, drops) => this.loot.spawn(at, drops),
+          onRevealed: () => this.showToast('Ukryta komnata! Rozbij kokony — w jednym jest skarb.', SECRET_ROOM_VISUAL.toastMs),
+        })
+      : null;
   }
 
   private setupLoot(): void {

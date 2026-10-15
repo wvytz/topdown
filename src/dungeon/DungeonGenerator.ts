@@ -72,7 +72,7 @@ export class DungeonGenerator {
     const rooms: Room[] = rects.map((rect, id) => ({
       ...rect,
       id,
-      kind: id === startIndex ? RoomKind.Start : id === bossIndex ? RoomKind.Boss : RoomKind.Normal,
+      kind: id === startIndex ? RoomKind.Start : id === bossIndex ? RoomKind.Boss : id === endIndex ? RoomKind.Secret : RoomKind.Normal,
     }));
 
     // Schody STAIRS_SIZE × STAIRS_SIZE wyśrodkowane w arenie; `stairs` to lewy górny róg bloku.
