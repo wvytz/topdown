@@ -19,6 +19,8 @@ export interface PlayerShot {
   readonly ignore?: ReadonlySet<object>;
   /** Kula Czarodziejki: trafienie leczy jak cios z Wampirzym kłem (krok 37). */
   readonly vampiric?: boolean;
+  /** Kula Czarodziejki to magia — trafia też bezcielesnych (krok 49b). */
+  readonly magic?: boolean;
 }
 
 export interface ShotResult<T> {
@@ -48,6 +50,7 @@ export function resolvePlayerShot<T extends MeleeTarget>(shot: PlayerShot, targe
     damage: shot.damage,
     knockback: knockbackFrom(behind, best, shot.knockback),
     ...(shot.status && { status: shot.status }),
+    ...(shot.magic && { magic: true }),
   };
   return { target: best, died: best.takeHit(hit, shot.now, shot.origin).died };
 }

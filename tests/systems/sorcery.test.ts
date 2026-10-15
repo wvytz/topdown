@@ -177,3 +177,24 @@ describe('punkt kryształu', () => {
     expect(east.y).toBeCloseTo(4);
   });
 });
+
+describe('magia Czarodziejki (krok 49b)', () => {
+  it('promień niesie znacznik magii — trafia też bezcielesnych', async () => {
+    const { resolveBeam } = await import('@/systems/Sorcery');
+    const seen: Array<{ magic?: boolean }> = [];
+    const target = { x: 50, y: 0, radius: 8, takeHit: (hit: { magic?: boolean }) => (seen.push(hit), { dealt: 1, died: false }) };
+    resolveBeam({ from: { x: 0, y: 0 }, to: { x: 100, y: 0 }, halfWidth: 4, damage: 5, knockback: 0, now: 0, source: { x: 0, y: 0 } }, [target]);
+    expect(seen[0]?.magic).toBe(true);
+  });
+
+  it('kula z magią przekazuje znacznik do trafienia, zwykły strzał nie', async () => {
+    const { resolvePlayerShot } = await import('@/systems/ShotResolver');
+    const hits: Array<{ magic?: boolean }> = [];
+    const target = { x: 10, y: 0, radius: 8, takeHit: (hit: { magic?: boolean }) => (hits.push(hit), { dealt: 1, died: false }) };
+    const shot = { position: { x: 8, y: 0 }, velocity: { x: 100, y: 0 }, radius: 4, origin: { x: 0, y: 0 }, damage: 5, knockback: 0, now: 0 };
+    resolvePlayerShot({ ...shot, magic: true }, [target]);
+    resolvePlayerShot(shot, [target]);
+    expect(hits[0]?.magic).toBe(true);
+    expect(hits[1]?.magic).toBeUndefined();
+  });
+});

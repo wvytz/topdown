@@ -30,7 +30,7 @@ describe('harmonogram zasadzek (krok 49)', () => {
 describe('pokój zasadzki', () => {
   it('zwykły pokój dość duży; potem bez wrogów i kapliczki', () => {
     for (const [i, floor] of sampleFloors([3], 20).entries()) {
-      const plan = planAmbushRoom(floor, AMBUSH_CONFIG.minSide, createRng(i));
+      const plan = planAmbushRoom(floor, AMBUSH_CONFIG, createRng(i));
       if (!plan) continue;
       const room = plan.floor.rooms[plan.roomId]!;
       expect(room.kind).toBe(RoomKind.Ambush);
@@ -40,6 +40,22 @@ describe('pokój zasadzki', () => {
       const shrine = planShrineLocation(plan.floor, createRng(2));
       if (shrine) expect(roomContainsTile(room, shrine)).toBe(false);
     }
+  });
+
+  it('zwykle pokój o krótszym boku ≥ 7, czasem 6 (krok 49b)', () => {
+    let seven = 0;
+    let total = 0;
+    for (const [i, floor] of sampleFloors([3, 4], 40).entries()) {
+      const hasRoomy = floor.rooms.some((r) => r.kind === RoomKind.Normal && Math.min(r.width, r.height) >= AMBUSH_CONFIG.preferredSide);
+      const plan = planAmbushRoom(floor, AMBUSH_CONFIG, createRng(i));
+      if (!plan || !hasRoomy) continue;
+      total++;
+      const room = plan.floor.rooms[plan.roomId]!;
+      if (Math.min(room.width, room.height) >= AMBUSH_CONFIG.preferredSide) seven++;
+    }
+    expect(total).toBeGreaterThan(20);
+    expect(seven / total).toBeGreaterThan(0.75);
+    expect(seven).toBeLessThanOrEqual(total);
   });
 
   it('upiory pojawiają się w pokoju, z dala od gracza', () => {

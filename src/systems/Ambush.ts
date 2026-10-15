@@ -14,8 +14,11 @@ export interface AmbushConfig {
   readonly firstFloor: IntRange;
   /** Odstęp do następnej (w piętrach). */
   readonly gap: IntRange;
-  /** Pokój zasadzki: krótszy bok co najmniej tyle kafli. */
+  /** Pokój zasadzki: krótszy bok co najmniej tyle kafli… */
   readonly minSide: number;
+  /** …a zwykle (z szansą `preferredChance`) co najmniej tyle (krok 49b). */
+  readonly preferredSide: number;
+  readonly preferredChance: number;
   /** Kraty opadają, gdy gracz stoi co najmniej tyle kafli od krawędzi pokoju. */
   readonly triggerMargin: number;
   /** Liczba upiorów w kolejnych falach. */

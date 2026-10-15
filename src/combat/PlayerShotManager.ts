@@ -17,6 +17,8 @@ export interface ShotLook {
   /** Statusy kuli: wszystkie efekty broni (strzał + cios), bo kule są jej bronią główną. */
   readonly status: StatusApplication;
   readonly vampiric: boolean;
+  /** Magia (kula Czarodziejki) — trafia też bezcielesnych (krok 49b). */
+  readonly magic: boolean;
 }
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. */
@@ -47,6 +49,7 @@ export class PlayerShotManager {
     shot.status = look?.status ?? effects.shotStatus;
     shot.pierceLeft = effects.shotPierce;
     shot.vampiric = look?.vampiric ?? false;
+    shot.magic = look?.magic ?? false;
     shot.setDepth(RENDER_DEPTH.projectile);
 
     this.group.add(shot, true);
@@ -79,6 +82,7 @@ export class PlayerShotManager {
         status: child.status,
         ignore: child.hitTargets,
         vampiric: child.vampiric,
+        magic: child.magic,
       });
       if (!target) continue;
       child.hitTargets.add(target);

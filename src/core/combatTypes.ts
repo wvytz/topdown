@@ -126,6 +126,8 @@ export interface Hit {
   readonly damage: number;
   readonly knockback: Vector2;
   readonly status?: StatusApplication;
+  /** Magia Czarodziejki (krok 49b): trafia zawsze — także bezcielesnego albo wynurzającego się upiora. */
+  readonly magic?: boolean;
 }
 
 /** Efekty broni gracza wynikające z przedmiotów (zero/puste = brak przedmiotu). */

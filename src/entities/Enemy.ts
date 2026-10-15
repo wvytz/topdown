@@ -234,8 +234,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeHit(hit: Hit, now: number, source: Vector2): DamageResult {
-    // Bezcielesny upiór: ciosy przenikają przez niego.
-    if (this.isIntangible(now)) return { dealt: 0, died: false };
+    // Bezcielesny upiór: ciosy i strzały przenikają przez niego; magia Czarodziejki trafia zawsze (krok 49b).
+    if (this.isIntangible(now) && !hit.magic) return { dealt: 0, died: false };
     // Tarczownik: cios od frontu przyjmuje tylko część obrażeń.
     const shield = ELITE_CONFIG.shield;
     const blocked = this.hasAffix(EliteAffix.Shielded) && isShielded(this, this.shieldFacing, shield.arcDeg, source);

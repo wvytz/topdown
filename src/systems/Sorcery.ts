@@ -154,6 +154,8 @@ export function resolveBeam<T extends MeleeTarget>(beam: BeamStrike, targets: re
       damage: beam.damage,
       knockback: knockbackFrom(beam.from, target, beam.knockback),
       ...(beam.status && { status: beam.status }),
+      // Promień to magia — rani też bezcielesnych (krok 49b).
+      magic: true,
     };
     hit.push(target);
     if (target.takeHit(blow, beam.now, beam.source).died) killed.push(target);

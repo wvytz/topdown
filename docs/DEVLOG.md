@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#czarodziejka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -3220,6 +3220,28 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 - Przenikanie, mrok i przebieg bez zmian.
 
 **Weryfikacja:** build (1076 testów); `?floor=1&seed=3` — fala 4 upiorów, po dwóch falach przynęta do wzięcia; bez błędów w konsoli.
+
+## Krok 49b — Magia trafia upiory; większe pokoje zasadzki `#zasadzka` `#czarodziejka`
+
+**Test botem (5 zasadzek, przed zmianą)** `#zasadzka`: Barbarzyńca czyścił zasadzkę w 8–14 s, tracąc 0–14% HP; Czarodziejka na piętrze 1 w 31 s (−27% HP), na piętrze 6 w ciasnym pokoju 9×6 w 45 s, schodząc do 9/75 HP. Kule Czarodziejki ginęły na bezcielesnych upiorach bez obrażeń.
+
+**Decyzje właściciela** `#decyzja` `#zasadzka` `#czarodziejka`:
+1. „Czarodziejka używa magii — trafia zawsze”: kule i promień ranią upiory także bezcielesne i wynurzające się (`Hit.magic`, `PlayerShot.magic`, `ShotLook.magic`; promień zawsze magiczny). Ciosy i strzały barbarzyńcy dalej przez nie przenikają.
+2. „Pokój w większości przypadków 7 kratek, czasem 6”: `planAmbushRoom` z szansą 80% wybiera spośród pokojów o krótszym boku ≥ 7 (gdy są), inaczej ≥ 6 (`preferredSide`, `preferredChance` w `AMBUSH_CONFIG`).
+
+**Test botem po zmianach (te same seedy, bohaterowie i piętra; bot bez uników i dasha):**
+
+| Bohater | Piętro | Czas | HP | Trafienia |
+|---|---|---|---|---|
+| Barbarzyńca | 1 | — | 100 → 96 | 1 |
+| Czarodziejka | 1 | 24 s | 75 → 59 | 4 |
+| Barbarzyńca | 4 | — | 100 → 95 | 1 |
+| Czarodziejka | 6 | 38 s | 75 → 45 | 5 |
+| Barbarzyńca | 9 | 13,5 s | 100 → 72 | 4 |
+
+(— = czas walki nie zarejestrował się w skrypcie; zasadzka zakończona.) Czarodziejka na piętrze 6: z 9 HP na 45 HP i 7 s krócej; nikt nie zginął.
+
+**Testy:** promień i kula z magią przekazują znacznik do trafienia (`sorcery.test.ts`), pokój ≥ 7 w > 75% pięter, które go mają (`ambush.test.ts`). Build: 1079 testów.
 
 ## Znane ograniczenia i backlog
 

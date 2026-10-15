@@ -260,7 +260,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Zasadzka (krok 49): co 1–2 piętra jeden zwykły pokój staje się pokojem zasadzki — przed dekorowaniem (kraty).
     this.ambushRoomId = null;
     if (hasAmbush(this.runSeed, this.floorNumber, AMBUSH_CONFIG)) {
-      const plan = planAmbushRoom(this.dungeon, AMBUSH_CONFIG.minSide, createRng(deriveSeed(this.dungeon.seed, AMBUSH_ROOM_SEED_SALT)));
+      const plan = planAmbushRoom(this.dungeon, AMBUSH_CONFIG, createRng(deriveSeed(this.dungeon.seed, AMBUSH_ROOM_SEED_SALT)));
       if (plan) {
         this.dungeon = plan.floor;
         this.ambushRoomId = plan.roomId;
@@ -429,6 +429,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         animation: animationKey(SORCERESS_ORB_VISUAL.sheet, SORCERESS_ORB_VISUAL.animation),
         status: { ...effects.shotStatus, ...effects.meleeStatus },
         vampiric: effects.meleeHeal > 0,
+        magic: true,
       },
     );
   }

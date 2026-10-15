@@ -7,7 +7,10 @@ import type { AmbushConfig } from '@/systems/Ambush';
 export const AMBUSH_CONFIG: AmbushConfig = {
   firstFloor: { min: 1, max: 2 },
   gap: { min: 1, max: 2 },
+  // Krok 49b (właściciel): zwykle pokój o krótszym boku 7 kratek, czasem 6.
   minSide: 6,
+  preferredSide: 7,
+  preferredChance: 0.8,
   triggerMargin: 2,
   // Krok 49a: więcej, ale słabszych upiorów — intensywnie, z niskim ryzykiem.
   waves: [4, 5],
