@@ -3113,7 +3113,7 @@ Co kilka pokojów jeden zwykły wróg jest **elitą**: 2,5× HP, 1,3× obrażeni
 - Co najmniej jedna elita na piętrze (`ELITE_CONFIG.minPerFloor = 1`) — wcześniej na piętrze 1 ok. 35% pięter nie miało żadnej.
 - Gdy elita pierwszy raz widzi gracza z bliska (220 px), komunikat z podpowiedzią, np. „Elita! Tarczownik — z przodu tarcza, obejdź go”.
 
-**Testy:** `tests/dungeon/ArenaGalleries.test.ts` (wnęki tylko w skale, nowe wejścia areny, różne ściany, determinizm), `elites.test.ts` (minimum elit, komunikat); `ArenaGalleries.ts` w `PURE_FILES`. Build: 1039 testów.
+**Testy:** `tests/dungeon/ArenaGalleries.test.ts` (wnęki tylko w skale, nowe wejścia areny, różne ściany, determinizm), `elites.test.ts` (minimum elit, komunikat); `ArenaGalleries.ts` w `PURE_FILES`. Build: 1040 testów.
 
 **Weryfikacja w przeglądarce:** `?floor=5&seed=7&hero=sorceress` — dwie galerie (północ przy krawędzi mapy), kraty galerii zamknięte w walce (kafle kolizji), kultyści widoczni za kratami i rzucają bomby; `?floor=1&seed=5` — komunikat o Tarczowniku; bez błędów w konsoli.
 
