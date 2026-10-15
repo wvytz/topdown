@@ -1,4 +1,4 @@
-import type { EnemyAttackDefinition, EnemyDefinition, EnemyType, EnemyVariant, WaveShape } from '@/core/combatTypes';
+import type { EnemyAttackDefinition, EnemyDefinition, EnemyType, EnemyVariant, PhasingDefinition, WaveShape } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { normalize } from '@/systems/CombatMath';
 
@@ -11,6 +11,10 @@ export interface EnemyVariantDefinition {
   readonly attack?: EnemyAttackDefinition;
   /** Inna prędkość ruchu (px/s; np. szybszy ogar, krok 41d). */
   readonly moveSpeed?: number;
+  /** Inne HP (upiór, krok 49). */
+  readonly maxHp?: number;
+  /** Przenikanie (upiór, krok 49). */
+  readonly phasing?: PhasingDefinition;
 }
 
 /**
@@ -30,6 +34,8 @@ export function enemyDefinitionFor(
     ...(def.color !== undefined && { color: def.color }),
     ...(def.attack && { attack: def.attack }),
     ...(def.moveSpeed !== undefined && { moveSpeed: def.moveSpeed }),
+    ...(def.maxHp !== undefined && { maxHp: def.maxHp }),
+    ...(def.phasing && { phasing: def.phasing }),
   };
 }
 

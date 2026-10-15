@@ -6,6 +6,12 @@ export enum EnemyType {
   Kiter = 'kiter',
 }
 
+/** Rytm przenikania upiora: tyle ms cielesny, potem tyle bezcielesny (w pętli). */
+export interface PhasingDefinition {
+  readonly solidMs: number;
+  readonly phasedMs: number;
+}
+
 /** Cecha elity (krok 42): zwykły wróg z jedną albo kilkoma cechami jest elitą. */
 export enum EliteAffix {
   /** Zostawia za sobą smugę żaru, po śmierci płonącą kałużę. */
@@ -41,6 +47,8 @@ export enum EnemyVariant {
   Hellhound = 'hellhound',
   /** Piekło (krok 41d): kultysta popiołu (Kiter) — rzuca łukiem bombę smolną, po wybuchu płonie kałuża. */
   Cultist = 'cultist',
+  /** Zasadzki (krok 49): upiór (Rusher) — przenika (chwilami bezcielesny i nietykalny), dotyk mrozi i spowalnia. */
+  Ghost = 'ghost',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
@@ -246,6 +254,8 @@ export interface EnemyDefinition {
   readonly moveSpeed: number;
   readonly attack: EnemyAttackDefinition;
   readonly behaviour: EnemyBehaviour;
+  /** Przenikanie upiora (krok 49): na przemian cielesny i bezcielesny (wtedy nietykalny i nie atakuje). */
+  readonly phasing?: PhasingDefinition;
   /** Cechy elity (krok 42); brak albo pusto = zwykły wróg. */
   readonly affixes?: readonly EliteAffix[];
 }

@@ -27,6 +27,10 @@ import type { SecretArea } from '@/dungeon/SecretRoom';
 import { disguiseFloor, secretArea } from '@/dungeon/SecretRoom';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
 import { TrapManager } from '@/combat/TrapManager';
+import { AmbushManager } from '@/combat/AmbushManager';
+import { AMBUSH_CONFIG } from '@/config/ambushConfig';
+import { planAmbushRoom } from '@/dungeon/AmbushPlanner';
+import { hasAmbush } from '@/systems/Ambush';
 import { BreakableManager } from '@/combat/BreakableManager';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
@@ -128,6 +132,8 @@ const ELITE_SEED_SALT = 0xe117;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
 const SECRET_ROOM_SEED_SALT = 0x5ec7;
 const SPIKE_SEED_SALT = 0x5b1e;
+const AMBUSH_ROOM_SEED_SALT = 0xa3b0;
+const AMBUSH_SEED_SALT = 0xa3b1;
 const DART_SEED_SALT = 0xda27;
 const BREAKABLE_SEED_SALT = 0xb7ea;
 const TOAST_DURATION_MS = 2500;
@@ -155,6 +161,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private puffballs: PuffballManager | null = null;
   private secretArea: SecretArea | null = null;
   private secretRoom: SecretRoomManager | null = null;
+  private ambushRoomId: number | null = null;
+  private ambush: AmbushManager | null = null;
+  /** Upiory zasadzki: zawsze widoczne (świecą nad mrokiem), bez łupu. */
+  private ambushGhosts = new Set<Phaser.GameObjects.Sprite>();
   private traps: TrapManager | null = null;
   private breakables: BreakableManager | null = null;
   private braziers: BrazierManager | null = null;
@@ -227,6 +237,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.healCooldown = new Timer();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
+    this.ambush = null;
+    this.ambushGhosts = new Set();
     this.traps = null;
     this.breakables = null;
     // Restart sceny niszczy obiekty — grafika promienia powstanie od nowa.
@@ -245,6 +257,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.biome = biome;
     const tileset = this.cache.json.get(biome.tileset.jsonKey) as TilesetMeta;
     // Ukryta komnata (krok 46): rysujemy piętro z komnatą w przebraniu muru; prawdziwy obraz czeka na odsłonięcie.
+    // Zasadzka (krok 49): co 1–2 piętra jeden zwykły pokój staje się pokojem zasadzki — przed dekorowaniem (kraty).
+    this.ambushRoomId = null;
+    if (hasAmbush(this.runSeed, this.floorNumber, AMBUSH_CONFIG)) {
+      const plan = planAmbushRoom(this.dungeon, AMBUSH_CONFIG.minSide, createRng(deriveSeed(this.dungeon.seed, AMBUSH_ROOM_SEED_SALT)));
+      if (plan) {
+        this.dungeon = plan.floor;
+        this.ambushRoomId = plan.roomId;
+      }
+    }
     this.secretArea = secretArea(this.dungeon);
     const shown = this.secretArea ? disguiseFloor(this.dungeon, this.secretArea) : this.dungeon;
     // Pochodnie przed dekorowaniem: detale lica muru omijają kafle z uchwytem.
@@ -275,6 +296,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupLoot();
     this.setupShrine();
     this.setupSecretRoom();
+    this.setupAmbush();
     this.setupRuinsProps();
     this.createStairsPrompt();
     this.inputController = new InputController(this);
@@ -318,6 +340,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stickyWebs?.update(time);
     this.puffballs?.update(time);
     this.secretRoom?.update();
+    this.ambush?.update(time);
     this.traps?.update(time);
     this.breakables?.update();
     this.braziers?.update(time);
@@ -529,6 +552,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       decals: this.combatDecals,
       onPlayerHit,
       onEnemyKilled: (enemy) => {
+        // Upiory zasadzki rozwiewają się bez łupu — nagrodą jest przynęta.
+        if (this.ambushGhosts.has(enemy)) return;
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
       },
@@ -675,6 +700,27 @@ export class GameScene extends Phaser.Scene implements HudSource {
       : null;
   }
 
+  /** Pokój zasadzki (krok 49): przynęta, kraty, mrok i fale upiorów. */
+  private setupAmbush(): void {
+    const room = this.ambushRoomId === null ? undefined : this.dungeon.rooms[this.ambushRoomId];
+    if (!room) return;
+    this.ambush = new AmbushManager({
+      scene: this,
+      floor: this.dungeon,
+      room,
+      config: AMBUSH_CONFIG,
+      view: this.dungeonView,
+      lighting: () => this.lighting ?? null,
+      player: this.player,
+      enemies: this.enemies,
+      effects: this.effects,
+      rng: createRng(deriveSeed(this.dungeon.seed, AMBUSH_SEED_SALT)),
+      spawnLoot: (at, drops) => this.loot.spawn(at, drops),
+      onGhost: (ghost) => this.ambushGhosts.add(ghost),
+      toast: (text) => this.showToast(text),
+    });
+  }
+
   /**
    * Pułapki i urny ruin (krok 48): pas kolców, strzałki z murów, urny i skrzynie do rozbicia. Każdy planer ma
    * własny strumień RNG; kolejne omijają kafle poprzednich i kapliczkę.
@@ -718,7 +764,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       walls: this.dungeonView.collisionLayer,
       player: this.player,
       // Mikstury zostają na ziemi, dopóki gracz ma pełne HP — można po nie wrócić.
-      canCollect: (drop) => drop.kind !== PickupKind.Health || !this.player.health.isFull,
+      canCollect: (drop) =>
+        (drop.kind !== PickupKind.Health || !this.player.health.isFull) && (this.ambush?.canCollect(drop) ?? true),
       onCollect: (drop, position) => this.collect(drop, position),
     });
   }
@@ -963,7 +1010,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Wrogowie ukrywani poza światłem: zwykli wrogowie i wszystkie pajączki (bez bossa). */
   private *hideableEnemies(): Iterable<Phaser.GameObjects.Sprite> {
-    if (this.enemies) for (const enemy of this.enemies.living) if (!this.galleryEnemies.has(enemy)) yield enemy;
+    if (this.enemies) {
+      for (const enemy of this.enemies.living) if (!this.galleryEnemies.has(enemy) && !this.ambushGhosts.has(enemy)) yield enemy;
+    }
     if (this.cocoons) yield* this.cocoons.spiderlings;
     if (this.bossFight) yield* this.bossFight.minions;
   }

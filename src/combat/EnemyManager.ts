@@ -114,11 +114,16 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   /** Wróg archetypu w wariancie biomu, ze skalowaniem piętra i modyfikatorem (także pająk z sufitu); z cechami — elita. */
-  spawnAt(type: EnemyType, position: Vector2, affixes: readonly EliteAffix[] = []): Enemy {
-    const base = enemyDefinitionFor(ENEMY_DEFINITIONS[type], this.deps.enemyVariants[type], ENEMY_VARIANTS);
+  spawnAt(
+    type: EnemyType,
+    position: Vector2,
+    affixes: readonly EliteAffix[] = [],
+    options: { readonly variant?: EnemyVariant; readonly phaseOffsetMs?: number; readonly riseMs?: number } = {},
+  ): Enemy {
+    const base = enemyDefinitionFor(ENEMY_DEFINITIONS[type], options.variant ?? this.deps.enemyVariants[type], ENEMY_VARIANTS);
     const scaled = scaleEnemyForFloor(base, this.deps.floorNumber, ENEMY_SCALING);
     const definition = applyElite(applyFloorToEnemy(scaled, this.deps.floorEffects), affixes, ELITE_CONFIG);
-    const enemy = new Enemy(this.deps.scene, position.x, position.y, definition);
+    const enemy = new Enemy(this.deps.scene, position.x, position.y, definition, options);
     this.group.add(enemy);
     this.enemies.push(enemy);
     if (affixes.length > 0) {

@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -3189,6 +3189,28 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Do oceny w testach właściciela** `#ruiny`: częstość i siła pułapek, ilość urn i łupu.
 
+## Krok 49 — Pokoje zasadzki i upiór `#zasadzka`
+
+**Decyzja właściciela** `#decyzja` `#zasadzka`: pokój z kratami pojawiający się losowo co 1–2 biomy — zasadzka: przedmiot na środku pustego pokoju; po wejściu światło przygasa i nadciąga fala duchów; nowy rodzaj potwora do takich zdarzeń. Pułapki i urny zostają tylko w ruinach.
+
+**Harmonogram** (`systems/Ambush.ts → hasAmbush`): z seeda runu — pierwsza zasadzka na piętrze 1 albo 2, każda kolejna 1–2 piętra później (biom = piętro; Piekło ma dwa). W pętli wieży harmonogram trwa dalej.
+
+**Pokój** (`dungeon/AmbushPlanner.ts`): losowy zwykły pokój o krótszym boku ≥ 6 dostaje rodzaj `RoomKind.Ambush` — planery wrogów, kapliczki, pułapek, urn, kokonów i palenisk go pomijają. Wejścia dostają kraty (`dressGates`: arena + pokój zasadzki). Na środku leży **przynęta: losowy przedmiot z puli** — nie da się go podnieść, dopóki zasadzka trwa.
+
+**Przebieg** (`AmbushState`, `combat/AmbushManager.ts`): gracz ≥ 2 kafle w głąb pokoju → kraty opadają, wstrząs, „Zasadzka! Światło gaśnie…”, mrok narasta przez 0,9 s → po 1,1 s fala 3 upiorów → po jej wybiciu przerwa i fala 4 upiorów → światło wraca, kraty się podnoszą, „Upiory rozwiały się — nagroda jest twoja.”, przedmiot do podniesienia. Upiory nie zostawiają łupu.
+
+**Mrok zasadzki** (`LightingOverlay.setDread`): druga warstwa ciemności (0,86) z małym kręgiem światła wokół gracza (pełne światło 40 px, brzeg 120 px), płynnie narasta i opada; pochodnie jej nie rozjaśniają. Upiory są rysowane nad mrokiem — świecą w ciemności.
+
+**Upiór** (`EnemyVariant.Ghost`, wariant Rushera — nowy potwór do zdarzeń): 24 HP, 100 px/s; **przenika**: 2,4 s cielesny, 0,9 s bezcielesny (przezroczysty, nietykalny, nie atakuje, ale dalej płynie do gracza); fazy upiorów w fali rozłożone na cały cykl; przy pojawieniu **wynurza się** 0,9 s (nietykalny, bierny, rośnie przezroczystość); dotyk 8 obrażeń + spowolnienie 30% na 1,2 s. Grafika: generator `tools/ghost_sprites.py` → `ghost_float-grasp.png` (8 kierunków, 0–3 unoszenie z falującym trenem, 4–7 chwyt), blady błękit całunu, puste oczodoły z lodowym blaskiem.
+
+**Liczby:** `config/ambushConfig.ts` (`AMBUSH_CONFIG`), upiór w `ENEMY_VARIANTS`, wygląd `GHOST_VISUAL`. Sole RNG: pokój `0xa3b0`, przebieg `0xa3b1`, harmonogram `0xa3b5`.
+
+**Testy:** `tests/systems/ambush.test.ts` — harmonogram (pierwsza na 1–2, odstępy 1–2, determinizm), pokój (rozmiar, bez wrogów i kapliczki), miejsca upiorów (w pokoju, z dala od gracza), przebieg (kraty → fale po kolei → koniec), upiór (przenikanie, spowolnienie, wygląd); `AmbushPlanner.ts` w `PURE_FILES`. Build: 1076 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=1&seed=3&hero=sorceress` — pokój zasadzki z Ostrzem na środku; wejście: kraty, mrok z kręgiem światła, upiory wynurzają się i świecą, przenikające są półprzezroczyste; po dwóch falach światło wraca, kraty w górę, Ostrze podniesione; bez błędów w konsoli.
+
+**Do oceny w testach właściciela** `#zasadzka`: częstość, liczba upiorów w falach, siła mroku, wygląd upiora.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -3287,7 +3309,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
 
-**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (wyzwanie z falami, przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
+**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
 
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
 

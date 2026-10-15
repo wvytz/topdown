@@ -218,6 +218,25 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       patch: { radius: 26, durationMs: 2500, damage: 4 },
     },
   },
+  // Zasadzki (krok 49): upiór — słabszy od Rushera (24 HP), ale przenika: 2,4 s cielesny, 0,9 s bezcielesny
+  // (nietykalny, nie atakuje). Dotyk mrozi: spowolnienie 30% na 1,2 s.
+  [EnemyVariant.Ghost]: {
+    type: EnemyType.Rusher,
+    color: 0xb8d8e8,
+    maxHp: 24,
+    moveSpeed: 100,
+    phasing: { solidMs: 2400, phasedMs: 900 },
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 8,
+      range: 30,
+      hitRange: 40,
+      windupMs: 420,
+      cooldownMs: 1100,
+      knockback: 120,
+      status: { slow: { pct: 0.3, durationMs: 1200 } },
+    },
+  },
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */

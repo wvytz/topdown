@@ -17,6 +17,8 @@ export enum RoomKind {
   Boss = 'boss',
   /** Ukryta komnata za areną (krok 46): bez wrogów i rekwizytów planerów, z kokonami skarbu. */
   Secret = 'secret',
+  /** Pokój zasadzki (krok 49): pusty, z przynętą na środku; kraty, mrok i fale upiorów. */
+  Ambush = 'ambush',
 }
 
 /** Pozycja w siatce kafelków (nie w pikselach). */

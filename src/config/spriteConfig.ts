@@ -321,6 +321,21 @@ export const SPRITE_SHEETS = {
       land: { frames: [7], loop: false },
     },
   },
+  // Upiór zasadzek (krok 49, tools/ghost_sprites.py): 0–3 unoszenie, 4–7 chwyt.
+  ghost: {
+    key: 'sheet-ghost',
+    url: 'assets/sprites/ghost_float-grasp.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      float: { frames: [0, 1, 2, 3], loop: true },
+      grasp: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
   // Kultysta: 0–3 chód, 4–7 rzut (bomba wylatuje po kolumnie 7).
   cultist: {
     key: 'sheet-cultist',
@@ -760,6 +775,8 @@ export interface EnemyVisual {
    * cień w sprite'cie (lewitujący mag) albo podstawę z kałuży (boss). Wymiary i przesunięcie w px.
    */
   readonly groundShadow?: { readonly width: number; readonly height: number; readonly offsetX: number; readonly offsetY: number };
+  /** Rysowany nad warstwą mroku — świeci w ciemności (upiór, krok 49). */
+  readonly aboveDarkness?: boolean;
 }
 
 /** Cień pod postaciami 32 px (bohater, Rusher): lekko w dół, jak światło z północy. */
@@ -787,7 +804,17 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
     groundShadow: WALKER_SHADOW,
   },
   [EnemyVariant.Cultist]: { sheet: 'cultist', move: 'walk', idle: 'idle', attack: 'throw', groundShadow: WALKER_SHADOW },
+  // Upiór unosi się nad posadzką — bez cienia (krok 49).
+  [EnemyVariant.Ghost]: { sheet: 'ghost', move: 'float', attack: 'grasp', aboveDarkness: true },
 };
+
+/** Upiór (krok 49): świeci nad mrokiem; przezroczystość cielesny/bezcielesny; wynurzanie się przy pojawieniu. */
+export const GHOST_VISUAL = {
+  solidAlpha: 0.9,
+  phasedAlpha: 0.28,
+  /** Wynurzanie: od tej alfy do pełnej przez czas `riseMs` z konfiguracji zasadzki. */
+  riseFromAlpha: 0,
+} as const;
 
 /**
  * Rzuty łukiem (krok 41d): wygląd bomby, start przed rzucającym i wysokość łuku (wizualnie — bomba unosi się

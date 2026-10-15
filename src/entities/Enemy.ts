@@ -24,6 +24,8 @@ import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
+import { GHOST_VISUAL } from '@/config/spriteConfig';
+import { isPhased } from '@/systems/Ambush';
 import { isShielded, turnToward } from '@/systems/Shield';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
@@ -80,7 +82,18 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   /** Ostatnie trafienie przyjęte na tarczę — błysk w kolorze stali zamiast bieli. */
   private lastHitBlocked = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, definition: EnemyDefinition) {
+  /** Upiór (krok 49): przesunięcie fazy przenikania i koniec wynurzania (do tej chwili nietykalny i bierny). */
+  private readonly phaseOffsetMs: number;
+  private readonly riseUntil: number;
+  private readonly riseStart: number;
+
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    definition: EnemyDefinition,
+    options: { readonly phaseOffsetMs?: number; readonly riseMs?: number } = {},
+  ) {
     super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.variant].sheet].key);
     this.definition = definition;
     this.health = new Health(definition.maxHp);
@@ -96,6 +109,29 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.animator = new DirectionalAnimator(this, this.visual.sheet);
     if (this.visual.groundShadow) attachGroundShadow(this, this.visual.groundShadow);
     this.animator.play(this.visual.idle ?? this.visual.move);
+    this.phaseOffsetMs = options.phaseOffsetMs ?? 0;
+    this.riseStart = scene.time.now;
+    this.riseUntil = scene.time.now + (options.riseMs ?? 0);
+    // Upiór świeci nad mrokiem (zasadzka przyciemnia światło).
+    if (this.visual.aboveDarkness) this.setDepth(RENDER_DEPTH.darkness + 0.1);
+  }
+
+  /** Bezcielesny (przenikanie) albo jeszcze się wynurza — wtedy nietykalny i nie atakuje. */
+  isIntangible(now: number): boolean {
+    if (now < this.riseUntil) return true;
+    const phasing = this.definition.phasing;
+    return phasing ? isPhased(phasing, this.phaseOffsetMs, now) : false;
+  }
+
+  /** Przezroczystość upiora: wynurzanie, potem cielesny/bezcielesny. */
+  private updateGhostAlpha(now: number): void {
+    if (!this.definition.phasing) return;
+    if (now < this.riseUntil) {
+      const t = (now - this.riseStart) / Math.max(1, this.riseUntil - this.riseStart);
+      this.setAlpha(GHOST_VISUAL.riseFromAlpha + (GHOST_VISUAL.solidAlpha - GHOST_VISUAL.riseFromAlpha) * t);
+      return;
+    }
+    this.setAlpha(this.isIntangible(now) ? GHOST_VISUAL.phasedAlpha : GHOST_VISUAL.solidAlpha);
   }
 
   get radius(): number {
@@ -134,6 +170,24 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   tick(perception: EnemyPerception, now: number, handler: EnemyAttackHandler): void {
     if (this.isDead) return;
     this.turnShield(perception, now);
+    this.updateGhostAlpha(now);
+    if (now < this.riseUntil) {
+      this.setVelocity(0, 0);
+      return;
+    }
+    // Bezcielesny upiór dalej płynie do gracza, ale nie atakuje (przerwany zamach przepada).
+    if (this.isIntangible(now)) {
+      this.attackCycle.interrupt();
+      const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
+      const dx = perception.target.x - this.x;
+      const dy = perception.target.y - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      this.setVelocity((dx / d) * speed, (dy / d) * speed);
+      this.animator.face({ x: dx, y: dy });
+      this.animator.play(this.visual.move);
+      this.updateTint(now);
+      return;
+    }
     if (this.pounce) {
       this.updatePounce(now, handler);
       return;
@@ -180,6 +234,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeHit(hit: Hit, now: number, source: Vector2): DamageResult {
+    // Bezcielesny upiór: ciosy przenikają przez niego.
+    if (this.isIntangible(now)) return { dealt: 0, died: false };
     // Tarczownik: cios od frontu przyjmuje tylko część obrażeń.
     const shield = ELITE_CONFIG.shield;
     const blocked = this.hasAffix(EliteAffix.Shielded) && isShielded(this, this.shieldFacing, shield.arcDeg, source);

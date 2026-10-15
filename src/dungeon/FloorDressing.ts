@@ -1,5 +1,5 @@
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
-import { TileType } from '@/core/dungeonTypes';
+import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
 import { createRng } from '@/core/random';
 import type { TilesetMeta, TilesetTile } from '@/core/tilesetTypes';
@@ -404,20 +404,22 @@ function dressStairs(ctx: DressingContext, layer: LayerBuilder): DressedStairs {
   return { anchor: floor.stairs, locked: framesOf(locked), open: framesOf(open) };
 }
 
+/** Kraty: wejścia areny bossa i pokoju zasadzki (krok 49). */
 function dressGates(ctx: DressingContext): DressedGate[] {
   const { floor, config } = ctx;
-  const arena = floor.rooms[floor.bossRoomId];
-  if (!arena) return [];
-  return findRoomEntrances(floor, arena).map((point) => {
-    const orientation = gateOrientation(arena, point);
-    const names = config.gateTiles[orientation];
-    return {
-      x: point.x,
-      y: point.y,
-      orientation,
-      frames: { open: ctx.tile(names.open).frame, half: ctx.tile(names.half).frame, closed: ctx.tile(names.closed).frame },
-    };
-  });
+  const rooms = floor.rooms.filter((r) => r.id === floor.bossRoomId || r.kind === RoomKind.Ambush);
+  return rooms.flatMap((room) =>
+    findRoomEntrances(floor, room).map((point) => {
+      const orientation = gateOrientation(room, point);
+      const names = config.gateTiles[orientation];
+      return {
+        x: point.x,
+        y: point.y,
+        orientation,
+        frames: { open: ctx.tile(names.open).frame, half: ctx.tile(names.half).frame, closed: ctx.tile(names.closed).frame },
+      };
+    }),
+  );
 }
 
 // ---------------- cienie i ściany ----------------
