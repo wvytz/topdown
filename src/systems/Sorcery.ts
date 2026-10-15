@@ -145,6 +145,36 @@ export interface BeamStrike {
 }
 
 /** Promień rani każdy cel, którego krąg dotyka odcinka; odrzut wzdłuż promienia. */
+/** Rozprysk kuli (krok 50): wokół miejsca trafienia, bez głównego celu. */
+export interface OrbSplash {
+  readonly center: Vector2;
+  readonly radius: number;
+  readonly damage: number;
+  readonly now: number;
+  /** Skąd trafieni „słyszą” atak (pozycja Czarodziejki). */
+  readonly source: Vector2;
+  /** Główny cel kuli — dostał już pełne obrażenia. */
+  readonly exclude: object | null;
+}
+
+/** Obrażenia rozprysku: ułamek obrażeń kuli, co najmniej 1. */
+export function splashDamage(orbDamage: number, fraction: number): number {
+  return Math.max(1, Math.round(orbDamage * fraction));
+}
+
+/** Rozprysk: rani cele, których krąg dotyka koła rozprysku (poza głównym celem); magia, bez statusów i odrzutu. */
+export function resolveSplash<T extends MeleeTarget>(splash: OrbSplash, targets: readonly T[]): SwingResult<T> {
+  const hit: T[] = [];
+  const killed: T[] = [];
+  for (const target of targets) {
+    if (target === splash.exclude) continue;
+    if (Math.hypot(target.x - splash.center.x, target.y - splash.center.y) > splash.radius + target.radius) continue;
+    hit.push(target);
+    if (target.takeHit({ damage: splash.damage, knockback: { x: 0, y: 0 }, magic: true }, splash.now, splash.source).died) killed.push(target);
+  }
+  return { hit, killed };
+}
+
 export function resolveBeam<T extends MeleeTarget>(beam: BeamStrike, targets: readonly T[]): SwingResult<T> {
   const hit: T[] = [];
   const killed: T[] = [];

@@ -30,8 +30,8 @@ import type { FloorModifierEffects } from '@/core/floorModifierTypes';
 import { applyFloorToEnemy } from '@/systems/FloorModifiers';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
-import type { BeamStrike } from '@/systems/Sorcery';
-import { resolveBeam } from '@/systems/Sorcery';
+import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
+import { resolveBeam, resolveSplash } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
@@ -314,6 +314,12 @@ export class EnemyManager implements EnemyAttackHandler {
     const { hit, killed } = resolveBeam(beam, [...this.enemies]);
     for (const enemy of killed) this.kill(enemy);
     return hit.length;
+  }
+
+  /** Rozprysk kuli Czarodziejki (krok 50). */
+  resolveSplash(splash: OrbSplash): void {
+    const { killed } = resolveSplash(splash, [...this.enemies]);
+    for (const enemy of killed) this.kill(enemy);
   }
 
   /** Pocisk gracza — zwraca trafionego przeciwnika albo null. */

@@ -50,8 +50,8 @@ import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
-import type { BeamStrike } from '@/systems/Sorcery';
-import { resolveBeam } from '@/systems/Sorcery';
+import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
+import { resolveBeam, resolveSplash } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
@@ -328,6 +328,12 @@ export class BossFight {
   }
 
   /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
+  /** Rozprysk kuli Czarodziejki (krok 50): pajączki, kokony spiżarni i boss (tarcza działa jak przy ciosie). */
+  resolveSplash(splash: OrbSplash): void {
+    const { killed } = resolveSplash(splash, this.targets());
+    this.handleKills(killed);
+  }
+
   resolvePlayerBeam(beam: BeamStrike): number {
     if (!this.boss) return 0;
     // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie. U Kata rozgrzewa tarczę.

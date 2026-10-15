@@ -198,3 +198,24 @@ describe('magia Czarodziejki (krok 49b)', () => {
     expect(hits[1]?.magic).toBeUndefined();
   });
 });
+
+describe('rozprysk kuli (krok 50)', () => {
+  it('rani sąsiadów głównego celu ułamkiem obrażeń, magią i bez statusów; główny cel pomija', async () => {
+    const { resolveSplash, splashDamage } = await import('@/systems/Sorcery');
+    const { HERO_DEFINITIONS } = await import('@/config/heroConfig');
+    const splash = HERO_DEFINITIONS.sorceress.sorcery!.orbs.splash;
+    const hits: Array<{ who: string; damage: number; magic?: boolean; status?: unknown }> = [];
+    const mk = (who: string, x: number) => ({ x, y: 0, radius: 8, takeHit: (h: { damage: number; magic?: boolean; status?: unknown }) => (hits.push({ who, ...h }), { dealt: h.damage, died: false }) });
+    const main = mk('main', 0);
+    const near = mk('near', splash.radius + 4);
+    const far = mk('far', splash.radius + 40);
+    const damage = splashDamage(14, splash.damageFraction);
+    resolveSplash({ center: { x: 0, y: 0 }, radius: splash.radius, damage, now: 0, source: { x: -50, y: 0 }, exclude: main }, [main, near, far]);
+    expect(hits.map((h) => h.who)).toEqual(['near']);
+    expect(hits[0]!.damage).toBe(Math.round(14 * splash.damageFraction));
+    expect(hits[0]!.magic).toBe(true);
+    expect(hits[0]!.status).toBeUndefined();
+    expect(damage).toBeLessThan(14);
+    expect(splashDamage(1, 0.35)).toBe(1);
+  });
+});

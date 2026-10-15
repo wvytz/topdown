@@ -30,6 +30,8 @@ export interface OrbConfig {
   readonly orbitRadius: number;
   /** Czas jednego okrążenia kul wokół postaci. */
   readonly orbitPeriodMs: number;
+  /** Rozprysk (krok 50): wrogowie w promieniu od trafienia dostają ułamek obrażeń kuli (bez efektów przedmiotów). */
+  readonly splash: { readonly radius: number; readonly damageFraction: number };
 }
 
 /** Promień (PPM): ciągły, póki gracz trzyma przycisk; puszczenie blokuje go na `lockoutMs`. */

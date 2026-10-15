@@ -3243,6 +3243,19 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** promień i kula z magią przekazują znacznik do trafienia (`sorcery.test.ts`), pokój ≥ 7 w > 75% pięter, które go mają (`ambush.test.ts`). Build: 1079 testów.
 
+## Krok 50 — Rozprysk kuli Czarodziejki `#czarodziejka`
+
+**Decyzja właściciela** `#decyzja` `#czarodziejka`: z trzech propozycji delikatnego AoE (rozprysk kuli, ładunek trzeciej kuli, parząca orbita) — **rozprysk**. Opcja defensywna (parząca orbita) do rozważenia innym razem.
+
+- Kula po trafieniu rozpryskuje się w promieniu **24 px**: wrogowie dotykający koła rozprysku (poza głównym celem) dostają **35% obrażeń kuli** (14 → 5), jako magię (trafia też bezcielesne upiory), **bez efektów przedmiotów** (statusy tylko na głównym celu) i bez odrzutu.
+- Działa na zwykłych wrogów, pajączki i kokony z walk z bossem oraz na bossa (tarcza jak przy ciosie).
+- Wygląd: pierścień energii w kolorze kul (`ORB_SPLASH_VISUAL`).
+- Kod: `OrbConfig.splash` (`config/heroConfig.ts`), czyste `resolveSplash`, `splashDamage` (`systems/Sorcery.ts`), `EnemyManager/BossFight.resolveSplash`, `CombatEffects.splash`.
+
+**Testy:** rozprysk rani sąsiada, pomija główny cel i dalekich, magia bez statusów, obrażenia ≥ 1 (`sorcery.test.ts`). Build: 1080 testów.
+
+**Test botem (10 zasadzek, obie postacie, czasy):** w toku — wyniki dopiszę.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

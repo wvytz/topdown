@@ -48,6 +48,8 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
         sideOffset: 4,
         orbitRadius: 18,
         orbitPeriodMs: 1800,
+        // Krok 50 (wybór właściciela, wariant 1): delikatne AoE — rozprysk 24 px, 35% obrażeń kuli dla sąsiadów.
+        splash: { radius: 24, damageFraction: 0.35 },
       },
       beam: {
         range: 150,

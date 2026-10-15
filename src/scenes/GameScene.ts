@@ -37,8 +37,8 @@ import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, SECRET_ROOM_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
-import type { BeamStrike } from '@/systems/Sorcery';
-import { beamReach, crystalPoint } from '@/systems/Sorcery';
+import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
+import { beamReach, crystalPoint, splashDamage } from '@/systems/Sorcery';
 import {
   BOSS_LOOT,
   BREAKABLE_LOOT,
@@ -353,6 +353,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         const target =
           this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? null;
         if (target && shot.vampiric) this.tryVampireHeal(time);
+        if (target && shot.magic) this.orbSplash(shot.position, shot.damage, target, time);
         return target;
       },
     );
@@ -432,6 +433,23 @@ export class GameScene extends Phaser.Scene implements HudSource {
         magic: true,
       },
     );
+  }
+
+  /** Rozprysk kuli (krok 50): sąsiedzi trafionego dostają ułamek obrażeń; wrogowie, pajączki z bossa i boss. */
+  private orbSplash(at: Vector2, orbDamage: number, mainTarget: object, now: number): void {
+    const splash = this.player.sorceryConfig?.orbs.splash;
+    if (!splash) return;
+    const strike: OrbSplash = {
+      center: { x: at.x, y: at.y },
+      radius: splash.radius,
+      damage: splashDamage(orbDamage, splash.damageFraction),
+      now,
+      source: { x: this.player.x, y: this.player.y },
+      exclude: mainTarget,
+    };
+    this.enemies.resolveSplash(strike);
+    this.bossFight.resolveSplash(strike);
+    this.effects.splash(at.x, at.y, splash.radius);
   }
 
   /** Promień Czarodziejki: rysunek co klatkę, obrażenia w klatkach z tickiem; zatrzymuje się na ścianie. */
