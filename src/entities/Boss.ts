@@ -16,6 +16,7 @@ import { StatusEffects } from '@/systems/StatusEffects';
 import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
 import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { isShielded, turnToward } from '@/systems/Shield';
 
 const HIT_FLASH_MS = 70;
 const ENRAGE_TINT = 0xff7050;
@@ -33,6 +34,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   readonly visual: BossVisual;
   /** Do kiedy trwa animacja ataku (plucie trzyma ostatnią klatkę do końca ataku). */
   private attackPoseUntil = -Infinity;
+  /** Kierunek tarczy (radiany; Strażnik Bram, krok 41e) — obraca się do gracza z ograniczoną prędkością. */
+  private shieldFacing = Math.PI / 2;
+  private lastTickAt: number | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: BossDefinition, rng: Rng) {
     super(scene, x, y, SPRITE_SHEETS[BOSS_VISUALS[definition.id].sheet].key);
@@ -68,6 +72,17 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   /** Kierunek patrzenia (wiersz arkusza) — animacja śmierci zachowuje go. */
   get facing(): number {
     return this.animator.facing;
+  }
+
+  /** Kierunek tarczy (radiany) albo null, gdy boss nie ma tarczy. */
+  get shieldAngle(): number | null {
+    return this.definition.shield ? this.shieldFacing : null;
+  }
+
+  /** Czy atak z punktu `from` trafia w tarczę (przód bossa). */
+  isShieldedFrom(from: Vector2): boolean {
+    const shield = this.definition.shield;
+    return Boolean(shield) && this.isFighting && isShielded(this, this.shieldFacing, shield!.arcDeg, from);
   }
 
   get isEnraged(): boolean {
@@ -124,11 +139,14 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     return decision.newAttack;
   }
 
-  takeHit(hit: Hit, now: number, _source: Vector2): DamageResult {
+  takeHit(hit: Hit, now: number, source: Vector2): DamageResult {
     // Trafienie budzi bossa, nawet jeśli gracz zaatakował go z progu areny.
     this.activate(now);
     this.hitFlash.start(now, HIT_FLASH_MS);
-    const result = this.health.takeDamage(hit.damage);
+    // Cios w tarczę (z przodu) zadaje tylko część obrażeń; pociski i promień obsługuje BossFight wcześniej.
+    const shield = this.definition.shield;
+    const damage = shield && this.isShieldedFrom(source) ? Math.max(1, Math.round(hit.damage * shield.frontMeleeMultiplier)) : hit.damage;
+    const result = this.health.takeDamage(damage);
     if (!result.died) {
       // Ogłuszenie odsuwa też kolejny atak — boss „traci” ten czas, a nie tylko stoi.
       const { stunnedMs } = this.status.apply(hit.status, now);
@@ -153,7 +171,20 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
    * a ostatnia klatka trzyma się do końca ataku. Pusty wylęg (limit pajączków) nie ma animacji.
    */
   private updateAnimation(target: Vector2, newAttack: BossAttackPlan | null, now: number): void {
-    if (this.isFighting) this.animator.face({ x: target.x - this.x, y: target.y - this.y });
+    const dt = this.lastTickAt === null ? 0 : now - this.lastTickAt;
+    this.lastTickAt = now;
+    const toTarget = Math.atan2(target.y - this.y, target.x - this.x);
+    if (this.definition.shield) {
+      // Tarcza: na początku ataku boss zwraca się do gracza, w trakcie ataku stoi; poza atakiem obraca się wolno.
+      if (newAttack) this.shieldFacing = toTarget;
+      else if (this.isFighting && now >= this.attackPoseUntil) {
+        const step = ((this.definition.shield.turnRateDegPerSec * Math.PI) / 180) * (dt / 1000);
+        this.shieldFacing = turnToward(this.shieldFacing, toTarget, step);
+      }
+      if (this.isFighting) this.animator.face({ x: Math.cos(this.shieldFacing), y: Math.sin(this.shieldFacing) });
+    } else if (this.isFighting) {
+      this.animator.face({ x: target.x - this.x, y: target.y - this.y });
+    }
 
     const animation = newAttack ? this.visual.attacks[newAttack.kind] : undefined;
     const hasEvents =

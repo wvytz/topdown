@@ -309,6 +309,56 @@ export const FUNGAL_DEVOURER = {
 } satisfies BossDefinition;
 
 /**
+ * „Strażnik Bram” (krok 41e, piętro 5 — opcja A właściciela): mniejszy brat Kata Otchłani, uczy obchodzenia
+ * tarczy. Tarcza z przodu odbija pociski, zatrzymuje promień i przyjmuje połowę ciosu; obraca się wolno, a w ataku
+ * wcale. Ciosy: wirujący łańcuch dookoła (karze stanie za plecami) i uderzenie tarczą przed sobą.
+ * Bez haka i pierścienia ognia — te dostaje Kat. Liczby moje, do strojenia w teście.
+ */
+export const GATE_WARDEN = {
+  id: BossId.GateWarden,
+  name: 'Strażnik Bram',
+  title: 'Odźwierny Otchłani',
+  enragedLabel: 'Żar w żyłach!',
+  radius: 30,
+  color: 0x8a2a1a,
+  maxHp: 420,
+  moveSpeed: 62,
+  engageDistance: 56,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1300,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam],
+  patternOrder: PatternOrder.Shuffled,
+  shield: {
+    arcDeg: 120,
+    turnRateDegPerSec: 110,
+    frontMeleeMultiplier: 0.5,
+    reflectSpeed: 0.8,
+  },
+  // Wirujący łańcuch: hak okrąża bossa — strefa dookoła, także za plecami.
+  slam: {
+    radius: 92,
+    telegraphMs: 900,
+    recoveryMs: 700,
+    damage: 18,
+    knockback: 320,
+  },
+  // Uderzenie tarczą: przed bossem, szybkie i ciężkie; potem chwila na obejście go.
+  cleave: {
+    reach: 40,
+    radius: 44,
+    telegraphMs: 650,
+    recoveryMs: 800,
+    damage: 20,
+    knockback: 360,
+  },
+  enrage: {
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
  * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
  */
@@ -316,6 +366,7 @@ export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_QUEEN,
   3: SPIDER_KING,
   4: FUNGAL_DEVOURER,
+  5: GATE_WARDEN,
 };
 
 export function bossForFloor(floor: number): BossDefinition {

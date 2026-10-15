@@ -57,6 +57,8 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
+import { reflectDirection } from '@/systems/Shield';
 import type { CombatDecalKind } from '@/config/dressingConfig';
 import { THRONE_ROOM } from '@/config/dressingConfig';
 
@@ -169,6 +171,8 @@ export class BossFight {
   /** Sala tronowa Grzybowego Pożeracza (krok 39): krew na graczu po trafieniu, sok nad bossem przy leczeniu. */
   private readonly throneRoomFx: boolean;
 
+  private readonly shieldArc: Phaser.GameObjects.Graphics | null;
+
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
@@ -185,6 +189,8 @@ export class BossFight {
     deps.scene.physics.add.collider(boss, deps.walls);
     deps.scene.physics.add.collider(deps.player, boss);
     this.spiderlings = new SpiderlingSwarm(deps);
+    // Tarcza (Strażnik Bram, krok 41e): łuk chronionego stożka przed bossem.
+    this.shieldArc = definition.shield ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) : null;
 
     this.larderRng = createRng(deriveSeed(deps.floor.seed, LARDER_SEED_SALT));
     const feast = definition.feast;
@@ -250,6 +256,7 @@ export class BossFight {
 
   update(now: number): void {
     const boss = this.boss;
+    this.drawShieldArc(boss);
     if (!boss) return;
     const { player } = this.deps;
 
@@ -302,7 +309,10 @@ export class BossFight {
   /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
   resolvePlayerBeam(beam: BeamStrike): number {
     if (!this.boss) return 0;
-    const { hit, killed } = resolveBeam(beam, this.targets());
+    // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie.
+    const shielded = this.boss.isShieldedFrom(beam.source);
+    const targets = shielded ? this.targets().filter((t) => t !== this.boss) : this.targets();
+    const { hit, killed } = resolveBeam(beam, targets);
     this.handleKills(killed);
     return hit.filter((t) => !(t instanceof LarderCocoon)).length;
   }
@@ -312,7 +322,25 @@ export class BossFight {
    * Zwraca trafiony cel (trafienie budzi bossa jak cios wręcz).
    */
   resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | LarderCocoon | null {
-    if (!this.boss) return null;
+    const boss = this.boss;
+    if (!boss) return null;
+    // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, wraca do strzelca (już jako pocisk wroga).
+    const shield = boss.definition.shield;
+    const touches = Math.hypot(shot.position.x - boss.x, shot.position.y - boss.y) <= shot.radius + boss.radius;
+    if (shield && touches && !shot.ignore?.has(boss) && boss.isShieldedFrom(shot.position)) {
+      const speed = Math.hypot(shot.velocity.x, shot.velocity.y) * shield.reflectSpeed;
+      this.deps.projectiles.fire({
+        origin: shot.position,
+        direction: reflectDirection(shot.velocity),
+        speed,
+        damage: shot.damage,
+        knockback: shot.knockback,
+        lifetimeMs: 1500,
+      });
+      this.deps.effects.impact(shot.position.x, shot.position.y, 10);
+      boss.activate(shot.now);
+      return boss;
+    }
     const result = resolvePlayerShot(shot, this.targets());
     if (result?.died) this.handleKills([result.target]);
     return result?.target ?? null;
@@ -736,6 +764,20 @@ export class BossFight {
       }
       return false;
     });
+  }
+
+  /** Łuk tarczy przed bossem: widać, skąd trafienia się odbijają (tylko w walce). */
+  private drawShieldArc(boss: Boss | null): void {
+    const gfx = this.shieldArc;
+    if (!gfx) return;
+    gfx.clear();
+    const angle = boss?.shieldAngle;
+    if (!boss || angle === null || angle === undefined || !boss.isFighting) return;
+    const half = ((boss.definition.shield?.arcDeg ?? 0) * Math.PI) / 360;
+    const { color, alpha, width, gap } = SHIELD_ARC_VISUAL;
+    gfx.lineStyle(width, color, alpha).beginPath();
+    gfx.arc(boss.x, boss.y, boss.radius + gap, angle - half, angle + half);
+    gfx.strokePath();
   }
 
   private defeat(): void {

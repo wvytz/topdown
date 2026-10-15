@@ -2996,6 +2996,30 @@ Makieta generatora:
 
 ---
 
+## Krok 41e — Strażnik Bram (boss piętra 5) i tarcza `#pieklo` `#kat-otchlani`
+
+**Decyzja właściciela:** `#decyzja` piętro 5 kończy mniejszy boss (opcja A) — **Strażnik Bram**, wariant Kata Otchłani z samą tarczą i wirującym łańcuchem; uczy obchodzenia tarczy przed walką z Katem.
+
+**Tarcza (czysto: `systems/Shield.ts`, definicja `BossDefinition.shield`; wspólna z Katem):**
+- chroni stożek 120° przed bossem;
+- **pociski z przodu odbija** — wracają w stronę strzelca jako pociski wroga (prędkość ×0,8, te same obrażenia): kule Czarodziejki i strzały barbarzyńcy;
+- **promień z przodu nie rani** bossa (zatrzymuje się na żelazie);
+- **cios wręcz (i Burzowy pęd) w tarczę** zadaje połowę obrażeń;
+- tarcza obraca się do gracza 110°/s — wolniej, niż gracz okrąża bossa z bliska (~360°/s przy 80 px); na początku ataku boss zwraca się do gracza, a w trakcie ataku i przerwy po nim stoi — wtedy można go zajść;
+- przed bossem rysowany jest cienki pomarańczowy łuk chronionego stożka.
+
+**Strażnik Bram (`GATE_WARDEN`, liczby moje):** 420 HP bazowo (skalowane z piętrem: 672 na 5.), chód 62, wzór w „worku”: **wirujący łańcuch** (strefa 92 px dookoła — karze stanie za plecami, telegraf 0,9 s) i **uderzenie tarczą** przed sobą (telegraf 0,65 s, potem 0,8 s postoju). Plansza: „Strażnik Bram — Odźwierny Otchłani”, wściekłość „Żar w żyłach!”. Piętro 6 do czasu Kata ma Strażnika Piętra.
+
+**Wygląd (`tools/gatekeeper_sprites.py` → `gate-warden_walk-spin-bash.png`, 96×96):** demon w okopconym pancerzu, rogaty hełm ze szparą żaru, tarcza-wrota z żarzącą się runą zawsze z przodu (dominująca cecha), łańcuch z hakiem w prawej ręce; 0–3 chód, 4–7 wirowanie (hak okrąża bossa), 8–11 uderzenie tarczą (pchnięcie, rozbłysk runy, iskry). Bez animacji śmierci (błysk i plama).
+
+**Testy:** `tests/systems/shield.test.ts` (stożek, różnica kątów, obrót krótszą drogą, odbicie), `tests/ai/GateWarden.test.ts` (piętro 5, tarcza do obejścia, wzór, animacje); testy wyboru bossa pięter zaktualizowane. `npm run build`: 1006 testów.
+
+**Weryfikacja w przeglądarce** (`?hero=sorceress&seed=7&floor=5`): plansza bossa, łuk tarczy w stronę gracza; kula od frontu — boss bez obrażeń, odbita kula trafia Czarodziejkę (−14); kula od tyłu — −14 bossowi; promień od frontu — bez obrażeń; telegraf wirowania; bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** szerokość stożka, prędkość obrotu tarczy, czy odbite pociski nie są za mocne, tempo ataków.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

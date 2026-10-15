@@ -266,6 +266,23 @@ export const SPRITE_SHEETS = {
       spit: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Strażnik Bram (krok 41e, tools/gatekeeper_sprites.py): 96×96, 8 kierunków; 0–3 chód, 4–7 wirowanie
+  // łańcuchem, 8–11 uderzenie tarczą (tempo z telegrafu ataku).
+  gateWarden: {
+    key: 'sheet-gate-warden',
+    url: 'assets/sprites/gate-warden_walk-spin-bash.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 1152,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      spin: { frames: [4, 5, 6, 7], loop: false },
+      bash: { frames: [8, 9, 10, 11], loop: false },
+    },
+  },
   // Wrogowie Piekła (krok 41d, tools/infernal_enemies.py): 48×48, 8 kierunków.
   // Ogar: 0–3 bieg, 4 przysiad (zamach), 5–6 lot w skoku, 7 lądowanie / postój po chybieniu.
   hellhound: {
@@ -818,7 +835,17 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     },
     deathDecal: 'splat',
   },
+  // Strażnik Bram (krok 41e): wirowanie łańcuchem (slam) i uderzenie tarczą (cleave).
+  [BossId.GateWarden]: {
+    sheet: 'gateWarden',
+    move: 'walk',
+    attacks: { [BossAttackKind.Slam]: 'spin', [BossAttackKind.Cleave]: 'bash' },
+    deathDecal: 'splat',
+  },
 };
+
+/** Tarcza bossa: łuk chronionego stożka rysowany przed bossem (cienki, w kolorze żaru, stała alfa). */
+export const SHIELD_ARC_VISUAL = { color: 0xe0701c, alpha: 0.45, width: 2, gap: 6 } as const;
 
 /**
  * Kokon spiżarni Pożeracza: oddech, drżenie przy zewie, zjedzenie albo rozdarcie (łupina zostaje na podłodze).

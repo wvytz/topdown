@@ -38,6 +38,8 @@ export enum BossId {
   SpiderQueen = 'spider-queen',
   SpiderKing = 'spider-king',
   FungalDevourer = 'fungal-devourer',
+  /** Piekło, piętro 5 (krok 41e): Strażnik Bram — tarcza z przodu, wirujący łańcuch. */
+  GateWarden = 'gate-warden',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -258,6 +260,21 @@ export interface SpiderlingDefinition {
   readonly knockback: number;
 }
 
+/**
+ * Tarcza bossa (krok 41e): chroni stożek przed bossem — pociski z przodu odbija, promień z przodu nie rani,
+ * cios w tarczę zadaje część obrażeń. Boss obraca ją do gracza z ograniczoną prędkością, a w ataku wcale.
+ */
+export interface ShieldDefinition {
+  /** Szerokość chronionego stożka (stopnie, całość). */
+  readonly arcDeg: number;
+  /** Prędkość obrotu tarczy do gracza (stopnie na sekundę). */
+  readonly turnRateDegPerSec: number;
+  /** Cios wręcz (i dash) w tarczę zadaje tyle obrażeń (0–1). */
+  readonly frontMeleeMultiplier: number;
+  /** Odbity pocisk leci z prędkością pocisku ×tyle i zadaje tyle obrażeń co oryginał. */
+  readonly reflectSpeed: number;
+}
+
 export interface BossEnrageConfig {
   /** Próg HP (0..1), poniżej którego boss wpada we wściekłość. */
   readonly hpThreshold: number;
@@ -301,6 +318,8 @@ export interface BossDefinition {
   readonly call?: CallAttackDefinition;
   /** Spiżarnia i uczta (Grzybowy Pożeracz). */
   readonly feast?: FeastDefinition;
+  /** Tarcza z przodu (Strażnik Bram, Kat Otchłani). */
+  readonly shield?: ShieldDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
