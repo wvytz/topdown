@@ -2598,6 +2598,27 @@ Makieta generatora:
 
 ---
 
+## Publikacja dla testerów — GitHub Pages
+
+**Decyzje właściciela:** `#decyzja`
+- repozytorium publiczne, gra w przeglądarce na GitHub Pages dla testerów;
+- e-mail właściciela nie może być publiczny.
+
+**Zrobione:**
+- historia przepisana:
+  - wszystkie commity mają autora `wvytz` z adresem noreply GitHuba (`10197578+wvytz@…`);
+  - kopia zapasowa starej historii: `tools/out/topdown-przed-zmiana-emaila.bundle` (lokalnie, poza gitem);
+  - globalny `git config` na Kuźni też na noreply;
+- `npm run deploy:pages` (`tools/deploy-pages.mjs`): build (typy + testy + Vite) i nadpisanie gałęzi `gh-pages` zawartością `dist/` (z `.nojekyll`). Bez GitHub Actions, bo token `gh` nie ma uprawnienia `workflow`;
+- repozytorium publiczne, Pages włączone z `gh-pages`;
+- gra: **https://wvytz.github.io/topdown/**.
+
+**Weryfikacja:** strona zbudowana (`built`), wszystkie zasoby 200, gra startuje na piętrze 1 bez błędów w konsoli.
+
+**Ograniczenie:** `?seed=N&floor=M` działa tylko w `npm run dev` — testerzy zaczynają od piętra 1.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

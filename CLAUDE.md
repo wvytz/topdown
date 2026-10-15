@@ -23,7 +23,10 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
    - sprawdzenie w przeglądarce: `window.__game` w trybie dev, ręczne `game.step()`, gdy panel jest w tle.
 6. **Po każdym kroku dopisz sekcję „Krok N” do `docs/DEVLOG.md`**: co powstało, decyzje, testy, weryfikacja. Zaktualizuj backlog.
    - Wpisy właściciela oznaczaj znacznikami (legenda na górze DEVLOG): `#ocena` (feedback po testach), `#decyzja` (decyzje projektowe) i temat, np. `#matka-pajakow`, `#pajecze-leze`; nowy biom albo boss dostaje własny znacznik tematu.
-7. **Git i GitHub:** repozytorium prywatne `github.com/wvytz/topdown`, gałąź `main`. Commit i push robimy tylko na prośbę („wrzuć na githuba”). Opis commita po polsku, w stylu „Krok N: …”.
+7. **Git i GitHub:** repozytorium **publiczne** `github.com/wvytz/topdown`, gałąź `main`.
+   - Od kroku 32a commit i push po każdym skończonym kroku (po buildzie i DEVLOG), bez pytania. Opis commita po polsku, w stylu „Krok N: …”.
+   - Commity tylko z adresem noreply `10197578+wvytz@users.noreply.github.com` (historia przepisana — właściciel nie chce, by jego e-mail był publiczny).
+   - Gra dla testerów: https://wvytz.github.io/topdown/ (GitHub Pages z gałęzi `gh-pages`). Nową wersję wdraża `npm run deploy:pages` (build + nadpisanie `gh-pages`).
 
 ## Decyzje projektowe właściciela
 
