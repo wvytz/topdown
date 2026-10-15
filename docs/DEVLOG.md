@@ -2764,6 +2764,8 @@ Makieta generatora:
 
 **Weryfikacja:** `npm run build`; przeglądarka — zrzuty uderzenia DOWN (odpadające kamienie) i stanu końcowego, potem aktywne `GameScene`, brak błędów w konsoli.
 
+**Ocena właściciela po wdrożeniu:** `#ocena` `#ekran-startowy` „tak jest znacznie lepiej!!!” — motyw TOP / DOWN z samotną wieżą zaakceptowany; to kierunek dla kolejnych ekranów (mrok, koniec, popiół zamiast „arcade’owego” blasku).
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -2842,7 +2844,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **2. Do oceny przy okazji**
 - **Ekran śmierci (krok 35):** `#ekran-smierci` siła przyciemnienia (62%), tempo i zasięg rozkładu napisu (30% bloków w 7 s), ilość krwi.
-- **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą; długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
+- **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
