@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import type { DeathSummary } from '@/core/types';
 import type { RankedEntry } from '@/systems/Highscores';
-import { DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_BANDS } from '@/config/deathScreenConfig';
+import { DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW } from '@/config/deathScreenConfig';
 import { pixelText } from '@/core/pixelArt';
-import { deathFrame } from '@/systems/deathScreen';
+import type { PixelText } from '@/core/pixelArt';
+import { deathFrame, titleFlowIndex } from '@/systems/deathScreen';
 
 const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
@@ -29,6 +30,11 @@ export class DeathScreen {
   private readonly band: Phaser.GameObjects.Image;
   private readonly glow: Phaser.GameObjects.Image;
   private readonly title: Phaser.GameObjects.Container;
+  /** Lico liter — przerysowywane co klatkę (spływająca czerwień). */
+  private readonly titleFill: Phaser.GameObjects.Graphics;
+  private readonly titleText: PixelText;
+  private readonly titleLeft: number;
+  private readonly titleTop: number;
   private readonly score: Phaser.GameObjects.Text;
   private readonly ornament: Phaser.GameObjects.Container;
   private readonly header: Phaser.GameObjects.Text;
@@ -50,6 +56,11 @@ export class DeathScreen {
     this.vignette = scene.add.image(width / 2, height / 2, this.vignetteTexture(width, height));
     this.band = scene.add.image(width / 2, L.band.centerY, this.bandTexture(width));
     this.glow = scene.add.image(L.centerX, L.title.centerY, this.glowTexture());
+    const { unit, gap } = L.title;
+    this.titleText = pixelText('POLEGŁEŚ', gap);
+    this.titleLeft = (-this.titleText.width * unit) / 2;
+    this.titleTop = (-(this.titleText.height - this.titleText.top) * unit) / 2 - this.titleText.top * unit;
+    this.titleFill = scene.add.graphics();
     this.title = this.buildTitle();
 
     this.score = scene.add
@@ -97,6 +108,7 @@ export class DeathScreen {
     this.vignette.setAlpha(f.bandAlpha);
     this.band.setAlpha(f.bandAlpha * L.band.alpha);
     this.title.setAlpha(f.titleAlpha).setScale(f.titleScale);
+    this.drawTitleFill(now - (this.startedAt ?? now));
     this.glow.setAlpha(f.titleAlpha).setScale(f.titleScale);
     this.score.setAlpha(f.scoreAlpha);
     this.ornament.setAlpha(f.scoreAlpha);
@@ -131,23 +143,34 @@ export class DeathScreen {
     this.root.setVisible(false);
   }
 
-  /** POLEGŁEŚ: przygaszona czerwień, cienki obrys w czerni, tylko płytki cień — bez blasku i wytłoczenia. */
+  /** POLEGŁEŚ: cienki obrys w czerni i płytki cień (nieruchome) + lico ze spływającą czerwienią. */
   private buildTitle(): Phaser.GameObjects.Container {
-    const { unit, gap, outline: o } = L.title;
-    const text = pixelText('POLEGŁEŚ', gap);
-    const left = (-text.width * unit) / 2;
-    const top = (-(text.height - text.top) * unit) / 2 - text.top * unit;
+    const { unit, outline: o } = L.title;
     const g = this.scene.add.graphics();
     const layer = (dx: number, dy: number, color: number): void => {
       g.fillStyle(color);
-      for (const { x, y } of text.cells) g.fillRect(left + x * unit + dx, top + y * unit + dy, unit, unit);
+      for (const { x, y } of this.titleText.cells) {
+        g.fillRect(this.titleLeft + x * unit + dx, this.titleTop + y * unit + dy, unit, unit);
+      }
     };
     layer(0, 2 * o, P.blood0);
     for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o]] as const) layer(dx, dy, P.void);
-    for (const { x, y } of text.cells) {
-      g.fillStyle(DEATH_TITLE_BANDS[Math.max(0, y)] ?? P.eye0).fillRect(left + x * unit, top + y * unit, unit, unit);
+    return this.scene.add.container(L.centerX, L.title.centerY, [g, this.titleFill]);
+  }
+
+  /** Lico liter paskami po `stripPx`: kolor z rampy przesuwającej się w dół (`titleFlowIndex`). */
+  private drawTitleFill(t: number): void {
+    const { unit } = L.title;
+    const strip = FLOW.stripPx;
+    const top = this.titleText.top * unit;
+    const g = this.titleFill.clear();
+    for (const { x, y } of this.titleText.cells) {
+      for (let dy = 0; dy < unit; dy += strip) {
+        const py = y * unit + dy;
+        g.fillStyle(FLOW.ramp[titleFlowIndex(py - top, t)] ?? P.eye0);
+        g.fillRect(this.titleLeft + x * unit, this.titleTop + py, unit, strip);
+      }
     }
-    return this.scene.add.container(L.centerX, L.title.centerY, [g]);
   }
 
   /** Gotycki ozdobnik: cienkie linie i mały krzyż pośrodku. */

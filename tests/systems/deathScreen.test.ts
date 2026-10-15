@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEATH_LAYOUT, DEATH_TIMING as T } from '@/config/deathScreenConfig';
+import { DEATH_LAYOUT, DEATH_TIMING as T, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 import { pixelText } from '@/core/pixelArt';
-import { deathFrame, stepParticle } from '@/systems/deathScreen';
+import { deathFrame, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
 
 const ROWS = 5;
 const frame = (t: number) => deathFrame(t, ROWS);
@@ -78,5 +78,40 @@ describe('stepParticle', () => {
     expect(p.x).toBeCloseTo(10);
     const next = stepParticle(p, 100, 0.001);
     expect(next.y - p.y).toBeGreaterThan(p.y);
+  });
+});
+
+describe('titleFlowIndex — czerwień spływająca przez litery', () => {
+  const F = DEATH_TITLE_FLOW;
+  const cycle = F.ramp.length * F.bandPx;
+
+  it('zwraca poprawny indeks rampy także dla ujemnych przesunięć', () => {
+    for (let t = 0; t < 20_000; t += 333) {
+      for (let y = -24; y < 80; y += 2) {
+        const i = titleFlowIndex(y, t);
+        expect(Number.isInteger(i)).toBe(true);
+        expect(i).toBeGreaterThanOrEqual(0);
+        expect(i).toBeLessThan(F.ramp.length);
+      }
+    }
+  });
+
+  it('wzór przesuwa się w dół: to, co było na y, po chwili jest niżej', () => {
+    const dt = 500;
+    const dy = (dt / 1000) * F.speedPxPerSec;
+    for (let y = 0; y < 56; y += 2) expect(titleFlowIndex(y + dy, 1000 + dt)).toBe(titleFlowIndex(y, 1000));
+  });
+
+  it('pętla bez szwu: wzór powtarza się co cykl w przestrzeni i w czasie', () => {
+    const period = (cycle / F.speedPxPerSec) * 1000;
+    for (let y = 0; y < 56; y += 2) {
+      expect(titleFlowIndex(y + cycle, 700)).toBe(titleFlowIndex(y, 700));
+      expect(titleFlowIndex(y, 700 + period)).toBe(titleFlowIndex(y, 700));
+    }
+  });
+
+  it('w literze widać kilka tonów naraz (gradient, nie jednolita barwa)', () => {
+    const tones = new Set(Array.from({ length: 28 }, (_, i) => titleFlowIndex(i * 2, 1234)));
+    expect(tones.size).toBeGreaterThanOrEqual(4);
   });
 });

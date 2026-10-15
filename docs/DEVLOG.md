@@ -2846,6 +2846,28 @@ Makieta generatora:
 
 ---
 
+## Krok 41 — Ekran śmierci: czerwień spływająca przez litery
+
+**Prośba właściciela:** `#decyzja` `#ekran-smierci`
+- do ekranu z kroku 40: „animowany efekt w stylu spływającego w dół gradientu czerwieni wypełnienia liter”.
+
+**Co widać:**
+- lico liter POLEGŁEŚ to pasy czerwieni (od jasnej eye-1 przez eye-0 i blood-2 do zakrzepłej blood-1 i z powrotem), które **powoli i bez końca spływają w dół** (18 px/s) — jak krew przepływająca przez litery;
+- rampa jest cykliczna, więc pętla nie ma szwu (cykl 64 px ≈ wysokość litery, ok. 3,6 s);
+- kolor zmienia się skokowo, paskami po 2 px — pixel art bez rozmycia;
+- obrys i cień liter zostają nieruchome; reszta ekranu bez zmian (pojawianie się, wolny wzrost, pas, tablica).
+
+**Kod:**
+- `config/deathScreenConfig.ts`: `DEATH_TITLE_FLOW` (rampa, wysokość tonu, pasek, prędkość) zamiast stałych pasów;
+- `systems/deathScreen.ts`: `titleFlowIndex(y, t)` — ton rampy dla paska na wysokości `y` w chwili `t`;
+- `effects/DeathScreen.ts`: lico przerysowywane co klatkę paskami po 2 px; obrys i cień w osobnej, statycznej grafice.
+
+**Testy (+4):** indeks zawsze w rampie (także dla ujemnych przesunięć); wzór przesuwa się w dół; pętla bez szwu w przestrzeni i w czasie; w literze widać kilka tonów naraz.
+
+**Weryfikacja:** `npm run build`; przeglądarka — dwa zrzuty w odstępie 1 s pokazują jasny pas przesunięty w dół; brak błędów w konsoli. Wdrożone na GitHub Pages.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2921,7 +2943,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Ekran śmierci (krok 40):** `#ekran-smierci` styl Dark Souls / Castlevanii; tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
+- **Ekran śmierci (kroki 40–41):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
 - **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.

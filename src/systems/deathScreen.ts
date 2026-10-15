@@ -1,5 +1,5 @@
-import type { DeathTiming } from '@/config/deathScreenConfig';
-import { DEATH_TIMING } from '@/config/deathScreenConfig';
+import type { DeathTiming, DeathTitleFlow } from '@/config/deathScreenConfig';
+import { DEATH_TIMING, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 
 /** Stan ekranu śmierci w chwili `t` (ms od śmierci) — HUD tylko go rysuje. */
 export interface DeathFrame {
@@ -37,6 +37,17 @@ export function deathFrame(t: number, rows: number, timing: DeathTiming = DEATH_
     ),
     promptAlpha: smooth(clamp01(sincePrompt / timing.promptFadeDuration)) * lerp(timing.promptMinAlpha, 1, pulse),
   };
+}
+
+/**
+ * Indeks tonu rampy dla paska lica na wysokości `y` (px od góry napisu) w chwili `t` (ms):
+ * wzór przesuwa się w dół z prędkością `speedPxPerSec` i zapętla bez szwu.
+ */
+export function titleFlowIndex(y: number, t: number, flow: DeathTitleFlow = DEATH_TITLE_FLOW): number {
+  const n = flow.ramp.length;
+  const shifted = y - (t / 1000) * flow.speedPxPerSec;
+  const band = Math.floor(shifted / flow.bandPx);
+  return ((band % n) + n) % n;
 }
 
 export interface Particle {

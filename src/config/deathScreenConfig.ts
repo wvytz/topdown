@@ -13,16 +13,31 @@ export const DEATH_PALETTE = {
   blood2: 0x8c1f24,
 } as const;
 
-/** Lico liter POLEGŁEŚ: ciemna czerwień bez jaskrawego blasku (wiersze 0–6; akcent Ś ma kolor wiersza 0). */
-export const DEATH_TITLE_BANDS = [
-  DEATH_PALETTE.eye0,
-  DEATH_PALETTE.eye0,
-  DEATH_PALETTE.eye0,
-  DEATH_PALETTE.blood2,
-  DEATH_PALETTE.blood2,
-  DEATH_PALETTE.blood2,
-  DEATH_PALETTE.blood1,
-] as const;
+/**
+ * Lico liter POLEGŁEŚ (krok 41): pasy czerwieni spływają w dół przez litery, bez końca.
+ * Rampa jest cykliczna (zaczyna się i kończy podobnym tonem), więc pętla nie ma szwu;
+ * jeden cykl = `ramp.length × bandPx` pikseli ekranu.
+ */
+export const DEATH_TITLE_FLOW = {
+  ramp: [
+    DEATH_PALETTE.eye1,
+    DEATH_PALETTE.eye0,
+    DEATH_PALETTE.eye0,
+    DEATH_PALETTE.blood2,
+    DEATH_PALETTE.blood1,
+    DEATH_PALETTE.blood1,
+    DEATH_PALETTE.blood2,
+    DEATH_PALETTE.eye0,
+  ],
+  /** Wysokość jednego tonu rampy (px ekranu). */
+  bandPx: 8,
+  /** Lico rysujemy paskami tej wysokości — kolor zmienia się skokowo, po pikselowemu. */
+  stripPx: 2,
+  /** Prędkość spływania (px/s). */
+  speedPxPerSec: 18,
+} as const;
+
+export type DeathTitleFlow = typeof DEATH_TITLE_FLOW;
 
 /** Oś czasu w ms od chwili śmierci — wszystko powoli, bez uderzeń. */
 export const DEATH_TIMING = {
