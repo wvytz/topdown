@@ -3,6 +3,7 @@ import type { EnemyVisual } from '@/config/spriteConfig';
 import { LIGHTING } from '@/config/lightingConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { pixelEllipse } from '@/systems/lighting';
+import { LIGHT_VISIBILITY_KEY } from '@/effects/EnemyVisibility';
 
 type ShadowDef = NonNullable<EnemyVisual['groundShadow']>;
 
@@ -36,6 +37,8 @@ export function attachGroundShadow(owner: Phaser.GameObjects.Sprite, def: Shadow
   const sync = () => {
     shadow.setPosition(Math.round(owner.x + def.offsetX), Math.round(owner.y + def.offsetY));
     shadow.setVisible(owner.visible);
+    // Wróg ukryty w mroku (krok 30) chowa też cień; mruganie gracza (alfa) cienia nie dotyczy.
+    shadow.setAlpha((owner.getData(LIGHT_VISIBILITY_KEY) as number | undefined) ?? 1);
   };
   sync();
   scene.events.on(Phaser.Scenes.Events.POST_UPDATE, sync);

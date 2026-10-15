@@ -48,6 +48,11 @@ export const LIGHTING = {
   ambient: { fullLightRadius: 96, edgeRadius: 320, maxDarkness: 0.3 } satisfies AmbientProfile,
   /** Modyfikator „Mrok”: mechanika piętra, poza limitem 30%; pochodnie nie rozświetlają mroku. */
   darknessModifier: { maxDarkness: 0.94, softEdge: 0.45 },
+  /**
+   * Wrogowie w ograniczonym widoku („Mrok”, mgła; krok 30): od tej siły światła w pełni widoczni, niżej
+   * płynnie znikają. Boss, pociski i czerwone strefy ataków zostają widoczne (decyzja właściciela).
+   */
+  enemyReveal: { revealStrength: 0.5 },
   torch: { radius: 72, flickerOffsets: [-3, 0, 0, 3], glowAlpha: 0.16 } satisfies TorchLightConfig,
   motes: {
     maxParticles: 36,

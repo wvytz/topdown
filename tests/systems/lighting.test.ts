@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { LIGHTING } from '@/config/lightingConfig';
+import { FUNGAL_FOG, LIGHTING } from '@/config/lightingConfig';
+import { ENEMY_VARIANTS } from '@/config/combatConfig';
+import { FLOOR_MODIFIERS } from '@/config/floorModifierConfig';
+import { FloorModifierId } from '@/core/floorModifierTypes';
 import {
+  actorVisibility,
   ambientDarkness,
   buildLightStamp,
   darknessModifierProfile,
@@ -149,5 +153,46 @@ describe('pixelEllipse — cień pod postacią', () => {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) expect(mask[y * w + x]).toBe(mask[y * w + (w - 1 - x)]);
     }
+  });
+});
+
+describe('actorVisibility — wrogowie widoczni dopiero w świetle (krok 30)', () => {
+  const { revealStrength } = LIGHTING.enemyReveal;
+  const vision = FLOOR_MODIFIERS[FloorModifierId.Darkness].effects.visionRadius!;
+  const DARK = darknessModifierProfile(vision, LIGHTING.darknessModifier);
+  const FOG = FUNGAL_FOG.profile;
+  const P = { x: 0, y: 0 };
+  const at = (d: number) => ({ x: d, y: 0 });
+
+  it('w „Mroku”: w pełni widoczny w pełnym świetle, niewidoczny od krawędzi widzenia', () => {
+    expect(actorVisibility(at(0), P, DARK, [], revealStrength)).toBe(1);
+    expect(actorVisibility(at(DARK.fullLightRadius), P, DARK, [], revealStrength)).toBe(1);
+    expect(actorVisibility(at(vision), P, DARK, [], revealStrength)).toBe(0);
+    expect(actorVisibility(at(vision * 3), P, DARK, [], revealStrength)).toBe(0);
+  });
+
+  it('znika płynnie (bez skoku), im dalej, tym słabiej', () => {
+    for (const profile of [DARK, FOG]) {
+      let prev = 1;
+      for (let d = 0; d <= profile.edgeRadius; d++) {
+        const v = actorVisibility(at(d), P, profile, [], revealStrength);
+        expect(v).toBeLessThanOrEqual(prev);
+        expect(prev - v).toBeLessThan(0.1);
+        prev = v;
+      }
+    }
+  });
+
+  it('w mgle latarnia odsłania wroga z dala od bohatera; bez latarni — niewidoczny', () => {
+    const lantern = { x: 400, y: 0, radius: LIGHTING.torch.radius };
+    expect(actorVisibility(at(400), P, FOG, [], revealStrength)).toBe(0);
+    expect(actorVisibility(at(400), P, FOG, [lantern], revealStrength)).toBe(1);
+    expect(actorVisibility(at(400 + lantern.radius), P, FOG, [lantern], revealStrength)).toBe(0);
+  });
+
+  it('balans: wróg atakujący wręcz jest zawsze w pełni widoczny („Mrok” i mgła)', () => {
+    const reach = Math.max(...Object.values(ENEMY_VARIANTS).map((v) => (v.attack && 'hitRange' in v.attack ? v.attack.hitRange : 0)));
+    expect(reach).toBeGreaterThan(0);
+    for (const profile of [DARK, FOG]) expect(actorVisibility(at(reach), P, profile, [], revealStrength)).toBe(1);
   });
 });

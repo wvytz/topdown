@@ -61,6 +61,11 @@ export class EnemyManager implements EnemyAttackHandler {
     return this.enemies.length;
   }
 
+  /** Żywi wrogowie — m.in. do ukrywania ich poza światłem (krok 30). */
+  get living(): readonly Enemy[] {
+    return this.enemies;
+  }
+
   spawnAll(spawns: readonly EnemySpawn[]): void {
     for (const spawn of spawns) this.spawnAt(spawn.type, DungeonView.tileToWorldCenter(spawn.tile));
   }

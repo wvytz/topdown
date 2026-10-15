@@ -69,6 +69,7 @@ import type { TorchSpot } from '@/dungeon/LightPlanner';
 import { CombatDecals } from '@/effects/CombatDecals';
 import { darknessModifierProfile } from '@/systems/lighting';
 import { Torches } from '@/world/Torches';
+import { EnemyVisibility } from '@/effects/EnemyVisibility';
 import {
   NO_FLOOR_EFFECTS,
   applyFloorToEnemyLoot,
@@ -574,6 +575,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
    * mroku jest prawie nieprzezroczysta, a pochodnie świecą tylko jako punkty (nie rozświetlają mroku).
    * Biom z mgłą (krok 28a, Grzybnia): ta sama warstwa w kolorze mgły, z profilem mgły; latarnie ją
    * rozwiewają, dochodzą dryfujące obłoczki i gęstsze zarodniki. „Mrok” ma pierwszeństwo przed mgłą.
+   * W „Mroku” i we mgle wrogowie pokazują się dopiero w świetle (krok 30).
    */
   private setupLighting(asset: TilesetAsset, tileset: TilesetMeta, torchSpots: readonly TorchSpot[]): void {
     const vision = this.floorEffects.visionRadius;
@@ -584,11 +586,32 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.lighting = new LightingOverlay(this, profile, color, vision === null);
     new DustMotes(this, tileset.colors.ash.map(hexColor), fog?.motes ?? LIGHTING.motes);
     if (fog) new FogWisps(this, fog);
-    // Po fizyce: światło gracza nie zostaje klatkę za nim.
-    const render = () => this.lighting.render(this.player, this.torches.lights);
+    const torchesLightUp = vision === null;
+    const hiding =
+      vision !== null || fog
+        ? new EnemyVisibility({
+            profile,
+            revealStrength: LIGHTING.enemyReveal.revealStrength,
+            lights: () => (torchesLightUp ? this.torches.lights : []),
+            player: this.player,
+            actors: () => this.hideableEnemies(),
+          })
+        : null;
+    // Po fizyce: światło gracza i widoczność wrogów nie zostają klatkę za nim.
+    const render = () => {
+      this.lighting.render(this.player, this.torches.lights);
+      hiding?.update();
+    };
     render();
     this.events.on(Phaser.Scenes.Events.POST_UPDATE, render);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, render));
+  }
+
+  /** Wrogowie ukrywani poza światłem: zwykli wrogowie i wszystkie pajączki (bez bossa). */
+  private *hideableEnemies(): Iterable<Phaser.GameObjects.Sprite> {
+    if (this.enemies) yield* this.enemies.living;
+    if (this.cocoons) yield* this.cocoons.spiderlings;
+    if (this.bossFight) yield* this.bossFight.minions;
   }
 
   private setupCamera(): void {

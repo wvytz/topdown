@@ -32,6 +32,27 @@ export function pointLightStrength(distance: number, radius: number): number {
   return smoothFalloff(1 - distance / radius);
 }
 
+/**
+ * Widoczność wroga (0–1) w ograniczonym widoku — „Mrok” i mgła Grzybni (krok 30, decyzja właściciela):
+ * wrogowie pokazują się dopiero w świetle. Liczy się najsilniejsze światło w miejscu wroga: bohatera
+ * i (gdy rozświetlają mrok) pochodni/latarni. Od siły `revealStrength` wróg jest w pełni widoczny,
+ * poniżej płynnie znika — w głębokim cieniu nie widać go wcale.
+ */
+export function actorVisibility(
+  at: { readonly x: number; readonly y: number },
+  player: { readonly x: number; readonly y: number },
+  profile: AmbientProfile,
+  lights: readonly { readonly x: number; readonly y: number; readonly radius: number }[],
+  revealStrength: number,
+): number {
+  let light = playerLightStrength(Math.hypot(at.x - player.x, at.y - player.y), profile);
+  for (const l of lights) {
+    if (light >= revealStrength) break;
+    light = Math.max(light, pointLightStrength(Math.hypot(at.x - l.x, at.y - l.y), l.radius));
+  }
+  return revealStrength <= 0 ? 1 : Math.min(1, light / revealStrength);
+}
+
 /** Profil modyfikatora „Mrok”: płynne przejście na ostatnich `softEdge` promienia widzenia. */
 export function darknessModifierProfile(
   visionRadius: number,

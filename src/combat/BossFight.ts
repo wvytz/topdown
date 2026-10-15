@@ -219,6 +219,11 @@ export class BossFight {
     this.spiderlings.update(now);
   }
 
+  /** Pajączki bossa — ukrywane poza światłem jak zwykli wrogowie (krok 30); sam boss zostaje widoczny. */
+  get minions(): readonly Spiderling[] {
+    return this.spiderlings.living;
+  }
+
   /** Cele gracza: pajączki (żywa tarcza) i boss. */
   private targets(): Array<Boss | Spiderling> {
     const living = this.spiderlings.living;

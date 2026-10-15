@@ -64,6 +64,11 @@ export class CocoonManager {
     }
   }
 
+  /** Pajączki wypuszczone z kokonów (krok 30: ukrywane poza światłem). */
+  get spiderlings(): readonly Spiderling[] {
+    return this.swarm.living;
+  }
+
   /** Cele gracza: pajączki z kokonów i całe kokony. */
   private targets(): Array<Cocoon | Spiderling> {
     return [...this.swarm.living, ...this.cocoons.map(({ cocoon }) => cocoon)];

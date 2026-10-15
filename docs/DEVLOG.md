@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2285,6 +2285,62 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 30 — „Mrok”: wrogowie widoczni dopiero w świetle
+
+**Punkt wyjścia (backlog p. 2):** `#mrok`
+- feedback testera: światło na piętrze „Mrok” jest zbyt jasne, a wrogowie mają się pokazywać dopiero w świetle bohatera;
+- próba „pełna czerń poza kręgiem + promień 96 px” została wcześniej odrzucona.
+- Stan przed krokiem (`?seed=3&floor=2`): krąg światła 112 px, mrok 94%. Wróg wchodzący w miękką krawędź kręgu był od razu widoczny.
+
+**Decyzje właściciela (na starcie kroku):** `#decyzja` `#mrok` `#grzybnia`
+- krąg światła zostaje; **wrogowie poza światłem są całkiem niewidoczni**, bez świecących oczu (odrzucona opcja z oczami jako ostrzeżeniem i opcja „mniejszy krąg”);
+- pociski i czerwone strefy ataków zostają widoczne;
+- efekt działa w modyfikatorze „Mrok” **i w mgle Grzybni**.
+
+**Reguły (moje, do oceny w teście):**
+- widoczność wroga = najsilniejsze światło w jego miejscu:
+  - zawsze światło bohatera;
+  - w mgle także latarnie;
+  - w „Mroku” pochodnie nie rozświetlają mroku (mechanika z kroku 19a), więc nie odsłaniają wrogów;
+- od połowy siły światła (`LIGHTING.enemyReveal.revealStrength` = 0,5) wróg jest w pełni widoczny, poniżej płynnie znika. Ta sama płynna krzywa co światło (krok 28a), bez skoku;
+- w „Mroku” wróg jest w pełni widoczny do ok. 87 px, znika przy 112 px; w mgle do ok. 90 px, znika przy 160 px;
+- ukrywani: zwykli wrogowie i wszystkie pajączki (z kokonów i z wylęgu bossa), razem z cieniem. **Boss zostaje widoczny** — moja decyzja, do potwierdzenia;
+- pułapki (kokony, pajęczyny, purchawki) się nie chowają.
+
+**Kod:**
+- czysto: `systems/lighting.ts` → `actorVisibility` (światło bohatera i punktowe, próg `revealStrength`); config w `lightingConfig.enemyReveal`;
+- Phaser:
+  - `effects/EnemyVisibility.ts`: co klatkę (po fizyce, razem z warstwą mroku) ustawia alfę wrogów i klucz `lightVisibility`;
+  - `GroundShadow`: cień bierze alfę z klucza `lightVisibility` (mruganie gracza nie rusza jego cienia);
+  - `EnemyManager.living`, `CocoonManager.spiderlings`, `BossFight.minions`;
+  - `GameScene.hideableEnemies`.
+
+**Testy (`lighting.test.ts`, 4 nowe):**
+- „Mrok”: pełna widoczność w pełnym świetle, zero od krawędzi widzenia;
+- płynne znikanie bez skoków („Mrok” i mgła);
+- latarnia w mgle odsłania wroga z dala od bohatera, poza nią wróg niewidoczny;
+- balans: wróg atakujący wręcz (największy `hitRange` wśród wariantów) jest zawsze w pełni widoczny.
+
+**Weryfikacja:**
+- `npm run build`: 806 testów zielonych;
+- w grze:
+  - „Mrok” (`?seed=3&floor=2`):
+    - pająk podchodzący do bohatera ma alfę 0 do 114 px;
+    - przy 99 px alfa 0,35, od 83 px alfa 1;
+    - dalecy wrogowie niewidoczni;
+  - Grzybnia (`?seed=7&floor=3`):
+    - wszyscy wrogowie poza światłem ukryci;
+    - wróg przy latarni widoczny (1761 px od bohatera), a 90 px od latarni znów ukryty;
+    - zrzut ekranu: pająk 150 px od bohatera niewidoczny w mgle, purchawka obok widoczna;
+- w konsoli jeden wpis 500 z chwili, gdy HMR przeładował plik przed zapisaniem nowego modułu; po przeładowaniu strony brak błędów.
+
+**Do oceny w testach właściciela:** `#mrok` `#grzybnia`
+- czy wróg wyłania się z ciemności w dobrym momencie (próg 0,5);
+- czy ukryci Kitery strzelający z ciemności to dobre wyzwanie, czy za dużo;
+- czy boss też ma się chować.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2320,7 +2376,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Zostaje animacja śmierci Króla (dziś ginie od razu i zostaje plama).
 
-**Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu), potem kolejny biom.
+**Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, czeka na test — potem kolejny biom.
 
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:
@@ -2344,9 +2400,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Mrok — wrócić w innym momencie** (feedback testera: światło na piętrze „Mrok” zbyt jasne, wrogowie mają się pokazywać dopiero w świetle bohatera):
-  - próba „pełna czerń poza kręgiem + promień 96 px” została odrzucona przez właściciela po teście w grze i cofnięta;
-  - do ustalenia przy powrocie: jak ma wyglądać efekt, czy dotyczy tylko „Mroku”, czy też zwykłych pięter.
+- **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Do oceny w teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
