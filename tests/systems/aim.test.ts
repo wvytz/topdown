@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AIM_ASSIST, TOUCH_STICK } from '@/config/inputConfig';
+import { AIM_ASSIST, TOUCH_AUTO_AIM_RANGE, TOUCH_STICK } from '@/config/inputConfig';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
-import { assistAimDirection, keyboardAimDirection, stickState, stickToMovement, touchAimDirection } from '@/systems/Aim';
+import { assistAimDirection, keyboardAimDirection, stickState, stickToMovement, touchAimDirection, autoAimDirection } from '@/systems/Aim';
 
 const ORIGIN = { x: 100, y: 100 };
 const RIGHT = { x: 1, y: 0 };
@@ -103,5 +103,24 @@ describe('touchAimDirection — celowanie gałkami dotykowymi', () => {
   it('bez gałek: kierunek ruchu, a na postoju poprzedni kierunek', () => {
     expect(touchAimDirection(null, null, { x: 0, y: 1 }, RIGHT)).toEqual({ x: 0, y: 1 });
     expect(touchAimDirection(null, null, { x: 0, y: 0 }, LEFT)).toBe(LEFT);
+  });
+});
+
+describe('autoAimDirection — stuknięcie celuje samo (jak w Brawl Stars)', () => {
+  it('celuje w najbliższy cel w dowolnym kierunku, także za plecami', () => {
+    const behind = targetAt(180, 80);
+    const ahead = targetAt(0, 200);
+    expect(angleOf(autoAimDirection(ORIGIN, [ahead, behind], TOUCH_AUTO_AIM_RANGE)!)).toBeCloseTo(180);
+  });
+
+  it('nikogo w zasięgu — null (atak w bieżącym kierunku)', () => {
+    expect(autoAimDirection(ORIGIN, [targetAt(30, TOUCH_AUTO_AIM_RANGE + 50)], TOUCH_AUTO_AIM_RANGE)).toBeNull();
+    expect(autoAimDirection(ORIGIN, [], TOUCH_AUTO_AIM_RANGE)).toBeNull();
+  });
+
+  it('liczy się brzeg celu: duży boss dalej, ale bliżej brzegiem, wygrywa', () => {
+    const boss = targetAt(90, 120, 50);
+    const spider = targetAt(-90, 90, 5);
+    expect(angleOf(autoAimDirection(ORIGIN, [spider, boss], TOUCH_AUTO_AIM_RANGE)!)).toBeCloseTo(90);
   });
 });

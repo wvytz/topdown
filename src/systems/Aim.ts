@@ -85,3 +85,23 @@ export function assistAimDirection(
 export function touchAimDirection(shot: Vector2 | null, attack: Vector2 | null, move: MovementIntent, previous: Vector2): Vector2 {
   return shot ?? attack ?? keyboardAimDirection(move, false, previous);
 }
+
+/**
+ * Automatyczne celowanie po stuknięciu (krok 49c, jak w Brawl Stars): kierunek do najbliższego celu
+ * w zasięgu; null, gdy nikogo nie ma — wtedy atak leci w bieżącym kierunku.
+ */
+export function autoAimDirection(origin: Vector2, targets: Iterable<AimTarget>, range: number): Vector2 | null {
+  let best: Vector2 | null = null;
+  let bestDistance = Infinity;
+  for (const target of targets) {
+    const dx = target.x - origin.x;
+    const dy = target.y - origin.y;
+    // Liczy się brzeg celu: duży boss obok jest „bliżej” niż mały pająk tuż za nim.
+    const edge = Math.hypot(dx, dy) - target.radius;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0 || edge > range || edge >= bestDistance) continue;
+    best = { x: dx / dist, y: dy / dist };
+    bestDistance = edge;
+  }
+  return best;
+}

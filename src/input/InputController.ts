@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { MovementIntent, Vector2 } from '@/core/types';
 import type { AimSource } from '@/config/inputConfig';
-import { AIM_POINT_DISTANCE } from '@/config/inputConfig';
+import { AIM_POINT_DISTANCE, TOUCH_AUTO_AIM_HOLD_MS } from '@/config/inputConfig';
 import type { PlayerActions } from '@/entities/Player';
 import { keyboardAimDirection, touchAimDirection } from '@/systems/Aim';
 import { directionTo } from '@/systems/CombatMath';
@@ -38,6 +38,8 @@ export class InputController {
   private keyboardAimUsedAt = -Infinity;
   /** Ostatni kierunek celowania (klawiatura, dotyk); przy przejściu z myszy — kierunek do kursora. */
   private lastAim: Vector2 = { x: 1, y: 0 };
+  /** Po automatycznym celowaniu kierunek trzyma się chwilę (kula Czarodziejki wylatuje po zamachu). */
+  private aimHoldUntil = -Infinity;
 
   constructor(private readonly scene: Phaser.Scene) {
     const keyboard = scene.input.keyboard;
@@ -93,18 +95,26 @@ export class InputController {
     const mouseShoot = Boolean(mouse?.rightButtonDown()) || this.shootClickQueued;
     this.shootClickQueued = false;
 
-    const attack = Boolean(mouse?.leftButtonDown()) || this.attackKey.isDown || touchState.aim !== null;
+    const attack = Boolean(mouse?.leftButtonDown()) || this.attackKey.isDown || touchState.aim !== null || taps.attack;
     const shoot = mouseShoot || keyboardShoot || touchState.shoot || taps.shot;
 
     return {
       move,
       aim: this.aimPoint(source, origin, move),
       aimSource: source,
+      // Stuknięcie albo przytrzymanie przycisku strzału bez przeciągania: celuje sam (jak w Brawl Stars).
+      autoAim: taps.autoAim || (source === 'touch' && touchState.shoot && touchState.shotAim === null),
       attack,
       dash: Phaser.Input.Keyboard.JustDown(this.dashKey) || taps.dash,
       shoot,
       interact: Phaser.Input.Keyboard.JustDown(this.interactKey) || taps.interact,
     };
+  }
+
+  /** Automatyczne celowanie (stuknięcie na dotyku) ustawia kierunek; trzyma się przez chwilę mimo ruchu. */
+  setAimDirection(direction: Vector2): void {
+    this.lastAim = direction;
+    this.aimHoldUntil = performance.now() + TOUCH_AUTO_AIM_HOLD_MS;
   }
 
   /** Celuje urządzenie użyte ostatnio (na starcie — mysz). */
@@ -124,7 +134,8 @@ export class InputController {
       return { x: point.x, y: point.y };
     }
     if (source === 'touch') {
-      this.lastAim = touchAimDirection(touchState.shotAim, touchState.aim, move, this.lastAim);
+      const holding = performance.now() < this.aimHoldUntil;
+      this.lastAim = touchAimDirection(touchState.shotAim, touchState.aim, holding ? { x: 0, y: 0 } : move, this.lastAim);
     } else {
       // Klawiatura: celujemy tam, dokąd idziemy; L/Shift trzyma kierunek.
       const locked = this.lockKeys.some((key) => key.isDown);

@@ -3240,6 +3240,25 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja** (emulacja Pixel 7, dotyk przez CDP): celowanie w prawo, potem przytrzymanie STRZAŁ i przeciągnięcie w lewo — kierunek −180°, pierwszy strzał dopiero po zjechaniu kciuka, salwa zużywa wszystkie ładunki; samo stuknięcie — jeden strzał. Bez błędów w konsoli.
 
+## Krok 49c — Stuknięcie celuje samo (jak w Brawl Stars), E tylko tam, gdzie działa, ekran telefonu (gałąź testowa) `#sterowanie`
+
+**Ocena i prośba właściciela** `#ocena` `#decyzja` `#sterowanie`: „emulacja na telefonie pokazuje tylko część ekranu gry, ucina górną część”; „zrób wersję jak w Brawl Stars, żebym mógł przetestować”; „przycisk E niech będzie niewidoczny i pojawia się tylko w obszarze, gdzie można go użyć”.
+
+**Jak w Brawl Stars** (tylko dotyk; `autoAimDirection` w `systems/Aim.ts`, zasięg `TOUCH_AUTO_AIM_RANGE` = 280 px):
+- **stuknięcie strefy ataku** (prawa część ekranu, bez przeciągnięcia, ≤ 250 ms) — jeden cios (u Czarodziejki kula) w najbliższego widocznego wroga, w dowolnym kierunku, także za plecami;
+- **stuknięcie STRZAŁ/PROMIEŃ** — jeden strzał w najbliższego wroga; **przytrzymanie bez przeciągania** — salwa/promień celuje sam i podąża za najbliższym wrogiem; przeciągnięcie — ręczny kierunek jak w 49b;
+- brak wroga w zasięgu — atak w bieżącym kierunku; Mrok i mgła nie zdradzają ukrytych wrogów;
+- kierunek z automatu trzyma się 400 ms mimo ruchu (`TOUCH_AUTO_AIM_HOLD_MS`) — kula Czarodziejki wylatuje po 240 ms zamachu w ten sam cel.
+- To ułatwienie względem myszy — do oceny w testach (zasada „nie łagodź trudności”); wyłączenie = `TOUCH_AUTO_AIM_RANGE: 0`.
+
+**Przycisk E:** widoczny i aktywny tylko, gdy E coś zrobi — na otwartych schodach albo przy kapliczce, gdy stać gracza na ofiarę (`HudData.canInteract`, `ShrineSite.canOffer`).
+
+**Ucinanie ekranu na telefonie:** płótno centruje teraz CSS (`#game` jako flex, Phaser `NO_CENTER`), wysokość strony `100dvh` (bez strefy pod paskiem adresu), skala liczona z `visualViewport` i przeliczana po obrocie, wejściu w pełny ekran i zmianie widocznej części strony (od razu i po 300 ms).
+
+**Testy:** `autoAimDirection` (najbliższy cel także za plecami, brak celu w zasięgu, brzeg dużego celu). Build: 1093 testy.
+
+**Weryfikacja** (emulacja Pixel 7 w poziomie, 863×360): płótno w całości w oknie, wyśrodkowane; stuknięcie strefy ataku przy wrogu z lewej obraca cios w jego stronę; stuknięcie STRZAŁ przy wrogu poniżej — strzał prosto w niego (kąt zgodny co do 0,01 rad); E ukryte w pokoju, widoczne na otwartych schodach. Bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

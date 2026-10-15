@@ -6,7 +6,11 @@
     <title>Tower Crawler</title>
     <style>
       html, body { margin: 0; height: 100%; background: #0e0e12; overflow: hidden; }
-      #game { width: 100%; height: 100%; }
+      /* 100dvh: na telefonie wysokość bez paska adresu (100% potrafi sięgać pod pasek i ucinać górę gry). */
+      body { height: 100dvh; }
+      /* Płótno centruje strona, nie Phaser — po obrocie telefonu i pełnym ekranie środek zawsze się zgadza. */
+      #game { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+      #game canvas { flex: none; margin: 0 !important; }
       /* Dotyk (krok 49): bez przewijania, powiększania i zaznaczania tekstu gestami. */
       html, body, #game { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
       #rotate { display: none; }

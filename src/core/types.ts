@@ -82,6 +82,8 @@ export interface HudData {
   readonly stairsUnlocked: boolean;
   /** Gracz stoi na otwartych schodach — wejście wyżej klawiszem E (krok 47). */
   readonly onStairs: boolean;
+  /** E coś teraz zrobi (schody, kapliczka) — przycisk E na dotyku pojawia się tylko wtedy (krok 49c). */
+  readonly canInteract: boolean;
   readonly isPlayerDead: boolean;
   /** null, gdy walka z bossem nie trwa. */
   readonly boss: BossHudData | null;

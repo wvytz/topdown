@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKey } from '@/core/types';
 import { DEATH_TIMING } from '@/config/deathScreenConfig';
-import { TOUCH_BUTTONS, TOUCH_SHOT_HOLD_MS, TOUCH_DEATH_BUTTONS, TOUCH_STICK } from '@/config/inputConfig';
+import { TOUCH_BUTTONS, TOUCH_SHOT_HOLD_MS, TOUCH_TAP_MAX_MS, TOUCH_DEATH_BUTTONS, TOUCH_STICK } from '@/config/inputConfig';
 import { touchState } from '@/input/TouchState';
 import type { GameScene } from '@/scenes/GameScene';
 import { stickState, stickToMovement } from '@/systems/Aim';
@@ -52,6 +52,11 @@ export class TouchScene extends Phaser.Scene {
   /** Kiedy kciuk dotknął przycisku strzału (ms, performance.now). */
   private shotDownAt = 0;
   private sorceress = false;
+  /** E coś teraz zrobi (schody, kapliczka) — tylko wtedy przycisk E jest widoczny i działa. */
+  private canInteract = false;
+  /** Gałka ataku: kiedy dotknięta i czy kciuk wyszedł poza martwą strefę (inaczej to stuknięcie). */
+  private aimDownAt = 0;
+  private aimMoved = false;
   private deathButtons: DeathButton[] = [];
   /** Od kiedy ekran śmierci czeka na gracza — przyciski wchodzą razem z napisem, nie pod kciukiem z walki. */
   private deathPromptSince: number | null = null;
@@ -91,6 +96,7 @@ export class TouchScene extends Phaser.Scene {
     const hud = game.getHudData();
     if (hud.isPlayerDead || hud.death) return null;
     this.sorceress = hud.beam !== null;
+    this.canInteract = hud.canInteract;
     return game;
   }
 
@@ -125,6 +131,8 @@ export class TouchScene extends Phaser.Scene {
       if (!this.moveStick) this.moveStick = this.newStick(pointer);
     } else if (!this.aimStick) {
       this.aimStick = this.newStick(pointer);
+      this.aimDownAt = performance.now();
+      this.aimMoved = false;
     }
   }
 
@@ -136,6 +144,7 @@ export class TouchScene extends Phaser.Scene {
     } else if (this.aimStick?.pointerId === pointer.id) {
       const stick = this.updateStick(this.aimStick, pointer);
       touchState.aim = stick.strength > 0 ? stick.direction : null;
+      if (touchState.aim) this.aimMoved = true;
     } else if (this.shotStick?.pointerId === pointer.id) {
       const stick = this.updateStick(this.shotStick, pointer);
       touchState.shotAim = stick.strength > 0 ? stick.direction : null;
@@ -149,11 +158,13 @@ export class TouchScene extends Phaser.Scene {
       touchState.move = { x: 0, y: 0 };
     }
     if (this.aimStick?.pointerId === pointer.id) {
+      // Stuknięcie strefy ataku (jak w Brawl Stars): jeden cios w najbliższego wroga.
+      if (!this.aimMoved && performance.now() - this.aimDownAt <= TOUCH_TAP_MAX_MS) touchState.queueAttack();
       this.aimStick = null;
       touchState.aim = null;
     }
     if (this.shotStick?.pointerId === pointer.id) {
-      // Krótkie stuknięcie bez przeciągnięcia: jeden strzał w bieżącym kierunku.
+      // Krótkie stuknięcie bez przeciągnięcia: jeden strzał w najbliższego wroga.
       if (!touchState.shoot) touchState.queueShot();
       this.shotStick = null;
       touchState.shoot = false;
@@ -191,6 +202,7 @@ export class TouchScene extends Phaser.Scene {
 
   private buttonAt(x: number, y: number): ButtonId | null {
     for (const id of ['shoot', 'dash', 'interact'] as const) {
+      if (id === 'interact' && !this.canInteract) continue;
       const c = this.buttonCenter(id);
       if (Math.hypot(x - c.x, y - c.y) <= TOUCH_BUTTONS.radius * 1.15) return id;
     }
@@ -243,8 +255,9 @@ export class TouchScene extends Phaser.Scene {
       g.lineStyle(2, 0xf1e2a9, 0.9).strokeRect(button.x - width / 2, y - height / 2, width, height);
     }
     for (const [id, label] of this.labels) {
-      label.setVisible(playing);
-      if (!playing) continue;
+      const visible = playing && (id !== 'interact' || this.canInteract);
+      label.setVisible(visible);
+      if (!visible) continue;
       const c = this.buttonCenter(id);
       const active = id === 'shoot' ? touchState.shoot : false;
       g.fillStyle(active ? 0x39c0d8 : 0x202030, active ? BUTTON_ACTIVE_ALPHA : BUTTON_ALPHA).fillCircle(c.x, c.y, TOUCH_BUTTONS.radius);

@@ -99,9 +99,9 @@ import { CombatDecals } from '@/effects/CombatDecals';
 import { darknessModifierProfile } from '@/systems/lighting';
 import { Torches } from '@/world/Torches';
 import { EnemyVisibility, LIGHT_VISIBILITY_KEY } from '@/effects/EnemyVisibility';
-import { AIM_ASSIST, AIM_ASSIST_MIN_VISIBILITY, AIM_POINT_DISTANCE } from '@/config/inputConfig';
+import { AIM_ASSIST, AIM_ASSIST_MIN_VISIBILITY, AIM_POINT_DISTANCE, TOUCH_AUTO_AIM_RANGE } from '@/config/inputConfig';
 import type { AimTarget } from '@/systems/Aim';
-import { assistAimDirection } from '@/systems/Aim';
+import { assistAimDirection, autoAimDirection } from '@/systems/Aim';
 import { directionTo } from '@/systems/CombatMath';
 import type { PlayerActions } from '@/entities/Player';
 import {
@@ -371,6 +371,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
+      canInteract: ready && !this.player.isDead && (this.onStairs || this.shrine.canOffer),
       isPlayerDead: ready && this.player.isDead,
       boss: ready ? this.bossFight.getStatus() : null,
       gold: this.run.gold,
@@ -389,12 +390,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Wspomaganie celowania bez myszy (krok 49): kierunek dociąga do widocznego wroga w wąskim stożku. */
   private assistAim(actions: PlayerActions): PlayerActions {
     const config = AIM_ASSIST[actions.aimSource];
-    if (config.coneHalfDeg <= 0 || this.player.isDead) return actions;
+    if (this.player.isDead) return actions;
     const origin = { x: this.player.x, y: this.player.y };
+    const toPoint = (dir: Vector2): Vector2 => ({ x: origin.x + dir.x * AIM_POINT_DISTANCE, y: origin.y + dir.y * AIM_POINT_DISTANCE });
+    if (actions.autoAim) {
+      // Stuknięcie (krok 49c): najbliższy widoczny wróg w zasięgu, w dowolnym kierunku.
+      const auto = autoAimDirection(origin, this.aimTargets(), TOUCH_AUTO_AIM_RANGE);
+      if (auto) {
+        this.inputController.setAimDirection(auto);
+        return { ...actions, aim: toPoint(auto) };
+      }
+    }
+    if (config.coneHalfDeg <= 0) return actions;
     const direction = directionTo(origin, actions.aim);
     const assisted = assistAimDirection(origin, direction, this.aimTargets(), config);
     if (assisted === direction) return actions;
-    return { ...actions, aim: { x: origin.x + assisted.x * AIM_POINT_DISTANCE, y: origin.y + assisted.y * AIM_POINT_DISTANCE } };
+    return { ...actions, aim: toPoint(assisted) };
   }
 
   /** Cele wspomagania: żywi wrogowie widoczni w świetle (Mrok i mgła ich nie zdradzają) i walczący boss. */

@@ -43,10 +43,20 @@ export const TOUCH_STICK = {
 
 /**
  * Przycisk strzału jako gałka (krok 49b): strzał czeka, aż kciuk zjedzie z przycisku w stronę celu
- * albo przytrzyma go tyle ms (strzał w bieżącym kierunku) — pierwszy pocisk nie leci w starą stronę.
- * Krótkie stuknięcie = jeden strzał w bieżącym kierunku.
+ * albo przytrzyma go tyle ms (wtedy celuje sam, krok 49c) — pierwszy pocisk nie leci w starą stronę.
  */
 export const TOUCH_SHOT_HOLD_MS = 150;
+
+/**
+ * Jak w Brawl Stars (krok 49c): stuknięcie strefy ataku albo przycisku strzału oraz przytrzymanie przycisku
+ * strzału bez przeciągania celują same w najbliższego widocznego wroga w tym zasięgu (px świata).
+ * Przytrzymanie strefy ataku bez ruchu kciuka nie atakuje.
+ */
+export const TOUCH_AUTO_AIM_RANGE = 280;
+/** Najdłuższy dotyk (ms), który jeszcze liczy się jako stuknięcie. */
+export const TOUCH_TAP_MAX_MS = 250;
+/** Jak długo (ms) kierunek z automatycznego celowania nie ustępuje kierunkowi ruchu — dłużej niż zamach kuli. */
+export const TOUCH_AUTO_AIM_HOLD_MS = 400;
 
 /** Przyciski dotykowe (px płótna): środek liczony od prawego dolnego rogu. */
 export const TOUCH_BUTTONS = {

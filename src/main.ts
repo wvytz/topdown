@@ -20,7 +20,8 @@ const config: Phaser.Types.Core.GameConfig = {
   // Skalę płótna ustawiamy sami (pixelPerfectScale): piksel świata = całkowita liczba pikseli ekranu.
   scale: {
     mode: Phaser.Scale.NONE,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // Centruje CSS (#game: flex) — wyliczenia Phasera po obrocie telefonu potrafiły przesunąć płótno poza ekran.
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
   // Dotyk (krok 49): dwa kciuki na gałkach i trzeci palec na przycisku.
   input: { activePointers: 4 },
@@ -41,10 +42,12 @@ const game = new Phaser.Game(config);
 function applyPixelPerfectScale(): void {
   const parent = document.getElementById('game');
   if (!parent) return;
+  // Widoczna część strony: na telefonie pasek adresu i klawiatura zabierają miejsce, którego clientHeight nie widzi.
+  const visible = window.visualViewport;
   game.scale.setZoom(
     pixelPerfectScale({
-      viewportWidth: parent.clientWidth,
-      viewportHeight: parent.clientHeight,
+      viewportWidth: Math.min(parent.clientWidth, visible?.width ?? window.innerWidth),
+      viewportHeight: Math.min(parent.clientHeight, visible?.height ?? window.innerHeight),
       gameWidth: GAME_WIDTH,
       gameHeight: GAME_HEIGHT,
       devicePixelRatio: window.devicePixelRatio || 1,
@@ -53,7 +56,15 @@ function applyPixelPerfectScale(): void {
   );
 }
 applyPixelPerfectScale();
-window.addEventListener('resize', applyPixelPerfectScale);
+/** Po obrocie telefonu i wejściu w pełny ekran wymiary dochodzą z opóźnieniem — liczymy od razu i jeszcze raz chwilę później. */
+function rescaleSoon(): void {
+  applyPixelPerfectScale();
+  window.setTimeout(applyPixelPerfectScale, 300);
+}
+window.addEventListener('resize', rescaleSoon);
+window.addEventListener('orientationchange', rescaleSoon);
+document.addEventListener('fullscreenchange', rescaleSoon);
+window.visualViewport?.addEventListener('resize', rescaleSoon);
 
 /**
  * Telefon (krok 49): pierwszy dotyk prosi o pełny ekran w poziomie — bez paska przeglądarki gra jest większa.

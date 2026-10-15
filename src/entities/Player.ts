@@ -32,6 +32,8 @@ export interface PlayerActions {
   readonly aim: Vector2;
   /** Skąd celowanie (krok 49): bez myszy gra dokłada wspomaganie celowania. */
   readonly aimSource: AimSource;
+  /** Stuknięcie na dotyku: celuj samemu w najbliższego wroga (jak w Brawl Stars; krok 49c). */
+  readonly autoAim: boolean;
   readonly attack: boolean;
   readonly dash: boolean;
   /** Strzał (PPM, przytrzymanie = seria w tempie shotIntervalMs, dopóki są ładunki). */
