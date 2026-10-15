@@ -23,6 +23,17 @@ export const TILESET_ASSET: TilesetAsset = {
   version: 2,
 };
 
+/** Piekło (krok 41a): `python tools/tower_ruins_tiles.py --biome infernal`. Pochodnie z czerwieńszym ogniem. */
+export const INFERNAL_TILESET_ASSET: TilesetAsset = {
+  imageKey: 'tex-tileset-infernal',
+  jsonKey: 'json-tileset-infernal',
+  sheetKey: 'sheet-tileset-infernal',
+  imageUrl: 'assets/tilesets/infernal_tileset.png',
+  jsonUrl: 'assets/tilesets/infernal_tileset.json',
+  torchAnimation: 'torch-flame-infernal',
+  version: 2,
+};
+
 /** Cmentarzysko (krok 32a): `python tools/tower_ruins_tiles.py --biome graveyard`. Pochodnie to świece w uchwytach. */
 export const GRAVEYARD_TILESET_ASSET: TilesetAsset = {
   imageKey: 'tex-tileset-graveyard',

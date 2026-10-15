@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2902,6 +2902,34 @@ Makieta generatora:
 **Weryfikacja w przeglądarce** (`?seed=7&floor=1` i `floor=3`, `debugDefeat`): animacja gra w kierunku z chwili śmierci, w trakcie bez kart; po niej plama, karty nagrody (`RewardScene`). Bez błędów w konsoli.
 
 **Do oceny w testach właściciela:** czy zarodniki Króla są wystarczająco widoczne na podłodze Grzybni i czy kałuża Strażnika nie jest za duża.
+
+---
+
+## Krok 41a — Piekło (piętro 5): paleta, kafle i żar `#pieklo`
+
+**Decyzje właściciela:** `#decyzja` `#pieklo`
+- kolejny biom: krwisty, demoniczny, „z czerwonym przejściem” i pomarańczowymi wstawkami; paleniska na środku, które ranią z bliska (krok 41b);
+- z trzech kandydatek palety wybrana **A „krwawy bazalt”** (moja rekomendacja). Odrzucone: B „zaschnięta krew”, C „rozżarzony popiół”;
+- paleniska buchają w niezbyt szybkim tempie, a na kolejnym, „gorętszym” poziomie częściej;
+- boss ma być zupełnie inny od dotychczasowych i utrudniać grę postaci dystansowej (Czarodziejce) — propozycja „Kat Otchłani” czeka na akceptację.
+
+**Generator (`tools/tower_ruins_tiles.py --biome infernal`):**
+- palety `pieklo_bazalt`, `pieklo_krew`, `pieklo_popiol`; biom bierze `pieklo_bazalt`. Posadzka jasności Cmentarzyska (pierwsza wersja była za ciemna — obrys 1,88 : 1 < 2,0), mury i głębia ciemniejsze;
+- nowe pole palety `ember` (żar: czerwień, pomarańcz, rozgrzany środek), puste w innych biomach; „popiół” palety to iskry (pomarańcz i czerwień), więc pyłki w powietrzu i drobiny na posadzce żarzą się; czerwieńszy ogień pochodni;
+- dodatki `infernal`: szczeliny z żarem (bez ciemnego obrysu — świecą, §6b), plamy krwi, pieczęć 2×2 (krąg i pentagram z krwi, żar w wierzchołkach), kości z Cmentarzyska; na licach okowy na łańcuchach, czaszka na kolcu i szczelina z żarem; żar w fugach (2,5%) i sadza na licach;
+- makieta z obojgiem bohaterów (`MOCKUP_ACTORS_INFERNAL`), czytelność na palecie A: obrys 2,19, wszyscy OK;
+- wynik `public/assets/tilesets/infernal_tileset.{png,json}` (130 kafli); arkusz Cmentarzyska identyczny co do piksela.
+
+**Gra:**
+- `BiomeId.Infernal`, `BIOME_BY_FLOOR[5]`; `INFERNAL_TILESET_ASSET`, `INFERNAL_DRESSING` (nakładki 15%: żar, krew, kości; pieczęć 0,6% na kafel; lica 30%; bez pajęczyn — za gorąco);
+- `INFERNAL_HAZE`: czerwonawa, prawie czarna duchota (`#1c0a0a`), mrok do 93% (Cmentarzysko 92%), widok przy bohaterze jak na Cmentarzysku; iskry szybciej i w górę;
+- wrogowie zastępczy do czasu własnych: zarażony (Rusher) i mag demonów (Kiter); boss zastępczy: Strażnik.
+
+**Testy:** `biomes.test.ts` — piętro 5 to Piekło; dekoracje biomu, pieczęć 2×2; bez pajęczyn; mrok ciemniejszy niż Cmentarzysko i słabszy niż „Mrok”, iskry w górę; czytelność barbarzyńcy, Czarodziejki, zarażonego i maga na podłodze i bruku. `npm run build`: 968 testów.
+
+**Weryfikacja w przeglądarce** (`?hero=sorceress&seed=7&floor=5`): biom `infernal`, 13 wrogów, czerwonawy mrok, żar i krew na posadzce; bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** gęstość żaru i krwi, kolor mroku, widoczność iskier.
 
 ---
 

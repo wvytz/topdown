@@ -1,15 +1,21 @@
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
 import type { FogConfig } from '@/config/lightingConfig';
-import { FUNGAL_FOG, GRAVEYARD_MIST } from '@/config/lightingConfig';
+import { FUNGAL_FOG, GRAVEYARD_MIST, INFERNAL_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { CeilingDropConfig } from '@/systems/CeilingDrops';
 import type { CocoonConfig } from '@/systems/Cocoons';
 import type { PuffballConfig } from '@/systems/Puffballs';
 import type { StickyWebConfig } from '@/systems/StickyWebs';
 import { SPIDER_QUEEN } from '@/config/bossConfig';
-import { FUNGAL_GROVE_TILESET_ASSET, GRAVEYARD_TILESET_ASSET, SPIDER_LAIR_TILESET_ASSET, TILESET_ASSET } from '@/config/tilesetConfig';
+import {
+  FUNGAL_GROVE_TILESET_ASSET,
+  GRAVEYARD_TILESET_ASSET,
+  INFERNAL_TILESET_ASSET,
+  SPIDER_LAIR_TILESET_ASSET,
+  TILESET_ASSET,
+} from '@/config/tilesetConfig';
 
 /** Biomy wieży (krok 23): wygląd piętra, a od kolejnych kroków także jego zasady. */
 export enum BiomeId {
@@ -17,6 +23,7 @@ export enum BiomeId {
   SpiderLair = 'spider-lair',
   FungalGrove = 'fungal-grove',
   Graveyard = 'graveyard',
+  Infernal = 'infernal',
 }
 
 export interface BiomeDefinition {
@@ -153,17 +160,33 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     puffballs: null,
     fog: GRAVEYARD_MIST,
   },
+  // Piekło (krok 41a, prośba właściciela): krwisty, demoniczny biom z pomarańczowym żarem; paleta A
+  // „krwawy bazalt” (wybór właściciela). Wrogowie zastępczy do czasu własnych: zarażony (Rusher) i mag
+  // demonów (Kiter); boss do czasu Kata Otchłani: Strażnik.
+  [BiomeId.Infernal]: {
+    id: BiomeId.Infernal,
+    name: 'Piekło',
+    tileset: INFERNAL_TILESET_ASSET,
+    dressing: INFERNAL_DRESSING,
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Zombie, [EnemyType.Kiter]: EnemyVariant.DemonMage },
+    ceilingDrops: null,
+    cocoons: null,
+    stickyWebs: null,
+    puffballs: null,
+    fog: INFERNAL_HAZE,
+  },
 };
 
 /**
  * Biom na konkretnych piętrach; reszta to ruiny. Każdy biom to jedno piętro zakończone swoim bossem
  * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków,
- * 4 — Cmentarzysko (krok 32a; boss jeszcze nieustalony, do tego czasu Strażnik).
+ * 4 — Cmentarzysko (krok 32a, Grzybowy Pożeracz), 5 — Piekło (krok 41a; boss do czasu Kata Otchłani: Strażnik).
  */
 export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   2: BiomeId.SpiderLair,
   3: BiomeId.FungalGrove,
   4: BiomeId.Graveyard,
+  5: BiomeId.Infernal,
 };
 
 export function biomeForFloor(floor: number): BiomeDefinition {
