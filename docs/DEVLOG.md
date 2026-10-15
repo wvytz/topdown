@@ -3254,7 +3254,17 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** rozprysk rani sąsiada, pomija główny cel i dalekich, magia bez statusów, obrażenia ≥ 1 (`sorcery.test.ts`). Build: 1080 testów.
 
-**Test botem (10 zasadzek, obie postacie, czasy):** w toku — wyniki dopiszę.
+**Test botem (10 zasadzek, ten sam seed i pokój dla obu postaci; bot bez uników i dasha; czas od krat do końca):**
+
+| Piętro | Pokój | Barbarzyńca | Czarodziejka |
+|---|---|---|---|
+| 1 | 7×9 | 11,9 s, 100 → 100 | 18,1 s, 75 → 55 |
+| 2 | 9×9 | 8,0 s, 100 → 96 | 21,3 s, 75 → 71 |
+| 4 | 8×8 | 12,5 s, 100 → 80 | 30,2 s, 75 → 45 |
+| 6 | 7×9 | 9,4 s, 100 → 100 | 29,0 s, 75 → 39 |
+| 9 (krąg II) | 9×7 | 12,1 s, 100 → 79 | **śmierć** (11 trafień) |
+
+Średnio na piętrach 1–6: Barbarzyńca ok. 10,5 s, Czarodziejka ok. 24,7 s. Względem kroku 49b Czarodziejka szybsza (piętro 1: 24,3 → 18,1 s; piętro 6: 37,9 → 29,0 s). W drugim kręgu upiory mają ok. 44 HP i 7 obrażeń — Czarodziejka (bot bez uników) nie wytrzymuje; do oceny po teście właściciela.
 
 ## Znane ograniczenia i backlog
 
