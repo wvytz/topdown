@@ -218,23 +218,24 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       patch: { radius: 26, durationMs: 2500, damage: 4 },
     },
   },
-  // Zasadzki (krok 49): upiór — słabszy od Rushera (24 HP), ale przenika: 2,4 s cielesny, 0,9 s bezcielesny
-  // (nietykalny, nie atakuje). Dotyk mrozi: spowolnienie 30% na 1,2 s.
+  // Zasadzki (krok 49): upiór przenika: 2,4 s cielesny, 0,9 s bezcielesny (nietykalny, nie atakuje).
+  // Krok 49a (właściciel): zasadzka ma być nagrodą o niskim ryzyku, ale intensywną walką — upiory liczniejsze,
+  // ale kruche i słabe: 20 HP, dotyk 4 obrażenia (dłuższy zamach 500 ms), lekkie spowolnienie 15% na 0,8 s.
   [EnemyVariant.Ghost]: {
     type: EnemyType.Rusher,
     color: 0xb8d8e8,
-    maxHp: 24,
+    maxHp: 20,
     moveSpeed: 100,
     phasing: { solidMs: 2400, phasedMs: 900 },
     attack: {
       kind: EnemyAttackKind.Melee,
-      damage: 8,
+      damage: 4,
       range: 30,
       hitRange: 40,
-      windupMs: 420,
+      windupMs: 500,
       cooldownMs: 1100,
-      knockback: 120,
-      status: { slow: { pct: 0.3, durationMs: 1200 } },
+      knockback: 90,
+      status: { slow: { pct: 0.15, durationMs: 800 } },
     },
   },
 };

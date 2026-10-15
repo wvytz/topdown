@@ -3211,6 +3211,16 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Do oceny w testach właściciela** `#zasadzka`: częstość, liczba upiorów w falach, siła mroku, wygląd upiora.
 
+## Krok 49a — Słabsze upiory: zasadzka jako nagroda o niskim ryzyku `#zasadzka`
+
+**Decyzja właściciela** `#decyzja` `#zasadzka`: „uczyń jego ataki słabszymi, by nie był to pokój kojarzony z łatwą śmiercią, a bardziej z nagrodą o niskim ryzyku, jednak intensywniejszej walce”. To świadome złagodzenie tylko upiorów (zasada „nie łagodź trudności” dotyczy reszty gry).
+
+- Upiór: dotyk **8 → 4** obrażeń, zamach 420 → 500 ms (łatwiej uskoczyć), odrzut 120 → 90, spowolnienie 30%/1,2 s → **15%/0,8 s**, HP 24 → **20** (padają szybciej).
+- Intensywniej: fale **3 + 4 → 4 + 5** upiorów.
+- Przenikanie, mrok i przebieg bez zmian.
+
+**Weryfikacja:** build (1076 testów); `?floor=1&seed=3` — fala 4 upiorów, po dwóch falach przynęta do wzięcia; bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

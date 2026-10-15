@@ -9,7 +9,8 @@ export const AMBUSH_CONFIG: AmbushConfig = {
   gap: { min: 1, max: 2 },
   minSide: 6,
   triggerMargin: 2,
-  waves: [3, 4],
+  // Krok 49a: więcej, ale słabszych upiorów — intensywnie, z niskim ryzykiem.
+  waves: [4, 5],
   waveDelayMs: 1100,
   riseMs: 900,
   minSpawnDistance: 3,
