@@ -300,6 +300,49 @@ PALETTES = {
         # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
         mycel=oks((.55, .045, 215), (.76, .075, 205)),
     ),
+    # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
+    # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
+    # A: krwawy bazalt — prawie czarna, chłodna skała z nutą czerwieni; czerwień niesie krew i żar.
+    'pieklo_bazalt': Palette(
+        key='pieklo_bazalt', label='A: krwawy bazalt',
+        floor=oks((.29, .020, 20), (.37, .024, 22), (.445, .028, 25), (.49, .030, 27), (.535, .030, 30), (.58, .028, 32)),
+        floor_alt=ok(.43, .030, 15),
+        wall_top=oks((.13, .020, 15), (.20, .028, 18), (.30, .034, 20), (.36, .036, 22), (.44, .034, 25), (.52, .030, 28)),
+        wall_block_alt=ok(.33, .036, 12),
+        wall_face=oks((.09, .022, 15), (.14, .028, 18), (.18, .032, 20)),
+        wall_fade=oks((.08, .018, 15), (.12, .024, 18), (.15, .028, 20)),
+        deep=oks((.06, .016, 15), (.08, .018, 15)),
+        # Krew: zaschnięta (zewnętrzna) i świeża.
+        stain=oks((.27, .090, 22), (.34, .120, 25)),
+        # Popiół z palenisk.
+        ash=oks((.62, .014, 40), (.52, .014, 35)),
+    ),
+    # B: zaschnięta krew — rdzawy bordo posadzki, mury z ciemnej, krwistej cegły.
+    'pieklo_krew': Palette(
+        key='pieklo_krew', label='B: zaschnięta krew',
+        floor=oks((.29, .045, 18), (.37, .055, 20), (.445, .062, 22), (.49, .066, 24), (.535, .066, 27), (.58, .062, 30)),
+        floor_alt=ok(.43, .066, 14),
+        wall_top=oks((.13, .040, 15), (.20, .055, 17), (.30, .068, 19), (.36, .072, 21), (.44, .068, 24), (.52, .060, 27)),
+        wall_block_alt=ok(.33, .070, 12),
+        wall_face=oks((.09, .035, 15), (.14, .050, 17), (.18, .060, 19)),
+        wall_fade=oks((.08, .030, 15), (.12, .042, 17), (.15, .050, 19)),
+        deep=oks((.06, .024, 15), (.08, .028, 15)),
+        stain=oks((.24, .095, 20), (.31, .125, 24)),
+        ash=oks((.60, .016, 45), (.50, .016, 40)),
+    ),
+    # C: rozżarzony popiół — szaroczarna posadzka jak po pożarze, ciepłe pęknięcia, mury z osmalonego kamienia.
+    'pieklo_popiol': Palette(
+        key='pieklo_popiol', label='C: rozżarzony popiół',
+        floor=oks((.29, .016, 45), (.37, .018, 48), (.445, .020, 50), (.49, .022, 52), (.535, .024, 55), (.58, .024, 58)),
+        floor_alt=ok(.43, .022, 40),
+        wall_top=oks((.13, .030, 25), (.20, .040, 25), (.30, .048, 28), (.36, .050, 30), (.44, .046, 34), (.52, .040, 38)),
+        wall_block_alt=ok(.33, .050, 22),
+        wall_face=oks((.09, .028, 22), (.14, .038, 24), (.18, .044, 26)),
+        wall_fade=oks((.08, .024, 22), (.12, .032, 24), (.15, .038, 26)),
+        deep=oks((.06, .018, 22), (.08, .020, 22)),
+        stain=oks((.27, .090, 22), (.34, .120, 25)),
+        ash=oks((.64, .012, 60), (.54, .012, 55)),
+    ),
 }
 DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 
@@ -313,6 +356,9 @@ BIOMES = {
     'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
     # Cmentarzysko (krok 32a): ludzki biom — groby, kości, zwłoki zatrutych; grzybnia ledwo dociera.
     'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave',), 'reserved_hues': True},
+    # Piekło (krok 41a): krwisty, demoniczny biom z paleniskami; czerwień i pomarańcz z prośby właściciela,
+    # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
+    'infernal': {'palette': 'pieklo_bazalt', 'extras': (), 'reserved_hues': False},
 }
 
 
@@ -1789,6 +1835,9 @@ SPRITES = {
     # Wrogowie Cmentarzyska (krok 32b, tools/grave_enemies.py).
     'zombie': ('zombie_walk-claw.png', 48, '#1b1a22', 'Zarażony'),
     'sower': ('sower_walk-spit.png', 48, '#1b1a22', 'Siewca'),
+    # Druga bohaterka (krok 36, tools/sorceress_sprites.py).
+    'sorceress': ('sorceress_walk-cast.png', 48, '#1b1a22', 'Czarodziejka'),
+    'sorceress_orb': ('sorceress_orb.png', 16, None, None),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -1823,6 +1872,15 @@ MOCKUP_ACTORS_GRAVE = [
     ('sower', 6, 752, 252, True, 0),
     ('spore_ball', 0, 290, 238, False, 0),
 ]
+# Piekło (krok 41a): obaj bohaterowie; wrogowie zastępczy z Cmentarzyska do czasu własnych.
+MOCKUP_ACTORS_INFERNAL = [
+    ('barbarian_sword', 2, 368, 262, True, 4),
+    ('sorceress', 1, 300, 330, True, 0),
+    ('sorceress_orb', 0, 318, 312, False, 0),
+    ('zombie', 6, 452, 236, True, 6),
+    ('sower', 2, 232, 236, True, 6),
+    ('sower', 6, 752, 252, True, 0),
+]
 # Nakładki biomu na makiecie: (kafel, x, y) w kaflach.
 MOCKUP_BIOME_DECALS = {
     'graveyard': [('decal_corpse_2x1', 9, 12), ('decal_grave_slab_1x2', 15, 5), ('decal_grave_slab_1x2', 17, 5),
@@ -1841,13 +1899,14 @@ METRIC_CAST = {
     # Grzybnia (krok 28b): zarażony pająk i grzybiec; Król Pająków w kroku 29.
     'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
     'graveyard': ('barbarian_sword', 'zombie', 'sower'),
+    'infernal': ('barbarian_sword', 'sorceress', 'zombie', 'sower'),
 }
 
 
 def load_frame(key, row, col=0):
     file, cell, _, _ = SPRITES[key]
     im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
-    if key in ('orb', 'glob'):
+    if key in ('orb', 'glob', 'sorceress_orb'):
         row = 0  # bez kierunków
     return im.crop((col * cell, row * cell, (col + 1) * cell, (row + 1) * cell))
 
@@ -1961,7 +2020,8 @@ def compose_mockup(p, tiles, meta, seed=16):
             if grid[y][x] in props:
                 put(props[grid[y][x]], x, y)
     # 8. postacie (wg y), potem ściany nad postaciami
-    actors = (MOCKUP_ACTORS_GRAVE if BIOME == 'graveyard'
+    actors = (MOCKUP_ACTORS_INFERNAL if BIOME == 'infernal'
+              else MOCKUP_ACTORS_GRAVE if BIOME == 'graveyard'
               else MOCKUP_ACTORS_LAIR if BIOME in ('spider_lair', 'fungal_grove')
               else [(*a, 0) for a in MOCKUP_ACTORS])
     for key, row, cx, cy, _, col in sorted(actors, key=lambda a: a[3]):
