@@ -43,6 +43,8 @@ import { BossFight } from '@/combat/BossFight';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
 import { CocoonManager } from '@/combat/CocoonManager';
 import { PuffballManager } from '@/combat/PuffballManager';
+import { BrazierManager } from '@/combat/BrazierManager';
+import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
@@ -74,6 +76,7 @@ import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifi
 import { DustMotes } from '@/effects/DustMotes';
 import { FogWisps } from '@/effects/FogWisps';
 import { LightingOverlay } from '@/effects/LightingOverlay';
+import type { PointLight } from '@/effects/LightingOverlay';
 import { hexColor } from '@/effects/lightTextures';
 import { LIGHTING, TORCH_PLACEMENT } from '@/config/lightingConfig';
 import { planTorches } from '@/dungeon/LightPlanner';
@@ -107,6 +110,7 @@ const CEILING_DROP_SEED_SALT = 0xce11;
 const COCOON_SEED_SALT = 0xc0c0;
 const STICKY_WEB_SEED_SALT = 0x3eb5;
 const PUFFBALL_SEED_SALT = 0x9bff;
+const BRAZIER_SEED_SALT = 0xb4a2;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -130,6 +134,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private stickyWebs: StickyWebField | null = null;
   /** Purchawki z trującą chmurą — tylko w biomie, który je ma (krok 28c). */
   private puffballs: PuffballManager | null = null;
+  private braziers: BrazierManager | null = null;
   private loot!: LootManager;
   private lootRng!: Rng;
   private effects!: CombatEffects;
@@ -262,6 +267,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.cocoons?.update(time);
     this.stickyWebs?.update(time);
     this.puffballs?.update(time);
+    this.braziers?.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
@@ -522,6 +528,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
+    // Paleniska Piekła (krok 41b): nie w pokoju kapliczki — jej miejsce liczymy tym samym ziarnem co ShrineSite.
+    const braziers = this.biome.braziers;
+    const shrineTile = planShrineLocation(this.dungeon, createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)));
+    this.braziers = braziers
+      ? new BrazierManager({
+          scene: this,
+          floor: this.dungeon,
+          floorNumber: this.floorNumber,
+          config: braziers,
+          rng: createRng(deriveSeed(this.dungeon.seed, BRAZIER_SEED_SALT)),
+          player: this.player,
+          avoid: shrineTile ? [shrineTile] : [],
+          onPlayerHit,
+        })
+      : null;
+
     this.bossFight = new BossFight({
       scene: this,
       floor: this.dungeon,
@@ -752,19 +774,24 @@ export class GameScene extends Phaser.Scene implements HudSource {
         ? new EnemyVisibility({
             profile,
             revealStrength: LIGHTING.enemyReveal.revealStrength,
-            lights: () => (torchesLightUp ? this.torches.lights : []),
+            lights: () => (torchesLightUp ? this.pointLights() : []),
             player: this.player,
             actors: () => this.hideableEnemies(),
           })
         : null;
     // Po fizyce: światło gracza i widoczność wrogów nie zostają klatkę za nim.
     const render = () => {
-      this.lighting.render(this.player, this.torches.lights);
+      this.lighting.render(this.player, this.pointLights());
       hiding?.update();
     };
     render();
     this.events.on(Phaser.Scenes.Events.POST_UPDATE, render);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, render));
+  }
+
+  /** Światła piętra: pochodnie i paleniska (krok 41b). */
+  private pointLights(): PointLight[] {
+    return [...this.torches.lights, ...(this.braziers?.lights ?? [])];
   }
 
   /** Wrogowie ukrywani poza światłem: zwykli wrogowie i wszystkie pajączki (bez bossa). */

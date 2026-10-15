@@ -547,6 +547,23 @@ export const SPRITE_SHEETS = {
       burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
     },
   },
+  // Palenisko Piekła (krok 41b, tools/brazier_sprites.py): 48×48, bez kierunków; 0–3 tlenie, 4–7 ostrzeżenie
+  // (tempo z czasu ostrzeżenia), 8–11 buchnięcie (tempo z czasu buchnięcia).
+  brazier: {
+    key: 'sheet-brazier',
+    url: 'assets/sprites/brazier.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 576,
+    sheetHeight: 48,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      idle: { frames: [0, 1, 2, 3], loop: true },
+      warn: { frames: [4, 5, 6, 7], loop: false },
+      burst: { frames: [8, 9, 10, 11], loop: true },
+    },
+  },
   // Trująca chmura purchawki (krok 28c): rozrost (tempo liczy gra z czasu rozrostu) i kłębienie.
   poisonCloud: {
     key: 'sheet-poison-cloud',
@@ -774,6 +791,28 @@ export const COCOON_VISUAL = {
 } as const;
 
 /** Purchawka i jej chmura (krok 28c). Chmura półprzezroczysta — gaz, pod którym widać walkę. */
+/**
+ * Palenisko (krok 41b): animacje faz i wygląd buchnięcia w strefie (dwa koła ognia w kolorach rampy płomienia,
+ * mieszanie ADD ze stałą alfą — dozwolona półprzezroczystość efektów, STYLEGUIDE §6b). Światło paleniska jak
+ * pochodnia: mniejsze, gdy się tli, pełne przy buchnięciu.
+ */
+export const BRAZIER_VISUAL = {
+  sheet: 'brazier',
+  idle: 'idle',
+  warn: 'warn',
+  burst: 'burst',
+  fire: { outer: 0xa82010, inner: 0xe0701c, alpha: 0.3, innerScale: 0.6 },
+  // Stałe promienie (każdy promień to osobna tekstura światła — bez płynnego rozrostu).
+  light: { idleRadius: 40, warnRadius: 64, burstRadius: 96 },
+} as const satisfies {
+  readonly sheet: SpriteSheetId;
+  readonly idle: string;
+  readonly warn: string;
+  readonly burst: string;
+  readonly fire: { readonly outer: number; readonly inner: number; readonly alpha: number; readonly innerScale: number };
+  readonly light: { readonly idleRadius: number; readonly warnRadius: number; readonly burstRadius: number };
+};
+
 export const PUFFBALL_VISUAL = {
   sheet: 'puffball',
   idle: 'idle',

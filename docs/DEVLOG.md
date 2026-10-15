@@ -2933,6 +2933,29 @@ Makieta generatora:
 
 ---
 
+## Krok 41b — Paleniska Piekła `#pieklo`
+
+**Decyzje właściciela:** `#decyzja` `#pieklo` paleniska na środku pokojów ranią z bliska i buchają „w niezbyt szybkim tempie”; na kolejnym, gorętszym poziomie buchają częściej.
+
+**Zasady (czysto: `systems/Braziers.ts`, planer `dungeon/BrazierPlanner.ts`, liczby w `biomeConfig` → `braziers`):**
+- **rozmieszczenie:** na środku zwykłych pokojów (nie startowego, nie areny) z szansą 80%; w pokoju o dłuższym boku ≥ 9 kafli dwa — na 1/3 i 2/3 długości; pomija pokój kapliczki (jej miejsce liczone tym samym ziarnem co `ShrineSite`) i pokoje węższe niż 5 kafli (trzeba móc obejść strefę);
+- **cykl:** tlenie 4,2 s → ostrzeżenie 1 s (czerwona strefa wypełnia się jak telegrafy ataków) → buchnięcie 0,7 s; każde palenisko ma własne przesunięcie cyklu (RNG piętra), więc nie buchają razem;
+- **obrażenia:** buchnięcie 12 w promieniu 46 px (najwyżej raz na buchnięcie — trwa dłużej niż nietykalność po trafieniu); sama rozżarzona misa parzy stale (4 w promieniu 14 px). Przez `takeHit`, więc dash i nietykalność chronią jak przed atakiem. Wrogów nie parzy — to ich biom;
+- **„gorętsze” piętra:** przerwa ×0,7 na każde piętro powyżej 5 (najmniej 1,8 s); ostrzeżenie zostaje 1 s, żeby dało się uciec. Dziś Piekło to tylko piętro 5 — liczby czekają na decyzję, czy biom ma dwa piętra.
+
+**Wygląd:**
+- generator `tools/brazier_sprites.py` → `brazier.png` (48×48, 12 klatek): żelazna misa z obrysem i węglami; tlenie, rosnący płomień w ostrzeżeniu, słup ognia w buchnięciu; płomień bez obrysu (§6b), rampa ognia palety „krwawy bazalt”;
+- w buchnięciu silnik rysuje strefę: dwa koła ognia (mieszanie ADD, stała alfa 0,3, migotanie skokowe);
+- paleniska świecą jak pochodnie (rozjaśniają mrok i odsłaniają wrogów): 40 px przy tleniu, 64 w ostrzeżeniu, 96 przy buchnięciu. Stałe promienie — płynny rozrost tworzyłby nową teksturę światła co klatkę.
+
+**Testy:** `tests/systems/braziers.test.ts` — tylko w Piekle; rozmieszczenie (podłoga zwykłych pokojów, 1–2 na pokój, środek), pokój kapliczki i wąskie pokoje bez palenisk, determinizm; kolejność faz, przesunięcie, jedno trafienie na buchnięcie, tempo na piętrze 5 i szybsze wyżej przy stałym ostrzeżeniu; strefy obrażeń. `BrazierPlanner` w `PURE_FILES`. `npm run build`: 980 testów.
+
+**Weryfikacja w przeglądarce** (`?seed=7&floor=5`): 7 palenisk; Czarodziejka 30 px od paleniska traci 12 HP raz na buchnięcie, 62 px dalej — nic; zrzuty ostrzeżenia (czerwona strefa) i buchnięcia (koła ognia, światło); bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** tempo (4,2 s przerwy), promień i siła buchnięcia, wygląd ognia w strefie.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

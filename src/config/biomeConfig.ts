@@ -8,6 +8,7 @@ import type { CeilingDropConfig } from '@/systems/CeilingDrops';
 import type { CocoonConfig } from '@/systems/Cocoons';
 import type { PuffballConfig } from '@/systems/Puffballs';
 import type { StickyWebConfig } from '@/systems/StickyWebs';
+import type { BrazierConfig } from '@/systems/Braziers';
 import { SPIDER_QUEEN } from '@/config/bossConfig';
 import {
   FUNGAL_GROVE_TILESET_ASSET,
@@ -43,6 +44,8 @@ export interface BiomeDefinition {
   readonly puffballs: PuffballConfig | null;
   /** Mgła ograniczająca widok zamiast zwykłego mroku (krok 28a); null = zwykłe światło. */
   readonly fog: FogConfig | null;
+  /** Buchające paleniska na środku zwykłych pokojów (krok 41b); null = brak. */
+  readonly braziers: BrazierConfig | null;
 }
 
 export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
@@ -57,6 +60,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     stickyWebs: null,
     puffballs: null,
     fog: null,
+    braziers: null,
   },
   [BiomeId.SpiderLair]: {
     id: BiomeId.SpiderLair,
@@ -110,6 +114,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     },
     puffballs: null,
     fog: null,
+    braziers: null,
   },
   // Grzybnia (krok 28a): piętro zainfekowanego Króla Pająków. Ciemny fiolet z błękitem, mgła ogranicza widok,
   // grzyby-latarnie zamiast pochodni. Wrogowie (krok 28b): zarażony pająk (Rusher) i grzybiec (Kiter) — obaj zatruwają.
@@ -144,6 +149,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
       },
     },
     fog: FUNGAL_FOG,
+    braziers: null,
   },
   // Cmentarzysko (krok 32a): ludzki biom nad Grzybnią — tu upadli zatruci; jedni się rozkładają, inni zmieniają
   // w grzybowe zombie. Grzyb ledwo dociera. Paleta C „trupia zieleń” (wybór właściciela), świece zamiast
@@ -159,6 +165,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     stickyWebs: null,
     puffballs: null,
     fog: GRAVEYARD_MIST,
+    braziers: null,
   },
   // Piekło (krok 41a, prośba właściciela): krwisty, demoniczny biom z pomarańczowym żarem; paleta A
   // „krwawy bazalt” (wybór właściciela). Wrogowie zastępczy do czasu własnych: zarażony (Rusher) i mag
@@ -174,6 +181,19 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     stickyWebs: null,
     puffballs: null,
     fog: INFERNAL_HAZE,
+    // Paleniska (krok 41b, decyzje właściciela): na środku zwykłych pokojów, buchają w niezbyt szybkim tempie;
+    // na wyższych („gorętszych”) piętrach przerwa się skraca (×0,7 na piętro), ostrzeżenie zostaje 1 s.
+    braziers: {
+      roomChance: 0.8,
+      twoFromLongSide: 9,
+      minShortSide: 5,
+      contact: { radius: 14, damage: 4, knockback: 140 },
+      burst: { radius: 46, damage: 12, knockback: 220 },
+      timing: { idleMs: 4200, warnMs: 1000, burstMs: 700 },
+      heatBaseFloor: 5,
+      idlePerFloor: 0.7,
+      minIdleMs: 1800,
+    },
   },
 };
 
