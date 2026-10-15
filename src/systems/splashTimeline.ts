@@ -3,22 +3,17 @@ import { SPLASH_TIMING } from '@/config/splashConfig';
 
 /** Stan ekranu startowego w danej chwili — scena Phasera tylko go rysuje. */
 export interface SplashFrame {
-  /** Zaciemnienie całego ekranu: 1 = czerń (ciemność przed tłem, wygaszenie na końcu). */
+  /** Zaciemnienie całego ekranu: 1 = czerń (wieża wyłania się z ciemności, wygaszenie na końcu). */
   readonly blackout: number;
-  /** Jasność pioruna (0..1) — rozjaśnia ekran i na moment odsłania sylwetkę wieży. */
-  readonly lightning: number;
-  /** Słowa tytułu: widoczność i skala (uderzenie z odbiciem), w kolejności `wordSlamAt`. */
+  /** Korona zaćmionego słońca (0..1). */
+  readonly coronaAlpha: number;
+  /** Linie napisu (TOP, DOWN): widoczność i skala uderzenia z odbiciem. */
   readonly words: readonly { readonly visible: boolean; readonly scale: number }[];
   readonly flashAlpha: number;
-  /** Poświata za logo i promienie światła (0..1). */
-  readonly glowAlpha: number;
-  readonly raysAlpha: number;
-  /** Położenie połysku na literach 0..1 (od lewej do prawej) albo null, gdy go nie ma. */
-  readonly shine: number | null;
+  /** Żar w pęknięciach ziemi (0..1) — po uderzeniu DOWN. */
+  readonly cracksAlpha: number;
   readonly eyesOn: boolean;
   readonly lateEyesOn: boolean;
-  /** Ile znaków podtytułu już widać (bez górnego limitu — scena przycina do długości napisu). */
-  readonly subtitleChars: number;
   /** Koniec wygaszenia — czas uruchomić pierwszą planszę. */
   readonly done: boolean;
 }
@@ -26,8 +21,9 @@ export interface SplashFrame {
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3;
+const easeInOut = (t: number): number => t * t * (3 - 2 * t);
 
-/** Chwile uderzeń słów (błysk, wstrząs kamery), w kolejności słów. */
+/** Chwile uderzeń linii napisu (błysk, wstrząs, odłamki), w kolejności linii. */
 export function splashImpacts(timing: SplashTiming = SPLASH_TIMING): number[] {
   return timing.wordSlamAt.map((at) => at + timing.slamDuration);
 }
@@ -45,16 +41,7 @@ function wordScaleAt(t: number, slamAt: number, timing: SplashTiming): number {
   return 1;
 }
 
-function lightningAt(t: number, timing: SplashTiming): number {
-  return Math.max(
-    0,
-    ...timing.lightningAt.map((at, i) =>
-      t < at ? 0 : (timing.lightningPeak[i] ?? 0) * (1 - clamp01((t - at) / timing.lightningDecay)),
-    ),
-  );
-}
-
-/** Błysk po uderzeniu: każde uderzenie ma własną siłę, liczy się najjaśniejszy. */
+/** Błysk po uderzeniu: każde ma własną siłę, liczy się najjaśniejszy. */
 function flashAt(t: number, timing: SplashTiming): number {
   return Math.max(
     0,
@@ -77,23 +64,16 @@ function eyesAt(t: number, start: number, timing: SplashTiming): boolean {
 export function splashFrame(t: number, fadeFrom: number | null, timing: SplashTiming = SPLASH_TIMING): SplashFrame {
   const impacts = splashImpacts(timing);
   const lastImpact = impacts[impacts.length - 1] ?? 0;
-  const firstImpact = impacts[0] ?? 0;
   const fade = fadeFrom === null ? 0 : clamp01((t - fadeFrom) / timing.fadeOutDuration);
-  const dark = 1 - clamp01((t - timing.backdropAt) / timing.backdropIn);
-  const lightning = lightningAt(t, timing);
-  const shineK = (t - timing.shineAt) / timing.shineDuration;
+  const reveal = easeInOut(clamp01((t - timing.revealAt) / timing.revealDuration));
   return {
-    // Piorun odsłania tło przez ciemność; wygaszenie na końcu wygrywa ze wszystkim.
-    blackout: Math.max(Math.min(dark, 1 - lightning), fade),
-    lightning,
+    blackout: Math.max(1 - reveal, fade),
+    coronaAlpha: easeInOut(clamp01((t - timing.coronaAt) / timing.coronaDuration)),
     words: timing.wordSlamAt.map((at) => ({ visible: t >= at, scale: wordScaleAt(t, at, timing) })),
     flashAlpha: flashAt(t, timing),
-    glowAlpha: t < firstImpact ? 0 : t < lastImpact ? 0.5 : 1,
-    raysAlpha: clamp01((t - lastImpact) / timing.raysFadeIn),
-    shine: shineK >= 0 && shineK <= 1 ? shineK : null,
+    cracksAlpha: clamp01((t - lastImpact) / timing.cracksDuration),
     eyesOn: eyesAt(t, timing.eyesAt, timing),
     lateEyesOn: eyesAt(t, timing.eyesAt + timing.lateEyesDelay, timing),
-    subtitleChars: t < timing.subtitleAt ? 0 : Math.floor((t - timing.subtitleAt) / timing.subtitleCharMs),
     done: fadeFrom !== null && t >= fadeFrom + timing.fadeOutDuration,
   };
 }

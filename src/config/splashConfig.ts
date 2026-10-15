@@ -1,10 +1,12 @@
 /**
- * Ekran startowy (krok 34, „epicka” wersja z nazwą TOP DOWN w kroku 36): czasy, układ, paleta i rysunek tła.
- * Paleta z systemu „Matka Pająków” (chityna, ogień jaj, oczy, kość); projekt na kanwie Claude Design.
+ * Ekran startowy (krok 34; od kroku 37 nowy motyw): TOP nad szczytem samotnej wieży, DOWN u jej podstawy.
+ * Wokół mrok i zniszczenie, za wieżą zaćmione słońce, z nieba opada popiół — gra jako metafora końca.
+ * Paleta z systemu „Matka Pająków” (chityna, ogień jaj, oczy, kość).
  */
 
-/** Kolory (0xRRGGBB) — tokeny systemu „Matka Pająków”. */
+/** Kolory (0xRRGGBB) — tokeny systemu „Matka Pająków” + czerń tarczy zaćmienia. */
 export const SPLASH_PALETTE = {
+  void: 0x07060b,
   outline: 0x1b1a22,
   chitin0: 0x0f0e18,
   chitin1: 0x241823,
@@ -22,194 +24,167 @@ export const SPLASH_PALETTE = {
   bone2: 0xe8e0c0,
 } as const;
 
-/** Napis na ekranie startowym: nazwa gry, słowa uderzają po kolei (krok 36). */
-export const SPLASH_TITLE_WORDS = ['TOP', 'DOWN'] as const;
+/** Dwie linie napisu: TOP nad wieżą, DOWN u jej stóp (środek w pikselach ekranu). */
+export const SPLASH_TITLE_LINES = [
+  { text: 'TOP', centerY: 76 },
+  { text: 'DOWN', centerY: 448 },
+] as const;
 
-/**
- * Oś czasu w ms od startu sceny (krok 36: wersja „epicka”). Całość ok. 3,9 s;
- * tytuł trzyma się dłużej, jeśli gra jeszcze się ładuje.
- */
+/** Oś czasu w ms od startu sceny. Całość ok. 4,3 s; tytuł trzyma się dłużej, jeśli gra jeszcze się ładuje. */
 export const SPLASH_TIMING = {
-  /** Błyski pioruna w ciemności — na moment wydobywają sylwetkę wieży. */
-  lightningAt: [150, 330],
-  lightningPeak: [0.85, 0.55],
-  lightningDecay: 170,
-  /** Wyjście tła z czerni po piorunach. */
-  backdropAt: 500,
-  backdropIn: 450,
-  /** Uderzenia słów (TOP, potem mocniej DOWN). */
-  wordSlamAt: [700, 1050],
-  /** Lot słowa ze skali `slamFromScale` do `slamUndershoot`. */
-  slamDuration: 180,
-  slamFromScale: 3,
-  slamUndershoot: 0.92,
-  slamOvershoot: 1.05,
-  /** Odbicie po uderzeniu: undershoot → overshoot → 1. */
+  /** Wieża powoli wyłania się z ciemności. */
+  revealAt: 300,
+  revealDuration: 900,
+  /** Korona zaćmionego słońca rozżarza się za wieżą. */
+  coronaAt: 200,
+  coronaDuration: 1400,
+  /** Uderzenia linii napisu: TOP, potem cięższe DOWN. */
+  wordSlamAt: [900, 1500],
+  slamDuration: 200,
+  slamFromScale: 2.4,
+  slamUndershoot: 0.93,
+  slamOvershoot: 1.04,
   settleDuration: 180,
-  /** Błysk i wstrząs każdego uderzenia (ostatnie najmocniejsze). */
-  flashAlpha: [0.5, 0.85],
-  flashDuration: 350,
-  shakeDuration: [200, 420],
-  shakeIntensity: [0.005, 0.013],
-  /** Promienie światła zza ruin rozjaśniają się po ostatnim uderzeniu. */
-  raysFadeIn: 700,
-  /** Rozgrzany połysk przesuwa się po literach. */
-  shineAt: 1500,
-  shineDuration: 650,
-  /** Oczy w ruinach: zapalają się i co jakiś czas mrugają. */
-  eyesAt: 1700,
-  /** Druga grupa oczu zapala się później. */
-  lateEyesDelay: 600,
+  /** Błysk i wstrząs każdego uderzenia (ostatnie najcięższe). */
+  flashAlpha: [0.3, 0.5],
+  flashDuration: 400,
+  shakeDuration: [260, 520],
+  shakeIntensity: [0.006, 0.014],
+  /** Po uderzeniu DOWN pęknięcia w ziemi zaczynają się żarzyć. */
+  cracksDuration: 500,
+  /** Oczy w mroku: zapalają się i co jakiś czas mrugają. */
+  eyesAt: 2000,
+  lateEyesDelay: 500,
   blinkPeriod: 2200,
   blinkOffset: 900,
   blinkLength: 120,
-  /** Wpisywanie podtytułu znak po znaku. */
-  subtitleAt: 2000,
-  subtitleCharMs: 28,
   /** Wygaszenie do czerni i start pierwszej planszy. */
-  fadeOutAt: 3400,
-  fadeOutDuration: 500,
+  fadeOutAt: 3700,
+  fadeOutDuration: 600,
 } as const;
 
 export type SplashTiming = typeof SPLASH_TIMING;
 
-/** Układ w pikselach ekranu (płótno 960×540). */
+/** Układ i efekty w pikselach ekranu (płótno 960×540). */
 export const SPLASH_LAYOUT = {
-  /** Jeden piksel tła = 4 piksele ekranu (siatka 240×135); detale (oczy, worki) w siatce 480×270. */
+  /** Jeden piksel tła = 4 piksele ekranu (siatka 240×135); detale (oczy) w siatce 480×270. */
   artScale: 4,
   detailScale: 2,
   centerX: 480,
-  title: { centerY: 238, unit: 16, gap: 1, extrude: 4 },
-  /** Połysk: ukośny pas w pikselach fontu (szerokość, pochylenie na wiersz). */
-  shine: { width: 2.5, slant: 0.5 },
-  ornament: { y: 330, width: 120, gap: 18 },
-  subtitle: { y: 368, fontSize: 14, letterSpacing: 6 },
-  glow: { width: 760, height: 340, alpha: 0.42 },
-  /** Promienie światła z punktu za tytułem. */
-  rays: { count: 14, size: 1100, alpha: 0.13, spinDegPerSec: 3 },
-  /** Piorun ma chłodny, kościany kolor — tylko na moment. */
-  lightningColor: 0xe8e0c0,
-  vignetteAlpha: 0.92,
-  scanlineAlpha: 0.28,
-  embers: { count: 20, minDurationMs: 3200, maxDurationMs: 6000, risePx: 380 },
-  spiderDangle: { px: 6, periodMs: 4000, steps: 6 },
-  primeBlinkMs: 400,
+  title: { unit: 14, gap: 1, extrude: 4 },
+  /** Zaćmione słońce za szczytem wieży (siatka 240×135). */
+  eclipse: { cx: 120, cy: 50, radius: 15 },
+  glow: { size: 300, alpha: 0.32 },
+  /** Popiół opada powoli i kołysze się na boki. */
+  ash: { count: 46, minSpeed: 0.012, maxSpeed: 0.035, sway: 10, swayPeriodMs: 3200 },
+  /** Kamienie odpadające od wyrwy w wieży: przy każdym uderzeniu i pojedynczo co jakiś czas. */
+  debris: { perImpact: [3, 6], dribbleMs: 650, gravity: 0.0009, groundY: 464, minSize: 2, maxSize: 3 },
+  /** Pył przy uderzeniu DOWN w ziemię. */
+  dust: { count: 26, y: 470, speed: 0.12, lifeMs: 900 },
+  vignetteAlpha: 0.95,
+  scanlineAlpha: 0.22,
 } as const;
 
-/** Pasy ognia w wierszach liter (7 wierszy fontu): od blasku do bazy. */
+/** Lico liter: popiół i kość, od jasnej góry do ciemniejszej podstawy; pod spodem żarząca się krawędź. */
 export const SPLASH_TITLE_BANDS = [
-  SPLASH_PALETTE.egg3,
-  SPLASH_PALETTE.egg3,
-  SPLASH_PALETTE.egg2,
-  SPLASH_PALETTE.egg2,
-  SPLASH_PALETTE.egg1,
-  SPLASH_PALETTE.egg1,
-  SPLASH_PALETTE.egg1,
+  SPLASH_PALETTE.bone2,
+  SPLASH_PALETTE.bone2,
+  SPLASH_PALETTE.bone1,
+  SPLASH_PALETTE.bone1,
+  SPLASH_PALETTE.bone1,
+  SPLASH_PALETTE.bone0,
+  SPLASH_PALETTE.bone0,
 ] as const;
 
 /** Prostokąt rysunku: x, y, szerokość, wysokość (w siatce warstwy), kolor. */
 export type ArtRect = readonly [number, number, number, number, number];
-/** Prostokąt bez koloru: x, y, szerokość, wysokość. */
-export type ArtBox = readonly [number, number, number, number];
-/** Odcinek pajęczyny w siatce 240×135. */
+/** Odcinek w siatce 240×135. */
 export type ArtLine = readonly [number, number, number, number];
 
 const P = SPLASH_PALETTE;
+const GROUND = 118;
 
-/** Pajęczyny w górnych rogach (siatka 240×135). */
-export const SPLASH_WEBS: readonly ArtLine[] = [
-  [0, 0, 40, 26], [0, 0, 22, 40], [0, 0, 46, 8], [12, 0, 0, 10], [26, 2, 4, 20], [36, 20, 14, 32],
-  [239, 0, 204, 22], [239, 0, 222, 34], [239, 0, 196, 6], [228, 0, 239, 10], [212, 4, 236, 18],
+/** Wyszczerbiony szczyt wieży: kolumny [x, wierzch, szerokość] do linii ziemi (prawa strona utrącona niżej). */
+const TOWER_COLUMNS: readonly (readonly [number, number, number])[] = [
+  [104, 56, 4], [108, 50, 3], [111, 53, 4], [115, 44, 3], [118, 40, 4],
+  [122, 46, 3], [125, 51, 4], [129, 59, 4], [133, 66, 3],
 ];
 
-/** Nieruchome tło: dalekie mury, wieża, ruiny, gruz (siatka 240×135, kolejność rysowania). */
+/** Samotna wieża i spękana ziemia wokół (siatka 240×135, kolejność rysowania). */
 export const SPLASH_BACKDROP: readonly ArtRect[] = [
-  // dalekie zarysy murów
-  [0, 100, 20, 35, P.outline], [20, 92, 14, 43, P.outline], [34, 98, 18, 37, P.outline],
-  [52, 86, 6, 49, P.outline], [58, 90, 12, 45, P.outline], [70, 96, 14, 39, P.outline],
-  [222, 104, 18, 31, P.outline], [210, 94, 12, 41, P.outline], [196, 99, 14, 36, P.outline],
-  [188, 88, 8, 47, P.outline], [176, 93, 12, 42, P.outline], [160, 100, 16, 35, P.outline],
-  // wieża z wyszczerbionym szczytem
-  [96, 44, 3, 91, P.chitin1], [99, 40, 4, 95, P.chitin1], [103, 44, 3, 91, P.chitin1],
-  [106, 38, 4, 97, P.chitin1], [110, 42, 4, 93, P.chitin1], [114, 34, 4, 101, P.chitin1],
-  [118, 28, 3, 107, P.chitin1], [121, 33, 3, 102, P.chitin1], [124, 41, 4, 94, P.chitin1],
-  [128, 45, 3, 90, P.chitin1], [131, 39, 4, 96, P.chitin1], [135, 46, 4, 89, P.chitin1],
-  [139, 52, 3, 83, P.chitin1], [142, 48, 2, 87, P.chitin1],
-  [96, 44, 2, 91, P.chitin2], [114, 34, 1, 8, P.chitin2],
-  // warstwy kamieni i spoiny
-  [98, 58, 46, 1, P.outline], [98, 70, 46, 1, P.outline], [98, 82, 46, 1, P.outline],
-  [98, 94, 46, 1, P.outline], [98, 106, 46, 1, P.outline],
-  [108, 58, 1, 12, P.outline], [126, 58, 1, 12, P.outline], [116, 70, 1, 12, P.outline],
-  [134, 70, 1, 12, P.outline], [104, 82, 1, 12, P.outline], [122, 82, 1, 12, P.outline],
-  [112, 94, 1, 12, P.outline], [130, 94, 1, 12, P.outline],
-  // pęknięcie
-  [128, 46, 1, 6, P.chitin0], [127, 52, 1, 6, P.chitin0], [128, 58, 1, 5, P.chitin0],
-  // okno z pochodnią i ciemne okno
-  [104, 96, 4, 9, P.chitin0], [105, 99, 2, 5, P.egg1], [105, 98, 2, 1, P.egg0],
-  [134, 98, 3, 7, P.chitin0],
-  // podstawa i brama
-  [88, 120, 62, 15, P.chitin1], [88, 120, 62, 1, P.chitin2], [88, 120, 2, 15, P.chitin2],
-  [114, 110, 12, 2, P.chitin0], [112, 112, 16, 23, P.chitin0],
-  // lewa złamana kolumna z łukiem
-  [22, 68, 2, 67, P.chitin1], [24, 64, 2, 71, P.chitin1], [26, 58, 6, 77, P.chitin1],
-  [32, 64, 4, 71, P.chitin1], [36, 64, 2, 4, P.chitin1],
-  [24, 68, 2, 67, P.chitin2], [22, 64, 16, 1, P.chitin2],
-  [36, 70, 14, 4, P.chitin1], [50, 74, 6, 3, P.chitin1],
-  [58, 96, 10, 39, P.chitin1], [58, 96, 2, 39, P.chitin2],
-  // prawy mur z oknem
-  [196, 60, 4, 75, P.chitin1], [200, 54, 6, 81, P.chitin1], [206, 62, 4, 73, P.chitin1],
-  [210, 57, 6, 78, P.chitin1], [196, 60, 2, 75, P.chitin2], [202, 76, 6, 10, P.chitin0],
-  [176, 100, 8, 35, P.chitin1], [176, 100, 2, 35, P.chitin2],
-  // gruz
-  [0, 128, 240, 7, P.outline],
-  [8, 125, 6, 3, P.chitin1], [8, 125, 6, 1, P.chitin2], [16, 127, 4, 2, P.chitin1],
-  [72, 126, 8, 3, P.chitin1], [72, 126, 8, 1, P.chitin2],
-  [152, 126, 7, 3, P.chitin1], [160, 124, 4, 4, P.chitin1], [160, 124, 4, 1, P.chitin2],
-  [222, 126, 9, 3, P.chitin1], [222, 126, 9, 1, P.chitin2], [232, 127, 5, 2, P.chitin1],
-  // pajączki na gruzie
-  [66, 121, 5, 3, P.chitin0], [64, 120, 1, 1, P.chitin0], [72, 120, 1, 1, P.chitin0],
-  [64, 124, 1, 1, P.chitin0], [72, 124, 1, 1, P.chitin0],
-  [168, 122, 5, 3, P.chitin0], [166, 121, 1, 1, P.chitin0], [174, 121, 1, 1, P.chitin0],
-  [166, 125, 1, 1, P.chitin0], [174, 125, 1, 1, P.chitin0],
+  // ziemia: nierówny horyzont, dalej tylko ciemność
+  [0, 116, 240, 19, P.outline], [0, 114, 40, 2, P.outline], [70, 115, 30, 1, P.outline],
+  [150, 114, 20, 2, P.outline], [200, 113, 40, 3, P.outline],
+  // dalekie zwały gruzu
+  [8, 111, 18, 5, P.chitin1], [214, 110, 20, 6, P.chitin1],
+  // zniszczenie po bokach: kikuty kolumn, przechylone resztki murów, złamany łuk
+  [30, 100, 6, 16, P.chitin1], [32, 94, 6, 6, P.chitin1], [34, 90, 5, 4, P.chitin1], [30, 100, 1, 16, P.chitin2],
+  [44, 96, 10, 20, P.chitin1], [46, 90, 6, 6, P.chitin1], [49, 86, 3, 4, P.chitin1], [44, 96, 1, 20, P.chitin2],
+  [12, 106, 14, 3, P.chitin1], [12, 109, 3, 7, P.chitin1], [12, 106, 14, 1, P.chitin2],
+  [196, 98, 7, 18, P.chitin1], [198, 92, 6, 6, P.chitin1], [196, 98, 1, 18, P.chitin2],
+  [180, 100, 9, 16, P.chitin1], [182, 95, 4, 5, P.chitin1], [180, 100, 1, 16, P.chitin2],
+  [214, 104, 16, 3, P.chitin1], [226, 107, 3, 9, P.chitin1], [214, 104, 16, 1, P.chitin2],
+  // wieża
+  ...TOWER_COLUMNS.map(([x, top, w]) => [x, top, w, GROUND - top, P.chitin1] as const),
+  [104, 56, 2, GROUND - 56, P.chitin2], [115, 44, 1, 8, P.chitin2],
+  // warstwy kamieni
+  [106, 72, 30, 1, P.outline], [106, 84, 30, 1, P.outline], [106, 96, 30, 1, P.outline], [106, 108, 30, 1, P.outline],
+  [112, 72, 1, 12, P.outline], [127, 72, 1, 12, P.outline], [119, 84, 1, 12, P.outline],
+  [109, 96, 1, 12, P.outline], [130, 96, 1, 12, P.outline],
+  // wyrwa w prawym boku — prześwituje niebo
+  [131, 70, 5, 9, P.chitin0], [129, 74, 2, 4, P.chitin0], [134, 79, 2, 3, P.chitin0],
+  // ostatnie okno ze światłem i ciemne szczeliny
+  [117, 69, 4, 8, P.chitin0], [118, 72, 2, 4, P.egg1], [118, 71, 2, 1, P.egg0],
+  [110, 86, 2, 6, P.chitin0], [127, 90, 2, 6, P.chitin0],
+  // brama i podstawa
+  [98, 108, 44, 10, P.chitin1], [98, 108, 44, 1, P.chitin2], [98, 108, 2, 10, P.chitin2],
+  [116, 102, 8, 2, P.chitin0], [114, 104, 12, 14, P.chitin0],
+  // odłamy muru na ziemi
+  [150, 110, 14, 6, P.chitin1], [152, 108, 8, 2, P.chitin1], [150, 110, 14, 1, P.chitin2],
+  [80, 112, 9, 4, P.chitin1], [80, 112, 9, 1, P.chitin2], [70, 114, 5, 2, P.chitin1],
+  [170, 113, 4, 3, P.chitin1], [62, 115, 3, 1, P.chitin1],
 ];
 
-/** Pająk na nitce (siatka 240×135) — kołysze się w górę i w dół. */
-export const SPLASH_SPIDER: readonly ArtRect[] = [
-  [46, 0, 1, 40, P.chitin2],
-  [44, 40, 5, 4, P.chitin1], [43, 44, 7, 6, P.chitin1], [45, 45, 2, 1, P.chitin2],
-  [40, 41, 4, 1, P.chitin1], [49, 41, 4, 1, P.chitin1], [39, 42, 1, 3, P.chitin1], [53, 42, 1, 3, P.chitin1],
-  [40, 45, 3, 1, P.chitin1], [50, 45, 3, 1, P.chitin1], [39, 46, 1, 3, P.chitin1], [53, 46, 1, 3, P.chitin1],
+/** Pęknięcie przez mur wieży (siatka 240×135). */
+export const SPLASH_TOWER_CRACKS: readonly ArtLine[] = [
+  [124, 48, 121, 70],
+  [121, 70, 125, 95],
+  [125, 95, 123, 106],
 ];
 
-/** Nietoperz w prawym górnym rogu (siatka 240×135). */
-export const SPLASH_BAT: readonly ArtRect[] = [
-  [180, 24, 4, 3, P.chitin1], [174, 22, 6, 2, P.chitin1], [184, 22, 6, 2, P.chitin1],
-  [172, 21, 2, 2, P.chitin1], [190, 21, 2, 2, P.chitin1], [176, 24, 2, 1, P.chitin1], [186, 24, 2, 1, P.chitin1],
+/** Pęknięcia w ziemi rozchodzące się od podstawy wieży — żarzą się po uderzeniu DOWN. */
+export const SPLASH_GROUND_CRACKS: readonly ArtLine[] = [
+  [104, 119, 60, 134],
+  [136, 119, 178, 134],
+  [92, 121, 70, 125],
+  [150, 121, 192, 127],
+  [60, 134, 40, 128],
+  [178, 134, 214, 129],
 ];
 
-/** Oczy pająka na nitce (siatka 480×270, przesuwają się razem z nim). */
-export const SPLASH_SPIDER_EYES: readonly ArtRect[] = [
-  [91, 94, 1, 1, P.eye1], [94, 94, 1, 1, P.eye1],
-];
+/** Wyrwa, z której odpadają kamienie (siatka 240×135): x od–do, y od–do. */
+export const SPLASH_DEBRIS_SOURCE = { x0: 128, x1: 137, y0: 60, y1: 82 } as const;
 
-/** Oczy w mroku (siatka 480×270): Matka w bramie wieży i pierwsza grupa. */
+/** Oczy w mroku (siatka 480×270): po bokach przy ziemi i w bramie wieży. */
 export const SPLASH_EYES: readonly ArtRect[] = [
-  [231, 240, 2, 1, P.eye0], [235, 238, 2, 2, P.eye1], [243, 238, 2, 2, P.eye1], [247, 240, 2, 1, P.eye0],
-  [236, 238, 1, 1, P.eye2], [244, 238, 1, 1, P.eye2],
+  [235, 218, 2, 2, P.eye1], [243, 218, 2, 2, P.eye1], [236, 218, 1, 1, P.eye2], [244, 218, 1, 1, P.eye2],
+  [70, 214, 1, 1, P.eye1], [74, 214, 1, 1, P.eye1],
 ];
 
-/** Oczy, które zapalają się chwilę później: okno muru, ciemne okno wieży, pajączek. */
+/** Oczy, które zapalają się chwilę później — dalej w ciemności. */
 export const SPLASH_EYES_LATE: readonly ArtRect[] = [
-  [407, 160, 2, 1, P.eye1], [412, 160, 2, 1, P.eye1],
-  [269, 202, 1, 1, P.eye1], [272, 202, 1, 1, P.eye1],
-  [133, 243, 1, 1, P.eye1], [139, 243, 1, 1, P.eye1],
+  [404, 206, 1, 1, P.eye1], [408, 206, 1, 1, P.eye1],
+  [150, 226, 1, 1, P.eye0], [153, 226, 1, 1, P.eye0],
+  [340, 222, 1, 1, P.eye0], [343, 222, 1, 1, P.eye0],
 ];
 
-/** Worki-bomby pajączków (siatka 480×270) — pulsują między egg0 a egg2. */
-export const SPLASH_SACS: readonly ArtBox[] = [
-  [135, 242, 2, 2],
-  [339, 244, 2, 2],
+/** Odległe pożary na horyzoncie (siatka 480×270): świat płonie gdzieś w mroku. */
+export const SPLASH_FIRES: readonly ArtRect[] = [
+  [22, 220, 2, 2, P.egg1], [22, 219, 1, 1, P.egg2],
+  [58, 226, 2, 1, P.egg0],
+  [452, 214, 2, 2, P.egg1], [453, 213, 1, 1, P.egg2],
+  [418, 222, 2, 1, P.egg0],
 ];
 
-/** Kolory iskier unoszących się z dołu. */
-export const SPLASH_EMBER_COLORS = [P.egg0, P.egg1, P.egg2, P.egg3] as const;
+/** Kolory popiołu (drobne, przygaszone). */
+export const SPLASH_ASH_COLORS = [P.bone0, P.chitin3, P.chitin2] as const;

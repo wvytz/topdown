@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SPLASH_TIMING as T, SPLASH_TITLE_WORDS } from '@/config/splashConfig';
+import { SPLASH_LAYOUT, SPLASH_TIMING as T, SPLASH_TITLE_LINES } from '@/config/splashConfig';
 import { pixelText } from '@/core/pixelArt';
 import { splashFadeStart, splashFrame, splashImpacts } from '@/systems/splashTimeline';
 
@@ -7,23 +7,43 @@ const frame = (t: number, fadeFrom: number | null = null) => splashFrame(t, fade
 const impacts = splashImpacts();
 const [firstImpact, lastImpact] = [impacts[0]!, impacts[impacts.length - 1]!];
 
+describe('napis TOP DOWN w dwóch liniach', () => {
+  it('TOP na górze, DOWN na dole, obie linie z fontu pikselowego', () => {
+    expect(SPLASH_TITLE_LINES.map((l) => l.text)).toEqual(['TOP', 'DOWN']);
+    const [top, down] = SPLASH_TITLE_LINES;
+    expect(top.centerY).toBeLessThan(down.centerY);
+    for (const line of SPLASH_TITLE_LINES) expect(() => pixelText(line.text, 1)).not.toThrow();
+    expect(T.wordSlamAt).toHaveLength(SPLASH_TITLE_LINES.length);
+  });
+
+  it('linie mieszczą się na ekranie i nie zachodzą na siebie (z wytłoczeniem)', () => {
+    const { unit, extrude } = SPLASH_LAYOUT.title;
+    const half = (7 * unit) / 2;
+    const [top, down] = SPLASH_TITLE_LINES;
+    expect(top.centerY - half - extrude).toBeGreaterThanOrEqual(0);
+    expect(down.centerY + half + 6 * extrude).toBeLessThanOrEqual(540);
+    expect(top.centerY + half + 6 * extrude).toBeLessThan(down.centerY - half);
+    for (const line of SPLASH_TITLE_LINES) expect(pixelText(line.text, 1).width * unit).toBeLessThan(960);
+  });
+});
+
 describe('splashFrame — sekwencja ekranu startowego', () => {
-  it('nazwa gry TOP DOWN składa się z fontu pikselowego', () => {
-    expect(SPLASH_TITLE_WORDS.join(' ')).toBe('TOP DOWN');
-    expect(() => pixelText(SPLASH_TITLE_WORDS.join(' '), 1)).not.toThrow();
-    expect(T.wordSlamAt).toHaveLength(SPLASH_TITLE_WORDS.length);
-  });
-
-  it('start z czerni; piorun na moment odsłania tło; potem tło wychodzi na stałe', () => {
+  it('wieża wyłania się powoli z ciemności', () => {
     expect(frame(0).blackout).toBe(1);
-    const strike = T.lightningAt[0];
-    expect(frame(strike).lightning).toBeCloseTo(T.lightningPeak[0]);
-    expect(frame(strike).blackout).toBeLessThan(0.2);
-    expect(frame(strike + T.lightningDecay).blackout).toBe(1);
-    expect(frame(T.backdropAt + T.backdropIn).blackout).toBe(0);
+    expect(frame(T.revealAt).blackout).toBe(1);
+    const mid = frame(T.revealAt + T.revealDuration / 2).blackout;
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(1);
+    expect(frame(T.revealAt + T.revealDuration).blackout).toBe(0);
   });
 
-  it('słowa uderzają po kolei, z dużej skali, z odbiciem do 1', () => {
+  it('korona zaćmienia rozżarza się, zanim spadnie napis', () => {
+    expect(frame(T.coronaAt).coronaAlpha).toBe(0);
+    expect(frame(T.wordSlamAt[0]).coronaAlpha).toBeGreaterThan(0.3);
+    expect(frame(T.coronaAt + T.coronaDuration).coronaAlpha).toBe(1);
+  });
+
+  it('TOP, potem DOWN — każde z dużej skali z odbiciem do 1', () => {
     const [topAt, downAt] = [T.wordSlamAt[0], T.wordSlamAt[1]];
     expect(frame(topAt - 1).words.map((w) => w.visible)).toEqual([false, false]);
     expect(frame(topAt).words.map((w) => w.visible)).toEqual([true, false]);
@@ -34,7 +54,7 @@ describe('splashFrame — sekwencja ekranu startowego', () => {
     expect(frame(lastImpact + T.settleDuration).words.every((w) => w.scale === 1)).toBe(true);
   });
 
-  it('ostatnie uderzenie jest mocniejsze: błysk i wstrząs', () => {
+  it('DOWN uderza ciężej: mocniejszy błysk i wstrząs', () => {
     expect(frame(firstImpact - 1).flashAlpha).toBe(0);
     expect(frame(firstImpact).flashAlpha).toBeCloseTo(T.flashAlpha[0]);
     expect(frame(lastImpact).flashAlpha).toBeCloseTo(T.flashAlpha[1]);
@@ -43,23 +63,12 @@ describe('splashFrame — sekwencja ekranu startowego', () => {
     expect(frame(lastImpact + T.flashDuration).flashAlpha).toBe(0);
   });
 
-  it('poświata rośnie z uderzeniami, promienie wychodzą po ostatnim', () => {
-    expect(frame(firstImpact - 1).glowAlpha).toBe(0);
-    expect(frame(firstImpact).glowAlpha).toBeGreaterThan(0);
-    expect(frame(lastImpact).glowAlpha).toBe(1);
-    expect(frame(lastImpact).raysAlpha).toBe(0);
-    expect(frame(lastImpact + T.raysFadeIn).raysAlpha).toBe(1);
+  it('pęknięcia w ziemi żarzą się dopiero po uderzeniu DOWN', () => {
+    expect(frame(lastImpact - 1).cracksAlpha).toBe(0);
+    expect(frame(lastImpact + T.cracksDuration).cracksAlpha).toBe(1);
   });
 
-  it('połysk przechodzi raz od lewej do prawej', () => {
-    expect(frame(T.shineAt - 1).shine).toBeNull();
-    expect(frame(T.shineAt).shine).toBe(0);
-    expect(frame(T.shineAt + T.shineDuration / 2).shine).toBeCloseTo(0.5);
-    expect(frame(T.shineAt + T.shineDuration + 1).shine).toBeNull();
-    expect(T.shineAt).toBeGreaterThan(lastImpact + T.settleDuration);
-  });
-
-  it('oczy zapalają się po kolei i mrugają', () => {
+  it('oczy w mroku zapalają się po kolei i mrugają', () => {
     expect(frame(T.eyesAt - 1).eyesOn).toBe(false);
     expect(frame(T.eyesAt).eyesOn).toBe(true);
     expect(frame(T.eyesAt).lateEyesOn).toBe(false);
@@ -68,25 +77,14 @@ describe('splashFrame — sekwencja ekranu startowego', () => {
     expect(frame(T.eyesAt + T.blinkOffset + T.blinkLength).eyesOn).toBe(true);
   });
 
-  it('podtytuł wpisuje się znak po znaku', () => {
-    expect(frame(T.subtitleAt - 1).subtitleChars).toBe(0);
-    expect(frame(T.subtitleAt + T.subtitleCharMs * 5).subtitleChars).toBe(5);
-    let prev = 0;
-    for (let t = 0; t < 4000; t += 13) {
-      const n = frame(t).subtitleChars;
-      expect(n).toBeGreaterThanOrEqual(prev);
-      prev = n;
-    }
-  });
-
   it('cała sekwencja mieści się przed wygaszeniem', () => {
     expect(lastImpact + T.settleDuration).toBeLessThan(T.fadeOutAt);
-    expect(T.shineAt + T.shineDuration).toBeLessThan(T.fadeOutAt);
-    expect(T.subtitleAt + 26 * T.subtitleCharMs).toBeLessThan(T.fadeOutAt);
+    expect(T.eyesAt + T.lateEyesDelay).toBeLessThan(T.fadeOutAt);
+    expect(lastImpact + T.cracksDuration).toBeLessThan(T.fadeOutAt);
   });
 
   it('wygaszenie do czerni kończy ekran', () => {
-    const from = 3500;
+    const from = 3800;
     expect(frame(from, from).blackout).toBe(0);
     expect(frame(from + T.fadeOutDuration / 2, from).blackout).toBeCloseTo(0.5);
     expect(frame(from + T.fadeOutDuration - 1, from).done).toBe(false);
@@ -114,6 +112,6 @@ describe('splashFadeStart — kiedy przejść do gry', () => {
   });
 
   it('raz ustalona chwila się nie zmienia', () => {
-    expect(splashFadeStart({ ...base, fadeFrom: 3400, skipRequested: true, t: 3600 })).toBe(3400);
+    expect(splashFadeStart({ ...base, fadeFrom: 3700, skipRequested: true, t: 3900 })).toBe(3700);
   });
 });

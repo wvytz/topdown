@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GLYPH_HEIGHT, GLYPH_WIDTH, PIXEL_GLYPHS, pixelLine, pixelText } from '@/core/pixelArt';
+import { GLYPH_HEIGHT, GLYPH_WIDTH, PIXEL_GLYPHS, pixelDisc, pixelLine, pixelRing, pixelText } from '@/core/pixelArt';
 
 describe('font pikselowy 5×7', () => {
   it('każdy znak ma 7 wierszy po 5 pikseli z samych „#” i „.”', () => {
@@ -54,5 +54,27 @@ describe('pixelLine', () => {
     const line = pixelLine(239, 0, 204, 22);
     expect(line[line.length - 1]).toEqual({ x: 204, y: 22 });
     expect(line).toHaveLength(36);
+  });
+});
+
+describe('pixelDisc i pixelRing', () => {
+  it('koło jest symetryczne i zawiera środek', () => {
+    const disc = pixelDisc(15);
+    const set = new Set(disc.map((c) => `${c.x},${c.y}`));
+    expect(set.has('0,0')).toBe(true);
+    for (const { x, y } of disc) expect(set.has(`${-x},${-y}`) && set.has(`${y},${x}`)).toBe(true);
+    expect(set.has('16,0')).toBe(false);
+  });
+
+  it('pierścień leży w odległości r ± 0,5 i nie ma dziur w osiach', () => {
+    const ring = pixelRing(16);
+    for (const { x, y } of ring) {
+      const d = Math.hypot(x, y);
+      expect(d).toBeGreaterThanOrEqual(15.5);
+      expect(d).toBeLessThanOrEqual(16.5);
+    }
+    for (const [x, y] of [[16, 0], [-16, 0], [0, 16], [0, -16]]) {
+      expect(ring.some((c) => c.x === x && c.y === y)).toBe(true);
+    }
   });
 });

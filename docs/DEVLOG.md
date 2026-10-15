@@ -2729,6 +2729,43 @@ Makieta generatora:
 
 ---
 
+## Krok 37 — Ekran startowy: TOP / DOWN i samotna wieża końca
+
+**Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-startowy`
+- wersja z kroku 36 (jedna linia, promienie, połysk) „zupełnie się nie podoba”;
+- napis w **dwóch liniach**: TOP i DOWN;
+- motyw **jednej wieży**, obok **mrok i destrukcja**;
+- „nasza gra jest metaforą końca — być może świata, być może życia”.
+
+**Kompozycja (960×540):**
+- **TOP** nad szczytem wieży, **DOWN** u jej podstawy — wieża stoi między nimi, od góry do dołu;
+- samotna wieża na środku: wyszczerbiony szczyt, wyrwa w prawym boku, pęknięcie przez mur, jedno ostatnie okno ze światłem, brama z oczami w środku;
+- za szczytem **zaćmione słońce**: czarna tarcza z dogasającą koroną (egg-2, egg-0, eye-0) i ciemnoczerwoną poświatą;
+- po bokach mrok i zniszczenie: kikuty kolumn, przechylone resztki murów, złamane łuki, odłamy muru na ziemi, odległe pożary migoczące na horyzoncie;
+- z nieba **opada popiół** (zamiast unoszących się iskier) — ruch w dół jak w nazwie;
+- litery z popiołu i kości (bone-2 → bone-0) z żarzącą się krawędzią egg-0 i głębokim wytłoczeniem w czerń.
+
+**Sekwencja (ok. 4,3 s, dalej do pominięcia klawiszem lub klikiem):**
+- 0,2 s: korona zaćmienia powoli się rozżarza; 0,3–1,2 s: wieża wyłania się z ciemności;
+- 0,9 s: uderza **TOP** — lekki błysk, wstrząs, od wyrwy odpadają kamienie;
+- 1,5 s: uderza **DOWN** — cięższy błysk i wstrząs, pył z ziemi, więcej kamieni, pęknięcia w ziemi zaczynają się żarzyć; potem wieża dalej się sypie (pojedyncze kamienie);
+- 2,0 s: oczy w mroku (brama wieży, ciemność po bokach);
+- 3,7 s: wygaszenie i start piętra 1.
+
+**Usunięte z kroków 34/36:** pioruny, promienie, połysk, podtytuł, pająk na nitce, nietoperz, pajęczyny.
+
+**Kod:**
+- `core/pixelArt.ts`: `pixelDisc`, `pixelRing` (tarcza i korona zaćmienia);
+- `config/splashConfig.ts`: przepisany — `SPLASH_TITLE_LINES`, wieża, zniszczenie, pęknięcia, pożary, popiół, odłamki, nowa oś czasu;
+- `systems/splashTimeline.ts`: `splashFrame` (wyłanianie, korona, linie napisu, błysk, żar pęknięć, oczy);
+- `scenes/SplashScene.ts`: przepisana; odłamki i pył korzystają ze `stepParticle` z kroku 35.
+
+**Testy:** `splashTimeline.test.ts` (14): dwie linie i ich miejsce na ekranie, wyłanianie, korona przed napisem, kolejność i odbicie, cięższe DOWN, żar pęknięć, oczy, zapas przed wygaszeniem, przejście do gry; `pixelArt.test.ts`: koło i pierścień.
+
+**Weryfikacja:** `npm run build`; przeglądarka — zrzuty uderzenia DOWN (odpadające kamienie) i stanu końcowego, potem aktywne `GameScene`, brak błędów w konsoli.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2805,7 +2842,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **2. Do oceny przy okazji**
 - **Ekran śmierci (krok 35):** `#ekran-smierci` siła przyciemnienia (62%), tempo i zasięg rozkładu napisu (30% bloków w 7 s), ilość krwi.
-- **Ekran startowy (kroki 34, 36):** `#ekran-startowy` długość (ok. 3,9 s), siła wstrząsu i błysku, czytelność tła — do oceny w teście właściciela.
+- **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą; długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).

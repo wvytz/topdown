@@ -87,3 +87,20 @@ export function pixelLine(x0: number, y0: number, x1: number, y1: number): Pixel
     }
   }
 }
+
+/** Piksele pełnego koła o promieniu `r` wokół (0, 0) — tarcza zaćmienia na ekranie startowym. */
+export function pixelDisc(r: number): PixelCell[] {
+  const cells: PixelCell[] = [];
+  const R = Math.ceil(r);
+  for (let y = -R; y <= R; y++) {
+    for (let x = -R; x <= R; x++) if (x * x + y * y <= r * r) cells.push({ x, y });
+  }
+  return cells;
+}
+
+/** Piksele pierścienia grubości 1 o promieniu `r` wokół (0, 0) — korona zaćmienia. */
+export function pixelRing(r: number): PixelCell[] {
+  const inner = r - 0.5;
+  const outer = r + 0.5;
+  return pixelDisc(outer).filter(({ x, y }) => x * x + y * y >= inner * inner);
+}
