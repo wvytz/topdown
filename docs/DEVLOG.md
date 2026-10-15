@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#ekran-startowy` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#ekran-startowy`, `#ekran-smierci` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2664,6 +2664,43 @@ Makieta generatora:
 
 ---
 
+## Krok 35 — Ekran śmierci: rozkładający się napis i krew
+
+**Prośba właściciela:** `#decyzja` `#ekran-smierci`
+- ekran po śmierci dopasowany do ekranu startowego (krok 34);
+- gra pod spodem przyciemniona, ale dalej widać animacje przeciwników;
+- napis POLEGŁEŚ zostaje, ale z efektem rozkładu i drobinkami krwi;
+- na środku dalej wynik i tablica rekordów;
+- po zrzucie: „wszystko OK, deployuj i lecimy dalej”.
+
+**Co widać:**
+- gra nie staje — przyciemnienie narasta do 62% w 0,6 s, krawędzie w winiecie zakrzepłej krwi; wrogowie dalej się ruszają pod spodem;
+- 0,25 s: **POLEGŁEŚ** uderza (skala 2,2 → 1 z odbiciem), czerwony błysk, wstrząs, chmura kropel krwi;
+- napis z fontu pikselowego jak CRAWLER (nowe litery P, G, S, Ł i Ś z akcentem), lico w pasach rampy oczu (od eye-2 do ciemnej krwi), obrys i wytłoczenie;
+- **rozkład** od 1,2 s przez 7 s:
+  - piksele liter rozbite na bloki 2×2; blok najpierw ciemnieje („gnije”, 0,6 s), potem odpada i spada;
+  - najpierw kruszą się krawędzie, wnętrze później i rzadziej;
+  - odpada najwyżej 30% bloków, więc napis zostaje czytelny; w dziurach prześwituje ciemne wnętrze litery;
+- **krew:** 7 źródeł na dolnych krawędziach liter — kropla nabrzmiewa i spada co 1,4–2,8 s;
+- wynik, ozdobnik, „NAJLEPSZE WSPINACZKI” i wiersze tablicy wchodzą po kolei jak na automacie; „R — NOWA WSPINACZKA” miga;
+- przyciemnienie przykrywa też resztę HUD, więc nic nie nachodzi na tablicę.
+
+**Kod:**
+- czysto:
+  - `core/pixelArt.ts`: nowe litery, akcenty nad literą (`PIXEL_ACCENTED`, pole `top` napisu);
+  - `config/deathScreenConfig.ts`: oś czasu, rozkład, fizyka kropel, układ, paleta krwi;
+  - `systems/deathScreen.ts`: `deathFrame`, `splitIntoBlocks`, `planCrumble` (własna sól RNG), `planDrips`, `dripsReleased`, `stepParticle`;
+- Phaser: `effects/DeathScreen.ts` zastępuje panel śmierci w `HudScene`; restart (R) chowa ekran i czyści krople.
+
+**Testy (`tests/systems/deathScreen.test.ts`, 11):** litery i akcent Ś; przyciemnienie nigdy nie zasłania gry; uderzenie i błysk; kolejność wyniku, wierszy i komunikatu; rozkład deterministyczny, limit 30%, okno czasu, wnętrze później; krople z dolnych krawędzi (nie z akcentu), rytm kropel; grawitacja.
+
+**Weryfikacja:**
+- `npm run build`: typy, 890 testów, build;
+- przeglądarka (`?nosplash&seed=7&floor=2`, śmierć wymuszona przez `window.__game`): zrzuty po 0,35–8 s — gra widoczna pod spodem, napis kruszy się i krwawi, tablica czytelna; R startuje nowy run; brak błędów w konsoli;
+- wdrożone na GitHub Pages razem z krokiem 34.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2739,6 +2776,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Ekran śmierci (krok 35):** `#ekran-smierci` siła przyciemnienia (62%), tempo i zasięg rozkładu napisu (30% bloków w 7 s), ilość krwi.
 - **Ekran startowy (krok 34):** `#ekran-startowy` długość (ok. 2,8 s), siła wstrząsu i błysku, czytelność tła — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import type { BossHudData, DeathSummary, HudSceneData, HudSource, RangedHudData } from '@/core/types';
-import type { RankedEntry } from '@/systems/Highscores';
+import type { BossHudData, HudSceneData, HudSource, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
+import { DeathScreen } from '@/effects/DeathScreen';
 
 const BAR_X = 16;
 const BAR_WIDTH = 200;
@@ -22,14 +22,6 @@ const BANNER_MS = 3000;
 const BANNER_FADE_IN_MS = 300;
 const BANNER_FADE_OUT_MS = 900;
 const BANNER_Y = 150;
-/** Podium (3) + separator + wiersz bieżącego runu. */
-const DEATH_ROWS = 5;
-
-function formatScoreRow(row: RankedEntry): string {
-  const label = `${row.rank}. ${row.entry.score} złota · piętro ${row.entry.floor}`;
-  return row.isCurrent ? `► ${label} ◄` : label;
-}
-
 /**
  * Osobna scena nakładki — nie podlega zoomowi ani przesuwaniu kamery gry.
  * Co klatkę odczytuje stan z HudSource (GameScene).
@@ -41,9 +33,7 @@ export class HudScene extends Phaser.Scene {
   private modifierText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
-  private deathPanel!: Phaser.GameObjects.Container;
-  private deathScoreText!: Phaser.GameObjects.Text;
-  private deathRows: Phaser.GameObjects.Text[] = [];
+  private deathScreen!: DeathScreen;
   private bossNameText!: Phaser.GameObjects.Text;
   private goldText!: Phaser.GameObjects.Text;
   private itemsText!: Phaser.GameObjects.Text;
@@ -86,8 +76,6 @@ export class HudScene extends Phaser.Scene {
       .text(this.scale.width / 2, 70, '', { ...style, fontSize: '18px', color: '#ffe08a' })
       .setOrigin(0.5);
 
-    this.buildDeathPanel(style);
-
     this.bossNameText = this.add
       .text(this.scale.width / 2, BOSS_BAR_Y - 22, '', { ...style, fontSize: '15px', color: '#ffb0a0' })
       .setOrigin(0.5, 0)
@@ -105,9 +93,12 @@ export class HudScene extends Phaser.Scene {
     const help = 'WASD — ruch · LPM — atak · PPM — strzał · Spacja — dash · E — kapliczka';
     const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
     this.add.text(BAR_X, this.scale.height - 28, help + devHelp, { ...style, fontSize: '12px', color: '#8080a0' });
+
+    // Ekran śmierci na samej górze: jego przyciemnienie przykrywa też resztę HUD (krok 35).
+    this.deathScreen = new DeathScreen(this);
   }
 
-  override update(): void {
+  override update(time: number, delta: number): void {
     const hud = this.source.getHudData();
 
     this.floorText.setText(`Piętro ${hud.floor}`);
@@ -141,7 +132,7 @@ export class HudScene extends Phaser.Scene {
     this.toastText.setText(hud.toast?.text ?? '');
     this.toastText.setAlpha(hud.toast ? Math.min(1, hud.toast.remainingMs / 1000 + 0.2) : 0);
 
-    this.updateDeathPanel(hud.death);
+    this.deathScreen.update(hud.death, time, delta);
     this.drawBossBar(hud.boss);
     this.updateBanner(hud.boss);
   }
@@ -183,51 +174,6 @@ export class HudScene extends Phaser.Scene {
         this.bars.fillStyle(0x2f7064, 1).fillRect(x, CHARGES_Y, width * ranged.rechargeProgress, CHARGE_HEIGHT);
       }
     }
-  }
-
-  /** Panel śmierci: wynik runu + skrócona tablica (podium i ewentualnie miejsce tego runu). */
-  private buildDeathPanel(style: Phaser.Types.GameObjects.Text.TextStyle): void {
-    const cx = this.scale.width / 2;
-    const top = 120;
-    const backdrop = this.add.rectangle(cx, top + 135, 460, 300, 0x0b0b10, 0.85).setStrokeStyle(2, 0x3a3346);
-    const title = this.add
-      .text(cx, top + 10, 'POLEGŁEŚ', { ...style, fontSize: '32px', color: '#ff6b6b', strokeThickness: 6 })
-      .setOrigin(0.5, 0);
-    this.deathScoreText = this.add.text(cx, top + 56, '', { ...style, fontSize: '16px', color: '#f5c542' }).setOrigin(0.5, 0);
-    const header = this.add
-      .text(cx, top + 92, 'NAJLEPSZE WSPINACZKI', { ...style, fontSize: '13px', color: '#a0a0b8' })
-      .setOrigin(0.5, 0);
-    this.deathRows = Array.from({ length: DEATH_ROWS }, (_, i) =>
-      this.add.text(cx, top + 116 + i * 22, '', { ...style, fontSize: '15px' }).setOrigin(0.5, 0),
-    );
-    const restart = this.add
-      .text(cx, top + 250, 'R — nowa wspinaczka', { ...style, fontSize: '15px', color: '#e8e8f0' })
-      .setOrigin(0.5, 0);
-
-    this.deathPanel = this.add.container(0, 0, [backdrop, title, this.deathScoreText, header, ...this.deathRows, restart]);
-    this.deathPanel.setVisible(false);
-  }
-
-  private updateDeathPanel(death: DeathSummary | null): void {
-    this.deathPanel.setVisible(death !== null);
-    if (!death) return;
-
-    this.deathScoreText.setText(`Wynik: ${death.score} złota · piętro ${death.floor} · miejsce ${death.rank}`);
-
-    const lines: Array<{ text: string; current: boolean }> = death.board.top.map((row) => ({
-      text: formatScoreRow(row),
-      current: row.isCurrent,
-    }));
-    if (death.board.current) {
-      lines.push({ text: '· · ·', current: false });
-      lines.push({ text: formatScoreRow(death.board.current), current: true });
-    }
-
-    this.deathRows.forEach((row, i) => {
-      const line = lines[i];
-      row.setVisible(line !== undefined);
-      if (line) row.setText(line.text).setColor(line.current ? '#ffe08a' : '#c8c8d8');
-    });
   }
 
   private drawBossBar(boss: BossHudData | null): void {
