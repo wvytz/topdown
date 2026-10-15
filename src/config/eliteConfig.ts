@@ -29,6 +29,3 @@ export const ELITE_CONFIG: EliteConfig = {
   loot: { goldMultiplier: 3, goldChance: 1, healthChanceBonus: 0.2, itemChance: 0.25 },
 };
 
-/** Ile cech ma elita: jedna w pierwszym kręgu wieży, potem o jedną więcej na krąg (wariant B końca wieży). */
-export const ELITE_AFFIXES_PER_LOOP = 1;
-export const ELITE_MAX_AFFIXES = 3;

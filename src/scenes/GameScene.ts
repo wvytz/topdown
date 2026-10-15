@@ -39,7 +39,9 @@ import {
   SHRINE_CONFIG,
   STAT_LIMITS,
 } from '@/config/lootConfig';
-import { ELITE_AFFIXES_PER_LOOP, ELITE_CONFIG } from '@/config/eliteConfig';
+import { ELITE_CONFIG } from '@/config/eliteConfig';
+import { TOWER_CONFIG } from '@/config/towerConfig';
+import { eliteAffixCount } from '@/systems/TowerLoop';
 import { eliteLoot, isElite, rollElites } from '@/systems/Elites';
 import { BossFight } from '@/combat/BossFight';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
@@ -483,7 +485,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const spawns = planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng);
     // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
     const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
-    this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, ELITE_AFFIXES_PER_LOOP, eliteRng));
+    this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
 
     const drops = this.biome.ceilingDrops;
     this.ceilingDrops = drops

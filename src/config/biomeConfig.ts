@@ -1,3 +1,5 @@
+import { TOWER_CONFIG } from '@/config/towerConfig';
+import { floorInLoop } from '@/systems/TowerLoop';
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
 import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
@@ -198,7 +200,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
 };
 
 /**
- * Biom na konkretnych piętrach; reszta to ruiny. Każdy biom to jedno piętro zakończone swoim bossem
+ * Biom na piętrach pierwszego kręgu (1–6); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43). Każdy biom to jedno piętro zakończone swoim bossem
  * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków,
  * 4 — Cmentarzysko (krok 32a, Grzybowy Pożeracz), 5–6 — Piekło (krok 41; dwa piętra, Kat Otchłani na końcu 6.;
  * do tego czasu Strażnik).
@@ -212,6 +214,7 @@ export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   6: BiomeId.Infernal,
 };
 
+/** Biom piętra; od piętra 7 kolejny krąg wieży powtarza biomy 1–6 (krok 43). */
 export function biomeForFloor(floor: number): BiomeDefinition {
-  return BIOMES[BIOME_BY_FLOOR[floor] ?? BiomeId.TowerRuins];
+  return BIOMES[BIOME_BY_FLOOR[floorInLoop(floor, TOWER_CONFIG)] ?? BiomeId.TowerRuins];
 }

@@ -3082,6 +3082,23 @@ Co kilka pokojów jeden zwykły wróg jest **elitą**: 2,5× HP, 1,3× obrażeni
 
 **Do oceny w testach właściciela** `#elity`: częstość elit, siła cech (zwłaszcza Tarczownik na Czarodziejkę i Wampiryczny), czytelność napisów.
 
+## Krok 43 — Pętla wieży (koniec wieży, wariant B) `#wieza`
+
+**Decyzja właściciela** `#decyzja` `#wieza`: po Kacie Otchłani wspinaczka trwa dalej (wariant B); finałowego bossa jeszcze nie ma.
+
+- Krąg wieży = 6 pięter. Od piętra 7 biomy i bossowie wracają od początku (7 ruiny, 8 leże z Matką Pająków … 12 Piekło z Katem). Wcześniej po piętrze 6 były już tylko ruiny ze Strażnikiem.
+- Trudność dalej rośnie z numerem piętra (HP i obrażenia wrogów i bossów — `ENEMY_SCALING`), paleniska w drugim kręgu buchają najczęściej (minimum przerwy).
+- Elity: w każdym kolejnym kręgu o cechę więcej (1 → 2 → 3, limit 3).
+- HUD: „Piętro 8 · Krąg II”.
+
+**Pliki:** `config/towerConfig.ts`, `systems/TowerLoop.ts` (czyste: `towerLoop`, `floorInLoop`, `eliteAffixCount`, `floorLabel`, `toRoman`); `biomeForFloor` i `bossForFloor` liczą piętro w kręgu.
+
+**Testy:** `tests/systems/towerLoop.test.ts`; test biomów zaktualizowany (piętro 9 to Grzybnia, 13 — ruiny). Build: 1035 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=8&seed=4&hero=sorceress` — Pajęcze leże, boss Matka Pająków, HUD „Piętro 8 · Krąg II”, elity „Wampiryczny · Szybki” i „Ognisty · Wybuchowy”; bez błędów w konsoli.
+
+**Do decyzji później:** finałowy boss (koniec kręgu albo osobne piętro), ewentualne dodatkowe utrudnienia kręgu poza skalowaniem i cechami elit.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -3178,6 +3195,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
+
+**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (wyzwanie z falami, przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
 
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
 

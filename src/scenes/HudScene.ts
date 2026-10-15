@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { TOWER_CONFIG } from '@/config/towerConfig';
+import { floorLabel } from '@/systems/TowerLoop';
 import type { BeamHudData, BossHudData, HudSceneData, HudSource, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { DeathScreen } from '@/effects/DeathScreen';
@@ -111,7 +113,7 @@ export class HudScene extends Phaser.Scene {
   override update(time: number, delta: number): void {
     const hud = this.source.getHudData();
 
-    this.floorText.setText(`Piętro ${hud.floor}`);
+    this.floorText.setText(floorLabel(hud.floor, TOWER_CONFIG));
     const modifier = hud.floorModifier;
     this.modifierText.setText(modifier ? `${modifier.name}: ${modifier.description}` : '');
     this.hpText.setText(`${hud.hp}/${hud.maxHp}`);

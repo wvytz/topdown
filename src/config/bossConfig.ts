@@ -1,3 +1,5 @@
+import { TOWER_CONFIG } from '@/config/towerConfig';
+import { floorInLoop } from '@/systems/TowerLoop';
 import type { BossDefinition } from '@/core/bossTypes';
 import { BossAttackKind, BossId, PatternOrder } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
@@ -425,8 +427,9 @@ export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   6: ABYSS_EXECUTIONER,
 };
 
+/** Boss piętra; od piętra 7 kolejny krąg wieży powtarza bossów 1–6 (krok 43). */
 export function bossForFloor(floor: number): BossDefinition {
-  return BOSS_BY_FLOOR[floor] ?? FLOOR_GUARDIAN;
+  return BOSS_BY_FLOOR[floorInLoop(floor, TOWER_CONFIG)] ?? FLOOR_GUARDIAN;
 }
 
 /** Kraty areny bossa. */
