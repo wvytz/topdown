@@ -51,6 +51,10 @@ export interface DungeonGeneratorConfig {
   /** Dodatkowe korytarze ponad drzewo rozpinające, jako ułamek liczby pokojów — tworzą pętle. */
   readonly extraConnectionRatio: number;
   readonly maxPlacementAttempts: number;
+  /** Arena na końcu piętra (krok 45): jedno wejście, najwyżej jeden ślepy pokój za nią. */
+  readonly bossRoomAtEnd: boolean;
+  /** Szansa na pokój końcowy za areną (gdy `bossRoomAtEnd`). */
+  readonly endRoomChance: number;
 }
 
 export interface DungeonFloor {
@@ -64,4 +68,6 @@ export interface DungeonFloor {
   readonly bossRoomId: number;
   readonly playerSpawn: TilePoint;
   readonly stairs: TilePoint;
+  /** Pokój końcowy za areną (krok 45) — osiągalny tylko przez nią; brak = arena to koniec piętra. */
+  readonly endRoomId?: number;
 }

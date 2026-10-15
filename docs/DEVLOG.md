@@ -3117,6 +3117,27 @@ Co kilka pokojów jeden zwykły wróg jest **elitą**: 2,5× HP, 1,3× obrażeni
 
 **Weryfikacja w przeglądarce:** `?floor=5&seed=7&hero=sorceress` — dwie galerie (północ przy krawędzi mapy), kraty galerii zamknięte w walce (kafle kolizji), kultyści widoczni za kratami i rzucają bomby; `?floor=1&seed=5` — komunikat o Tarczowniku; bez błędów w konsoli.
 
+## Krok 45 — Arena bossa na końcu piętra `#wieza`
+
+**Decyzja właściciela** `#decyzja` `#wieza`: nowa reguła dla wszystkich aren bossów — arena może prowadzić do najwyżej jednego dodatkowego pomieszczenia i ma to być końcowe pomieszczenie przed końcem poziomu. Wyjątek: piętro 1 (szybsze przejście do drugiego biomu).
+
+Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a korytarz w kształcie „L” mógł przeciąć arenę — przez arenę dało się przechodzić między częściami piętra.
+
+**Generator** (`DungeonGenerator`, `bossRoomAtEnd` w konfiguracji piętra; piętro 1 — wyłączone):
+- Reszta piętra (bez areny i pokoju końcowego) łączy się drzewem i pętlami jak dotąd, ale korytarze omijają arenę i pokój końcowy z kaflem zapasu: najpierw jedno z dwóch „L”, a gdy oba zahaczają — najkrótsza droga BFS dookoła.
+- Arena ma jedno wejście: korytarz z najbliższego pokoju reszty piętra.
+- Pokój końcowy (szansa 50%, `endRoomChance`): najbliższy arenie, połączony tylko z nią korytarzem, który nie styka się z niczym innym. `DungeonFloor.endRoomId`. Zwykły pokój (wrogowie, może być kapliczka); schody zostają na środku areny.
+- Start nie może być pokojem końcowym.
+- Każde piętro sprawdza czysty walidator `dungeon/bossRoomRule.ts` (`checkBossRoomAtEnd`): składowe podłogi z wyciętą areną; arena ma dokładnie jedno wejście z reszty piętra i najwyżej jedno do ślepego pokoju, żadnych pętli ani kikutów. Nieudana próba → kolejna z RNG pochodnym od seeda (do 12); awaryjnie stary układ (w testach nie wystąpił).
+
+**Galerie Strażnika (krok 44)** dalej działają — wnęki powstają po wygenerowaniu i nie łączą się z niczym.
+
+**Testy:** `tests/dungeon/bossRoomRule.test.ts` — 280 pięter (2–7, 12): reguła spełniona, pokój końcowy w 25–75% pięter, piętro 1 wyłączone; walidator wykrywa pętlę przez arenę i rozpoznaje ślepy pokój. `bossRoomRule.ts` w `PURE_FILES`. Build: 1044 testy.
+
+**Weryfikacja w przeglądarce:** `?floor=3&seed=7` — mapa z gry: arena z jednym korytarzem wejściowym i ślepym pokojem końcowym obok, reszta piętra omija arenę; bez błędów w konsoli.
+
+**Do decyzji później:** co ma być w pokoju końcowym (dziś zwykły pokój) — np. nagroda albo schody.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
