@@ -3,7 +3,8 @@ import { RoomKind } from '@/core/dungeonTypes';
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import { createRng } from '@/core/random';
 import { AMBUSH_CONFIG } from '@/config/ambushConfig';
-import { ENEMY_DEFINITIONS, ENEMY_VARIANTS, getEncounterConfigForFloor } from '@/config/combatConfig';
+import { ENEMY_DEFINITIONS, ENEMY_SCALING, ENEMY_VARIANTS, getEncounterConfigForFloor } from '@/config/combatConfig';
+import { scaleEnemyForFloor } from '@/systems/EnemyScaling';
 import { ENEMY_VISUALS } from '@/config/spriteConfig';
 import { planAmbushRoom } from '@/dungeon/AmbushPlanner';
 import { planEncounters } from '@/dungeon/EncounterPlanner';
@@ -99,5 +100,13 @@ describe('upiór', () => {
     expect(p.solidMs).toBeGreaterThan(p.phasedMs);
     expect(ghost.attack.kind === 'melee' && ghost.attack.status?.slow).toBeTruthy();
     expect(ENEMY_VISUALS[EnemyVariant.Ghost].sheet).toBe('ghost');
+  });
+
+  it('rośnie z piętrem wolniej niż zwykli wrogowie (krok 50a: jackpot, nie kłopot)', () => {
+    expect(AMBUSH_CONFIG.ghostScaling.hpPerFloor).toBeLessThan(ENEMY_SCALING.hpPerFloor);
+    expect(AMBUSH_CONFIG.ghostScaling.damagePerFloor).toBeLessThan(ENEMY_SCALING.damagePerFloor);
+    const at9 = scaleEnemyForFloor(ghost, 9, AMBUSH_CONFIG.ghostScaling);
+    expect(at9.maxHp).toBeLessThanOrEqual(30);
+    expect(at9.attack.damage).toBeLessThanOrEqual(5);
   });
 });

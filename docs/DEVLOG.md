@@ -3266,6 +3266,15 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 Średnio na piętrach 1–6: Barbarzyńca ok. 10,5 s, Czarodziejka ok. 24,7 s. Względem kroku 49b Czarodziejka szybsza (piętro 1: 24,3 → 18,1 s; piętro 6: 37,9 → 29,0 s). W drugim kręgu upiory mają ok. 44 HP i 7 obrażeń — Czarodziejka (bot bez uników) nie wytrzymuje; do oceny po teście właściciela.
 
+## Krok 50a — Upiory rosną wolno: zasadzka to jackpot, nie kłopot `#zasadzka`
+
+**Decyzja właściciela** `#decyzja` `#zasadzka`: „upiory nie rosną tak szybko jak inni przeciwnicy. Zostawiamy zamysł tego zdarzenia jako jackpot, a nie kłopot.”
+
+- Upiory mają własne skalowanie z piętrem `AMBUSH_CONFIG.ghostScaling`: HP +5%/piętro, obrażenia +3%/piętro (zwykli wrogowie +15% / +10%) i **nie dotyczą ich modyfikatory piętra** (np. „Twarda skóra”). Piętro 9: ok. 28 HP i 5 obrażeń zamiast 44 i 7.
+- `EnemyManager.spawnAt(..., { scaling })` — własne skalowanie bez modyfikatora piętra.
+
+**Test botem (Czarodziejka, bez uników):** piętro 9 — przedtem śmierć, teraz 25,2 s, 75 → 55 HP (4 trafienia); piętro 6 — 29,0 s / 39 HP → 22,9 s / 60 HP. Build: 1081 testów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

@@ -109,7 +109,12 @@ export class AmbushManager {
       const at = DungeonView.tileToWorldCenter(tile);
       // Przesunięcie fazy przenikania rozłożone na cały cykl: upiory nie znikają wszystkie naraz.
       const phaseOffsetMs = Math.floor((i * GHOST_PHASE_CYCLE) / Math.max(1, count));
-      const ghost = enemies.spawnAt(EnemyType.Rusher, at, [], { variant: EnemyVariant.Ghost, phaseOffsetMs, riseMs: config.riseMs });
+      const ghost = enemies.spawnAt(EnemyType.Rusher, at, [], {
+        variant: EnemyVariant.Ghost,
+        phaseOffsetMs,
+        riseMs: config.riseMs,
+        scaling: config.ghostScaling,
+      });
       this.deps.onGhost(ghost);
       this.wave.push(ghost);
       effects.impact(at.x, at.y, TILE_SIZE * 0.5);

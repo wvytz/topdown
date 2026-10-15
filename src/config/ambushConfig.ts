@@ -17,6 +17,8 @@ export const AMBUSH_CONFIG: AmbushConfig = {
   waveDelayMs: 1100,
   riseMs: 900,
   minSpawnDistance: 3,
+  // Krok 50a (właściciel): upiory rosną wolno — na piętrze 9 ok. 28 HP i 5 obrażeń (zwykli wrogowie: +120% / +80%).
+  ghostScaling: { hpPerFloor: 0.05, damagePerFloor: 0.03 },
   // Mrok: gracz widzi tylko ok. 1,5 kafla wyraźnie, dalej szybko ciemno; upiory świecą nad mrokiem.
   dread: { profile: { fullLightRadius: 40, edgeRadius: 120, maxDarkness: 0.86 }, fadeMs: 900 },
 };

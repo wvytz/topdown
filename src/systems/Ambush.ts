@@ -1,5 +1,5 @@
 import type { IntRange, Room, TilePoint } from '@/core/dungeonTypes';
-import type { PhasingDefinition } from '@/core/combatTypes';
+import type { EnemyScalingConfig, PhasingDefinition } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import type { AmbientProfile } from '@/config/lightingConfig';
 import { createRng, deriveSeed } from '@/core/random';
@@ -29,6 +29,11 @@ export interface AmbushConfig {
   readonly riseMs: number;
   /** Upiory pojawiają się co najmniej tyle kafli od gracza. */
   readonly minSpawnDistance: number;
+  /**
+   * Skalowanie upiorów z piętrem (krok 50a): wolniejsze niż zwykłych wrogów (`ENEMY_SCALING`), bez modyfikatorów
+   * piętra — zasadzka ma być nagrodą („jackpot”), nie kłopotem, także w kolejnych kręgach wieży.
+   */
+  readonly ghostScaling: EnemyScalingConfig;
   /** Mrok zasadzki: druga warstwa ciemności z małym kręgiem światła wokół gracza; czas przejścia. */
   readonly dread: { readonly profile: AmbientProfile; readonly fadeMs: number };
 }

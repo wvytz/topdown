@@ -7,7 +7,7 @@ import { TILE_SIZE } from '@/config/gameConfig';
 import { ENEMY_PROJECTILE_VISUALS, FIRE_PATCH_VISUAL, LOB_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { FirePatchField, lobPosition, trailPoints } from '@/systems/HellAttacks';
-import type { EnemyType, EnemyVariant } from '@/core/combatTypes';
+import type { EnemyScalingConfig, EnemyType, EnemyVariant } from '@/core/combatTypes';
 import { EliteAffix } from '@/core/combatTypes';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { ELITE_VISUAL } from '@/config/spriteConfig';
@@ -118,11 +118,18 @@ export class EnemyManager implements EnemyAttackHandler {
     type: EnemyType,
     position: Vector2,
     affixes: readonly EliteAffix[] = [],
-    options: { readonly variant?: EnemyVariant; readonly phaseOffsetMs?: number; readonly riseMs?: number } = {},
+    options: {
+      readonly variant?: EnemyVariant;
+      readonly phaseOffsetMs?: number;
+      readonly riseMs?: number;
+      /** Własne skalowanie z piętrem (upiory zasadzki) — wtedy bez modyfikatora piętra. */
+      readonly scaling?: EnemyScalingConfig;
+    } = {},
   ): Enemy {
     const base = enemyDefinitionFor(ENEMY_DEFINITIONS[type], options.variant ?? this.deps.enemyVariants[type], ENEMY_VARIANTS);
-    const scaled = scaleEnemyForFloor(base, this.deps.floorNumber, ENEMY_SCALING);
-    const definition = applyElite(applyFloorToEnemy(scaled, this.deps.floorEffects), affixes, ELITE_CONFIG);
+    const scaled = scaleEnemyForFloor(base, this.deps.floorNumber, options.scaling ?? ENEMY_SCALING);
+    const modified = options.scaling ? scaled : applyFloorToEnemy(scaled, this.deps.floorEffects);
+    const definition = applyElite(modified, affixes, ELITE_CONFIG);
     const enemy = new Enemy(this.deps.scene, position.x, position.y, definition, options);
     this.group.add(enemy);
     this.enemies.push(enemy);
