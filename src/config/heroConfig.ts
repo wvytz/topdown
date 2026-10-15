@@ -13,6 +13,11 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
   [HeroId.Barbarian]: {
     id: HeroId.Barbarian,
     name: 'Barbarzyńca',
+    tagline: 'Wręcz, ciężko i z bliska',
+    attacks: [
+      { input: 'LPM', text: 'cios mieczem łukiem przed sobą' },
+      { input: 'PPM', text: 'strzał (3 ładunki)' },
+    ],
     stats: PLAYER_BASE_STATS,
     combat: PLAYER_COMBAT,
     sorcery: null,
@@ -20,6 +25,11 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
   [HeroId.Sorceress]: {
     id: HeroId.Sorceress,
     name: 'Czarodziejka',
+    tagline: 'Z dystansu, kruchsza i wolniejsza',
+    attacks: [
+      { input: 'LPM', text: 'kule energii z orbity' },
+      { input: 'PPM', text: 'promień (przytrzymaj)' },
+    ],
     stats: { maxHp: 75, moveSpeed: 175 },
     combat: PLAYER_COMBAT,
     sorcery: {
@@ -57,7 +67,10 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
 
 export const DEFAULT_HERO = HeroId.Barbarian;
 
-/** Bohater z parametru adresu (`?hero=sorceress`); nieznana wartość = domyślny. */
-export function heroFromParam(value: string | null): HeroId {
-  return Object.values(HeroId).find((id) => id === value) ?? DEFAULT_HERO;
+/** Kolejność kart na ekranie wyboru (od lewej). */
+export const HERO_ORDER: readonly HeroId[] = [HeroId.Barbarian, HeroId.Sorceress];
+
+/** Rozpoznaje identyfikator bohatera (parametr adresu, zapis w przeglądarce); nieznany = null. */
+export function parseHeroId(value: string | null): HeroId | null {
+  return Object.values(HeroId).find((id) => id === value) ?? null;
 }

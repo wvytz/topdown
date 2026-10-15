@@ -135,7 +135,7 @@ export class DeathScreen {
       scene.add.text(L.centerX, L.rows.y + i * L.rows.step, '', { ...style, fontSize: `${L.rows.fontSize}px` }).setOrigin(0.5, 0),
     );
     this.prompt = scene.add
-      .text(L.centerX, L.prompt.y, 'R — NOWA WSPINACZKA', { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#f1e2a9' })
+      .text(L.centerX, L.prompt.y, 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA', { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#f1e2a9' })
       .setOrigin(0.5, 0)
       .setLetterSpacing(4);
 

@@ -2805,6 +2805,25 @@ Makieta generatora:
 
 ---
 
+## Krok 38 — Ekran wyboru bohatera `#czarodziejka`
+
+**Prośba właściciela:** `#decyzja` `#czarodziejka` — ekran wyboru postaci, obie postacie grywalne i wdrożone do gry dla testerów.
+
+**Scalenie z `main`:** równolegle powstały kroki 34 (ekran startowy) i 35 (ekran śmierci). Gałąź Czarodziejki scalona z `main`; jej kroki przenumerowane na 36–37. Konflikty: `BootScene` (start przez ekran startowy + bohater), `HudScene` (nowy ekran śmierci + pasek promienia i podpowiedź sterowania), DEVLOG.
+
+**Zrobione:**
+- `scenes/HeroSelectScene.ts`: dwie karty (postać w skali 3× idzie przodem do gracza, imię, hasło, życie i chód, opis LPM i PPM). Wybór: strzałki, A/D, najechanie myszą; start: Enter, Spacja, kliknięcie albo klawisz 1/2. Paleta ekranu startowego (`config/heroSelectConfig.ts`).
+- Kolejność: ekran startowy → wybór bohatera → piętro 1. Parametr `?hero=sorceress` (albo `barbarian`) pomija wybór.
+- Ostatni wybór zapamiętany w przeglądarce (`persistence/LastHero.ts`) i zaznaczony przy kolejnym wejściu.
+- Ekran śmierci: „R — nowa wspinaczka” (ten sam bohater) i nowe „C — zmiana bohatera” (wybór z zaznaczonym bohaterem zakończonego runu; HUD znika i wraca z grą).
+- Opisy kart w `HERO_DEFINITIONS` (`tagline`, `attacks`), kolejność kart w `HERO_ORDER`.
+
+**Testy:** `tests/systems/heroSelect.test.ts` (wszyscy bohaterowie na kartach, opisy, zawijanie strzałek, zaznaczenie na starcie, linia statystyk, rozpoznawanie identyfikatora), `tests/persistence/lastHero.test.ts`. `npm run build`: 941 testów.
+
+**Weryfikacja w przeglądarce** (Playwright, `?nosplash&seed=7`): start na ekranie wyboru; → i Enter zaczynają run Czarodziejką; śmierć, Esc w polu imienia, C — ekran wyboru; 1 zaczyna run barbarzyńcą. Bez błędów w konsoli.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2888,7 +2907,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
 **3. Brakująca grafika**
-- **Czarodziejka (kroki 36–37):** sprite'y i mechanika gotowe; brakuje ekranu wyboru postaci (na razie `?hero=sorceress`) i ewentualnie bohatera na liście wyników.
+- **Czarodziejka (kroki 36–38):** sprite'y, mechanika i ekran wyboru gotowe. Do rozważenia: bohater przy wpisie na liście wyników, strojenie liczb po testach.
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.

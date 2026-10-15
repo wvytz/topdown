@@ -1,3 +1,4 @@
+import type { HeroId } from '@/core/heroTypes';
 /** Czyste typy domenowe — bez zależności od Phasera. */
 import type { RunSnapshot } from '@/core/lootTypes';
 import type { ScoreboardView } from '@/systems/Highscores';
@@ -24,6 +25,7 @@ export interface PlayerStats extends MovementStats {
 
 export enum SceneKey {
   Splash = 'SplashScene',
+  Select = 'HeroSelectScene',
   Boot = 'BootScene',
   Game = 'GameScene',
   Hud = 'HudScene',
@@ -35,6 +37,14 @@ export enum TextureKey {
 }
 
 /** Dane przekazywane przy (re)starcie GameScene. */
+/** Start ekranu wyboru bohatera (krok 38): seed i piętro nowego runu, zaznaczony bohater. */
+export interface HeroSelectData {
+  readonly runSeed: number;
+  readonly floor: number;
+  /** Bohater zaznaczony na starcie (np. po śmierci); brak = ostatnio wybrany. */
+  readonly preselect?: HeroId;
+}
+
 export interface FloorSceneData {
   readonly runSeed: number;
   readonly floor: number;

@@ -3,7 +3,7 @@ import type { Hit } from '@/core/combatTypes';
 import { HeroId } from '@/core/heroTypes';
 import { ItemId } from '@/core/lootTypes';
 import type { Vector2 } from '@/core/types';
-import { HERO_DEFINITIONS, heroFromParam } from '@/config/heroConfig';
+import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { ITEM_DEFINITIONS, ITEM_EFFECTS, STAT_LIMITS } from '@/config/lootConfig';
 import { applyFloorToLoadout } from '@/systems/FloorModifiers';
 import type { FloorModifierEffects } from '@/core/floorModifierTypes';
@@ -164,14 +164,6 @@ describe('promień (PPM)', () => {
       [weak],
     );
     expect(result.killed).toEqual([weak]);
-  });
-});
-
-describe('wybór bohatera z adresu', () => {
-  it('?hero=sorceress wybiera Czarodziejkę, brak lub nieznana wartość — barbarzyńcę', () => {
-    expect(heroFromParam('sorceress')).toBe(HeroId.Sorceress);
-    expect(heroFromParam(null)).toBe(HeroId.Barbarian);
-    expect(heroFromParam('mag')).toBe(HeroId.Barbarian);
   });
 });
 

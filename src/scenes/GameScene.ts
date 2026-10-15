@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type {
   DeathSummary,
   FloorSceneData,
+  HeroSelectData,
   HudData,
   HudSceneData,
   HudSource,
@@ -688,10 +689,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
     }
 
     // Nowa wspinaczka: nowy seed, piętro 1, pusty run.
+    const freshSeed = (Date.now() ^ this.runSeed) >>> 0;
     this.input.keyboard?.once('keydown-R', () => {
       // Ten sam bohater co w zakończonym runie.
-      const fresh: FloorSceneData = { runSeed: (Date.now() ^ this.runSeed) >>> 0, floor: 1, run: newRun(this.run.hero) };
+      const fresh: FloorSceneData = { runSeed: freshSeed, floor: 1, run: newRun(this.run.hero) };
       this.scene.restart(fresh);
+    });
+    // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
+    this.input.keyboard?.once('keydown-C', () => {
+      const select: HeroSelectData = { runSeed: freshSeed, floor: 1, preselect: this.run.hero };
+      this.scene.stop(SceneKey.Hud);
+      this.scene.start(SceneKey.Select, select);
     });
   }
 

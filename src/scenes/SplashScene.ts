@@ -22,7 +22,7 @@ import {
 import { pixelLine, pixelText } from '@/core/pixelArt';
 import type { SplashFrame } from '@/systems/splashTimeline';
 import { splashFadeStart, splashFrame, splashImpactAt } from '@/systems/splashTimeline';
-import { BOOT_START_DATA_KEY } from '@/scenes/BootScene';
+import { BOOT_START_DATA_KEY, startFirstFloor } from '@/scenes/BootScene';
 
 const GLOW_TEXTURE = 'splash-glow';
 const VIGNETTE_TEXTURE = 'splash-vignette';
@@ -107,7 +107,7 @@ export class SplashScene extends Phaser.Scene {
     if (frame.done && bootData) {
       this.finished = true;
       this.registry.remove(BOOT_START_DATA_KEY);
-      this.scene.start(SceneKey.Game, bootData);
+      startFirstFloor(this, bootData);
     }
   }
 

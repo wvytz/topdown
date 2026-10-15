@@ -60,6 +60,9 @@ export interface SorceryConfig {
 export interface HeroDefinition {
   readonly id: HeroId;
   readonly name: string;
+  /** Opis na ekranie wyboru: krótkie hasło i linie o atakach. */
+  readonly tagline: string;
+  readonly attacks: readonly { readonly input: string; readonly text: string }[];
   readonly stats: PlayerStats;
   /** Dash, nietykalność; u barbarzyńcy także cios i strzał. */
   readonly combat: PlayerCombatConfig;

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { FloorSceneData } from '@/core/types';
+import type { FloorSceneData, HeroSelectData } from '@/core/types';
 import { SceneKey, TextureKey } from '@/core/types';
 import { BIOMES } from '@/config/biomeConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
@@ -7,7 +7,7 @@ import type { TilesetMeta } from '@/core/tilesetTypes';
 import { registerTorchAnimation } from '@/world/Torches';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { newRun } from '@/systems/RunState';
-import { heroFromParam } from '@/config/heroConfig';
+import { DEFAULT_HERO, parseHeroId } from '@/config/heroConfig';
 import { loadSpriteSheets, registerLootAnimations, registerSpriteAnimations } from '@/effects/spriteAnimations';
 
 /** Klucz rejestru: dane startu pierwszego piętra, gdy ekran startowy jeszcze trwa (krok 34). */
@@ -39,14 +39,14 @@ export class BootScene extends Phaser.Scene {
       registerTorchAnimation(this, tileset, this.cache.json.get(tileset.jsonKey) as TilesetMeta);
     }
     this.generatePlaceholderTextures();
-    // Wybór bohatera (krok 37): do czasu ekranu wyboru parametr adresu `?hero=sorceress`, działa też na Pages.
-    const hero = heroFromParam(new URLSearchParams(window.location.search).get('hero'));
+    // Bohater z adresu (`?hero=sorceress`) pomija ekran wyboru; bez niego wybór i tak nadpisze domyślnego.
+    const hero = heroParam() ?? DEFAULT_HERO;
     const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: newRun(hero), ...devStartOverrides() };
     if (this.scene.isActive(SceneKey.Splash)) {
       this.registry.set(BOOT_START_DATA_KEY, startData);
       this.scene.stop();
     } else {
-      this.scene.start(SceneKey.Game, startData);
+      startFirstFloor(this, startData);
     }
   }
 
@@ -60,6 +60,21 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture(TextureKey.Projectile, p * 2, p * 2);
     g.destroy();
   }
+}
+
+/** Bohater podany w adresie (`?hero=sorceress`); null = gracz wybiera na ekranie wyboru. */
+function heroParam() {
+  return parseHeroId(new URLSearchParams(window.location.search).get('hero'));
+}
+
+/** Po ładowaniu (i ekranie startowym): ekran wyboru bohatera, chyba że adres już go podał (krok 38). */
+export function startFirstFloor(scene: Phaser.Scene, data: FloorSceneData): void {
+  if (heroParam() !== null) {
+    scene.scene.start(SceneKey.Game, data);
+    return;
+  }
+  const select: HeroSelectData = { runSeed: data.runSeed, floor: data.floor };
+  scene.scene.start(SceneKey.Select, select);
 }
 
 /** Tylko w trybie dev: `?seed=3&floor=2` w adresie startuje run od danego seeda i piętra (testy modyfikatorów). */
