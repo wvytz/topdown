@@ -48,12 +48,13 @@ function groupPixels(meta: TilesetMeta, sheet: RgbaImage, group: string): Rgba[]
 }
 
 describe('biomy: wybór piętra', () => {
-  it('biom = jedno piętro: 2 leże, 3 Grzybnia, 4 Cmentarzysko, 5 Piekło, reszta to ruiny', () => {
+  it('biomy: 2 leże, 3 Grzybnia, 4 Cmentarzysko, 5–6 Piekło (dwa piętra), reszta to ruiny', () => {
     expect(biomeForFloor(2).id).toBe(BiomeId.SpiderLair);
     expect(biomeForFloor(3).id).toBe(BiomeId.FungalGrove);
     expect(biomeForFloor(4).id).toBe(BiomeId.Graveyard);
     expect(biomeForFloor(5).id).toBe(BiomeId.Infernal);
-    for (const floor of [1, 6, 9]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
+    expect(biomeForFloor(6).id).toBe(BiomeId.Infernal);
+    for (const floor of [1, 7, 9]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
   });
 
   it('każdy biom ma własne klucze tekstur i animacji pochodni', () => {

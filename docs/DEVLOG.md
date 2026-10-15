@@ -2956,6 +2956,17 @@ Makieta generatora:
 
 ---
 
+## Krok 41c — Piekło na dwóch piętrach `#pieklo`
+
+**Decyzje właściciela (po kroku 41b):** `#decyzja` `#pieklo` `#kat-otchlani`
+- propozycja bossa **Kat Otchłani** zaakceptowana (tarcza odbijająca pociski od frontu, hak przyciągający z dystansu, wirowanie łańcuchem, zawężający się pierścień ognia, oddech palenisk);
+- Piekło ma **dwa piętra** (5 i 6); na 6, „gorętszym”, paleniska buchają częściej (przerwa 4,2 s → 2,9 s, ostrzeżenie zostaje 1 s — liczby z kroku 41b);
+- wrogowie biomu: do mojej propozycji.
+
+**Zrobione:** `BIOME_BY_FLOOR[6] = Infernal`; od piętra 7 dalej ruiny. Bossowie bez zmian do czasu Kata (na obu piętrach Strażnik). Test `biomes.test.ts` zaktualizowany.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

@@ -200,13 +200,16 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
 /**
  * Biom na konkretnych piętrach; reszta to ruiny. Każdy biom to jedno piętro zakończone swoim bossem
  * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków,
- * 4 — Cmentarzysko (krok 32a, Grzybowy Pożeracz), 5 — Piekło (krok 41a; boss do czasu Kata Otchłani: Strażnik).
+ * 4 — Cmentarzysko (krok 32a, Grzybowy Pożeracz), 5–6 — Piekło (krok 41; dwa piętra, Kat Otchłani na końcu 6.;
+ * do tego czasu Strażnik).
  */
 export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   2: BiomeId.SpiderLair,
   3: BiomeId.FungalGrove,
   4: BiomeId.Graveyard,
+  // Piekło ma dwa piętra (decyzja właściciela po kroku 41b): na 6, „gorętszym”, paleniska buchają częściej.
   5: BiomeId.Infernal,
+  6: BiomeId.Infernal,
 };
 
 export function biomeForFloor(floor: number): BiomeDefinition {

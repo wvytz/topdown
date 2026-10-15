@@ -38,7 +38,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - **Mało przeciwników:** podstawowe archetypy (Rusher, Kiter), 1–2 na pokój. Trudność rośnie przez statystyki.
 - **Tempo walki jest zaakceptowane.** Balans stroimy później, gdy będzie gotowe podstawowe środowisko.
 - **Gra ma być wymagająca (krok 14).** Po przeglądzie balansu gra jest trudniejsza i właściciel to akceptuje. **Nie łagodź trudności** (HP/obrażenia wrogów, siła bossa, rzadkość leczenia) bez sygnału z testów właściciela.
-- **Biomy (krok 28):** na razie każdy biom to jedno piętro zakończone swoim bossem (1 ruiny, 2 Pajęcze leże z Matką Pająków, 3 Grzybnia z Królem Pająków, 4 Cmentarzysko z Grzybowym Pożeraczem, 5 Piekło — krok 41, paleta A „krwawy bazalt”, paleniska). Biomy-„fillery” później. Każdy kolejny biom jest mroczniejszy i „pełniejszy” od poprzedniego.
+- **Biomy (krok 28):** na razie każdy biom to jedno piętro zakończone swoim bossem (1 ruiny, 2 Pajęcze leże z Matką Pająków, 3 Grzybnia z Królem Pająków, 4 Cmentarzysko z Grzybowym Pożeraczem, 5–6 Piekło — krok 41, dwa piętra, paleta A „krwawy bazalt”, paleniska częstsze na 6, boss Kat Otchłani). Biomy-„fillery” później. Każdy kolejny biom jest mroczniejszy i „pełniejszy” od poprzedniego.
 - **Grafika (krok 28):** domyślnie wszystko generujemy generatorami w `tools/` (kafle, postacie, bossowie, efekty); właściciel ocenia podglądy. Ręczny rysunek tylko, gdy animacja z generatora wyjdzie za słabo.
 - **Sprite'y:** właściciel zapisuje je w `OneDrive\Pictures\sprites`; Claude kopiuje je do `public/assets/sprites` i opisuje w `config/spriteConfig.ts`.
 - **Kafle (krok 16):**
