@@ -1786,6 +1786,9 @@ SPRITES = {
     'infected_spider': ('infected-spider_walk.png', 48, '#1b1a22', 'Zarażony pająk'),
     'fungoid': ('fungoid_walk-spit.png', 48, '#1b1a22', 'Grzybiec'),
     'spore_ball': ('spore-ball.png', 16, None, None),
+    # Wrogowie Cmentarzyska (krok 32b, tools/grave_enemies.py).
+    'zombie': ('zombie_walk-claw.png', 48, '#1b1a22', 'Zarażony'),
+    'sower': ('sower_walk-spit.png', 48, '#1b1a22', 'Siewca'),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -1811,13 +1814,13 @@ MOCKUP_ACTORS_LAIR = [
     ('bat', 6, 752, 252, False, 1),
     ('bat_wave', 2, 290, 238, False, 0),
 ]
-# Cmentarzysko (krok 32a): do czasu własnych zarażonych ludzi — wrogowie Grzybni jako zastępcy.
+# Cmentarzysko (krok 32b): zarażeni (Rushery) i siewcy (Kitery).
 MOCKUP_ACTORS_GRAVE = [
     ('barbarian_sword', 2, 368, 262, True, 4),
-    ('infected_spider', 6, 452, 236, True, 1),
-    ('infected_spider', 1, 300, 330, True, 2),
-    ('fungoid', 2, 232, 236, False, 5),
-    ('fungoid', 6, 752, 252, False, 0),
+    ('zombie', 6, 452, 236, True, 6),               # cios pazurami
+    ('zombie', 1, 300, 330, True, 1),
+    ('sower', 2, 232, 236, True, 6),                # plucie
+    ('sower', 6, 752, 252, True, 0),
     ('spore_ball', 0, 290, 238, False, 0),
 ]
 # Nakładki biomu na makiecie: (kafel, x, y) w kaflach.
@@ -1837,7 +1840,7 @@ METRIC_CAST = {
     'spider_lair': ('barbarian_sword', 'cave_spider', 'bat', 'queen', 'spiderling'),
     # Grzybnia (krok 28b): zarażony pająk i grzybiec; Król Pająków w kroku 29.
     'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
-    'graveyard': ('barbarian_sword', 'infected_spider', 'fungoid'),
+    'graveyard': ('barbarian_sword', 'zombie', 'sower'),
 }
 
 

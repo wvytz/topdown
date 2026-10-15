@@ -2462,6 +2462,64 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 32b — Zarażeni i siewcy (Cmentarzysko)
+
+**Decyzje właściciela:** `#decyzja` `#cmentarzysko` „działać według twojego planu” — najpierw zwykłe zombie, potem Wampirzy Lord (z tasakiem); po każdym kroku commit i push.
+
+**Wrogowie (zasada małej liczby archetypów — logika AI bez zmian):**
+- **zarażony** (`EnemyVariant.Zombie`, Rusher):
+  - człowiek w rdzawych łachmanach, blada, zimna skóra, ręce wyciągnięte przed siebie;
+  - na barku i ciemieniu grzybki, a ze strzępek świeci grzybnia;
+  - zamach pazurami: ręce cofnięte, uniesione szeroko, cios do środka, skrzyżowane dłonie w chwili trafienia;
+- **siewca** (`EnemyVariant.Sower`, Kiter):
+  - zombie, któremu zamiast głowy wyrósł wielki fioletowy kapelusz z blaszkami, ręce zwisają;
+  - przy pluciu kapelusz nabrzmiewa, a przed blaszkami rośnie obłok jadu;
+  - pluje kulą zarodników grzybca.
+
+**Liczby (moje, `combatConfig.ENEMY_VARIANTS`, do strojenia w teście):**
+- zarażony:
+  - 11 obrażeń (pająk Grzybni 10), zamach 420 ms (350), odnowienie 1,1 s;
+  - trucizna jak u zarażonego pająka (2 co 0,5 s przez 1,5 s);
+  - cięższy, ale czytelniejszy cios;
+- siewca: atak identyczny jak grzybca (5 obrażeń, kula 170 px/s, trucizna jak Ognista pięść).
+
+**Czytelność na palecie C:** barwy celowo daleko od oliwkowej podłogi: rdza i blada skóra, fiolet kapelusza.
+Makieta generatora:
+- zarażony: obrys 2,24, ciało 1,97, Δbarwy 131°;
+- siewca: obrys 2,24, ciało 1,11, ale Δbarwy 151° — czytelny barwą;
+- grzybiec z kroku 32a znika z biomu.
+
+**Kod:**
+- `tools/grave_enemies.py` (nowy):
+  - `zombie_walk-claw.png`, `sower_walk-spit.png` (48×48, 8 kierunków, kolumny 0–3 chód, 4–7 atak);
+  - walidator czysty;
+- `spriteConfig`: arkusze `zombie`, `sower`, `ENEMY_VISUALS` (zarażony ma zamach `claw`), pocisk siewcy = `sporeBall`;
+- `biomeConfig`: Cmentarzysko → zarażony + siewca;
+- generator kafli: makieta i miary czytelności Cmentarzyska z nowymi wrogami.
+
+**Testy:**
+- `enemyVariants.test.ts`:
+  - mapowanie biomu;
+  - zarażony mocniejszy od pająka, z dłuższym zamachem i tą samą trucizną;
+  - siewca = atak grzybca, własny wygląd;
+  - 4 klatki zamachu;
+- `biomes.test.ts`: czytelność bohatera, zarażonego i siewcy na podłodze i bruku Cmentarzyska.
+
+**Weryfikacja:**
+- `npm run build`: 833 testy zielone;
+- w grze (`?seed=7&floor=4`), na piętrze 9 zarażonych i 4 siewców:
+  - zarażony gra zamach `claw` i trafia z odrzutem;
+  - siewca gra `spit`, a kula zatruwa;
+  - zrzut ekranu: zarażony gryzie bohatera (−12, trucizna −2), zwłoki na posadzce;
+- brak nowych błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#cmentarzysko`
+- czy zarażony i siewca wyglądają jak ludzie zmieniający się w grzybowe zombie;
+- siła i tempo zamachu zarażonego;
+- czy siewca nie jest za bardzo podobny do grzybca.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2499,7 +2557,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, test właściciela: „super” — potem kolejny biom. Krok 31: lekko losowa kolejność ataków bossów.
 
-**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a zrobiony (paleta C, kafle, dekoracje, mgiełka). Dalej: 32b — zarażeni ludzie / grzybowe zombie (wrogowie biomu, czytelni na palecie C), potem boss.
+**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a (paleta C, kafle, dekoracje, mgiełka) i 32b (zarażony i siewca) zrobione. Dalej: krok 33 — Wampirzy Lord.
 
 **Boss Cmentarzyska — pomysł właściciela (po kroku 32a):** `#decyzja` `#cmentarzysko` `#wampirzy-lord`
 - „wampirzy lord”, ale nie typowy wampir: zainfekowany człowiek, który **zjada mniejsze zombiaki**;

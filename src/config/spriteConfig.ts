@@ -197,6 +197,38 @@ export const SPRITE_SHEETS = {
       spit: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Wrogowie Cmentarzyska (krok 32b, tools/grave_enemies.py): zarażony (chód + zamach pazurami),
+  // siewca (chód + plucie; kula to kula zarodników grzybca).
+  zombie: {
+    key: 'sheet-zombie',
+    url: 'assets/sprites/zombie_walk-claw.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      // Zamach dopasowany do windupMs — cios (skrzyżowane dłonie) w ostatniej klatce.
+      claw: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  sower: {
+    key: 'sheet-sower',
+    url: 'assets/sprites/sower_walk-spit.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      spit: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
   sporeBall: {
     key: 'sheet-spore-ball',
     url: 'assets/sprites/spore-ball.png',
@@ -439,6 +471,8 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.InfectedSpider]: { sheet: 'infectedSpider', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
   // Grzybiec pełznie przy ziemi: szeroki, płaski cień pod kapeluszem.
   [EnemyVariant.Fungoid]: { sheet: 'fungoid', move: 'crawl', attack: 'spit', groundShadow: { width: 20, height: 8, offsetX: 0, offsetY: 3 } },
+  [EnemyVariant.Zombie]: { sheet: 'zombie', move: 'walk', idle: 'idle', attack: 'claw', groundShadow: WALKER_SHADOW },
+  [EnemyVariant.Sower]: { sheet: 'sower', move: 'walk', attack: 'spit', groundShadow: WALKER_SHADOW },
 };
 
 /**
@@ -465,6 +499,7 @@ export const ENEMY_PROJECTILE_VISUALS: Readonly<Partial<Record<EnemyVariant, Ene
   [EnemyVariant.DemonMage]: { sheet: 'demonOrb', animation: 'fly', forwardOffset: 13, directional: false },
   [EnemyVariant.Bat]: { sheet: 'batWave', animation: 'fly', forwardOffset: 12, directional: true },
   [EnemyVariant.Fungoid]: { sheet: 'sporeBall', animation: 'fly', forwardOffset: 12, directional: false },
+  [EnemyVariant.Sower]: { sheet: 'sporeBall', animation: 'fly', forwardOffset: 12, directional: false },
 };
 
 export interface BossVisual extends EnemyVisual {

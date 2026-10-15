@@ -201,11 +201,11 @@ describe('Cmentarzysko (krok 32a)', () => {
     expect(mist.wisps.alpha).toBeLessThan(fog.wisps.alpha);
   });
 
-  // Bohater i zastępczy Rusher (zarażony pająk). Grzybiec na tej palecie jest słabo czytelny (makieta generatora:
-  // ciało 1,13, Δbarwy 49°) — zostaje tylko do czasu własnych wrogów biomu (krok 32b).
+  // Postacie piętra 4: bohater, zarażony (Rusher) i siewca (Kiter) z kroku 32b.
   const CHARACTERS = [
     ['Barbarzyńca', SPRITE_SHEETS.barbarian],
-    ['Zarażony pająk', SPRITE_SHEETS.infectedSpider],
+    ['Zarażony', SPRITE_SHEETS.zombie],
+    ['Siewca', SPRITE_SHEETS.sower],
   ] as const;
 
   it.each(CHARACTERS)('%s: czytelny na podłodze i bruku Cmentarzyska (STYLEGUIDE §6a)', (_name, def) => {

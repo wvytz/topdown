@@ -142,6 +142,44 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       },
     },
   },
+  // Cmentarzysko (krok 32b): zarażony drapie mocniej niż pająk (11), ale z dłuższym zamachem (420 ms) —
+  // ciężki, czytelny cios pazurami; zatruwa jak zarażony pająk (6 w 1,5 s).
+  [EnemyVariant.Zombie]: {
+    type: EnemyType.Rusher,
+    color: 0x6a3a2a,
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 11,
+      range: 32,
+      hitRange: 42,
+      windupMs: 420,
+      cooldownMs: 1100,
+      knockback: 220,
+      status: { poison: { tickDamage: 2, tickMs: 500, durationMs: 1500 } },
+    },
+  },
+  // Siewca: pluje jak grzybiec (ta sama kula zarodników i trucizna) — grzyb z Grzybni rośnie mu zamiast głowy.
+  [EnemyVariant.Sower]: {
+    type: EnemyType.Kiter,
+    color: 0x5a3a6a,
+    attack: {
+      kind: EnemyAttackKind.Projectile,
+      damage: 5,
+      range: 280,
+      windupMs: 450,
+      cooldownMs: 1600,
+      knockback: 100,
+      projectileSpeed: 170,
+      projectileLifetimeMs: 2200,
+      status: {
+        poison: {
+          tickDamage: ITEM_EFFECTS.fireFist.tickDamage,
+          tickMs: ITEM_EFFECTS.fireFist.tickMs,
+          durationMs: ITEM_EFFECTS.fireFist.durationMs,
+        },
+      },
+    },
+  },
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */

@@ -123,3 +123,36 @@ describe('wrogowie Grzybni (krok 28b)', () => {
     expect(SPRITE_SHEETS[spit.sheet].animations).toHaveProperty(spit.animation);
   });
 });
+
+describe('wrogowie Cmentarzyska (krok 32b)', () => {
+  it('Cmentarzysko: zarażony (Rusher) i siewca (Kiter)', () => {
+    expect(BIOMES[BiomeId.Graveyard].enemyVariants).toEqual({
+      [EnemyType.Rusher]: EnemyVariant.Zombie,
+      [EnemyType.Kiter]: EnemyVariant.Sower,
+    });
+  });
+
+  it('zarażony: cios mocniejszy niż pająka Grzybni, ale z dłuższym zamachem; zatruwa tak samo', () => {
+    const zombie = def(EnemyType.Rusher, EnemyVariant.Zombie);
+    const spider = def(EnemyType.Rusher, EnemyVariant.InfectedSpider);
+    expect(zombie.attack.kind).toBe(EnemyAttackKind.Melee);
+    expect(zombie.attack.damage).toBeGreaterThan(spider.attack.damage);
+    expect(zombie.attack.windupMs).toBeGreaterThan(spider.attack.windupMs);
+    expect(zombie.attack.status).toEqual(spider.attack.status);
+    expect(ENEMY_VISUALS[EnemyVariant.Zombie].attack).toBe('claw');
+  });
+
+  it('siewca pluje jak grzybiec (kula zarodników), z własnym wyglądem', () => {
+    const sower = def(EnemyType.Kiter, EnemyVariant.Sower);
+    const fungoid = def(EnemyType.Kiter, EnemyVariant.Fungoid);
+    expect(sower.attack).toEqual(fungoid.attack);
+    expect(ENEMY_VISUALS[EnemyVariant.Sower].sheet).toBe('sower');
+    expect(ENEMY_PROJECTILE_VISUALS[EnemyVariant.Sower]).toEqual(ENEMY_PROJECTILE_VISUALS[EnemyVariant.Fungoid]);
+  });
+
+  it('animacje zamachu istnieją w arkuszach i mają 4 klatki', () => {
+    expect(SPRITE_SHEETS.zombie.animations.claw.frames).toHaveLength(4);
+    expect(SPRITE_SHEETS.sower.animations.spit.frames).toHaveLength(4);
+  });
+});
+

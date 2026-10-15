@@ -140,13 +140,13 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
   },
   // Cmentarzysko (krok 32a): ludzki biom nad Grzybnią — tu upadli zatruci; jedni się rozkładają, inni zmieniają
   // w grzybowe zombie. Grzyb ledwo dociera. Paleta C „trupia zieleń” (wybór właściciela), świece zamiast
-  // pochodni, zimna mgiełka. Wrogowie do czasu zarażonych ludzi: wrogowie Grzybni.
+  // pochodni, zimna mgiełka. Wrogowie (krok 32b): zarażony (Rusher) i siewca (Kiter) — ludzie w grzybowe zombie.
   [BiomeId.Graveyard]: {
     id: BiomeId.Graveyard,
     name: 'Cmentarzysko',
     tileset: GRAVEYARD_TILESET_ASSET,
     dressing: GRAVEYARD_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.InfectedSpider, [EnemyType.Kiter]: EnemyVariant.Fungoid },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Zombie, [EnemyType.Kiter]: EnemyVariant.Sower },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,

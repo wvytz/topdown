@@ -19,6 +19,10 @@ export enum EnemyVariant {
   InfectedSpider = 'infected-spider',
   /** Grzybnia (krok 28b): grzybiec plujący kulą zarodników (Kiter), trafienie zatruwa. */
   Fungoid = 'fungoid',
+  /** Cmentarzysko (krok 32b): zarażony człowiek zmieniający się w grzybowe zombie (Rusher), drapnięcie zatruwa. */
+  Zombie = 'zombie',
+  /** Cmentarzysko (krok 32b): siewca — zombie z kapeluszem grzyba zamiast głowy (Kiter), pluje kulą zarodników. */
+  Sower = 'sower',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
