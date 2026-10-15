@@ -150,7 +150,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dashHitsFor = -1;
   /** Wampirzy kieł: odstęp między leczeniami za cios. */
   private healCooldown = new Timer();
-  /** Promień Czarodziejki (krok 35) — rysowany co klatkę, gdy świeci. */
+  /** Promień Czarodziejki (krok 37) — rysowany co klatkę, gdy świeci. */
   private beamGfx: Phaser.GameObjects.Graphics | null = null;
   private readonly highscores = new SharedHighscores(
     new HighscoreStorage(HighscoreStorage.browserStorage(), HIGHSCORE_CONFIG.maxEntries, HIGHSCORE_CONFIG.podiumSize),

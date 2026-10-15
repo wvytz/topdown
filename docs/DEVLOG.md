@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#czarodziejka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2648,7 +2648,106 @@ Makieta generatora:
 
 ---
 
-## Krok 34 — Czarodziejka: sprite'y drugiej bohaterki `#czarodziejka`
+## Krok 34 — Ekran startowy w stylu automatów
+
+**Prośba właściciela:** `#decyzja` `#ekran-startowy`
+- krótki ekran startowy przed pierwszą planszą: tylko duży napis na środku, widoczny przez chwilę;
+- klimat automatów (arcade), w tle ruiny wieży i potwory, ale tak, żeby nie odciągały uwagi; „mocne otwarcie”;
+- projekt pokazany na kanwie Claude Design (paleta z systemu „Matka Pająków”), właściciel zaakceptował kierunek: „tak zrób, dopasuj do gry”.
+
+**Co widać (960×540, ok. 2,8 s):**
+- z czerni wychodzi tło: zrujnowana wieża z wyszczerbionym szczytem, łamane kolumny, pajęczyny w rogach, pająk na nitce, nietoperz, pajączki z pulsującymi workami-bombami na gruzie;
+- tło tylko w tonach chityny 0–2 i obrysu; akcenty to pojedyncze piksele: czerwone oczy (Matka w bramie wieży, coś w oknach) i okno z pochodnią;
+- 0,4 s: **CRAWLER** uderza ze skali 2,6, odbija się (0,94 → 1,04 → 1) — błysk, wstrząs kamery, ciepła poświata za logo;
+- litery z własnego fontu 5×7 (piksel = 16 px ekranu), lico w pasach rampy ognia (egg-3 → egg-1), ognista warga egg-0, obrys i 4-stopniowe wytłoczenie w dół (chityna) — jak logotypy z automatów;
+- 0,8 s: **TOWER** opada w 4 skokach (pikselowo) między ozdobnikami z rombem ognia;
+- 1,2 s: zapalają się oczy (druga grupa 0,7 s później), potem mrugają;
+- 1,5 s: wpisuje się „— PIĘTRO 1 · RUINY WIEŻY —” (nazwa biomu z `biomeConfig`);
+- 2,4 s: wygaszenie do czerni i start piętra 1; do tego iskry, winieta i delikatne linie CRT.
+
+**Decyzje:**
+- ekran rysujemy wyłącznie prostokątami (`Graphics`) i dwiema teksturami z gradientem (poświata, winieta) — bez plików graficznych i bez fontu z sieci; logo to piksele, nie tekst;
+- zasoby gry ładują się **pod** ekranem: `SplashScene` startuje pierwsza i uruchamia `BootScene`; jeśli ładowanie trwa dłużej, tytuł po prostu trzyma się na ekranie (wygaszenie nigdy przed gotowością gry);
+- dowolny klawisz albo klik pomija resztę ekranu (od razu wygaszenie);
+- czas liczony od czasu pętli, nie z sumy delt — Phaser wygładza i przycina deltę, więc na wolnym sprzęcie ekran trwałby dłużej;
+- restart po śmierci nie pokazuje ekranu ponownie (restart idzie prosto do `GameScene`).
+
+**Kod:**
+- czysto:
+  - `core/pixelArt.ts`: font 5×7 (`pixelText`, litery logo) i linia Bresenhama (`pixelLine`, pajęczyny);
+  - `config/splashConfig.ts`: oś czasu, układ, paleta, rysunek tła (prostokąty w siatce 240×135, detale w 480×270);
+  - `systems/splashTimeline.ts`: `splashFrame` (stan ekranu w chwili t) i `splashFadeStart` (kiedy przejść do gry);
+- Phaser:
+  - `scenes/SplashScene.ts` — tylko rysuje klatkę;
+  - `BootScene`: gdy ekran startowy trwa, zostawia dane startu w rejestrze (`BOOT_START_DATA_KEY`) i się zatrzymuje;
+  - `SceneKey.Splash`, `main.ts` (SplashScene pierwsza);
+- dev: `?nosplash` w adresie pomija ekran.
+
+**Testy:**
+- `tests/core/pixelArt.test.ts` (7): kształt znaków, szerokość napisu, odstępy, nieznany znak, ciągłość linii;
+- `tests/systems/splashTimeline.test.ts` (12): wejście z czerni, uderzenie i odbicie, błysk, skokowe opadanie TOWER, oczy i mruganie, wpisywanie podtytułu, kolejność przed wygaszeniem, koniec ekranu; czekanie na załadowanie, pominięcie.
+
+**Weryfikacja:**
+- `npm run build`: typy, 877 testów, build;
+- przeglądarka (Chromium, zrzuty klatek): logo, tło i podtytuł na miejscu, po ok. 2,8 s aktywne `GameScene` i `HudScene`, brak błędów w konsoli.
+
+---
+
+## Krok 35 — Ekran śmierci: rozkładający się napis i krew
+
+**Prośba właściciela:** `#decyzja` `#ekran-smierci`
+- ekran po śmierci dopasowany do ekranu startowego (krok 34);
+- gra pod spodem przyciemniona, ale dalej widać animacje przeciwników;
+- napis POLEGŁEŚ zostaje, ale z efektem rozkładu i drobinkami krwi;
+- na środku dalej wynik i tablica rekordów;
+- po zrzucie: „wszystko OK, deployuj i lecimy dalej”.
+
+**Co widać:**
+- gra nie staje — przyciemnienie narasta do 62% w 0,6 s, krawędzie w winiecie zakrzepłej krwi; wrogowie dalej się ruszają pod spodem;
+- 0,25 s: **POLEGŁEŚ** uderza (skala 2,2 → 1 z odbiciem), czerwony błysk, wstrząs, chmura kropel krwi;
+- napis z fontu pikselowego jak CRAWLER (nowe litery P, G, S, Ł i Ś z akcentem), lico w pasach rampy oczu (od eye-2 do ciemnej krwi), obrys i wytłoczenie;
+- **rozkład** od 1,2 s przez 7 s:
+  - piksele liter rozbite na bloki 2×2; blok najpierw ciemnieje („gnije”, 0,6 s), potem odpada i spada;
+  - najpierw kruszą się krawędzie, wnętrze później i rzadziej;
+  - odpada najwyżej 30% bloków, więc napis zostaje czytelny; w dziurach prześwituje ciemne wnętrze litery;
+- **krew:** 7 źródeł na dolnych krawędziach liter — kropla nabrzmiewa i spada co 1,4–2,8 s;
+- wynik, ozdobnik, „NAJLEPSZE WSPINACZKI” i wiersze tablicy wchodzą po kolei jak na automacie; „R — NOWA WSPINACZKA” miga;
+- przyciemnienie przykrywa też resztę HUD, więc nic nie nachodzi na tablicę.
+
+**Kod:**
+- czysto:
+  - `core/pixelArt.ts`: nowe litery, akcenty nad literą (`PIXEL_ACCENTED`, pole `top` napisu);
+  - `config/deathScreenConfig.ts`: oś czasu, rozkład, fizyka kropel, układ, paleta krwi;
+  - `systems/deathScreen.ts`: `deathFrame`, `splitIntoBlocks`, `planCrumble` (własna sól RNG), `planDrips`, `dripsReleased`, `stepParticle`;
+- Phaser: `effects/DeathScreen.ts` zastępuje panel śmierci w `HudScene`; restart (R) chowa ekran i czyści krople.
+
+**Testy (`tests/systems/deathScreen.test.ts`, 11):** litery i akcent Ś; przyciemnienie nigdy nie zasłania gry; uderzenie i błysk; kolejność wyniku, wierszy i komunikatu; rozkład deterministyczny, limit 30%, okno czasu, wnętrze później; krople z dolnych krawędzi (nie z akcentu), rytm kropel; grawitacja.
+
+**Weryfikacja:**
+- `npm run build`: typy, 890 testów, build;
+- przeglądarka (`?nosplash&seed=7&floor=2`, śmierć wymuszona przez `window.__game`): zrzuty po 0,35–8 s — gra widoczna pod spodem, napis kruszy się i krwawi, tablica czytelna; R startuje nowy run; brak błędów w konsoli;
+- wdrożone na GitHub Pages razem z krokiem 34.
+
+---
+
+## Kroki 34–35 + wspólna lista wyników — scalenie `#highscore` `#ekran-smierci`
+
+**Problem (zgłoszenie właściciela):** na GitHub Pages nie było ekranu startowego, a ekran śmierci był stary. Kroki 34–35 leżały na osobnej gałęzi (`claude/beautiful-knuth-7datv1`) i nie trafiły do `main`; wdrożenie wspólnej listy wyników z `main` nadpisało `gh-pages` wersją bez nich.
+
+**Co zrobiono:**
+- `main` scalony z gałęzią kroków 34–35; jedyny konflikt w `HudScene` — zostaje nowy `DeathScreen`, stary panel śmierci usunięty;
+- `effects/DeathScreen.ts` obsługuje wspólną listę:
+  - przy pierwszej śmierci bez zapamiętanego imienia: „TWOJE IMIĘ NA TABLICY WYNIKÓW”, pole z kursorem, „ENTER — ZAPISZ · ESC — BEZ IMIENIA”; bez miejsca w wyniku i bez „R — NOWA WSPINACZKA”;
+  - wiersze tablicy z imieniem; nagłówek zależny od źródła (lokalna / łączenie… / wszyscy gracze);
+  - nowy obiekt tej samej śmierci (litera imienia, przyjście wspólnej tablicy) odświeża tylko tekst — animacja rozkładu nie startuje od nowa.
+
+**Uwaga:** na gałęzi `claude/vibrant-thompson-o7nlmz` jest inny „Krok 34” (Grzybowy Pożeracz) — numer koliduje, do przenumerowania przy jej scalaniu.
+
+**Weryfikacja:** `npm run build` (903 testy); przeglądarka: ekran startowy, śmierć wymuszona przez `window.__game`, wpisanie imienia i tablica z imieniem.
+
+---
+
+## Krok 36 — Czarodziejka: sprite'y drugiej bohaterki `#czarodziejka`
 
 **Decyzja właściciela:** `#decyzja` `#czarodziejka`
 - Plan palety i klatek przedstawiony na płótnie (Design) i zaakceptowany przed implementacją.
@@ -2677,7 +2776,7 @@ Makieta generatora:
 
 ---
 
-## Krok 35 — Czarodziejka: mechanika (kule i promień) `#czarodziejka`
+## Krok 37 — Czarodziejka: mechanika (kule i promień) `#czarodziejka`
 
 **Decyzja właściciela:** `#decyzja` `#czarodziejka`
 - **LPM — kule energii:** 3 kule krążą wokół Czarodziejki; atak wypuszcza jedną w stronę celownika (przytrzymanie = seria), pusta orbita odnawia się po ok. 1,5 s.
@@ -2781,13 +2880,15 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Ekran śmierci (krok 35):** `#ekran-smierci` siła przyciemnienia (62%), tempo i zasięg rozkładu napisu (30% bloków w 7 s), ilość krwi.
+- **Ekran startowy (krok 34):** `#ekran-startowy` długość (ok. 2,8 s), siła wstrząsu i błysku, czytelność tła — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
 **3. Brakująca grafika**
-- **Czarodziejka (kroki 34–35):** sprite'y i mechanika gotowe; brakuje ekranu wyboru postaci (na razie `?hero=sorceress`) i ewentualnie bohatera na liście wyników.
+- **Czarodziejka (kroki 36–37):** sprite'y i mechanika gotowe; brakuje ekranu wyboru postaci (na razie `?hero=sorceress`) i ewentualnie bohatera na liście wyników.
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.

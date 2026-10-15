@@ -109,7 +109,7 @@ export class EnemyManager implements EnemyAttackHandler {
     return hit.length;
   }
 
-  /** Promień Czarodziejki (krok 35): rani wszystkich na odcinku; zwraca liczbę trafionych. */
+  /** Promień Czarodziejki (krok 37): rani wszystkich na odcinku; zwraca liczbę trafionych. */
   resolvePlayerBeam(beam: BeamStrike): number {
     const { hit, killed } = resolveBeam(beam, [...this.enemies]);
     for (const enemy of killed) this.kill(enemy);

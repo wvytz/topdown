@@ -23,6 +23,7 @@ export interface PlayerStats extends MovementStats {
 }
 
 export enum SceneKey {
+  Splash = 'SplashScene',
   Boot = 'BootScene',
   Game = 'GameScene',
   Hud = 'HudScene',

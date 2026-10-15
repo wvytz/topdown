@@ -17,7 +17,7 @@ export interface PlayerShot {
   readonly status?: StatusApplication;
   /** Cele już trafione tym pociskiem (przebicie) — nie trafia ich drugi raz. */
   readonly ignore?: ReadonlySet<object>;
-  /** Kula Czarodziejki: trafienie leczy jak cios z Wampirzym kłem (krok 35). */
+  /** Kula Czarodziejki: trafienie leczy jak cios z Wampirzym kłem (krok 37). */
   readonly vampiric?: boolean;
 }
 

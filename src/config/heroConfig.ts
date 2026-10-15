@@ -4,7 +4,7 @@ import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
 
 /**
- * Bohaterowie (krok 35). Barbarzyńca to dotychczasowy gracz.
+ * Bohaterowie (krok 37). Barbarzyńca to dotychczasowy gracz.
  * Czarodziejka (decyzja właściciela): mniej HP i wolniejszy chód w zamian za walkę z dystansu;
  * LPM — kule energii, PPM — ciągły promień spowalniający ją samą, z blokadą po puszczeniu.
  * Liczby do strojenia w testach właściciela.

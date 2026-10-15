@@ -79,7 +79,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private aimAngle = 0;
   private readonly animator: DirectionalAnimator;
   private readonly visual: HeroVisual;
-  /** Zestaw Czarodziejki (krok 35); null = barbarzyńca. */
+  /** Zestaw Czarodziejki (krok 37); null = barbarzyńca. */
   private sorcery: SorceryConfig | null;
   private orbPool: ChargePool | null = null;
   private castCycle: AttackCycle | null = null;

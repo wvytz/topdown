@@ -95,7 +95,7 @@ export const SPRITE_SHEETS = {
       walk: { frames: [0, 1, 2, 3], loop: true },
       idle: { frames: [0], loop: false },
       cast: { frames: [4, 5, 6, 7], loop: false },
-      // Promień (PPM, krok 35): kostur wysunięty, kryształ pulsuje między jasnym a rozbłyskiem.
+      // Promień (PPM, krok 37): kostur wysunięty, kryształ pulsuje między jasnym a rozbłyskiem.
       channel: { frames: [5, 6], loop: true },
     },
   },
@@ -569,7 +569,7 @@ export interface HeroVisual extends EnemyVisual {
   readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
 }
 
-/** Wygląd grywalnych bohaterów (krok 35). */
+/** Wygląd grywalnych bohaterów (krok 37). */
 export const HERO_VISUALS: Readonly<Record<HeroId, HeroVisual>> = {
   [HeroId.Barbarian]: PLAYER_VISUAL,
   [HeroId.Sorceress]: {

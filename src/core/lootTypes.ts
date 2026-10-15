@@ -112,7 +112,7 @@ export interface ItemEffectsConfig {
 
 /** Stan runu przenoszony między piętrami (przez restart sceny). */
 export interface RunSnapshot {
-  /** Bohater wybrany na cały run (krok 35). */
+  /** Bohater wybrany na cały run (krok 37). */
   readonly hero: HeroId;
   readonly gold: number;
   readonly items: readonly ItemId[];

@@ -4,6 +4,7 @@ import { BootScene } from '@/scenes/BootScene';
 import { GameScene } from '@/scenes/GameScene';
 import { HudScene } from '@/scenes/HudScene';
 import { RewardScene } from '@/scenes/RewardScene';
+import { SplashScene } from '@/scenes/SplashScene';
 import { pixelPerfectScale } from '@/systems/pixelScale';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -25,7 +26,8 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, GameScene, HudScene, RewardScene],
+  // SplashScene startuje pierwsza i sama uruchamia BootScene (ładowanie pod ekranem startowym).
+  scene: [SplashScene, BootScene, GameScene, HudScene, RewardScene],
 };
 
 const game = new Phaser.Game(config);

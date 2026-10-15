@@ -6,7 +6,7 @@ import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeTarget, SwingResult } from '@/systems/MeleeResolver';
 
 /**
- * Zestaw Czarodziejki (krok 35): przedmioty, orbita kul, promień.
+ * Zestaw Czarodziejki (krok 37): przedmioty, orbita kul, promień.
  * Kule są jej bronią główną, więc biorą to, co u barbarzyńcy daje cios i strzał:
  * Ostrze (+obrażenia), Rękawice (szybszy rzut), Kołczan (+1 kula). Promień to umiejętność bazowa.
  */
