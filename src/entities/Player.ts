@@ -4,6 +4,7 @@ import type { HeroId, SorceryConfig } from '@/core/heroTypes';
 import { AttackPhase } from '@/core/combatTypes';
 import type { BeamHudData, MovementIntent, PlayerStats, RangedHudData, Vector2 } from '@/core/types';
 import { PLAYER_SIZE } from '@/config/gameConfig';
+import type { AimSource } from '@/config/inputConfig';
 import { PLAYER_STATUS_RESISTANCE } from '@/config/combatConfig';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { AttackCycle } from '@/systems/AttackCycle';
@@ -29,6 +30,8 @@ export interface PlayerActions {
   readonly move: MovementIntent;
   /** Punkt celowania w świecie (px). */
   readonly aim: Vector2;
+  /** Skąd celowanie (krok 49): bez myszy gra dokłada wspomaganie celowania. */
+  readonly aimSource: AimSource;
   readonly attack: boolean;
   readonly dash: boolean;
   /** Strzał (PPM, przytrzymanie = seria w tempie shotIntervalMs, dopóki są ładunki). */

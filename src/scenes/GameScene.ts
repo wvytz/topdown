@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type {
+  AimSource,
   DeathSummary,
   FloorSceneData,
   HeroSelectData,
@@ -97,7 +98,12 @@ import type { TorchSpot } from '@/dungeon/LightPlanner';
 import { CombatDecals } from '@/effects/CombatDecals';
 import { darknessModifierProfile } from '@/systems/lighting';
 import { Torches } from '@/world/Torches';
-import { EnemyVisibility } from '@/effects/EnemyVisibility';
+import { EnemyVisibility, LIGHT_VISIBILITY_KEY } from '@/effects/EnemyVisibility';
+import { AIM_ASSIST, AIM_ASSIST_MIN_VISIBILITY, AIM_POINT_DISTANCE } from '@/config/inputConfig';
+import type { AimTarget } from '@/systems/Aim';
+import { assistAimDirection } from '@/systems/Aim';
+import { directionTo } from '@/systems/CombatMath';
+import type { PlayerActions } from '@/entities/Player';
 import {
   NO_FLOOR_EFFECTS,
   applyFloorToEnemyLoot,
@@ -205,6 +211,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private stairsPrompt: Phaser.GameObjects.Text | null = null;
   private isTransitioning = false;
   private deathHandled = false;
+  /** Czym gracz ostatnio celował — HUD pokazuje podpowiedź tego sterowania. */
+  private controls: AimSource = 'mouse';
+  /** Śmierć czeka na imię gracza: wpis do zapisania po jego podaniu (krok 49 — także z dotyku). */
+  private pendingScore: ScoreEntry | null = null;
+  /** Po śmierci: można zacząć nową wspinaczkę albo zmienić bohatera. */
+  private restartReady = false;
 
   constructor() {
     super(SceneKey.Game);
@@ -222,6 +234,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stairsPrompt = null;
     this.isTransitioning = false;
     this.deathHandled = false;
+    this.pendingScore = null;
+    this.restartReady = false;
     this.dashHits = new Set();
     this.dashHitsFor = -1;
     this.healCooldown = new Timer();
@@ -299,7 +313,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   override update(time: number): void {
     if (this.isTransitioning) return;
 
-    const actions = this.inputController.getActions();
+    const actions = this.assistAim(this.inputController.getActions({ x: this.player.x, y: this.player.y }));
+    this.controls = actions.aimSource;
     const turn = this.player.tick(actions, time);
     if (turn.poisonDamage > 0) {
       this.effects.floatingText(this.player.x, this.player.y - this.player.radius, `-${turn.poisonDamage}`, POISON_TEXT_COLOR);
@@ -367,7 +382,30 @@ export class GameScene extends Phaser.Scene implements HudSource {
       })),
       toast: this.currentToast(),
       death: this.death,
+      controls: this.controls,
     };
+  }
+
+  /** Wspomaganie celowania bez myszy (krok 49): kierunek dociąga do widocznego wroga w wąskim stożku. */
+  private assistAim(actions: PlayerActions): PlayerActions {
+    const config = AIM_ASSIST[actions.aimSource];
+    if (config.coneHalfDeg <= 0 || this.player.isDead) return actions;
+    const origin = { x: this.player.x, y: this.player.y };
+    const direction = directionTo(origin, actions.aim);
+    const assisted = assistAimDirection(origin, direction, this.aimTargets(), config);
+    if (assisted === direction) return actions;
+    return { ...actions, aim: { x: origin.x + assisted.x * AIM_POINT_DISTANCE, y: origin.y + assisted.y * AIM_POINT_DISTANCE } };
+  }
+
+  /** Cele wspomagania: żywi wrogowie widoczni w świetle (Mrok i mgła ich nie zdradzają) i walczący boss. */
+  private *aimTargets(): Iterable<AimTarget> {
+    for (const enemy of this.enemies.living) {
+      if (!enemy.active || enemy.isDead) continue;
+      const visibility = (enemy.getData(LIGHT_VISIBILITY_KEY) as number | undefined) ?? 1;
+      if (visibility >= AIM_ASSIST_MIN_VISIBILITY) yield { x: enemy.x, y: enemy.y, radius: enemy.radius };
+    }
+    const boss = this.bossFight.aimTarget;
+    if (boss) yield boss;
   }
 
   private currentLoadout(): PlayerLoadout {
@@ -820,13 +858,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
+    this.pendingScore = base;
     this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '' };
     const onKey = (event: KeyboardEvent): void => {
+      if (!this.pendingScore) {
+        this.input.keyboard?.off('keydown', onKey);
+        return;
+      }
       if (event.key === 'Enter' || event.key === 'Escape') {
         this.input.keyboard?.off('keydown', onKey);
-        const name = event.key === 'Enter' ? sanitizePlayerName(typed, maxLength) : '';
-        if (name) this.playerName.save(name);
-        this.recordDeath(name ? { ...base, name } : base);
+        this.submitPlayerName(event.key === 'Enter' ? typed : null);
         return;
       }
       if (event.key === 'Backspace') typed = [...typed].slice(0, -1).join('');
@@ -834,6 +875,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
       if (this.death) this.death = { ...this.death, nameEntry: typed };
     };
     this.input.keyboard?.on('keydown', onKey);
+  }
+
+  /** Co ekran śmierci czeka od gracza — dla przycisków dotykowych (krok 49). */
+  get deathPrompt(): 'name' | 'restart' | null {
+    if (this.pendingScore) return 'name';
+    return this.restartReady ? 'restart' : null;
+  }
+
+  /** Imię z ekranu śmierci (klawiatura albo okno dotykowe); null lub puste = bez imienia. */
+  submitPlayerName(raw: string | null): void {
+    const base = this.pendingScore;
+    if (!base) return;
+    this.pendingScore = null;
+    const name = raw ? sanitizePlayerName(raw, HIGHSCORE_CONFIG.nameMaxLength) : '';
+    if (name) this.playerName.save(name);
+    this.recordDeath(name ? { ...base, name } : base);
   }
 
   /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. */
@@ -855,19 +912,32 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Po śmierci: R — nowa wspinaczka (nowy seed, piętro 1, pusty, zwykły run), C — zmiana bohatera. */
   private awaitNewRun(): void {
-    const freshSeed = (Date.now() ^ this.runSeed) >>> 0;
-    this.input.keyboard?.once('keydown-R', () => {
-      // Ten sam bohater co w zakończonym runie.
-      const fresh: FloorSceneData = { runSeed: freshSeed, floor: 1, run: newRun(this.run.hero) };
-      this.scene.restart(fresh);
-    });
-    // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
-    this.input.keyboard?.once('keydown-C', () => {
-      const select: HeroSelectData = { runSeed: freshSeed, floor: 1, preselect: this.run.hero };
-      this.scene.stop(SceneKey.Hud);
-      this.scene.start(SceneKey.Select, select);
-    });
+    this.restartReady = true;
+    this.input.keyboard?.once('keydown-R', () => this.startNewRun());
+    this.input.keyboard?.once('keydown-C', () => this.changeHero());
   }
+
+  /** Nowa wspinaczka tym samym bohaterem co w zakończonym runie. */
+  startNewRun(): void {
+    if (!this.restartReady) return;
+    this.restartReady = false;
+    const fresh: FloorSceneData = { runSeed: this.freshSeed(), floor: 1, run: newRun(this.run.hero) };
+    this.scene.restart(fresh);
+  }
+
+  /** Zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą. */
+  changeHero(): void {
+    if (!this.restartReady) return;
+    this.restartReady = false;
+    const select: HeroSelectData = { runSeed: this.freshSeed(), floor: 1, preselect: this.run.hero };
+    this.scene.stop(SceneKey.Hud);
+    this.scene.start(SceneKey.Select, select);
+  }
+
+  private freshSeed(): number {
+    return (Date.now() ^ this.runSeed) >>> 0;
+  }
+
 
   /**
    * Schody (krok 47, zgłoszenie właściciela): samo wejście na nie nie przenosi wyżej — gracz zbyt często wpadał

@@ -9,6 +9,9 @@ export interface Vector2 {
 }
 
 /** Znormalizowany stan wejścia ruchu w danej klatce (-1..1 na każdej osi). */
+/** Skąd przyszło celowanie (krok 49): mysz, sama klawiatura albo ekran dotykowy. */
+export type AimSource = 'mouse' | 'keyboard' | 'touch';
+
 export interface MovementIntent {
   readonly x: number;
   readonly y: number;
@@ -30,6 +33,7 @@ export enum SceneKey {
   Game = 'GameScene',
   Hud = 'HudScene',
   Reward = 'RewardScene',
+  Touch = 'TouchScene',
 }
 
 export enum TextureKey {
@@ -88,6 +92,8 @@ export interface HudData {
   readonly toast: HudToast | null;
   /** Podsumowanie runu po śmierci; null, dopóki gracz żyje. */
   readonly death: DeathSummary | null;
+  /** Czym gracz teraz celuje (krok 49) — HUD podpowiada sterowanie tego urządzenia. */
+  readonly controls: AimSource;
 }
 
 export interface RangedHudData {

@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny`, `#sterowanie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -37,7 +37,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 | Encje (widok + fizyka) | `src/entities/` | tak |
 | Koordynacja walki | `src/combat/` (EnemyManager, ProjectileManager, BossFight) | tak |
 | Renderowanie mapy, efekty, sceny | `src/dungeon/DungeonView.ts`, `src/effects/`, `src/scenes/` | tak |
-| Wejście | `src/input/` (klawiatura i mysz zamieniane na abstrakcyjne `PlayerActions`) | tak |
+| Wejście | `src/input/` (mysz, klawiatura i dotyk zamieniane na abstrakcyjne `PlayerActions`; krok 49) | tak |
 | Obiekty otoczenia | `src/world/` (kapliczka, kraty areny) | tak |
 | Zapis danych | `src/persistence/` (rekordy w `localStorage`, magazyn wstrzykiwany) | nie, ale korzysta z API przeglądarki |
 
@@ -3189,6 +3189,33 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Do oceny w testach właściciela** `#ruiny`: częstość i siła pułapek, ilość urn i łupu.
 
+## Krok 49 — Sterowanie: mysz, sama klawiatura i dotyk (gałąź testowa) `#sterowanie`
+
+**Decyzja właściciela** `#decyzja` `#sterowanie`: po ocenie sterowania dotykowego, skalowania i celowania bez myszy — „osobny branch dla nowej wersji sterowania i przetestujemy go na żywym organizmie”. Krok leży na gałęzi testowej, nie na `main`. Otwarte decyzje (wspomaganie celowania, klawisz blokady, promień na dotyku, znacznik urządzenia w rankingu) dostały wartości domyślne do oceny w testach.
+
+**Wspólny model celowania** (`systems/Aim.ts`, czysty; liczby w `config/inputConfig.ts`):
+- celuje urządzenie użyte ostatnio (`PlayerActions.aimSource`: `mouse` / `keyboard` / `touch`); mysz działa jak dotąd;
+- bez myszy celowanie to kierunek z pamięcią ostatniego kierunku (punkt celowania 64 px przed graczem);
+- **wspomaganie celowania** tylko poza myszą: jeśli w stożku wokół kierunku (klawiatura ±20°, dotyk ±12°, zasięg 300 px) jest widoczny wróg albo walczący boss, kierunek dociąga do celu najbliższego osi; poza stożkiem nic się nie zmienia. Wrogowie ukryci w Mroku i mgle (alfa < 0,5) nie przyciągają celowania. Cios wręcz i bez wspomagania mieści błąd 8 kierunków (łuk 110° > 2 × 22,5°).
+
+**Sama klawiatura:** WASD/strzałki — ruch i celowanie (8 kierunków), **J** — atak/kule, **K** — strzał/promień, **L** lub **Shift** — trzymaj kierunek (cofanie się albo chód bokiem z atakiem do przodu). Pierwsze J/K/L/Shift przełącza celowanie na klawiaturę, ruch myszą — z powrotem na mysz. HUD pokazuje linię pomocy dla bieżącego urządzenia.
+
+**Dotyk** (`scenes/TouchScene.ts`, stan w `input/TouchState.ts`):
+- pływające gałki: lewa część ekranu (45%) — ruch z płynnym kątem; prawa — celowanie, a wychylenie poza martwą strefę = atak (seria przy przytrzymaniu);
+- przyciski: STRZAŁ (przytrzymanie = seria) / PROMIEŃ u Czarodziejki (**przełącznik**: stuknięcie włącza i wyłącza, oba kciuki zostają na gałkach; zryw wyłącza promień), ZRYW, E;
+- sterowanie pojawia się po pierwszym dotyku; na pauzie (wybór nagrody) i po śmierci gałki się puszczają;
+- ekran śmierci: przyciski PODAJ IMIĘ (okno przeglądarki z klawiaturą telefonu) / BEZ IMIENIA, potem NOWA WSPINACZKA / ZMIEŃ BOHATERA; pojawiają się razem z napisem (po 1,7 s), żeby kciuk z walki niczego nie kliknął. `GameScene` dostało `deathPrompt`, `submitPlayerName`, `startNewRun`, `changeHero` (klawisze R/C/Enter/Esc działają jak dotąd);
+- wybór bohatera, karty nagrody i ekran startowy już obsługiwały dotyk;
+- `index.html`: bez przewijania, powiększania i zaznaczania gestami; w pionie napis „Obróć telefon poziomo”; pierwszy dotyk prosi o pełny ekran w poziomie (Android; iPhone tego nie obsługuje).
+
+**Testowanie na telefonie:** `npm run dev:phone` (Vite z `--host`; telefon w tej samej sieci Wi-Fi otwiera adres „Network” z konsoli) albo wersja testowa na Pages: `npm run deploy:pages -- --dir sterowanie` → https://wvytz.github.io/topdown/sterowanie/ (reszta `gh-pages` zostaje; zwykłe `deploy:pages` usuwa podkatalog).
+
+**Testy:** `tests/systems/aim.test.ts` — martwa strefa i siła gałki, pełny kąt ruchu, celowanie klawiaturą (ruch, postój, blokada), wspomaganie (mysz bez, stożek, zasięg, oś zamiast odległości, duży cel, granica ±180°, łuk miecza). Build: 1081 testów.
+
+**Weryfikacja w przeglądarce** (Playwright, emulacja Pixel 7 w poziomie, dotyk wielopalcowy przez CDP): dwie gałki naraz — postać idzie w prawo i celuje w górę, Czarodziejka wypuszcza kule; stuknięcie PROMIEŃ włącza i wyłącza promień; śmierć — przycisk przed napisem nie działa, po nim NOWA WSPINACZKA startuje run. Na PC: J przełącza na klawiaturę, kierunek idzie za ruchem, L trzyma kierunek, ruch myszą wraca do myszy. Bez błędów w konsoli.
+
+**Do oceny w testach właściciela** `#sterowanie`: wygoda gałek (rozmiar, martwa strefa, pływające czy stałe), siła wspomagania (czy nie łagodzi gry), promień jako przełącznik, klawisz blokady (L/Shift), czytelność HUD na telefonie (płótno nadal skaluje się w całkowitych krotnościach — na telefonie zostają pasy), wydajność światła na telefonie.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -3252,6 +3279,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - lepkie pajęczyny.
 - **Kandydaci na kolejny krok** (wybiera właściciel): powrót do „Mroku” (p. 2), kolejny biom, ewentualne strojenie liczb leża.
 - **Schody:** od kroku 47 wejście wyżej klawiszem E na schodach.
+- **Sterowanie (krok 49, gałąź testowa)** `#sterowanie`: po testach właściciela — decyzja o scaleniu z `main`; później ewentualnie znacznik urządzenia przy wyniku w rankingu, większy HUD na telefonie, wypełnianie pasów większym kadrem.
 - **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają też na Pages jako run testowy (bez zapisu wyniku, krok 41g).
 - **Do oceny w testach właściciela:** trudność walki z Matką Pająków po kroku 27 (pościg, smagnięcie, trucizna). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
 - **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.

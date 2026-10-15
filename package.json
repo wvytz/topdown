@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:phone": "vite --host",
     "build": "tsc --noEmit && vitest run && vite build",
     "preview": "vite preview",
     "deploy:pages": "node tools/deploy-pages.mjs",

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
-import type { BeamHudData, BossHudData, HudSceneData, HudSource, RangedHudData } from '@/core/types';
+import type { AimSource, BeamHudData, BossHudData, HudSceneData, HudSource, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { DeathScreen } from '@/effects/DeathScreen';
 
@@ -29,10 +29,16 @@ const BANNER_FADE_OUT_MS = 900;
 const BANNER_Y = 150;
 
 /** Podpowiedź sterowania: Czarodziejka ma kule i promień zamiast ciosu i strzału. */
-function helpLine(sorceress: boolean): string {
-  const attacks = sorceress ? 'LPM — kule energii · PPM — promień (przytrzymaj)' : 'LPM — atak · PPM — strzał';
+function helpLine(sorceress: boolean, controls: AimSource): string {
+  // Dotyk: przyciski są podpisane na ekranie, a linia pomocy zasłaniałaby gałkę ruchu.
+  if (controls === 'touch') return '';
   const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
-  return `WASD — ruch · ${attacks} · Spacja — dash · E — kapliczka, schody${devHelp}`;
+  if (controls === 'keyboard') {
+    const attacks = sorceress ? 'J — kule · K — promień' : 'J — atak · K — strzał';
+    return `WASD — ruch i celowanie · ${attacks} · L/Shift — trzymaj kierunek · Spacja — dash · E — kapliczka, schody${devHelp}`;
+  }
+  const attacks = sorceress ? 'LPM — kule energii · PPM — promień (przytrzymaj)' : 'LPM — atak · PPM — strzał';
+  return `WASD — ruch · ${attacks} · Spacja — dash · E — kapliczka, schody · bez myszy: J/K${devHelp}`;
 }
 
 /**
@@ -129,7 +135,7 @@ export class HudScene extends Phaser.Scene {
       .fillRect(BAR_X, DASH_BAR_Y, BAR_WIDTH * hud.dashReadiness, DASH_BAR_HEIGHT);
     this.drawCharges(hud.ranged);
     this.drawBeam(hud.beam);
-    this.helpText.setText(helpLine(hud.beam !== null));
+    this.helpText.setText(helpLine(hud.beam !== null, hud.controls));
 
     if (hud.stairsUnlocked) {
       this.hintText

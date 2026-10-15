@@ -255,6 +255,13 @@ export class BossFight {
     return this.boss === null && !this.dying;
   }
 
+  /** Cel wspomagania celowania (krok 49): tylko walczący boss. */
+  get aimTarget(): { readonly x: number; readonly y: number; readonly radius: number } | null {
+    const boss = this.boss;
+    if (!boss || !boss.isFighting || boss.isDead) return null;
+    return { x: boss.x, y: boss.y, radius: boss.radius };
+  }
+
   /** Stan dla HUD — null, dopóki walka się nie zaczęła lub po zwycięstwie. */
   getStatus(): BossStatus | null {
     const boss = this.boss;
