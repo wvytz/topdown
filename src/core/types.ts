@@ -76,6 +76,8 @@ export interface DeathSummary {
   readonly floor: number;
   readonly rank: number;
   readonly board: ScoreboardView;
+  /** Skąd tablica: lokalna, wspólna albo lokalna w oczekiwaniu na wspólną. */
+  readonly source: 'local' | 'pending' | 'shared';
 }
 
 export interface HudItem {

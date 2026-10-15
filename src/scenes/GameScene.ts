@@ -58,6 +58,8 @@ import { computeLoadout } from '@/systems/PlayerLoadout';
 import { Timer } from '@/systems/Timer';
 import { NEW_RUN, RunState } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
+import { SharedHighscores } from '@/persistence/SharedHighscores';
+import { createRemoteScoreSource } from '@/persistence/remoteScores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { DustMotes } from '@/effects/DustMotes';
@@ -140,10 +142,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dashHitsFor = -1;
   /** Wampirzy kieł: odstęp między leczeniami za cios. */
   private healCooldown = new Timer();
-  private readonly highscores = new HighscoreStorage(
+  private readonly highscores = new SharedHighscores(
+    new HighscoreStorage(HighscoreStorage.browserStorage(), HIGHSCORE_CONFIG.maxEntries, HIGHSCORE_CONFIG.podiumSize),
+    createRemoteScoreSource(),
     HighscoreStorage.browserStorage(),
-    HIGHSCORE_CONFIG.maxEntries,
-    HIGHSCORE_CONFIG.podiumSize,
+    {
+      maxEntries: HIGHSCORE_CONFIG.maxEntries,
+      podiumSize: HIGHSCORE_CONFIG.podiumSize,
+      timeoutMs: HIGHSCORE_CONFIG.remoteTimeoutMs,
+      maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
+    },
   );
   private runSeed = 0;
   private floorNumber = 1;
@@ -538,7 +546,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Złoto w chwili śmierci to wynik runu.
     const entry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now() };
     const { rank, board } = this.highscores.record(entry);
-    this.death = { score: entry.score, floor: entry.floor, rank, board };
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local' };
+    this.death = death;
+    if (this.highscores.hasRemote) {
+      this.death = { ...death, source: 'pending' };
+      void this.highscores.recordShared(entry).then((shared) => {
+        // Scena mogła już ruszyć z nową wspinaczką — podmieniamy tylko panel tej śmierci.
+        if (this.death?.board !== board) return;
+        this.death = shared ? { ...death, rank: shared.rank, board: shared.board, source: 'shared' } : death;
+      });
+    }
 
     // Nowa wspinaczka: nowy seed, piętro 1, pusty run.
     this.input.keyboard?.once('keydown-R', () => {

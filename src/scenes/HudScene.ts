@@ -24,6 +24,11 @@ const BANNER_FADE_OUT_MS = 900;
 const BANNER_Y = 150;
 /** Podium (3) + separator + wiersz bieżącego runu. */
 const DEATH_ROWS = 5;
+const DEATH_HEADERS: Record<DeathSummary['source'], string> = {
+  local: 'NAJLEPSZE WSPINACZKI',
+  pending: 'NAJLEPSZE WSPINACZKI · łączenie…',
+  shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
+};
 
 function formatScoreRow(row: RankedEntry): string {
   const label = `${row.rank}. ${row.entry.score} złota · piętro ${row.entry.floor}`;
@@ -44,6 +49,7 @@ export class HudScene extends Phaser.Scene {
   private deathPanel!: Phaser.GameObjects.Container;
   private deathScoreText!: Phaser.GameObjects.Text;
   private deathRows: Phaser.GameObjects.Text[] = [];
+  private deathHeader!: Phaser.GameObjects.Text;
   private bossNameText!: Phaser.GameObjects.Text;
   private goldText!: Phaser.GameObjects.Text;
   private itemsText!: Phaser.GameObjects.Text;
@@ -194,9 +200,9 @@ export class HudScene extends Phaser.Scene {
       .text(cx, top + 10, 'POLEGŁEŚ', { ...style, fontSize: '32px', color: '#ff6b6b', strokeThickness: 6 })
       .setOrigin(0.5, 0);
     this.deathScoreText = this.add.text(cx, top + 56, '', { ...style, fontSize: '16px', color: '#f5c542' }).setOrigin(0.5, 0);
-    const header = this.add
+    const header = (this.deathHeader = this.add
       .text(cx, top + 92, 'NAJLEPSZE WSPINACZKI', { ...style, fontSize: '13px', color: '#a0a0b8' })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5, 0));
     this.deathRows = Array.from({ length: DEATH_ROWS }, (_, i) =>
       this.add.text(cx, top + 116 + i * 22, '', { ...style, fontSize: '15px' }).setOrigin(0.5, 0),
     );
@@ -213,6 +219,7 @@ export class HudScene extends Phaser.Scene {
     if (!death) return;
 
     this.deathScoreText.setText(`Wynik: ${death.score} złota · piętro ${death.floor} · miejsce ${death.rank}`);
+    this.deathHeader.setText(DEATH_HEADERS[death.source]);
 
     const lines: Array<{ text: string; current: boolean }> = death.board.top.map((row) => ({
       text: formatScoreRow(row),
