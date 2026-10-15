@@ -1,0 +1,13 @@
+name = "tower-crawler-scores"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Strony, z których gra może wysyłać wyniki (oddzielone przecinkami).
+ALLOWED_ORIGINS = "https://wvytz.github.io,http://localhost:5173"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tower-crawler-scores"
+# Uzupełnij po `npx wrangler d1 create tower-crawler-scores`.
+database_id = "WSTAW_ID_BAZY"

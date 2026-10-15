@@ -2617,6 +2617,28 @@ Makieta generatora:
 
 **Ograniczenie:** `?seed=N&floor=M` działa tylko w `npm run dev` — testerzy zaczynają od piętra 1.
 
+## Wspólna lista wyników — Cloudflare Worker `#highscore`
+
+**Decyzja właściciela:** `#decyzja` `#highscore`
+- GitHub Pages tylko serwuje pliki, więc wspólna lista wyników stoi na osobnej usłudze: **Cloudflare Worker + baza D1** (wybór właściciela po porównaniu Supabase / Firebase / Cloudflare).
+- Imię gracza: do decyzji właściciela; na razie lista bez imion, kolumna `name` w bazie czeka.
+
+**Zrobione:**
+- `persistence/SharedHighscores.ts`: obudowuje dotychczasowy `HighscoreStorage` (interfejs bez zmian):
+  - zapis lokalny od razu, panel śmierci pokazuje go natychmiast;
+  - wspólna lista dochodzi asynchronicznie i podmienia podium i miejsce;
+  - bez sieci wynik czeka w kolejce (`localStorage`, max 20) i leci przy następnej śmierci.
+- `persistence/remoteScores.ts`: adapter workera (`GET/POST /scores`); adres z `VITE_SCORES_URL`. Bez adresu gra działa jak dawniej (lista lokalna).
+- `worker/`: kod workera, schemat D1 i instrukcja wdrożenia (`worker/README.md`). Walidacja wpisu, zapis tylko ze strony gry i `localhost:5173`, limit 10 wpisów / 10 min z jednego IP (IP jako skrót).
+- Panel śmierci: nagłówek „łączenie…” / „WSZYSCY GRACZE”.
+- Liczby (limit czasu 5 s, kolejka 20) w `HIGHSCORE_CONFIG`.
+
+**Testy:** `tests/persistence/sharedHighscores.test.ts` (miejsce na wspólnej liście, kolejka offline, limit kolejki, uszkodzone dane), `tests/persistence/remoteScores.test.ts` (adapter HTTP). Worker sprawdzony skryptem z atrapą D1 (walidacja, 403 z obcej strony, 429 po limicie).
+
+**Do zrobienia przez właściciela:** wdrożyć workera wg `worker/README.md`, wpisać adres do `.env.production`, `npm run deploy:pages`.
+
+**Ograniczenie:** wynik liczy przeglądarka, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -2710,7 +2732,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
-- **Imię gracza na tablicy rekordów:** dziś tylko wynik, piętro i data.
+- **Imię gracza na tablicy rekordów:** dziś tylko wynik, piętro i data. Wspólna lista (Cloudflare) ma już kolumnę `name`.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
 
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
