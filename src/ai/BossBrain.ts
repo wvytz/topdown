@@ -14,7 +14,7 @@ export interface BossBrainInput {
   readonly hpRatio: number;
   /** Żywe pajączki z wylęgów (Matka Pająków); brak = 0. */
   readonly summonsAlive?: number;
-  /** Kokony w spiżarni, które boss może pożreć (Wampirzy Lord); brak = żadnych. */
+  /** Kokony w spiżarni, które boss może pożreć (Grzybowy Pożeracz); brak = żadnych. */
   readonly larders?: readonly Vector2[];
 }
 
@@ -42,7 +42,7 @@ export class BossBrain {
   private currentAttack: BossAttackPlan | null = null;
   private nextLashAt = 0;
   private nextFeastAt = Infinity;
-  /** Stosy wzmocnienia z uczt (Wampirzy Lord). */
+  /** Stosy wzmocnienia z uczt (Grzybowy Pożeracz). */
   private stacks = 0;
 
   constructor(
@@ -101,7 +101,7 @@ export class BossBrain {
       }
     }
 
-    // Uczta (Lord, krok 33): gdy przyszła pora, boss idzie do najbliższego kokonu i go pożera.
+    // Uczta (Pożeracz, krok 33): gdy przyszła pora, boss idzie do najbliższego kokonu i go pożera.
     const feast = this.definition.feast;
     const larders = input.larders ?? [];
     if (feast && larders.length > 0 && input.now >= this.nextFeastAt) {

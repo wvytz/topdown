@@ -78,12 +78,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     this.brain.activate(now);
   }
 
-  /** Leczenie (uczta i kąsanie Wampirzego Lorda). */
+  /** Leczenie (uczta i kąsanie Grzybowego Pożeracza). */
   heal(amount: number): void {
     this.health.heal(amount);
   }
 
-  /** Lord zjadł kokon — kolejny stos wzmocnienia. */
+  /** Pożeracz zjadł kokon — kolejny stos wzmocnienia. */
   feasted(): void {
     this.brain.feasted();
   }
@@ -94,7 +94,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
 
   /**
    * Zwraca nowy plan ataku, jeśli boss właśnie go rozpoczyna. `summonsAlive` — żywe pajączki z wylęgów;
-   * `larders` — kokony spiżarni, które Lord może pożreć.
+   * `larders` — kokony spiżarni, które Pożeracz może pożreć.
    */
   tick(target: Vector2, now: number, summonsAlive = 0, larders: readonly Vector2[] = []): BossAttackPlan | null {
     if (this.isDead) {

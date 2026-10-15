@@ -11,7 +11,7 @@ import type {
   WebShot,
 } from '@/core/bossTypes';
 import { TileType } from '@/core/dungeonTypes';
-import type { DungeonFloor, Room } from '@/core/dungeonTypes';
+import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
@@ -27,6 +27,7 @@ import {
   KING_COCOON_VISUAL,
   LARDER_VISUAL,
   SPIDERLING_DROP_VISUAL,
+  THRONE_ROOM_VISUAL,
   SPIDERLING_VISUAL,
   SPRITE_SHEETS,
   animationKey,
@@ -43,6 +44,7 @@ import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { planLarders } from '@/dungeon/LarderPlanner';
+import { planThrone, planThroneDecals } from '@/dungeon/ThronePlanner';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
@@ -56,6 +58,7 @@ import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import type { CombatDecalKind } from '@/config/dressingConfig';
+import { THRONE_ROOM } from '@/config/dressingConfig';
 
 export interface BossFightDeps {
   readonly scene: Phaser.Scene;
@@ -70,7 +73,7 @@ export interface BossFightDeps {
   readonly onPlayerHit: () => void;
   /** Wywoływane po pokonaniu bossa, z miejscem jego śmierci (tam wypadają łupy). */
   readonly onDefeated: (position: Vector2) => void;
-  /** Zarażony wychodzący z kokonu spiżarni (Wampirzy Lord): zwykły Rusher biomu. */
+  /** Zarażony wychodzący z kokonu spiżarni (Grzybowy Pożeracz): zwykły Rusher biomu. */
   readonly spawnRusher?: (at: Vector2) => void;
 }
 
@@ -123,7 +126,8 @@ interface PendingBurst {
 
 const BOSS_SEED_SALT = 0xb055;
 const LARDER_SEED_SALT = 0x1a4d;
-/** Napisy uczty i leczenia Lorda. */
+const THRONE_SEED_SALT = 0x7407;
+/** Napisy uczty i leczenia Pożeracza. */
 const FEAST_TEXT_COLOR = '#ff5a6e';
 const BOSS_DEFAULT_ENRAGED_LABEL = 'wściekły!';
 /** Napis przy paraliżu (barwa jak STATUS_TINTS.paralysis). */
@@ -157,11 +161,13 @@ export class BossFight {
   private readonly spiderlingDefinition: SpiderlingDefinition | null;
   /** Trwa animacja śmierci — boss już nie walczy, ale nagroda i kraty czekają na jej koniec. */
   private dying = false;
-  /** Spiżarnia Wampirzego Lorda (krok 33): kokony z zarażonymi. */
+  /** Spiżarnia Grzybowego Pożeracza (krok 33): kokony z zarażonymi. */
   private larders: LarderCocoon[] = [];
   private readonly larderRng: Rng;
   private pendingFeast: FeastBite | null = null;
   private pendingRelease: { readonly at: number; readonly larders: LarderCocoon[] } | null = null;
+  /** Sala tronowa Grzybowego Pożeracza (krok 39): krew na graczu po trafieniu, sok nad bossem przy leczeniu. */
+  private readonly throneRoomFx: boolean;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -182,12 +188,39 @@ export class BossFight {
 
     this.larderRng = createRng(deriveSeed(deps.floor.seed, LARDER_SEED_SALT));
     const feast = definition.feast;
+    this.throneRoomFx = Boolean(feast);
     if (feast) {
-      for (const tile of planLarders(deps.floor, arena, feast.larders, this.larderRng)) {
+      const throne = planThrone(deps.floor, arena, THRONE_ROOM.entranceClearTiles);
+      this.dressThroneRoom(throne);
+      const tiles = planLarders(deps.floor, arena, feast.larders, this.larderRng, throne, THRONE_ROOM.throneClearTiles);
+      tiles.forEach((tile, i) => {
         const at = DungeonView.tileToWorldCenter(tile);
-        this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius));
-      }
+        this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius, i));
+      });
     }
+  }
+
+  /** Tron z grzybni i naklejki krwi, grzybni i soku (dekoracje bez kolizji; zostają po walce). */
+  private dressThroneRoom(throne: TilePoint | null): void {
+    const { scene, floor } = this.deps;
+    const rng = createRng(deriveSeed(floor.seed, THRONE_SEED_SALT));
+    const decalsKey = SPRITE_SHEETS[THRONE_ROOM_VISUAL.decals].key;
+    for (const decal of planThroneDecals(floor, this.arena, throne, THRONE_ROOM.decals, rng)) {
+      const at = DungeonView.tileToWorldCenter(decal.tile);
+      scene.add.image(at.x, at.y, decalsKey, decal.kind).setDepth(RENDER_DEPTH.floorDecal);
+    }
+    if (!throne) return;
+    const at = DungeonView.tileToWorldCenter(throne);
+    scene.add.image(at.x, at.y, SPRITE_SHEETS[THRONE_ROOM_VISUAL.throne].key).setDepth(RENDER_DEPTH.floorFeature);
+  }
+
+  /** Jednorazowy efekt sali tronowej (krew albo sok) w punkcie. */
+  private playThroneFx(row: number, x: number, y: number): void {
+    if (!this.throneRoomFx) return;
+    const { sheet, animation } = THRONE_ROOM_VISUAL.fx;
+    const sprite = this.deps.scene.add.sprite(x, y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.slash);
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
+    sprite.play(animationKey(sheet, animation, row));
   }
 
   /** Walka trwa (boss obudzony i żywy). */
@@ -344,15 +377,16 @@ export class BossFight {
    * i stos wzmocnienia — tylko jeśli kokon jeszcze był); zew rozrywa wybrane kokony.
    */
   private updateLarders(boss: Boss, now: number): void {
-    for (const larder of this.larders.filter((l) => l.tornByHit)) this.tearLarder(larder, true);
+    for (const larder of this.larders.filter((l) => l.tornByHit)) this.tearLarder(larder, 'release');
     const feast = this.pendingFeast;
     if (feast && now >= feast.at) {
       this.pendingFeast = null;
       const eaten = this.larders.find((l) => Math.hypot(l.x - feast.target.x, l.y - feast.target.y) < 1);
       const def = boss.definition.feast;
       if (eaten && def) {
-        this.tearLarder(eaten, false);
+        this.tearLarder(eaten, 'eaten');
         boss.heal(def.heal);
+        this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
         boss.feasted();
         this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 8, `Uczta! +${def.heal}`, FEAST_TEXT_COLOR);
       }
@@ -360,20 +394,24 @@ export class BossFight {
     const release = this.pendingRelease;
     if (release && now >= release.at) {
       this.pendingRelease = null;
-      for (const larder of release.larders) if (this.larders.includes(larder)) this.tearLarder(larder, true);
+      for (const larder of release.larders) if (this.larders.includes(larder)) this.tearLarder(larder, 'release');
     }
   }
 
-  /** Rozdarcie kokonu; pusty oplot zostaje na podłodze. `release` — wychodzi zarażony. */
-  private tearLarder(larder: LarderCocoon, release: boolean): void {
+  /**
+   * Koniec kokonu; łupina zostaje na podłodze. `eaten` — zjedzony przez Pożeracza (ogryzione żebra i krew),
+   * `release` — rozdarty od środka, wychodzi zarażony, `empty` — rozdarty bez zarażonego (śmierć bossa).
+   */
+  private tearLarder(larder: LarderCocoon, mode: 'eaten' | 'release' | 'empty'): void {
     this.larders = this.larders.filter((l) => l !== larder);
     const at = larder.position;
+    const { variant } = larder;
     larder.destroy();
-    const { sheet, tear } = LARDER_VISUAL;
+    const { sheet } = LARDER_VISUAL;
     const husk = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
     husk.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => husk.setDepth(RENDER_DEPTH.combatDecal));
-    husk.play(animationKey(sheet, tear));
-    if (release) this.deps.spawnRusher?.(at);
+    husk.play(animationKey(sheet, mode === 'eaten' ? LARDER_VISUAL.eaten : LARDER_VISUAL.tear, variant));
+    if (mode === 'release') this.deps.spawnRusher?.(at);
   }
 
   /** Wstrząs kamery przy przebudzeniu i przy wejściu we wściekłość (napis daje HUD). */
@@ -660,9 +698,11 @@ export class BossFight {
         };
         if (player.takeHit(hit, now)) {
           onPlayerHit();
+          this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
           const boss = this.boss;
           if (strike.healOnHit && boss) {
             boss.heal(strike.healOnHit);
+            this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
             effects.floatingText(boss.x, boss.y - boss.radius - 8, `+${strike.healOnHit}`, FEAST_TEXT_COLOR);
           }
           if (strike.status?.paralysis && player.isParalyzed(now)) {
@@ -712,8 +752,8 @@ export class BossFight {
     this.webs = [];
     // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
     this.spiderlings.clear();
-    // Spiżarnia pustoszeje razem z Lordem (kokony pękają bez zarażonych).
-    for (const larder of [...this.larders]) this.tearLarder(larder, false);
+    // Spiżarnia pustoszeje razem z Pożeraczem (kokony pękają bez zarażonych).
+    for (const larder of [...this.larders]) this.tearLarder(larder, 'empty');
     this.pendingFeast = null;
     this.pendingRelease = null;
     this.clearSpawns();

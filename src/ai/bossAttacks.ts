@@ -70,7 +70,7 @@ function frontStrike(ctx: AttackPlanContext, reach: number, radius: number, impa
   };
 }
 
-/** Cios tasakiem (Lord, krok 33): szeroka strefa przed bossem, długi zamach, ciężkie uderzenie. */
+/** Cios tasakiem (krok 33; od kroku 34 zamach łapami Pożeracza): szeroka strefa przed bossem, długi zamach, ciężkie uderzenie. */
 function planCleave(ctx: AttackPlanContext): BossAttackPlan {
   const cleave = required(ctx.definition.cleave, BossAttackKind.Cleave, ctx);
   const impactAt = ctx.now + telegraph(ctx, cleave.telegraphMs);

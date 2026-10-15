@@ -142,3 +142,23 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.3, group: 'wallFace.grave' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.3 },
 };
+
+/**
+ * Sala tronowa Grzybowego Pożeracza (krok 39, wygląd z paczki właściciela): tron z grzybni przy północnej ścianie
+ * areny (3×3 kafle, bez kolizji) i naklejki krwi, grzybni i soku na podłodze. Moje liczby, do oceny w teście.
+ * Kolejność wag = kolumny arkusza `throne-decals.png` (`ThroneDecalKind`).
+ */
+export const THRONE_ROOM = {
+  /** Kokony spiżarni nie stoją bliżej tronu (Czebyszew, kafle). */
+  throneClearTiles: 2,
+  /** Wejście na północnej ścianie w tylu kaflach od osi tronu przesuwa tron w bok. */
+  entranceClearTiles: 2,
+  decals: {
+    count: { min: 7, max: 10 },
+    /** Kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata. */
+    weights: [4, 4, 2, 3, 2, 1],
+    minSpacingTiles: 2,
+    /** Środek areny (schody po walce) bez naklejek. */
+    centerClearTiles: 1,
+  },
+} as const;
