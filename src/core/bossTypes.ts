@@ -1,5 +1,6 @@
 /** Typy domenowe bossa — czyste dane, bez zależności od Phasera. */
 import type { ParalysisEffect, PoisonEffect, StatusApplication } from '@/core/combatTypes';
+import type { IntRange } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 
 export enum BossAttackKind {
@@ -23,6 +24,12 @@ export enum BossAttackKind {
   CocoonThrow = 'cocoon-throw',
   /** Wysyp grzybni (Król Pająków, krok 29): wokół gracza wyrastają trujące płaty grzybni (teren). */
   Bloom = 'bloom',
+  /** Cios tasakiem (Wampirzy Lord, krok 33): szeroki, ciężki zamach przed sobą. */
+  Cleave = 'cleave',
+  /** Zew spiżarni (Wampirzy Lord): kokony drżą, z wybranych wychodzą zarażeni. */
+  Call = 'call',
+  /** Uczta (Wampirzy Lord): boss pożera kokon ze spiżarni — leczy się i rośnie w siłę. Poza wzorem. */
+  Feast = 'feast',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -30,6 +37,7 @@ export enum BossId {
   FloorGuardian = 'floor-guardian',
   SpiderQueen = 'spider-queen',
   SpiderKing = 'spider-king',
+  VampireLord = 'vampire-lord',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -143,8 +151,58 @@ export interface LashAttackDefinition extends BaseBossAttackDefinition {
   readonly reach: number;
   readonly radius: number;
   readonly cooldownMs: number;
-  /** Status trafienia: trucizna (Matka Pająków), paraliż (ścięcie Króla). */
-  readonly status: StatusApplication;
+  /** Status trafienia: trucizna (Matka Pająków), paraliż (ścięcie Króla); brak = sam cios. */
+  readonly status?: StatusApplication;
+  /** Trafienie leczy bossa o tyle HP (kąsanie Wampirzego Lorda, krok 33). */
+  readonly healOnHit?: number;
+}
+
+/** Cios tasakiem: strefa `radius` przed bossem (środek `reach` px w stronę gracza), wolny i ciężki. */
+export interface CleaveAttackDefinition extends BaseBossAttackDefinition {
+  readonly reach: number;
+  readonly radius: number;
+}
+
+/** Zew spiżarni: po telegrafie (kokony drżą) `count` kokonów pęka i wypuszcza zarażonych (wściekłość: +1). */
+export interface CallAttackDefinition {
+  readonly telegraphMs: number;
+  readonly count: number;
+  readonly recoveryMs: number;
+}
+
+/**
+ * Spiżarnia i uczta (krok 33): kokony z zarażonymi przy ścianach areny. Co `cooldownMs` boss idzie do
+ * najbliższego kokonu i przez `durationMs` go pożera (okno na kontrę): leczy się o `heal` i dostaje stos
+ * wzmocnienia (obrażenia, chód; najwyżej `maxStacks`). Kokon zniszczony przez gracza wypuszcza zarażonego.
+ */
+export interface FeastDefinition {
+  readonly larders: { readonly count: IntRange; readonly wallMarginTiles: number; readonly minSpacingTiles: number; readonly centerClearTiles: number };
+  /** Promień kokonu (px): trafienia gracza. */
+  readonly larderRadius: number;
+  readonly firstAfterMs: number;
+  readonly cooldownMs: number;
+  /** Odstęp uczt po wściekłości („Głód!”). */
+  readonly enragedCooldownMs: number;
+  /** Boss zaczyna ucztę, gdy stoi tak blisko kokonu (px). */
+  readonly reach: number;
+  readonly durationMs: number;
+  readonly heal: number;
+  readonly damagePerStack: number;
+  readonly speedPerStack: number;
+  readonly maxStacks: number;
+}
+
+/** Uczta w planie: pożerany kokon (pozycja z chwili planu) i chwila, w której znika w paszczy. */
+export interface FeastBite {
+  readonly target: Vector2;
+  readonly at: number;
+}
+
+/** Zew w planie: ile kokonów pęka i kiedy. */
+export interface LarderRelease {
+  readonly count: number;
+  readonly telegraphStartAt: number;
+  readonly at: number;
 }
 
 /** Grad sztyletów: `count` ukłuć w linii boss → gracz, od `startDistance` co `step` px, jedno po drugim. */
@@ -239,6 +297,10 @@ export interface BossDefinition {
   readonly flurry?: FlurryAttackDefinition;
   readonly cocoonThrow?: CocoonThrowDefinition;
   readonly bloom?: BloomAttackDefinition;
+  readonly cleave?: CleaveAttackDefinition;
+  readonly call?: CallAttackDefinition;
+  /** Spiżarnia i uczta (Wampirzy Lord). */
+  readonly feast?: FeastDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -254,6 +316,8 @@ export interface AreaStrike {
   readonly knockback: number;
   /** Status nakładany trafieniem (trucizna smagnięcia). */
   readonly status?: StatusApplication;
+  /** Trafienie gracza leczy bossa (kąsanie Lorda). */
+  readonly healOnHit?: number;
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -324,6 +388,10 @@ export interface BossAttackPlan {
   readonly webs: readonly WebShot[];
   readonly leap: BossLeap | null;
   readonly throws: readonly ThrownObject[];
+  /** Uczta (Wampirzy Lord). */
+  readonly feast?: FeastBite;
+  /** Zew spiżarni (Wampirzy Lord). */
+  readonly release?: LarderRelease;
   /** Kiedy boss może znów się ruszać. */
   readonly endsAt: number;
 }

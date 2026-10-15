@@ -46,7 +46,52 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planCocoonThrow(ctx);
     case BossAttackKind.Bloom:
       return planBloom(ctx);
+    case BossAttackKind.Cleave:
+      return planCleave(ctx);
+    case BossAttackKind.Call:
+      return planCall(ctx);
+    case BossAttackKind.Feast:
+      throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }
+}
+
+const EMPTY = { strikes: [], bursts: [], spawns: [], webs: [], leap: null, throws: [] } as const;
+
+/** Strefa przed bossem: środek `reach` px w stronę gracza. */
+function frontStrike(ctx: AttackPlanContext, reach: number, radius: number, impactAt: number, damage: number, knockback: number): AreaStrike {
+  const dir = towardTarget(ctx);
+  return {
+    center: { x: ctx.self.x + dir.x * reach, y: ctx.self.y + dir.y * reach },
+    radius,
+    telegraphStartAt: ctx.now,
+    impactAt,
+    damage,
+    knockback,
+  };
+}
+
+/** Cios tasakiem (Lord, krok 33): szeroka strefa przed bossem, długi zamach, ciężkie uderzenie. */
+function planCleave(ctx: AttackPlanContext): BossAttackPlan {
+  const cleave = required(ctx.definition.cleave, BossAttackKind.Cleave, ctx);
+  const impactAt = ctx.now + telegraph(ctx, cleave.telegraphMs);
+  const strike = frontStrike(ctx, cleave.reach, cleave.radius, impactAt, cleave.damage, cleave.knockback);
+  return { kind: BossAttackKind.Cleave, ...EMPTY, strikes: [strike], endsAt: impactAt + cleave.recoveryMs };
+}
+
+/** Zew spiżarni: kokony drżą przez telegraf, potem `count` z nich pęka (po wściekłości jeden więcej). */
+function planCall(ctx: AttackPlanContext): BossAttackPlan {
+  const call = required(ctx.definition.call, BossAttackKind.Call, ctx);
+  const at = ctx.now + telegraph(ctx, call.telegraphMs);
+  const release = { count: call.count + (ctx.enraged ? 1 : 0), telegraphStartAt: ctx.now, at };
+  return { kind: BossAttackKind.Call, ...EMPTY, release, endsAt: at + call.recoveryMs };
+}
+
+/** Uczta: boss stoi przy kokonie `larder` przez `durationMs`; kokon znika w paszczy na końcu. */
+export function planFeast(definition: BossDefinition, larder: Vector2, now: number): BossAttackPlan {
+  const feast = definition.feast;
+  if (!feast) throw new Error(`Boss „${definition.name}”: uczta bez definicji.`);
+  const at = now + feast.durationMs;
+  return { kind: BossAttackKind.Feast, ...EMPTY, feast: { target: larder, at }, endsAt: at };
 }
 
 /** Atak z `pattern` bez definicji to błąd konfiguracji bossa. */
@@ -186,7 +231,8 @@ function planLash(ctx: AttackPlanContext): BossAttackPlan {
     impactAt,
     damage: lash.damage,
     knockback: lash.knockback,
-    status: lash.status,
+    ...(lash.status && { status: lash.status }),
+    ...(lash.healOnHit && { healOnHit: lash.healOnHit }),
   };
   return { kind: BossAttackKind.Lash, strikes: [strike], bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: impactAt + lash.recoveryMs };
 }
@@ -357,6 +403,8 @@ export function attackLeadTimeMs(plan: BossAttackPlan, now: number): number {
     ...plan.webs.map((web) => web.launchAt),
     ...(plan.leap ? [plan.leap.launchAt] : []),
     ...plan.throws.map((thrown) => thrown.launchAt),
+    ...(plan.feast ? [plan.feast.at] : []),
+    ...(plan.release ? [plan.release.at] : []),
   ];
   if (moments.length === 0) return 0;
   return Math.max(0, Math.min(...moments) - now);

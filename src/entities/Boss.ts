@@ -78,8 +78,25 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     this.brain.activate(now);
   }
 
-  /** Zwraca nowy plan ataku, jeśli boss właśnie go rozpoczyna. `summonsAlive` — żywe pajączki z wylęgów. */
-  tick(target: Vector2, now: number, summonsAlive = 0): BossAttackPlan | null {
+  /** Leczenie (uczta i kąsanie Wampirzego Lorda). */
+  heal(amount: number): void {
+    this.health.heal(amount);
+  }
+
+  /** Lord zjadł kokon — kolejny stos wzmocnienia. */
+  feasted(): void {
+    this.brain.feasted();
+  }
+
+  get feastStacks(): number {
+    return this.brain.feastStacks;
+  }
+
+  /**
+   * Zwraca nowy plan ataku, jeśli boss właśnie go rozpoczyna. `summonsAlive` — żywe pajączki z wylęgów;
+   * `larders` — kokony spiżarni, które Lord może pożreć.
+   */
+  tick(target: Vector2, now: number, summonsAlive = 0, larders: readonly Vector2[] = []): BossAttackPlan | null {
     if (this.isDead) {
       this.setVelocity(0, 0);
       return null;
@@ -97,6 +114,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       now,
       hpRatio: this.health.value / this.health.max,
       summonsAlive,
+      larders,
     });
     this.enraged = decision.enraged;
     const speed = decision.speed * this.status.speedMultiplier(now);
@@ -138,7 +156,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     if (this.isFighting) this.animator.face({ x: target.x - this.x, y: target.y - this.y });
 
     const animation = newAttack ? this.visual.attacks[newAttack.kind] : undefined;
-    const hasEvents = newAttack !== null && newAttack.strikes.length + newAttack.bursts.length + newAttack.spawns.length > 0;
+    const hasEvents =
+      newAttack !== null &&
+      (newAttack.strikes.length + newAttack.bursts.length + newAttack.spawns.length > 0 || Boolean(newAttack.feast ?? newAttack.release));
     if (newAttack && animation && hasEvents) {
       this.attackPoseUntil = newAttack.endsAt;
       this.animator.restart(animation, attackLeadTimeMs(newAttack, now));

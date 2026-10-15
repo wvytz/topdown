@@ -21,10 +21,10 @@ const plan = (kind: BossAttackKind, now = 0, enraged = false, target = PLAYER, s
   planBossAttack({ kind, definition: KING, self: SELF, target, now, enraged, rng: createRng(seed) });
 
 describe('Król Pająków — wybór i skalowanie', () => {
-  it('piętro 3 (Grzybnia) kończy Król Pająków; 2 — Matka Pająków; reszta — Strażnik', () => {
+  it('piętro 3 (Grzybnia) kończy Król Pająków; 2 — Matka Pająków; 4 — Wampirzy Lord; reszta — Strażnik', () => {
     expect(bossForFloor(3).id).toBe(BossId.SpiderKing);
     expect(bossForFloor(2).id).toBe(BossId.SpiderQueen);
-    for (const floor of [1, 4, 7]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
+    for (const floor of [1, 5, 7]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
   });
 
   it('większy i wytrzymalszy od Matki Pająków', () => {

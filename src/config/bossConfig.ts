@@ -232,12 +232,88 @@ export const SPIDER_KING = {
 } satisfies BossDefinition;
 
 /**
+ * Boss Cmentarzyska „Wampirzy Lord” (krok 33, pomysł właściciela): zainfekowany arystokrata ze szczęką zamiast
+ * głowy i tasakiem; hoduje zarażonych w kokonach (spiżarnia) i je zjada — uczta leczy go i wzmacnia.
+ * Ciosy (moje, do strojenia w teście): kąsanie z bliska (leczy go), szarża z kłapnięciem (skok), tasak, zew spiżarni.
+ */
+export const VAMPIRE_LORD = {
+  id: BossId.VampireLord,
+  name: 'Wampirzy Lord',
+  title: 'Ucztujący w Kryptach',
+  enragedLabel: 'Głód!',
+  radius: 28,
+  color: 0x6a1e24,
+  maxHp: 460,
+  moveSpeed: 60,
+  sprint: { speed: 135, distance: 150 },
+  engageDistance: 50,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1500,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Call],
+  patternOrder: PatternOrder.Shuffled,
+  // Kąsanie szczęką: szybkie, z bliska; trafienie leczy Lorda (wampir).
+  lash: {
+    triggerRange: 62,
+    reach: 34,
+    radius: 30,
+    telegraphMs: 450,
+    recoveryMs: 400,
+    cooldownMs: 1300,
+    damage: 12,
+    knockback: 200,
+    healOnHit: 12,
+  },
+  // Szarża z kłapnięciem: doskok na miejsce gracza (mechanika królewskiego skoku).
+  leap: {
+    telegraphMs: 600,
+    flightMs: 400,
+    radius: 46,
+    damage: 15,
+    knockback: 280,
+    recoveryMs: 500,
+  },
+  // Tasak: wolny, szeroki zamach — uważny gracz zdąży uciec, a trafienie boli.
+  cleave: {
+    reach: 42,
+    radius: 46,
+    telegraphMs: 800,
+    recoveryMs: 600,
+    damage: 22,
+    knockback: 340,
+  },
+  call: {
+    telegraphMs: 700,
+    count: 1,
+    recoveryMs: 300,
+  },
+  feast: {
+    larders: { count: { min: 4, max: 6 }, wallMarginTiles: 1, minSpacingTiles: 3, centerClearTiles: 3 },
+    larderRadius: 12,
+    firstAfterMs: 7000,
+    cooldownMs: 11000,
+    enragedCooldownMs: 6500,
+    reach: 40,
+    durationMs: 1000,
+    heal: 40,
+    damagePerStack: 0.15,
+    speedPerStack: 0.1,
+    maxStacks: 4,
+  },
+  enrage: {
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
- * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia).
+ * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Wampirzy Lord (Cmentarzysko).
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_QUEEN,
   3: SPIDER_KING,
+  4: VAMPIRE_LORD,
 };
 
 export function bossForFloor(floor: number): BossDefinition {
@@ -271,6 +347,7 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.lash && { lash: dmg(boss.lash) }),
     ...(boss.flurry && { flurry: dmg(boss.flurry) }),
     ...(boss.cocoonThrow && { cocoonThrow: dmg(boss.cocoonThrow) }),
+    ...(boss.cleave && { cleave: dmg(boss.cleave) }),
     ...(boss.spiderling && { spiderling: dmg(boss.spiderling) }),
   };
 }

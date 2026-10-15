@@ -294,6 +294,39 @@ export const SPRITE_SHEETS = {
       shimmer: { frames: [6, 7], loop: true },
     },
   },
+  // Wampirzy Lord (krok 33, tools/lord_sprites.py): 112×112, 8 kierunków; 0–3 chód, 4–7 cios tasakiem,
+  // 8–11 kąsanie szczęką (też uczta i zew). Wygląd do przeróbki (uwaga właściciela po kroku 32b).
+  vampireLord: {
+    key: 'sheet-vampire-lord',
+    url: 'assets/sprites/vampire-lord_walk-cleave-bite.png',
+    frameWidth: 112,
+    frameHeight: 112,
+    sheetWidth: 1344,
+    sheetHeight: 896,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      cleave: { frames: [4, 5, 6, 7], loop: false },
+      bite: { frames: [8, 9, 10, 11], loop: false },
+    },
+  },
+  // Kokon spiżarni Lorda (krok 33, tools/grave_enemies.py): 48×48, bez kierunków.
+  larderCocoon: {
+    key: 'sheet-larder-cocoon',
+    url: 'assets/sprites/larder-cocoon.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 48,
+    directions: 1,
+    fps: 2,
+    animations: {
+      idle: { frames: [0, 1], loop: true },
+      shake: { frames: [2, 3], loop: true, fps: 14 },
+      tear: { frames: [4, 5, 6, 7], loop: false, fps: 10 },
+    },
+  },
   // Król Pająków (krok 29, tools/king_sprites.py): 128×128, 8 kierunków; 0–3 chód na dwóch grubych łapach,
   // 4–7 atak (zamach, sztylety lewe, prawe, uderzenie kosami — ostatnia klatka w chwili uderzenia).
   spiderKing: {
@@ -541,7 +574,28 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     },
     deathDecal: 'splat',
   },
+  // Wampirzy Lord (krok 33): tasak przed cięciem, szczęka przy kąsaniu, uczcie i zewie; skok bez animacji (przysiad).
+  [BossId.VampireLord]: {
+    sheet: 'vampireLord',
+    move: 'walk',
+    attacks: {
+      [BossAttackKind.Cleave]: 'cleave',
+      [BossAttackKind.Lash]: 'bite',
+      [BossAttackKind.Feast]: 'bite',
+      [BossAttackKind.Call]: 'bite',
+    },
+    deathDecal: 'splat',
+  },
 };
+
+/** Kokon spiżarni Lorda: oddech, drżenie przy zewie, rozdarcie (pusty oplot zostaje na podłodze). */
+export const LARDER_VISUAL = {
+  sheet: 'larderCocoon',
+  idle: 'idle',
+  shake: 'shake',
+  tear: 'tear',
+  groundShadow: { width: 18, height: 6, offsetX: 0, offsetY: 12 },
+} as const;
 
 /** Pajączek: bieg, zapłon (telegraf) i osobny arkusz wybuchu; cień od silnika (chodzi po ziemi). */
 export const SPIDERLING_VISUAL = {

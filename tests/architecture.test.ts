@@ -23,6 +23,7 @@ const PURE_FILES = [
   'dungeon/LightPlanner.ts',
   'dungeon/CocoonPlanner.ts',
   'dungeon/StickyWebPlanner.ts',
+  'dungeon/LarderPlanner.ts',
 ];
 
 const isPure = (path: string): boolean =>

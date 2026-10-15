@@ -13,6 +13,7 @@ import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { PickupKind } from '@/core/lootTypes';
+import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { CAMERA_CONFIG, PLAYER_BASE_STATS, getDungeonConfigForFloor } from '@/config/gameConfig';
@@ -419,6 +420,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       effects: this.effects,
       decals: this.combatDecals,
       onPlayerHit,
+      spawnRusher: (at) => {
+        this.enemies.spawnAt(EnemyType.Rusher, at);
+      },
       onDefeated: (position) => {
         this.unlockStairs();
         this.dropLoot(position, BOSS_LOOT);

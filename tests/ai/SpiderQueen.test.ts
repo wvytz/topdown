@@ -302,9 +302,9 @@ describe('pajączek-kamikaze', () => {
 });
 
 describe('wybór i skalowanie bossa', () => {
-  it('Matka Pająków tylko na piętrze 2 (3 — Król Pająków), reszta pięter ma Strażnika', () => {
+  it('Matka Pająków tylko na piętrze 2 (3 — Król, 4 — Lord), reszta pięter ma Strażnika', () => {
     expect(bossForFloor(2).id).toBe(BossId.SpiderQueen);
-    for (const floor of [1, 4, 7]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
+    for (const floor of [1, 5, 7]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
     expect(bossForFloor(1)).toBe(FLOOR_GUARDIAN);
   });
 

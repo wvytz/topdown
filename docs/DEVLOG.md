@@ -2520,6 +2520,84 @@ Makieta generatora:
 
 ---
 
+## Krok 33 — Wampirzy Lord: spiżarnia, uczta i ciosy
+
+**Decyzje właściciela:** `#decyzja` `#wampirzy-lord`
+- broń: tasak; mechanika z mojej propozycji przyjęta;
+- po pierwszym podglądzie wyglądu: „będziemy musieli zmodyfikować tego sprite'a, ale póki co pójść dalej” — dołożyć kokony i brakujące elementy, właściciel przetestuje.
+
+**Wygląd (`tools/lord_sprites.py` → `vampire-lord_walk-cleave-bite.png`, 112×112, 8 kierunków) — do przeróbki:**
+- wychudzony arystokrata w winnym płaszczu z wysokim kołnierzem, czarny surdut ze złotym obszyciem;
+- zamiast głowy szczęka-paszcza z kłami, a na karku grzybnia ze świecącymi końcówkami;
+- tasak w prawej ręce, szponiasta lewa dłoń;
+- kolumny: 0–3 chód, 4–7 tasak (za bark, zamach, cięcie, wybrzmienie), 8–11 kąsanie (też uczta i zew);
+- pierwsza wersja (sztywny prostokątny płaszcz w paski i mały tasak) poprawiona przed pokazaniem.
+
+**Spiżarnia i uczta (moje liczby, `bossConfig.VAMPIRE_LORD.feast`, do strojenia w teście):**
+- 4–6 kokonów z zarażonymi przy ścianach areny (`dungeon/LarderPlanner.ts`, własna sól RNG):
+  - 1 kafel od muru, poza środkiem 7×7, z odstępem ≥ 3 kafle;
+  - bez kolizji;
+- pierwsza uczta po 7 s walki, potem co 11 s (po wściekłości „Głód!” co 6,5 s):
+  - Lord idzie do najbliższego kokonu, zostawiając gracza w spokoju;
+  - stoi przy nim 1 s i pożera go — to okno na kontrę;
+- uczta daje +40 HP i stos wzmocnienia: +15% obrażeń stref i +10% chodu, najwyżej 4 stosy;
+- stos przyznaje się tylko, jeśli kokon jeszcze był — gracz może go zniszczyć w trakcie;
+- kokon trafiony przez gracza (cios, strzał, dash) pęka i wypuszcza **zarażonego** (zwykły Rusher biomu); nie liczy się do Wampirzego kła;
+- po śmierci Lorda kokony pękają bez zarażonych.
+
+**Ciosy (wzór losowy jak w kroku 31: tasak → szarża → zew; pierwszy zawsze tasak):**
+- **kąsanie szczęką** (poza wzorem, mechanika smagnięcia):
+  - z bliska (< 62 px), zamach 450 ms, 12 obrażeń, odstęp 1,3 s;
+  - trafienie **leczy Lorda o 12** (nowe `AreaStrike.healOnHit`);
+- **szarża z kłapnięciem** (mechanika królewskiego skoku): przysiad 600 ms, lot 400 ms, strefa 46 px, 15 obrażeń;
+- **tasak** (`BossAttackKind.Cleave`): strefa 46 px przed Lordem, zamach 800 ms, 22 obrażenia, odrzut 340;
+- **zew spiżarni** (`BossAttackKind.Call`): wybrane kokony drżą 700 ms, potem pęka 1 (po wściekłości 2) i wychodzą zarażeni;
+- Lord: 460 HP (piętro 4: 667), promień 28, chód 60, sprint 135 z daleka (> 150 px);
+- plansza: „Wampirzy Lord — Ucztujący w Kryptach”, wściekłość „Głód!”.
+
+**Kod:**
+- czysto:
+  - `bossTypes`: `Cleave`, `Call`, `Feast`, `BossId.VampireLord`, `CleaveAttackDefinition`, `CallAttackDefinition`, `FeastDefinition`, `FeastBite`, `LarderRelease`, `LashAttackDefinition.healOnHit` (status smagnięcia opcjonalny);
+  - `bossAttacks`: `planCleave`, `planCall`, `planFeast`; czas wiodący animacji obejmuje ucztę i zew;
+  - `BossBrain`: pora uczty, marsz do najbliższego kokonu, stosy (`feasted`, `feastStacks`), mnożniki obrażeń i chodu;
+  - `LarderPlanner` (dopisany do `PURE_FILES`);
+- grafika: `tools/grave_enemies.py` → `larder-cocoon.png` (48×48): szary oplot grzybni z twarzą w szczelinie i wystającą dłonią; oddech, drżenie, rozdarcie, pusty oplot na podłodze;
+- Phaser:
+  - `entities/LarderCocoon.ts`;
+  - `BossFight`: kokony jako cele gracza, uczta, zew, leczenie z kąsania, sprzątanie po śmierci;
+  - `Boss`: `heal`, `feasted`, kokony w `tick`;
+  - `GameScene.spawnRusher`.
+
+**Testy (`VampireLord.test.ts`, 17):**
+- piętro 4 → Lord; wzór; skalowanie tasaka;
+- planer kokonów: pierścień przy ścianach, podłoga, odstęp, środek wolny, determinizm;
+- uczta:
+  - marsz do najbliższego kokonu; bez kokonów idzie do gracza;
+  - plan uczty i czasy; odstęp, częściej po wściekłości;
+  - limit stosów, wzmocnienie obrażeń i chodu;
+- ciosy:
+  - geometria tasaka; balans (uważny gracz ucieknie spod tasaka także po wściekłości);
+  - leczenie z kąsania; zew 1/2 kokony;
+  - szarża; uczta nie jest atakiem ze wzoru;
+- testy Królowej i Króla: piętro 4 nie ma już Strażnika.
+
+**Weryfikacja:**
+- `npm run build`: 855 testów zielonych;
+- w grze (`?seed=7&floor=4`, wrogowie usunięci, nieśmiertelny bohater stoi przy Lordzie, 25 s):
+  - 5 kokonów, plansza z tytułem;
+  - kolejno: tasak, kąsanie, szarża, kąsanie, zew (kokon pęka, wychodzi zarażony), uczta po 8,5 s (kokon znika, +40 HP, 1 stos) i dalej;
+  - kąsania leczą Lorda;
+  - zrzut: Lord z uniesionym tasakiem, obok wypuszczony zarażony;
+- brak nowych błędów w konsoli.
+
+**Uwagi z testu (do oceny w teście właściciela):** `#wampirzy-lord`
+- zew co rundę szybko opróżnia spiżarnię (5 kokonów w ok. 20 s, a uczta zdążyła raz). Może zew powinien wypuszczać zarażonego bez niszczenia kokonu, albo być rzadszy;
+- leczenie z kąsania (12) przy graczu, który stoi przy Lordzie — czy nie za dużo;
+- tempo uczty (pierwsza po 7 s, co 11 s) i siła stosów;
+- wygląd do przeróbki (decyzja właściciela).
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2557,7 +2635,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, test właściciela: „super” — potem kolejny biom. Krok 31: lekko losowa kolejność ataków bossów.
 
-**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a (paleta C, kafle, dekoracje, mgiełka) i 32b (zarażony i siewca) zrobione. Dalej: krok 33 — Wampirzy Lord.
+**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a (paleta C, kafle, dekoracje, mgiełka) i 32b (zarażony i siewca) zrobione. Krok 33: Wampirzy Lord (spiżarnia, uczta, kąsanie, szarża, tasak, zew) — czeka na test właściciela; sprite Lorda do przeróbki.
 
 **Boss Cmentarzyska — pomysł właściciela (po kroku 32a):** `#decyzja` `#cmentarzysko` `#wampirzy-lord`
 - „wampirzy lord”, ale nie typowy wampir: zainfekowany człowiek, który **zjada mniejsze zombiaki**;

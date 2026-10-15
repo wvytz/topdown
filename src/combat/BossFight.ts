@@ -3,6 +3,7 @@ import type {
   AreaStrike,
   BossAttackPlan,
   BossLeap,
+  FeastBite,
   ProjectileBurst,
   SpiderlingDefinition,
   SummonSpawn,
@@ -12,6 +13,7 @@ import type {
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
+import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
@@ -23,6 +25,7 @@ import {
   BOSS_PATCH_VISUALS,
   BOSS_WEB_VISUAL,
   KING_COCOON_VISUAL,
+  LARDER_VISUAL,
   SPIDERLING_DROP_VISUAL,
   SPIDERLING_VISUAL,
   SPRITE_SHEETS,
@@ -38,6 +41,8 @@ import { stairsCenter } from '@/dungeon/stairs';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
+import { LarderCocoon } from '@/entities/LarderCocoon';
+import { planLarders } from '@/dungeon/LarderPlanner';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
@@ -63,6 +68,8 @@ export interface BossFightDeps {
   readonly onPlayerHit: () => void;
   /** Wywoływane po pokonaniu bossa, z miejscem jego śmierci (tam wypadają łupy). */
   readonly onDefeated: (position: Vector2) => void;
+  /** Zarażony wychodzący z kokonu spiżarni (Wampirzy Lord): zwykły Rusher biomu. */
+  readonly spawnRusher?: (at: Vector2) => void;
 }
 
 export type BossStatus = BossHudData;
@@ -113,6 +120,9 @@ interface PendingBurst {
 }
 
 const BOSS_SEED_SALT = 0xb055;
+const LARDER_SEED_SALT = 0x1a4d;
+/** Napisy uczty i leczenia Lorda. */
+const FEAST_TEXT_COLOR = '#ff5a6e';
 const BOSS_DEFAULT_ENRAGED_LABEL = 'wściekły!';
 /** Napis przy paraliżu (barwa jak STATUS_TINTS.paralysis). */
 const PARALYSIS_TEXT_COLOR = '#d4f0a8';
@@ -145,6 +155,11 @@ export class BossFight {
   private readonly spiderlingDefinition: SpiderlingDefinition | null;
   /** Trwa animacja śmierci — boss już nie walczy, ale nagroda i kraty czekają na jej koniec. */
   private dying = false;
+  /** Spiżarnia Wampirzego Lorda (krok 33): kokony z zarażonymi. */
+  private larders: LarderCocoon[] = [];
+  private readonly larderRng: Rng;
+  private pendingFeast: FeastBite | null = null;
+  private pendingRelease: { readonly at: number; readonly larders: LarderCocoon[] } | null = null;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -162,6 +177,15 @@ export class BossFight {
     deps.scene.physics.add.collider(boss, deps.walls);
     deps.scene.physics.add.collider(deps.player, boss);
     this.spiderlings = new SpiderlingSwarm(deps);
+
+    this.larderRng = createRng(deriveSeed(deps.floor.seed, LARDER_SEED_SALT));
+    const feast = definition.feast;
+    if (feast) {
+      for (const tile of planLarders(deps.floor, arena, feast.larders, this.larderRng)) {
+        const at = DungeonView.tileToWorldCenter(tile);
+        this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius));
+      }
+    }
   }
 
   /** Walka trwa (boss obudzony i żywy). */
@@ -206,8 +230,10 @@ export class BossFight {
       return;
     }
 
-    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length);
+    const larders = this.larders.map((larder) => larder.position);
+    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length, larders);
     if (plan) this.schedule(plan);
+    this.updateLarders(boss, now);
     this.updatePresence(boss);
     this.updateLeap(boss, now);
 
@@ -224,25 +250,25 @@ export class BossFight {
     return this.spiderlings.living;
   }
 
-  /** Cele gracza: pajączki (żywa tarcza) i boss. */
-  private targets(): Array<Boss | Spiderling> {
-    const living = this.spiderlings.living;
+  /** Cele gracza: pajączki (żywa tarcza), kokony spiżarni i boss. */
+  private targets(): Array<Boss | Spiderling | LarderCocoon> {
+    const living = [...this.spiderlings.living, ...this.larders];
     return this.boss ? [...living, this.boss] : living;
   }
 
-  /** Cios gracza — zwraca liczbę trafionych (boss i pajączki w łuku). */
+  /** Cios gracza — zwraca liczbę trafionych (boss i pajączki w łuku; kokony nie liczą się do Wampirzego kła). */
   resolvePlayerMelee(swing: MeleeSwing): number {
     if (!this.boss) return 0;
     const { hit, killed } = resolveMeleeSwing(swing, this.targets());
     this.handleKills(killed);
-    return hit.length;
+    return hit.filter((t) => !(t instanceof LarderCocoon)).length;
   }
 
   /**
    * Pocisk gracza trafia najbliższy cel — pajączek między graczem a bossem przyjmuje strzał na siebie.
    * Zwraca trafiony cel (trafienie budzi bossa jak cios wręcz).
    */
-  resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | null {
+  resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | LarderCocoon | null {
     if (!this.boss) return null;
     const result = resolvePlayerShot(shot, this.targets());
     if (result?.died) this.handleKills([result.target]);
@@ -259,8 +285,8 @@ export class BossFight {
   }
 
   /** Zabity pajączek ginie bez wybuchu; zabity boss kończy walkę. */
-  private handleKills(killed: readonly (Boss | Spiderling)[]): void {
-    this.spiderlings.handleKills(killed);
+  private handleKills(killed: readonly (Boss | Spiderling | LarderCocoon)[]): void {
+    this.spiderlings.handleKills(killed.filter((t): t is Spiderling | Boss => !(t instanceof LarderCocoon)));
     if (this.boss && killed.includes(this.boss)) this.defeat();
   }
 
@@ -292,6 +318,52 @@ export class BossFight {
       this.throws.push({ thrown, sprite });
     }
     for (const shot of plan.webs) this.throwWeb(shot);
+    if (plan.feast) this.pendingFeast = plan.feast;
+    if (plan.release) {
+      // Zew: drżą kokony wybrane już teraz (gracz widzi, które pękną).
+      const pool = [...this.larders];
+      const chosen: LarderCocoon[] = [];
+      while (chosen.length < plan.release.count && pool.length > 0) chosen.push(...pool.splice(this.larderRng.int(0, pool.length - 1), 1));
+      for (const larder of chosen) larder.shake();
+      this.pendingRelease = { at: plan.release.at, larders: chosen };
+    }
+  }
+
+  /**
+   * Spiżarnia: kokon trafiony przez gracza pęka i wypuszcza zarażonego; uczta pożera kokon (leczenie
+   * i stos wzmocnienia — tylko jeśli kokon jeszcze był); zew rozrywa wybrane kokony.
+   */
+  private updateLarders(boss: Boss, now: number): void {
+    for (const larder of this.larders.filter((l) => l.tornByHit)) this.tearLarder(larder, true);
+    const feast = this.pendingFeast;
+    if (feast && now >= feast.at) {
+      this.pendingFeast = null;
+      const eaten = this.larders.find((l) => Math.hypot(l.x - feast.target.x, l.y - feast.target.y) < 1);
+      const def = boss.definition.feast;
+      if (eaten && def) {
+        this.tearLarder(eaten, false);
+        boss.heal(def.heal);
+        boss.feasted();
+        this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 8, `Uczta! +${def.heal}`, FEAST_TEXT_COLOR);
+      }
+    }
+    const release = this.pendingRelease;
+    if (release && now >= release.at) {
+      this.pendingRelease = null;
+      for (const larder of release.larders) if (this.larders.includes(larder)) this.tearLarder(larder, true);
+    }
+  }
+
+  /** Rozdarcie kokonu; pusty oplot zostaje na podłodze. `release` — wychodzi zarażony. */
+  private tearLarder(larder: LarderCocoon, release: boolean): void {
+    this.larders = this.larders.filter((l) => l !== larder);
+    const at = larder.position;
+    larder.destroy();
+    const { sheet, tear } = LARDER_VISUAL;
+    const husk = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
+    husk.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => husk.setDepth(RENDER_DEPTH.combatDecal));
+    husk.play(animationKey(sheet, tear));
+    if (release) this.deps.spawnRusher?.(at);
   }
 
   /** Wstrząs kamery przy przebudzeniu i przy wejściu we wściekłość (napis daje HUD). */
@@ -578,6 +650,11 @@ export class BossFight {
         };
         if (player.takeHit(hit, now)) {
           onPlayerHit();
+          const boss = this.boss;
+          if (strike.healOnHit && boss) {
+            boss.heal(strike.healOnHit);
+            effects.floatingText(boss.x, boss.y - boss.radius - 8, `+${strike.healOnHit}`, FEAST_TEXT_COLOR);
+          }
           if (strike.status?.paralysis && player.isParalyzed(now)) {
             effects.floatingText(player.x, player.y - player.radius - 8, 'Paraliż!', PARALYSIS_TEXT_COLOR);
           }
@@ -625,6 +702,10 @@ export class BossFight {
     this.webs = [];
     // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
     this.spiderlings.clear();
+    // Spiżarnia pustoszeje razem z Lordem (kokony pękają bez zarażonych).
+    for (const larder of [...this.larders]) this.tearLarder(larder, false);
+    this.pendingFeast = null;
+    this.pendingRelease = null;
     this.clearSpawns();
     // Śmierć w locie: zwłoki na ziemi, w miejscu lądowania.
     this.finishLeap(boss);

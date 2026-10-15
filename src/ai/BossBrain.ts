@@ -3,7 +3,7 @@ import { BossAttackKind, BossPhase, PatternOrder } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import type { MovementIntent, Vector2 } from '@/core/types';
 import { directionTo, distance } from '@/systems/CombatMath';
-import { planBossAttack } from '@/ai/bossAttacks';
+import { planBossAttack, planFeast } from '@/ai/bossAttacks';
 import { AttackPattern } from '@/ai/attackPattern';
 
 export interface BossBrainInput {
@@ -14,6 +14,8 @@ export interface BossBrainInput {
   readonly hpRatio: number;
   /** Żywe pajączki z wylęgów (Matka Pająków); brak = 0. */
   readonly summonsAlive?: number;
+  /** Kokony w spiżarni, które boss może pożreć (Wampirzy Lord); brak = żadnych. */
+  readonly larders?: readonly Vector2[];
 }
 
 export interface BossDecision {
@@ -39,6 +41,9 @@ export class BossBrain {
   private nextAttackAt = Infinity;
   private currentAttack: BossAttackPlan | null = null;
   private nextLashAt = 0;
+  private nextFeastAt = Infinity;
+  /** Stosy wzmocnienia z uczt (Wampirzy Lord). */
+  private stacks = 0;
 
   constructor(
     private readonly definition: BossDefinition,
@@ -55,6 +60,18 @@ export class BossBrain {
     if (this.phase !== BossPhase.Dormant) return;
     this.phase = BossPhase.Fighting;
     this.nextAttackAt = now + this.definition.openingDelayMs;
+    if (this.definition.feast) this.nextFeastAt = now + this.definition.feast.firstAfterMs;
+  }
+
+  /** Stosy wzmocnienia z uczt. */
+  get feastStacks(): number {
+    return this.stacks;
+  }
+
+  /** Boss zjadł kokon (warstwa gry potwierdza, że kokon jeszcze był) — kolejny stos, do limitu. */
+  feasted(): void {
+    const feast = this.definition.feast;
+    if (feast) this.stacks = Math.min(feast.maxStacks, this.stacks + 1);
   }
 
   /**
@@ -84,6 +101,21 @@ export class BossBrain {
       }
     }
 
+    // Uczta (Lord, krok 33): gdy przyszła pora, boss idzie do najbliższego kokonu i go pożera.
+    const feast = this.definition.feast;
+    const larders = input.larders ?? [];
+    if (feast && larders.length > 0 && input.now >= this.nextFeastAt) {
+      const larder = larders.reduce((best, l) => (distance(input.self, l) < distance(input.self, best) ? l : best));
+      if (distance(input.self, larder) <= feast.reach) {
+        const plan = planFeast(this.definition, larder, input.now);
+        this.currentAttack = plan;
+        this.nextFeastAt = plan.endsAt + (enraged ? feast.enragedCooldownMs : feast.cooldownMs);
+        this.nextAttackAt = Math.max(this.nextAttackAt, plan.endsAt);
+        return stand(plan);
+      }
+      return { move: directionTo(input.self, larder), speed: this.speedFor(distance(input.self, larder)), newAttack: null, enraged };
+    }
+
     // Smagnięcie poza wzorem: gracz w zasięgu nóg i minął odstęp. Atak ze wzoru czeka do końca smagnięcia.
     const gap = distance(input.self, input.target);
     const lash = this.definition.lash;
@@ -96,12 +128,25 @@ export class BossBrain {
     }
 
     if (gap <= this.definition.engageDistance) return stand(null);
-    const sprint = this.definition.sprint;
-    const speed = sprint && gap > sprint.distance ? sprint.speed : this.definition.moveSpeed;
-    return { move: directionTo(input.self, input.target), speed, newAttack: null, enraged };
+    return { move: directionTo(input.self, input.target), speed: this.speedFor(gap), newAttack: null, enraged };
   }
 
+  /** Chód albo sprint (z daleka), przyspieszony stosami uczt. */
+  private speedFor(gap: number): number {
+    const sprint = this.definition.sprint;
+    const base = sprint && gap > sprint.distance ? sprint.speed : this.definition.moveSpeed;
+    return base * (1 + this.stacks * (this.definition.feast?.speedPerStack ?? 0));
+  }
+
+  /** Plan ataku; stosy uczt zwiększają obrażenia wszystkich stref. */
   private plan(kind: BossAttackKind, input: BossBrainInput, enraged: boolean): BossAttackPlan {
+    const plan = this.planRaw(kind, input, enraged);
+    const bonus = this.stacks * (this.definition.feast?.damagePerStack ?? 0);
+    if (bonus === 0) return plan;
+    return { ...plan, strikes: plan.strikes.map((s) => ({ ...s, damage: Math.round(s.damage * (1 + bonus)) })) };
+  }
+
+  private planRaw(kind: BossAttackKind, input: BossBrainInput, enraged: boolean): BossAttackPlan {
     return planBossAttack({
       kind,
       definition: this.definition,
