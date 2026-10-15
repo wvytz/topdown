@@ -13,6 +13,13 @@ export const DEATH_PALETTE = {
   blood2: 0x8c1f24,
 } as const;
 
+/** Grupa liter spływająca we własnym tempie. */
+export interface DeathFlowGroup {
+  readonly letters: number;
+  readonly speedPxPerSec: number;
+  readonly offsetPx: number;
+}
+
 /**
  * Lico liter POLEGŁEŚ (krok 41): pasy czerwieni spływają w dół przez litery, bez końca.
  * Rampa jest cykliczna (zaczyna się i kończy podobnym tonem), więc pętla nie ma szwu;
@@ -33,8 +40,17 @@ export const DEATH_TITLE_FLOW = {
   bandPx: 8,
   /** Lico rysujemy paskami tej wysokości — kolor zmienia się skokowo, po pikselowemu. */
   stripPx: 2,
-  /** Prędkość spływania (px/s). */
+  /** Prędkość spływania (px/s) — dla grup bez własnej prędkości. */
   speedPxPerSec: 18,
+  /**
+   * Grupy liter (od lewej) spływają każda w swoim tempie i z innym przesunięciem — krew nie cieknie równo.
+   * POLEGŁEŚ: PO | LEG | ŁEŚ. Suma `letters` musi pokryć napis.
+   */
+  groups: [
+    { letters: 2, speedPxPerSec: 13, offsetPx: 0 },
+    { letters: 3, speedPxPerSec: 24, offsetPx: 27 },
+    { letters: 3, speedPxPerSec: 17, offsetPx: 46 },
+  ] as readonly DeathFlowGroup[],
 } as const;
 
 export type DeathTitleFlow = typeof DEATH_TITLE_FLOW;

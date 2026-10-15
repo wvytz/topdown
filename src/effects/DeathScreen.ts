@@ -2,9 +2,9 @@ import Phaser from 'phaser';
 import type { DeathSummary } from '@/core/types';
 import type { RankedEntry } from '@/systems/Highscores';
 import { DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW } from '@/config/deathScreenConfig';
-import { pixelText } from '@/core/pixelArt';
+import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
 import type { PixelText } from '@/core/pixelArt';
-import { deathFrame, titleFlowIndex } from '@/systems/deathScreen';
+import { deathFrame, flowGroupOf, titleFlowIndex } from '@/systems/deathScreen';
 
 const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
@@ -158,16 +158,18 @@ export class DeathScreen {
     return this.scene.add.container(L.centerX, L.title.centerY, [g, this.titleFill]);
   }
 
-  /** Lico liter paskami po `stripPx`: kolor z rampy przesuwającej się w dół (`titleFlowIndex`). */
+  /** Lico liter paskami po `stripPx`: kolor z rampy przesuwającej się w dół (`titleFlowIndex`), osobno dla grup liter. */
   private drawTitleFill(t: number): void {
     const { unit } = L.title;
     const strip = FLOW.stripPx;
     const top = this.titleText.top * unit;
     const g = this.titleFill.clear();
     for (const { x, y } of this.titleText.cells) {
+      // Każda grupa liter (PO | LEG | ŁEŚ) spływa we własnym tempie.
+      const group = flowGroupOf(Math.floor(x / (GLYPH_WIDTH + L.title.gap)));
       for (let dy = 0; dy < unit; dy += strip) {
         const py = y * unit + dy;
-        g.fillStyle(FLOW.ramp[titleFlowIndex(py - top, t)] ?? P.eye0);
+        g.fillStyle(FLOW.ramp[titleFlowIndex(py - top, t, FLOW, group.speedPxPerSec, group.offsetPx)] ?? P.eye0);
         g.fillRect(this.titleLeft + x * unit, this.titleTop + py, unit, strip);
       }
     }

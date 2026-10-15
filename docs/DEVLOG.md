@@ -2868,6 +2868,26 @@ Makieta generatora:
 
 ---
 
+## Krok 42 — Ekran śmierci: spływanie osobno dla grup liter (wariant do akceptacji)
+
+**Ocena i prośba właściciela:** `#ocena` `#ekran-smierci`
+- spływająca czerwień z kroku 41: „o coś takiego mi chodziło”;
+- prośba o podgląd: spływanie rozdzielone dla grup 2–3 liter, „by bardziej zaimitować tempo spływania w różnych miejscach”.
+
+**Wariant:**
+- POLEGŁEŚ w trzech grupach: **PO** (13 px/s), **LEG** (24 px/s), **ŁEŚ** (17 px/s), każda z innym przesunięciem startowym (0 / 27 / 46 px) — fale krwi nie idą równo przez napis;
+- grupy, tempa i przesunięcia w `DEATH_TITLE_FLOW.groups` (`config/deathScreenConfig.ts`).
+
+**Kod:** `DeathFlowGroup`, `flowGroupOf(letter)` i parametry tempa/przesunięcia w `titleFlowIndex` (`systems/deathScreen.ts`); `DeathScreen.drawTitleFill` wybiera grupę po indeksie litery.
+
+**Testy (+3):** grupy pokrywają napis po 2–3 litery; litery trafiają do właściwych grup; grupy mają różne tempo i po chwili inny wzór.
+
+**Weryfikacja:** `npm run build`; animacja nagrana z gry (czas ekranu ustawiany klatka po klatce co 70 ms) — GIF na kanwie projektu.
+
+**Status:** podgląd na gałęzi — **niewdrożony na GitHub Pages**, czeka na decyzję właściciela.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

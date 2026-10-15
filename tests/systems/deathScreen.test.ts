@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEATH_LAYOUT, DEATH_TIMING as T, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 import { pixelText } from '@/core/pixelArt';
-import { deathFrame, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
+import { deathFrame, flowGroupOf, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
 
 const ROWS = 5;
 const frame = (t: number) => deathFrame(t, ROWS);
@@ -113,5 +113,31 @@ describe('titleFlowIndex — czerwień spływająca przez litery', () => {
   it('w literze widać kilka tonów naraz (gradient, nie jednolita barwa)', () => {
     const tones = new Set(Array.from({ length: 28 }, (_, i) => titleFlowIndex(i * 2, 1234)));
     expect(tones.size).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe('flowGroupOf — grupy liter spływające w swoim tempie', () => {
+  const F = DEATH_TITLE_FLOW;
+
+  it('grupy pokrywają cały napis po 2–3 litery', () => {
+    expect(F.groups.reduce((sum, g) => sum + g.letters, 0)).toBe([...'POLEGŁEŚ'].length);
+    for (const g of F.groups) expect(g.letters === 2 || g.letters === 3).toBe(true);
+  });
+
+  it('PO | LEG | ŁEŚ — litery trafiają do swoich grup', () => {
+    const [po, leg, les] = F.groups;
+    expect(flowGroupOf(0)).toBe(po);
+    expect(flowGroupOf(1)).toBe(po);
+    expect(flowGroupOf(2)).toBe(leg);
+    expect(flowGroupOf(4)).toBe(leg);
+    expect(flowGroupOf(5)).toBe(les);
+    expect(flowGroupOf(7)).toBe(les);
+  });
+
+  it('grupy różnią się tempem, więc po chwili mają inny wzór', () => {
+    expect(new Set(F.groups.map((g) => g.speedPxPerSec)).size).toBe(F.groups.length);
+    const pattern = (g: (typeof F.groups)[number]) =>
+      Array.from({ length: 28 }, (_, i) => titleFlowIndex(i * 2, 5000, F, g.speedPxPerSec, g.offsetPx)).join();
+    expect(new Set(F.groups.map(pattern)).size).toBe(F.groups.length);
   });
 });

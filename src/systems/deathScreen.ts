@@ -1,4 +1,4 @@
-import type { DeathTiming, DeathTitleFlow } from '@/config/deathScreenConfig';
+import type { DeathFlowGroup, DeathTiming, DeathTitleFlow } from '@/config/deathScreenConfig';
 import { DEATH_TIMING, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 
 /** Stan ekranu śmierci w chwili `t` (ms od śmierci) — HUD tylko go rysuje. */
@@ -43,11 +43,27 @@ export function deathFrame(t: number, rows: number, timing: DeathTiming = DEATH_
  * Indeks tonu rampy dla paska lica na wysokości `y` (px od góry napisu) w chwili `t` (ms):
  * wzór przesuwa się w dół z prędkością `speedPxPerSec` i zapętla bez szwu.
  */
-export function titleFlowIndex(y: number, t: number, flow: DeathTitleFlow = DEATH_TITLE_FLOW): number {
+export function titleFlowIndex(
+  y: number,
+  t: number,
+  flow: DeathTitleFlow = DEATH_TITLE_FLOW,
+  speedPxPerSec: number = flow.speedPxPerSec,
+  offsetPx = 0,
+): number {
   const n = flow.ramp.length;
-  const shifted = y - (t / 1000) * flow.speedPxPerSec;
+  const shifted = y + offsetPx - (t / 1000) * speedPxPerSec;
   const band = Math.floor(shifted / flow.bandPx);
   return ((band % n) + n) % n;
+}
+
+/** Grupa spływania dla litery o indeksie `letter` (od lewej); litery spoza grup należą do ostatniej. */
+export function flowGroupOf(letter: number, flow: DeathTitleFlow = DEATH_TITLE_FLOW): DeathFlowGroup {
+  let first = 0;
+  for (const group of flow.groups) {
+    if (letter < first + group.letters) return group;
+    first += group.letters;
+  }
+  return flow.groups[flow.groups.length - 1] ?? { letters: 1, speedPxPerSec: flow.speedPxPerSec, offsetPx: 0 };
 }
 
 export interface Particle {
