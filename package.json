@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vitest run && vite build",
     "preview": "vite preview",
+    "deploy:pages": "node tools/deploy-pages.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
