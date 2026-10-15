@@ -24,11 +24,11 @@ export enum BossAttackKind {
   CocoonThrow = 'cocoon-throw',
   /** Wysyp grzybni (Król Pająków, krok 29): wokół gracza wyrastają trujące płaty grzybni (teren). */
   Bloom = 'bloom',
-  /** Cios tasakiem (Wampirzy Lord, krok 33): szeroki, ciężki zamach przed sobą. */
+  /** Ciężki cios przed sobą (krok 33 tasak Lorda, od kroku 34 zamach łapami Grzybowego Pożeracza). */
   Cleave = 'cleave',
-  /** Zew spiżarni (Wampirzy Lord): kokony drżą, z wybranych wychodzą zarażeni. */
+  /** Zew spiżarni (Grzybowy Pożeracz): kokony drżą, z wybranych wychodzą zarażeni. */
   Call = 'call',
-  /** Uczta (Wampirzy Lord): boss pożera kokon ze spiżarni — leczy się i rośnie w siłę. Poza wzorem. */
+  /** Uczta (Grzybowy Pożeracz): boss pożera kokon ze spiżarni — leczy się i rośnie w siłę. Poza wzorem. */
   Feast = 'feast',
 }
 
@@ -37,7 +37,7 @@ export enum BossId {
   FloorGuardian = 'floor-guardian',
   SpiderQueen = 'spider-queen',
   SpiderKing = 'spider-king',
-  VampireLord = 'vampire-lord',
+  FungalDevourer = 'fungal-devourer',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -153,7 +153,7 @@ export interface LashAttackDefinition extends BaseBossAttackDefinition {
   readonly cooldownMs: number;
   /** Status trafienia: trucizna (Matka Pająków), paraliż (ścięcie Króla); brak = sam cios. */
   readonly status?: StatusApplication;
-  /** Trafienie leczy bossa o tyle HP (kąsanie Wampirzego Lorda, krok 33). */
+  /** Trafienie leczy bossa o tyle HP (kąsanie Grzybowego Pożeracza, krok 33). */
   readonly healOnHit?: number;
 }
 
@@ -299,7 +299,7 @@ export interface BossDefinition {
   readonly bloom?: BloomAttackDefinition;
   readonly cleave?: CleaveAttackDefinition;
   readonly call?: CallAttackDefinition;
-  /** Spiżarnia i uczta (Wampirzy Lord). */
+  /** Spiżarnia i uczta (Grzybowy Pożeracz). */
   readonly feast?: FeastDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
@@ -316,7 +316,7 @@ export interface AreaStrike {
   readonly knockback: number;
   /** Status nakładany trafieniem (trucizna smagnięcia). */
   readonly status?: StatusApplication;
-  /** Trafienie gracza leczy bossa (kąsanie Lorda). */
+  /** Trafienie gracza leczy bossa (kąsanie Pożeracza). */
   readonly healOnHit?: number;
 }
 
@@ -388,9 +388,9 @@ export interface BossAttackPlan {
   readonly webs: readonly WebShot[];
   readonly leap: BossLeap | null;
   readonly throws: readonly ThrownObject[];
-  /** Uczta (Wampirzy Lord). */
+  /** Uczta (Grzybowy Pożeracz). */
   readonly feast?: FeastBite;
-  /** Zew spiżarni (Wampirzy Lord). */
+  /** Zew spiżarni (Grzybowy Pożeracz). */
   readonly release?: LarderRelease;
   /** Kiedy boss może znów się ruszać. */
   readonly endsAt: number;

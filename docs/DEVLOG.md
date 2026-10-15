@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -32,7 +32,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 | Typy domenowe | `src/core/` | nie |
 | Zasady i obliczenia | `src/systems/` (HP, cooldowny, dash, geometria walki, skalowanie) | nie |
 | Decyzje AI | `src/ai/` (maszyny stanów, plany ataków bossa) | nie |
-| Generowanie świata | `src/dungeon/DungeonGenerator.ts`, `EncounterPlanner.ts`, `ShrinePlanner.ts`, `arenaGates.ts`, `lineOfSight.ts`, `rooms.ts` | nie |
+| Generowanie świata | `src/dungeon/DungeonGenerator.ts`, `EncounterPlanner.ts`, `ShrinePlanner.ts`, `ThronePlanner.ts`, `arenaGates.ts`, `lineOfSight.ts`, `rooms.ts` | nie |
 | Strojenie liczb | `src/config/` | nie |
 | Encje (widok + fizyka) | `src/entities/` | tak |
 | Koordynacja walki | `src/combat/` (EnemyManager, ProjectileManager, BossFight) | tak |
@@ -2598,6 +2598,63 @@ Makieta generatora:
 
 ---
 
+## Krok 34 — Grzybowy Pożeracz: wygląd bossa Cmentarzyska z paczki właściciela
+
+**Decyzja właściciela:** `#decyzja` `#grzybowy-pozeracz` `#cmentarzysko` właściciel przysłał paczkę `grzybowy-pozeracz.zip` (generator, arkusze, podglądy): „tak ma wyglądać, dopasuj go do naszego uniwersum”. Zastępuje wygląd Wampirzego Lorda (krok 33: „sprite do przeróbki”).
+
+**Z paczki (bez zmian w kształtach):**
+- ciało dawnego władcy wieży przerośnięte grzybnią: zgarbiony grzbiet pokryty kapeluszami, wyciągnięte ręce we krwi;
+- głowa pęka na dwie połowy w paszczę z zębami;
+- kokony z ludźmi pod ścianami, tron z grzybni, naklejki krwi i grzybni, efekty krwi i soku.
+
+**Dopasowanie do uniwersum (moje):**
+- **kapelusze** z rampy kapelusza siewcy (krok 32b) — ten sam grzyb, który siewcy wyrósł zamiast głowy;
+- **sok** (co świeci, tym boss się leczy) w turkusie bioluminescencji Grzybni — tym samym, którym świeci grzybnia zarażonych. Paczka miała magentę (blisko zarezerwowanego fioletu Sludge Kinga, sama to zgłaszała);
+- **kość** i mrok z palety Cmentarzyska, rdza kraty z rampy kałuży Sludge Kinga; krew i gnijące ciało jak w paczce;
+- **w kokonach śpią zarażeni** z kroku 32b (blada, zimna skóra), bo z rozdartego kokonu wychodzi zarażony;
+- nowe klatki pod mechanikę z kroku 33, której paczka nie miała:
+  - **zamach łapami** zamiast tasaka (cios `Cleave`): łapy za barki, w górze i szeroko, opadanie, pięści złączone przed sobą w chwili uderzenia;
+  - **kokon:** drżenie (zew) i rozdarcie od środka — zarażony wstaje z oplotu, pusty oplot zostaje;
+- nazwa z paczki: **„Grzybowy Pożeracz — Ucztujący w Kryptach”**, wściekłość „Głód!”. Mechanika i liczby z kroku 33 bez zmian.
+
+**Generator `tools/devourer_sprites.py`** (port generatora z paczki; Pillow + numpy, `numpy` dopisane do `tools/requirements.txt`):
+- `fungal-devourer.png` (96×96, 8 kierunków): 0–3 szuranie, 4–7 pożarcie, 8–11 karmienie kokonem, 12–15 zamach łapami;
+- `devourer-cocoon.png` (48×48, wiersze = 3 warianty: twarz, dłoń, skulone ciało): 0–3 oddech, 4–7 zjedzenie, 8–9 drżenie, 10–13 rozdarcie;
+- `fungal-throne.png`, `fungal-fx.png` (krew, sok), `throne-decals.png` (kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata);
+- walidator z paczki: paleta, brak półprzezroczystości, margines komórki;
+- czytelność na podłodze Cmentarzyska: obrys 2,28 : 1, ciało 1,59 : 1, kapelusze czytelne barwą (fiolet vs oliwka);
+- usunięte: `tools/lord_sprites.py`, arkusz Lorda i stary kokon spiżarni (`grave_enemies.py` generuje już tylko zarażonego i siewcę — arkusze identyczne co do bajtu).
+
+**Gra:**
+- `BossId.FungalDevourer`, `FUNGAL_DEVOURER` (dawniej `VampireLord`); testy `tests/ai/FungalDevourer.test.ts`;
+- `spriteConfig`: arkusze Pożeracza; animacje: kąsanie `bite` (kłapnięcie w chwili trafienia), uczta `feed` (przełknięcie w chwili leczenia), zew `roar` (rozdarta głowa), tasak → `smash`. Arkusze mogą mieć 2–3 wiersze wariantów (`directions: 1 | 2 | 3 | 8`);
+- **sala tronowa** (`dungeon/ThronePlanner.ts`, czysty, dopisany do `PURE_FILES`, własna sól RNG):
+  - tron 3×3 kafle oparciem do północnej ściany areny, najbliżej osi, z dala od wejść z północy (inaczej przesuwa się w bok; brak miejsca = sala bez tronu); dekoracja bez kolizji;
+  - 7–10 naklejek podłogi z wag (`THRONE_ROOM` w `dressingConfig`), z odstępem, poza środkiem (schody) i tronem;
+  - kokony spiżarni nie stoją w promieniu 2 kafli od tronu;
+- kokony: wariant z kolejności (twarz, dłoń, skulone ciało); po uczcie zostaje ogryziona łupina z żebrami i krwią, po zewie i trafieniu — pusty oplot;
+- efekty: krew na bohaterze po trafieniu Pożeracza, turkusowy sok nad bossem przy leczeniu (uczta i kąsanie).
+
+**Testy:**
+- `ThronePlanner.test.ts` (7): tron na podłodze przy północnej ścianie, z dala od wejść, przesunięcie przez wejście na osi, brak miejsca; kokony z dala od tronu; naklejki (podłoga, odstęp, środek, tron, wagi, determinizm, zgodność z arkuszem);
+- `sprites.test.ts`: wymiary nowych arkuszy i animacje bossa.
+
+**Weryfikacja:**
+- `npm run build`: 869 testów zielonych;
+- w grze (`?seed=7&floor=4`, bohater w arenie, 15 s):
+  - plansza „Grzybowy Pożeracz — Ucztujący w Kryptach”, 5 kokonów, tron, kraty i kałuże;
+  - kąsanie z krwią na bohaterze i leczeniem (+12), zamach łapami, uczta (zostaje ogryziona łupina);
+- brak nowych błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#grzybowy-pozeracz`
+- czy dopasowanie kolorów (fiolet siewcy, turkusowy sok zamiast magenty) zostaje, czy wracamy do barw z paczki;
+- zamach łapami zamiast tasaka;
+- nazwa: „Grzybowy Pożeracz” (z paczki) zamiast „Wampirzy Lord”;
+- gęstość naklejek i tron (przy wejściu z północy przesuwa się w bok);
+- uwagi z kroku 33 (zew szybko opróżnia spiżarnię, leczenie z kąsania) nadal aktualne.
+
+---
+
 ## Publikacja dla testerów — GitHub Pages
 
 **Decyzje właściciela:** `#decyzja`
@@ -2656,7 +2713,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, test właściciela: „super” — potem kolejny biom. Krok 31: lekko losowa kolejność ataków bossów.
 
-**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a (paleta C, kafle, dekoracje, mgiełka) i 32b (zarażony i siewca) zrobione. Krok 33: Wampirzy Lord (spiżarnia, uczta, kąsanie, szarża, tasak, zew) — czeka na test właściciela; sprite Lorda do przeróbki.
+**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a (paleta C, kafle, dekoracje, mgiełka) i 32b (zarażony i siewca) zrobione. Krok 33: Wampirzy Lord (spiżarnia, uczta, kąsanie, szarża, tasak, zew). Krok 34: wygląd z paczki właściciela — boss to teraz **Grzybowy Pożeracz** (zamach łapami zamiast tasaka, tron, kokony z zarażonymi); czeka na test właściciela.
 
 **Boss Cmentarzyska — pomysł właściciela (po kroku 32a):** `#decyzja` `#cmentarzysko` `#wampirzy-lord`
 - „wampirzy lord”, ale nie typowy wampir: zainfekowany człowiek, który **zjada mniejsze zombiaki**;

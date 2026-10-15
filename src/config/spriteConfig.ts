@@ -24,8 +24,11 @@ export interface SpriteSheetDef {
   readonly frameHeight: number;
   readonly sheetWidth: number;
   readonly sheetHeight: number;
-  /** 8 = wiersze to kierunki; 1 = arkusz bez kierunków (np. pocisk). */
-  readonly directions: 1 | 8;
+  /**
+   * 8 = wiersze to kierunki; 1 = arkusz bez kierunków (np. pocisk); 2–3 = wiersze to warianty
+   * (kokony Pożeracza, efekty krwi i soku) — wariant wybiera się jak kierunek w `animationKey`.
+   */
+  readonly directions: 1 | 2 | 3 | 8;
   readonly fps: number;
   readonly animations: Readonly<Record<string, SpriteAnimationDef>>;
 }
@@ -294,38 +297,85 @@ export const SPRITE_SHEETS = {
       shimmer: { frames: [6, 7], loop: true },
     },
   },
-  // Wampirzy Lord (krok 33, tools/lord_sprites.py): 112×112, 8 kierunków; 0–3 chód, 4–7 cios tasakiem,
-  // 8–11 kąsanie szczęką (też uczta i zew). Wygląd do przeróbki (uwaga właściciela po kroku 32b).
-  vampireLord: {
-    key: 'sheet-vampire-lord',
-    url: 'assets/sprites/vampire-lord_walk-cleave-bite.png',
-    frameWidth: 112,
-    frameHeight: 112,
-    sheetWidth: 1344,
-    sheetHeight: 896,
+  // Grzybowy Pożeracz (krok 34, tools/devourer_sprites.py, wygląd z paczki właściciela): 96×96, 8 kierunków;
+  // 0–3 szuranie, 4–7 pożarcie (kłapnięcie w 6), 8–11 karmienie kokonem (leczenie w 11), 12–15 zamach łapami.
+  fungalDevourer: {
+    key: 'sheet-fungal-devourer',
+    url: 'assets/sprites/fungal-devourer.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 1536,
+    sheetHeight: 768,
     directions: 8,
     fps: SPRITE_FPS,
     animations: {
       walk: { frames: [0, 1, 2, 3], loop: true },
-      cleave: { frames: [4, 5, 6, 7], loop: false },
-      bite: { frames: [8, 9, 10, 11], loop: false },
+      // Kąsanie: dłuższy telegraf (czaszka pęka), kłapnięcie na ostatniej klatce — w chwili trafienia.
+      bite: { frames: [4, 4, 5, 6], loop: false },
+      // Zew spiżarni: rozdarta głowa ryczy, sok jaśnieje.
+      roar: { frames: [4, 5, 5, 5], loop: false },
+      // Uczta: strzępki do kokonu, chwyt, głowa w kokonie, przełknięcie (leczenie) na końcu.
+      feed: { frames: [8, 9, 10, 11], loop: false },
+      // Zamach łapami (cios Cleave): uderzenie na ostatniej klatce.
+      smash: { frames: [12, 13, 14, 15], loop: false },
     },
   },
-  // Kokon spiżarni Lorda (krok 33, tools/grave_enemies.py): 48×48, bez kierunków.
-  larderCocoon: {
-    key: 'sheet-larder-cocoon',
-    url: 'assets/sprites/larder-cocoon.png',
+  // Kokon spiżarni (krok 34, tools/devourer_sprites.py): 48×48, wiersze = 3 warianty (twarz, dłoń, skulone ciało).
+  devourerCocoon: {
+    key: 'sheet-devourer-cocoon',
+    url: 'assets/sprites/devourer-cocoon.png',
     frameWidth: 48,
     frameHeight: 48,
-    sheetWidth: 384,
+    sheetWidth: 672,
+    sheetHeight: 144,
+    directions: 3,
+    fps: 3,
+    animations: {
+      idle: { frames: [0, 1, 2, 3], loop: true },
+      // Zjedzony przez Pożeracza; ostatnia klatka (ogryziona łupina) zostaje na podłodze.
+      eaten: { frames: [4, 5, 6, 7], loop: false, fps: 8 },
+      shake: { frames: [8, 9], loop: true, fps: 14 },
+      // Rozdarty od środka — wychodzi zarażony; pusty oplot zostaje.
+      tear: { frames: [10, 11, 12, 13], loop: false, fps: 10 },
+    },
+  },
+  // Tron z grzybni (krok 34): dekoracja areny Pożeracza bez kolizji, oparcie na północy.
+  fungalThrone: {
+    key: 'sheet-fungal-throne',
+    url: 'assets/sprites/fungal-throne.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 96,
+    sheetHeight: 96,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {},
+  },
+  // Efekty Pożeracza (krok 34): wiersz 0 krew (trafienie gracza), wiersz 1 sok (leczenie bossa).
+  fungalFx: {
+    key: 'sheet-fungal-fx',
+    url: 'assets/sprites/fungal-fx.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 192,
+    sheetHeight: 96,
+    directions: 2,
+    fps: 10,
+    animations: {
+      burst: { frames: [0, 1, 2, 3], loop: false },
+    },
+  },
+  // Naklejki sali tronowej (krok 34): kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata.
+  throneDecals: {
+    key: 'sheet-throne-decals',
+    url: 'assets/sprites/throne-decals.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 288,
     sheetHeight: 48,
     directions: 1,
-    fps: 2,
-    animations: {
-      idle: { frames: [0, 1], loop: true },
-      shake: { frames: [2, 3], loop: true, fps: 14 },
-      tear: { frames: [4, 5, 6, 7], loop: false, fps: 10 },
-    },
+    fps: SPRITE_FPS,
+    animations: {},
   },
   // Król Pająków (krok 29, tools/king_sprites.py): 128×128, 8 kierunków; 0–3 chód na dwóch grubych łapach,
   // 4–7 atak (zamach, sztylety lewe, prawe, uderzenie kosami — ostatnia klatka w chwili uderzenia).
@@ -574,27 +624,42 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     },
     deathDecal: 'splat',
   },
-  // Wampirzy Lord (krok 33): tasak przed cięciem, szczęka przy kąsaniu, uczcie i zewie; skok bez animacji (przysiad).
-  [BossId.VampireLord]: {
-    sheet: 'vampireLord',
+  // Grzybowy Pożeracz (krok 34): zamach łapami, kąsanie, uczta (karmienie) i ryk zewu; skok bez animacji (przysiad).
+  [BossId.FungalDevourer]: {
+    sheet: 'fungalDevourer',
     move: 'walk',
     attacks: {
-      [BossAttackKind.Cleave]: 'cleave',
+      [BossAttackKind.Cleave]: 'smash',
       [BossAttackKind.Lash]: 'bite',
-      [BossAttackKind.Feast]: 'bite',
-      [BossAttackKind.Call]: 'bite',
+      [BossAttackKind.Feast]: 'feed',
+      [BossAttackKind.Call]: 'roar',
     },
     deathDecal: 'splat',
   },
 };
 
-/** Kokon spiżarni Lorda: oddech, drżenie przy zewie, rozdarcie (pusty oplot zostaje na podłodze). */
+/**
+ * Kokon spiżarni Pożeracza: oddech, drżenie przy zewie, zjedzenie albo rozdarcie (łupina zostaje na podłodze).
+ * `variants` — liczba wierszy arkusza (twarz, dłoń, skulone ciało).
+ */
 export const LARDER_VISUAL = {
-  sheet: 'larderCocoon',
+  sheet: 'devourerCocoon',
+  variants: 3,
   idle: 'idle',
   shake: 'shake',
+  eaten: 'eaten',
   tear: 'tear',
-  groundShadow: { width: 18, height: 6, offsetX: 0, offsetY: 12 },
+  groundShadow: { width: 18, height: 6, offsetX: 0, offsetY: 14 },
+} as const;
+
+/**
+ * Sala tronowa Pożeracza (krok 34): tron i naklejki podłogi (kolumny `throneDecals` w kolejności
+ * `ThroneDecalKind`), krew na graczu po trafieniu i sok nad bossem przy leczeniu (wiersze `fungalFx`).
+ */
+export const THRONE_ROOM_VISUAL = {
+  throne: 'fungalThrone',
+  decals: 'throneDecals',
+  fx: { sheet: 'fungalFx', animation: 'burst', bloodRow: 0, sapRow: 1 },
 } as const;
 
 /** Pajączek: bieg, zapłon (telegraf) i osobny arkusz wybuchu; cień od silnika (chodzi po ziemi). */

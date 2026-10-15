@@ -232,13 +232,15 @@ export const SPIDER_KING = {
 } satisfies BossDefinition;
 
 /**
- * Boss Cmentarzyska „Wampirzy Lord” (krok 33, pomysł właściciela): zainfekowany arystokrata ze szczęką zamiast
- * głowy i tasakiem; hoduje zarażonych w kokonach (spiżarnia) i je zjada — uczta leczy go i wzmacnia.
- * Ciosy (moje, do strojenia w teście): kąsanie z bliska (leczy go), szarża z kłapnięciem (skok), tasak, zew spiżarni.
+ * Boss Cmentarzyska „Grzybowy Pożeracz” (krok 33 jako Wampirzy Lord, pomysł właściciela; od kroku 34 wygląd
+ * z paczki właściciela): ciało dawnego władcy wieży przerośnięte grzybnią, głowa pęka w paszczę; hoduje
+ * zarażonych w kokonach (spiżarnia) i je zjada — uczta leczy go i wzmacnia.
+ * Ciosy (moje, do strojenia w teście): kąsanie z bliska (leczy go), szarża z kłapnięciem (skok),
+ * zamach łapami (`cleave`, dawny tasak), zew spiżarni.
  */
-export const VAMPIRE_LORD = {
-  id: BossId.VampireLord,
-  name: 'Wampirzy Lord',
+export const FUNGAL_DEVOURER = {
+  id: BossId.FungalDevourer,
+  name: 'Grzybowy Pożeracz',
   title: 'Ucztujący w Kryptach',
   enragedLabel: 'Głód!',
   radius: 28,
@@ -251,7 +253,7 @@ export const VAMPIRE_LORD = {
   restBetweenAttacksMs: 1500,
   pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Call],
   patternOrder: PatternOrder.Shuffled,
-  // Kąsanie szczęką: szybkie, z bliska; trafienie leczy Lorda (wampir).
+  // Kąsanie paszczą: szybkie, z bliska; trafienie leczy Pożeracza.
   lash: {
     triggerRange: 62,
     reach: 34,
@@ -272,7 +274,7 @@ export const VAMPIRE_LORD = {
     knockback: 280,
     recoveryMs: 500,
   },
-  // Tasak: wolny, szeroki zamach — uważny gracz zdąży uciec, a trafienie boli.
+  // Zamach łapami (do kroku 33 tasak): wolny, szeroki — uważny gracz zdąży uciec, a trafienie boli.
   cleave: {
     reach: 42,
     radius: 46,
@@ -308,12 +310,12 @@ export const VAMPIRE_LORD = {
 
 /**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
- * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Wampirzy Lord (Cmentarzysko).
+ * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_QUEEN,
   3: SPIDER_KING,
-  4: VAMPIRE_LORD,
+  4: FUNGAL_DEVOURER,
 };
 
 export function bossForFloor(floor: number): BossDefinition {
