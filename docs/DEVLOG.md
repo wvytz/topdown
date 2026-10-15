@@ -2205,6 +2205,86 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 28c — Purchawki (Grzybnia)
+
+**Decyzja właściciela:** `#decyzja` `#grzybnia` „skończ purchawki”. Potem kolejno: powrót do „Mroku” i następny biom. Pomysł z kroku 28a (purchawki z trującą chmurą) przyjęty bez zmian.
+
+**Reguły (moje, `biomeConfig` → Grzybnia `puffballs`, do strojenia w teście):**
+- miejsce:
+  - 1–3 purchawki w zwykłym pokoju (biom „pełniejszy” od leża);
+  - te same reguły co kokony: 1 kafel od ścian, wolny środek 3×3 (kapliczka), odstęp ≥ 3 kafle;
+  - bez kolizji, więc linia wzroku Kiterów bez zmian;
+- zapalnik jak u kokonu:
+  - gracz ≤ 22 px od środka budzi purchawkę;
+  - telegraf 500 ms: purchawka nabrzmiewa i drży, por świeci jadem, czerwona strefa ma pełny zasięg chmury;
+- pęknięcie zostawia **trującą chmurę**:
+  - rośnie z 20 do 44 px w 400 ms i wisi 4 s;
+  - to teren: liczy się środek gracza, trucizna 2 co 0,5 s, odnawiana w chmurze, po wyjściu trwa jeszcze 1,5 s;
+  - chroni tylko dash, nietykalność po trafieniu nie chroni;
+  - przez ostatnie 600 ms chmura się rozwiewa (tylko wizualnie, truje do końca);
+- cios, strzał i Burzowy pęd rozrywają purchawkę od razu:
+  - z dystansu da się ją rozbroić, ale chmura i tak zostaje i na chwilę zamyka przejście;
+  - nie liczy się do Wampirzego kła;
+- chmura nie truje wrogów, bo to ich biom;
+- sflaczała skórka zostaje na podłodze jako ślad (jak strzępy kokonu).
+
+**Warstwa czysta:**
+- `systems/Puffballs.ts`:
+  - `PuffballConfig`, `PoisonCloudConfig`;
+  - `poisonCloudRadius` (rozrost i wygasanie), `isInPoisonCloud`;
+- zapalnik: `CocoonState` przyjmuje teraz tylko `triggerRadius` i `fuseMs`, więc służy obu pułapkom;
+- rozmieszczenie: `planCocoons` (te same reguły miejsca), własna sól RNG `PUFFBALL_SEED_SALT`.
+
+**Grafika (`tools/grove_enemies.py`):**
+- `puffball.png` (32×32, 8 klatek):
+  - 0–1 spoczynek: blady beż z brodawkami, z poru ulatuje obłoczek;
+  - 2–3 nabrzmiewanie i drżenie;
+  - 4–7 pęknięcie i sflaczała skórka;
+  - barwa celowo inna niż biały kokon leża;
+- `poison-cloud.png` (96×96, 8 klatek):
+  - 0–5 rozrost, promień 20→44 px, czyli hitbox chmury;
+  - 6–7 kłębienie;
+  - w grze rysowana z alfą 0,6 nad podłogą i pod postaciami;
+- dwie wcześniejsze wersje chmury odrzuciłem:
+  - ukośne „odłamki” zamiast kłębów;
+  - „kiść winogron” z obwódką każdego kłębu;
+  - obecna to jedna sylwetka z ciemnym brzegiem i jasnymi czubkami kłębów;
+- pozostałe arkusze generatora wychodzą bajt w bajt takie same.
+
+**Phaser:**
+- `entities/Puffball.ts` (cel `MeleeTarget`, bez ciała fizycznego);
+- `combat/PuffballManager.ts`: telegraf, pęknięcie, chmury, trucizna przez `Player.applyTerrainStatus`;
+- `GameScene`: menedżer tylko, gdy biom ma purchawki; cios, strzał i dash rozstrzygane jak przy kokonach;
+- `spriteConfig`: `puffball`, `poisonCloud`, `PUFFBALL_VISUAL`.
+
+**Testy (`tests/systems/puffballs.test.ts`):**
+- purchawki tylko w Grzybni; rozmieszczenie na podłodze zwykłych pokojów, limit, >90% pokojów ma purchawkę;
+- zapalnik: budzenie, jedno pęknięcie po `fuseMs`, trafienie od razu;
+- chmura: rozrost, czas, zniknięcie, środek gracza; trucizna odnawiana co klatkę tyka równo i trwa po wyjściu;
+- balans:
+  - uważny gracz (reakcja 200 ms) wyjdzie chodem, zanim chmura urośnie;
+  - dash przelatuje przez całą chmurę;
+  - strzał sięga spoza chmury;
+  - trucizna nie mocniejsza niż u zarażonego pająka;
+- sprite chmury zgodny z hitboxem (±3 px).
+
+**Weryfikacja:**
+- `npm run build`: 802 testy zielone;
+- w grze (`?seed=7&floor=3`), 13 purchawek na piętrze:
+  - gracz stojący przy purchawce: pęknięcie po ok. 0,5 s, a w chmurze trucizna po −2 co 0,5 s;
+  - chmura znika po 4 s;
+  - cios z 20 px rozrywa purchawkę i zostawia chmurę, bez leczenia z kła;
+  - zrzut ekranu: chmura obok bohatera, skórka w środku;
+- brak błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#grzybnia`
+- czy chmura czyta się jak gaz (kolor, alfa 0,6);
+- zasięg budzenia (22 px) i telegraf 500 ms;
+- czas chmury (4 s) i siła trucizny;
+- czy purchawek nie jest za dużo (1–3 na pokój).
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2238,7 +2318,9 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **1. Następny etap (decyzja właściciela po kroku 27):** `#decyzja` nowe biomy i kolejne piętra — większy zbiór mechanik i poziomów tematycznych; strojenie wszystkiego później.
 
-**Grzybnia (piętro 3) w toku** `#grzybnia`: krok 28a zrobiony (paleta, kafle, mgła); właściciel uznał biom za OK, a światło po jego uwadze przechodzi płynnie (bez kręgów, we wszystkich biomach). Krok 28b zrobiony: zarażony pająk i grzybiec (obaj zatruwają). Po teście: naprawiony mrok na krańcach kadru (wszystkie biomy), Grzybnia zarośnięta pleśnią i z bardziej zniszczonymi murami. Krok 29: Król Pająków (wygląd połączony ze szkicu właściciela, ścięcie kosami, grad sztyletów, rzut kokonem, wysyp grzybni, nowy status paraliżu). Do zrobienia w Grzybni: purchawki (28c), animacja śmierci Króla. Dalej: 28b — zarażony pająk i grzybiec; 28c — purchawki; 29 — Król Pająków zainfekowany grzybem (większy, kościsty grzyb na odwłoku, chód na dwóch grubych łapach, zwisające odnóża kłują jak sztylety).
+**Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Zostaje animacja śmierci Króla (dziś ginie od razu i zostaje plama).
+
+**Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu), potem kolejny biom.
 
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:

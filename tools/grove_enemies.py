@@ -12,6 +12,10 @@ Arkusze (STYLEGUIDE §2, §8, §10; wiersze = 8 kierunków N..NW z obrotu, obrys
   spore-ball.png            16x16, bez kierunków; 4 klatki pulsowania kuli zarodników
   mycelium-patch.png        96x96, bez kierunków (krok 29): płat trującej grzybni Króla Pająków; 0–5 rozrost
                             (promień 14→40 px = hitbox płatu), 6–7 pulsowanie świecących bulw
+  puffball.png              32x32, bez kierunków (krok 28c): purchawka; 0–1 spoczynek (pory dymią), 2–3 nabrzmiewa
+                            i drży (telegraf), 4–7 pęka; klatka 7 to sflaczała skórka zostająca na podłodze
+  poison-cloud.png          96x96, bez kierunków (krok 28c): trująca chmura purchawki; 0–5 rozrost
+                            (promień 20→44 px = hitbox chmury), 6–7 kłębienie
 
 Zarażony pająk to pająk leża porośnięty grzybem: na odwłoku kościste kapelusze zamiast białych pręg,
 oczy w cyjanie bioluminescencji. Grzybiec: rdzawy kapelusz z bladymi łatkami i jasnym rondem blaszek
@@ -172,12 +176,109 @@ def mycelium_patch_frame(f):
     return img
 
 
+# ---------------- purchawka (32x32, krok 28c) ----------------
+PUFF = 32
+PUFF_CY = 18
+# Skórka purchawki: blady beż (jak dojrzała purchawka) — jasna plama na fioletowej podłodze, inna niż biały kokon.
+PUFF_SKIN = (ok(.42, .035, 70), ok(.54, .040, 75), ok(.66, .040, 80), ok(.78, .035, 85), ok(.88, .025, 90))
+# Brodawki i por: brąz dojrzałych zarodników.
+PUFF_WART = (ok(.34, .040, 55), ok(.45, .045, 60))
+
+
+def puffball_body(img, cx, cy, rx, ry, pore_glow, seed):
+    """Kulista purchawka (z góry, lekko spłaszczona): skórka z brodawkami, ciemny por na szczycie."""
+    ellipse(img, cx, cy, rx, ry, band_shade(PUFF_SKIN))
+    r = random.Random(seed)
+    for _ in range(7):  # brodawki
+        a, d = r.uniform(0, math.tau), r.uniform(.25, .75)
+        img.put(int(cx + math.cos(a) * rx * d), int(cy + math.sin(a) * ry * d), PUFF_WART[1])
+    # Por na szczycie (lekko z tyłu): ciemny krąg; w telegrafie jarzy się jadem.
+    ellipse(img, cx, cy - ry * .35, 1.8, 1.4, lambda nx, ny: VENOM[1] if pore_glow else PUFF_WART[0])
+    if pore_glow:
+        img.put(int(cx), int(cy - ry * .35), VENOM[2])
+
+
+def puffball_frame(f):
+    img = Img(PUFF, PUFF)
+    cx = PUFF / 2
+    if f < 2:  # spoczynek: z poru unosi się pojedynczy obłoczek zarodników
+        puffball_body(img, cx, PUFF_CY, 7, 6, False, 2800)
+        y = PUFF_CY - 6 - f * 2
+        img.put(int(cx) + f, y, SPORE_DUST[1])
+        img.put(int(cx) - 1 + f, y - 1, VENOM[1])
+    elif f < 4:  # telegraf: nabrzmiewa, drży, por świeci
+        shake = -1 if f == 2 else 1
+        puffball_body(img, cx + shake, PUFF_CY - 1, 8.5, 7.5, True, 2800)
+    elif f == 4:  # pęknięcie: por rozdziera się, tryska jad
+        puffball_body(img, cx, PUFF_CY - 1, 9, 7.8, True, 2800)
+        ellipse(img, cx, PUFF_CY - 6, 4, 3, lambda nx, ny: VENOM[2] if nx + ny < -.3 else VENOM[1])
+    else:  # skórka flaczeje; klatka 7 to płaskie resztki z rozdartym szczytem
+        ry = (5.5, 4.2, 3.4)[f - 5]
+        rx = (8.5, 8.8, 9)[f - 5]
+        cy = PUFF_CY + (1, 2, 3)[f - 5]
+        puffball_body(img, cx, cy, rx, ry, False, 2800)
+        # rozdarty szczyt: postrzępiona dziura z ciemnym wnętrzem
+        ellipse(img, cx, cy - ry * .2, rx * .45, ry * .5, lambda nx, ny: PUFF_WART[0] if ny > -.2 else PUFF_SKIN[0])
+        if f < 7:  # resztki obłoku nad dziurą
+            ellipse(img, cx, cy - ry - 2, 2.5 - (f - 5), 1.8 - (f - 5) * .5, lambda nx, ny: VENOM[1])
+    return img
+
+
+# ---------------- trująca chmura purchawki (96x96, krok 28c) ----------------
+CLOUD = 96
+# Promienie klatek rozrostu = poisonCloudRadius w grze (biomeConfig Grzybni: startRadius 20 → maxRadius 44).
+CLOUD_RADII = (20, 25, 30, 34, 39, 44, 44, 44)
+
+
+def poison_cloud_frame(f):
+    """Chmura: kłęby jadowitej zieleni (kilka nakładających się kul), jaśniejsze czubki kłębów i blade
+    zarodniki. Zasięg rysunku = promień chmury w tej klatce (hitbox). W grze rysowana półprzezroczyście."""
+    img = Img(CLOUD, CLOUD)
+    c = CLOUD / 2
+    rad = CLOUD_RADII[f]
+    r = random.Random(2810)  # ten sam układ kłębów w każdej klatce — chmura rośnie, a nie skacze
+    swirl = (f - 5) * .35 if f >= 6 else 0  # kłębienie: kłęby obracają się wokół środka
+    puffs = []
+    for k in range(9):
+        a = r.uniform(0, math.tau) + swirl
+        d = r.uniform(.25, .55)
+        pr = r.uniform(.42, .55)
+        puffs.append((math.cos(a) * d, math.sin(a) * d, pr))
+    puffs.append((0, 0, .6))
+    # Jedna sylwetka (suma kłębów) z ciemnym brzegiem; na każdym kłębie tylko jasny półksiężyc od lewej-góry
+    # (czubek kłębu), bez obwódek w środku — gaz, a nie kiść kul. Przedni (niższy) kłąb decyduje o świetle.
+    front_first = sorted(puffs, key=lambda p: -p[1])
+    for y in range(CLOUD):
+        for x in range(CLOUD):
+            nx, ny = (x + .5 - c) / rad, (y + .5 - c) / rad
+            if nx * nx + ny * ny > 1:
+                continue
+            qs = [math.hypot(nx - px, ny - py) / pr for px, py, pr in puffs]
+            if min(qs) > 1:
+                continue
+            if min(qs) > .88:
+                img.put(x, y, VENOM[0])
+                continue
+            px, py, pr = next(p for p in front_first if math.hypot(nx - p[0], ny - p[1]) <= p[2])
+            # półksiężyc: w kłębie, ale poza tym samym kłębem przesuniętym w prawo-dół
+            crescent = math.hypot(nx - px - pr * .22, ny - py - pr * .26) > pr * .92
+            img.put(x, y, VENOM[2] if crescent else VENOM[1])
+    for k in range(14):  # blade zarodniki w chmurze
+        a, d = r.uniform(0, math.tau) + swirl * 1.5, r.uniform(.1, .8)
+        img.put(int(c + math.cos(a) * d * rad), int(c + math.sin(a) * d * rad), SPORE_DUST[0])
+    return img
+
+
 def build():
     spider, sf = directional_sheet(CELL, infected_spider_frame, 4)
     fungoid, ff = directional_sheet(CELL, fungoid_frame, 8)
     spore, spf = strip_sheet(SPORE, spore_ball_frame, 4)
     patch, pf = strip_sheet(PATCH, mycelium_patch_frame, 8)
+    puff, puf = strip_sheet(PUFF, puffball_frame, 8)
+    cloud, cf = strip_sheet(CLOUD, poison_cloud_frame, 8)
     return {
+        'puffball.png': (puff, puf, PUFF, 2),
+        'poison-cloud.png': (cloud, cf, CLOUD, 1),
         'mycelium-patch.png': (patch, pf, PATCH, 1),
         'infected-spider_walk.png': (spider, sf, CELL, MARGIN),
         'fungoid_walk-spit.png': (fungoid, ff, CELL, MARGIN),

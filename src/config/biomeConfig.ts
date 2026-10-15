@@ -6,6 +6,7 @@ import { FUNGAL_FOG } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { CeilingDropConfig } from '@/systems/CeilingDrops';
 import type { CocoonConfig } from '@/systems/Cocoons';
+import type { PuffballConfig } from '@/systems/Puffballs';
 import type { StickyWebConfig } from '@/systems/StickyWebs';
 import { SPIDER_QUEEN } from '@/config/bossConfig';
 import { FUNGAL_GROVE_TILESET_ASSET, SPIDER_LAIR_TILESET_ASSET, TILESET_ASSET } from '@/config/tilesetConfig';
@@ -30,6 +31,8 @@ export interface BiomeDefinition {
   readonly cocoons: CocoonConfig | null;
   /** Lepkie pajęczyny na podłodze zwykłych pokojów (krok 23e); null = brak. */
   readonly stickyWebs: StickyWebConfig | null;
+  /** Purchawki z trującą chmurą w zwykłych pokojach (krok 28c); null = brak. */
+  readonly puffballs: PuffballConfig | null;
   /** Mgła ograniczająca widok zamiast zwykłego mroku (krok 28a); null = zwykłe światło. */
   readonly fog: FogConfig | null;
 }
@@ -44,6 +47,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
+    puffballs: null,
     fog: null,
   },
   [BiomeId.SpiderLair]: {
@@ -96,6 +100,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
       minGapTiles: 2,
       slow: { pct: 0.5, durationMs: 500 },
     },
+    puffballs: null,
     fog: null,
   },
   // Grzybnia (krok 28a): piętro zainfekowanego Króla Pająków. Ciemny fiolet z błękitem, mgła ogranicza widok,
@@ -109,6 +114,27 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
+    // Purchawki (krok 28c): 1–3 w zwykłym pokoju (biom „pełniejszy” od leża), bez kolizji. Podejście budzi
+    // purchawkę — nabrzmiewa, a potem pęka trującą chmurą, która chwilę wisi i zamyka przejście.
+    // Cios, strzał lub dash rozrywa ją od razu: z dystansu da się ją rozbroić, ale chmura i tak zostaje.
+    puffballs: {
+      perRoom: { min: 1, max: 3 },
+      wallMarginTiles: 1,
+      centerClearTiles: 1,
+      minSpacingTiles: 3,
+      radius: 8,
+      // Telegraf dłuższy niż u kokonu: uważny gracz wyjdzie chodem poza chmurę, zanim urośnie.
+      triggerRadius: 22,
+      fuseMs: 500,
+      cloud: {
+        startRadius: 20,
+        maxRadius: 44,
+        spreadMs: 400,
+        durationMs: 4000,
+        // Jak trucizna zarażonego pająka (2 co 0,5 s); po wyjściu truje jeszcze 1,5 s.
+        poison: { tickDamage: 2, tickMs: 500, durationMs: 1500 },
+      },
+    },
     fog: FUNGAL_FOG,
   },
 };

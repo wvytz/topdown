@@ -36,12 +36,13 @@ export enum CocoonPhase {
 /**
  * Stan jednego kokonu: śpi, aż gracz podejdzie (wtedy po `fuseMs` wybucha) albo go trafi
  * (wybucha od razu). Wybucha tylko raz. Czas jawnie (`now`, ms).
+ * Ten sam zapalnik mają purchawki Grzybni (krok 28c).
  */
 export class CocoonState {
   private phase = CocoonPhase.Dormant;
   private fuseEndsAt = Infinity;
 
-  constructor(private readonly config: CocoonConfig) {}
+  constructor(private readonly config: Pick<CocoonConfig, 'triggerRadius' | 'fuseMs'>) {}
 
   get currentPhase(): CocoonPhase {
     return this.phase;

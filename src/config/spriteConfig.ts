@@ -351,6 +351,38 @@ export const SPRITE_SHEETS = {
       burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
     },
   },
+  // Purchawka Grzybni (krok 28c, tools/grove_enemies.py): 32×32, bez kierunków.
+  puffball: {
+    key: 'sheet-puffball',
+    url: 'assets/sprites/puffball.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 256,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 3,
+    animations: {
+      idle: { frames: [0, 1], loop: true },
+      // Telegraf (500 ms): szybkie drżenie; pęknięcie w ok. 330 ms, ostatnia klatka (skórka) zostaje.
+      fuse: { frames: [2, 3], loop: true, fps: 14 },
+      burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
+    },
+  },
+  // Trująca chmura purchawki (krok 28c): rozrost (tempo liczy gra z czasu rozrostu) i kłębienie.
+  poisonCloud: {
+    key: 'sheet-poison-cloud',
+    url: 'assets/sprites/poison-cloud.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 96,
+    directions: 1,
+    fps: 3,
+    animations: {
+      grow: { frames: [0, 1, 2, 3, 4, 5], loop: false },
+      swirl: { frames: [6, 7], loop: true },
+    },
+  },
   // Lepkie pajęczyny leża (krok 23e, tools/lair_enemies.py): 1×1 i 2×2 kafle; błysk wędruje po kroplach kleju.
   stickyWebSmall: {
     key: 'sheet-sticky-web-small',
@@ -493,6 +525,23 @@ export const COCOON_VISUAL = {
   burst: 'burst',
   groundShadow: { width: 16, height: 6, offsetX: 1, offsetY: 9 },
 } as const;
+
+/** Purchawka i jej chmura (krok 28c). Chmura półprzezroczysta — gaz, pod którym widać walkę. */
+export const PUFFBALL_VISUAL = {
+  sheet: 'puffball',
+  idle: 'idle',
+  fuse: 'fuse',
+  burst: 'burst',
+  groundShadow: { width: 16, height: 5, offsetX: 0, offsetY: 7 },
+  cloud: { sheet: 'poisonCloud', grow: 'grow', swirl: 'swirl', alpha: 0.6, fadeMs: 600 },
+} as const satisfies {
+  readonly sheet: SpriteSheetId;
+  readonly idle: string;
+  readonly fuse: string;
+  readonly burst: string;
+  readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
+  readonly cloud: { readonly sheet: SpriteSheetId; readonly grow: string; readonly swirl: string; readonly alpha: number; readonly fadeMs: number };
+};
 
 /** Lepka pajęczyna: arkusz wg rozmiaru w kaflach. */
 export const STICKY_WEB_VISUAL = {

@@ -35,6 +35,7 @@ import {
 import { BossFight } from '@/combat/BossFight';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
 import { CocoonManager } from '@/combat/CocoonManager';
+import { PuffballManager } from '@/combat/PuffballManager';
 import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
@@ -92,6 +93,7 @@ const TORCH_SEED_SALT = 0x7042;
 const CEILING_DROP_SEED_SALT = 0xce11;
 const COCOON_SEED_SALT = 0xc0c0;
 const STICKY_WEB_SEED_SALT = 0x3eb5;
+const PUFFBALL_SEED_SALT = 0x9bff;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -113,6 +115,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private cocoons: CocoonManager | null = null;
   /** Lepkie pajęczyny na podłodze — tylko w biomie, który je ma (krok 23e). */
   private stickyWebs: StickyWebField | null = null;
+  /** Purchawki z trującą chmurą — tylko w biomie, który je ma (krok 28c). */
+  private puffballs: PuffballManager | null = null;
   private loot!: LootManager;
   private lootRng!: Rng;
   private effects!: CombatEffects;
@@ -231,12 +235,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.ceilingDrops?.update(time);
     this.cocoons?.update(time);
     this.stickyWebs?.update(time);
+    this.puffballs?.update(time);
     this.bossFight.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
     this.playerShots.update(
       time,
-      (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? null,
+      (shot) => this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? null,
     );
     this.loot.update(time);
     this.shrine.update(actions.interact);
@@ -296,7 +301,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const arc = Phaser.Math.DegToRad(combat.meleeArcDeg);
     this.effects.slash(swing.origin.x, swing.origin.y, swing.angle, combat.meleeRange, arc);
     const hits =
-      this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing) + (this.cocoons?.resolvePlayerMelee(swing) ?? 0);
+      this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing) + (this.cocoons?.resolvePlayerMelee(swing) ?? 0) +
+      (this.puffballs?.resolvePlayerMelee(swing) ?? 0);
 
     // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów),
     // najwyżej raz na meleeHealCooldownMs.
@@ -320,6 +326,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.enemies.resolveDashSweep(sweep, this.dashHits);
     this.bossFight.resolveDashSweep(sweep, this.dashHits);
     this.cocoons?.resolveDashSweep(sweep, this.dashHits);
+    this.puffballs?.resolveDashSweep(sweep, this.dashHits);
   }
 
   private setupCombat(): void {
@@ -387,6 +394,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
           rng: createRng(deriveSeed(this.dungeon.seed, STICKY_WEB_SEED_SALT)),
           player: this.player,
           avoid: this.cocoons?.tiles ?? [],
+        })
+      : null;
+
+    const puffballs = this.biome.puffballs;
+    this.puffballs = puffballs
+      ? new PuffballManager({
+          scene: this,
+          floor: this.dungeon,
+          config: puffballs,
+          rng: createRng(deriveSeed(this.dungeon.seed, PUFFBALL_SEED_SALT)),
+          player: this.player,
         })
       : null;
 
