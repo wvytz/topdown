@@ -2671,6 +2671,10 @@ Makieta generatora:
 
 **Do oceny właściciela:** podgląd arkusza (czytelność głowy i włosów przy 1×, siła fali włosów, wielkość kryształu).
 
+**Poprawka po ocenie właściciela:** `#ocena` `#czarodziejka`
+- Kostur zasłaniał głowę: przesunięty w prawo (oś 4,5 px od pivota, `STAFF_X`), razem z dłońmi, kryształem i iskrami.
+- Głowa powiększona (promień 6 px zamiast 5,1, `HEAD_R`), grzywa u nasady szersza; nadal mieści się w promieniu 21,5 px.
+
 ---
 
 ## Znane ograniczenia i backlog

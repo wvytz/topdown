@@ -44,6 +44,9 @@ SPARK_RADIUS = 22.5
 FORWARD = 17
 # Czubek kostura (y lokalne w spoczynku) i środek kryształu względem czubka.
 STAFF_TOP = -13
+# Kostur trzymany po prawej, żeby nie zasłaniał głowy (oś kostura w x lokalnym), promień głowy.
+STAFF_X = 4.5
+HEAD_R = 6.0
 CRYSTAL_DY = -2.5
 
 # Rampy (plan zaakceptowany przez właściciela): ciemny → jasny.
@@ -122,7 +125,7 @@ def hair(img, sway, extra, split):
                     t = i / 40
                     cx = sway * t * t + off * t
                     cy = -1 + length * t
-                    r = (5.2 - 2.4 * t) * (wscale if t > .25 else 1)
+                    r = (5.8 - 2.8 * t) * (wscale if t > .25 else 1)
                     d = math.hypot(dx - cx, dy - cy)
                     if d <= r and (best is None or t > best[0]):
                         best = (t, dx - cx, r)
@@ -156,22 +159,22 @@ def head(img):
         for x in range(CELL):
             dx, dy = local(x, y)
             d = math.hypot(dx, dy + 1)
-            if d > 5.1:
+            if d > HEAD_R:
                 continue
             c = HAIR[1]
             if dx < -1 and dy < 0:
                 c = HAIR[2]
             elif dx > 2:
                 c = HAIR[0]
-            if d > 4.3 and dy > -3:
+            if d > HEAD_R - .9 and dy > -3:
                 c = HAIR[0]  # brzeg głowy na tle sukni
-            if dy < -4.6 and -2 < dx < 1:
+            if dy < -HEAD_R + .4 and -2.5 < dx < 1:
                 c = SKIN[1]
             img.put(x, y, c)
-    img.put(21, 20, HAIR[3])
-    img.put(22, 19, HAIR[3])
-    img.put(23, 21, HAIR[0])  # przedziałek
-    img.put(23, 22, HAIR[0])
+    img.put(20, 19, HAIR[3])
+    img.put(21, 18, HAIR[3])
+    for y in (20, 21, 22):
+        img.put(23, y, HAIR[0])  # przedziałek
 
 
 def sleeve(img, a, b):
@@ -192,18 +195,18 @@ def staff(img, off, state):
     for y in range(CELL):
         for x in range(CELL):
             dx, dy = local(x, y)
-            if .5 <= dx <= 2.5 and top <= dy <= -3 + off:
-                img.put(x, y, WOOD[2] if dx < 1.5 else WOOD[1])
-            if -.5 <= dx <= 3.5 and top - .5 <= dy <= top + .5:
+            if STAFF_X - 1 <= dx <= STAFF_X + 1 and top <= dy <= -3 + off:
+                img.put(x, y, WOOD[2] if dx < STAFF_X else WOOD[1])
+            if STAFF_X - 2 <= dx <= STAFF_X + 2 and top - .5 <= dy <= top + .5:
                 img.put(x, y, WOOD[0])
     # dłonie: dolna i górna, z cieniem palców
     for hy in (-6 + off, -9 + off):
         for y in range(CELL):
             for x in range(CELL):
                 dx, dy = local(x, y)
-                if -.5 <= dx <= 3.5 and hy - 1 <= dy <= hy + 1:
+                if STAFF_X - 2 <= dx <= STAFF_X + 2 and hy - 1 <= dy <= hy + 1:
                     img.put(x, y, SKIN[0] if dy > hy else SKIN[1])
-    crystal(img, 1.5, top + CRYSTAL_DY, state)
+    crystal(img, STAFF_X, top + CRYSTAL_DY, state)
 
 
 def crystal(img, cx, cy, state):
@@ -227,7 +230,7 @@ def crystal(img, cx, cy, state):
 def sparks(off):
     """Iskry rozbłysku (pełne piksele bez obrysu, §6c) wokół kryształu: krzyż 4 punktów."""
     img = Img(CELL, CELL)
-    cx, cy = 1.5, STAFF_TOP + CRYSTAL_DY + off
+    cx, cy = STAFF_X, STAFF_TOP + CRYSTAL_DY + off
     for ox, oy, c in ((0, -4, CRYSTAL[3]), (-4, 0, CRYSTAL[2]), (4, 0, CRYSTAL[2]), (-3, -3, CRYSTAL[3]), (3, -3, CRYSTAL[3])):
         img.put(int(cx + ox + CELL / 2 - .5), int(cy + oy + CELL / 2 - .5), c)
     return img
@@ -241,8 +244,8 @@ def body_frame(f):
     bodice(img)
     head(img)
     off = f['staff']
-    sleeve(img, (-5.5, -2.5), (-.5, -6 + off))
-    sleeve(img, (4.5, -2.5), (3, -9 + off))
+    sleeve(img, (-5.5, -2.5), (STAFF_X - 2, -6 + off))
+    sleeve(img, (4.5, -2.5), (STAFF_X + 1.5, -9 + off))
     staff(img, off, f['crystal'])
     return img
 
