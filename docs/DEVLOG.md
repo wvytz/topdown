@@ -3152,6 +3152,16 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja w przeglądarce:** `?floor=3&seed=7` — z areny w miejscu komnaty lity mur; 2 kafle od niej mur znika, widać korytarz z kratą i komnatę, komunikat; 4 kokony, po rozbiciu z jednego wypadł przedmiot (Elektryczna strzała), reszta „pusto”; bez błędów w konsoli.
 
+## Krok 47 — Schody na klawisz E `#wieza`
+
+**Ocena właściciela** `#ocena` `#wieza`: „zbyt często przypadkowo spadam na dół, nie zbieram nagród” — w teście kroku 46 wszedł na schody przypadkiem, zanim znalazł ukrytą komnatę z gwarantowaną nagrodą.
+
+- Samo wejście na otwarte schody nie przenosi już wyżej. Gracz musi stać na schodach i nacisnąć **E** (ten sam klawisz co kapliczka).
+- Gdy stoi na schodach: napis nad nimi „[E] Wejdź wyżej” i w HUD „Naciśnij E, aby wspiąć się wyżej”; poza nimi HUD: „Schody otwarte — stań na nich i naciśnij E, aby wspiąć się wyżej”. Linia pomocy: „E — kapliczka, schody”.
+- `HudData.onStairs`; `GameScene.checkStairs(interact)`.
+
+**Weryfikacja w przeglądarce:** `?floor=2&seed=7` — po pokonaniu Matki Pająków i wyborze nagrody: obok schodów nic się nie dzieje, na schodach napis i podpowiedź, bez E piętro się nie zmienia, po E przejście na piętro 3; bez błędów w konsoli. Build: 1049 testów (zmiana tylko w warstwie Phasera).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -3214,6 +3224,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - kokony;
   - lepkie pajęczyny.
 - **Kandydaci na kolejny krok** (wybiera właściciel): powrót do „Mroku” (p. 2), kolejny biom, ewentualne strojenie liczb leża.
+- **Schody:** od kroku 47 wejście wyżej klawiszem E na schodach.
 - **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają też na Pages jako run testowy (bez zapisu wyniku, krok 41g).
 - **Do oceny w testach właściciela:** trudność walki z Matką Pająków po kroku 27 (pościg, smagnięcie, trucizna). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
 - **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.

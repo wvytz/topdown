@@ -32,7 +32,7 @@ const BANNER_Y = 150;
 function helpLine(sorceress: boolean): string {
   const attacks = sorceress ? 'LPM — kule energii · PPM — promień (przytrzymaj)' : 'LPM — atak · PPM — strzał';
   const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
-  return `WASD — ruch · ${attacks} · Spacja — dash · E — kapliczka${devHelp}`;
+  return `WASD — ruch · ${attacks} · Spacja — dash · E — kapliczka, schody${devHelp}`;
 }
 
 /**
@@ -132,7 +132,9 @@ export class HudScene extends Phaser.Scene {
     this.helpText.setText(helpLine(hud.beam !== null));
 
     if (hud.stairsUnlocked) {
-      this.hintText.setText('Schody otwarte — wejdź na nie, aby wspiąć się wyżej').setColor('#e0b84a');
+      this.hintText
+        .setText(hud.onStairs ? 'Naciśnij E, aby wspiąć się wyżej' : 'Schody otwarte — stań na nich i naciśnij E, aby wspiąć się wyżej')
+        .setColor('#e0b84a');
     } else if (hud.boss) {
       this.hintText.setText('Pokonaj bossa, aby otworzyć schody · unikaj czerwonych stref').setColor('#ffb0a0');
     } else {

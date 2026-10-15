@@ -75,6 +75,8 @@ export interface HudData {
   readonly beam: BeamHudData | null;
   readonly enemiesAlive: number;
   readonly stairsUnlocked: boolean;
+  /** Gracz stoi na otwartych schodach — wejście wyżej klawiszem E (krok 47). */
+  readonly onStairs: boolean;
   readonly isPlayerDead: boolean;
   /** null, gdy walka z bossem nie trwa. */
   readonly boss: BossHudData | null;

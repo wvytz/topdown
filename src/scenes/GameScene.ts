@@ -17,7 +17,7 @@ import { PickupKind } from '@/core/lootTypes';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
-import { CAMERA_CONFIG, TILE_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { CAMERA_CONFIG, STAIRS_SIZE, TILE_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
@@ -121,6 +121,7 @@ const STICKY_WEB_SEED_SALT = 0x3eb5;
 const PUFFBALL_SEED_SALT = 0x9bff;
 const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
+const STAIRS_PROMPT = '[E] Wejdź wyżej';
 const SECRET_ROOM_SEED_SALT = 0x5ec7;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
@@ -190,6 +191,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private runSeed = 0;
   private floorNumber = 1;
   private stairsUnlocked = false;
+  /** Gracz stoi na otwartych schodach (HUD i napis nad schodami). */
+  private onStairs = false;
+  private stairsPrompt: Phaser.GameObjects.Text | null = null;
   private isTransitioning = false;
   private deathHandled = false;
 
@@ -205,6 +209,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.toast = null;
     this.death = null;
     this.stairsUnlocked = false;
+    this.onStairs = false;
+    this.stairsPrompt = null;
     this.isTransitioning = false;
     this.deathHandled = false;
     this.dashHits = new Set();
@@ -258,6 +264,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupLoot();
     this.setupShrine();
     this.setupSecretRoom();
+    this.createStairsPrompt();
     this.inputController = new InputController(this);
     this.setupCamera();
     this.setupDebugKeys();
@@ -316,7 +323,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.shrine.update(actions.interact);
 
     if (this.player.isDead) this.handlePlayerDeath();
-    else this.checkStairs();
+    else this.checkStairs(actions.interact);
   }
 
   getHudData(): HudData {
@@ -334,6 +341,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       beam: ready ? this.player.beamStatus(this.time.now) : null,
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
+      onStairs: this.onStairs,
       isPlayerDead: ready && this.player.isDead,
       boss: ready ? this.bossFight.getStatus() : null,
       gold: this.run.gold,
@@ -808,12 +816,35 @@ export class GameScene extends Phaser.Scene implements HudSource {
     });
   }
 
-  private checkStairs(): void {
-    if (!this.stairsUnlocked) return;
+  /**
+   * Schody (krok 47, zgłoszenie właściciela): samo wejście na nie nie przenosi wyżej — gracz zbyt często wpadał
+   * na nie przypadkiem i tracił łupy i ukrytą komnatę. Trzeba stanąć na schodach i nacisnąć E (jak przy kapliczce).
+   */
+  private checkStairs(interactPressed: boolean): void {
     const tile = DungeonView.worldToTile(this.player.x, this.player.y);
-    if (isStairsTile(this.dungeon, tile)) {
+    this.onStairs = this.stairsUnlocked && isStairsTile(this.dungeon, tile);
+    this.stairsPrompt?.setVisible(this.onStairs);
+    if (this.onStairs && interactPressed) {
+      this.stairsPrompt?.setVisible(false);
       this.goToNextFloor();
     }
+  }
+
+  /** Napis nad schodami, widoczny, gdy gracz na nich stoi. */
+  private createStairsPrompt(): void {
+    const { x, y } = DungeonView.tileToWorldCenter(this.dungeon.stairs);
+    this.stairsPrompt = this.add
+      .text(x + (STAIRS_SIZE - 1) * (TILE_SIZE / 2), y - TILE_SIZE, STAIRS_PROMPT, {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#ffe08a',
+        stroke: '#000000',
+        strokeThickness: 3,
+        align: 'center',
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(RENDER_DEPTH.worldText)
+      .setVisible(false);
   }
 
   private goToNextFloor(): void {
