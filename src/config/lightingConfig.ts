@@ -106,6 +106,27 @@ export const FUNGAL_FOG: FogConfig = {
   motes: { ...LIGHTING.motes, maxParticles: 60, frequencyMs: 90, speed: { min: 1, max: 4 }, gravityY: -0.6 },
 };
 
+/**
+ * Mgiełka Cmentarzyska (krok 32a): grzyb ledwo tu dociera, więc to nie fioletowa mgła Grzybni, tylko zimny,
+ * prawie czarny opar w trupiej zieleni. Widok przy bohaterze trochę szerszy niż w Grzybni, ale dalej mrok
+ * gęstszy (każdy biom mroczniejszy od poprzedniego). Rzadkie, płaskie smugi przy ziemi i kurz grobowy.
+ */
+export const GRAVEYARD_MIST: FogConfig = {
+  color: 0x121812,
+  profile: { fullLightRadius: 72, edgeRadius: 190, maxDarkness: 0.92 },
+  wisps: {
+    maxParticles: 8,
+    frequencyMs: 900,
+    lifespanMs: { min: 10000, max: 16000 },
+    speed: { min: 2, max: 6 },
+    scale: { min: 1.2, max: 2.8 },
+    width: 48,
+    height: 10,
+    alpha: 0.08,
+  },
+  motes: { ...LIGHTING.motes, maxParticles: 24, frequencyMs: 220, speed: { min: 1, max: 3 }, gravityY: 0.4 },
+};
+
 export interface TorchPlacementConfig {
   /** Minimalny odstęp między pochodniami (Czebyszew, w kaflach). */
   readonly minSpacing: number;

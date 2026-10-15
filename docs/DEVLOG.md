@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2392,6 +2392,76 @@ Złota przybywa o +20% na każde piętro.
 
 ---
 
+## Krok 32a — Cmentarzysko (piętro 4): paleta, kafle i mgiełka
+
+**Decyzje właściciela:** `#decyzja` `#cmentarzysko`
+- nowy biom to **cmentarzysko**: zatruci zaczęli tu umierać — jedni upadli i się rozkładają, inni zmieniają się w grzybowe zombie;
+- „ludzki biom”, ale przemieniony w grzybowe zombie;
+- grzybnia **dużo mniej intensywna** niż piętro niżej — grzyb ledwo tu dociera, grasują raczej zarażeni ludzie;
+- boss jeszcze nieustalony („pomyślimy”); ten krok to ogólny klimat;
+- z trzech kandydatek palety wybrana **C „trupia zieleń”**. Odrzucone:
+  - A „zimny popiół” (moja rekomendacja);
+  - B „ziemia grobowa”.
+
+**Klimat (moje propozycje, przyjęte razem z paletą):**
+- płyty nagrobne w posadzce: wyryty krzyż, zatarty napis, zgnilizna u stóp;
+- zwłoki zatrutych w łachmanach (wyciągnięte albo zwinięte): szarozielona skóra, żebra, plama rozkładu, kilka strzępek i grzybków;
+- rozrzucone kości z czaszkami i świeczki wotywne;
+- na licach nisze grobowe z czaszkami, kostnica (rząd czaszek) i epitafia; świece w uchwytach zamiast pochodni;
+- grzybnia tylko jako nikłe strzępki (w fugach 4% i jako rzadka nakładka) — bez pleśni i kępek Grzybni;
+- **mgiełka:**
+  - prawie czarny opar w trupiej zieleni (`#121812`), a nie fioletowa mgła;
+  - pełny widok 72 px (Grzybnia 64), mrok do 92% (Grzybnia 88%), czyli szerszy widok przy bohaterze, ale ciemniej dalej;
+  - rzadkie, płaskie smugi przy ziemi i opadający kurz grobowy;
+- zgodnie z krokiem 30 wrogowie chowają się w mgiełce i wychodzą dopiero w świetle; piętro z mgiełką nie losuje „Mroku”;
+- wrogowie do czasu własnych (zarażeni ludzie, krok 32b): zarażony pająk i grzybiec z Grzybni; boss: Strażnik.
+
+**Generator (`tools/tower_ruins_tiles.py --biome graveyard`):**
+- palety `cmentarz_popiol`, `cmentarz_ziemia`, `cmentarz_trupi` (biom bierze `cmentarz_trupi`). Jasność podłogi jak w Grzybni, mury ciemniejsze;
+- nowe pola palety `flesh` (zgniła skóra) i `mycel` (resztki grzybni), puste w innych biomach;
+- dodatki `grave`:
+  - `grave_decal`: płyta 1×2, zwłoki 2×1 w dwóch pozach, kości, świeczki, nikła grzybnia;
+  - `grave_face`: nisza, epitafium, czaszki;
+  - `overgrow_grave`: strzępki w fugach, zacieki zgnilizny na licach;
+- pierwsza wersja miała zwłoki pionowe (1×2) — z rzutu z góry wyglądały jak stojąca postać, którą łatwo pomylić z wrogiem. Wszystkie zwłoki leżą teraz w poprzek;
+- makieta: obsada zastępcza (`MOCKUP_ACTORS_GRAVE`), nakładki i lica biomu (`MOCKUP_BIOME_DECALS`, `MOCKUP_BIOME_FACES`);
+- wynik: `public/assets/tilesets/graveyard_tileset.{png,json}` (132 kafle); arkusze ruin, leża i Grzybni identyczne co do bajtu.
+
+**Czytelność (makieta, palety A/B/C):**
+- bohater i zarażony pająk czytelni na wszystkich;
+- grzybiec słaby na B i C (ciało 1,13, Δbarwy 49° na C);
+- grzybiec zostaje tylko do czasu wrogów biomu — ich czytelność na palecie C sprawdzimy w kroku 32b.
+
+**Gra:**
+- `BiomeId.Graveyard`, `BIOME_BY_FLOOR[4]`;
+- `GRAVEYARD_TILESET_ASSET`, `GRAVEYARD_DRESSING` (nakładki 14%, kości, świeczki, nikła grzybnia, lica 30%, pajęczyny 30%), `GRAVEYARD_MIST`;
+- `FloorDressing`: nowe `largeDecals` — duże nakładki biomu (płyty 1,2%, zwłoki 1% na kafel), kładzione tylko w całości na wolnej podłodze. Biomy bez nich nie zużywają losowań, więc ich dekorowanie się nie zmienia.
+
+**Testy:**
+- `biomes.test.ts`:
+  - piętro 4 to Cmentarzysko;
+  - dekoracje biomu, zwłoki zawsze 2×1;
+  - grzyb ledwo dociera (bez pleśni i kępek, grzybnia < 15% wag);
+  - mgiełka ciemniejsza niż mgła Grzybni, z szerszym widokiem, słabsza niż „Mrok”;
+  - czytelność bohatera i zarażonego pająka;
+- `FloorDressing.test.ts`: duże nakładki w całości na podłodze; pusta lista nie zmienia dekorowania.
+
+**Weryfikacja:**
+- `npm run build`: 824 testy zielone;
+- w grze (`?seed=7&floor=4`):
+  - biom `graveyard`, 11 świec, 13 wrogów, modyfikator „Kapliczka łaski”;
+  - zrzuty: płyty nagrobne i świeczki w trupiej zieleni, mrok mgiełki za pokojem;
+  - świece w uchwytach, kostnica i nisza na licu, kości;
+- brak nowych błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#cmentarzysko`
+- klimat: czy to już cmentarzysko i czy grzyba jest wystarczająco mało;
+- gęstość zwłok, płyt i świeczek;
+- mgiełka (kolor, zasięg widoku);
+- czy zwłoki czytają się jako zwłoki.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2428,6 +2498,22 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Zostaje animacja śmierci Króla (dziś ginie od razu i zostaje plama).
 
 **Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, test właściciela: „super” — potem kolejny biom. Krok 31: lekko losowa kolejność ataków bossów.
+
+**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a zrobiony (paleta C, kafle, dekoracje, mgiełka). Dalej: 32b — zarażeni ludzie / grzybowe zombie (wrogowie biomu, czytelni na palecie C), potem boss.
+
+**Boss Cmentarzyska — pomysł właściciela (po kroku 32a):** `#decyzja` `#cmentarzysko` `#wampirzy-lord`
+- „wampirzy lord”, ale nie typowy wampir: zainfekowany człowiek, który **zjada mniejsze zombiaki**;
+- zombiaki trzyma w **kokonach w swojej sali**; gdy przechodzi obok, kokony go **wzmacniają**;
+- w ręce tasak albo nóż i widelec (do wyboru);
+- zamiast głowy **wielka szczęka**, którą próbuje kąsać gracza;
+- **decyzja właściciela:** broń to **tasak**; moja propozycja mechaniki przyjęta („działać według twojego planu”):
+  - **Uczta:** 4–6 kokonów z zombiakami w sali; Lord co jakiś czas pożera kokon (ok. 1 s, zapowiedziane — okno na kontrę), leczy się i dostaje kumulujące się wzmocnienie (ciosy, chód); gracz może zniszczyć kokon wcześniej, ale wypuszcza wtedy małego zombiaka; po wściekłości („Głód!”) ucztuje częściej;
+  - **kąsanie szczęką** z bliska (poza wzorem, jak smagnięcie Królowej) — trafienie leczy Lorda;
+  - **szarża z kłapnięciem** — doskok do miejsca gracza z czerwoną strefą lądowania;
+  - **cios tasakiem** — szeroki, ciężki zamach łukiem, wolny i bolesny;
+  - **zew spiżarni** — jeden zombiak wychodzi z kokonu i zagania gracza;
+- kolejność: najpierw zwykłe zombie (32b), potem Lord;
+- właściciel: commit i push po każdym kroku („wrzucaj wszystko na GitHuba i lecimy dalej”).
 
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:

@@ -3,7 +3,7 @@ import type { DungeonFloor } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING } from '@/config/dressingConfig';
+import { FLOOR_DRESSING, GRAVEYARD_DRESSING } from '@/config/dressingConfig';
 import type { DressedFloor, DressedLayer, DressingExtras } from '@/dungeon/FloorDressing';
 import { EMPTY_TILE, dressFloor, gateOrientation, wallDistances } from '@/dungeon/FloorDressing';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
@@ -275,6 +275,31 @@ describe('FloorDressing — podłoga, cienie, nakładki', () => {
     }
     expect(parts).toBeGreaterThan(0);
     expect(parts % 2).toBe(0);
+  });
+
+  it('duże nakładki biomu (Cmentarzysko: płyty 1×2, zwłoki 2×1) leżą w całości na zwykłej podłodze', () => {
+    const grave = loadTileset('graveyard_tileset.json');
+    const byFrame = new Map<number, string>();
+    for (const [name, t] of Object.entries(grave.tiles)) for (const f of (t.frames ?? [[t.frame]]).flat()) byFrame.set(f, name);
+    const large = new Set((GRAVEYARD_DRESSING.largeDecals ?? []).flatMap(({ group }) => grave.groups[group] ?? []));
+    let cells = 0;
+    for (const floor of sampleFloors([4], 6)) {
+      const d = dressFloor(floor, grave, GRAVEYARD_DRESSING, SEED);
+      floor.tiles.forEach((t, i) => {
+        const name = byFrame.get(d.floorDecal.frames[i]!);
+        if (!name || !large.has(name)) return;
+        cells++;
+        expect(t).toBe(TileType.Floor);
+      });
+    }
+    expect(cells).toBeGreaterThan(0);
+  });
+
+  it('biom bez dużych nakładek dekoruje się tak samo jak przed krokiem 32a (te same losowania)', () => {
+    const floor = sampleFloors([1], 1)[0]!;
+    const before = dressFloor(floor, TILESET, FLOOR_DRESSING, SEED);
+    const withEmpty = dressFloor(floor, TILESET, { ...FLOOR_DRESSING, largeDecals: [] }, SEED);
+    expect(withEmpty.floorDecal.frames).toEqual(before.floorDecal.frames);
   });
 
   it('gęstość nakładek na wygenerowanych piętrach jest umiarkowana', () => {

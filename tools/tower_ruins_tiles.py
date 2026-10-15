@@ -124,11 +124,15 @@ class Palette:
     flame: tuple = FLAME
     slime: tuple = SLIME
     outline: Color = OUT
+    # Cmentarzysko (krok 32a): rozkładające się ciało i resztki grzybni z Grzybni. Puste w innych biomach.
+    flesh: tuple = ()  # 3: cień, skóra, jasna
+    mycel: tuple = ()  # 2: strzępka, świecąca końcówka
+
 
     def colors(self):
         out = set()
         for v in self.__dict__.values():
-            if isinstance(v, tuple) and v and isinstance(v[0], tuple):
+            if isinstance(v, tuple) and v and isinstance(v[0], tuple):  # rampa (pusta pomijana)
                 out.update(v)
             elif isinstance(v, tuple) and len(v) == 4 and isinstance(v[0], int):
                 out.add(v)
@@ -231,6 +235,71 @@ PALETTES = {
         # Bioluminescencja: grzyby-latarnie zamiast pochodni (poświata gry też bierze barwę z tej rampy).
         flame=oks((.48, .090, 230), (.63, .120, 220), (.80, .120, 205), (.92, .060, 195)),
     ),
+    # Cmentarzysko (krok 32a): ludzkie miejsce pochówku, gdzie upadli zatruci; grzyb ledwo dociera.
+    # Trzy kandydatki do wyboru przez właściciela. Jasność podłogi jak w Grzybni (czytelność postaci),
+    # mrok daje światło gry. Mury ciemniejsze niż w Grzybni (każdy biom mroczniejszy).
+    # A: zimny popiół z nutą zieleni — kamień nagrobny, chłodny i martwy.
+    'cmentarz_popiol': Palette(
+        key='cmentarz_popiol', label='A: zimny popiół',
+        floor=oks((.29, .014, 200), (.37, .014, 175), (.445, .014, 160), (.49, .016, 158), (.535, .016, 155), (.58, .016, 150)),
+        floor_alt=ok(.43, .016, 170),
+        wall_top=oks((.15, .016, 220), (.23, .018, 215), (.34, .018, 205), (.40, .018, 200), (.48, .018, 195), (.56, .016, 190)),
+        wall_block_alt=ok(.37, .018, 210),
+        wall_face=oks((.11, .016, 225), (.16, .018, 220), (.20, .018, 215)),
+        wall_fade=oks((.10, .014, 225), (.15, .016, 220), (.18, .016, 215)),
+        deep=oks((.08, .012, 225), (.10, .012, 225)),
+        # Zgnilizna i zacieki: ciemny brąz rozkładu.
+        stain=oks((.29, .035, 60), (.35, .040, 65)),
+        # Kurz grobowy: szary popiół.
+        ash=oks((.70, .012, 150), (.58, .012, 160)),
+        bone=oks((.66, .035, 85), (.77, .036, 88), (.87, .028, 92)),
+        # Świeczki wotywne zamiast pochodni: blady, chorobliwy płomień (żółć z nutą zieleni).
+        flame=oks((.52, .095, 75), (.68, .115, 88), (.83, .105, 98), (.93, .050, 102)),
+        # Zgnilizna: skóra zmarłych w szarozieleni.
+        flesh=oks((.40, .030, 135), (.49, .036, 128), (.58, .036, 122)),
+        # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
+        mycel=oks((.55, .045, 215), (.76, .075, 205)),
+    ),
+    # B: ziemia grobowa — szarobrązowa, ubita posadzka i szare mury grobowców.
+    'cmentarz_ziemia': Palette(
+        key='cmentarz_ziemia', label='B: ziemia grobowa',
+        floor=oks((.29, .022, 50), (.37, .022, 55), (.445, .024, 60), (.49, .026, 62), (.535, .026, 65), (.58, .024, 68)),
+        floor_alt=ok(.43, .026, 50),
+        wall_top=oks((.15, .012, 250), (.23, .014, 245), (.34, .014, 240), (.40, .014, 235), (.48, .014, 230), (.56, .012, 225)),
+        wall_block_alt=ok(.37, .014, 250),
+        wall_face=oks((.11, .012, 255), (.16, .014, 250), (.20, .014, 245)),
+        wall_fade=oks((.10, .010, 255), (.15, .012, 250), (.18, .012, 245)),
+        deep=oks((.08, .010, 255), (.10, .010, 255)),
+        stain=oks((.27, .040, 45), (.33, .045, 50)),
+        ash=oks((.68, .016, 70), (.57, .016, 65)),
+        bone=oks((.66, .035, 85), (.77, .036, 88), (.87, .028, 92)),
+        # Świeczki wotywne zamiast pochodni: blady, chorobliwy płomień (żółć z nutą zieleni).
+        flame=oks((.52, .095, 75), (.68, .115, 88), (.83, .105, 98), (.93, .050, 102)),
+        # Zgnilizna: skóra zmarłych w szarozieleni.
+        flesh=oks((.40, .030, 135), (.49, .036, 128), (.58, .036, 122)),
+        # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
+        mycel=oks((.55, .045, 215), (.76, .075, 205)),
+    ),
+    # C: trupia zieleń — oliwkowy, chorobliwy kamień; rozkład wsiąkł w posadzkę.
+    'cmentarz_trupi': Palette(
+        key='cmentarz_trupi', label='C: trupia zieleń',
+        floor=oks((.29, .028, 125), (.37, .030, 120), (.445, .032, 115), (.49, .034, 112), (.535, .034, 110), (.58, .032, 108)),
+        floor_alt=ok(.43, .034, 125),
+        wall_top=oks((.15, .020, 150), (.23, .022, 145), (.34, .024, 140), (.40, .024, 135), (.48, .022, 130), (.56, .020, 125)),
+        wall_block_alt=ok(.37, .024, 150),
+        wall_face=oks((.11, .018, 155), (.16, .020, 150), (.20, .022, 145)),
+        wall_fade=oks((.10, .016, 155), (.15, .018, 150), (.18, .020, 145)),
+        deep=oks((.08, .012, 155), (.10, .014, 155)),
+        stain=oks((.28, .040, 70), (.34, .045, 75)),
+        ash=oks((.70, .016, 110), (.58, .016, 115)),
+        bone=oks((.66, .035, 85), (.77, .036, 88), (.87, .028, 92)),
+        # Świeczki wotywne zamiast pochodni: blady, chorobliwy płomień (żółć z nutą zieleni).
+        flame=oks((.52, .095, 75), (.68, .115, 88), (.83, .105, 98), (.93, .050, 102)),
+        # Zgnilizna: skóra zmarłych w szarozieleni.
+        flesh=oks((.40, .030, 135), (.49, .036, 128), (.58, .036, 122)),
+        # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
+        mycel=oks((.55, .045, 215), (.76, .075, 205)),
+    ),
 }
 DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 
@@ -242,6 +311,8 @@ BIOMES = {
     'spider_lair': {'palette': 'pajeczy', 'extras': ('spider',), 'reserved_hues': False},
     # Grzybnia (krok 28a): dalszy ciąg leża (jaja, nici, pancerzyki) porośnięty grzybem; fiolet z wyboru właściciela.
     'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
+    # Cmentarzysko (krok 32a): ludzki biom — groby, kości, zwłoki zatrutych; grzybnia ledwo dociera.
+    'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave',), 'reserved_hues': True},
 }
 
 
@@ -1101,6 +1172,233 @@ def face_detail(kind):
     return gen
 
 
+# ---------------- krok 32a: Cmentarzysko ----------------
+def thick(img, x0, y0, x1, y1, w, col):
+    """Gruba linia (kółka co pół piksela) — kości, kończyny, łachmany."""
+    n = max(1, int(math.hypot(x1 - x0, y1 - y0) * 2))
+    for i in range(n + 1):
+        t = i / n
+        cx, cy = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        for y in range(int(cy - w), int(cy + w) + 2):
+            for x in range(int(cx - w), int(cx + w) + 2):
+                if math.hypot(x + .5 - cx, y + .5 - cy) <= w / 2 + .2:
+                    img.put(x, y, col)
+
+
+def small_skull(img, p, cx, cy, rad=2.6):
+    """Czaszka z góry (oczodoły na południe), dla nakładek i lic."""
+    B = p.bone
+    for y in range(int(cy - rad) - 1, int(cy + rad) + 2):
+        for x in range(int(cx - rad) - 1, int(cx + rad) + 2):
+            dx, dy = (x + .5 - cx) / rad, (y + .5 - cy) / (rad * 1.1)
+            if dx * dx + dy * dy <= 1:
+                img.put(x, y, B[2] if dy < -.3 else (B[1] if dy < .5 else B[0]))
+    ey = int(cy + rad * .25)
+    img.put(int(cx - rad * .45), ey, p.outline)
+    img.put(int(cx + rad * .45), ey, p.outline)
+
+
+def tiny_shroom(img, p, cx, base, rad=1.6):
+    """Grzybek wyrastający ze zwłok: blady kapelusz i świecąca plamka grzybni (grzyb ledwo tu dociera)."""
+    img.put(int(cx), int(base), p.bone[0])
+    for x in range(int(cx - rad), int(cx + rad) + 1):
+        img.put(x, int(base) - 1, p.bone[1])
+    img.put(int(cx), int(base) - 2, p.bone[2])
+    img.put(int(cx), int(base) - 1, p.mycel[1])
+
+
+def grave_decal(kind):
+    """Nakładki Cmentarzyska: płyty nagrobne, kości, zwłoki zatrutych, świeczki, nikła grzybnia."""
+    def gen(p, r):
+        W, D, O = p.wall_top, p.dirt, p.outline
+        if kind == 'slab':  # płyta nagrobna w posadzce (1x2): krzyż wyryty w kamieniu, pęknięcie, zgnilizna u stóp
+            img = Img(T, 2 * T)
+            x0, x1, y0, y1 = 6, 25, 4, 59
+            for y in range(y0, y1 + 1):
+                for x in range(x0, x1 + 1):
+                    c = W[4] if (x == x0 or y == y0) else (W[2] if (x == x1 or y == y1) else W[3])
+                    img.put(x, y, c)
+            for y in range(14, 41):  # wyryty krzyż: ciemny rowek z oświetloną krawędzią
+                img.put(15, y, W[1])
+                img.put(16, y, W[2])
+            for x in range(10, 22):
+                img.put(x, 21, W[1])
+                img.put(x, 22, W[4] if x not in (15, 16) else W[1])
+            for y in (46, 49, 52):  # zatarty napis
+                for x in range(10, 22):
+                    if r.random() < .6:
+                        img.put(x, y, W[2])
+            crack(img, r, 22, 8, 22, -1, 1, dark=W[1], lit=W[4], keep=lambda x, y: x0 < x < x1 and y0 < y < y1)
+            for y in range(52, 59):  # zgnilizna wsiąkająca od stóp
+                for x in range(x0 + 1, x1):
+                    if r.random() < (y - 50) / 14:
+                        img.put(x, y, p.stain[0] if r.random() < .6 else p.stain[1])
+            outline(img, O)
+        elif kind in ('bones_a', 'bones_b'):  # rozrzucone kości: piszczele, żebra, mała czaszka
+            img = Img(T, T)
+            B = p.bone
+            if kind == 'bones_a':
+                thick(img, 6, 22, 16, 17, 1.6, B[1])
+                img.put(5, 22, B[2])
+                img.put(16, 16, B[2])
+                for i in range(4):  # żebra
+                    thick(img, 18, 8 + i * 3, 25, 10 + i * 3, 1.0, B[0] if i % 2 else B[1])
+                small_skull(img, p, 11, 9)
+            else:
+                thick(img, 8, 9, 21, 13, 1.6, B[1])
+                img.put(7, 9, B[2])
+                img.put(22, 13, B[2])
+                thick(img, 14, 24, 24, 20, 1.4, B[0])
+                small_skull(img, p, 24, 26, 2.2)
+            outline(img, O)
+        elif kind in ('corpse_a', 'corpse_b'):  # zwłoki zatrutego: łachmany, szarozielona skóra, kości, grzybki
+            # Zawsze leżą w poprzek (2x1): z rzutu z góry ciało pionowe wyglądałoby jak stojąca postać.
+            # b: zwinięte — nogi podkulone, ręka nad głową.
+            curled = kind == 'corpse_b'
+            horiz = True
+            img = Img(2 * T, T)
+            Fl, R = p.flesh, D
+
+            def P(a, b):  # (wzdłuż ciała, w poprzek) -> (x, y)
+                return (a, b)
+
+            mid = 16
+            for side in (-3, 3):  # nogi w łachmanach
+                if curled:  # kolana podciągnięte w bok
+                    knee = (44, mid + 8 + side * .5)
+                    thick(img, 34, mid + side * .6, knee[0], knee[1], 3.2, R[2])
+                    thick(img, knee[0], knee[1], 52, mid + 2 + side * .8, 3.0, R[1])
+                    img.put(53, int(mid + 2 + side * .8), p.bone[1])
+                    continue
+                ax, ay = P(34, mid + side * .6)
+                bx, by = P(55, mid + side + (1 if side > 0 else -2))
+                thick(img, ax, ay, bx, by, 3.2, R[2])
+                fx, fy = P(57, mid + side + (1 if side > 0 else -2))
+                img.put(int(fx), int(fy), p.bone[1])
+            for a in range(14, 36):  # tułów: podarty łachman
+                for b in range(mid - 6, mid + 7):
+                    if abs(b - mid) <= 6 - (2 if a < 17 or a > 33 else 0):
+                        x, y = P(a, b)
+                        img.put(x, y, R[3] if b < mid - 2 else (R[2] if b < mid + 3 else R[1]))
+            for a in range(20, 30, 3):  # dziury w łachmanie: żebra
+                for b in range(mid - 3, mid + 3):
+                    x, y = P(a, b)
+                    img.put(x, y, p.bone[1] if (b - mid) % 2 else Fl[0])
+            # ręce: jedna wzdłuż ciała, druga wyciągnięta (upadł, czołgając się)
+            ax, ay = P(18, mid + 7)
+            bx, by = P(31, mid + 9)
+            thick(img, ax, ay, bx, by, 2.0, Fl[1])
+            reach = (3, mid + 9) if curled else (5, mid - 11)  # b: ręka nad głową, a: wyciągnięta naprzód
+            ax, ay = P(16, mid + 6) if curled else P(16, mid - 6)
+            thick(img, ax, ay, reach[0], reach[1], 2.0, Fl[1])
+            img.put(reach[0] - 1, reach[1] + (1 if curled else -1), p.bone[2])
+            cx, cy = P(9, mid)  # głowa: wpół zgniła — skóra z odsłoniętą czaszką
+            for y in range(int(cy) - 5, int(cy) + 6):
+                for x in range(int(cx) - 5, int(cx) + 6):
+                    dx, dy = x + .5 - cx, y + .5 - cy
+                    if dx * dx + dy * dy <= 20:
+                        img.put(x, y, Fl[2] if dx + dy < -3 else (Fl[1] if dx + dy < 2 else Fl[0]))
+            small_skull(img, p, cx + (1 if horiz else 0), cy + (0 if horiz else 1), 2.4)
+            outline(img, O)
+            for _ in range(70):  # plama rozkładu pod ciałem (bez obrysu, wsiąka w posadzkę)
+                x, y = P(r.uniform(12, 40), r.uniform(mid - 10, mid + 10))
+                if img.get(int(x), int(y)) == CLR:
+                    img.put(int(x), int(y), p.stain[0])
+            for _ in range(3):  # grzybnia ledwo dociera: kilka strzępek od ciała
+                a, b = r.uniform(18, 34), mid + r.choice((-7, 7))
+                ang = r.uniform(0, math.tau)
+                for i in range(r.randint(5, 9)):
+                    ang += r.uniform(-.5, .5)
+                    a += math.cos(ang)
+                    b += math.sin(ang)
+                    x, y = P(a, b)
+                    if img.get(int(x), int(y)) == CLR:
+                        img.put(int(x), int(y), p.mycel[0])
+            for a, b in ((22, mid - 3), (29, mid + 2), (13, mid + 4))[: 3 if curled else 2]:  # grzybki na łachmanie
+                x, y = P(a, b)
+                tiny_shroom(img, p, x, y)
+        elif kind in ('candles_a', 'candles_b'):  # świeczki wotywne: wosk, rozlany wosk, płomyk
+            img = Img(T, T)
+            spots = [(10, 20, 6), (15, 22, 4), (21, 19, 5)] if kind == 'candles_a' else [(12, 14, 4), (19, 24, 6)]
+            for cx, base, h in spots:
+                for x in range(cx - 2, cx + 3):
+                    img.put(x, base + 1, p.bone[0])
+                c = Img(T, T)
+                for y in range(base - h, base + 1):
+                    c.put(cx, y, p.bone[2])
+                    c.put(cx + 1, y, p.bone[1])
+                outline(c, O)
+                img.blit(c, 0, 0)
+                img.put(cx, base - h - 1, p.flame[2])
+                img.put(cx, base - h - 2, p.flame[3])
+                img.put(cx + 1, base - h - 1, p.flame[1])
+        elif kind in ('mycel_faint_a', 'mycel_faint_b'):  # nikła grzybnia: 1–2 cienkie strzępki, świecąca końcówka
+            img = Img(T, T)
+            for _ in range(1 if kind.endswith('a') else 2):
+                x, y = r.uniform(6, 26), r.uniform(6, 26)
+                ang = r.uniform(0, math.tau)
+                for i in range(r.randint(8, 13)):
+                    ang += r.uniform(-.6, .6)
+                    x, y = x + math.cos(ang), y + math.sin(ang)
+                    if 1 <= x < T - 1 and 1 <= y < T - 1:
+                        img.put(int(x), int(y), p.mycel[0])
+                img.put(min(T - 2, max(1, int(x))), min(T - 2, max(1, int(y))), p.mycel[1])
+        else:
+            raise ValueError(kind)
+        return img
+    return gen
+
+
+def grave_face(kind):
+    """Detale lica muru Cmentarzyska (wiersze 24–31): nisze grobowe, epitafia, czaszki kostnicy."""
+    def gen(p, r):
+        img, O, W = Img(T, T), p.outline, p.wall_top
+        fy = T - FACE
+        if kind == 'niche':  # loculus: ciemna wnęka, w środku czaszka i kości
+            for y in range(fy + 1, T - 1):
+                for x in range(9, 23):
+                    img.put(x, y, O if y > fy + 1 else p.wall_face[0])
+            small_skull(img, p, 13, T - 4, 2.2)
+            for x in range(17, 22):
+                img.put(x, T - 3, p.bone[1])
+            img.put(21, T - 4, p.bone[2])
+        elif kind == 'epitaph':  # tablica z zatartym napisem
+            for y in range(fy + 1, T - 1):
+                for x in range(8, 24):
+                    img.put(x, y, W[4] if y == fy + 1 else (W[3] if y < T - 2 else W[2]))
+            for y in (fy + 3, fy + 5):
+                for x in range(10, 22):
+                    if r.random() < .7:
+                        img.put(x, y, W[1])
+            outline(img, O)
+        elif kind == 'skulls':  # kostnica: rząd czaszek we wnęce
+            for y in range(fy + 1, T - 1):
+                for x in range(5, 27):
+                    img.put(x, y, O)
+            for cx in (9, 16, 23):
+                small_skull(img, p, cx, fy + 4, 2.6)
+        return img
+    return gen
+
+
+def overgrow_grave(e, img, p, r):
+    """Cmentarzysko (krok 32a): grzyb ledwo dociera — rzadkie strzępki w fugach podłogi, zacieki zgnilizny
+    na licach murów. Dużo skromniej niż w Grzybni."""
+    if e.layer == 'floorBase':
+        for y in range(img.h):
+            for x in range(img.w):
+                if img.get(x, y) == p.floor[1] and r.random() < .04:
+                    img.put(x, y, p.mycel[0])
+    elif e.layer == 'wall':
+        face_top = T - FACE if img.get(4, T - 1) == p.outline else T
+        if face_top < T:
+            for _ in range(r.randint(0, 2)):
+                x = r.randrange(3, T - 3)
+                for y in range(face_top, face_top + r.randint(2, FACE - 2)):
+                    if img.get(x, y) not in (None, p.outline, CLR):
+                        img.put(x, y, p.stain[0])
+
+
 def arch(p, r):
     """Nadproże łuku nad przejściem szerokości 2 kafli: wierzch muru i lico z łukowatą dolną krawędzią.
     Rysowane nad postaciami (overheadDecor) — przejście pod nim zostaje czytelne."""
@@ -1282,6 +1580,19 @@ def manifest():
         # Mury Grzybni bardziej zniszczone: pęknięte i wyszczerbione warianty losują się 4× częściej.
         m = [dataclasses.replace(e, weight=e.weight * 4)
              if e.layer == 'wall' and e.name.endswith(('_crack', '_chunk')) else e for e in m]
+    if 'grave' in BIOMES[BIOME]['extras']:
+        # Cmentarzysko (krok 32a): dopisane na końcu (first-fit), kafle wspólne z ruinami się nie przesuwają.
+        for kind, weight in (('niche', 4), ('epitaph', 2), ('skulls', 2)):
+            m.append(Entry(f'face_{kind}', grave_face(kind), 'wallDecor', group='wallFace.grave', weight=weight))
+        m.append(Entry('decal_grave_slab_1x2', grave_decal('slab'), 'floorDecal', 1, 2, group='decal.graveSlab', weight=1))
+        m.append(Entry('decal_corpse_2x1', grave_decal('corpse_a'), 'floorDecal', 2, 1, group='decal.corpse', weight=1,
+                       flip_x=True))
+        m.append(Entry('decal_corpse_b_2x1', grave_decal('corpse_b'), 'floorDecal', 2, 1, group='decal.corpse', weight=1,
+                       flip_x=True))
+        for kind, group in (('bones_a', 'decal.bones'), ('bones_b', 'decal.bones'),
+                            ('candles_a', 'decal.candles'), ('candles_b', 'decal.candles'),
+                            ('mycel_faint_a', 'decal.mycelFaint'), ('mycel_faint_b', 'decal.mycelFaint')):
+            m.append(Entry(f'decal_{kind}', grave_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
     return m
 
 
@@ -1295,6 +1606,8 @@ def render_tiles(p):
         img = e.gen(p, random.Random(seed_of(e.name)))
         if 'fungus' in BIOMES[BIOME]['extras']:  # Grzybnia: porost na podłodze i murach (osobne ziarno)
             overgrow(e, img, p, random.Random(seed_of(e.name + '/porost')))
+        if 'grave' in BIOMES[BIOME]['extras']:  # Cmentarzysko: nikła grzybnia i zacieki zgnilizny
+            overgrow_grave(e, img, p, random.Random(seed_of(e.name + '/porost')))
         tiles[e.name] = img
     return tiles
 
@@ -1498,12 +1811,33 @@ MOCKUP_ACTORS_LAIR = [
     ('bat', 6, 752, 252, False, 1),
     ('bat_wave', 2, 290, 238, False, 0),
 ]
+# Cmentarzysko (krok 32a): do czasu własnych zarażonych ludzi — wrogowie Grzybni jako zastępcy.
+MOCKUP_ACTORS_GRAVE = [
+    ('barbarian_sword', 2, 368, 262, True, 4),
+    ('infected_spider', 6, 452, 236, True, 1),
+    ('infected_spider', 1, 300, 330, True, 2),
+    ('fungoid', 2, 232, 236, False, 5),
+    ('fungoid', 6, 752, 252, False, 0),
+    ('spore_ball', 0, 290, 238, False, 0),
+]
+# Nakładki biomu na makiecie: (kafel, x, y) w kaflach.
+MOCKUP_BIOME_DECALS = {
+    'graveyard': [('decal_corpse_2x1', 9, 12), ('decal_grave_slab_1x2', 15, 5), ('decal_grave_slab_1x2', 17, 5),
+                  ('decal_candles_a', 15, 7), ('decal_bones_a', 6, 7), ('decal_bones_b', 12, 6),
+                  ('decal_corpse_b_2x1', 13, 9), ('decal_mycel_faint_b', 11, 9), ('decal_candles_b', 18, 11)],
+}
+# Detale lica biomu na makiecie (rysowane po murach): (kafel, x, y).
+MOCKUP_BIOME_FACES = {
+    'graveyard': [('face_niche', 5, 3), ('face_skulls', 7, 3), ('face_niche', 12, 3), ('face_epitaph', 14, 3),
+                  ('face_niche', 17, 3), ('torch_sconce', 9, 3), ('torch_flame_0', 9, 3)],
+}
 # Postacie mierzone pod kątem czytelności na palecie biomu.
 METRIC_CAST = {
     'tower_ruins': ('barbarian', 'trashcan', 'mage', 'sludge'),
     'spider_lair': ('barbarian_sword', 'cave_spider', 'bat', 'queen', 'spiderling'),
     # Grzybnia (krok 28b): zarażony pająk i grzybiec; Król Pająków w kroku 29.
     'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
+    'graveyard': ('barbarian_sword', 'infected_spider', 'fungoid'),
 }
 
 
@@ -1574,6 +1908,8 @@ def compose_mockup(p, tiles, meta, seed=16):
                 put(weighted(rng, *group(g)), x, y, rng.random() < .5)
     put('decal_crack_2x1', 12, 11)
     put('decal_crack_1x2', 22 - 8, 8)
+    for name, x, y in MOCKUP_BIOME_DECALS.get(BIOME, []):
+        put(name, x, y)
     # 3. elementy podłogi
     for y in range(H):
         for x in range(Wd):
@@ -1622,11 +1958,15 @@ def compose_mockup(p, tiles, meta, seed=16):
             if grid[y][x] in props:
                 put(props[grid[y][x]], x, y)
     # 8. postacie (wg y), potem ściany nad postaciami
-    actors = MOCKUP_ACTORS_LAIR if BIOME in ('spider_lair', 'fungal_grove') else [(*a, 0) for a in MOCKUP_ACTORS]
+    actors = (MOCKUP_ACTORS_GRAVE if BIOME == 'graveyard'
+              else MOCKUP_ACTORS_LAIR if BIOME in ('spider_lair', 'fungal_grove')
+              else [(*a, 0) for a in MOCKUP_ACTORS])
     for key, row, cx, cy, _, col in sorted(actors, key=lambda a: a[3]):
         fr = load_frame(key, row, col)
         canvas.alpha_composite(fr, (cx - fr.width // 2, cy - fr.height // 2))
     for name, x, y in overhead:
+        put(name, x, y)
+    for name, x, y in MOCKUP_BIOME_FACES.get(BIOME, []):
         put(name, x, y)
     return canvas
 

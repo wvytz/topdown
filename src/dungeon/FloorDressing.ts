@@ -333,6 +333,7 @@ function dressDecals(
   for (let y = 0; y < floor.height; y++) {
     for (let x = 0; x < floor.width; x++) {
       if (!decorable(x, y)) continue;
+      if (placeLargeDecal(ctx, layer, decorable, x, y)) continue;
       if (rng.chance(config.longCrackChance)) {
         const name = ctx.pickVariant(config.longCrackGroup, []);
         const tile = ctx.tile(name);
@@ -363,6 +364,29 @@ function dressDecals(
       }
     }
   }
+}
+
+/** Duża nakładka biomu (krok 32a), jeśli wylosowana i mieści się w całości na wolnej podłodze. */
+function placeLargeDecal(
+  ctx: DressingContext,
+  layer: LayerBuilder,
+  decorable: (x: number, y: number) => boolean,
+  x: number,
+  y: number,
+): boolean {
+  for (const { chance, group } of ctx.config.largeDecals ?? []) {
+    if (!ctx.rng.chance(chance)) continue;
+    const name = ctx.pickVariant(group, []);
+    const tile = ctx.tile(name);
+    let fits = true;
+    for (let dy = 0; dy < tile.h; dy++) {
+      for (let dx = 0; dx < tile.w; dx++) fits &&= decorable(x + dx, y + dy);
+    }
+    if (!fits) continue;
+    placeTile(layer, x, y, name, tile, ctx.rollFlip(tile));
+    return true;
+  }
+  return false;
 }
 
 // ---------------- schody i kraty ----------------

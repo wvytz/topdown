@@ -17,6 +17,11 @@ export interface FloorDressingConfig {
   /** Szansa na długie pęknięcie (2×1 lub 1×2) zaczynające się na kaflu. */
   readonly longCrackChance: number;
   readonly longCrackGroup: string;
+  /**
+   * Duże nakładki biomu (np. płyty nagrobne 1×2, zwłoki 2×1; krok 32a): szansa na kaflu i grupa.
+   * Brak = biom ich nie ma (i nie zużywa losowań — dekorowanie innych biomów się nie zmienia).
+   */
+  readonly largeDecals?: readonly { readonly chance: number; readonly group: string }[];
   /** Kurz nawiany pod ścianę po danej stronie kafla. */
   readonly dust: {
     readonly north: { readonly chance: number; readonly group: string };
@@ -110,4 +115,30 @@ export const FUNGAL_GROVE_DRESSING: FloorDressingConfig = {
   },
   wallFace: { chance: 0.22, group: 'wallFace.fungus' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.5 },
+};
+
+/**
+ * Cmentarzysko (krok 32a): ludzki biom — kości, świeczki wotywne i nikła grzybnia na posadzce, płyty nagrobne
+ * i zwłoki zatrutych jako duże nakładki; nisze z czaszkami, kostnica i epitafia na licu. Grzyba dużo mniej
+ * niż w Grzybni („ledwo tu dociera”), pajęczyny rzadsze.
+ */
+export const GRAVEYARD_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalChance: 0.14,
+  decalGroupWeights: {
+    'decal.crack': 3,
+    'decal.debris': 1.5,
+    'decal.stain': 1,
+    'decal.broken': 0.4,
+    'decal.rubble': 0.2,
+    'decal.bones': 2.5,
+    'decal.candles': 1.5,
+    'decal.mycelFaint': 1,
+  },
+  largeDecals: [
+    { chance: 0.012, group: 'decal.graveSlab' },
+    { chance: 0.01, group: 'decal.corpse' },
+  ],
+  wallFace: { chance: 0.3, group: 'wallFace.grave' },
+  cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.3 },
 };

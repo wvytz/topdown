@@ -30,6 +30,7 @@ function dressingGroups(d: FloorDressingConfig): string[] {
     d.cobweb.nwGroup,
     d.cobweb.neGroup,
     ...Object.keys(d.decalGroupWeights),
+    ...(d.largeDecals ?? []).map((large) => large.group),
     ...Object.values(d.dust).map((side) => side.group),
     ...Object.values(d.combatDecals.groups),
   ];
@@ -47,10 +48,11 @@ function groupPixels(meta: TilesetMeta, sheet: RgbaImage, group: string): Rgba[]
 }
 
 describe('biomy: wybór piętra', () => {
-  it('biom = jedno piętro: 2 leże, 3 Grzybnia, reszta to ruiny', () => {
+  it('biom = jedno piętro: 2 leże, 3 Grzybnia, 4 Cmentarzysko, reszta to ruiny', () => {
     expect(biomeForFloor(2).id).toBe(BiomeId.SpiderLair);
     expect(biomeForFloor(3).id).toBe(BiomeId.FungalGrove);
-    for (const floor of [1, 4, 9]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
+    expect(biomeForFloor(4).id).toBe(BiomeId.Graveyard);
+    for (const floor of [1, 5, 9]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
   });
 
   it('każdy biom ma własne klucze tekstur i animacji pochodni', () => {
@@ -138,8 +140,9 @@ describe('Grzybnia (krok 28a)', () => {
     expect(fog.wisps.alpha).toBeLessThan(0.25);
   });
 
-  it('pozostałe biomy bez mgły', () => {
-    for (const biome of Object.values(BIOMES)) if (biome.id !== BiomeId.FungalGrove) expect(biome.fog).toBeNull();
+  it('ruiny i leże bez mgły', () => {
+    expect(BIOMES[BiomeId.TowerRuins].fog).toBeNull();
+    expect(BIOMES[BiomeId.SpiderLair].fog).toBeNull();
   });
 
   // Postacie piętra 3: bohater, zarażony pająk (Rusher), grzybiec (Kiter, krok 28b), Król Pająków (krok 29).
@@ -154,6 +157,61 @@ describe('Grzybnia (krok 28a)', () => {
     const img = readPng(`${ROOT}public/${def.url}`);
     const colors = spriteColors(img, { x: 0, y: 4 * def.frameHeight, w: def.frameWidth, h: def.frameHeight });
     for (const group of [grove.dressing.floorGroup, grove.dressing.corridorGroup]) {
+      const r = evaluateReadability(colors, floorReference(groupPixels(meta, sheet, group)));
+      expect(r.passes, `${group}: ${JSON.stringify(r)}`).toBe(true);
+    }
+  });
+});
+
+describe('Cmentarzysko (krok 32a)', () => {
+  const grave = BIOMES[BiomeId.Graveyard];
+  const grove = BIOMES[BiomeId.FungalGrove];
+  const meta = loadTileset(fileOf(grave.tileset.jsonUrl));
+  const sheet = readPng(`${ROOT}public/${grave.tileset.imageUrl}`);
+
+  it('ma własne dekoracje: nisze, kostnicę i epitafia na licu; kości, świeczki, płyty nagrobne i zwłoki', () => {
+    expect(meta.groups['wallFace.grave']).toEqual(expect.arrayContaining(['face_niche', 'face_skulls', 'face_epitaph']));
+    for (const group of ['decal.bones', 'decal.candles', 'decal.mycelFaint', 'decal.graveSlab', 'decal.corpse']) {
+      expect(meta.groups[group]?.length, group).toBeGreaterThan(0);
+    }
+    expect(meta.tiles.decal_grave_slab_1x2).toMatchObject({ w: 1, h: 2 });
+    expect(meta.tiles.decal_corpse_2x1).toMatchObject({ w: 2, h: 1 });
+  });
+
+  it('zwłoki zawsze leżą w poprzek (2×1) — pionowe z góry wyglądałyby jak stojąca postać', () => {
+    for (const name of meta.groups['decal.corpse'] ?? []) expect(meta.tiles[name]).toMatchObject({ w: 2, h: 1 });
+  });
+
+  it('grzyb ledwo dociera: bez pleśni i kępek grzybów Grzybni, grzybnia rzadka', () => {
+    const weights = grave.dressing.decalGroupWeights;
+    expect(weights['decal.mold']).toBeUndefined();
+    expect(weights['decal.mushrooms']).toBeUndefined();
+    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect((weights['decal.mycelFaint'] ?? 0) / total).toBeLessThan(0.15);
+  });
+
+  it('mgiełka: mroczniejsza niż Grzybnia, ale z szerszym widokiem przy bohaterze; słabsza niż „Mrok”', () => {
+    const mist = grave.fog!;
+    const fog = grove.fog!;
+    const lum = (c: number) => 0.2126 * ((c >> 16) & 255) + 0.7152 * ((c >> 8) & 255) + 0.0722 * (c & 255);
+    expect(lum(mist.color)).toBeLessThan(lum(fog.color));
+    expect(mist.profile.maxDarkness).toBeGreaterThan(fog.profile.maxDarkness);
+    expect(mist.profile.maxDarkness).toBeLessThan(LIGHTING.darknessModifier.maxDarkness);
+    expect(mist.profile.fullLightRadius).toBeGreaterThan(fog.profile.fullLightRadius);
+    expect(mist.wisps.alpha).toBeLessThan(fog.wisps.alpha);
+  });
+
+  // Bohater i zastępczy Rusher (zarażony pająk). Grzybiec na tej palecie jest słabo czytelny (makieta generatora:
+  // ciało 1,13, Δbarwy 49°) — zostaje tylko do czasu własnych wrogów biomu (krok 32b).
+  const CHARACTERS = [
+    ['Barbarzyńca', SPRITE_SHEETS.barbarian],
+    ['Zarażony pająk', SPRITE_SHEETS.infectedSpider],
+  ] as const;
+
+  it.each(CHARACTERS)('%s: czytelny na podłodze i bruku Cmentarzyska (STYLEGUIDE §6a)', (_name, def) => {
+    const img = readPng(`${ROOT}public/${def.url}`);
+    const colors = spriteColors(img, { x: 0, y: 4 * def.frameHeight, w: def.frameWidth, h: def.frameHeight });
+    for (const group of [grave.dressing.floorGroup, grave.dressing.corridorGroup]) {
       const r = evaluateReadability(colors, floorReference(groupPixels(meta, sheet, group)));
       expect(r.passes, `${group}: ${JSON.stringify(r)}`).toBe(true);
     }

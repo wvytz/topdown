@@ -1,21 +1,22 @@
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
 import type { FogConfig } from '@/config/lightingConfig';
-import { FUNGAL_FOG } from '@/config/lightingConfig';
+import { FUNGAL_FOG, GRAVEYARD_MIST } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { CeilingDropConfig } from '@/systems/CeilingDrops';
 import type { CocoonConfig } from '@/systems/Cocoons';
 import type { PuffballConfig } from '@/systems/Puffballs';
 import type { StickyWebConfig } from '@/systems/StickyWebs';
 import { SPIDER_QUEEN } from '@/config/bossConfig';
-import { FUNGAL_GROVE_TILESET_ASSET, SPIDER_LAIR_TILESET_ASSET, TILESET_ASSET } from '@/config/tilesetConfig';
+import { FUNGAL_GROVE_TILESET_ASSET, GRAVEYARD_TILESET_ASSET, SPIDER_LAIR_TILESET_ASSET, TILESET_ASSET } from '@/config/tilesetConfig';
 
 /** Biomy wieży (krok 23): wygląd piętra, a od kolejnych kroków także jego zasady. */
 export enum BiomeId {
   TowerRuins = 'tower-ruins',
   SpiderLair = 'spider-lair',
   FungalGrove = 'fungal-grove',
+  Graveyard = 'graveyard',
 }
 
 export interface BiomeDefinition {
@@ -137,15 +138,32 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     },
     fog: FUNGAL_FOG,
   },
+  // Cmentarzysko (krok 32a): ludzki biom nad Grzybnią — tu upadli zatruci; jedni się rozkładają, inni zmieniają
+  // w grzybowe zombie. Grzyb ledwo dociera. Paleta C „trupia zieleń” (wybór właściciela), świece zamiast
+  // pochodni, zimna mgiełka. Wrogowie do czasu zarażonych ludzi: wrogowie Grzybni.
+  [BiomeId.Graveyard]: {
+    id: BiomeId.Graveyard,
+    name: 'Cmentarzysko',
+    tileset: GRAVEYARD_TILESET_ASSET,
+    dressing: GRAVEYARD_DRESSING,
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.InfectedSpider, [EnemyType.Kiter]: EnemyVariant.Fungoid },
+    ceilingDrops: null,
+    cocoons: null,
+    stickyWebs: null,
+    puffballs: null,
+    fog: GRAVEYARD_MIST,
+  },
 };
 
 /**
  * Biom na konkretnych piętrach; reszta to ruiny. Każdy biom to jedno piętro zakończone swoim bossem
- * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków.
+ * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków,
+ * 4 — Cmentarzysko (krok 32a; boss jeszcze nieustalony, do tego czasu Strażnik).
  */
 export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   2: BiomeId.SpiderLair,
   3: BiomeId.FungalGrove,
+  4: BiomeId.Graveyard,
 };
 
 export function biomeForFloor(floor: number): BiomeDefinition {

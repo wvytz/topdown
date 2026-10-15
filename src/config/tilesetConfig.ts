@@ -23,6 +23,17 @@ export const TILESET_ASSET: TilesetAsset = {
   version: 2,
 };
 
+/** Cmentarzysko (krok 32a): `python tools/tower_ruins_tiles.py --biome graveyard`. Pochodnie to świece w uchwytach. */
+export const GRAVEYARD_TILESET_ASSET: TilesetAsset = {
+  imageKey: 'tex-tileset-graveyard',
+  jsonKey: 'json-tileset-graveyard',
+  sheetKey: 'sheet-tileset-graveyard',
+  imageUrl: 'assets/tilesets/graveyard_tileset.png',
+  jsonUrl: 'assets/tilesets/graveyard_tileset.json',
+  torchAnimation: 'torch-flame-graveyard',
+  version: 2,
+};
+
 /** Grzybnia (krok 28a): `python tools/tower_ruins_tiles.py --biome fungal_grove`. Pochodnie to grzyby-latarnie. */
 export const FUNGAL_GROVE_TILESET_ASSET: TilesetAsset = {
   imageKey: 'tex-tileset-fungal-grove',
