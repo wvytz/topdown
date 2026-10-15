@@ -9,7 +9,13 @@ import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { NEW_RUN } from '@/systems/RunState';
 import { loadSpriteSheets, registerLootAnimations, registerSpriteAnimations } from '@/effects/spriteAnimations';
 
-/** Ładuje arkusze sprite'ów i kafli, generuje placeholderowe tekstury (geometria) i przechodzi do gry. */
+/** Klucz rejestru: dane startu pierwszego piętra, gdy ekran startowy jeszcze trwa (krok 34). */
+export const BOOT_START_DATA_KEY = 'bootStartData';
+
+/**
+ * Ładuje arkusze sprite'ów i kafli, generuje placeholderowe tekstury (geometria) i przechodzi do gry.
+ * Uruchamia ją SplashScene; jeśli ekran startowy jeszcze trwa, BootScene zostawia mu dane startu.
+ */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super(SceneKey.Boot);
@@ -33,7 +39,12 @@ export class BootScene extends Phaser.Scene {
     }
     this.generatePlaceholderTextures();
     const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: NEW_RUN, ...devStartOverrides() };
-    this.scene.start(SceneKey.Game, startData);
+    if (this.scene.isActive(SceneKey.Splash)) {
+      this.registry.set(BOOT_START_DATA_KEY, startData);
+      this.scene.stop();
+    } else {
+      this.scene.start(SceneKey.Game, startData);
+    }
   }
 
   private generatePlaceholderTextures(): void {
