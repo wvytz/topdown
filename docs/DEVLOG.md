@@ -3185,7 +3185,9 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja w przeglądarce:** `?floor=1&seed=3` — dwa pasy kolców wysuwające się na zmianę z ostrzeżeniem; pułapka ze strzałkami: nadepnięcie, żar w otworze, salwa strzałek przez pokój (gracz 90 → 71 HP); urny przy ścianach; bez błędów w konsoli.
 
-**Do oceny w testach właściciela** `#ruiny`: częstość i siła pułapek, czy pojawiać je też w innych biomach; ilość urn i łupu.
+**Decyzja właściciela po kroku 48** `#decyzja` `#ruiny`: pułapki i urny na razie tylko w ruinach; właściciel przetestuje i da znać.
+
+**Do oceny w testach właściciela** `#ruiny`: częstość i siła pułapek, ilość urn i łupu.
 
 ## Znane ograniczenia i backlog
 
