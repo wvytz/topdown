@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#czarodziejka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2648,6 +2648,31 @@ Makieta generatora:
 
 ---
 
+## Krok 34 — Czarodziejka: sprite'y drugiej bohaterki `#czarodziejka`
+
+**Decyzja właściciela:** `#decyzja` `#czarodziejka`
+- Plan palety i klatek przedstawiony na płótnie (Design) i zaakceptowany przed implementacją.
+- Suknia **szafirowa** (szkarłat odpadł: na piaskowcu ma ok. 1,36 : 1 i za małą różnicę barwy, więc nie spełnia §6a).
+- **Kule energii wypuszcza atak** (kolumna 7 rzutu zaklęcia), a nie tylko krążą wokół postaci.
+
+**Zrobione:**
+- Generator `tools/sorceress_sprites.py` (Pillow, `rotate45` i `outline` z istniejących narzędzi). Postać z brył na N, 8 kierunków z obrotu, obrys `#1b1a22` po obrocie, cieniowanie płaskie bez ditheringu.
+- `sorceress_walk-cast.png` (384×384, komórka 48×48, pivot 24,24):
+  - 0–3 chód: suknia prawie nieruchoma (przód rąbka ±1 px), włosy falują mocno (koniec ±3 px, w klatce 2 wydłużone i rozdzielone na 2 pasma);
+  - 4–7 rzut zaklęcia: zamach (kostur −1 px, kryształ ciemnieje), pchnięcie (+2 px), rozbłysk (najjaśniejszy ton i 5 iskier bez obrysu), powrót; kula wylatuje w kolumnie 7, 17 px przed pivotem.
+- `sorceress_orb.png` (64×16, komórka 16×16, `rotate: false`): kula 10 px w rampie kryształu, blask okrąża obwód co 90°.
+- Paleta: włosy `#282a3c` `#353b55` `#48516f` `#63708f`; suknia `#1c1f5a` `#23378f` `#2d56b9` `#3d7bd3` `#7fb4ec`; skóra `#b9805e` `#e8b892`; kostur `#4a3020` `#5a3a22` `#5b3e27`; kryształ i kule `#1d7f9c` `#39c0d8` `#8ae6ef` `#e4fbfb`.
+- Wyjątek od marginesu jak u barbarzyńcy (§11): ciało mieści się w promieniu 21,5 px, iskry w 22,5 px. Pilnuje tego walidator generatora.
+- Wpisy `sorceress` (walk, idle, cast) i `sorceressOrb` (fly) w `SPRITE_SHEETS`. **Bez logiki bohaterki i bez wyboru postaci.**
+
+**Testy:** `tests/assets/sorceress.test.ts` (tylko kolory palety, piksele pełne, brak `#000`, `#fff`, `#9cff57`, `#d4a83a`; czytelność postaci w 8 kierunkach i kuli na płytach według §6a). Wymiary arkuszy sprawdza `tests/systems/sprites.test.ts`.
+
+**Weryfikacja:** `npm run build` (875 testów), podgląd 4× z `--preview tools/out`. Bez sprawdzenia w grze, bo bohaterka nie ma jeszcze logiki.
+
+**Do oceny właściciela:** podgląd arkusza (czytelność głowy i włosów przy 1×, siła fali włosów, wielkość kryształu).
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2729,6 +2754,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
 **3. Brakująca grafika**
+- **Czarodziejka (krok 34):** sprite'y gotowe; brakuje logiki drugiej bohaterki (wybór postaci, atak kulami: obrażenia, tor lotu, liczby w `src/config/`).
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.

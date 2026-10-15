@@ -79,6 +79,37 @@ export const SPRITE_SHEETS = {
       cast: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Czarodziejka, druga bohaterka (tools/sorceress_sprites.py): chód (0–3) i rzut zaklęcia (4–7),
+  // kula wylatuje w kolumnie 7, 17 px przed pivotem. Na razie tylko grafika, bez logiki bohaterki.
+  sorceress: {
+    key: 'sheet-sorceress',
+    url: 'assets/sprites/sorceress_walk-cast.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      cast: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Kula energii Czarodziejki (ten sam generator): okrągła, bez obrotu.
+  sorceressOrb: {
+    key: 'sheet-sorceress-orb',
+    url: 'assets/sprites/sorceress_orb.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
+    },
+  },
   demonOrb: {
     key: 'sheet-demon-mage-orb',
     url: 'assets/sprites/demon-mage_orb.png',
