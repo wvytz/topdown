@@ -881,6 +881,19 @@ export const FIRE_RING_VISUAL = { fill: 0xa82010, fillAlpha: 0.4, edge: 0xe0701c
 /** Tarcza bossa: łuk chronionego stożka rysowany przed bossem (cienki, w kolorze żaru, stała alfa). */
 export const SHIELD_ARC_VISUAL = { color: 0xe0701c, alpha: 0.45, width: 2, gap: 6 } as const;
 
+/** Oznaczenie elity (krok 42): pierścień pod stopami (pulsuje), nazwa cech nad głową. */
+export const ELITE_VISUAL = {
+  ringGap: 5,
+  ringThickness: 2,
+  ringAlpha: 0.85,
+  pulseMs: 700,
+  labelOffset: 10,
+  fontSize: 9,
+  /** Plama wybuchu Wybuchowego i kolor jego strefy. */
+  volatileZone: 0xffb02e,
+  lifestealText: '#7dff9a',
+} as const;
+
 /**
  * Kokon spiżarni Pożeracza: oddech, drżenie przy zewie, zjedzenie albo rozdarcie (łupina zostaje na podłodze).
  * `variants` — liczba wierszy arkusza (twarz, dłoń, skulone ciało).

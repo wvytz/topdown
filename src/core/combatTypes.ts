@@ -6,6 +6,20 @@ export enum EnemyType {
   Kiter = 'kiter',
 }
 
+/** Cecha elity (krok 42): zwykły wróg z jedną albo kilkoma cechami jest elitą. */
+export enum EliteAffix {
+  /** Zostawia za sobą smugę żaru, po śmierci płonącą kałużę. */
+  Fiery = 'fiery',
+  /** Tarcza od frontu: z przodu przyjmuje tylko część obrażeń; obraca się powoli. */
+  Shielded = 'shielded',
+  /** Szybszy chód, krótszy zamach i przerwa między atakami. */
+  Swift = 'swift',
+  /** Trafienie gracza leczy elitę. */
+  Vampiric = 'vampiric',
+  /** Po śmierci wybucha (zapowiedziana strefa). */
+  Volatile = 'volatile',
+}
+
 /**
  * Wariant archetypu w biomie (krok 23b): wygląd, kolor i ewentualnie inny atak, ta sama logika AI.
  * Ruiny: Trashcan Man (Rusher), Demon Mage (Kiter). Pajęcze leże: pająk jaskiniowy, nietoperz.
@@ -232,6 +246,8 @@ export interface EnemyDefinition {
   readonly moveSpeed: number;
   readonly attack: EnemyAttackDefinition;
   readonly behaviour: EnemyBehaviour;
+  /** Cechy elity (krok 42); brak albo pusto = zwykły wróg. */
+  readonly affixes?: readonly EliteAffix[];
 }
 
 export interface DashConfig {

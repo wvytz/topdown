@@ -12,6 +12,8 @@ export interface EncounterConfig {
 export interface EnemySpawn {
   readonly type: EnemyType;
   readonly tile: TilePoint;
+  /** Pokój spawnu (id) — elity losujemy po jednej na pokój (krok 42). */
+  readonly room: number;
 }
 
 /**
@@ -35,7 +37,7 @@ export function planEncounters(floor: DungeonFloor, config: EncounterConfig, rng
       const key = `${tile.x},${tile.y}`;
       if (used.has(key)) continue;
       used.add(key);
-      spawns.push({ type: rng.chance(config.kiterChance) ? EnemyType.Kiter : EnemyType.Rusher, tile });
+      spawns.push({ type: rng.chance(config.kiterChance) ? EnemyType.Kiter : EnemyType.Rusher, tile, room: room.id });
       i++;
     }
   }

@@ -39,6 +39,8 @@ import {
   SHRINE_CONFIG,
   STAT_LIMITS,
 } from '@/config/lootConfig';
+import { ELITE_AFFIXES_PER_LOOP, ELITE_CONFIG } from '@/config/eliteConfig';
+import { eliteLoot, isElite, rollElites } from '@/systems/Elites';
 import { BossFight } from '@/combat/BossFight';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
 import { CocoonManager } from '@/combat/CocoonManager';
@@ -111,6 +113,7 @@ const COCOON_SEED_SALT = 0xc0c0;
 const STICKY_WEB_SEED_SALT = 0x3eb5;
 const PUFFBALL_SEED_SALT = 0x9bff;
 const BRAZIER_SEED_SALT = 0xb4a2;
+const ELITE_SEED_SALT = 0xe117;
 const TOAST_DURATION_MS = 2500;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -470,12 +473,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
       effects: this.effects,
       decals: this.combatDecals,
       onPlayerHit,
-      onEnemyKilled: (enemy) =>
-        this.dropLoot({ x: enemy.x, y: enemy.y }, applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects)),
+      onEnemyKilled: (enemy) => {
+        const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
+        this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
+      },
     });
 
     const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
-    this.enemies.spawnAll(planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng));
+    const spawns = planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng);
+    // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
+    const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
+    this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, ELITE_AFFIXES_PER_LOOP, eliteRng));
 
     const drops = this.biome.ceilingDrops;
     this.ceilingDrops = drops

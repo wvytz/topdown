@@ -8,7 +8,7 @@ import type {
   PounceAttackDefinition,
   ProjectileAttackDefinition,
 } from '@/core/combatTypes';
-import { AttackPhase, EnemyAttackKind } from '@/core/combatTypes';
+import { AttackPhase, EliteAffix, EnemyAttackKind } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { EnemyBrain } from '@/ai/EnemyBrain';
 import { ENEMY_STATUS_RESISTANCE, ENEMY_VIEW_RULE } from '@/config/combatConfig';
@@ -23,6 +23,8 @@ import { ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
+import { ELITE_CONFIG } from '@/config/eliteConfig';
+import { isShielded, turnToward } from '@/systems/Shield';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -54,6 +56,7 @@ export interface EnemyPerception {
 const HIT_STUN_MS = 150;
 const HIT_FLASH_MS = 80;
 const WINDUP_TINT = 0xffb347;
+const BLOCKED_FLASH_TINT = 0x8a90a0;
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly definition: EnemyDefinition;
@@ -71,6 +74,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private pounce: PounceFlight | null = null;
   /** Postój po chybionym skoku — okno na kontrę. */
   private readonly pounceRecovery = new Timer();
+  /** Tarczownik (elita, krok 42): kąt tarczy, obracanej powoli w stronę gracza. */
+  private shieldFacing = Math.PI / 2;
+  private lastTickAt: number | null = null;
+  /** Ostatnie trafienie przyjęte na tarczę — błysk w kolorze stali zamiast bieli. */
+  private lastHitBlocked = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: EnemyDefinition) {
     super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.variant].sheet].key);
@@ -98,12 +106,22 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return this.health.isDead;
   }
 
+  hasAffix(affix: EliteAffix): boolean {
+    return this.definition.affixes?.includes(affix) ?? false;
+  }
+
+  /** Kąt tarczy Tarczownika (radiany) albo null bez tarczy. */
+  get shieldAngle(): number | null {
+    return this.hasAffix(EliteAffix.Shielded) ? this.shieldFacing : null;
+  }
+
   /** Obrażenia od podpalenia należne do `now`; śmierć od ognia wykrywa menedżer po `isDead`. */
   tickBurn(now: number): number {
     const damage = this.status.takeBurnDamage(now);
     if (damage > 0 && !this.isDead) {
       this.health.takeDamage(damage);
       this.hitFlash.start(now, HIT_FLASH_MS);
+      this.lastHitBlocked = false;
     }
     return damage;
   }
@@ -115,6 +133,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   tick(perception: EnemyPerception, now: number, handler: EnemyAttackHandler): void {
     if (this.isDead) return;
+    this.turnShield(perception, now);
     if (this.pounce) {
       this.updatePounce(now, handler);
       return;
@@ -161,8 +180,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeHit(hit: Hit, now: number, source: Vector2): DamageResult {
-    const result = this.health.takeDamage(hit.damage);
+    // Tarczownik: cios od frontu przyjmuje tylko część obrażeń.
+    const shield = ELITE_CONFIG.shield;
+    const blocked = this.hasAffix(EliteAffix.Shielded) && isShielded(this, this.shieldFacing, shield.arcDeg, source);
+    const damage = blocked ? Math.max(1, Math.round(hit.damage * shield.frontMultiplier)) : hit.damage;
+    const result = this.health.takeDamage(damage);
     this.hitFlash.start(now, HIT_FLASH_MS);
+    this.lastHitBlocked = blocked;
     // Skoku nie da się zatrzymać trafieniem (rozpędzony ogar) — bez odrzutu i ogłuszenia w locie.
     if (!this.pounce) {
       this.hitStun.start(now, HIT_STUN_MS);
@@ -171,6 +195,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.brain.alert(source);
     if (!result.died) this.status.apply(hit.status, now);
     return result;
+  }
+
+  /** Tarcza obraca się do widocznego gracza z ograniczoną prędkością (nie w locie skoku). */
+  private turnShield(perception: EnemyPerception, now: number): void {
+    const dt = this.lastTickAt === null ? 0 : now - this.lastTickAt;
+    this.lastTickAt = now;
+    if (!this.hasAffix(EliteAffix.Shielded) || this.pounce || !perception.canSeeTarget) return;
+    const target = Math.atan2(perception.target.y - this.y, perception.target.x - this.x);
+    const step = ((ELITE_CONFIG.shield.turnRateDegPerSec * Math.PI) / 180) * (dt / 1000);
+    this.shieldFacing = turnToward(this.shieldFacing, target, step);
   }
 
   /**
@@ -243,7 +277,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private updateTint(now: number): void {
     const tint = statusTint(this.status, now);
     if (this.hitFlash.isActive(now)) {
-      this.setTintFill(0xffffff);
+      this.setTintFill(this.lastHitBlocked ? BLOCKED_FLASH_TINT : 0xffffff);
     } else if (tint !== null) {
       this.setTint(tint);
     } else if (this.attackCycle.phase(now) === AttackPhase.Windup) {

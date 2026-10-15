@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -3055,6 +3055,32 @@ Właściciel chce testować od razu ostatnie piętro na Pages. `?floor=N` i `?se
 **Weryfikacja:** build produkcyjny `?floor=6&hero=sorceress` — od razu piętro 6; dev `?floor=5` → wybór bohatera → piętro 5, po śmierci panel „RUN TESTOWY”, `death.source = 'practice'`, bez błędów w konsoli.
 
 Adresy dla testerów: `https://wvytz.github.io/topdown/?floor=5` (Strażnik Bram), `?floor=6` (Kat Otchłani); `&hero=sorceress` pomija wybór bohatera.
+
+## Krok 42 — Elity z cechami `#elity`
+
+**Decyzja właściciela** `#decyzja` `#elity`: z propozycji wzbogacenia rozgrywki (elity, pokoje ryzyka, kupiec, synergie, koniec wieży) najpierw elity; koniec wieży — wariant B (pętla: po piętrze 6 kolejny krąg biomów 1–6, mocniejszy). Finałowego bossa jeszcze nie ma.
+
+Co kilka pokojów jeden zwykły wróg jest **elitą**: 2,5× HP, 1,3× obrażenia, cecha zmieniająca walkę i lepszy łup. Bez nowych wrogów i sprite'ów — elitę wyróżnia pulsujący pierścień w kolorze cechy pod stopami i nazwa nad głową (gasną w mroku razem z wrogiem).
+
+| Cecha | Od piętra | Działanie |
+|---|---|---|
+| Szybki | 1 | chód ×1,35, zamach ×0,8, przerwa ×0,7 |
+| Tarczownik | 1 | tarcza od frontu (140°): z przodu 30% obrażeń, szary błysk; obraca się 100°/s — obejście albo dash za plecy |
+| Wampiryczny | 2 | trafienie gracza (cios, pocisk, skok) leczy go o 2× zadane obrażenia (zielone „+N”) |
+| Wybuchowy | 2 | po śmierci strefa (52 px) wypełnia się 0,9 s i wybucha |
+| Ognisty | 3 | smuga żaru za nim (co 16 px, 2,2 s), po śmierci płonąca kałuża |
+
+- Szansa na elitę w pokoju: piętro 1 — 20%, 2 — 30%, dalej 40%; najwyżej jedna na pokój. Liczba cech: 1 (w kolejnych kręgach wieży więcej — krok 43).
+- Łup elity: złoto ×3 i pewne, mikstura +20 pkt proc., przedmiot 25%.
+- Obrażenia żaru i wybuchu rosną z piętrem jak ciosy wrogów (`ENEMY_SCALING`).
+
+**Pliki:** `systems/Elites.ts` (czyste: `rollElites`, `applyElite`, `eliteLoot`, `lifestealHeal`, `eliteTitle`), `config/eliteConfig.ts`, `core/combatTypes` (`EliteAffix`, `EnemyDefinition.affixes`), `EncounterPlanner` (spawn zna pokój), `Enemy` (tarcza), `EnemyManager` (smuga, wybuchy, wampiryzm), `ProjectileManager` (`onHit`), `effects/EliteMarker.ts`, `ELITE_VISUAL`. Elity mają własny strumień RNG (sól `0xe117`) — rozmieszczenie wrogów się nie zmienia.
+
+**Testy:** `tests/systems/elites.test.ts` (najwyżej jedna elita na pokój, liczba cech bez powtórzeń, odblokowanie z piętrem, statystyki, łup, wampiryzm, napis). Build: 1029 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=3&seed=11` — Ognisty grzybiec z pierścieniem i napisem; na piętrze 5 elity postawione obok gracza: Tarczownik przyjmuje 6 z 20 obrażeń od frontu i 20 od tyłu; Wybuchowy po śmierci — strefa i wybuch, Ognisty zostawia kałużę; wampir leczy się z ciosu (65 → 93) i z pocisku Kitera (35 → 75); bez błędów w konsoli.
+
+**Do oceny w testach właściciela** `#elity`: częstość elit, siła cech (zwłaszcza Tarczownik na Czarodziejkę i Wampiryczny), czytelność napisów.
 
 ## Znane ograniczenia i backlog
 
