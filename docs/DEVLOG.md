@@ -2868,7 +2868,7 @@ Makieta generatora:
 
 ---
 
-## Krok 42 — Ekran śmierci: spływanie osobno dla grup liter (wariant do akceptacji)
+## Krok 42 — Ekran śmierci: spływanie osobno dla grup liter
 
 **Ocena i prośba właściciela:** `#ocena` `#ekran-smierci`
 - spływająca czerwień z kroku 41: „o coś takiego mi chodziło”;
@@ -2884,7 +2884,7 @@ Makieta generatora:
 
 **Weryfikacja:** `npm run build`; animacja nagrana z gry (czas ekranu ustawiany klatka po klatce co 70 ms) — GIF na kanwie projektu.
 
-**Status:** podgląd na gałęzi — **niewdrożony na GitHub Pages**, czeka na decyzję właściciela.
+**Status:** właściciel zaakceptował wariant („wdrażaj na pages”) `#decyzja` — wdrożony na GitHub Pages.
 
 ---
 
