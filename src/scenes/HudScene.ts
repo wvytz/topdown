@@ -98,7 +98,7 @@ export class HudScene extends Phaser.Scene {
     this.deathScreen = new DeathScreen(this);
   }
 
-  override update(time: number, delta: number): void {
+  override update(time: number): void {
     const hud = this.source.getHudData();
 
     this.floorText.setText(`Piętro ${hud.floor}`);
@@ -132,7 +132,7 @@ export class HudScene extends Phaser.Scene {
     this.toastText.setText(hud.toast?.text ?? '');
     this.toastText.setAlpha(hud.toast ? Math.min(1, hud.toast.remainingMs / 1000 + 0.2) : 0);
 
-    this.deathScreen.update(hud.death, time, delta);
+    this.deathScreen.update(hud.death, time);
     this.drawBossBar(hud.boss);
     this.updateBanner(hud.boss);
   }

@@ -2818,6 +2818,34 @@ Makieta generatora:
 
 ---
 
+## Krok 40 — Ekran śmierci w stylu Dark Souls / Castlevanii
+
+**Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
+- krew z kroku 39 „wygląda sztucznie”; ma być „mniej banalnie, a bardziej mrocznie — w stylu Castlevanii lub Dark Souls”.
+
+**Kierunek:** cisza i ciężar zamiast efektów. Żadnej krwi, plamy, uderzenia, wstrząsu ani cząstek.
+
+**Co widać (wszystko powoli, płynnie):**
+- 0–1,5 s: gra **tonie w ciemności** do 85% (wrogowie dalej ruszają się pod spodem, ledwo widoczni), czarna winieta;
+- 0,3–1,5 s: przez środek ekranu **czarny pas** na całą szerokość, rozmyty u góry i u dołu (jak „YOU DIED”);
+- 0,6–2,2 s: **POLEGŁEŚ wyłania się** — przygaszona czerwień (eye-0 → ciemna krew), cienki czarny obrys, płytki cień, szeroko rozstawione litery; za nim ledwo widoczna ciemnoczerwona poświata;
+- przez 5 s napis **bardzo wolno rośnie** (skala 1 → 1,1) i staje;
+- 2,6 s: wynik w kolorze kości; gotycki ozdobnik — cienkie linie i mały krzyż; 3,0 s: wiersze tablicy wyłaniają się po kolei;
+- 3,8 s: „R — NOWA WSPINACZKA” wolno pulsuje.
+
+**Usunięte:** plama, strugi i krople krwi, uderzenie napisu, błysk, wstrząs (`planDrips`, `planSplat`, `dripLength`, `dropsReleased`).
+
+**Kod:**
+- `config/deathScreenConfig.ts`: nowa oś czasu (bez uderzeń), układ, pasy czerwieni;
+- `systems/deathScreen.ts`: `deathFrame(t, rows)` — przyciemnienie, pas, napis (pojawianie i wzrost), wynik, wiersze po kolei, puls komunikatu; `stepParticle` zostaje (używa go ekran startowy);
+- `effects/DeathScreen.ts`: przepisany — pas i poświata jako tekstury z gradientem, napis bez wytłoczenia, ozdobnik z krzyżem.
+
+**Testy (`deathScreen.test.ts`, 8):** napis mieści się po urośnięciu; płynne przyciemnienie bez skoków, gra nie znika; napis wyłania się powoli (≥ 1 s); wzrost monotoniczny i staje; pas przed napisem; tablica po napisie, wiersze po kolei; puls komunikatu.
+
+**Weryfikacja:** `npm run build`; przeglądarka (śmierć przez `window.__game`) — zrzuty po 1,5 / 3 / 7 s, brak błędów w konsoli. Wdrożone na GitHub Pages.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2893,7 +2921,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Ekran śmierci (krok 39):** `#ekran-smierci` napis ociekający krwią na plamie; siła przyciemnienia (80%), wielkość plamy, długość i tempo strug.
+- **Ekran śmierci (krok 40):** `#ekran-smierci` styl Dark Souls / Castlevanii; tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
 - **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.

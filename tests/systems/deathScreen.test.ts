@@ -1,142 +1,72 @@
 import { describe, expect, it } from 'vitest';
-import { DEATH_DRIPS as D, DEATH_SPLAT as S, DEATH_TIMING as T } from '@/config/deathScreenConfig';
+import { DEATH_LAYOUT, DEATH_TIMING as T } from '@/config/deathScreenConfig';
 import { pixelText } from '@/core/pixelArt';
-import { createRng } from '@/core/random';
-import {
-  deathFrame,
-  deathImpactAt,
-  dripLength,
-  dropsReleased,
-  planDrips,
-  planSplat,
-  stepParticle,
-} from '@/systems/deathScreen';
+import { deathFrame, stepParticle } from '@/systems/deathScreen';
 
-const title = pixelText('POLEGŁEŚ', 1);
-const impact = deathImpactAt();
+const ROWS = 5;
+const frame = (t: number) => deathFrame(t, ROWS);
+const title = pixelText('POLEGŁEŚ', DEATH_LAYOUT.title.gap);
 
 describe('POLEGŁEŚ w foncie pikselowym', () => {
-  it('ma polskie litery, a akcent Ś wystaje nad linię liter', () => {
+  it('ma polskie litery, akcent Ś nad linią i mieści się na ekranie także po urośnięciu', () => {
     expect(title.top).toBeLessThan(0);
     expect(title.cells.filter((c) => c.y < 0)).toHaveLength(2);
-    expect(title.width).toBe(8 * 5 + 7);
+    expect(title.width * DEATH_LAYOUT.title.unit * T.titleToScale).toBeLessThan(960);
   });
 });
 
-describe('deathFrame — sekwencja ekranu śmierci', () => {
-  it('gra pod spodem mocno przyciemniona, ale nie zasłonięta całkiem', () => {
-    expect(deathFrame(0).dimAlpha).toBe(0);
-    expect(deathFrame(T.dimDuration).dimAlpha).toBeCloseTo(T.dimAlpha);
-    expect(deathFrame(60_000).dimAlpha).toBeGreaterThanOrEqual(0.75);
-    expect(deathFrame(60_000).dimAlpha).toBeLessThan(0.9);
-  });
-
-  it('napis uderza i staje w skali 1, błysk tylko po uderzeniu', () => {
-    expect(deathFrame(T.slamAt - 1).titleVisible).toBe(false);
-    expect(deathFrame(T.slamAt).titleScale).toBeCloseTo(T.slamFromScale);
-    expect(deathFrame(impact - 1).flashAlpha).toBe(0);
-    expect(deathFrame(impact).flashAlpha).toBeCloseTo(T.flashAlpha);
-    expect(deathFrame(impact + T.settleDuration).titleScale).toBe(1);
-    expect(deathFrame(impact + T.flashDuration).flashAlpha).toBe(0);
-  });
-
-  it('plama rozpryskuje się w chwili uderzenia, przestrzela i staje', () => {
-    expect(deathFrame(impact - 1).splatScale).toBe(0);
-    expect(deathFrame(impact).splatScale).toBeGreaterThan(0);
-    expect(deathFrame(impact + T.splatGrowMs).splatScale).toBeCloseTo(T.splatOvershoot);
-    expect(deathFrame(impact + T.splatGrowMs + T.splatSettleMs).splatScale).toBe(1);
-    expect(deathFrame(10_000).splatScale).toBe(1);
-  });
-
-  it('wynik, potem wiersze tablicy po kolei, potem migający komunikat', () => {
-    expect(deathFrame(T.scoreAt).scoreAlpha).toBe(0);
-    expect(deathFrame(T.scoreAt + T.scoreFadeDuration).scoreAlpha).toBe(1);
-    expect(deathFrame(T.rowsAt - 1).rowsVisible).toBe(0);
-    expect(deathFrame(T.rowsAt).rowsVisible).toBe(1);
-    expect(deathFrame(T.rowsAt + 2 * T.rowInterval).rowsVisible).toBe(3);
-    expect(deathFrame(T.promptAt - 1).promptVisible).toBe(false);
-    expect(deathFrame(T.promptAt).promptVisible).toBe(true);
-    expect(deathFrame(T.promptAt + T.promptBlinkPeriod * 0.9).promptVisible).toBe(false);
-  });
-});
-
-describe('planDrips — krew spływająca z liter', () => {
-  const drips = planDrips(title.cells, createRng(D.salt));
-
-  it('jest deterministyczny', () => {
-    expect(planDrips(title.cells, createRng(D.salt))).toEqual(drips);
-  });
-
-  it('strugi ciekną z dolnych krawędzi liter, nie z akcentu, każda z innego miejsca', () => {
-    const occupied = new Set(title.cells.map((c) => `${c.x},${c.y}`));
-    expect(drips).toHaveLength(D.count);
-    for (const { cell } of drips) {
-      expect(occupied.has(`${cell.x},${cell.y + 1}`)).toBe(false);
-      expect(cell.y).toBeGreaterThanOrEqual(0);
-    }
-    expect(new Set(drips.map((d) => `${d.cell.x},${d.cell.y}`)).size).toBe(drips.length);
-  });
-
-  it('parametry w granicach konfiguracji', () => {
-    for (const d of drips) {
-      expect(d.startAt).toBeGreaterThanOrEqual(D.startAt);
-      expect(d.startAt).toBeLessThanOrEqual(D.startAt + D.startSpread);
-      expect(d.maxLength).toBeGreaterThanOrEqual(D.minLength);
-      expect(d.maxLength).toBeLessThanOrEqual(D.maxLength);
-      expect(d.growMs).toBeGreaterThanOrEqual(D.minGrowMs);
-    }
-  });
-
-  it('struga rośnie od zera, nie maleje i staje na pełnej długości', () => {
-    const d = drips[0]!;
-    expect(dripLength(d, d.startAt - 1)).toBe(0);
+describe('deathFrame — powolny ekran śmierci', () => {
+  it('gra tonie w ciemności płynnie, bez skoku; nie znika całkiem', () => {
+    expect(frame(0).dimAlpha).toBe(0);
+    expect(frame(T.dimDuration / 2).dimAlpha).toBeCloseTo(T.dimAlpha / 2);
+    expect(frame(T.dimDuration).dimAlpha).toBeCloseTo(T.dimAlpha);
+    expect(frame(60_000).dimAlpha).toBeLessThan(0.9);
     let prev = 0;
-    for (let t = d.startAt; t <= d.startAt + d.growMs + 500; t += 37) {
-      const len = dripLength(d, t);
-      expect(len).toBeGreaterThanOrEqual(prev);
-      prev = len;
-    }
-    expect(dripLength(d, d.startAt + d.growMs)).toBe(d.maxLength);
-  });
-
-  it('krople odrywają się dopiero od pełnej strugi, co okres', () => {
-    const d = { cell: { x: 0, y: 0 }, startAt: 1000, growMs: 2000, maxLength: 40, dropPeriodMs: 1000 };
-    expect(dropsReleased(d, 2999)).toBe(0);
-    expect(dropsReleased(d, 3999)).toBe(0);
-    expect(dropsReleased(d, 4000)).toBe(1);
-    expect(dropsReleased(d, 6500)).toBe(3);
-  });
-});
-
-describe('planSplat — plama krwi za napisem', () => {
-  const splat = planSplat(createRng(S.salt));
-  const set = new Set(splat.map((c) => `${c.x},${c.y}`));
-
-  it('jest deterministyczna i ma środek pod napisem', () => {
-    expect(planSplat(createRng(S.salt))).toEqual(splat);
-    expect(set.has('0,0')).toBe(true);
-  });
-
-  it('jest szersza niż napis i nie sięga poza ekran', () => {
-    const xs = splat.map((c) => c.x * S.cell);
-    const ys = splat.map((c) => c.y * S.cell);
-    const titleHalf = (title.width * 10) / 2;
-    expect(Math.max(...xs)).toBeGreaterThan(titleHalf);
-    expect(Math.min(...xs)).toBeLessThan(-titleHalf);
-    expect(Math.max(...xs.map(Math.abs))).toBeLessThan(480);
-    expect(Math.max(...ys.map(Math.abs))).toBeLessThan(200);
-  });
-
-  it('brzeg ciemniejszy: każda komórka brzegowa ma pustego sąsiada, wnętrze nie', () => {
-    for (const { x, y, tone } of splat) {
-      const hasGap = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !set.has(`${x + dx!},${y + dy!}`));
-      expect(tone === 'edge').toBe(hasGap);
+    for (let t = 0; t <= T.dimDuration; t += 50) {
+      expect(frame(t).dimAlpha - prev).toBeLessThan(0.06);
+      prev = frame(t).dimAlpha;
     }
   });
 
-  it('wokół plamy leżą oderwane krople (rozbryzg), nie tylko jedna bryła', () => {
-    const far = splat.filter(({ x, y }) => (x / S.rx) ** 2 + (y / S.ry) ** 2 > 1.2);
-    expect(far.length).toBeGreaterThan(20);
+  it('napis wyłania się powoli, bez uderzenia', () => {
+    expect(frame(T.titleAt).titleAlpha).toBe(0);
+    expect(frame(T.titleAt + T.titleFadeDuration / 2).titleAlpha).toBeCloseTo(0.5);
+    expect(frame(T.titleAt + T.titleFadeDuration).titleAlpha).toBe(1);
+    expect(T.titleFadeDuration).toBeGreaterThanOrEqual(1000);
+  });
+
+  it('napis bardzo wolno rośnie i staje — nigdy nie zmniejsza się', () => {
+    expect(frame(0).titleScale).toBe(T.titleFromScale);
+    let prev = 0;
+    for (let t = 0; t < T.titleAt + T.titleGrowDuration + 1000; t += 97) {
+      const s = frame(t).titleScale;
+      expect(s).toBeGreaterThanOrEqual(prev);
+      prev = s;
+    }
+    expect(frame(T.titleAt + T.titleGrowDuration).titleScale).toBeCloseTo(T.titleToScale);
+  });
+
+  it('pas pojawia się razem z ciemnością, przed napisem', () => {
+    expect(frame(T.bandAt).bandAlpha).toBe(0);
+    expect(frame(T.bandAt + T.bandDuration).bandAlpha).toBe(1);
+    expect(T.bandAt).toBeLessThan(T.titleAt);
+  });
+
+  it('wynik i tablica dopiero po napisie; wiersze po kolei', () => {
+    expect(T.scoreAt).toBeGreaterThanOrEqual(T.titleAt + T.titleFadeDuration);
+    expect(frame(T.scoreAt).scoreAlpha).toBe(0);
+    expect(frame(T.scoreAt + T.scoreFadeDuration).scoreAlpha).toBe(1);
+    const mid = frame(T.rowsAt + T.rowInterval + T.rowFadeDuration);
+    expect(mid.rowAlphas).toHaveLength(ROWS);
+    expect(mid.rowAlphas[0]).toBe(1);
+    expect(mid.rowAlphas[1]).toBe(1);
+    expect(mid.rowAlphas[ROWS - 1]).toBeLessThan(1);
+  });
+
+  it('komunikat pulsuje między promptMinAlpha a pełną jasnością', () => {
+    expect(frame(T.promptAt - 1).promptAlpha).toBe(0);
+    expect(frame(T.promptAt + T.promptPulsePeriod / 2).promptAlpha).toBeCloseTo(T.promptMinAlpha);
+    expect(frame(T.promptAt + T.promptPulsePeriod).promptAlpha).toBeCloseTo(1);
   });
 });
 
