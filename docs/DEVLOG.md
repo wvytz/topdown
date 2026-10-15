@@ -2768,6 +2768,29 @@ Makieta generatora:
 
 ---
 
+## Krok 38 — Ekran śmierci w tonie TOP / DOWN: popiół zamiast krwi
+
+**Decyzja właściciela:** `#decyzja` `#ekran-smierci`
+- po akceptacji ekranu startowego (krok 37): „przerób w podobnym tonie ekran końcowy” i od razu wdróż.
+
+**Co się zmieniło względem kroku 35:**
+- POLEGŁEŚ ma lico z popiołu i kości jak TOP / DOWN (te same pasy kolorów) i żarzącą się krawędź egg-0;
+- **rozkład to wypalanie, nie gnicie:** kawałek litery rozżarza się na 0,6 s (egg-0), potem odpada jako popiół; w ubytkach prześwituje czerń z żarem;
+- zamiast kropli krwi z dolnych krawędzi liter **sypią się strużki popiołu** (wolniej spadają);
+- uderzenie napisu wzbija **chmurę pyłu** zamiast krwi; błysk w kolorze kości (słabszy, 0,3);
+- nad całą sceną **opada popiół** — jak na ekranie startowym;
+- winieta czarna zamiast krwistej;
+- w ozdobniku między wynikiem a tablicą **małe zaćmione słońce** (znak z ekranu startowego) zamiast czerwonych rombów;
+- tablica: wiersz bieżącego runu w kolorze żaru (egg-2), reszta w kości.
+
+**Bez zmian:** przyciemniona gra pod spodem (wrogowie dalej się ruszają), kolejność wejścia wyniku i wierszy, plan rozkładu (`planCrumble`, limit 30%), R — nowa wspinaczka.
+
+**Kod:** `config/deathScreenConfig.ts` (paleta z ekranu startowego, `DEATH_EMBER_COLOR`, `DEATH_ASH_COLORS`, popiół, ozdobnik), `effects/DeathScreen.ts` (kolory, grawitacja cząstek per rodzaj, popiół nad sceną, zaćmienie w ozdobniku). Czysta logika i testy z kroku 35 bez zmian.
+
+**Weryfikacja:** `npm run build`; przeglądarka (śmierć wymuszona przez `window.__game`) — zrzuty po 0,5 / 2,2 / 7 s: napis się wypala i osypuje, popiół opada, tablica czytelna; R startuje nowy run; brak błędów w konsoli. Wdrożone na GitHub Pages.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2843,7 +2866,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Ekran śmierci (krok 35):** `#ekran-smierci` siła przyciemnienia (62%), tempo i zasięg rozkładu napisu (30% bloków w 7 s), ilość krwi.
+- **Ekran śmierci (krok 38):** `#ekran-smierci` ton TOP / DOWN (popiół zamiast krwi); siła przyciemnienia (62%), tempo i zasięg wypalania napisu (30% bloków w 7 s), ilość popiołu.
 - **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.

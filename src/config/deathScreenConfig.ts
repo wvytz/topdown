@@ -1,43 +1,34 @@
 /**
- * Ekran śmierci (krok 35): przyciemniona gra pod spodem, rozkładający się napis POLEGŁEŚ
- * z kroplami krwi, a na środku wynik i tablica rekordów. Styl jak ekran startowy (krok 34).
+ * Ekran śmierci (krok 35; od kroku 38 w tonie ekranu TOP / DOWN): przyciemniona gra pod spodem,
+ * napis POLEGŁEŚ z popiołu, który się wypala i osypuje, opadający popiół i małe zaćmione słońce;
+ * na środku wynik i tablica rekordów.
  */
-import { SPLASH_PALETTE } from '@/config/splashConfig';
+import { SPLASH_PALETTE, SPLASH_TITLE_BANDS } from '@/config/splashConfig';
 
-/** Krew: rampa oczu z systemu „Matka Pająków” + dwa ciemniejsze tony zakrzepłej krwi. */
-export const DEATH_PALETTE = {
-  ...SPLASH_PALETTE,
-  blood0: 0x3e0f14,
-  blood1: 0x6e1a1f,
-} as const;
+export const DEATH_PALETTE = SPLASH_PALETTE;
 
-/** Pasy w wierszach liter POLEGŁEŚ (wiersze 0–6 fontu; akcent Ś ma kolor wiersza 0). */
-export const DEATH_TITLE_BANDS = [
-  DEATH_PALETTE.eye2,
-  DEATH_PALETTE.eye1,
-  DEATH_PALETTE.eye1,
-  DEATH_PALETTE.eye1,
-  DEATH_PALETTE.eye0,
-  DEATH_PALETTE.eye0,
-  DEATH_PALETTE.blood1,
-] as const;
+/** Lico liter jak TOP / DOWN: popiół i kość (akcent Ś ma kolor wiersza 0). */
+export const DEATH_TITLE_BANDS = SPLASH_TITLE_BANDS;
 
-/** Kolory kropel krwi (losowane wizualnie). */
-export const DEATH_BLOOD_COLORS = [DEATH_PALETTE.eye1, DEATH_PALETTE.eye0, DEATH_PALETTE.blood1] as const;
+/** Kawałek litery przed odpadnięciem rozżarza się (wypala), potem opada jako popiół. */
+export const DEATH_EMBER_COLOR = DEATH_PALETTE.egg0;
+
+/** Kolory popiołu i pyłu (losowane wizualnie). */
+export const DEATH_ASH_COLORS = [DEATH_PALETTE.bone0, DEATH_PALETTE.chitin3, DEATH_PALETTE.chitin2] as const;
 
 /** Oś czasu w ms od chwili śmierci. */
 export const DEATH_TIMING = {
   /** Przyciemnienie gry narasta do `dimAlpha` — gra pod spodem dalej jest widoczna. */
   dimDuration: 600,
   dimAlpha: 0.62,
-  /** Uderzenie POLEGŁEŚ (jak CRAWLER na ekranie startowym). */
+  /** Uderzenie POLEGŁEŚ (jak TOP / DOWN na ekranie startowym). */
   slamAt: 250,
   slamDuration: 180,
   slamFromScale: 2.2,
   slamUndershoot: 0.94,
   slamOvershoot: 1.04,
   settleDuration: 160,
-  flashAlpha: 0.45,
+  flashAlpha: 0.3,
   flashDuration: 260,
   shakeDuration: 280,
   shakeIntensity: 0.008,
@@ -70,7 +61,7 @@ export const DEATH_CRUMBLE = {
   innerDelayFraction: 0.5,
   /** Górny limit odpadniętych bloków — napis musi zostać czytelny. */
   maxFraction: 0.3,
-  /** Źródła cieknącej krwi na dolnych krawędziach liter. */
+  /** Strużki popiołu sypiące się z dolnych krawędzi liter. */
   dripCount: 7,
   dripMinPeriodMs: 1400,
   dripMaxPeriodMs: 2800,
@@ -78,20 +69,28 @@ export const DEATH_CRUMBLE = {
 
 export type DeathCrumbleConfig = typeof DEATH_CRUMBLE;
 
-/** Fizyka kropel i odłamków (piksele ekranu, ms). */
+/** Fizyka popiołu i odłamków (piksele ekranu, ms). */
 export const DEATH_PARTICLES = {
   gravity: 0.0012,
-  /** Chmura kropel przy uderzeniu napisu. */
-  burstCount: 46,
-  burstSpeedMin: 0.15,
-  burstSpeedMax: 0.55,
-  burstLifeMs: 1400,
-  /** Kropla z krawędzi litery: nabrzmiewa, potem spada. */
+  /** Chmura pyłu przy uderzeniu napisu (pył spada wolniej niż odłamki). */
+  burstCount: 40,
+  burstSpeedMin: 0.08,
+  burstSpeedMax: 0.32,
+  burstLifeMs: 1500,
+  burstGravityScale: 0.35,
+  /** Strużka popiołu z dolnej krawędzi litery: zbiera się chwilę, potem opada. */
   dripSwellMs: 450,
-  dripLifeMs: 1100,
+  dripLifeMs: 1400,
+  dripGravityScale: 0.25,
   /** Odłamki liter: lekki dryf w bok, gaśnięcie. */
   shardDriftMax: 0.05,
   shardLifeMs: 1300,
+  /** Popiół opadający nad całą sceną (jak na ekranie startowym). */
+  ashCount: 40,
+  ashMinSpeed: 0.012,
+  ashMaxSpeed: 0.035,
+  ashSway: 10,
+  ashSwayPeriodMs: 3200,
 } as const;
 
 /** Układ (płótno 960×540). */
@@ -99,7 +98,8 @@ export const DEATH_LAYOUT = {
   centerX: 480,
   title: { centerY: 128, unit: 10, gap: 1, extrude: 3 },
   score: { y: 214, fontSize: 16 },
-  ornament: { y: 248, width: 96, gap: 14 },
+  /** Ozdobnik: belki i małe zaćmione słońce pośrodku (promień w pikselach ozdobnika, piksel = 2 px). */
+  ornament: { y: 248, width: 96, gap: 22, eclipseRadius: 5, pixel: 2 },
   header: { y: 272, fontSize: 13 },
   rows: { y: 298, step: 24, fontSize: 15 },
   prompt: { y: 448, fontSize: 15 },
