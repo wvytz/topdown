@@ -16,6 +16,10 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
   pierceLeft = 0;
   /** Pociski gracza: cele już trafione — przebity wróg nie dostaje drugi raz. */
   readonly hitTargets = new Set<object>();
+  /** Kula Czarodziejki: trafienie leczy jak cios z Wampirzym kłem. */
+  vampiric = false;
+  /** Magia Czarodziejki — trafia też bezcielesnych (krok 49b). */
+  magic = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string = TextureKey.Projectile) {
     super(scene, x, y, texture);

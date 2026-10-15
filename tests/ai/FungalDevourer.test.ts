@@ -5,7 +5,7 @@ import type { BossAttackPlan } from '@/core/bossTypes';
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import { createRng } from '@/core/random';
-import { VAMPIRE_LORD as LORD, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { FUNGAL_DEVOURER as DEVOURER, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { PLAYER_BASE_STATS, PLAYER_SIZE } from '@/config/gameConfig';
 import { planLarders } from '@/dungeon/LarderPlanner';
@@ -14,21 +14,21 @@ import { sampleFloors } from '../helpers/floors';
 
 const SELF = { x: 0, y: 0 };
 const FRAME = 16;
-const F = LORD.feast;
+const F = DEVOURER.feast;
 
-describe('Wampirzy Lord (krok 33) — wybór i definicja', () => {
-  it('piętro 4 (Cmentarzysko) kończy Wampirzy Lord', () => {
-    expect(bossForFloor(4).id).toBe(BossId.VampireLord);
+describe('Grzybowy Pożeracz (kroki 33–34) — wybór i definicja', () => {
+  it('piętro 4 (Cmentarzysko) kończy Grzybowy Pożeracz', () => {
+    expect(bossForFloor(4).id).toBe(BossId.FungalDevourer);
   });
 
-  it('wzór: tasak, szarża, zew; kąsanie poza wzorem leczy Lorda', () => {
-    expect([...LORD.pattern].sort()).toEqual([BossAttackKind.Call, BossAttackKind.Cleave, BossAttackKind.Leap].sort());
-    expect(LORD.lash.healOnHit).toBeGreaterThan(0);
+  it('wzór: tasak, szarża, zew; kąsanie poza wzorem leczy Pożeracza', () => {
+    expect([...DEVOURER.pattern].sort()).toEqual([BossAttackKind.Call, BossAttackKind.Cleave, BossAttackKind.Leap].sort());
+    expect(DEVOURER.lash.healOnHit).toBeGreaterThan(0);
   });
 
   it('skalowanie piętra obejmuje tasak', () => {
-    const scaled = scaleBossForFloor(LORD, 4, ENEMY_SCALING);
-    expect(scaled.cleave.damage).toBeGreaterThan(LORD.cleave.damage);
+    const scaled = scaleBossForFloor(DEVOURER, 4, ENEMY_SCALING);
+    expect(scaled.cleave.damage).toBeGreaterThan(DEVOURER.cleave.damage);
   });
 });
 
@@ -66,7 +66,7 @@ describe('spiżarnia: planLarders', () => {
 
 /** Mózg w walce: pora uczty od razu, atak ze wzoru odsunięty (sprawdzamy samą ucztę). */
 function feasting(): BossBrain {
-  const brain = new BossBrain(LORD, createRng(1));
+  const brain = new BossBrain(DEVOURER, createRng(1));
   brain.activate(-F.firstAfterMs);
   brain.delay(1_000_000);
   return brain;
@@ -117,20 +117,20 @@ describe('uczta', () => {
     const brain = feasting();
     for (let i = 0; i < F.maxStacks + 3; i++) brain.feasted();
     expect(brain.feastStacks).toBe(F.maxStacks);
-    const fresh = new BossBrain(LORD, createRng(1));
+    const fresh = new BossBrain(DEVOURER, createRng(1));
     fresh.activate(0);
-    const strong = new BossBrain(LORD, createRng(1));
+    const strong = new BossBrain(DEVOURER, createRng(1));
     strong.activate(0);
     for (let i = 0; i < 2; i++) strong.feasted();
     // Kąsanie z bliska (poza wzorem) — porównujemy obrażenia strefy i prędkość z daleka.
     const bite = (b: BossBrain) => b.think({ self: SELF, target: { x: 40, y: 0 }, now: 100, hpRatio: 1 }).newAttack!.strikes[0]!.damage;
-    expect(bite(strong)).toBe(Math.round(LORD.lash.damage * (1 + 2 * F.damagePerStack)));
-    expect(bite(fresh)).toBe(LORD.lash.damage);
+    expect(bite(strong)).toBe(Math.round(DEVOURER.lash.damage * (1 + 2 * F.damagePerStack)));
+    expect(bite(fresh)).toBe(DEVOURER.lash.damage);
     const speed = (b: BossBrain) => b.think({ self: SELF, target: { x: 1000, y: 0 }, now: 99_000, hpRatio: 1 }).speed;
-    const s1 = new BossBrain(LORD, createRng(1));
+    const s1 = new BossBrain(DEVOURER, createRng(1));
     s1.activate(0);
     s1.delay(1_000_000);
-    const s2 = new BossBrain(LORD, createRng(1));
+    const s2 = new BossBrain(DEVOURER, createRng(1));
     s2.activate(0);
     s2.delay(1_000_000);
     s2.feasted();
@@ -142,41 +142,41 @@ describe('uczta', () => {
   });
 });
 
-describe('ciosy Lorda', () => {
+describe('ciosy Pożeracza', () => {
   const plan = (kind: BossAttackKind, target = { x: 50, y: 0 }, enraged = false): BossAttackPlan =>
-    planBossAttack({ kind, definition: LORD, self: SELF, target, now: 0, enraged, rng: createRng(1) });
+    planBossAttack({ kind, definition: DEVOURER, self: SELF, target, now: 0, enraged, rng: createRng(1) });
 
-  it('tasak: szeroka strefa przed Lordem, długi zamach', () => {
+  it('tasak: szeroka strefa przed Pożeraczem, długi zamach', () => {
     const p = plan(BossAttackKind.Cleave);
     const strike = p.strikes[0]!;
-    expect(strike.center).toEqual({ x: LORD.cleave.reach, y: 0 });
-    expect(strike.radius).toBe(LORD.cleave.radius);
-    expect(strike.impactAt).toBe(LORD.cleave.telegraphMs);
-    expect(p.endsAt).toBe(LORD.cleave.telegraphMs + LORD.cleave.recoveryMs);
+    expect(strike.center).toEqual({ x: DEVOURER.cleave.reach, y: 0 });
+    expect(strike.radius).toBe(DEVOURER.cleave.radius);
+    expect(strike.impactAt).toBe(DEVOURER.cleave.telegraphMs);
+    expect(p.endsAt).toBe(DEVOURER.cleave.telegraphMs + DEVOURER.cleave.recoveryMs);
   });
 
-  it('balans: uważny gracz przy Lordzie zdąży wyjść ze strefy tasaka (także po wściekłości)', () => {
+  it('balans: uważny gracz przy Pożeraczu zdąży wyjść ze strefy tasaka (także po wściekłości)', () => {
     const r = PLAYER_SIZE / 2;
-    const fromCenter = LORD.engageDistance - LORD.cleave.reach;
-    const escape = LORD.cleave.radius + r - fromCenter;
-    const time = LORD.cleave.telegraphMs * LORD.enrage.telegraphMultiplier - 200;
+    const fromCenter = DEVOURER.engageDistance - DEVOURER.cleave.reach;
+    const escape = DEVOURER.cleave.radius + r - fromCenter;
+    const time = DEVOURER.cleave.telegraphMs * DEVOURER.enrage.telegraphMultiplier - 200;
     expect((PLAYER_BASE_STATS.moveSpeed * time) / 1000).toBeGreaterThan(escape);
   });
 
   it('kąsanie: strefa niesie leczenie Lorda', () => {
-    expect(plan(BossAttackKind.Lash, { x: 40, y: 0 }).strikes[0]!.healOnHit).toBe(LORD.lash.healOnHit);
+    expect(plan(BossAttackKind.Lash, { x: 40, y: 0 }).strikes[0]!.healOnHit).toBe(DEVOURER.lash.healOnHit);
   });
 
   it('zew: jeden kokon pęka po telegrafie, po wściekłości dwa', () => {
     const calm = plan(BossAttackKind.Call);
-    expect(calm.release).toEqual({ count: LORD.call.count, telegraphStartAt: 0, at: LORD.call.telegraphMs });
-    expect(plan(BossAttackKind.Call, undefined, true).release!.count).toBe(LORD.call.count + 1);
+    expect(calm.release).toEqual({ count: DEVOURER.call.count, telegraphStartAt: 0, at: DEVOURER.call.telegraphMs });
+    expect(plan(BossAttackKind.Call, undefined, true).release!.count).toBe(DEVOURER.call.count + 1);
   });
 
   it('szarża z kłapnięciem: skok na miejsce gracza ze strefą lądowania', () => {
     const p = plan(BossAttackKind.Leap, { x: 120, y: 0 });
     expect(p.leap?.to).toEqual({ x: 120, y: 0 });
-    expect(p.strikes[0]!.radius).toBe(LORD.leap.radius);
+    expect(p.strikes[0]!.radius).toBe(DEVOURER.leap.radius);
   });
 
   it('uczta nie jest atakiem ze wzoru', () => {

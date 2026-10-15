@@ -1,3 +1,4 @@
+import type { SecretRoomConfig } from '@/dungeon/SecretRoom';
 import { EnemyType } from '@/core/combatTypes';
 import type { ItemDefinition, ItemEffectsConfig, LootScalingConfig, LootTable, StatLimits } from '@/core/lootTypes';
 import { ItemId, ItemKind } from '@/core/lootTypes';
@@ -190,6 +191,12 @@ export const SHRINE_CONFIG: ShrineConfig = {
 export const HIGHSCORE_CONFIG = {
   maxEntries: 50,
   podiumSize: 3,
+  /** Limit czasu jednego zapytania do wspólnej listy; po nim zostaje lista lokalna. */
+  remoteTimeoutMs: 5000,
+  /** Ile niewysłanych wyników trzymamy w kolejce, gdy brak sieci. */
+  maxOutbox: 20,
+  /** Najdłuższe imię gracza na tablicy wyników. */
+  nameMaxLength: 12,
 } as const;
 
 export const PICKUP_CONFIG = {
@@ -204,3 +211,19 @@ export const PICKUP_CONFIG = {
   /** Ile monet maksymalnie wypada z jednej kwoty złota. */
   maxCoinsPerDrop: 5,
 } as const;
+
+/** Ukryta komnata za areną (krok 46): widać ją z 2 kafli; 4–6 kokonów, jeden z losowym przedmiotem. */
+export const SECRET_ROOM_CONFIG: SecretRoomConfig = {
+  revealRadius: 2,
+  cocoons: { min: 4, max: 6 },
+  wallMargin: 1,
+};
+
+/** Urny i skrzynie w ruinach (krok 48): drobne złoto, rzadko mała mikstura, bez przedmiotów. */
+export const BREAKABLE_LOOT: LootTable = {
+  gold: { min: 1, max: 2 },
+  goldChance: 0.6,
+  healthChance: 0.06,
+  healthAmount: 10,
+  itemChance: 0,
+};

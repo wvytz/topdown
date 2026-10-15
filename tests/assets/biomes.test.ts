@@ -48,11 +48,14 @@ function groupPixels(meta: TilesetMeta, sheet: RgbaImage, group: string): Rgba[]
 }
 
 describe('biomy: wybór piętra', () => {
-  it('biom = jedno piętro: 2 leże, 3 Grzybnia, 4 Cmentarzysko, reszta to ruiny', () => {
+  it('biomy: 2 leże, 3 Grzybnia, 4 Cmentarzysko, 5–6 Piekło (dwa piętra), 1 ruiny; potem kolejny krąg (krok 43)', () => {
     expect(biomeForFloor(2).id).toBe(BiomeId.SpiderLair);
     expect(biomeForFloor(3).id).toBe(BiomeId.FungalGrove);
     expect(biomeForFloor(4).id).toBe(BiomeId.Graveyard);
-    for (const floor of [1, 5, 9]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
+    expect(biomeForFloor(5).id).toBe(BiomeId.Infernal);
+    expect(biomeForFloor(6).id).toBe(BiomeId.Infernal);
+    for (const floor of [1, 7, 13]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
+    expect(biomeForFloor(9).id).toBe(BiomeId.FungalGrove);
   });
 
   it('każdy biom ma własne klucze tekstur i animacji pochodni', () => {
@@ -212,6 +215,51 @@ describe('Cmentarzysko (krok 32a)', () => {
     const img = readPng(`${ROOT}public/${def.url}`);
     const colors = spriteColors(img, { x: 0, y: 4 * def.frameHeight, w: def.frameWidth, h: def.frameHeight });
     for (const group of [grave.dressing.floorGroup, grave.dressing.corridorGroup]) {
+      const r = evaluateReadability(colors, floorReference(groupPixels(meta, sheet, group)));
+      expect(r.passes, `${group}: ${JSON.stringify(r)}`).toBe(true);
+    }
+  });
+});
+
+describe('Piekło (krok 41a)', () => {
+  const hell = BIOMES[BiomeId.Infernal];
+  const grave = BIOMES[BiomeId.Graveyard];
+  const meta = loadTileset(fileOf(hell.tileset.jsonUrl));
+  const sheet = readPng(`${ROOT}public/${hell.tileset.imageUrl}`);
+
+  it('ma własne dekoracje: okowy, czaszki na kolcach i żar na licu; szczeliny z żarem, krew, kości i pieczęć 2×2', () => {
+    expect(meta.groups['wallFace.infernal']).toEqual(expect.arrayContaining(['face_chains', 'face_skull_spike', 'face_lava_seep']));
+    for (const group of ['decal.ember', 'decal.blood', 'decal.bones', 'decal.sigil']) {
+      expect(meta.groups[group]?.length, group).toBeGreaterThan(0);
+    }
+    expect(meta.tiles.decal_sigil_2x2).toMatchObject({ w: 2, h: 2 });
+  });
+
+  it('bez pajęczyn — za gorąco', () => {
+    expect(hell.dressing.cobweb.chance).toBe(0);
+  });
+
+  it('mrok żaru: ciemniejszy niż mgiełka Cmentarzyska (każdy biom mroczniejszy), słabszy niż „Mrok”; iskry lecą w górę', () => {
+    const haze = hell.fog!;
+    const mist = grave.fog!;
+    expect(haze.profile.maxDarkness).toBeGreaterThan(mist.profile.maxDarkness);
+    expect(haze.profile.maxDarkness).toBeLessThan(LIGHTING.darknessModifier.maxDarkness);
+    expect(haze.profile.fullLightRadius).toBeGreaterThanOrEqual(mist.profile.fullLightRadius);
+    expect(haze.motes.gravityY).toBeLessThan(0);
+  });
+
+  // Postacie pięter 5–6: obaj bohaterowie i wrogowie Piekła (krok 41d).
+  const CHARACTERS = [
+    ['Barbarzyńca', SPRITE_SHEETS.barbarian],
+    ['Czarodziejka', SPRITE_SHEETS.sorceress],
+    ['Piekielny ogar', SPRITE_SHEETS.hellhound],
+    ['Kultysta popiołu', SPRITE_SHEETS.cultist],
+  ] as const;
+
+  it.each(CHARACTERS)('%s: czytelny na podłodze i bruku piekła (STYLEGUIDE §6a)', (_name, def) => {
+    const img = readPng(`${ROOT}public/${def.url}`);
+    const colors = spriteColors(img, { x: 0, y: 4 * def.frameHeight, w: def.frameWidth, h: def.frameHeight });
+    for (const group of [hell.dressing.floorGroup, hell.dressing.corridorGroup]) {
       const r = evaluateReadability(colors, floorReference(groupPixels(meta, sheet, group)));
       expect(r.passes, `${group}: ${JSON.stringify(r)}`).toBe(true);
     }

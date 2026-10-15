@@ -127,6 +127,8 @@ class Palette:
     # Cmentarzysko (krok 32a): rozkładające się ciało i resztki grzybni z Grzybni. Puste w innych biomach.
     flesh: tuple = ()  # 3: cień, skóra, jasna
     mycel: tuple = ()  # 2: strzępka, świecąca końcówka
+    # Piekło (krok 41a): żar w szczelinach — czerwień, pomarańcz, rozgrzany środek. Puste w innych biomach.
+    ember: tuple = ()  # 3: czerwień, pomarańcz, rozgrzany środek
 
 
     def colors(self):
@@ -300,6 +302,52 @@ PALETTES = {
         # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
         mycel=oks((.55, .045, 215), (.76, .075, 205)),
     ),
+    # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
+    # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
+    # A: krwawy bazalt — prawie czarna, chłodna skała z nutą czerwieni; czerwień niesie krew i żar.
+    'pieklo_bazalt': Palette(
+        key='pieklo_bazalt', label='A: krwawy bazalt',
+        floor=oks((.29, .020, 20), (.37, .024, 22), (.445, .028, 25), (.49, .030, 27), (.535, .030, 30), (.58, .028, 32)),
+        floor_alt=ok(.43, .030, 15),
+        wall_top=oks((.13, .020, 15), (.20, .028, 18), (.30, .034, 20), (.36, .036, 22), (.44, .034, 25), (.52, .030, 28)),
+        wall_block_alt=ok(.33, .036, 12),
+        wall_face=oks((.09, .022, 15), (.14, .028, 18), (.18, .032, 20)),
+        wall_fade=oks((.08, .018, 15), (.12, .024, 18), (.15, .028, 20)),
+        deep=oks((.06, .016, 15), (.08, .018, 15)),
+        # Krew: zaschnięta (zewnętrzna) i świeża.
+        stain=oks((.27, .090, 22), (.34, .120, 25)),
+        # Iskry z palenisk (pyłki w powietrzu i drobiny na posadzce): pomarańcz i czerwień żaru.
+        ash=oks((.68, .140, 52), (.54, .150, 32)),
+        ember=oks((.46, .160, 28), (.63, .170, 45), (.80, .140, 72)),
+        # Pochodnie piekła: czerwieńszy ogień niż w ruinach.
+        flame=oks((.44, .160, 28), (.60, .170, 42), (.76, .150, 65), (.90, .080, 85)),
+    ),
+    # B: zaschnięta krew — rdzawy bordo posadzki, mury z ciemnej, krwistej cegły.
+    'pieklo_krew': Palette(
+        key='pieklo_krew', label='B: zaschnięta krew',
+        floor=oks((.29, .045, 18), (.37, .055, 20), (.445, .062, 22), (.49, .066, 24), (.535, .066, 27), (.58, .062, 30)),
+        floor_alt=ok(.43, .066, 14),
+        wall_top=oks((.13, .040, 15), (.20, .055, 17), (.30, .068, 19), (.36, .072, 21), (.44, .068, 24), (.52, .060, 27)),
+        wall_block_alt=ok(.33, .070, 12),
+        wall_face=oks((.09, .035, 15), (.14, .050, 17), (.18, .060, 19)),
+        wall_fade=oks((.08, .030, 15), (.12, .042, 17), (.15, .050, 19)),
+        deep=oks((.06, .024, 15), (.08, .028, 15)),
+        stain=oks((.24, .095, 20), (.31, .125, 24)),
+        ash=oks((.60, .016, 45), (.50, .016, 40)),
+    ),
+    # C: rozżarzony popiół — szaroczarna posadzka jak po pożarze, ciepłe pęknięcia, mury z osmalonego kamienia.
+    'pieklo_popiol': Palette(
+        key='pieklo_popiol', label='C: rozżarzony popiół',
+        floor=oks((.29, .016, 45), (.37, .018, 48), (.445, .020, 50), (.49, .022, 52), (.535, .024, 55), (.58, .024, 58)),
+        floor_alt=ok(.43, .022, 40),
+        wall_top=oks((.13, .030, 25), (.20, .040, 25), (.30, .048, 28), (.36, .050, 30), (.44, .046, 34), (.52, .040, 38)),
+        wall_block_alt=ok(.33, .050, 22),
+        wall_face=oks((.09, .028, 22), (.14, .038, 24), (.18, .044, 26)),
+        wall_fade=oks((.08, .024, 22), (.12, .032, 24), (.15, .038, 26)),
+        deep=oks((.06, .018, 22), (.08, .020, 22)),
+        stain=oks((.27, .090, 22), (.34, .120, 25)),
+        ash=oks((.64, .012, 60), (.54, .012, 55)),
+    ),
 }
 DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 
@@ -313,6 +361,9 @@ BIOMES = {
     'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
     # Cmentarzysko (krok 32a): ludzki biom — groby, kości, zwłoki zatrutych; grzybnia ledwo dociera.
     'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave',), 'reserved_hues': True},
+    # Piekło (krok 41a): krwisty, demoniczny biom z paleniskami; czerwień i pomarańcz z prośby właściciela,
+    # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
+    'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
 }
 
 
@@ -1381,6 +1432,114 @@ def grave_face(kind):
     return gen
 
 
+def infernal_decal(kind):
+    """Nakładki piekła (krok 41a): żarzące się szczeliny, krew, demoniczna pieczęć (2x2)."""
+    def gen(p, r):
+        E, S = p.ember, p.stain
+        if kind in ('ember_a', 'ember_b'):  # szczelina z żarem: ciemny brzeg, czerwień, pomarańczowy rdzeń
+            img = Img(T, T)
+            x, y = (5, 9) if kind == 'ember_a' else (6, 24)
+            dx, dy = (1, .55) if kind == 'ember_a' else (1, -.6)
+            pts = []
+            for i in range(22):
+                x += dx + r.uniform(-.2, .2)
+                y += dy + r.uniform(-.9, .9)
+                pts.append((int(x), int(y)))
+            for i, (px, py) in enumerate(pts):
+                hot = 6 < i < 16
+                img.put(px, py + 1, p.floor[0])  # cień pod szczeliną
+                img.put(px, py, E[2] if hot and i % 3 == 0 else (E[1] if hot else E[0]))
+                if hot:
+                    img.put(px, py - 1, E[0])
+            # żar nie ma ciemnego obrysu (świeci, STYLEGUIDE §6b)
+        elif kind in ('blood_a', 'blood_b'):  # plama krwi z kroplami
+            img = Img(T, T)
+            cx, cy, rad = (15, 17, 6.5) if kind == 'blood_a' else (17, 14, 5)
+            for yy in range(T):
+                for xx in range(T):
+                    d = math.hypot(xx + .5 - cx, (yy + .5 - cy) * 1.25)
+                    a = math.atan2(yy - cy, xx - cx)
+                    reach = rad * (1 + .18 * math.sin(4 * a + r.uniform(0, .5)))
+                    if d < reach:
+                        img.put(xx, yy, S[1] if d < reach * .65 else S[0])
+            for _ in range(5):
+                a, d = r.uniform(0, math.tau), r.uniform(rad + 2, rad + 6)
+                img.put(int(cx + math.cos(a) * d), int(cy + math.sin(a) * d), S[0])
+            img.put(int(cx) - 2, int(cy) - 2, S[1])
+        elif kind == 'sigil':  # pieczęć 2x2: krąg i pentagram wyryte krwią, żar w wierzchołkach
+            img = Img(2 * T, 2 * T)
+            c, rad = T, 26
+            for i in range(720):
+                a = i / 720 * math.tau
+                img.put(int(c + math.cos(a) * rad), int(c + math.sin(a) * rad), S[1])
+                img.put(int(c + math.cos(a) * (rad - 3)), int(c + math.sin(a) * (rad - 3)), S[0])
+            star = [(c + math.cos(math.radians(-90 + k * 144)) * (rad - 3), c + math.sin(math.radians(-90 + k * 144)) * (rad - 3))
+                    for k in range(6)]
+            for (x0, y0), (x1, y1) in zip(star, star[1:]):
+                n = int(math.hypot(x1 - x0, y1 - y0) * 2)
+                for i in range(n + 1):
+                    t = i / n
+                    img.put(int(x0 + (x1 - x0) * t), int(y0 + (y1 - y0) * t), S[1])
+            for x0, y0 in star[:5]:
+                img.put(int(x0), int(y0), E[2])
+                for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    img.put(int(x0) + ox, int(y0) + oy, E[1])
+        return img
+    return gen
+
+
+def infernal_face(kind):
+    """Detale lica muru piekła: okowy na łańcuchach, czaszka na kolcu, szczelina z żarem."""
+    def gen(p, r):
+        img, O, I = Img(T, T), p.outline, p.iron
+        fy = T - FACE
+        if kind == 'chains':  # dwa łańcuchy z okowami zwisające z kółek
+            for cx in (10, 21):
+                img.put(cx, fy, I[2])
+                for y in range(fy + 1, T - 2):
+                    img.put(cx, y, I[1] if y % 2 else I[2])
+                for x in range(cx - 2, cx + 3):
+                    img.put(x, T - 2, I[1])
+                img.put(cx - 2, T - 3, I[1])
+                img.put(cx + 2, T - 3, I[1])
+            outline(img, O)
+        elif kind == 'skull_spike':  # czaszka nabita na żelazny kolec
+            for y in range(fy, T - 1):
+                img.put(16, y, I[1] if y > fy + 2 else I[2])
+            small_skull(img, p, 16, fy + 4, 2.6)
+            img.put(16, fy + 1, p.stain[1])
+            img.put(17, fy + 7, p.stain[0])
+            outline(img, O)
+        elif kind == 'lava_seep':  # pęknięcie lica, przez które sączy się żar
+            E = p.ember
+            x = 15
+            for y in range(fy, T):
+                x += r.choice((-1, 0, 0, 1))
+                img.put(x, y, E[1] if y > fy + 2 else E[0])
+                if y > fy + 4:
+                    img.put(x + 1, y, E[0])
+            img.put(x, T - 1, E[2])
+        return img
+    return gen
+
+
+def overgrow_infernal(e, img, p, r):
+    """Piekło (krok 41a): pojedyncze rozżarzone drobiny w fugach posadzki, sadza zaciekająca lica murów."""
+    if e.layer == 'floorBase':
+        for y in range(img.h):
+            for x in range(img.w):
+                if img.get(x, y) == p.floor[1] and r.random() < .025:
+                    img.put(x, y, p.ember[0])
+    elif e.layer == 'wall':
+        face_top = T - FACE if img.get(4, T - 1) == p.outline else T
+        if face_top < T:
+            for _ in range(r.randint(0, 2)):
+                x = r.randrange(3, T - 3)
+                for y in range(face_top, face_top + r.randint(2, FACE - 2)):
+                    if img.get(x, y) not in (None, p.outline, CLR):
+                        img.put(x, y, p.deep[0])
+
+
 def overgrow_grave(e, img, p, r):
     """Cmentarzysko (krok 32a): grzyb ledwo dociera — rzadkie strzępki w fugach podłogi, zacieki zgnilizny
     na licach murów. Dużo skromniej niż w Grzybni."""
@@ -1593,6 +1752,16 @@ def manifest():
                             ('candles_a', 'decal.candles'), ('candles_b', 'decal.candles'),
                             ('mycel_faint_a', 'decal.mycelFaint'), ('mycel_faint_b', 'decal.mycelFaint')):
             m.append(Entry(f'decal_{kind}', grave_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+    if 'infernal' in BIOMES[BIOME]['extras']:
+        # Piekło (krok 41a): dopisane na końcu (first-fit), kafle wspólne z ruinami się nie przesuwają.
+        for kind, weight in (('chains', 3), ('skull_spike', 2), ('lava_seep', 2)):
+            m.append(Entry(f'face_{kind}', infernal_face(kind), 'wallDecor', group='wallFace.infernal', weight=weight))
+        m.append(Entry('decal_sigil_2x2', infernal_decal('sigil'), 'floorDecal', 2, 2, group='decal.sigil', weight=1))
+        for kind, group in (('ember_a', 'decal.ember'), ('ember_b', 'decal.ember'),
+                            ('blood_a', 'decal.blood'), ('blood_b', 'decal.blood')):
+            m.append(Entry(f'decal_{kind}', infernal_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+        for kind in ('bones_a', 'bones_b'):
+            m.append(Entry(f'decal_{kind}', grave_decal(kind), 'floorDecal', group='decal.bones', weight=1, flip_x=True))
     return m
 
 
@@ -1608,6 +1777,8 @@ def render_tiles(p):
             overgrow(e, img, p, random.Random(seed_of(e.name + '/porost')))
         if 'grave' in BIOMES[BIOME]['extras']:  # Cmentarzysko: nikła grzybnia i zacieki zgnilizny
             overgrow_grave(e, img, p, random.Random(seed_of(e.name + '/porost')))
+        if 'infernal' in BIOMES[BIOME]['extras']:  # Piekło: żar w fugach, sadza na licach
+            overgrow_infernal(e, img, p, random.Random(seed_of(e.name + '/porost')))
         tiles[e.name] = img
     return tiles
 
@@ -1789,6 +1960,13 @@ SPRITES = {
     # Wrogowie Cmentarzyska (krok 32b, tools/grave_enemies.py).
     'zombie': ('zombie_walk-claw.png', 48, '#1b1a22', 'Zarażony'),
     'sower': ('sower_walk-spit.png', 48, '#1b1a22', 'Siewca'),
+    # Druga bohaterka (krok 36, tools/sorceress_sprites.py).
+    'sorceress': ('sorceress_walk-cast.png', 48, '#1b1a22', 'Czarodziejka'),
+    'sorceress_orb': ('sorceress_orb.png', 16, None, None),
+    # Wrogowie Piekła (krok 41d, tools/infernal_enemies.py).
+    'hellhound': ('hellhound_run-pounce.png', 48, '#1b1a22', 'Ogar'),
+    'cultist': ('cultist_walk-throw.png', 48, '#1b1a22', 'Kultysta'),
+    'tar_bomb': ('tar-bomb.png', 16, None, None),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -1823,14 +2001,28 @@ MOCKUP_ACTORS_GRAVE = [
     ('sower', 6, 752, 252, True, 0),
     ('spore_ball', 0, 290, 238, False, 0),
 ]
+# Piekło (krok 41a): obaj bohaterowie; wrogowie biomu z kroku 41d — ogar (Rusher) i kultysta (Kiter).
+MOCKUP_ACTORS_INFERNAL = [
+    ('barbarian_sword', 2, 368, 262, True, 4),
+    ('sorceress', 1, 300, 330, True, 0),
+    ('sorceress_orb', 0, 318, 312, False, 0),
+    ('hellhound', 6, 452, 236, True, 5),              # skok
+    ('cultist', 2, 232, 236, True, 6),                # rzut
+    ('cultist', 6, 752, 252, True, 0),
+    ('tar_bomb', 0, 262, 230, False, 0),
+]
 # Nakładki biomu na makiecie: (kafel, x, y) w kaflach.
 MOCKUP_BIOME_DECALS = {
+    'infernal': [('decal_sigil_2x2', 13, 8), ('decal_ember_a', 6, 7), ('decal_ember_b', 15, 5), ('decal_blood_a', 10, 11),
+                 ('decal_blood_b', 17, 11), ('decal_bones_a', 8, 5), ('decal_ember_a', 18, 8)],
     'graveyard': [('decal_corpse_2x1', 9, 12), ('decal_grave_slab_1x2', 15, 5), ('decal_grave_slab_1x2', 17, 5),
                   ('decal_candles_a', 15, 7), ('decal_bones_a', 6, 7), ('decal_bones_b', 12, 6),
                   ('decal_corpse_b_2x1', 13, 9), ('decal_mycel_faint_b', 11, 9), ('decal_candles_b', 18, 11)],
 }
 # Detale lica biomu na makiecie (rysowane po murach): (kafel, x, y).
 MOCKUP_BIOME_FACES = {
+    'infernal': [('face_chains', 5, 3), ('face_skull_spike', 7, 3), ('face_lava_seep', 12, 3), ('face_chains', 14, 3),
+                 ('torch_sconce', 9, 3), ('torch_flame_0', 9, 3)],
     'graveyard': [('face_niche', 5, 3), ('face_skulls', 7, 3), ('face_niche', 12, 3), ('face_epitaph', 14, 3),
                   ('face_niche', 17, 3), ('torch_sconce', 9, 3), ('torch_flame_0', 9, 3)],
 }
@@ -1841,13 +2033,14 @@ METRIC_CAST = {
     # Grzybnia (krok 28b): zarażony pająk i grzybiec; Król Pająków w kroku 29.
     'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
     'graveyard': ('barbarian_sword', 'zombie', 'sower'),
+    'infernal': ('barbarian_sword', 'sorceress', 'hellhound', 'cultist'),
 }
 
 
 def load_frame(key, row, col=0):
     file, cell, _, _ = SPRITES[key]
     im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
-    if key in ('orb', 'glob'):
+    if key in ('orb', 'glob', 'sorceress_orb', 'tar_bomb'):
         row = 0  # bez kierunków
     return im.crop((col * cell, row * cell, (col + 1) * cell, (row + 1) * cell))
 
@@ -1961,7 +2154,8 @@ def compose_mockup(p, tiles, meta, seed=16):
             if grid[y][x] in props:
                 put(props[grid[y][x]], x, y)
     # 8. postacie (wg y), potem ściany nad postaciami
-    actors = (MOCKUP_ACTORS_GRAVE if BIOME == 'graveyard'
+    actors = (MOCKUP_ACTORS_INFERNAL if BIOME == 'infernal'
+              else MOCKUP_ACTORS_GRAVE if BIOME == 'graveyard'
               else MOCKUP_ACTORS_LAIR if BIOME in ('spider_lair', 'fungal_grove')
               else [(*a, 0) for a in MOCKUP_ACTORS])
     for key, row, cx, cy, _, col in sorted(actors, key=lambda a: a[3]):

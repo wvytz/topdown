@@ -1,0 +1,12 @@
+name = "tower-crawler-scores"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Strony, z których gra może wysyłać wyniki (oddzielone przecinkami).
+ALLOWED_ORIGINS = "https://wvytz.github.io,http://localhost:5173"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tower-crawler-scores"
+database_id = "98c0f8f3-a6e3-4fa6-b67f-5a2981ecfed2"

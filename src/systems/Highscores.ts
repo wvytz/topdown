@@ -6,6 +6,8 @@ export interface ScoreEntry {
   readonly floor: number;
   /** Znacznik czasu (ms) — tylko informacyjnie, ranking go nie używa. */
   readonly timestamp: number;
+  /** Imię gracza; brak = wpis anonimowy (także wszystkie wpisy sprzed imion). */
+  readonly name?: string;
 }
 
 export interface RankedEntry {
@@ -60,4 +62,15 @@ export function buildScoreboard(
     top,
     current: onPodium ? null : { rank: current.rank, entry: current.entry, isCurrent: true },
   };
+}
+
+/** Dozwolony znak imienia: litery (także polskie), cyfry, spacja, „_” i „-”. */
+export function isNameChar(char: string): boolean {
+  return /^[\p{L}\p{N} _-]$/u.test(char);
+}
+
+/** Czyści imię gracza: tylko dozwolone znaki, pojedyncze spacje, bez spacji na brzegach, max `maxLength`. */
+export function sanitizePlayerName(raw: string, maxLength: number): string {
+  const kept = [...raw].filter(isNameChar).join('');
+  return [...kept.replace(/\s+/g, ' ').trim()].slice(0, maxLength).join('').trim();
 }

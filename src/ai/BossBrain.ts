@@ -14,8 +14,10 @@ export interface BossBrainInput {
   readonly hpRatio: number;
   /** Żywe pajączki z wylęgów (Matka Pająków); brak = 0. */
   readonly summonsAlive?: number;
-  /** Kokony w spiżarni, które boss może pożreć (Wampirzy Lord); brak = żadnych. */
+  /** Kokony w spiżarni, które boss może pożreć (Grzybowy Pożeracz); brak = żadnych. */
   readonly larders?: readonly Vector2[];
+  /** Paleniska areny (Kat Otchłani). */
+  readonly braziers?: readonly Vector2[];
 }
 
 export interface BossDecision {
@@ -41,8 +43,9 @@ export class BossBrain {
   private nextAttackAt = Infinity;
   private currentAttack: BossAttackPlan | null = null;
   private nextLashAt = 0;
+  private nextHookAt = 0;
   private nextFeastAt = Infinity;
-  /** Stosy wzmocnienia z uczt (Wampirzy Lord). */
+  /** Stosy wzmocnienia z uczt (Grzybowy Pożeracz). */
   private stacks = 0;
 
   constructor(
@@ -60,6 +63,8 @@ export class BossBrain {
     if (this.phase !== BossPhase.Dormant) return;
     this.phase = BossPhase.Fighting;
     this.nextAttackAt = now + this.definition.openingDelayMs;
+    // Hak (Kat) też czeka chwilę po otwarciu walki — gracz najpierw widzi bossa.
+    this.nextHookAt = now + this.definition.openingDelayMs / 2;
     if (this.definition.feast) this.nextFeastAt = now + this.definition.feast.firstAfterMs;
   }
 
@@ -101,7 +106,7 @@ export class BossBrain {
       }
     }
 
-    // Uczta (Lord, krok 33): gdy przyszła pora, boss idzie do najbliższego kokonu i go pożera.
+    // Uczta (Pożeracz, krok 33): gdy przyszła pora, boss idzie do najbliższego kokonu i go pożera.
     const feast = this.definition.feast;
     const larders = input.larders ?? [];
     if (feast && larders.length > 0 && input.now >= this.nextFeastAt) {
@@ -123,6 +128,16 @@ export class BossBrain {
       const plan = this.plan(BossAttackKind.Lash, input, enraged);
       this.currentAttack = plan;
       this.nextLashAt = plan.endsAt + lash.cooldownMs;
+      this.nextAttackAt = Math.max(this.nextAttackAt, plan.endsAt);
+      return stand(plan);
+    }
+
+    // Hak poza wzorem (Kat Otchłani): gracz trzyma dystans — boss przyciąga go pod tarczę.
+    const hook = this.definition.hook;
+    if (hook && gap >= hook.minRange && gap <= hook.maxRange && input.now >= this.nextHookAt) {
+      const plan = this.plan(BossAttackKind.Hook, input, enraged);
+      this.currentAttack = plan;
+      this.nextHookAt = plan.endsAt + hook.cooldownMs;
       this.nextAttackAt = Math.max(this.nextAttackAt, plan.endsAt);
       return stand(plan);
     }
@@ -156,6 +171,7 @@ export class BossBrain {
       enraged,
       rng: this.rng,
       summonsAlive: input.summonsAlive ?? 0,
+      ...(input.braziers && { braziers: input.braziers }),
     });
   }
 }

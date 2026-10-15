@@ -1,5 +1,5 @@
 /**
- * Ekran śmierci (krok 35; od kroku 40 w stylu Dark Souls / Castlevanii): gra powoli tonie w ciemności,
+ * Ekran śmierci (krok 35; od kroku 55 w stylu Dark Souls / Castlevanii): gra powoli tonie w ciemności,
  * przez środek ekranu czarny pas, a na nim POLEGŁEŚ w przygaszonej czerwieni — pojawia się powoli
  * i bardzo wolno rośnie. Bez krwi, wstrząsów i cząstek. Pod spodem wynik i tablica rekordów.
  */
@@ -21,7 +21,7 @@ export interface DeathFlowGroup {
 }
 
 /**
- * Lico liter POLEGŁEŚ (krok 41): pasy czerwieni spływają w dół przez litery, bez końca.
+ * Lico liter POLEGŁEŚ (krok 56): pasy czerwieni spływają w dół przez litery, bez końca.
  * Rampa jest cykliczna (zaczyna się i kończy podobnym tonem), więc pętla nie ma szwu;
  * jeden cykl = `ramp.length × bandPx` pikseli ekranu.
  */
@@ -91,10 +91,10 @@ export const DEATH_LAYOUT = {
   /** Litery szeroko rozstawione (gap 2) — spokojny, ciężki napis. */
   title: { centerY: 196, unit: 8, gap: 2, outline: 2 },
   /**
-   * Pas: pełna szerokość ekranu. Pełna czerń zaczyna się tuż pod HUD-em (od kroku 44 rząd ikon przedmiotów
-   * kończy się na y = 142; nad nią krótkie rozmycie), a w dół sięga o połowę dalej niż w kroku 40 (dół 271 → 346).
+   * Pas: pełna szerokość ekranu. Pełna czerń zaczyna się tuż pod HUD-em (od kroku 59 rząd ikon przedmiotów
+   * kończy się na y = 147, pod paskiem promienia Czarodziejki; nad nią krótkie rozmycie), a w dół sięga o połowę dalej niż w kroku 55 (dół 271 → 346).
    */
-  band: { top: 130, bottom: 346, fadeTopPx: 12, fadeBottomPx: 46, alpha: 0.85 },
+  band: { top: 135, bottom: 346, fadeTopPx: 12, fadeBottomPx: 46, alpha: 0.85 },
   glow: { width: 620, height: 150, alpha: 0.3 },
   score: { y: 296, fontSize: 15 },
   /** Gotycki ozdobnik: cienkie linie i mały krzyż pośrodku. */

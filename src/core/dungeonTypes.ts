@@ -15,6 +15,10 @@ export enum RoomKind {
   Start = 'start',
   Normal = 'normal',
   Boss = 'boss',
+  /** Ukryta komnata za areną (krok 46): bez wrogów i rekwizytów planerów, z kokonami skarbu. */
+  Secret = 'secret',
+  /** Pokój zasadzki (krok 49): pusty, z przynętą na środku; kraty, mrok i fale upiorów. */
+  Ambush = 'ambush',
 }
 
 /** Pozycja w siatce kafelków (nie w pikselach). */
@@ -51,6 +55,10 @@ export interface DungeonGeneratorConfig {
   /** Dodatkowe korytarze ponad drzewo rozpinające, jako ułamek liczby pokojów — tworzą pętle. */
   readonly extraConnectionRatio: number;
   readonly maxPlacementAttempts: number;
+  /** Arena na końcu piętra (krok 45): jedno wejście, najwyżej jeden ślepy pokój za nią. */
+  readonly bossRoomAtEnd: boolean;
+  /** Szansa na pokój końcowy za areną (gdy `bossRoomAtEnd`). */
+  readonly endRoomChance: number;
 }
 
 export interface DungeonFloor {
@@ -64,4 +72,6 @@ export interface DungeonFloor {
   readonly bossRoomId: number;
   readonly playerSpawn: TilePoint;
   readonly stairs: TilePoint;
+  /** Pokój końcowy za areną (krok 45) — osiągalny tylko przez nią; ukryta komnata (krok 46). Brak = arena to koniec piętra. */
+  readonly endRoomId?: number;
 }

@@ -1,5 +1,5 @@
 /** Typy domenowe bossa — czyste dane, bez zależności od Phasera. */
-import type { ParalysisEffect, PoisonEffect, StatusApplication } from '@/core/combatTypes';
+import type { EnemyType, ParalysisEffect, PoisonEffect, StatusApplication } from '@/core/combatTypes';
 import type { IntRange } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 
@@ -24,12 +24,16 @@ export enum BossAttackKind {
   CocoonThrow = 'cocoon-throw',
   /** Wysyp grzybni (Król Pająków, krok 29): wokół gracza wyrastają trujące płaty grzybni (teren). */
   Bloom = 'bloom',
-  /** Cios tasakiem (Wampirzy Lord, krok 33): szeroki, ciężki zamach przed sobą. */
+  /** Ciężki cios przed sobą (krok 33 tasak Lorda, od kroku 34 zamach łapami Grzybowego Pożeracza). */
   Cleave = 'cleave',
-  /** Zew spiżarni (Wampirzy Lord): kokony drżą, z wybranych wychodzą zarażeni. */
+  /** Zew spiżarni (Grzybowy Pożeracz): kokony drżą, z wybranych wychodzą zarażeni. */
   Call = 'call',
-  /** Uczta (Wampirzy Lord): boss pożera kokon ze spiżarni — leczy się i rośnie w siłę. Poza wzorem. */
+  /** Uczta (Grzybowy Pożeracz): boss pożera kokon ze spiżarni — leczy się i rośnie w siłę. Poza wzorem. */
   Feast = 'feast',
+  /** Hak na łańcuchu (Kat Otchłani, krok 41f): z dystansu przyciąga gracza pod tarczę. Poza wzorem. */
+  Hook = 'hook',
+  /** Oddech palenisk (Kat Otchłani): wszystkie paleniska areny buchają naraz. */
+  Kindle = 'kindle',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -37,7 +41,11 @@ export enum BossId {
   FloorGuardian = 'floor-guardian',
   SpiderQueen = 'spider-queen',
   SpiderKing = 'spider-king',
-  VampireLord = 'vampire-lord',
+  FungalDevourer = 'fungal-devourer',
+  /** Piekło, piętro 5 (krok 41e): Strażnik Bram — tarcza z przodu, wirujący łańcuch. */
+  GateWarden = 'gate-warden',
+  /** Piekło, piętro 6 (krok 41f): Kat Otchłani — tarcza, hak, oddech palenisk, pierścień ognia. */
+  AbyssExecutioner = 'abyss-executioner',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -153,7 +161,7 @@ export interface LashAttackDefinition extends BaseBossAttackDefinition {
   readonly cooldownMs: number;
   /** Status trafienia: trucizna (Matka Pająków), paraliż (ścięcie Króla); brak = sam cios. */
   readonly status?: StatusApplication;
-  /** Trafienie leczy bossa o tyle HP (kąsanie Wampirzego Lorda, krok 33). */
+  /** Trafienie leczy bossa o tyle HP (kąsanie Grzybowego Pożeracza, krok 33). */
   readonly healOnHit?: number;
 }
 
@@ -258,11 +266,74 @@ export interface SpiderlingDefinition {
   readonly knockback: number;
 }
 
+/**
+ * Tarcza bossa (krok 41e): chroni stożek przed bossem — pociski z przodu odbija, promień z przodu nie rani,
+ * cios w tarczę zadaje część obrażeń. Boss obraca ją do gracza z ograniczoną prędkością, a w ataku wcale.
+ */
+export interface ShieldDefinition {
+  /** Szerokość chronionego stożka (stopnie, całość). */
+  readonly arcDeg: number;
+  /**
+   * Rozgrzanie (Kat, krok 41f): tyle ticków promienia w tarczę i boss odpowiada wybuchem żaru wokół siebie.
+   * Brak = promień w tarczę po prostu nie rani.
+   */
+  readonly heat?: { readonly ticks: number; readonly radius: number; readonly telegraphMs: number; readonly damage: number; readonly knockback: number };
+  /** Prędkość obrotu tarczy do gracza (stopnie na sekundę). */
+  readonly turnRateDegPerSec: number;
+  /** Cios wręcz (i dash) w tarczę zadaje tyle obrażeń (0–1). */
+  readonly frontMeleeMultiplier: number;
+  /** Odbity pocisk leci z prędkością pocisku ×tyle i zadaje tyle obrażeń co oryginał. */
+  readonly reflectSpeed: number;
+}
+
+/**
+ * Hak na łańcuchu (Kat Otchłani, krok 41f): poza wzorem, gdy gracz stoi dalej niż `minRange` (do `maxRange`)
+ * i minął `cooldownMs`. Telegraf: linia stref od bossa w stronę gracza; trafienie przyciąga gracza pod tarczę,
+ * a po `followUp.delayMs` boss uderza tarczą przed sobą. Dash w bok = unik.
+ */
+export interface HookAttackDefinition extends BaseBossAttackDefinition {
+  readonly minRange: number;
+  readonly maxRange: number;
+  readonly cooldownMs: number;
+  /** Strefy wzdłuż łańcucha: co `step` px, promień `radius`. */
+  readonly step: number;
+  readonly radius: number;
+  readonly followUp: { readonly delayMs: number; readonly reach: number; readonly radius: number; readonly damage: number; readonly knockback: number };
+}
+
+/** Oddech palenisk: po telegrafie wszystkie paleniska areny buchają naraz (strefa `radius` wokół każdego). */
+export interface KindleAttackDefinition extends BaseBossAttackDefinition {
+  readonly radius: number;
+}
+
+/**
+ * Pierścień ognia (Kat, po wściekłości): brzeg areny płonie, a wolne koło w środku kurczy się
+ * od połowy krótszego boku areny do `minRadius` przez `shrinkMs`. Poza kołem ogień parzy (przez trafienie
+ * z nietykalnością) i odpycha do środka.
+ */
+export interface FireRingDefinition {
+  readonly minRadius: number;
+  readonly shrinkMs: number;
+  readonly damage: number;
+  readonly knockback: number;
+}
+
 export interface BossEnrageConfig {
   /** Próg HP (0..1), poniżej którego boss wpada we wściekłość. */
   readonly hpThreshold: number;
   readonly telegraphMultiplier: number;
   readonly restMultiplier: number;
+}
+
+/**
+ * Galerie areny (krok 44): w `sides` ścianach areny (najpierw tych bez wejść) wnęka głęboka na `depth` kafli,
+ * odgrodzona kratą. Gdy kraty opadną, w każdej staje wróg `enemy` (dystansowy rzuca łukiem ponad kratą);
+ * kraty galerii podnoszą się razem z resztą po pokonaniu bossa — wtedy wrogowie wychodzą.
+ */
+export interface ArenaGalleryDefinition {
+  readonly sides: number;
+  readonly depth: number;
+  readonly enemy: EnemyType;
 }
 
 export interface BossDefinition {
@@ -299,8 +370,17 @@ export interface BossDefinition {
   readonly bloom?: BloomAttackDefinition;
   readonly cleave?: CleaveAttackDefinition;
   readonly call?: CallAttackDefinition;
-  /** Spiżarnia i uczta (Wampirzy Lord). */
+  /** Spiżarnia i uczta (Grzybowy Pożeracz). */
   readonly feast?: FeastDefinition;
+  /** Tarcza z przodu (Strażnik Bram, Kat Otchłani). */
+  readonly shield?: ShieldDefinition;
+  readonly hook?: HookAttackDefinition;
+  readonly kindle?: KindleAttackDefinition;
+  /** Paleniska na arenie (Kat): tyle, rozstawione w ćwiartkach areny; buchają przy oddechu. */
+  readonly arenaBraziers?: number;
+  /** Galerie za kratami (Strażnik Bram, krok 44): wnęki w ścianach areny z wrogami dystansowymi. */
+  readonly galleries?: ArenaGalleryDefinition;
+  readonly fireRing?: FireRingDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -316,8 +396,10 @@ export interface AreaStrike {
   readonly knockback: number;
   /** Status nakładany trafieniem (trucizna smagnięcia). */
   readonly status?: StatusApplication;
-  /** Trafienie gracza leczy bossa (kąsanie Lorda). */
+  /** Trafienie gracza leczy bossa (kąsanie Pożeracza). */
   readonly healOnHit?: number;
+  /** Trafienie przyciąga gracza w to miejsce (hak Kata). */
+  readonly pullTo?: Vector2;
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -388,9 +470,9 @@ export interface BossAttackPlan {
   readonly webs: readonly WebShot[];
   readonly leap: BossLeap | null;
   readonly throws: readonly ThrownObject[];
-  /** Uczta (Wampirzy Lord). */
+  /** Uczta (Grzybowy Pożeracz). */
   readonly feast?: FeastBite;
-  /** Zew spiżarni (Wampirzy Lord). */
+  /** Zew spiżarni (Grzybowy Pożeracz). */
   readonly release?: LarderRelease;
   /** Kiedy boss może znów się ruszać. */
   readonly endsAt: number;

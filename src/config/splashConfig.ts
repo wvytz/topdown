@@ -1,5 +1,5 @@
 /**
- * Ekran startowy (krok 34; od kroku 37 nowy motyw): TOP nad szczytem samotnej wieży, DOWN u jej podstawy.
+ * Ekran startowy (krok 34; od kroku 52 nowy motyw): TOP nad szczytem samotnej wieży, DOWN u jej podstawy.
  * Wokół mrok i zniszczenie, za wieżą zaćmione słońce, z nieba opada popiół — gra jako metafora końca.
  * Paleta z systemu „Matka Pająków” (chityna, ogień jaj, oczy, kość).
  */

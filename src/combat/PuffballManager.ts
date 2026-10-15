@@ -13,6 +13,8 @@ import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { BeamStrike } from '@/systems/Sorcery';
+import { resolveBeam } from '@/systems/Sorcery';
 import type { PuffballConfig } from '@/systems/Puffballs';
 import { isInPoisonCloud } from '@/systems/Puffballs';
 import type { PlayerShot } from '@/systems/ShotResolver';
@@ -75,6 +77,11 @@ export class PuffballManager {
   /** Cios gracza — purchawki nie liczą się do Wampirzego kła. */
   resolvePlayerMelee(swing: MeleeSwing): number {
     resolveMeleeSwing(swing, this.targets());
+    return 0;
+  }
+
+  resolvePlayerBeam(beam: BeamStrike): number {
+    resolveBeam(beam, this.targets());
     return 0;
   }
 

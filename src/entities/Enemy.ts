@@ -3,10 +3,12 @@ import type {
   DamageResult,
   EnemyDefinition,
   Hit,
+  LobAttackDefinition,
   MeleeAttackDefinition,
+  PounceAttackDefinition,
   ProjectileAttackDefinition,
 } from '@/core/combatTypes';
-import { AttackPhase, EnemyAttackKind } from '@/core/combatTypes';
+import { AttackPhase, EliteAffix, EnemyAttackKind } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { EnemyBrain } from '@/ai/EnemyBrain';
 import { ENEMY_STATUS_RESISTANCE, ENEMY_VIEW_RULE } from '@/config/combatConfig';
@@ -14,17 +16,38 @@ import { AttackCycle } from '@/systems/AttackCycle';
 import { Health } from '@/systems/Health';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
+import { pounceDurationMs, pounceLanding } from '@/systems/HellAttacks';
 import { statusTint } from '@/effects/statusTints';
 import type { EnemyVisual } from '@/config/spriteConfig';
 import { ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
+import { ELITE_CONFIG } from '@/config/eliteConfig';
+import { GHOST_VISUAL } from '@/config/spriteConfig';
+import { isPhased } from '@/systems/Ambush';
+import { isShielded, turnToward } from '@/systems/Shield';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
   meleeStrike(enemy: Enemy, attack: MeleeAttackDefinition): void;
   fireProjectile(enemy: Enemy, attack: ProjectileAttackDefinition, target: Vector2): void;
+  /** Skok ogara (krok 41d): czy w tej klatce trafił gracza (raz na skok). */
+  pounceHit(enemy: Enemy, attack: PounceAttackDefinition): boolean;
+  /** Smuga żaru na odcinku toru skoku pokonanym od poprzedniej klatki. */
+  pounceTrail(enemy: Enemy, attack: PounceAttackDefinition, from: Vector2, to: Vector2): void;
+  /** Rzut łukiem kultysty (krok 41d) w miejsce gracza z chwili rzutu. */
+  lobBomb(enemy: Enemy, attack: LobAttackDefinition, target: Vector2): void;
+}
+
+/** Skok w toku: tor, czas i to, czy już trafił. */
+interface PounceFlight {
+  readonly attack: PounceAttackDefinition;
+  readonly to: Vector2;
+  readonly endAt: number;
+  hit: boolean;
+  /** Miejsce ostatniego kawałka smugi. */
+  trailFrom: Vector2;
 }
 
 export interface EnemyPerception {
@@ -35,6 +58,7 @@ export interface EnemyPerception {
 const HIT_STUN_MS = 150;
 const HIT_FLASH_MS = 80;
 const WINDUP_TINT = 0xffb347;
+const BLOCKED_FLASH_TINT = 0x8a90a0;
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly definition: EnemyDefinition;
@@ -47,8 +71,29 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly status = new StatusEffects(ENEMY_STATUS_RESISTANCE);
   private readonly visual: EnemyVisual;
   private readonly animator: DirectionalAnimator;
+  /** Ogar: cel skoku zapamiętany na początku zamachu (telegraf: linia do niego). */
+  private pounceAim: Vector2 | null = null;
+  private pounce: PounceFlight | null = null;
+  /** Postój po chybionym skoku — okno na kontrę. */
+  private readonly pounceRecovery = new Timer();
+  /** Tarczownik (elita, krok 42): kąt tarczy, obracanej powoli w stronę gracza. */
+  private shieldFacing = Math.PI / 2;
+  private lastTickAt: number | null = null;
+  /** Ostatnie trafienie przyjęte na tarczę — błysk w kolorze stali zamiast bieli. */
+  private lastHitBlocked = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, definition: EnemyDefinition) {
+  /** Upiór (krok 49): przesunięcie fazy przenikania i koniec wynurzania (do tej chwili nietykalny i bierny). */
+  private readonly phaseOffsetMs: number;
+  private readonly riseUntil: number;
+  private readonly riseStart: number;
+
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    definition: EnemyDefinition,
+    options: { readonly phaseOffsetMs?: number; readonly riseMs?: number } = {},
+  ) {
     super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.variant].sheet].key);
     this.definition = definition;
     this.health = new Health(definition.maxHp);
@@ -64,6 +109,29 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.animator = new DirectionalAnimator(this, this.visual.sheet);
     if (this.visual.groundShadow) attachGroundShadow(this, this.visual.groundShadow);
     this.animator.play(this.visual.idle ?? this.visual.move);
+    this.phaseOffsetMs = options.phaseOffsetMs ?? 0;
+    this.riseStart = scene.time.now;
+    this.riseUntil = scene.time.now + (options.riseMs ?? 0);
+    // Upiór świeci nad mrokiem (zasadzka przyciemnia światło).
+    if (this.visual.aboveDarkness) this.setDepth(RENDER_DEPTH.darkness + 0.1);
+  }
+
+  /** Bezcielesny (przenikanie) albo jeszcze się wynurza — wtedy nietykalny i nie atakuje. */
+  isIntangible(now: number): boolean {
+    if (now < this.riseUntil) return true;
+    const phasing = this.definition.phasing;
+    return phasing ? isPhased(phasing, this.phaseOffsetMs, now) : false;
+  }
+
+  /** Przezroczystość upiora: wynurzanie, potem cielesny/bezcielesny. */
+  private updateGhostAlpha(now: number): void {
+    if (!this.definition.phasing) return;
+    if (now < this.riseUntil) {
+      const t = (now - this.riseStart) / Math.max(1, this.riseUntil - this.riseStart);
+      this.setAlpha(GHOST_VISUAL.riseFromAlpha + (GHOST_VISUAL.solidAlpha - GHOST_VISUAL.riseFromAlpha) * t);
+      return;
+    }
+    this.setAlpha(this.isIntangible(now) ? GHOST_VISUAL.phasedAlpha : GHOST_VISUAL.solidAlpha);
   }
 
   get radius(): number {
@@ -74,18 +142,62 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return this.health.isDead;
   }
 
+  hasAffix(affix: EliteAffix): boolean {
+    return this.definition.affixes?.includes(affix) ?? false;
+  }
+
+  /** Kąt tarczy Tarczownika (radiany) albo null bez tarczy. */
+  get shieldAngle(): number | null {
+    return this.hasAffix(EliteAffix.Shielded) ? this.shieldFacing : null;
+  }
+
   /** Obrażenia od podpalenia należne do `now`; śmierć od ognia wykrywa menedżer po `isDead`. */
   tickBurn(now: number): number {
     const damage = this.status.takeBurnDamage(now);
     if (damage > 0 && !this.isDead) {
       this.health.takeDamage(damage);
       this.hitFlash.start(now, HIT_FLASH_MS);
+      this.lastHitBlocked = false;
     }
     return damage;
   }
 
+  /** Cel skoku w trakcie zamachu (do rysowania telegrafu); null poza zamachem skoku. */
+  get pounceTelegraph(): Vector2 | null {
+    return this.attackCycle.phase(this.scene.time.now) === AttackPhase.Windup ? this.pounceAim : null;
+  }
+
   tick(perception: EnemyPerception, now: number, handler: EnemyAttackHandler): void {
     if (this.isDead) return;
+    this.turnShield(perception, now);
+    this.updateGhostAlpha(now);
+    if (now < this.riseUntil) {
+      this.setVelocity(0, 0);
+      return;
+    }
+    // Bezcielesny upiór dalej płynie do gracza, ale nie atakuje (przerwany zamach przepada).
+    if (this.isIntangible(now)) {
+      this.attackCycle.interrupt();
+      const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
+      const dx = perception.target.x - this.x;
+      const dy = perception.target.y - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      this.setVelocity((dx / d) * speed, (dy / d) * speed);
+      this.animator.face({ x: dx, y: dy });
+      this.animator.play(this.visual.move);
+      this.updateTint(now);
+      return;
+    }
+    if (this.pounce) {
+      this.updatePounce(now, handler);
+      return;
+    }
+    if (this.pounceRecovery.isActive(now)) {
+      this.setVelocity(0, 0);
+      if (this.visual.land) this.animator.play(this.visual.land);
+      this.updateTint(now);
+      return;
+    }
 
     if (this.status.isStunned(now)) {
       this.attackCycle.interrupt();
@@ -106,8 +218,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       attackPhase: this.attackCycle.phase(now),
     });
 
-    if (decision.startAttack) this.attackCycle.tryStart(now);
-    if (this.attackCycle.consumeRelease(now)) this.releaseAttack(perception.target, handler);
+    if (decision.startAttack && this.attackCycle.tryStart(now)) {
+      // Skok leci w miejsce gracza z początku zamachu — widać je przez cały telegraf.
+      this.pounceAim = { x: perception.target.x, y: perception.target.y };
+    }
+    if (this.attackCycle.consumeRelease(now)) {
+      this.releaseAttack(perception.target, handler, now);
+      if (this.pounce) return;
+    }
 
     const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
@@ -116,13 +234,33 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeHit(hit: Hit, now: number, source: Vector2): DamageResult {
-    const result = this.health.takeDamage(hit.damage);
-    this.hitStun.start(now, HIT_STUN_MS);
+    // Bezcielesny upiór: ciosy i strzały przenikają przez niego; magia Czarodziejki trafia zawsze (krok 49b).
+    if (this.isIntangible(now) && !hit.magic) return { dealt: 0, died: false };
+    // Tarczownik: cios od frontu przyjmuje tylko część obrażeń.
+    const shield = ELITE_CONFIG.shield;
+    const blocked = this.hasAffix(EliteAffix.Shielded) && isShielded(this, this.shieldFacing, shield.arcDeg, source);
+    const damage = blocked ? Math.max(1, Math.round(hit.damage * shield.frontMultiplier)) : hit.damage;
+    const result = this.health.takeDamage(damage);
     this.hitFlash.start(now, HIT_FLASH_MS);
-    this.setVelocity(hit.knockback.x, hit.knockback.y);
+    this.lastHitBlocked = blocked;
+    // Skoku nie da się zatrzymać trafieniem (rozpędzony ogar) — bez odrzutu i ogłuszenia w locie.
+    if (!this.pounce) {
+      this.hitStun.start(now, HIT_STUN_MS);
+      this.setVelocity(hit.knockback.x, hit.knockback.y);
+    }
     this.brain.alert(source);
     if (!result.died) this.status.apply(hit.status, now);
     return result;
+  }
+
+  /** Tarcza obraca się do widocznego gracza z ograniczoną prędkością (nie w locie skoku). */
+  private turnShield(perception: EnemyPerception, now: number): void {
+    const dt = this.lastTickAt === null ? 0 : now - this.lastTickAt;
+    this.lastTickAt = now;
+    if (!this.hasAffix(EliteAffix.Shielded) || this.pounce || !perception.canSeeTarget) return;
+    const target = Math.atan2(perception.target.y - this.y, perception.target.x - this.x);
+    const step = ((ELITE_CONFIG.shield.turnRateDegPerSec * Math.PI) / 180) * (dt / 1000);
+    this.shieldFacing = turnToward(this.shieldFacing, target, step);
   }
 
   /**
@@ -143,7 +281,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.animator.play(moving ? this.visual.move : (this.visual.idle ?? this.visual.move));
   }
 
-  private releaseAttack(target: Vector2, handler: EnemyAttackHandler): void {
+  private releaseAttack(target: Vector2, handler: EnemyAttackHandler, now: number): void {
     const attack = this.definition.attack;
     switch (attack.kind) {
       case EnemyAttackKind.Melee:
@@ -152,13 +290,50 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       case EnemyAttackKind.Projectile:
         handler.fireProjectile(this, attack, target);
         break;
+      case EnemyAttackKind.Pounce: {
+        const self = { x: this.x, y: this.y };
+        const to = pounceLanding(self, this.pounceAim ?? target, attack.maxDistance);
+        this.pounce = { attack, to, endAt: now + pounceDurationMs(self, to, attack.speed), hit: false, trailFrom: self };
+        this.pounceAim = null;
+        this.animator.face({ x: to.x - self.x, y: to.y - self.y });
+        break;
+      }
+      case EnemyAttackKind.Lob:
+        handler.lobBomb(this, attack, target);
+        break;
     }
+  }
+
+  /** Lot w skoku: prosto do celu; trafia raz; zostawia smugę żaru; chybienie = postój. Ściana kończy skok. */
+  private updatePounce(now: number, handler: EnemyAttackHandler): void {
+    const pounce = this.pounce!;
+    const here = { x: this.x, y: this.y };
+    if (Math.hypot(here.x - pounce.trailFrom.x, here.y - pounce.trailFrom.y) >= pounce.attack.trail.spacing) {
+      handler.pounceTrail(this, pounce.attack, pounce.trailFrom, here);
+      pounce.trailFrom = here;
+    }
+    if (!pounce.hit && handler.pounceHit(this, pounce.attack)) pounce.hit = true;
+    const dx = pounce.to.x - here.x;
+    const dy = pounce.to.y - here.y;
+    const d = Math.hypot(dx, dy);
+    const blocked = this.body instanceof Phaser.Physics.Arcade.Body && !this.body.blocked.none;
+    if (now >= pounce.endAt || d < 4 || blocked) {
+      this.pounce = null;
+      this.setVelocity(0, 0);
+      if (!pounce.hit) this.pounceRecovery.start(now, pounce.attack.missRecoveryMs);
+      if (this.visual.land) this.animator.play(this.visual.land);
+      this.updateTint(now);
+      return;
+    }
+    this.setVelocity((dx / d) * pounce.attack.speed, (dy / d) * pounce.attack.speed);
+    if (this.visual.leap) this.animator.play(this.visual.leap);
+    this.updateTint(now);
   }
 
   private updateTint(now: number): void {
     const tint = statusTint(this.status, now);
     if (this.hitFlash.isActive(now)) {
-      this.setTintFill(0xffffff);
+      this.setTintFill(this.lastHitBlocked ? BLOCKED_FLASH_TINT : 0xffffff);
     } else if (tint !== null) {
       this.setTint(tint);
     } else if (this.attackCycle.phase(now) === AttackPhase.Windup) {

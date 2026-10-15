@@ -20,6 +20,8 @@ export const BASE_DUNGEON_CONFIG: DungeonGeneratorConfig = {
   corridorWidth: 2,
   extraConnectionRatio: 0.25,
   maxPlacementAttempts: 300,
+  bossRoomAtEnd: true,
+  endRoomChance: 0.5,
 };
 
 /** Na wyższych piętrach mapa rośnie i pojawia się więcej pokojów (z górnym limitem). */
@@ -27,6 +29,8 @@ export function getDungeonConfigForFloor(floor: number): DungeonGeneratorConfig 
   const growth = Math.min(floor - 1, 6);
   return {
     ...BASE_DUNGEON_CONFIG,
+    // Krok 45: arena na końcu piętra wszędzie poza piętrem 1 (szybsze przejście do drugiego biomu).
+    bossRoomAtEnd: floor !== 1,
     widthTiles: BASE_DUNGEON_CONFIG.widthTiles + growth * 4,
     heightTiles: BASE_DUNGEON_CONFIG.heightTiles + growth * 2,
     roomCount: {

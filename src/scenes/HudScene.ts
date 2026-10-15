@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import type { BossHudData, HudItem, HudItemNotice, HudSceneData, HudSource, RangedHudData } from '@/core/types';
+import { TOWER_CONFIG } from '@/config/towerConfig';
+import { floorLabel } from '@/systems/TowerLoop';
+import type { BeamHudData, BossHudData, HudItem, HudItemNotice, HudSceneData, HudSource, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
@@ -15,7 +17,10 @@ const CHARGES_Y = DASH_BAR_Y + DASH_BAR_HEIGHT + 3;
 const CHARGE_HEIGHT = 5;
 const CHARGE_GAP = 3;
 /** Pierwsza linia tekstu pod paskami. */
-const TEXT_Y = CHARGES_Y + CHARGE_HEIGHT + 4;
+/** Promień Czarodziejki: cienki pasek pod kulami. */
+const BEAM_Y = CHARGES_Y + CHARGE_HEIGHT + 2;
+const BEAM_HEIGHT = 3;
+const TEXT_Y = BEAM_Y + BEAM_HEIGHT + 4;
 const BOSS_BAR_WIDTH = 420;
 const BOSS_BAR_HEIGHT = 12;
 const BOSS_BAR_Y = 470;
@@ -24,7 +29,7 @@ const BANNER_MS = 3000;
 const BANNER_FADE_IN_MS = 300;
 const BANNER_FADE_OUT_MS = 900;
 const BANNER_Y = 150;
-/** Przedmioty jako ikony (krok 44, wariant A): rząd slotów pod złotem. */
+/** Przedmioty jako ikony (krok 59, wariant A): rząd slotów pod złotem. */
 const ITEM_SLOT_Y = TEXT_Y + 40;
 const ITEM_SLOT_SIZE = 28;
 const ITEM_SLOT_GAP = 4;
@@ -42,6 +47,14 @@ interface ItemSlot {
   readonly icon: Phaser.GameObjects.Image;
   readonly count: Phaser.GameObjects.Text;
 }
+
+/** Podpowiedź sterowania: Czarodziejka ma kule i promień zamiast ciosu i strzału. */
+function helpLine(sorceress: boolean): string {
+  const attacks = sorceress ? 'LPM — kule energii · PPM — promień (przytrzymaj)' : 'LPM — atak · PPM — strzał';
+  const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
+  return `WASD — ruch · ${attacks} · Spacja — dash · E — kapliczka, schody${devHelp}`;
+}
+
 /**
  * Osobna scena nakładki — nie podlega zoomowi ani przesuwaniu kamery gry.
  * Co klatkę odczytuje stan z HudSource (GameScene).
@@ -52,6 +65,7 @@ export class HudScene extends Phaser.Scene {
   private floorText!: Phaser.GameObjects.Text;
   private modifierText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
+  private helpText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private deathScreen!: DeathScreen;
   private bossNameText!: Phaser.GameObjects.Text;
@@ -111,9 +125,7 @@ export class HudScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setAlpha(0);
 
-    const help = 'WASD — ruch · LPM — atak · PPM — strzał · Spacja — dash · E — kapliczka';
-    const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
-    this.add.text(BAR_X, this.scale.height - 28, help + devHelp, { ...style, fontSize: '12px', color: '#8080a0' });
+    this.helpText = this.add.text(BAR_X, this.scale.height - 28, '', { ...style, fontSize: '12px', color: '#8080a0' });
 
     // Ekran śmierci na samej górze: jego przyciemnienie przykrywa też resztę HUD (krok 35).
     this.deathScreen = new DeathScreen(this);
@@ -122,7 +134,7 @@ export class HudScene extends Phaser.Scene {
   override update(time: number): void {
     const hud = this.source.getHudData();
 
-    this.floorText.setText(`Piętro ${hud.floor}`);
+    this.floorText.setText(floorLabel(hud.floor, TOWER_CONFIG));
     const modifier = hud.floorModifier;
     this.modifierText.setText(modifier ? `${modifier.name}: ${modifier.description}` : '');
     this.hpText.setText(`${hud.hp}/${hud.maxHp}`);
@@ -137,16 +149,20 @@ export class HudScene extends Phaser.Scene {
       .fillStyle(hud.dashReadiness >= 1 ? 0x6ec6ff : 0x3a6080, 1)
       .fillRect(BAR_X, DASH_BAR_Y, BAR_WIDTH * hud.dashReadiness, DASH_BAR_HEIGHT);
     this.drawCharges(hud.ranged);
+    this.drawBeam(hud.beam);
+    this.helpText.setText(helpLine(hud.beam !== null));
 
     if (hud.stairsUnlocked) {
-      this.hintText.setText('Schody otwarte — wejdź na nie, aby wspiąć się wyżej').setColor('#e0b84a');
+      this.hintText
+        .setText(hud.onStairs ? 'Naciśnij E, aby wspiąć się wyżej' : 'Schody otwarte — stań na nich i naciśnij E, aby wspiąć się wyżej')
+        .setColor('#e0b84a');
     } else if (hud.boss) {
       this.hintText.setText('Pokonaj bossa, aby otworzyć schody · unikaj czerwonych stref').setColor('#ffb0a0');
     } else {
       this.hintText.setText(`Wrogowie: ${hud.enemiesAlive} · znajdź komnatę bossa (zakratowane schody)`).setColor('#a0a0b0');
     }
 
-    this.goldText.setText(`Złoto (wynik): ${hud.gold}`);
+    this.goldText.setText(hud.practice ? `Złoto: ${hud.gold} (run testowy — bez wyniku)` : `Złoto (wynik): ${hud.gold}`);
     this.updateItemSlots(hud.items);
     this.updateItemNotice(hud.itemNotice);
 
@@ -238,6 +254,14 @@ export class HudScene extends Phaser.Scene {
         this.bars.fillStyle(0x2f7064, 1).fillRect(x, CHARGES_Y, width * ranged.rechargeProgress, CHARGE_HEIGHT);
       }
     }
+  }
+
+  /** Promień: w trakcie — pozostały czas (jasny), w blokadzie — odnowienie (ciemny), gotowy — pełny. */
+  private drawBeam(beam: BeamHudData | null): void {
+    if (!beam) return;
+    this.bars.fillStyle(0x202030, 1).fillRect(BAR_X, BEAM_Y, BAR_WIDTH, BEAM_HEIGHT);
+    const color = beam.active ? 0xe4fbfb : beam.readiness >= 1 ? 0x39c0d8 : 0x1d7f9c;
+    this.bars.fillStyle(color, 1).fillRect(BAR_X, BEAM_Y, BAR_WIDTH * beam.readiness, BEAM_HEIGHT);
   }
 
   private drawBossBar(boss: BossHudData | null): void {

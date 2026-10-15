@@ -12,13 +12,21 @@ const GLOW_TEXTURE = 'death-glow';
 /** Wiersze tablicy: podium (3) + separator + wiersz bieżącego runu. */
 const ROWS = 5;
 
+/** Nagłówek tablicy zależnie od źródła wyników (wspólna lista z main, krok 36 tam). */
+const HEADERS: Record<DeathSummary['source'], string> = {
+  local: 'NAJLEPSZE WSPINACZKI',
+  pending: 'NAJLEPSZE WSPINACZKI · ŁĄCZENIE…',
+  shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
+  practice: 'RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ',
+};
+
 function formatScoreRow(row: RankedEntry): string {
-  const label = `${row.rank}. ${row.entry.score} złota · piętro ${row.entry.floor}`;
+  const label = `${row.rank}. ${row.entry.name ?? '—'} · ${row.entry.score} złota · piętro ${row.entry.floor}`;
   return row.isCurrent ? `› ${label} ‹` : label;
 }
 
 /**
- * Ekran śmierci (krok 35; od kroku 40 w stylu Dark Souls / Castlevanii) w scenie HUD:
+ * Ekran śmierci (krok 35; od kroku 55 w stylu Dark Souls / Castlevanii) w scenie HUD:
  * gra powoli tonie w ciemności (wrogowie dalej ruszają się pod spodem), przez środek ekranu czarny pas,
  * na nim POLEGŁEŚ w przygaszonej czerwieni — wyłania się powoli i bardzo wolno rośnie.
  * Pod spodem wynik i tablica rekordów. Czasy liczy `systems/deathScreen`; tu tylko rysujemy.
@@ -76,7 +84,7 @@ export class DeathScreen {
       scene.add.text(L.centerX, L.rows.y + i * L.rows.step, '', { ...style, fontSize: `${L.rows.fontSize}px` }).setOrigin(0.5, 0),
     );
     this.prompt = scene.add
-      .text(L.centerX, L.prompt.y, 'R — NOWA WSPINACZKA', { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#9c8f74' })
+      .text(L.centerX, L.prompt.y, 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA', { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#9c8f74' })
       .setOrigin(0.5, 0)
       .setLetterSpacing(5);
 
@@ -95,13 +103,18 @@ export class DeathScreen {
     this.root.setVisible(false);
   }
 
-  /** Co klatkę z HUD: `death` = null chowa ekran (np. po restarcie runu). */
+  /**
+   * Co klatkę z HUD: `death` = null chowa ekran (np. po restarcie runu).
+   * Ta sama śmierć może przyjść jako nowy obiekt (wpisywanie imienia, wspólna tablica) —
+   * wtedy odświeżamy tylko tekst, animacja biegnie dalej.
+   */
   update(death: DeathSummary | null, now: number): void {
     if (!death) {
       if (this.shownFor) this.reset();
       return;
     }
-    if (this.shownFor !== death) this.start(death, now);
+    if (!this.shownFor) this.start(death, now);
+    else if (this.shownFor !== death) this.fill(death);
     const f = deathFrame(now - (this.startedAt ?? now), ROWS);
 
     this.dim.setAlpha(f.dimAlpha);
@@ -114,15 +127,31 @@ export class DeathScreen {
     this.ornament.setAlpha(f.scoreAlpha);
     this.header.setAlpha(f.scoreAlpha);
     this.rows.forEach((row, i) => row.setAlpha(f.rowAlphas[i] ?? 0));
-    this.prompt.setAlpha(f.promptAlpha);
+    // Podczas wpisywania imienia komunikat o nowej wspinaczce jest ukryty (R i C wpisują litery).
+    this.prompt.setAlpha(this.shownFor?.nameEntry === null ? f.promptAlpha : 0);
   }
 
   private start(death: DeathSummary, now: number): void {
-    this.shownFor = death;
     this.startedAt = now;
     this.root.setVisible(true);
+    this.fill(death);
+  }
 
-    this.score.setText(`${death.score} ZŁOTA · PIĘTRO ${death.floor} · MIEJSCE ${death.rank}`);
+  /** Wynik i tablica albo pole na imię (pierwsza śmierć bez zapamiętanego imienia). */
+  private fill(death: DeathSummary): void {
+    this.shownFor = death;
+    const place = death.nameEntry === null && death.source !== 'practice' ? ` · MIEJSCE ${death.rank}` : '';
+    this.score.setText(`${death.score} ZŁOTA · PIĘTRO ${death.floor}${place}`);
+    if (death.nameEntry !== null) {
+      this.header.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');
+      const entry = [
+        { text: `${death.nameEntry}_`, color: '#d8ccb0' },
+        { text: 'ENTER — ZAPISZ · ESC — BEZ IMIENIA', color: '#9c8f74' },
+      ];
+      this.rows.forEach((row, i) => row.setText(entry[i]?.text ?? '').setColor(entry[i]?.color ?? '#9c8f74'));
+      return;
+    }
+    this.header.setText(HEADERS[death.source]);
     const lines: Array<{ text: string; current: boolean }> = death.board.top.map((row) => ({
       text: formatScoreRow(row),
       current: row.isCurrent,

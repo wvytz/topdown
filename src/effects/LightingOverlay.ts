@@ -27,6 +27,10 @@ export class LightingOverlay {
   private readonly halfH: number;
   private readonly playerKey: string;
   private readonly playerHalf: number;
+  /** Mrok zasadzki (krok 49): druga warstwa ciemności z małym kręgiem światła gracza, siła 0..1. */
+  private dread = 0;
+  private dreadLayer: { readonly rt: Phaser.GameObjects.RenderTexture; readonly key: string; readonly half: number; readonly darkness: number } | null =
+    null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -48,6 +52,24 @@ export class LightingOverlay {
     this.playerHalf = Math.ceil(edgeRadius);
   }
 
+  /**
+   * Przyciemnienie zasadzki: nad zwykłym mrokiem druga warstwa w profilu `profile` (mały krąg światła gracza),
+   * z siłą `level` 0..1 — przejście płynne, pochodnie jej nie rozjaśniają.
+   */
+  setDread(level: number, profile: AmbientProfile): void {
+    this.dread = Math.min(1, Math.max(0, level));
+    if (this.dread > 0 && !this.dreadLayer) {
+      const rt = this.scene.add.renderTexture(0, 0, this.halfW * 2, this.halfH * 2).setOrigin(0).setDepth(RENDER_DEPTH.darkness + 0.01);
+      const key = stampTexture(
+        this.scene,
+        `light-player-${profile.fullLightRadius}-${profile.edgeRadius}-${profile.maxDarkness}`,
+        () => buildLightStamp(profile.edgeRadius, (d) => playerLightStrength(d, profile)),
+        0xffffff,
+      );
+      this.dreadLayer = { rt, key, half: Math.ceil(profile.edgeRadius), darkness: profile.maxDarkness };
+    }
+  }
+
   render(player: { readonly x: number; readonly y: number }, lights: readonly PointLight[]): void {
     const px = Math.round(player.x);
     const py = Math.round(player.y);
@@ -60,6 +82,7 @@ export class LightingOverlay {
     rt.clear();
     rt.fill(this.ambientColor, this.profile.maxDarkness);
     rt.erase(this.playerKey, px - ox - this.playerHalf, py - oy - this.playerHalf);
+    this.renderDread(px, py, ox, oy);
     if (!this.torchesLightUp) return;
     const area = { x: ox, y: oy, width: this.halfW * 2, height: this.halfH * 2 };
     for (const light of lights) {
@@ -67,6 +90,18 @@ export class LightingOverlay {
       const half = Math.ceil(light.radius);
       rt.erase(torchLightKey(this.scene, light.radius), Math.round(light.x) - ox - half, Math.round(light.y) - oy - half);
     }
+  }
+
+  /** Warstwa mroku zasadzki: w tym samym miejscu co główna, ciemność × siła, wytarty tylko krąg gracza. */
+  private renderDread(px: number, py: number, ox: number, oy: number): void {
+    const layer = this.dreadLayer;
+    if (!layer) return;
+    layer.rt.setVisible(this.dread > 0);
+    if (this.dread <= 0) return;
+    layer.rt.setPosition(ox, oy);
+    layer.rt.clear();
+    layer.rt.fill(this.ambientColor, layer.darkness * this.dread);
+    layer.rt.erase(layer.key, px - ox - layer.half, py - oy - layer.half);
   }
 }
 

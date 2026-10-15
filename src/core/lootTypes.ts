@@ -1,5 +1,6 @@
 /** Typy domenowe łupów i postępu runu — czyste dane, bez zależności od Phasera. */
 import type { IntRange } from '@/core/dungeonTypes';
+import type { HeroId } from '@/core/heroTypes';
 
 export enum PickupKind {
   Gold = 'gold',
@@ -111,8 +112,12 @@ export interface ItemEffectsConfig {
 
 /** Stan runu przenoszony między piętrami (przez restart sceny). */
 export interface RunSnapshot {
+  /** Bohater wybrany na cały run (krok 37). */
+  readonly hero: HeroId;
   readonly gold: number;
   readonly items: readonly ItemId[];
   /** null = pełne HP (początek runu). */
   readonly hp: number | null;
+  /** Run testowy (start z `?floor=`/`?seed=`, krok 41g): wynik nie trafia na tablicę. */
+  readonly practice?: boolean;
 }

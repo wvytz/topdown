@@ -11,9 +11,6 @@ Arkusze (STYLEGUIDE §2, §8, §10; wiersze = 8 kierunków N..NW z obrotu, obrys
   zombie_walk-claw.png   kolumny 0–3 chód (ręce wyciągnięte przed siebie), 4–7 zamach pazurami
                          (cofnięcie, uniesienie, cios, skrzyżowane dłonie w chwili trafienia)
   sower_walk-spit.png    kolumny 0–3 chód, 4–7 plucie (kapelusz nabrzmiewa, kula wylatuje w kolumnie 7)
-  larder-cocoon.png      48x48, bez kierunków (krok 33): kokon ze spiżarni Wampirzego Lorda — zarażony owinięty
-                         szarą grzybnią, blada dłoń wystaje z oplotu; 0–1 spoczynek (oddech), 2–3 drżenie (zew),
-                         4–7 rozdarcie (pusty, sflaczały oplot zostaje na podłodze)
 
 Czytelność na palecie C „trupia zieleń” (oliwkowa podłoga): rdzawe łachmany i blada, zimna skóra zarażonego;
 fioletowy kapelusz siewcy (barwa najdalej od oliwki). Grzybki na barku i świecąca grzybnia: grzyb ledwo tu dociera.
@@ -26,7 +23,7 @@ import sys
 import tower_ruins_tiles as trt
 from tower_ruins_tiles import ok
 from spider_sprites import band_shade, ellipse, stroke
-from lair_enemies import directional_sheet, strip_sheet, validate
+from lair_enemies import directional_sheet, validate
 
 OUT_DIR = os.path.join(trt.ROOT, 'public', 'assets', 'sprites')
 CELL = 48
@@ -133,57 +130,12 @@ def sower_frame(f):
     return img
 
 
-# ---------------- kokon spiżarni (krok 33) ----------------
-LARDER_CY = 26
-# Oplot: szara, przybrudzona grzybnia (jaśniejsza od podłogi, inna niż biały jedwab leża).
-WRAP = (ok(.44, .012, 120), ok(.54, .014, 115), ok(.64, .016, 110), ok(.74, .016, 105), ok(.83, .014, 100))
-OOZE = (ok(.30, .040, 120), ok(.40, .050, 125))
-
-
-def larder_body(img, cx, cy, rx, ry, glow):
-    """Kokon z góry: owalny oplot z ukośnymi pasmami, przez szczelinę widać twarz zarażonego, z boku blada dłoń."""
-    ellipse(img, cx, cy, rx, ry, band_shade(WRAP))
-    for y in range(int(cy - ry), int(cy + ry) + 1):  # ukośne pasma oplotu
-        for x in range(int(cx - rx), int(cx + rx) + 1):
-            nx, ny = (x + .5 - cx) / rx, (y + .5 - cy) / ry
-            if nx * nx + ny * ny < .8 and (x + y) % 5 == 0:
-                img.put(x, y, WRAP[1])
-    ellipse(img, cx, cy - ry * .45, 2.4, 2.0, lambda nx, ny: SKIN[1] if ny < .2 else SKIN[0])  # twarz w szczelinie
-    img.put(int(cx - 1), int(cy - ry * .45), HAIR[0])
-    img.put(int(cx + 1), int(cy - ry * .45), HAIR[0])
-    stroke(img, [(cx + rx - 1, cy + 1), (cx + rx + 3, cy + 3)], 2.0, SKIN[2])  # dłoń wystaje z oplotu
-    img.put(int(cx + rx + 4), int(cy + 3), SKIN[4])
-    img.put(int(cx - rx * .5), int(cy + ry * .5), MYCEL[1] if glow else MYCEL[0])
-    img.put(int(cx + rx * .3), int(cy + ry * .7), MYCEL[0])
-
-
-def larder_frame(f):
-    img = trt.Img(CELL, CELL)
-    c = CELL / 2
-    if f < 2:  # spoczynek: oddech
-        larder_body(img, c, LARDER_CY, 8 + f * .4, 12 + f * .4, f == 1)
-    elif f < 4:  # zew: drży
-        larder_body(img, c + (-1 if f == 2 else 1), LARDER_CY, 8.6, 12.6, True)
-    else:  # rozdarcie: oplot pęka od góry, połówki opadają; klatka 7 to pusty oplot na podłodze
-        k = f - 4
-        spread = (1, 3, 4, 5)[k]
-        for side in (-1, 1):
-            ry = (11, 9, 7, 5)[k]
-            ellipse(img, c + side * spread, LARDER_CY + (12 - ry) * .5, 5, ry, band_shade(WRAP))
-        ellipse(img, c, LARDER_CY + 3, 3 + k * .5, 4, lambda nx, ny: OOZE[1] if ny < 0 else OOZE[0])
-        if k < 2:  # wynurzająca się postać
-            ellipse(img, c, LARDER_CY - 4 - k * 3, 3, 3, lambda nx, ny: SKIN[2] if ny < 0 else SKIN[1])
-    return img
-
-
 def build():
     zombie, zf = directional_sheet(CELL, zombie_frame, 8)
     sower, sf = directional_sheet(CELL, sower_frame, 8)
-    larder, lf = strip_sheet(CELL, larder_frame, 8)
     return {
         'zombie_walk-claw.png': (zombie, zf, CELL, MARGIN),
         'sower_walk-spit.png': (sower, sf, CELL, MARGIN),
-        'larder-cocoon.png': (larder, lf, CELL, 2),
     }
 
 

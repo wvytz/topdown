@@ -127,6 +127,28 @@ export const GRAVEYARD_MIST: FogConfig = {
   motes: { ...LIGHTING.motes, maxParticles: 24, frequencyMs: 220, speed: { min: 1, max: 3 }, gravityY: 0.4 },
 };
 
+/**
+ * Żar piekła (krok 41a): czerwonawa, prawie czarna duchota zamiast mgły — biom mroczniejszy od Cmentarzyska
+ * (mrok do 93%), ale z widokiem przy bohaterze jak na Cmentarzysku. Rzadkie smugi dymu i wznoszące się
+ * iskry (kolory „popiołu” palety to pomarańcz i czerwień żaru).
+ */
+export const INFERNAL_HAZE: FogConfig = {
+  color: 0x1c0a0a,
+  profile: { fullLightRadius: 72, edgeRadius: 180, maxDarkness: 0.93 },
+  wisps: {
+    maxParticles: 6,
+    frequencyMs: 1100,
+    lifespanMs: { min: 8000, max: 13000 },
+    speed: { min: 3, max: 8 },
+    scale: { min: 1.2, max: 2.4 },
+    width: 40,
+    height: 10,
+    alpha: 0.07,
+  },
+  // Iskry: szybciej i wyraźnie w górę (ujemna grawitacja), jak znad palenisk.
+  motes: { ...LIGHTING.motes, maxParticles: 30, frequencyMs: 180, speed: { min: 3, max: 9 }, gravityY: -6 },
+};
+
 export interface TorchPlacementConfig {
   /** Minimalny odstęp między pochodniami (Czebyszew, w kaflach). */
   readonly minSpacing: number;

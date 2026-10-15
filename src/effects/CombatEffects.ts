@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
 
 /** Krótkie, czysto wizualne efekty walki (bez wpływu na logikę). */
 export class CombatEffects {
@@ -29,6 +30,13 @@ export class CombatEffects {
   impact(x: number, y: number, radius: number): void {
     const circle = this.scene.add.circle(x, y, radius, 0xffd0a0, 0.45).setDepth(RENDER_DEPTH.groundFlash);
     this.scene.tweens.add({ targets: circle, alpha: 0, duration: 180, onComplete: () => circle.destroy() });
+  }
+
+  /** Rozprysk kuli Czarodziejki (krok 50): pierścień energii w promieniu rozprysku, szybko gaśnie. */
+  splash(x: number, y: number, radius: number): void {
+    const { color, alpha, fillAlpha, durationMs } = ORB_SPLASH_VISUAL;
+    const ring = this.scene.add.circle(x, y, radius, color, fillAlpha).setStrokeStyle(2, color, alpha).setDepth(RENDER_DEPTH.groundFlash);
+    this.scene.tweens.add({ targets: ring, alpha: 0, scale: 1.15, duration: durationMs, onComplete: () => ring.destroy() });
   }
 
   /** Unoszący się napis (np. „+3” złota) nad miejscem zdarzenia. */

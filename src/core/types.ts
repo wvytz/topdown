@@ -1,3 +1,4 @@
+import type { HeroId } from '@/core/heroTypes';
 /** Czyste typy domenowe — bez zależności od Phasera. */
 import type { RunSnapshot } from '@/core/lootTypes';
 import type { ScoreboardView } from '@/systems/Highscores';
@@ -24,6 +25,7 @@ export interface PlayerStats extends MovementStats {
 
 export enum SceneKey {
   Splash = 'SplashScene',
+  Select = 'HeroSelectScene',
   Boot = 'BootScene',
   Game = 'GameScene',
   Hud = 'HudScene',
@@ -35,11 +37,28 @@ export enum TextureKey {
 }
 
 /** Dane przekazywane przy (re)starcie GameScene. */
+/** Start ekranu wyboru bohatera (krok 38): seed i piętro nowego runu, zaznaczony bohater. */
+export interface HeroSelectData {
+  readonly runSeed: number;
+  readonly floor: number;
+  /** Bohater zaznaczony na starcie (np. po śmierci); brak = ostatnio wybrany. */
+  readonly preselect?: HeroId;
+  /** Run testowy z adresu (krok 41g). */
+  readonly practice?: boolean;
+}
+
 export interface FloorSceneData {
   readonly runSeed: number;
   readonly floor: number;
   /** Złoto, przedmioty i HP przenoszone z poprzedniego piętra. */
   readonly run: RunSnapshot;
+}
+
+/** Promień Czarodziejki w HUD: świeci (pasek = pozostały czas) albo odnawia się po zgaśnięciu. */
+export interface BeamHudData {
+  readonly active: boolean;
+  /** 0..1: w trakcie promienia — ile zostało z limitu; poza nim — postęp odnowienia (1 = gotowy). */
+  readonly readiness: number;
 }
 
 export interface HudData {
@@ -52,12 +71,18 @@ export interface HudData {
   readonly dashReadiness: number;
   /** Ładunki strzału (PPM). */
   readonly ranged: RangedHudData;
+  /** Promień Czarodziejki; null u barbarzyńcy. */
+  readonly beam: BeamHudData | null;
   readonly enemiesAlive: number;
   readonly stairsUnlocked: boolean;
+  /** Gracz stoi na otwartych schodach — wejście wyżej klawiszem E (krok 47). */
+  readonly onStairs: boolean;
   readonly isPlayerDead: boolean;
   /** null, gdy walka z bossem nie trwa. */
   readonly boss: BossHudData | null;
   readonly gold: number;
+  /** Run testowy z adresu (krok 41g) — wynik nie trafia na tablicę. */
+  readonly practice: boolean;
   readonly items: readonly HudItem[];
   /** Ostatni komunikat (np. zdobyty przedmiot); null, gdy nic do pokazania. */
   readonly toast: HudToast | null;
@@ -79,13 +104,17 @@ export interface DeathSummary {
   readonly floor: number;
   readonly rank: number;
   readonly board: ScoreboardView;
+  /** Skąd tablica: lokalna, wspólna albo lokalna w oczekiwaniu na wspólną. */
+  readonly source: 'local' | 'pending' | 'shared' | 'practice';
+  /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
+  readonly nameEntry: string | null;
 }
 
 export interface HudItem {
   readonly name: string;
   readonly count: number;
   readonly color: number;
-  /** Klatka ikony w atlasie łupów (krok 44: ikony zamiast tekstu). */
+  /** Klatka ikony w atlasie łupów (krok 59: ikony zamiast tekstu). */
   readonly frame: string;
   /** Rzadszy przedmiot z efektem broni — złota ramka zamiast kościanej. */
   readonly rare: boolean;

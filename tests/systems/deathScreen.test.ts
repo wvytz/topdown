@@ -142,16 +142,16 @@ describe('flowGroupOf — grupy liter spływające w swoim tempie', () => {
   });
 });
 
-describe('pas za napisem (kroki 43–44)', () => {
+describe('pas za napisem (kroki 58–59)', () => {
   const B = DEATH_LAYOUT.band;
 
   it('pełna czerń zaczyna się tuż pod HUD-em i obejmuje cały napis', () => {
-    expect(B.top + B.fadeTopPx).toBe(142);
+    expect(B.top + B.fadeTopPx).toBe(147);
     const half = ((7 - title.top) * DEATH_LAYOUT.title.unit * T.titleToScale) / 2;
     expect(B.top + B.fadeTopPx).toBeLessThanOrEqual(DEATH_LAYOUT.title.centerY - half);
   });
 
-  it('sięga o połowę dalej w dół niż w kroku 40 (dół 271), w stronę tablicy', () => {
+  it('sięga o połowę dalej w dół niż w kroku 55 (dół 271), w stronę tablicy', () => {
     expect(B.bottom).toBe(271 + 75);
     expect(B.bottom).toBeGreaterThan(DEATH_LAYOUT.score.y);
   });

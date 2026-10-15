@@ -1,6 +1,9 @@
+import { TOWER_CONFIG } from '@/config/towerConfig';
+import { floorInLoop } from '@/systems/TowerLoop';
 import type { BossDefinition } from '@/core/bossTypes';
 import { BossAttackKind, BossId, PatternOrder } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
+import { EnemyType } from '@/core/combatTypes';
 import { scaleForFloor } from '@/systems/CombatMath';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
 
@@ -232,13 +235,15 @@ export const SPIDER_KING = {
 } satisfies BossDefinition;
 
 /**
- * Boss Cmentarzyska „Wampirzy Lord” (krok 33, pomysł właściciela): zainfekowany arystokrata ze szczęką zamiast
- * głowy i tasakiem; hoduje zarażonych w kokonach (spiżarnia) i je zjada — uczta leczy go i wzmacnia.
- * Ciosy (moje, do strojenia w teście): kąsanie z bliska (leczy go), szarża z kłapnięciem (skok), tasak, zew spiżarni.
+ * Boss Cmentarzyska „Grzybowy Pożeracz” (krok 33 jako Wampirzy Lord, pomysł właściciela; od kroku 34 wygląd
+ * z paczki właściciela): ciało dawnego władcy wieży przerośnięte grzybnią, głowa pęka w paszczę; hoduje
+ * zarażonych w kokonach (spiżarnia) i je zjada — uczta leczy go i wzmacnia.
+ * Ciosy (moje, do strojenia w teście): kąsanie z bliska (leczy go), szarża z kłapnięciem (skok),
+ * zamach łapami (`cleave`, dawny tasak), zew spiżarni.
  */
-export const VAMPIRE_LORD = {
-  id: BossId.VampireLord,
-  name: 'Wampirzy Lord',
+export const FUNGAL_DEVOURER = {
+  id: BossId.FungalDevourer,
+  name: 'Grzybowy Pożeracz',
   title: 'Ucztujący w Kryptach',
   enragedLabel: 'Głód!',
   radius: 28,
@@ -251,7 +256,7 @@ export const VAMPIRE_LORD = {
   restBetweenAttacksMs: 1500,
   pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Call],
   patternOrder: PatternOrder.Shuffled,
-  // Kąsanie szczęką: szybkie, z bliska; trafienie leczy Lorda (wampir).
+  // Kąsanie paszczą: szybkie, z bliska; trafienie leczy Pożeracza.
   lash: {
     triggerRange: 62,
     reach: 34,
@@ -272,7 +277,7 @@ export const VAMPIRE_LORD = {
     knockback: 280,
     recoveryMs: 500,
   },
-  // Tasak: wolny, szeroki zamach — uważny gracz zdąży uciec, a trafienie boli.
+  // Zamach łapami (do kroku 33 tasak): wolny, szeroki — uważny gracz zdąży uciec, a trafienie boli.
   cleave: {
     reach: 42,
     radius: 46,
@@ -307,17 +312,127 @@ export const VAMPIRE_LORD = {
 } satisfies BossDefinition;
 
 /**
+ * „Strażnik Bram” (krok 41e, piętro 5 — opcja A właściciela): mniejszy brat Kata Otchłani, uczy obchodzenia
+ * tarczy. Tarcza z przodu odbija pociski, zatrzymuje promień i przyjmuje połowę ciosu; obraca się wolno, a w ataku
+ * wcale. Ciosy: wirujący łańcuch dookoła (karze stanie za plecami) i uderzenie tarczą przed sobą.
+ * Bez haka i pierścienia ognia — te dostaje Kat. Liczby moje, do strojenia w teście.
+ */
+export const GATE_WARDEN = {
+  id: BossId.GateWarden,
+  name: 'Strażnik Bram',
+  title: 'Odźwierny Otchłani',
+  enragedLabel: 'Żar w żyłach!',
+  radius: 30,
+  color: 0x8a2a1a,
+  maxHp: 420,
+  moveSpeed: 62,
+  engageDistance: 56,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1300,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam],
+  // Krok 44 (pomysł właściciela): z trzech stron areny kultyści rzucają bombami zza krat; wychodzą po śmierci Strażnika.
+  galleries: { sides: 3, depth: 2, enemy: EnemyType.Kiter },
+  patternOrder: PatternOrder.Shuffled,
+  shield: {
+    arcDeg: 120,
+    turnRateDegPerSec: 110,
+    frontMeleeMultiplier: 0.5,
+    reflectSpeed: 0.8,
+  },
+  // Wirujący łańcuch: hak okrąża bossa — strefa dookoła, także za plecami.
+  slam: {
+    radius: 92,
+    telegraphMs: 900,
+    recoveryMs: 700,
+    damage: 18,
+    knockback: 320,
+  },
+  // Uderzenie tarczą: przed bossem, szybkie i ciężkie; potem chwila na obejście go.
+  cleave: {
+    reach: 40,
+    radius: 44,
+    telegraphMs: 650,
+    recoveryMs: 800,
+    damage: 20,
+    knockback: 360,
+  },
+  enrage: {
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
+ * „Kat Otchłani” (krok 41f, boss piętra 6 — propozycja przyjęta przez właściciela): demon z tarczą-wrotami
+ * i łańcuchem z hakiem. Jedyny boss, którego trzeba obchodzić, i jedyny, który sam przyciąga gracza.
+ * - tarcza jak u Strażnika Bram, a promień w nią rozgrzewa żelazo — po chwili wybuch żaru wokół Kata;
+ * - hak (poza wzorem) na gracza trzymającego dystans: przyciąga pod tarczę, potem uderzenie tarczą;
+ * - wirujący łańcuch dookoła i uderzenie tarczą przed sobą;
+ * - oddech palenisk: cztery paleniska areny buchają naraz;
+ * - wściekłość: brzeg areny płonie, wolne koło w środku się kurczy — nie da się kitować pod ścianą.
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const ABYSS_EXECUTIONER = {
+  id: BossId.AbyssExecutioner,
+  name: 'Kat Otchłani',
+  title: 'Pan Łańcuchów',
+  enragedLabel: 'Otchłań płonie!',
+  radius: 32,
+  color: 0x6a1010,
+  maxHp: 520,
+  moveSpeed: 66,
+  engageDistance: 58,
+  openingDelayMs: 1400,
+  restBetweenAttacksMs: 1200,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam, BossAttackKind.Kindle],
+  patternOrder: PatternOrder.Shuffled,
+  shield: {
+    arcDeg: 120,
+    turnRateDegPerSec: 120,
+    frontMeleeMultiplier: 0.5,
+    reflectSpeed: 0.9,
+    heat: { ticks: 6, radius: 96, telegraphMs: 600, damage: 16, knockback: 320 },
+  },
+  slam: { radius: 96, telegraphMs: 850, recoveryMs: 650, damage: 20, knockback: 340 },
+  cleave: { reach: 42, radius: 46, telegraphMs: 600, recoveryMs: 750, damage: 22, knockback: 360 },
+  hook: {
+    minRange: 130,
+    maxRange: 260,
+    cooldownMs: 4500,
+    telegraphMs: 650,
+    recoveryMs: 500,
+    step: 22,
+    radius: 14,
+    damage: 6,
+    knockback: 0,
+    followUp: { delayMs: 450, reach: 42, radius: 46, damage: 18, knockback: 340 },
+  },
+  kindle: { radius: 56, telegraphMs: 1000, recoveryMs: 500, damage: 16, knockback: 260 },
+  arenaBraziers: 4,
+  fireRing: { minRadius: 110, shrinkMs: 25000, damage: 8, knockback: 200 },
+  enrage: {
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
- * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Wampirzy Lord (Cmentarzysko).
+ * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_QUEEN,
   3: SPIDER_KING,
-  4: VAMPIRE_LORD,
+  4: FUNGAL_DEVOURER,
+  5: GATE_WARDEN,
+  6: ABYSS_EXECUTIONER,
 };
 
+/** Boss piętra; od piętra 7 kolejny krąg wieży powtarza bossów 1–6 (krok 43). */
 export function bossForFloor(floor: number): BossDefinition {
-  return BOSS_BY_FLOOR[floor] ?? FLOOR_GUARDIAN;
+  return BOSS_BY_FLOOR[floorInLoop(floor, TOWER_CONFIG)] ?? FLOOR_GUARDIAN;
 }
 
 /** Kraty areny bossa. */
@@ -348,6 +463,10 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.flurry && { flurry: dmg(boss.flurry) }),
     ...(boss.cocoonThrow && { cocoonThrow: dmg(boss.cocoonThrow) }),
     ...(boss.cleave && { cleave: dmg(boss.cleave) }),
+    ...(boss.hook && { hook: { ...dmg(boss.hook)!, followUp: dmg(boss.hook.followUp)! } }),
+    ...(boss.kindle && { kindle: dmg(boss.kindle) }),
+    ...(boss.fireRing && { fireRing: dmg(boss.fireRing) }),
+    ...(boss.shield?.heat && { shield: { ...boss.shield, heat: dmg(boss.shield.heat)! } }),
     ...(boss.spiderling && { spiderling: dmg(boss.spiderling) }),
   };
 }

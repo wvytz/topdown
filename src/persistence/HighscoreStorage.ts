@@ -62,8 +62,9 @@ export class HighscoreStorage {
   }
 }
 
-function isScoreEntry(value: unknown): value is ScoreEntry {
+export function isScoreEntry(value: unknown): value is ScoreEntry {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  return [v.score, v.floor, v.timestamp].every((n) => typeof n === 'number' && Number.isFinite(n));
+  const numbersOk = [v.score, v.floor, v.timestamp].every((n) => typeof n === 'number' && Number.isFinite(n));
+  return numbersOk && (v.name === undefined || typeof v.name === 'string');
 }

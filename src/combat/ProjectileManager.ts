@@ -26,6 +26,10 @@ export interface ProjectileSpec {
   readonly wave?: WaveShape;
   /** Status nakładany trafieniem (krok 28b: trucizna kuli zarodników grzybca). */
   readonly status?: StatusApplication;
+  /** Wywołanie po trafieniu gracza (krok 42: wampiryczna elita leczy się z trafienia pociskiem). */
+  readonly onHit?: (damage: number) => void;
+  /** Obrót sprite'a (radiany) — strzałka pułapki leci grotem do przodu (krok 48). */
+  readonly rotation?: number;
 }
 
 /** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
@@ -35,6 +39,7 @@ export class ProjectileManager {
   private readonly impactDecals = new WeakMap<Projectile, CombatDecalKind>();
   /** Kształt fal — trafienie liczymy sami (czysta funkcja), nie przez okrągłe ciało fizyczne. */
   private readonly waves = new WeakMap<Projectile, WaveShape>();
+  private readonly hitCallbacks = new WeakMap<Projectile, (damage: number) => void>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -65,8 +70,10 @@ export class ProjectileManager {
     // Ciało zawsze o promieniu PROJECTILE_RADIUS, wyśrodkowane w klatce (kula maga ma 16×16).
     projectile.setCircle(PROJECTILE_RADIUS, projectile.width / 2 - PROJECTILE_RADIUS, projectile.height / 2 - PROJECTILE_RADIUS);
     if (spec.visual) projectile.play(spec.visual.animation);
+    if (spec.rotation !== undefined) projectile.setRotation(spec.rotation);
     if (spec.impactDecal) this.impactDecals.set(projectile, spec.impactDecal);
     if (spec.wave) this.waves.set(projectile, spec.wave);
+    if (spec.onHit) this.hitCallbacks.set(projectile, spec.onHit);
     const dir = normalize(spec.direction);
     projectile.setVelocity(dir.x * spec.speed, dir.y * spec.speed);
   }
@@ -108,6 +115,7 @@ export class ProjectileManager {
 
     // Dash/nietykalność: pocisk przelatuje przez gracza.
     if (this.player.takeHit(hit, now)) {
+      this.hitCallbacks.get(projectile)?.(hit.damage);
       projectile.destroy();
       this.onPlayerHit();
     }

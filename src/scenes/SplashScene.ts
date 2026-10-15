@@ -23,7 +23,7 @@ import type { SplashFrame } from '@/systems/splashTimeline';
 import { splashFadeStart, splashFrame, splashImpacts } from '@/systems/splashTimeline';
 import type { Particle } from '@/systems/deathScreen';
 import { stepParticle } from '@/systems/deathScreen';
-import { BOOT_START_DATA_KEY } from '@/scenes/BootScene';
+import { BOOT_START_DATA_KEY, startFirstFloor } from '@/scenes/BootScene';
 
 const GLOW_TEXTURE = 'splash-glow';
 const VIGNETTE_TEXTURE = 'splash-vignette';
@@ -50,7 +50,7 @@ interface Debris {
 }
 
 /**
- * Ekran startowy (krok 34; motyw z kroku 37): samotna wieża w mroku i zniszczeniu, za nią zaćmione słońce,
+ * Ekran startowy (krok 34; motyw z kroku 52): samotna wieża w mroku i zniszczeniu, za nią zaćmione słońce,
  * z nieba opada popiół. TOP uderza nad szczytem wieży, DOWN — ciężej — u jej podstawy; od wieży odpadają kamienie,
  * a pęknięcia w ziemi zaczynają się żarzyć. W tym czasie w tle ładuje się BootScene.
  * Wszystko rysujemy prostokątami — ekran nie potrzebuje żadnych plików.
@@ -131,7 +131,7 @@ export class SplashScene extends Phaser.Scene {
     if (frame.done && bootData) {
       this.finished = true;
       this.registry.remove(BOOT_START_DATA_KEY);
-      this.scene.start(SceneKey.Game, bootData);
+      startFirstFloor(this, bootData);
     }
   }
 

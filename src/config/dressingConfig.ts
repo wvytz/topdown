@@ -142,3 +142,43 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.3, group: 'wallFace.grave' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.3 },
 };
+
+/**
+ * Piekło (krok 41a): rozżarzone szczeliny i krew na posadzce, rzadkie pieczęcie 2×2 (duże nakładki),
+ * kości; na licach okowy, czaszki na kolcach i szczeliny z żarem. Bez pajęczyn — za gorąco.
+ */
+export const INFERNAL_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalChance: 0.15,
+  decalGroupWeights: {
+    'decal.crack': 2.5,
+    'decal.debris': 1,
+    'decal.broken': 0.4,
+    'decal.ember': 3,
+    'decal.blood': 2,
+    'decal.bones': 1.2,
+  },
+  largeDecals: [{ chance: 0.006, group: 'decal.sigil' }],
+  wallFace: { chance: 0.3, group: 'wallFace.infernal' },
+  cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0 },
+};
+
+/**
+ * Sala tronowa Grzybowego Pożeracza (krok 39, wygląd z paczki właściciela): tron z grzybni przy północnej ścianie
+ * areny (3×3 kafle, bez kolizji) i naklejki krwi, grzybni i soku na podłodze. Moje liczby, do oceny w teście.
+ * Kolejność wag = kolumny arkusza `throne-decals.png` (`ThroneDecalKind`).
+ */
+export const THRONE_ROOM = {
+  /** Kokony spiżarni nie stoją bliżej tronu (Czebyszew, kafle). */
+  throneClearTiles: 2,
+  /** Wejście na północnej ścianie w tylu kaflach od osi tronu przesuwa tron w bok. */
+  entranceClearTiles: 2,
+  decals: {
+    count: { min: 7, max: 10 },
+    /** Kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata. */
+    weights: [4, 4, 2, 3, 2, 1],
+    minSpacingTiles: 2,
+    /** Środek areny (schody po walce) bez naklejek. */
+    centerClearTiles: 1,
+  },
+} as const;

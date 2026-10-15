@@ -11,7 +11,7 @@ import type {
   WebShot,
 } from '@/core/bossTypes';
 import { TileType } from '@/core/dungeonTypes';
-import type { DungeonFloor, Room } from '@/core/dungeonTypes';
+import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
@@ -27,6 +27,7 @@ import {
   KING_COCOON_VISUAL,
   LARDER_VISUAL,
   SPIDERLING_DROP_VISUAL,
+  THRONE_ROOM_VISUAL,
   SPIDERLING_VISUAL,
   SPRITE_SHEETS,
   animationKey,
@@ -43,17 +44,25 @@ import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { planLarders } from '@/dungeon/LarderPlanner';
+import { planThrone, planThroneDecals } from '@/dungeon/ThronePlanner';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
+import { resolveBeam, resolveSplash } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { BRAZIER_VISUAL, FIRE_RING_VISUAL, SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
+import { fireRingRadius, reflectDirection } from '@/systems/Shield';
+import { arenaBrazierSpots } from '@/dungeon/BrazierPlanner';
+import { BossAttackKind } from '@/core/bossTypes';
 import type { CombatDecalKind } from '@/config/dressingConfig';
+import { THRONE_ROOM } from '@/config/dressingConfig';
 
 export interface BossFightDeps {
   readonly scene: Phaser.Scene;
@@ -68,7 +77,7 @@ export interface BossFightDeps {
   readonly onPlayerHit: () => void;
   /** Wywoływane po pokonaniu bossa, z miejscem jego śmierci (tam wypadają łupy). */
   readonly onDefeated: (position: Vector2) => void;
-  /** Zarażony wychodzący z kokonu spiżarni (Wampirzy Lord): zwykły Rusher biomu. */
+  /** Zarażony wychodzący z kokonu spiżarni (Grzybowy Pożeracz): zwykły Rusher biomu. */
   readonly spawnRusher?: (at: Vector2) => void;
 }
 
@@ -121,7 +130,8 @@ interface PendingBurst {
 
 const BOSS_SEED_SALT = 0xb055;
 const LARDER_SEED_SALT = 0x1a4d;
-/** Napisy uczty i leczenia Lorda. */
+const THRONE_SEED_SALT = 0x7407;
+/** Napisy uczty i leczenia Pożeracza. */
 const FEAST_TEXT_COLOR = '#ff5a6e';
 const BOSS_DEFAULT_ENRAGED_LABEL = 'wściekły!';
 /** Napis przy paraliżu (barwa jak STATUS_TINTS.paralysis). */
@@ -155,11 +165,20 @@ export class BossFight {
   private readonly spiderlingDefinition: SpiderlingDefinition | null;
   /** Trwa animacja śmierci — boss już nie walczy, ale nagroda i kraty czekają na jej koniec. */
   private dying = false;
-  /** Spiżarnia Wampirzego Lorda (krok 33): kokony z zarażonymi. */
+  /** Spiżarnia Grzybowego Pożeracza (krok 33): kokony z zarażonymi. */
   private larders: LarderCocoon[] = [];
   private readonly larderRng: Rng;
   private pendingFeast: FeastBite | null = null;
   private pendingRelease: { readonly at: number; readonly larders: LarderCocoon[] } | null = null;
+  /** Sala tronowa Grzybowego Pożeracza (krok 39): krew na graczu po trafieniu, sok nad bossem przy leczeniu. */
+  private readonly throneRoomFx: boolean;
+
+  private readonly shieldArc: Phaser.GameObjects.Graphics | null;
+  /** Kat Otchłani (krok 41f): paleniska areny (oddech), pierścień ognia, rozgrzanie tarczy promieniem. */
+  private readonly arenaBraziers: Array<{ readonly at: Vector2; readonly sprite: Phaser.GameObjects.Sprite }> = [];
+  private readonly fireRingGfx: Phaser.GameObjects.Graphics | null;
+  private fireRingStartAt: number | null = null;
+  private shieldHeat = 0;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -177,15 +196,53 @@ export class BossFight {
     deps.scene.physics.add.collider(boss, deps.walls);
     deps.scene.physics.add.collider(deps.player, boss);
     this.spiderlings = new SpiderlingSwarm(deps);
+    // Tarcza (Strażnik Bram, krok 41e): łuk chronionego stożka przed bossem.
+    this.shieldArc = definition.shield ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) : null;
+    this.fireRingGfx = definition.fireRing
+      ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash).setBlendMode(Phaser.BlendModes.ADD)
+      : null;
+    for (const tile of arenaBrazierSpots(arena, definition.arenaBraziers ?? 0)) {
+      const at = DungeonView.tileToWorldCenter(tile);
+      const sprite = deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[BRAZIER_VISUAL.sheet].key).setDepth(RENDER_DEPTH.shrine);
+      sprite.play(animationKey(BRAZIER_VISUAL.sheet, BRAZIER_VISUAL.idle));
+      this.arenaBraziers.push({ at, sprite });
+    }
 
     this.larderRng = createRng(deriveSeed(deps.floor.seed, LARDER_SEED_SALT));
     const feast = definition.feast;
+    this.throneRoomFx = Boolean(feast);
     if (feast) {
-      for (const tile of planLarders(deps.floor, arena, feast.larders, this.larderRng)) {
+      const throne = planThrone(deps.floor, arena, THRONE_ROOM.entranceClearTiles);
+      this.dressThroneRoom(throne);
+      const tiles = planLarders(deps.floor, arena, feast.larders, this.larderRng, throne, THRONE_ROOM.throneClearTiles);
+      tiles.forEach((tile, i) => {
         const at = DungeonView.tileToWorldCenter(tile);
-        this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius));
-      }
+        this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius, i));
+      });
     }
+  }
+
+  /** Tron z grzybni i naklejki krwi, grzybni i soku (dekoracje bez kolizji; zostają po walce). */
+  private dressThroneRoom(throne: TilePoint | null): void {
+    const { scene, floor } = this.deps;
+    const rng = createRng(deriveSeed(floor.seed, THRONE_SEED_SALT));
+    const decalsKey = SPRITE_SHEETS[THRONE_ROOM_VISUAL.decals].key;
+    for (const decal of planThroneDecals(floor, this.arena, throne, THRONE_ROOM.decals, rng)) {
+      const at = DungeonView.tileToWorldCenter(decal.tile);
+      scene.add.image(at.x, at.y, decalsKey, decal.kind).setDepth(RENDER_DEPTH.floorDecal);
+    }
+    if (!throne) return;
+    const at = DungeonView.tileToWorldCenter(throne);
+    scene.add.image(at.x, at.y, SPRITE_SHEETS[THRONE_ROOM_VISUAL.throne].key).setDepth(RENDER_DEPTH.floorFeature);
+  }
+
+  /** Jednorazowy efekt sali tronowej (krew albo sok) w punkcie. */
+  private playThroneFx(row: number, x: number, y: number): void {
+    if (!this.throneRoomFx) return;
+    const { sheet, animation } = THRONE_ROOM_VISUAL.fx;
+    const sprite = this.deps.scene.add.sprite(x, y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.slash);
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
+    sprite.play(animationKey(sheet, animation, row));
   }
 
   /** Walka trwa (boss obudzony i żywy). */
@@ -215,7 +272,11 @@ export class BossFight {
 
   update(now: number): void {
     const boss = this.boss;
-    if (!boss) return;
+    this.drawShieldArc(boss);
+    if (!boss) {
+      this.fireRingGfx?.clear();
+      return;
+    }
     const { player } = this.deps;
 
     if (!boss.isFighting && !player.isDead) {
@@ -231,7 +292,9 @@ export class BossFight {
     }
 
     const larders = this.larders.map((larder) => larder.position);
-    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length, larders);
+    const braziers = this.arenaBraziers.map((b) => b.at);
+    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length, larders, braziers);
+    this.updateFireRing(boss, now);
     if (plan) this.schedule(plan);
     this.updateLarders(boss, now);
     this.updatePresence(boss);
@@ -264,12 +327,48 @@ export class BossFight {
     return hit.filter((t) => !(t instanceof LarderCocoon)).length;
   }
 
+  /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
+  /** Rozprysk kuli Czarodziejki (krok 50): pajączki, kokony spiżarni i boss (tarcza działa jak przy ciosie). */
+  resolveSplash(splash: OrbSplash): void {
+    const { killed } = resolveSplash(splash, this.targets());
+    this.handleKills(killed);
+  }
+
+  resolvePlayerBeam(beam: BeamStrike): number {
+    if (!this.boss) return 0;
+    // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie. U Kata rozgrzewa tarczę.
+    const shielded = this.boss.isShieldedFrom(beam.source);
+    if (shielded) this.heatShield(this.boss, beam.now);
+    const targets = shielded ? this.targets().filter((t) => t !== this.boss) : this.targets();
+    const { hit, killed } = resolveBeam(beam, targets);
+    this.handleKills(killed);
+    return hit.filter((t) => !(t instanceof LarderCocoon)).length;
+  }
+
   /**
    * Pocisk gracza trafia najbliższy cel — pajączek między graczem a bossem przyjmuje strzał na siebie.
    * Zwraca trafiony cel (trafienie budzi bossa jak cios wręcz).
    */
   resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | LarderCocoon | null {
-    if (!this.boss) return null;
+    const boss = this.boss;
+    if (!boss) return null;
+    // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, wraca do strzelca (już jako pocisk wroga).
+    const shield = boss.definition.shield;
+    const touches = Math.hypot(shot.position.x - boss.x, shot.position.y - boss.y) <= shot.radius + boss.radius;
+    if (shield && touches && !shot.ignore?.has(boss) && boss.isShieldedFrom(shot.position)) {
+      const speed = Math.hypot(shot.velocity.x, shot.velocity.y) * shield.reflectSpeed;
+      this.deps.projectiles.fire({
+        origin: shot.position,
+        direction: reflectDirection(shot.velocity),
+        speed,
+        damage: shot.damage,
+        knockback: shot.knockback,
+        lifetimeMs: 1500,
+      });
+      this.deps.effects.impact(shot.position.x, shot.position.y, 10);
+      boss.activate(shot.now);
+      return boss;
+    }
     const result = resolvePlayerShot(shot, this.targets());
     if (result?.died) this.handleKills([result.target]);
     return result?.target ?? null;
@@ -297,6 +396,7 @@ export class BossFight {
 
   private schedule(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
+    if (plan.kind === BossAttackKind.Kindle) this.kindleBraziers(plan);
     // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
     const planned = plan.leap;
     const landing = planned ? this.startLeap(planned) : null;
@@ -334,15 +434,16 @@ export class BossFight {
    * i stos wzmocnienia — tylko jeśli kokon jeszcze był); zew rozrywa wybrane kokony.
    */
   private updateLarders(boss: Boss, now: number): void {
-    for (const larder of this.larders.filter((l) => l.tornByHit)) this.tearLarder(larder, true);
+    for (const larder of this.larders.filter((l) => l.tornByHit)) this.tearLarder(larder, 'release');
     const feast = this.pendingFeast;
     if (feast && now >= feast.at) {
       this.pendingFeast = null;
       const eaten = this.larders.find((l) => Math.hypot(l.x - feast.target.x, l.y - feast.target.y) < 1);
       const def = boss.definition.feast;
       if (eaten && def) {
-        this.tearLarder(eaten, false);
+        this.tearLarder(eaten, 'eaten');
         boss.heal(def.heal);
+        this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
         boss.feasted();
         this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 8, `Uczta! +${def.heal}`, FEAST_TEXT_COLOR);
       }
@@ -350,20 +451,24 @@ export class BossFight {
     const release = this.pendingRelease;
     if (release && now >= release.at) {
       this.pendingRelease = null;
-      for (const larder of release.larders) if (this.larders.includes(larder)) this.tearLarder(larder, true);
+      for (const larder of release.larders) if (this.larders.includes(larder)) this.tearLarder(larder, 'release');
     }
   }
 
-  /** Rozdarcie kokonu; pusty oplot zostaje na podłodze. `release` — wychodzi zarażony. */
-  private tearLarder(larder: LarderCocoon, release: boolean): void {
+  /**
+   * Koniec kokonu; łupina zostaje na podłodze. `eaten` — zjedzony przez Pożeracza (ogryzione żebra i krew),
+   * `release` — rozdarty od środka, wychodzi zarażony, `empty` — rozdarty bez zarażonego (śmierć bossa).
+   */
+  private tearLarder(larder: LarderCocoon, mode: 'eaten' | 'release' | 'empty'): void {
     this.larders = this.larders.filter((l) => l !== larder);
     const at = larder.position;
+    const { variant } = larder;
     larder.destroy();
-    const { sheet, tear } = LARDER_VISUAL;
+    const { sheet } = LARDER_VISUAL;
     const husk = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
     husk.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => husk.setDepth(RENDER_DEPTH.combatDecal));
-    husk.play(animationKey(sheet, tear));
-    if (release) this.deps.spawnRusher?.(at);
+    husk.play(animationKey(sheet, mode === 'eaten' ? LARDER_VISUAL.eaten : LARDER_VISUAL.tear, variant));
+    if (mode === 'release') this.deps.spawnRusher?.(at);
   }
 
   /** Wstrząs kamery przy przebudzeniu i przy wejściu we wściekłość (napis daje HUD). */
@@ -650,9 +755,16 @@ export class BossFight {
         };
         if (player.takeHit(hit, now)) {
           onPlayerHit();
+          // Hak Kata: złapany gracz ląduje tuż przed tarczą (zaraz potem uderzenie tarczą).
+          if (strike.pullTo && player.body instanceof Phaser.Physics.Arcade.Body) {
+            player.body.reset(strike.pullTo.x, strike.pullTo.y);
+            effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
+          }
+          this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
           const boss = this.boss;
           if (strike.healOnHit && boss) {
             boss.heal(strike.healOnHit);
+            this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
             effects.floatingText(boss.x, boss.y - boss.radius - 8, `+${strike.healOnHit}`, FEAST_TEXT_COLOR);
           }
           if (strike.status?.paralysis && player.isParalyzed(now)) {
@@ -688,6 +800,97 @@ export class BossFight {
     });
   }
 
+  /** Rozgrzanie tarczy promieniem (Kat): po `heat.ticks` tickach wybuch żaru wokół bossa (telegrafowany). */
+  private heatShield(boss: Boss, now: number): void {
+    const heat = boss.definition.shield?.heat;
+    if (!heat) return;
+    this.shieldHeat++;
+    if (this.shieldHeat < heat.ticks) return;
+    this.shieldHeat = 0;
+    const strike = {
+      center: { x: boss.x, y: boss.y },
+      radius: heat.radius,
+      telegraphStartAt: now,
+      impactAt: now + heat.telegraphMs,
+      damage: heat.damage,
+      knockback: heat.knockback,
+    };
+    this.strikes.push({ strike, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+    this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 10, 'Żar!', '#ff8a3c');
+  }
+
+  /** Oddech palenisk: paleniska areny rosną przez telegraf i buchają w chwili uderzenia stref. */
+  private kindleBraziers(plan: BossAttackPlan): void {
+    const scene = this.deps.scene;
+    const first = plan.strikes[0];
+    if (!first) return;
+    const leadMs = Math.max(1, first.impactAt - scene.time.now);
+    const { sheet, warn, burst, idle } = BRAZIER_VISUAL;
+    for (const { sprite } of this.arenaBraziers) {
+      const frames = scene.anims.get(animationKey(sheet, warn))?.frames.length ?? 1;
+      sprite.play({ key: animationKey(sheet, warn), frameRate: (frames * 1000) / leadMs });
+      scene.time.delayedCall(leadMs, () => {
+        sprite.play(animationKey(sheet, burst));
+        scene.time.delayedCall(700, () => sprite.active && sprite.play(animationKey(sheet, idle)));
+      });
+    }
+  }
+
+  /**
+   * Pierścień ognia (Kat, po wściekłości): brzeg areny płonie, wolne koło w środku się kurczy.
+   * Gracz poza kołem parzy się (przez trafienie z nietykalnością) i jest odpychany do środka.
+   */
+  private updateFireRing(boss: Boss, now: number): void {
+    const ring = boss.definition.fireRing;
+    const gfx = this.fireRingGfx;
+    if (!ring || !gfx) return;
+    gfx.clear();
+    if (!boss.isEnraged || !boss.isFighting) return;
+    this.fireRingStartAt ??= now;
+    const a = this.arena;
+    const center = { x: (a.x + a.width / 2) * TILE_SIZE, y: (a.y + a.height / 2) * TILE_SIZE };
+    const start = (Math.min(a.width, a.height) * TILE_SIZE) / 2;
+    const radius = fireRingRadius(start, ring.minRadius, ring.shrinkMs, now - this.fireRingStartAt);
+    const outer = (Math.hypot(a.width, a.height) * TILE_SIZE) / 2;
+    const { fill, fillAlpha, edge, edgeAlpha, edgeWidth } = FIRE_RING_VISUAL;
+    // Pas ognia od koła do narożników areny: 64 czworokąty pierścienia (gruba linia okręgu rozpada się
+    // w Phaserze na klinowe paski, a wielokąt z dziurką źle się trianguluje).
+    const segments = 64;
+    gfx.fillStyle(fill, fillAlpha);
+    for (let i = 0; i < segments; i++) {
+      const t0 = (i / segments) * Math.PI * 2;
+      const t1 = ((i + 1) / segments) * Math.PI * 2;
+      gfx.fillPoints(
+        [
+          { x: center.x + Math.cos(t0) * radius, y: center.y + Math.sin(t0) * radius },
+          { x: center.x + Math.cos(t0) * outer, y: center.y + Math.sin(t0) * outer },
+          { x: center.x + Math.cos(t1) * outer, y: center.y + Math.sin(t1) * outer },
+          { x: center.x + Math.cos(t1) * radius, y: center.y + Math.sin(t1) * radius },
+        ],
+        true,
+      );
+    }
+    gfx.lineStyle(edgeWidth, edge, edgeAlpha).strokeCircle(center.x, center.y, radius);
+    const { player } = this.deps;
+    if (player.isDead || Math.hypot(player.x - center.x, player.y - center.y) <= radius) return;
+    const hit = { damage: ring.damage, knockback: knockbackFrom(player, center, ring.knockback) };
+    if (player.takeHit(hit, now)) this.deps.onPlayerHit();
+  }
+
+  /** Łuk tarczy przed bossem: widać, skąd trafienia się odbijają (tylko w walce). */
+  private drawShieldArc(boss: Boss | null): void {
+    const gfx = this.shieldArc;
+    if (!gfx) return;
+    gfx.clear();
+    const angle = boss?.shieldAngle;
+    if (!boss || angle === null || angle === undefined || !boss.isFighting) return;
+    const half = ((boss.definition.shield?.arcDeg ?? 0) * Math.PI) / 360;
+    const { color, alpha, width, gap } = SHIELD_ARC_VISUAL;
+    gfx.lineStyle(width, color, alpha).beginPath();
+    gfx.arc(boss.x, boss.y, boss.radius + gap, angle - half, angle + half);
+    gfx.strokePath();
+  }
+
   private defeat(): void {
     const boss = this.boss;
     if (!boss) return;
@@ -702,8 +905,8 @@ export class BossFight {
     this.webs = [];
     // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
     this.spiderlings.clear();
-    // Spiżarnia pustoszeje razem z Lordem (kokony pękają bez zarażonych).
-    for (const larder of [...this.larders]) this.tearLarder(larder, false);
+    // Spiżarnia pustoszeje razem z Pożeraczem (kokony pękają bez zarażonych).
+    for (const larder of [...this.larders]) this.tearLarder(larder, 'empty');
     this.pendingFeast = null;
     this.pendingRelease = null;
     this.clearSpawns();

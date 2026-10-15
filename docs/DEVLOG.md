@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#ekran-startowy`, `#ekran-smierci`, `#hud` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -32,7 +32,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 | Typy domenowe | `src/core/` | nie |
 | Zasady i obliczenia | `src/systems/` (HP, cooldowny, dash, geometria walki, skalowanie) | nie |
 | Decyzje AI | `src/ai/` (maszyny stanów, plany ataków bossa) | nie |
-| Generowanie świata | `src/dungeon/DungeonGenerator.ts`, `EncounterPlanner.ts`, `ShrinePlanner.ts`, `arenaGates.ts`, `lineOfSight.ts`, `rooms.ts` | nie |
+| Generowanie świata | `src/dungeon/DungeonGenerator.ts`, `EncounterPlanner.ts`, `ShrinePlanner.ts`, `ThronePlanner.ts`, `arenaGates.ts`, `lineOfSight.ts`, `rooms.ts` | nie |
 | Strojenie liczb | `src/config/` | nie |
 | Encje (widok + fizyka) | `src/entities/` | tak |
 | Koordynacja walki | `src/combat/` (EnemyManager, ProjectileManager, BossFight) | tak |
@@ -2617,6 +2617,35 @@ Makieta generatora:
 
 **Ograniczenie:** `?seed=N&floor=M` działa tylko w `npm run dev` — testerzy zaczynają od piętra 1.
 
+## Wspólna lista wyników — Cloudflare Worker `#highscore`
+
+**Decyzja właściciela:** `#decyzja` `#highscore`
+- GitHub Pages tylko serwuje pliki, więc wspólna lista wyników stoi na osobnej usłudze: **Cloudflare Worker + baza D1** (wybór właściciela po porównaniu Supabase / Firebase / Cloudflare).
+- **Imię gracza (decyzja właściciela): wpisywane po śmierci.** Przy pierwszej śmierci panel prosi o imię (max 12 znaków: litery, cyfry, spacja, `_`, `-`; Enter zapisuje, Esc pomija). Gra je zapamiętuje i kolejne wyniki idą już z nim.
+
+**Zrobione:**
+- `persistence/SharedHighscores.ts`: obudowuje dotychczasowy `HighscoreStorage` (interfejs bez zmian):
+  - zapis lokalny od razu, panel śmierci pokazuje go natychmiast;
+  - wspólna lista dochodzi asynchronicznie i podmienia podium i miejsce;
+  - bez sieci wynik czeka w kolejce (`localStorage`, max 20) i leci przy następnej śmierci.
+- `persistence/remoteScores.ts`: adapter workera (`GET/POST /scores`); adres z `VITE_SCORES_URL`. Bez adresu gra działa jak dawniej (lista lokalna).
+- `worker/`: kod workera, schemat D1 i instrukcja wdrożenia (`worker/README.md`). Walidacja wpisu, zapis tylko ze strony gry i `localhost:5173`, limit 10 wpisów / 10 min z jednego IP (IP jako skrót).
+- Panel śmierci: nagłówek „łączenie…” / „WSZYSCY GRACZE”; wiersze z imieniem („—” dla wpisów bez imienia).
+- Imię: `sanitizePlayerName` / `isNameChar` w `systems/Highscores.ts` (czyste), zapamiętane w `persistence/PlayerName.ts`; worker sprawdza je tymi samymi zasadami.
+- Liczby (limit czasu 5 s, kolejka 20) w `HIGHSCORE_CONFIG`.
+
+**Testy:** `tests/persistence/sharedHighscores.test.ts` (miejsce na wspólnej liście, kolejka offline, limit kolejki, uszkodzone dane), `tests/persistence/remoteScores.test.ts` (adapter HTTP, imię null), `tests/persistence/playerName.test.ts`, czyszczenie imienia w `tests/systems/highscores.test.ts`. Worker sprawdzony skryptem z atrapą D1 (walidacja wpisu i imienia, 403 z obcej strony, 429 po limicie).
+
+**Weryfikacja w przeglądarce:** `npm run dev` z `VITE_SCORES_URL` na lokalnym serwerze z kodem workera i atrapą D1. Śmierć → panel imienia (wpisane „Wi<c>io” daje „Wicio”) → Enter → wpis trafia do bazy, panel pokazuje „WSZYSCY GRACZE” i miejsce 2 za wpisem z bazy. Bez błędów w konsoli gry.
+
+**Wdrożenie (zrobione):**
+- Konto Cloudflare właściciela, subdomena workers.dev `wvytz`.
+- Baza D1 `tower-crawler-scores` (id w `worker/wrangler.toml`), schemat nałożony `--remote`.
+- Worker: https://tower-crawler-scores.wvytz.workers.dev (`GET/POST /scores`).
+- `.env.production` z `VITE_SCORES_URL` jest w repozytorium (adres nie jest tajny); gra na GitHub Pages wdrożona z nim przez `npm run deploy:pages`.
+
+**Ograniczenie:** wynik liczy przeglądarka, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury.
+
 ---
 
 ## Krok 34 — Ekran startowy w stylu automatów
@@ -2701,7 +2730,552 @@ Makieta generatora:
 
 ---
 
-## Krok 36 — Ekran startowy: nazwa TOP DOWN i epickie otwarcie
+## Kroki 34–35 + wspólna lista wyników — scalenie `#highscore` `#ekran-smierci`
+
+**Problem (zgłoszenie właściciela):** na GitHub Pages nie było ekranu startowego, a ekran śmierci był stary. Kroki 34–35 leżały na osobnej gałęzi (`claude/beautiful-knuth-7datv1`) i nie trafiły do `main`; wdrożenie wspólnej listy wyników z `main` nadpisało `gh-pages` wersją bez nich.
+
+**Co zrobiono:**
+- `main` scalony z gałęzią kroków 34–35; jedyny konflikt w `HudScene` — zostaje nowy `DeathScreen`, stary panel śmierci usunięty;
+- `effects/DeathScreen.ts` obsługuje wspólną listę:
+  - przy pierwszej śmierci bez zapamiętanego imienia: „TWOJE IMIĘ NA TABLICY WYNIKÓW”, pole z kursorem, „ENTER — ZAPISZ · ESC — BEZ IMIENIA”; bez miejsca w wyniku i bez „R — NOWA WSPINACZKA”;
+  - wiersze tablicy z imieniem; nagłówek zależny od źródła (lokalna / łączenie… / wszyscy gracze);
+  - nowy obiekt tej samej śmierci (litera imienia, przyjście wspólnej tablicy) odświeża tylko tekst — animacja rozkładu nie startuje od nowa.
+
+**Uwaga:** na gałęzi `claude/vibrant-thompson-o7nlmz` był inny „Krok 34” (Grzybowy Pożeracz) — po scaleniu to krok 39.
+
+**Weryfikacja:** `npm run build` (903 testy); przeglądarka: ekran startowy, śmierć wymuszona przez `window.__game`, wpisanie imienia i tablica z imieniem.
+
+---
+
+## Krok 36 — Czarodziejka: sprite'y drugiej bohaterki `#czarodziejka`
+
+**Decyzja właściciela:** `#decyzja` `#czarodziejka`
+- Plan palety i klatek przedstawiony na płótnie (Design) i zaakceptowany przed implementacją.
+- Suknia **szafirowa** (szkarłat odpadł: na piaskowcu ma ok. 1,36 : 1 i za małą różnicę barwy, więc nie spełnia §6a).
+- **Kule energii wypuszcza atak** (kolumna 7 rzutu zaklęcia), a nie tylko krążą wokół postaci.
+
+**Zrobione:**
+- Generator `tools/sorceress_sprites.py` (Pillow, `rotate45` i `outline` z istniejących narzędzi). Postać z brył na N, 8 kierunków z obrotu, obrys `#1b1a22` po obrocie, cieniowanie płaskie bez ditheringu.
+- `sorceress_walk-cast.png` (384×384, komórka 48×48, pivot 24,24):
+  - 0–3 chód: suknia prawie nieruchoma (przód rąbka ±1 px), włosy falują mocno (koniec ±3 px, w klatce 2 wydłużone i rozdzielone na 2 pasma);
+  - 4–7 rzut zaklęcia: zamach (kostur −1 px, kryształ ciemnieje), pchnięcie (+2 px), rozbłysk (najjaśniejszy ton i 5 iskier bez obrysu), powrót; kula wylatuje w kolumnie 7, 17 px przed pivotem.
+- `sorceress_orb.png` (64×16, komórka 16×16, `rotate: false`): kula 10 px w rampie kryształu, blask okrąża obwód co 90°.
+- Paleta: włosy `#282a3c` `#353b55` `#48516f` `#63708f`; suknia `#1c1f5a` `#23378f` `#2d56b9` `#3d7bd3` `#7fb4ec`; skóra `#b9805e` `#e8b892`; kostur `#4a3020` `#5a3a22` `#5b3e27`; kryształ i kule `#1d7f9c` `#39c0d8` `#8ae6ef` `#e4fbfb`.
+- Wyjątek od marginesu jak u barbarzyńcy (§11): ciało mieści się w promieniu 21,5 px, iskry w 22,5 px. Pilnuje tego walidator generatora.
+- Wpisy `sorceress` (walk, idle, cast) i `sorceressOrb` (fly) w `SPRITE_SHEETS`. **Bez logiki bohaterki i bez wyboru postaci.**
+
+**Testy:** `tests/assets/sorceress.test.ts` (tylko kolory palety, piksele pełne, brak `#000`, `#fff`, `#9cff57`, `#d4a83a`; czytelność postaci w 8 kierunkach i kuli na płytach według §6a). Wymiary arkuszy sprawdza `tests/systems/sprites.test.ts`.
+
+**Weryfikacja:** `npm run build` (875 testów), podgląd 4× z `--preview tools/out`. Bez sprawdzenia w grze, bo bohaterka nie ma jeszcze logiki.
+
+**Do oceny właściciela:** podgląd arkusza (czytelność głowy i włosów przy 1×, siła fali włosów, wielkość kryształu).
+
+**Poprawka po ocenie właściciela:** `#ocena` `#czarodziejka`
+- Kostur zasłaniał głowę: przesunięty w prawo (oś 4,5 px od pivota, `STAFF_X`), razem z dłońmi, kryształem i iskrami.
+- Głowa powiększona (promień 6 px zamiast 5,1, `HEAD_R`), grzywa u nasady szersza; nadal mieści się w promieniu 21,5 px.
+
+---
+
+## Krok 37 — Czarodziejka: mechanika (kule i promień) `#czarodziejka`
+
+**Decyzja właściciela:** `#decyzja` `#czarodziejka`
+- **LPM — kule energii:** 3 kule krążą wokół Czarodziejki; atak wypuszcza jedną w stronę celownika (przytrzymanie = seria), pusta orbita odnawia się po ok. 1,5 s.
+- **PPM — ciągły promień:** świeci, póki przycisk jest wciśnięty, i spowalnia Czarodziejkę; puszczenie blokuje go na ok. 1,5 s.
+- **Profil:** mniej HP i wolniejszy chód niż barbarzyńca.
+
+**Zrobione (warstwa czysta):**
+- `core/heroTypes.ts`: `HeroId` (barbarzyńca, Czarodziejka), konfiguracja kul i promienia, definicja bohatera.
+- `config/heroConfig.ts`: `HERO_DEFINITIONS` (Czarodziejka: 75 HP, chód 175; kule: 14 obrażeń, 3 kule, odnowienie 1500 ms, rzut 320 ms z wylotem po 240 ms; promień: 150 px, 5 obrażeń co 200 ms, ruch ×0,5, najdłużej 2,5 s, blokada 1500 ms) i `heroFromParam`.
+- `systems/Sorcery.ts`: przedmioty u Czarodziejki, orbita kul, `BeamChannel` (świecenie, ticki obrażeń, limit, blokada, przerwanie), zasięg promienia do ściany, trafienia na odcinku, punkt kryształu.
+- Bohater jest w `RunSnapshot`: przechodzi między piętrami, a „R” po śmierci zaczyna nowy run tym samym bohaterem.
+- `computeHeroLoadout`; modyfikator piętra wydłuża też odnawianie kul i blokadę promienia.
+
+**Zrobione (Phaser):**
+- `Player`: wygląd bohatera z `HERO_VISUALS`. U Czarodziejki LPM rzuca kulę (animacja rzutu, kula wylatuje z kryształu w klatce 7), PPM świeci promieniem (animacja `channel`, klatki 5–6). Dash i paraliż przerywają promień, w trakcie promienia nie rzuca kul. Gotowe kule krążą wokół postaci.
+- `GameScene`: kule lecą przez `PlayerShotManager` (sprite `sorceress_orb`), promień rysuje grafika w kolorach kryształu i rani przez `resolvePlayerBeam` we wszystkich menedżerach celów (wrogowie, boss, kokony, purchawki); promień kończy się na ścianie i kracie.
+- HUD: segmenty pod paskiem dasha to kule; pod nimi pasek promienia (świeci: pozostały czas, blokada: odnowienie). Podpowiedź sterowania zależy od bohatera.
+- **Przedmioty u Czarodziejki** (bez nowych przedmiotów): kule są jej bronią główną, więc biorą Ostrze (+obrażenia), Rękawice (szybszy rzut), Kołczan (+1 kula, ten sam limit 6), Szuriken (przebicie), Elektryczną strzałę, Lodowy odłamek, Ognistą pięść (statusy) i Wampirzy kieł (leczenie za trafienie kulą). Promień to umiejętność bazowa, bez efektów przedmiotów.
+- **Wybór bohatera na razie z adresu:** `?hero=sorceress` (działa też na GitHub Pages). Ekran wyboru to kolejny krok.
+
+**Testy:** `tests/systems/sorcery.test.ts` (profil bohaterów, bohater w `RunSnapshot`, przedmioty, limit kul, modyfikator piętra, orbita, promień: ticki, puszczenie, limit, przerwanie, ściana, trafienia, punkt kryształu, parametr adresu). `npm run build`: 896 testów.
+
+**Weryfikacja w przeglądarce** (Playwright na `npm run dev`, `?hero=sorceress&seed=7`): 75/75 HP, chód 175, 3 kule na orbicie; seria LPM zużywa kule, które wracają po jednej; kula zabiera wrogowi 14 HP; promień w 0,45 s zadaje 3 × 5 obrażeń, zatrzymuje się na ścianie, a po puszczeniu ponowne wciśnięcie w trakcie blokady nic nie robi. Barbarzyńca bez zmian (cios, 3 strzały). Bez błędów w konsoli.
+
+**Do oceny właściciela:** tempo i siła kul i promienia (wszystkie liczby w `config/heroConfig.ts`), limit promienia 2,5 s (mój dodatek — bez niego promień świeciłby bez końca), czy promień ma brać jakieś efekty przedmiotów.
+
+---
+
+## Krok 38 — Ekran wyboru bohatera `#czarodziejka`
+
+**Prośba właściciela:** `#decyzja` `#czarodziejka` — ekran wyboru postaci, obie postacie grywalne i wdrożone do gry dla testerów.
+
+**Scalenie z `main`:** równolegle powstały kroki 34 (ekran startowy) i 35 (ekran śmierci). Gałąź Czarodziejki scalona z `main`; jej kroki przenumerowane na 36–37. Konflikty: `BootScene` (start przez ekran startowy + bohater), `HudScene` (nowy ekran śmierci + pasek promienia i podpowiedź sterowania), DEVLOG.
+
+**Zrobione:**
+- `scenes/HeroSelectScene.ts`: dwie karty (postać w skali 3× idzie przodem do gracza, imię, hasło, życie i chód, opis LPM i PPM). Wybór: strzałki, A/D, najechanie myszą; start: Enter, Spacja, kliknięcie albo klawisz 1/2. Paleta ekranu startowego (`config/heroSelectConfig.ts`).
+- Kolejność: ekran startowy → wybór bohatera → piętro 1. Parametr `?hero=sorceress` (albo `barbarian`) pomija wybór.
+- Ostatni wybór zapamiętany w przeglądarce (`persistence/LastHero.ts`) i zaznaczony przy kolejnym wejściu.
+- Ekran śmierci: „R — nowa wspinaczka” (ten sam bohater) i nowe „C — zmiana bohatera” (wybór z zaznaczonym bohaterem zakończonego runu; HUD znika i wraca z grą).
+- Opisy kart w `HERO_DEFINITIONS` (`tagline`, `attacks`), kolejność kart w `HERO_ORDER`.
+
+**Testy:** `tests/systems/heroSelect.test.ts` (wszyscy bohaterowie na kartach, opisy, zawijanie strzałek, zaznaczenie na starcie, linia statystyk, rozpoznawanie identyfikatora), `tests/persistence/lastHero.test.ts`. `npm run build`: 941 testów.
+
+**Weryfikacja w przeglądarce** (Playwright, `?nosplash&seed=7`): start na ekranie wyboru; → i Enter zaczynają run Czarodziejką; śmierć, Esc w polu imienia, C — ekran wyboru; 1 zaczyna run barbarzyńcą. Bez błędów w konsoli.
+
+---
+
+## Krok 39 — Grzybowy Pożeracz: wygląd bossa Cmentarzyska z paczki właściciela
+
+**Decyzja właściciela:** `#decyzja` `#grzybowy-pozeracz` `#cmentarzysko` właściciel przysłał paczkę `grzybowy-pozeracz.zip` (generator, arkusze, podglądy): „tak ma wyglądać, dopasuj go do naszego uniwersum”. Zastępuje wygląd Wampirzego Lorda (krok 33: „sprite do przeróbki”).
+
+**Z paczki (bez zmian w kształtach):**
+- ciało dawnego władcy wieży przerośnięte grzybnią: zgarbiony grzbiet pokryty kapeluszami, wyciągnięte ręce we krwi;
+- głowa pęka na dwie połowy w paszczę z zębami;
+- kokony z ludźmi pod ścianami, tron z grzybni, naklejki krwi i grzybni, efekty krwi i soku.
+
+**Dopasowanie do uniwersum (moje):**
+- **kapelusze** z rampy kapelusza siewcy (krok 32b) — ten sam grzyb, który siewcy wyrósł zamiast głowy;
+- **sok** (co świeci, tym boss się leczy) w turkusie bioluminescencji Grzybni — tym samym, którym świeci grzybnia zarażonych. Paczka miała magentę (blisko zarezerwowanego fioletu Sludge Kinga, sama to zgłaszała);
+- **kość** i mrok z palety Cmentarzyska, rdza kraty z rampy kałuży Sludge Kinga; krew i gnijące ciało jak w paczce;
+- **w kokonach śpią zarażeni** z kroku 32b (blada, zimna skóra), bo z rozdartego kokonu wychodzi zarażony;
+- nowe klatki pod mechanikę z kroku 33, której paczka nie miała:
+  - **zamach łapami** zamiast tasaka (cios `Cleave`): łapy za barki, w górze i szeroko, opadanie, pięści złączone przed sobą w chwili uderzenia;
+  - **kokon:** drżenie (zew) i rozdarcie od środka — zarażony wstaje z oplotu, pusty oplot zostaje;
+- nazwa z paczki: **„Grzybowy Pożeracz — Ucztujący w Kryptach”**, wściekłość „Głód!”. Mechanika i liczby z kroku 33 bez zmian.
+
+**Generator `tools/devourer_sprites.py`** (port generatora z paczki; Pillow + numpy, `numpy` dopisane do `tools/requirements.txt`):
+- `fungal-devourer.png` (96×96, 8 kierunków): 0–3 szuranie, 4–7 pożarcie, 8–11 karmienie kokonem, 12–15 zamach łapami;
+- `devourer-cocoon.png` (48×48, wiersze = 3 warianty: twarz, dłoń, skulone ciało): 0–3 oddech, 4–7 zjedzenie, 8–9 drżenie, 10–13 rozdarcie;
+- `fungal-throne.png`, `fungal-fx.png` (krew, sok), `throne-decals.png` (kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata);
+- walidator z paczki: paleta, brak półprzezroczystości, margines komórki;
+- czytelność na podłodze Cmentarzyska: obrys 2,28 : 1, ciało 1,59 : 1, kapelusze czytelne barwą (fiolet vs oliwka);
+- usunięte: `tools/lord_sprites.py`, arkusz Lorda i stary kokon spiżarni (`grave_enemies.py` generuje już tylko zarażonego i siewcę — arkusze identyczne co do bajtu).
+
+**Gra:**
+- `BossId.FungalDevourer`, `FUNGAL_DEVOURER` (dawniej `VampireLord`); testy `tests/ai/FungalDevourer.test.ts`;
+- `spriteConfig`: arkusze Pożeracza; animacje: kąsanie `bite` (kłapnięcie w chwili trafienia), uczta `feed` (przełknięcie w chwili leczenia), zew `roar` (rozdarta głowa), tasak → `smash`. Arkusze mogą mieć 2–3 wiersze wariantów (`directions: 1 | 2 | 3 | 8`);
+- **sala tronowa** (`dungeon/ThronePlanner.ts`, czysty, dopisany do `PURE_FILES`, własna sól RNG):
+  - tron 3×3 kafle oparciem do północnej ściany areny, najbliżej osi, z dala od wejść z północy (inaczej przesuwa się w bok; brak miejsca = sala bez tronu); dekoracja bez kolizji;
+  - 7–10 naklejek podłogi z wag (`THRONE_ROOM` w `dressingConfig`), z odstępem, poza środkiem (schody) i tronem;
+  - kokony spiżarni nie stoją w promieniu 2 kafli od tronu;
+- kokony: wariant z kolejności (twarz, dłoń, skulone ciało); po uczcie zostaje ogryziona łupina z żebrami i krwią, po zewie i trafieniu — pusty oplot;
+- efekty: krew na bohaterze po trafieniu Pożeracza, turkusowy sok nad bossem przy leczeniu (uczta i kąsanie).
+
+**Testy:**
+- `ThronePlanner.test.ts` (7): tron na podłodze przy północnej ścianie, z dala od wejść, przesunięcie przez wejście na osi, brak miejsca; kokony z dala od tronu; naklejki (podłoga, odstęp, środek, tron, wagi, determinizm, zgodność z arkuszem);
+- `sprites.test.ts`: wymiary nowych arkuszy i animacje bossa.
+
+**Weryfikacja:**
+- `npm run build`: 869 testów zielonych;
+- w grze (`?seed=7&floor=4`, bohater w arenie, 15 s):
+  - plansza „Grzybowy Pożeracz — Ucztujący w Kryptach”, 5 kokonów, tron, kraty i kałuże;
+  - kąsanie z krwią na bohaterze i leczeniem (+12), zamach łapami, uczta (zostaje ogryziona łupina);
+- brak nowych błędów w konsoli.
+
+**Do oceny w testach właściciela:** `#grzybowy-pozeracz`
+- czy dopasowanie kolorów (fiolet siewcy, turkusowy sok zamiast magenty) zostaje, czy wracamy do barw z paczki;
+- zamach łapami zamiast tasaka;
+- nazwa: „Grzybowy Pożeracz” (z paczki) zamiast „Wampirzy Lord”;
+- gęstość naklejek i tron (przy wejściu z północy przesuwa się w bok);
+- uwagi z kroku 33 (zew szybko opróżnia spiżarnię, leczenie z kąsania) nadal aktualne.
+
+**Scalenie z `main`** (po kroku 38): krok powstał na osobnej gałęzi jako „Krok 34” i kolidował numerem z ekranem startowym; przenumerowany na 39. Jedyny konflikt: legenda znaczników w DEVLOG.
+
+---
+
+## Krok 40 — Animacje śmierci Króla Pająków i Strażnika `#krol-pajakow` `#grzybnia`
+
+**Prośba właściciela:** `#decyzja` animacje śmierci Króla Pająków i Strażnika (backlog p. 3) — do tej pory ginęli od razu (błysk i plama).
+
+**Animacje (moje decyzje, jak u Matki Pająków w kroku 24):** osobne arkusze, 8 kierunków (zostaje kierunek z chwili śmierci), 8 klatek w 8 kl./s = 1 s, bez pętli; nagroda (łupy, karty, schody, kraty) po końcu animacji — mechanizm z kroku 24 bez zmian.
+- **Król Pająków** (`spider-king_death.png`, 128×128): 0 wzdrygnięcie (kosy i sztylety w górę, bulwy rozbłyskują); 1–3 grube łapy i sztylety się podkulają, kosy opadają na ciało, bulwy gasną do tonów mchu, oczy gasną, wycieka sok; 4 pęknięte bulwy — chmura zarodników (pełne piksele bez obrysu, §6c); 5–7 rozpad blokami 3×3 w kałużę soku. Sok grzybni ma własną rampę `SAP` (ciemna, mszysta zieleń). Potem plama `splat`.
+- **Strażnik** (`sludge-king_death.png`, 96×96): 0 ryk agonii (otwarta paszcza i uniesione ręce z klatki plucia); 1–3 ciało osiada i rozlewa się, oczy gasną; 4–6 resztka tonie w kałuży szlamu z bąblami; 7 sama kałuża. Kałuża ma nieregularny brzeg, a fiolet przechodzi w brąz ditheringiem Bayera 4×4 (szlam to materiał amorficzny, §5). Potem plama `slime`.
+
+**Generatory:**
+- `tools/king_sprites.py`: rysowanie Króla wydzielone do `king_pose(...)` (podkulenie, opadanie kos, zgasłe bulwy i oczy, kałuża soku); arkusz chodu i ataku wychodzi piksel w piksel taki sam jak z poprzedniej wersji generatora. Zapisany w repo arkusz chodu różni się od wyniku generatora o 15 pikseli (stara różnica między systemami) — nie nadpisywałem go.
+- `tools/sludge_death.py` (nowy): Strażnik nie ma generatora (sprite z paczki), więc klatki powstają z wiersza N arkusza z paczki — ciało i kałuża błota rozdzielone po rampie kałuży (§4.5), ciało skalowane w dół i osiadające, kałuża szlamu rośnie; 8 kierunków z obrotu, obrys po obrocie.
+
+**Gra:** `BOSS_VISUALS` — Król i Strażnik dostali `death` (arkusze `spiderKingDeath`, `sludgeKingDeath`).
+
+**Testy:** `sprites.test.ts` — animację śmierci mają Matka Pająków, Król Pająków i Strażnik; każda kierunkowa, jednorazowa, 0,6–1,5 s; wymiary nowych arkuszy. `npm run build`: 959 testów.
+
+**Weryfikacja w przeglądarce** (`?seed=7&floor=1` i `floor=3`, `debugDefeat`): animacja gra w kierunku z chwili śmierci, w trakcie bez kart; po niej plama, karty nagrody (`RewardScene`). Bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** czy zarodniki Króla są wystarczająco widoczne na podłodze Grzybni i czy kałuża Strażnika nie jest za duża.
+
+---
+
+## Krok 41a — Piekło (piętro 5): paleta, kafle i żar `#pieklo`
+
+**Decyzje właściciela:** `#decyzja` `#pieklo`
+- kolejny biom: krwisty, demoniczny, „z czerwonym przejściem” i pomarańczowymi wstawkami; paleniska na środku, które ranią z bliska (krok 41b);
+- z trzech kandydatek palety wybrana **A „krwawy bazalt”** (moja rekomendacja). Odrzucone: B „zaschnięta krew”, C „rozżarzony popiół”;
+- paleniska buchają w niezbyt szybkim tempie, a na kolejnym, „gorętszym” poziomie częściej;
+- boss ma być zupełnie inny od dotychczasowych i utrudniać grę postaci dystansowej (Czarodziejce) — propozycja „Kat Otchłani” czeka na akceptację.
+
+**Generator (`tools/tower_ruins_tiles.py --biome infernal`):**
+- palety `pieklo_bazalt`, `pieklo_krew`, `pieklo_popiol`; biom bierze `pieklo_bazalt`. Posadzka jasności Cmentarzyska (pierwsza wersja była za ciemna — obrys 1,88 : 1 < 2,0), mury i głębia ciemniejsze;
+- nowe pole palety `ember` (żar: czerwień, pomarańcz, rozgrzany środek), puste w innych biomach; „popiół” palety to iskry (pomarańcz i czerwień), więc pyłki w powietrzu i drobiny na posadzce żarzą się; czerwieńszy ogień pochodni;
+- dodatki `infernal`: szczeliny z żarem (bez ciemnego obrysu — świecą, §6b), plamy krwi, pieczęć 2×2 (krąg i pentagram z krwi, żar w wierzchołkach), kości z Cmentarzyska; na licach okowy na łańcuchach, czaszka na kolcu i szczelina z żarem; żar w fugach (2,5%) i sadza na licach;
+- makieta z obojgiem bohaterów (`MOCKUP_ACTORS_INFERNAL`), czytelność na palecie A: obrys 2,19, wszyscy OK;
+- wynik `public/assets/tilesets/infernal_tileset.{png,json}` (130 kafli); arkusz Cmentarzyska identyczny co do piksela.
+
+**Gra:**
+- `BiomeId.Infernal`, `BIOME_BY_FLOOR[5]`; `INFERNAL_TILESET_ASSET`, `INFERNAL_DRESSING` (nakładki 15%: żar, krew, kości; pieczęć 0,6% na kafel; lica 30%; bez pajęczyn — za gorąco);
+- `INFERNAL_HAZE`: czerwonawa, prawie czarna duchota (`#1c0a0a`), mrok do 93% (Cmentarzysko 92%), widok przy bohaterze jak na Cmentarzysku; iskry szybciej i w górę;
+- wrogowie zastępczy do czasu własnych: zarażony (Rusher) i mag demonów (Kiter); boss zastępczy: Strażnik.
+
+**Testy:** `biomes.test.ts` — piętro 5 to Piekło; dekoracje biomu, pieczęć 2×2; bez pajęczyn; mrok ciemniejszy niż Cmentarzysko i słabszy niż „Mrok”, iskry w górę; czytelność barbarzyńcy, Czarodziejki, zarażonego i maga na podłodze i bruku. `npm run build`: 968 testów.
+
+**Weryfikacja w przeglądarce** (`?hero=sorceress&seed=7&floor=5`): biom `infernal`, 13 wrogów, czerwonawy mrok, żar i krew na posadzce; bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** gęstość żaru i krwi, kolor mroku, widoczność iskier.
+
+---
+
+## Krok 41b — Paleniska Piekła `#pieklo`
+
+**Decyzje właściciela:** `#decyzja` `#pieklo` paleniska na środku pokojów ranią z bliska i buchają „w niezbyt szybkim tempie”; na kolejnym, gorętszym poziomie buchają częściej.
+
+**Zasady (czysto: `systems/Braziers.ts`, planer `dungeon/BrazierPlanner.ts`, liczby w `biomeConfig` → `braziers`):**
+- **rozmieszczenie:** na środku zwykłych pokojów (nie startowego, nie areny) z szansą 80%; w pokoju o dłuższym boku ≥ 9 kafli dwa — na 1/3 i 2/3 długości; pomija pokój kapliczki (jej miejsce liczone tym samym ziarnem co `ShrineSite`) i pokoje węższe niż 5 kafli (trzeba móc obejść strefę);
+- **cykl:** tlenie 4,2 s → ostrzeżenie 1 s (czerwona strefa wypełnia się jak telegrafy ataków) → buchnięcie 0,7 s; każde palenisko ma własne przesunięcie cyklu (RNG piętra), więc nie buchają razem;
+- **obrażenia:** buchnięcie 12 w promieniu 46 px (najwyżej raz na buchnięcie — trwa dłużej niż nietykalność po trafieniu); sama rozżarzona misa parzy stale (4 w promieniu 14 px). Przez `takeHit`, więc dash i nietykalność chronią jak przed atakiem. Wrogów nie parzy — to ich biom;
+- **„gorętsze” piętra:** przerwa ×0,7 na każde piętro powyżej 5 (najmniej 1,8 s); ostrzeżenie zostaje 1 s, żeby dało się uciec. Dziś Piekło to tylko piętro 5 — liczby czekają na decyzję, czy biom ma dwa piętra.
+
+**Wygląd:**
+- generator `tools/brazier_sprites.py` → `brazier.png` (48×48, 12 klatek): żelazna misa z obrysem i węglami; tlenie, rosnący płomień w ostrzeżeniu, słup ognia w buchnięciu; płomień bez obrysu (§6b), rampa ognia palety „krwawy bazalt”;
+- w buchnięciu silnik rysuje strefę: dwa koła ognia (mieszanie ADD, stała alfa 0,3, migotanie skokowe);
+- paleniska świecą jak pochodnie (rozjaśniają mrok i odsłaniają wrogów): 40 px przy tleniu, 64 w ostrzeżeniu, 96 przy buchnięciu. Stałe promienie — płynny rozrost tworzyłby nową teksturę światła co klatkę.
+
+**Testy:** `tests/systems/braziers.test.ts` — tylko w Piekle; rozmieszczenie (podłoga zwykłych pokojów, 1–2 na pokój, środek), pokój kapliczki i wąskie pokoje bez palenisk, determinizm; kolejność faz, przesunięcie, jedno trafienie na buchnięcie, tempo na piętrze 5 i szybsze wyżej przy stałym ostrzeżeniu; strefy obrażeń. `BrazierPlanner` w `PURE_FILES`. `npm run build`: 980 testów.
+
+**Weryfikacja w przeglądarce** (`?seed=7&floor=5`): 7 palenisk; Czarodziejka 30 px od paleniska traci 12 HP raz na buchnięcie, 62 px dalej — nic; zrzuty ostrzeżenia (czerwona strefa) i buchnięcia (koła ognia, światło); bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** tempo (4,2 s przerwy), promień i siła buchnięcia, wygląd ognia w strefie.
+
+---
+
+## Krok 41c — Piekło na dwóch piętrach `#pieklo`
+
+**Decyzje właściciela (po kroku 41b):** `#decyzja` `#pieklo` `#kat-otchlani`
+- propozycja bossa **Kat Otchłani** zaakceptowana (tarcza odbijająca pociski od frontu, hak przyciągający z dystansu, wirowanie łańcuchem, zawężający się pierścień ognia, oddech palenisk);
+- Piekło ma **dwa piętra** (5 i 6); na 6, „gorętszym”, paleniska buchają częściej (przerwa 4,2 s → 2,9 s, ostrzeżenie zostaje 1 s — liczby z kroku 41b);
+- wrogowie biomu: do mojej propozycji.
+
+**Zrobione:** `BIOME_BY_FLOOR[6] = Infernal`; od piętra 7 dalej ruiny. Bossowie bez zmian do czasu Kata (na obu piętrach Strażnik). Test `biomes.test.ts` zaktualizowany.
+
+---
+
+## Krok 41d — Wrogowie Piekła: piekielny ogar i kultysta popiołu `#pieklo`
+
+**Decyzje właściciela:** `#decyzja` `#pieklo` `#kat-otchlani`
+- moja propozycja wrogów przyjęta: **piekielny ogar** (Rusher) i **kultysta popiołu** (Kiter);
+- piętro 5 kończy mniejszy boss — **Strażnik Bram** (opcja A: wariant Kata z samą tarczą i wirującym łańcuchem, uczy obchodzenia tarczy); Kat Otchłani na końcu piętra 6.
+
+**Zasady (`systems/HellAttacks.ts`, liczby w `combatConfig` → `ENEMY_VARIANTS`):**
+- nowe rodzaje ataku wrogów: `Pounce` (skok) i `Lob` (rzut łukiem); wariant może mieć własną prędkość (`moveSpeed`);
+- **ogar:** chód 150 (zwykły Rusher 115). Z odległości ≤ 110 px zamach 450 ms — przysiad, czerwona linia do miejsca gracza z początku zamachu; potem skok po prostej (460 px/s, najdalej 140 px). Trafia raz (12 obrażeń); dash i nietykalność = chybienie, a chybiony ogar stoi 0,7 s (okno na kontrę). Skoku nie przerywa trafienie. Za skokiem co 14 px zostaje **smuga żaru** (1,5 s, parzy po 4);
+- **kultysta:** z odległości ≤ 230 px zamach 550 ms, potem bomba smolna leci łukiem 750 ms w miejsce gracza z chwili rzutu; **strefa upadku** wypełnia się przez cały lot; wybuch 10 obrażeń w promieniu 30 px, potem **płonąca kałuża** (2,5 s, parzy po 4) — odcina drogę i zagania na paleniska;
+- płonące ślady to teren: parzą gracza, którego środek jest w środku (przez trafienie z nietykalnością — najwyżej raz na jej czas); wrogów nie.
+
+**Wygląd (`tools/infernal_enemies.py`):**
+- `hellhound_run-pounce.png` — popielata sierść (jaśniejsza od podłogi), żarząca się szczelina wzdłuż grzbietu, czerwone oczy; 0–3 bieg, 4 przysiad (oczy rozbłyskują), 5–6 lot, 7 lądowanie;
+- `cultist_walk-throw.png` — szaty z wypłowiałego popiołu, czerwona szarfa, ciemny kaptur z żarzącymi się oczami, żelazne naczynie ze smołą; 4–7 rzut;
+- `tar-bomb.png` — garnek ze smołą, iskra lontu; w locie unosi się łukiem nad swoim cieniem;
+- ogień na podłodze rysuje silnik (koła żaru, ADD, stała alfa — jak paleniska);
+- czytelność na palecie A: ogar obrys 2,19 / ciało 1,68, kultysta 2,19 / 1,85 (testy i makieta).
+
+**Testy:** `tests/systems/hellAttacks.test.ts` (warianty w Piekle, szybszy ogar, rodzaje ataku, czas na reakcję; lądowanie i czas skoku, punkty smugi; łuk rzutu; płonące ślady), `biomes.test.ts` — czytelność ogara i kultysty. `npm run build`: 995 testów.
+
+**Weryfikacja w przeglądarce** (`?seed=7&floor=5`): ogar celuje (linia, zamach), skacze i zostawia żar; bomby kultysty lecą łukiem, strefa upadku się wypełnia, po wybuchu płonie kałuża; bez błędów w konsoli.
+
+**Ograniczenie:** obrażenia smugi i kałuży nie rosną z piętrem (rośnie tylko cios/wybuch, jak u innych wrogów).
+
+**Do oceny w testach właściciela:** zasięg i tempo skoku, czas postoju po chybieniu, częstotliwość bomb, czas palenia się kałuż.
+
+---
+
+## Krok 41e — Strażnik Bram (boss piętra 5) i tarcza `#pieklo` `#kat-otchlani`
+
+**Decyzja właściciela:** `#decyzja` piętro 5 kończy mniejszy boss (opcja A) — **Strażnik Bram**, wariant Kata Otchłani z samą tarczą i wirującym łańcuchem; uczy obchodzenia tarczy przed walką z Katem.
+
+**Tarcza (czysto: `systems/Shield.ts`, definicja `BossDefinition.shield`; wspólna z Katem):**
+- chroni stożek 120° przed bossem;
+- **pociski z przodu odbija** — wracają w stronę strzelca jako pociski wroga (prędkość ×0,8, te same obrażenia): kule Czarodziejki i strzały barbarzyńcy;
+- **promień z przodu nie rani** bossa (zatrzymuje się na żelazie);
+- **cios wręcz (i Burzowy pęd) w tarczę** zadaje połowę obrażeń;
+- tarcza obraca się do gracza 110°/s — wolniej, niż gracz okrąża bossa z bliska (~360°/s przy 80 px); na początku ataku boss zwraca się do gracza, a w trakcie ataku i przerwy po nim stoi — wtedy można go zajść;
+- przed bossem rysowany jest cienki pomarańczowy łuk chronionego stożka.
+
+**Strażnik Bram (`GATE_WARDEN`, liczby moje):** 420 HP bazowo (skalowane z piętrem: 672 na 5.), chód 62, wzór w „worku”: **wirujący łańcuch** (strefa 92 px dookoła — karze stanie za plecami, telegraf 0,9 s) i **uderzenie tarczą** przed sobą (telegraf 0,65 s, potem 0,8 s postoju). Plansza: „Strażnik Bram — Odźwierny Otchłani”, wściekłość „Żar w żyłach!”. Piętro 6 do czasu Kata ma Strażnika Piętra.
+
+**Wygląd (`tools/gatekeeper_sprites.py` → `gate-warden_walk-spin-bash.png`, 96×96):** demon w okopconym pancerzu, rogaty hełm ze szparą żaru, tarcza-wrota z żarzącą się runą zawsze z przodu (dominująca cecha), łańcuch z hakiem w prawej ręce; 0–3 chód, 4–7 wirowanie (hak okrąża bossa), 8–11 uderzenie tarczą (pchnięcie, rozbłysk runy, iskry). Bez animacji śmierci (błysk i plama).
+
+**Testy:** `tests/systems/shield.test.ts` (stożek, różnica kątów, obrót krótszą drogą, odbicie), `tests/ai/GateWarden.test.ts` (piętro 5, tarcza do obejścia, wzór, animacje); testy wyboru bossa pięter zaktualizowane. `npm run build`: 1006 testów.
+
+**Weryfikacja w przeglądarce** (`?hero=sorceress&seed=7&floor=5`): plansza bossa, łuk tarczy w stronę gracza; kula od frontu — boss bez obrażeń, odbita kula trafia Czarodziejkę (−14); kula od tyłu — −14 bossowi; promień od frontu — bez obrażeń; telegraf wirowania; bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** szerokość stożka, prędkość obrotu tarczy, czy odbite pociski nie są za mocne, tempo ataków.
+
+---
+
+## Krok 41f — Kat Otchłani (boss piętra 6) `#pieklo` `#kat-otchlani`
+
+**Decyzja właściciela:** `#decyzja` `#kat-otchlani` propozycja przyjęta — boss zupełnie inny od dotychczasowych, utrudniający grę postaci dystansowej; koniec dwupiętrowego Piekła.
+
+**Mechanika (czysto: `ai/bossAttacks.ts`, `ai/BossBrain.ts`, `systems/Shield.ts`, `dungeon/BrazierPlanner.ts`; liczby w `ABYSS_EXECUTIONER`):**
+- **tarcza** jak u Strażnika Bram (stożek 120°, odbija pociski, połowa ciosu), obrót 120°/s; **promień w tarczę ją rozgrzewa** — po 6 tickach (ok. 1,2 s) Kat odpowiada wybuchem żaru wokół siebie (telegraf 0,6 s, promień 96 px);
+- **hak** (poza wzorem): gdy gracz stoi 130–260 px od Kata i minęło 4,5 s — linia stref od Kata w stronę gracza (telegraf 0,65 s); trafienie przyciąga gracza tuż przed tarczę („Hak!”), a 0,45 s później uderzenie tarczą przed sobą. Dash w bok = unik. Pierwszy hak najwcześniej w połowie otwarcia walki;
+- wzór w „worku”: **uderzenie tarczą**, **wirujący łańcuch** (dookoła) i **oddech palenisk** — cztery paleniska w ćwiartkach areny rosną przez 1 s i buchają naraz (promień 56 px);
+- **wściekłość („Otchłań płonie!”):** brzeg areny płonie, wolne koło w środku kurczy się od połowy krótszego boku areny do 110 px przez 25 s; poza kołem ogień parzy (8, przez trafienie z nietykalnością) i odpycha do środka;
+- 520 HP bazowo (910 na piętrze 6); skalowanie obejmuje też hak, uderzenie po haku, oddech, pierścień i wybuch żaru.
+
+**Wygląd:** wariant generatora Strażnika (`tools/gatekeeper_sprites.py` → `abyss-executioner_walk-spin-bash-hook-kindle.png`, 96×96, 20 kolumn): czerniejsze żelazo, korona z sześciu rogów, żarzące się serce w napierśniku; 12–15 rzut hakiem, 16–19 oddech (serce i wizjer rozbłyskują). Arkusz Strażnika Bram bez zmian. Pierścień ognia: pas czworokątów (ADD, stała alfa) i jasna krawędź koła — gruba linia okręgu rysowała się w klinowe paski. Bez animacji śmierci.
+
+**Testy:** `tests/ai/GateWarden.test.ts` — Kat na piętrze 6, tarcza z rozgrzaniem; hak (linia do gracza, przyciągnięcie pod tarczę, uderzenie po haku), hak tylko z dystansu i po otwarciu walki; oddech na wszystkich paleniskach naraz; paleniska areny w ćwiartkach; kurczenie pierścienia. `npm run build`: 1014 testów.
+
+**Weryfikacja w przeglądarce** (`?hero=sorceress&seed=7&floor=6`): plansza „Kat Otchłani — Pan Łańcuchów”; Czarodziejka 171 px od Kata — hak przyciąga ją na 45 px, potem uderzenie tarczą; oddech palenisk; po zbiciu HP poniżej połowy pierścień ognia; bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** zasięg i odstęp haka, siła odbić i wybuchu żaru, tempo kurczenia pierścienia, trudność całego Piekła.
+
+---
+
+## Krok 41g — Run testowy z adresu na Pages `#pieklo`
+
+Właściciel chce testować od razu ostatnie piętro na Pages. `?floor=N` i `?seed=N` działają teraz także w buildzie produkcyjnym, ale taki run jest **testowy**: wynik nie trafia ani na lokalną, ani na wspólną tablicę.
+
+- `systems/startOverrides.ts` (czysty): `parseStartOverrides(search)` → `{ runSeed?, floor?, practice }`; `practice` = podany seed albo piętro > 1 (`?floor=1` to zwykły run). Zastępuje `BootScene.devStartOverrides`.
+- `RunSnapshot.practice` (opcjonalne) przechodzi przez `newRun(hero, practice)`, ekran wyboru bohatera (`HeroSelectData.practice`) i kolejne piętra (`RunState.snapshot`).
+- `GameScene.handlePlayerDeath`: run testowy pomija zapis i pytanie o imię; ekran śmierci ma źródło `practice` — nagłówek „RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ”, bez miejsca. R/C po śmierci zaczynają zwykły run.
+- HUD: „Złoto: N (run testowy — bez wyniku)”; komunikat na start piętra, gdy nie ma modyfikatora.
+
+**Testy:** `tests/systems/startOverrides.test.ts` (parsowanie, błędne wartości, znacznik przez piętra). Build: 1019 testów.
+
+**Weryfikacja:** build produkcyjny `?floor=6&hero=sorceress` — od razu piętro 6; dev `?floor=5` → wybór bohatera → piętro 5, po śmierci panel „RUN TESTOWY”, `death.source = 'practice'`, bez błędów w konsoli.
+
+Adresy dla testerów: `https://wvytz.github.io/topdown/?floor=5` (Strażnik Bram), `?floor=6` (Kat Otchłani); `&hero=sorceress` pomija wybór bohatera.
+
+## Krok 42 — Elity z cechami `#elity`
+
+**Decyzja właściciela** `#decyzja` `#elity`: z propozycji wzbogacenia rozgrywki (elity, pokoje ryzyka, kupiec, synergie, koniec wieży) najpierw elity; koniec wieży — wariant B (pętla: po piętrze 6 kolejny krąg biomów 1–6, mocniejszy). Finałowego bossa jeszcze nie ma.
+
+Co kilka pokojów jeden zwykły wróg jest **elitą**: 2,5× HP, 1,3× obrażenia, cecha zmieniająca walkę i lepszy łup. Bez nowych wrogów i sprite'ów — elitę wyróżnia pulsujący pierścień w kolorze cechy pod stopami i nazwa nad głową (gasną w mroku razem z wrogiem).
+
+| Cecha | Od piętra | Działanie |
+|---|---|---|
+| Szybki | 1 | chód ×1,35, zamach ×0,8, przerwa ×0,7 |
+| Tarczownik | 1 | tarcza od frontu (140°): z przodu 30% obrażeń, szary błysk; obraca się 100°/s — obejście albo dash za plecy |
+| Wampiryczny | 2 | trafienie gracza (cios, pocisk, skok) leczy go o 2× zadane obrażenia (zielone „+N”) |
+| Wybuchowy | 2 | po śmierci strefa (52 px) wypełnia się 0,9 s i wybucha |
+| Ognisty | 3 | smuga żaru za nim (co 16 px, 2,2 s), po śmierci płonąca kałuża |
+
+- Szansa na elitę w pokoju: piętro 1 — 20%, 2 — 30%, dalej 40%; najwyżej jedna na pokój. Liczba cech: 1 (w kolejnych kręgach wieży więcej — krok 43).
+- Łup elity: złoto ×3 i pewne, mikstura +20 pkt proc., przedmiot 25%.
+- Obrażenia żaru i wybuchu rosną z piętrem jak ciosy wrogów (`ENEMY_SCALING`).
+
+**Pliki:** `systems/Elites.ts` (czyste: `rollElites`, `applyElite`, `eliteLoot`, `lifestealHeal`, `eliteTitle`), `config/eliteConfig.ts`, `core/combatTypes` (`EliteAffix`, `EnemyDefinition.affixes`), `EncounterPlanner` (spawn zna pokój), `Enemy` (tarcza), `EnemyManager` (smuga, wybuchy, wampiryzm), `ProjectileManager` (`onHit`), `effects/EliteMarker.ts`, `ELITE_VISUAL`. Elity mają własny strumień RNG (sól `0xe117`) — rozmieszczenie wrogów się nie zmienia.
+
+**Testy:** `tests/systems/elites.test.ts` (najwyżej jedna elita na pokój, liczba cech bez powtórzeń, odblokowanie z piętrem, statystyki, łup, wampiryzm, napis). Build: 1029 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=3&seed=11` — Ognisty grzybiec z pierścieniem i napisem; na piętrze 5 elity postawione obok gracza: Tarczownik przyjmuje 6 z 20 obrażeń od frontu i 20 od tyłu; Wybuchowy po śmierci — strefa i wybuch, Ognisty zostawia kałużę; wampir leczy się z ciosu (65 → 93) i z pocisku Kitera (35 → 75); bez błędów w konsoli.
+
+**Do oceny w testach właściciela** `#elity`: częstość elit, siła cech (zwłaszcza Tarczownik na Czarodziejkę i Wampiryczny), czytelność napisów.
+
+## Krok 43 — Pętla wieży (koniec wieży, wariant B) `#wieza`
+
+**Decyzja właściciela** `#decyzja` `#wieza`: po Kacie Otchłani wspinaczka trwa dalej (wariant B); finałowego bossa jeszcze nie ma.
+
+- Krąg wieży = 6 pięter. Od piętra 7 biomy i bossowie wracają od początku (7 ruiny, 8 leże z Matką Pająków … 12 Piekło z Katem). Wcześniej po piętrze 6 były już tylko ruiny ze Strażnikiem.
+- Trudność dalej rośnie z numerem piętra (HP i obrażenia wrogów i bossów — `ENEMY_SCALING`), paleniska w drugim kręgu buchają najczęściej (minimum przerwy).
+- Elity: w każdym kolejnym kręgu o cechę więcej (1 → 2 → 3, limit 3).
+- HUD: „Piętro 8 · Krąg II”.
+
+**Pliki:** `config/towerConfig.ts`, `systems/TowerLoop.ts` (czyste: `towerLoop`, `floorInLoop`, `eliteAffixCount`, `floorLabel`, `toRoman`); `biomeForFloor` i `bossForFloor` liczą piętro w kręgu.
+
+**Testy:** `tests/systems/towerLoop.test.ts`; test biomów zaktualizowany (piętro 9 to Grzybnia, 13 — ruiny). Build: 1035 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=8&seed=4&hero=sorceress` — Pajęcze leże, boss Matka Pająków, HUD „Piętro 8 · Krąg II”, elity „Wampiryczny · Szybki” i „Ognisty · Wybuchowy”; bez błędów w konsoli.
+
+**Do decyzji później:** finałowy boss (koniec kręgu albo osobne piętro), ewentualne dodatkowe utrudnienia kręgu poza skalowaniem i cechami elit.
+
+## Krok 44 — Galerie za kratami u Strażnika Bram; wyraźniejsze elity `#elity` `#pieklo`
+
+**Ocena właściciela po krokach 42–43** `#ocena` `#elity` `#pieklo`: „nie zauważyłem żadnego potwora elity”; „Tarczownik jest mega wolny i może niech tak zostanie” — chodzi o Strażnika Bram (boss z tarczą, piętro 5; tylko arena bossa ma kraty). Pomysł właściciela `#decyzja`: z 3 stron jego pokoju magowie rzucający bombami zza krat, które otwierają się dopiero po jego pokonaniu. Prędkość Strażnika bez zmian.
+
+**Galerie areny** (`dungeon/ArenaGalleries.ts`, czyste, bez RNG):
+- `carveArenaGalleries(floor, 3, 2)` wykuwa w litej skale za ścianą areny wnęki głębokie na 2 kafle, w ścianach bez wejść (najpierw), jak najbliżej środka ściany. Ściana bez miejsca (np. przy krawędzi mapy) jest pomijana — w próbce średnio ponad 2,5 galerii na arenę.
+- Kafel ściany przed wnęką staje się przejściem w pierścieniu wokół areny, więc dostaje zwykłą kratę (`findRoomEntrances`): opada z resztą, gdy zaczyna się walka, i podnosi się po śmierci bossa. Krata blokuje kule, strzały i promień; z wnęki (2 kafle) nie sięga cios wręcz.
+- Gdy kraty opadną, w każdej wnęce staje Kiter piętra (w Piekle kultysta) i rzuca bomby łukiem ponad kratą. Po śmierci Strażnika wychodzi z galerii. Wrogowie galerii nie znikają w półmroku (za kratą byliby niewidzialnym działem).
+- `BossDefinition.galleries` (`ArenaGalleryDefinition`): Strażnik Bram `{ sides: 3, depth: 2, enemy: Kiter }`.
+
+**Elity — wyraźniej:**
+- Co najmniej jedna elita na piętrze (`ELITE_CONFIG.minPerFloor = 1`) — wcześniej na piętrze 1 ok. 35% pięter nie miało żadnej.
+- Gdy elita pierwszy raz widzi gracza z bliska (220 px), komunikat z podpowiedzią, np. „Elita! Tarczownik — z przodu tarcza, obejdź go”.
+
+**Testy:** `tests/dungeon/ArenaGalleries.test.ts` (wnęki tylko w skale, nowe wejścia areny, różne ściany, determinizm), `elites.test.ts` (minimum elit, komunikat); `ArenaGalleries.ts` w `PURE_FILES`. Build: 1040 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=5&seed=7&hero=sorceress` — dwie galerie (północ przy krawędzi mapy), kraty galerii zamknięte w walce (kafle kolizji), kultyści widoczni za kratami i rzucają bomby; `?floor=1&seed=5` — komunikat o Tarczowniku; bez błędów w konsoli.
+
+## Krok 45 — Arena bossa na końcu piętra `#wieza`
+
+**Decyzja właściciela** `#decyzja` `#wieza`: nowa reguła dla wszystkich aren bossów — arena może prowadzić do najwyżej jednego dodatkowego pomieszczenia i ma to być końcowe pomieszczenie przed końcem poziomu. Wyjątek: piętro 1 (szybsze przejście do drugiego biomu).
+
+Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a korytarz w kształcie „L” mógł przeciąć arenę — przez arenę dało się przechodzić między częściami piętra.
+
+**Generator** (`DungeonGenerator`, `bossRoomAtEnd` w konfiguracji piętra; piętro 1 — wyłączone):
+- Reszta piętra (bez areny i pokoju końcowego) łączy się drzewem i pętlami jak dotąd, ale korytarze omijają arenę i pokój końcowy z kaflem zapasu: najpierw jedno z dwóch „L”, a gdy oba zahaczają — najkrótsza droga BFS dookoła.
+- Arena ma jedno wejście: korytarz z najbliższego pokoju reszty piętra.
+- Pokój końcowy (szansa 50%, `endRoomChance`): najbliższy arenie, połączony tylko z nią korytarzem, który nie styka się z niczym innym. `DungeonFloor.endRoomId`. Zwykły pokój (wrogowie, może być kapliczka); schody zostają na środku areny.
+- Start nie może być pokojem końcowym.
+- Każde piętro sprawdza czysty walidator `dungeon/bossRoomRule.ts` (`checkBossRoomAtEnd`): składowe podłogi z wyciętą areną; arena ma dokładnie jedno wejście z reszty piętra i najwyżej jedno do ślepego pokoju, żadnych pętli ani kikutów. Nieudana próba → kolejna z RNG pochodnym od seeda (do 12); awaryjnie stary układ (w testach nie wystąpił).
+
+**Galerie Strażnika (krok 44)** dalej działają — wnęki powstają po wygenerowaniu i nie łączą się z niczym.
+
+**Testy:** `tests/dungeon/bossRoomRule.test.ts` — 280 pięter (2–7, 12): reguła spełniona, pokój końcowy w 25–75% pięter, piętro 1 wyłączone; walidator wykrywa pętlę przez arenę i rozpoznaje ślepy pokój. `bossRoomRule.ts` w `PURE_FILES`. Build: 1044 testy.
+
+**Weryfikacja w przeglądarce:** `?floor=3&seed=7` — mapa z gry: arena z jednym korytarzem wejściowym i ślepym pokojem końcowym obok, reszta piętra omija arenę; bez błędów w konsoli.
+
+**Pokój końcowy:** ukryta komnata z kokonami skarbu (krok 46).
+
+## Krok 46 — Ukryta komnata za areną `#wieza`
+
+**Pomysł właściciela** `#decyzja` `#wieza`: w pokoju końcowym za areną (krok 45) ukryta komnata — pokazuje się dopiero, gdy do niej podejdziesz (widać ją z 2 kratek w każdym kierunku). W środku kokony do rozbicia, które nie zachowują się jak inne kokony; tylko z jednego wypada losowy przedmiot.
+
+- Pokój końcowy ma nowy rodzaj `RoomKind.Secret` — planery (wrogowie, kapliczka, kokony leża, purchawki, paleniska, pajęczyny) go pomijają.
+- **Przebranie** (`dungeon/SecretRoom.ts`, czyste): `secretArea` — komnata i korytarz do areny; `disguiseFloor` — te kafle jako mur. Piętro rysujemy z przebrania (także pochodnie planowane na przebraniu), kolizja i reszta logiki używa prawdziwych kafli. Krata wejścia do komnaty działa jak każda krata areny, ale jej obraz jest ukryty do odsłonięcia (`DungeonView.hiddenGates`, stan pamiętany).
+- **Odsłonięcie:** gdy gracz stanie na kaflu najwyżej 2 kafle (Czebyszew) od komnaty (`revealMask`), `DungeonView.revealSecret` podmienia obraz w prostokącie komnaty z zapasem 3 kafli tylko tam, gdzie prawdziwy obraz różni się od przebrania; błysk, lekki wstrząs, komunikat „Ukryta komnata! Rozbij kokony — w jednym jest skarb.”
+- **Kokony skarbu** (`entities/TreasureCocoon.ts`, `combat/SecretRoomManager.ts`): 4–6 na losowych kaflach komnaty (z odstępem od ścian), wygląd kokonu leża, nie budzą się i nic z nich nie wyskakuje; każde trafienie (cios, kula, strzał, promień, dash) rozbija kokon. Z jednego wypada losowy przedmiot z całej puli (wagi jak łupy), pozostałe — „pusto”. Własny strumień RNG (sól `0x5ec7`).
+- Liczby: `SECRET_ROOM_CONFIG` (`config/lootConfig.ts`), wygląd: `SECRET_ROOM_VISUAL`.
+
+**Testy:** `tests/dungeon/SecretRoom.test.ts` — obszar (cała komnata i korytarz, bez areny, styka się z areną), przebranie, maska 2 kafli, brak wrogów i kapliczki w komnacie, plan kokonów (zakres, różne kafle, odstęp od ścian, jeden z przedmiotem); `SecretRoom.ts` w `PURE_FILES`. Build: 1049 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=3&seed=7` — z areny w miejscu komnaty lity mur; 2 kafle od niej mur znika, widać korytarz z kratą i komnatę, komunikat; 4 kokony, po rozbiciu z jednego wypadł przedmiot (Elektryczna strzała), reszta „pusto”; bez błędów w konsoli.
+
+## Krok 47 — Schody na klawisz E `#wieza`
+
+**Ocena właściciela** `#ocena` `#wieza`: „zbyt często przypadkowo spadam na dół, nie zbieram nagród” — w teście kroku 46 wszedł na schody przypadkiem, zanim znalazł ukrytą komnatę z gwarantowaną nagrodą.
+
+- Samo wejście na otwarte schody nie przenosi już wyżej. Gracz musi stać na schodach i nacisnąć **E** (ten sam klawisz co kapliczka).
+- Gdy stoi na schodach: napis nad nimi „[E] Wejdź wyżej” i w HUD „Naciśnij E, aby wspiąć się wyżej”; poza nimi HUD: „Schody otwarte — stań na nich i naciśnij E, aby wspiąć się wyżej”. Linia pomocy: „E — kapliczka, schody”.
+- `HudData.onStairs`; `GameScene.checkStairs(interact)`.
+
+**Weryfikacja w przeglądarce:** `?floor=2&seed=7` — po pokonaniu Matki Pająków i wyborze nagrody: obok schodów nic się nie dzieje, na schodach napis i podpowiedź, bez E piętro się nie zmienia, po E przejście na piętro 3; bez błędów w konsoli. Build: 1049 testów (zmiana tylko w warstwie Phasera).
+
+## Krok 48 — Pułapki i urny w ruinach `#ruiny`
+
+**Ocena i decyzja właściciela** `#ocena` `#decyzja` `#ruiny`: „pierwszy poziom wydaje się całkowicie pusty i nie ma w nim żadnego wyzwania”. Z propozycji (pułapki, rzeczy do rozbicia, zasadzka, życie w tle) — pułapki i rzeczy do rozbicia („najwyżej potem usuniemy”), **bez beczek z prochem** („nie chcę odtrącać na początku graczy”). Na razie tylko biom ruin (piętro 1, w pętli 7, 13…).
+
+**Płyty z kolcami** (`systems/Traps.ts`, `dungeon/TrapPlanner.ts → planSpikeStrips`):
+- w 35% zwykłych pokojów (krótszy bok ≥ 5) pas płyt w poprzek pokoju przez jego środek — żeby przejść, trzeba go przekroczyć;
+- dwie grupy naprzemiennie (pół cyklu przesunięcia): nigdy obie naraz w górze, więc zawsze jest przejście w rytmie;
+- cykl 1,6 s schowane → 0,6 s ostrzeżenie (płyta drży, groty w otworach, czerwona ramka) → 0,9 s wysunięte; 10 obrażeń (rośnie z piętrem), raz na wysunięcie; **ranią też wrogów** — można ich wciągać.
+
+**Strzałki** (`planDartTraps`, `DartTrapState`):
+- w 30% zwykłych pokojów otwór w litym murze (nie w wejściu) i linia strzału przez cały pokój (≥ 6 kafli); płyta naciskowa 2–3 kafle od muru;
+- nadepnięcie → otwór się żarzy i widać linię strzału (0,45 s) → salwa 3 strzałek co 0,16 s (9 obrażeń, rosną z piętrem) → 2,5 s odpoczynku i zejście z płyty; ranią tylko gracza, dash przelatuje jak przez każdy pocisk.
+
+**Urny i skrzynie** (`planBreakables`, `combat/BreakableManager.ts`): w 90% pokojów (zwykłych i startowym) 1–3 przy ścianach, nie przed wejściami i nie na pułapkach; bez kolizji; każde trafienie rozbija; szczątki zostają; łup `BREAKABLE_LOOT`: 60% na 1–2 złota (skaluje się z piętrem), 6% na małą miksturę (10 HP), bez przedmiotów.
+
+**Grafika:** generator `tools/ruins_props.py` → `ruins-traps.png` (płyta z kolcami: schowane, 2 klatki ostrzeżenia, w połowie, wysunięte; płyta naciskowa i wciśnięta; otwór i otwór uzbrojony), `dart.png`, `ruins-breakables.png` (2 urny, skrzynia, szczątki). Kamień płyt chłodniejszy i ciemniejszy od piaskowca — pułapka czytelna.
+
+**Kod:** `combat/TrapManager.ts`, `BiomeDefinition.traps`/`breakables` (ruiny; reszta `null`), `ProjectileSpec.rotation` (strzałka grotem do przodu), własne sole RNG (kolce `0x5b1e`, strzałki `0xda27`, urny `0xb7ea`); kolejne planery omijają kapliczkę i wcześniejsze kafle.
+
+**Testy:** `tests/systems/traps.test.ts` (tylko ruiny, cykl kolców, grupy nigdy razem w górze, jedno trafienie na cykl, stany pułapki ze strzałkami), `tests/dungeon/TrapPlanner.test.ts` (pas w zwykłych pokojach, naprzemienne grupy, otwór w murze, linia po podłodze z płytą, z dala od kolców; urny przy ścianach, nie przed wejściami, deterministycznie); `TrapPlanner.ts` w `PURE_FILES`. Build: 1066 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=1&seed=3` — dwa pasy kolców wysuwające się na zmianę z ostrzeżeniem; pułapka ze strzałkami: nadepnięcie, żar w otworze, salwa strzałek przez pokój (gracz 90 → 71 HP); urny przy ścianach; bez błędów w konsoli.
+
+**Decyzja właściciela po kroku 48** `#decyzja` `#ruiny`: pułapki i urny na razie tylko w ruinach; właściciel przetestuje i da znać.
+
+**Do oceny w testach właściciela** `#ruiny`: częstość i siła pułapek, ilość urn i łupu.
+
+## Krok 49 — Pokoje zasadzki i upiór `#zasadzka`
+
+**Decyzja właściciela** `#decyzja` `#zasadzka`: pokój z kratami pojawiający się losowo co 1–2 biomy — zasadzka: przedmiot na środku pustego pokoju; po wejściu światło przygasa i nadciąga fala duchów; nowy rodzaj potwora do takich zdarzeń. Pułapki i urny zostają tylko w ruinach.
+
+**Harmonogram** (`systems/Ambush.ts → hasAmbush`): z seeda runu — pierwsza zasadzka na piętrze 1 albo 2, każda kolejna 1–2 piętra później (biom = piętro; Piekło ma dwa). W pętli wieży harmonogram trwa dalej.
+
+**Pokój** (`dungeon/AmbushPlanner.ts`): losowy zwykły pokój o krótszym boku ≥ 6 dostaje rodzaj `RoomKind.Ambush` — planery wrogów, kapliczki, pułapek, urn, kokonów i palenisk go pomijają. Wejścia dostają kraty (`dressGates`: arena + pokój zasadzki). Na środku leży **przynęta: losowy przedmiot z puli** — nie da się go podnieść, dopóki zasadzka trwa.
+
+**Przebieg** (`AmbushState`, `combat/AmbushManager.ts`): gracz ≥ 2 kafle w głąb pokoju → kraty opadają, wstrząs, „Zasadzka! Światło gaśnie…”, mrok narasta przez 0,9 s → po 1,1 s fala 3 upiorów → po jej wybiciu przerwa i fala 4 upiorów → światło wraca, kraty się podnoszą, „Upiory rozwiały się — nagroda jest twoja.”, przedmiot do podniesienia. Upiory nie zostawiają łupu.
+
+**Mrok zasadzki** (`LightingOverlay.setDread`): druga warstwa ciemności (0,86) z małym kręgiem światła wokół gracza (pełne światło 40 px, brzeg 120 px), płynnie narasta i opada; pochodnie jej nie rozjaśniają. Upiory są rysowane nad mrokiem — świecą w ciemności.
+
+**Upiór** (`EnemyVariant.Ghost`, wariant Rushera — nowy potwór do zdarzeń): 24 HP, 100 px/s; **przenika**: 2,4 s cielesny, 0,9 s bezcielesny (przezroczysty, nietykalny, nie atakuje, ale dalej płynie do gracza); fazy upiorów w fali rozłożone na cały cykl; przy pojawieniu **wynurza się** 0,9 s (nietykalny, bierny, rośnie przezroczystość); dotyk 8 obrażeń + spowolnienie 30% na 1,2 s. Grafika: generator `tools/ghost_sprites.py` → `ghost_float-grasp.png` (8 kierunków, 0–3 unoszenie z falującym trenem, 4–7 chwyt), blady błękit całunu, puste oczodoły z lodowym blaskiem.
+
+**Liczby:** `config/ambushConfig.ts` (`AMBUSH_CONFIG`), upiór w `ENEMY_VARIANTS`, wygląd `GHOST_VISUAL`. Sole RNG: pokój `0xa3b0`, przebieg `0xa3b1`, harmonogram `0xa3b5`.
+
+**Testy:** `tests/systems/ambush.test.ts` — harmonogram (pierwsza na 1–2, odstępy 1–2, determinizm), pokój (rozmiar, bez wrogów i kapliczki), miejsca upiorów (w pokoju, z dala od gracza), przebieg (kraty → fale po kolei → koniec), upiór (przenikanie, spowolnienie, wygląd); `AmbushPlanner.ts` w `PURE_FILES`. Build: 1076 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=1&seed=3&hero=sorceress` — pokój zasadzki z Ostrzem na środku; wejście: kraty, mrok z kręgiem światła, upiory wynurzają się i świecą, przenikające są półprzezroczyste; po dwóch falach światło wraca, kraty w górę, Ostrze podniesione; bez błędów w konsoli.
+
+**Do oceny w testach właściciela** `#zasadzka`: częstość, liczba upiorów w falach, siła mroku, wygląd upiora.
+
+## Krok 49a — Słabsze upiory: zasadzka jako nagroda o niskim ryzyku `#zasadzka`
+
+**Decyzja właściciela** `#decyzja` `#zasadzka`: „uczyń jego ataki słabszymi, by nie był to pokój kojarzony z łatwą śmiercią, a bardziej z nagrodą o niskim ryzyku, jednak intensywniejszej walce”. To świadome złagodzenie tylko upiorów (zasada „nie łagodź trudności” dotyczy reszty gry).
+
+- Upiór: dotyk **8 → 4** obrażeń, zamach 420 → 500 ms (łatwiej uskoczyć), odrzut 120 → 90, spowolnienie 30%/1,2 s → **15%/0,8 s**, HP 24 → **20** (padają szybciej).
+- Intensywniej: fale **3 + 4 → 4 + 5** upiorów.
+- Przenikanie, mrok i przebieg bez zmian.
+
+**Weryfikacja:** build (1076 testów); `?floor=1&seed=3` — fala 4 upiorów, po dwóch falach przynęta do wzięcia; bez błędów w konsoli.
+
+## Krok 49b — Magia trafia upiory; większe pokoje zasadzki `#zasadzka` `#czarodziejka`
+
+**Test botem (5 zasadzek, przed zmianą)** `#zasadzka`: Barbarzyńca czyścił zasadzkę w 8–14 s, tracąc 0–14% HP; Czarodziejka na piętrze 1 w 31 s (−27% HP), na piętrze 6 w ciasnym pokoju 9×6 w 45 s, schodząc do 9/75 HP. Kule Czarodziejki ginęły na bezcielesnych upiorach bez obrażeń.
+
+**Decyzje właściciela** `#decyzja` `#zasadzka` `#czarodziejka`:
+1. „Czarodziejka używa magii — trafia zawsze”: kule i promień ranią upiory także bezcielesne i wynurzające się (`Hit.magic`, `PlayerShot.magic`, `ShotLook.magic`; promień zawsze magiczny). Ciosy i strzały barbarzyńcy dalej przez nie przenikają.
+2. „Pokój w większości przypadków 7 kratek, czasem 6”: `planAmbushRoom` z szansą 80% wybiera spośród pokojów o krótszym boku ≥ 7 (gdy są), inaczej ≥ 6 (`preferredSide`, `preferredChance` w `AMBUSH_CONFIG`).
+
+**Test botem po zmianach (te same seedy, bohaterowie i piętra; bot bez uników i dasha):**
+
+| Bohater | Piętro | Czas | HP | Trafienia |
+|---|---|---|---|---|
+| Barbarzyńca | 1 | — | 100 → 96 | 1 |
+| Czarodziejka | 1 | 24 s | 75 → 59 | 4 |
+| Barbarzyńca | 4 | — | 100 → 95 | 1 |
+| Czarodziejka | 6 | 38 s | 75 → 45 | 5 |
+| Barbarzyńca | 9 | 13,5 s | 100 → 72 | 4 |
+
+(— = czas walki nie zarejestrował się w skrypcie; zasadzka zakończona.) Czarodziejka na piętrze 6: z 9 HP na 45 HP i 7 s krócej; nikt nie zginął.
+
+**Testy:** promień i kula z magią przekazują znacznik do trafienia (`sorcery.test.ts`), pokój ≥ 7 w > 75% pięter, które go mają (`ambush.test.ts`). Build: 1079 testów.
+
+## Krok 50 — Rozprysk kuli Czarodziejki `#czarodziejka`
+
+**Decyzja właściciela** `#decyzja` `#czarodziejka`: z trzech propozycji delikatnego AoE (rozprysk kuli, ładunek trzeciej kuli, parząca orbita) — **rozprysk**. Opcja defensywna (parząca orbita) do rozważenia innym razem.
+
+- Kula po trafieniu rozpryskuje się w promieniu **24 px**: wrogowie dotykający koła rozprysku (poza głównym celem) dostają **35% obrażeń kuli** (14 → 5), jako magię (trafia też bezcielesne upiory), **bez efektów przedmiotów** (statusy tylko na głównym celu) i bez odrzutu.
+- Działa na zwykłych wrogów, pajączki i kokony z walk z bossem oraz na bossa (tarcza jak przy ciosie).
+- Wygląd: pierścień energii w kolorze kul (`ORB_SPLASH_VISUAL`).
+- Kod: `OrbConfig.splash` (`config/heroConfig.ts`), czyste `resolveSplash`, `splashDamage` (`systems/Sorcery.ts`), `EnemyManager/BossFight.resolveSplash`, `CombatEffects.splash`.
+
+**Testy:** rozprysk rani sąsiada, pomija główny cel i dalekich, magia bez statusów, obrażenia ≥ 1 (`sorcery.test.ts`). Build: 1080 testów.
+
+**Test botem (10 zasadzek, ten sam seed i pokój dla obu postaci; bot bez uników i dasha; czas od krat do końca):**
+
+| Piętro | Pokój | Barbarzyńca | Czarodziejka |
+|---|---|---|---|
+| 1 | 7×9 | 11,9 s, 100 → 100 | 18,1 s, 75 → 55 |
+| 2 | 9×9 | 8,0 s, 100 → 96 | 21,3 s, 75 → 71 |
+| 4 | 8×8 | 12,5 s, 100 → 80 | 30,2 s, 75 → 45 |
+| 6 | 7×9 | 9,4 s, 100 → 100 | 29,0 s, 75 → 39 |
+| 9 (krąg II) | 9×7 | 12,1 s, 100 → 79 | **śmierć** (11 trafień) |
+
+Średnio na piętrach 1–6: Barbarzyńca ok. 10,5 s, Czarodziejka ok. 24,7 s. Względem kroku 49b Czarodziejka szybsza (piętro 1: 24,3 → 18,1 s; piętro 6: 37,9 → 29,0 s). W drugim kręgu upiory mają ok. 44 HP i 7 obrażeń — Czarodziejka (bot bez uników) nie wytrzymuje; do oceny po teście właściciela.
+
+## Krok 50a — Upiory rosną wolno: zasadzka to jackpot, nie kłopot `#zasadzka`
+
+**Decyzja właściciela** `#decyzja` `#zasadzka`: „upiory nie rosną tak szybko jak inni przeciwnicy. Zostawiamy zamysł tego zdarzenia jako jackpot, a nie kłopot.”
+
+- Upiory mają własne skalowanie z piętrem `AMBUSH_CONFIG.ghostScaling`: HP +5%/piętro, obrażenia +3%/piętro (zwykli wrogowie +15% / +10%) i **nie dotyczą ich modyfikatory piętra** (np. „Twarda skóra”). Piętro 9: ok. 28 HP i 5 obrażeń zamiast 44 i 7.
+- `EnemyManager.spawnAt(..., { scaling })` — własne skalowanie bez modyfikatora piętra.
+
+**Test botem (Czarodziejka, bez uników):** piętro 9 — przedtem śmierć, teraz 25,2 s, 75 → 55 HP (4 trafienia); piętro 6 — 29,0 s / 39 HP → 22,9 s / 60 HP. Build: 1081 testów.
+
+## Krok 51 — Ekran startowy: nazwa TOP DOWN i epickie otwarcie
 
 **Decyzja właściciela:** `#decyzja` `#ekran-startowy`
 - na ekranie startowym ma być oryginalna nazwa gry: **TOP DOWN** (zamiast „Tower Crawler”);
@@ -2729,10 +3303,10 @@ Makieta generatora:
 
 ---
 
-## Krok 37 — Ekran startowy: TOP / DOWN i samotna wieża końca
+## Krok 52 — Ekran startowy: TOP / DOWN i samotna wieża końca
 
 **Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-startowy`
-- wersja z kroku 36 (jedna linia, promienie, połysk) „zupełnie się nie podoba”;
+- wersja z kroku 51 (jedna linia, promienie, połysk) „zupełnie się nie podoba”;
 - napis w **dwóch liniach**: TOP i DOWN;
 - motyw **jednej wieży**, obok **mrok i destrukcja**;
 - „nasza gra jest metaforą końca — być może świata, być może życia”.
@@ -2752,7 +3326,7 @@ Makieta generatora:
 - 2,0 s: oczy w mroku (brama wieży, ciemność po bokach);
 - 3,7 s: wygaszenie i start piętra 1.
 
-**Usunięte z kroków 34/36:** pioruny, promienie, połysk, podtytuł, pająk na nitce, nietoperz, pajęczyny.
+**Usunięte z kroków 34/51:** pioruny, promienie, połysk, podtytuł, pająk na nitce, nietoperz, pajęczyny.
 
 **Kod:**
 - `core/pixelArt.ts`: `pixelDisc`, `pixelRing` (tarcza i korona zaćmienia);
@@ -2768,10 +3342,10 @@ Makieta generatora:
 
 ---
 
-## Krok 38 — Ekran śmierci w tonie TOP / DOWN: popiół zamiast krwi
+## Krok 53 — Ekran śmierci w tonie TOP / DOWN: popiół zamiast krwi
 
 **Decyzja właściciela:** `#decyzja` `#ekran-smierci`
-- po akceptacji ekranu startowego (krok 37): „przerób w podobnym tonie ekran końcowy” i od razu wdróż.
+- po akceptacji ekranu startowego (krok 52): „przerób w podobnym tonie ekran końcowy” i od razu wdróż.
 
 **Co się zmieniło względem kroku 35:**
 - POLEGŁEŚ ma lico z popiołu i kości jak TOP / DOWN (te same pasy kolorów) i żarzącą się krawędź egg-0;
@@ -2791,7 +3365,7 @@ Makieta generatora:
 
 ---
 
-## Krok 39 — Ekran śmierci: napis ociekający krwią na plamie
+## Krok 54 — Ekran śmierci: napis ociekający krwią na plamie
 
 **Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
 - rozpadające się słowo (kroki 35 i 38) „nie podoba się zupełnie”; wersja na czerwonym tle „jakoś wyglądała”;
@@ -2818,10 +3392,10 @@ Makieta generatora:
 
 ---
 
-## Krok 40 — Ekran śmierci w stylu Dark Souls / Castlevanii
+## Krok 55 — Ekran śmierci w stylu Dark Souls / Castlevanii
 
 **Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
-- krew z kroku 39 „wygląda sztucznie”; ma być „mniej banalnie, a bardziej mrocznie — w stylu Castlevanii lub Dark Souls”.
+- krew z kroku 54 „wygląda sztucznie”; ma być „mniej banalnie, a bardziej mrocznie — w stylu Castlevanii lub Dark Souls”.
 
 **Kierunek:** cisza i ciężar zamiast efektów. Żadnej krwi, plamy, uderzenia, wstrząsu ani cząstek.
 
@@ -2846,10 +3420,10 @@ Makieta generatora:
 
 ---
 
-## Krok 41 — Ekran śmierci: czerwień spływająca przez litery
+## Krok 56 — Ekran śmierci: czerwień spływająca przez litery
 
 **Prośba właściciela:** `#decyzja` `#ekran-smierci`
-- do ekranu z kroku 40: „animowany efekt w stylu spływającego w dół gradientu czerwieni wypełnienia liter”.
+- do ekranu z kroku 55: „animowany efekt w stylu spływającego w dół gradientu czerwieni wypełnienia liter”.
 
 **Co widać:**
 - lico liter POLEGŁEŚ to pasy czerwieni (od jasnej eye-1 przez eye-0 i blood-2 do zakrzepłej blood-1 i z powrotem), które **powoli i bez końca spływają w dół** (18 px/s) — jak krew przepływająca przez litery;
@@ -2868,10 +3442,10 @@ Makieta generatora:
 
 ---
 
-## Krok 42 — Ekran śmierci: spływanie osobno dla grup liter
+## Krok 57 — Ekran śmierci: spływanie osobno dla grup liter
 
 **Ocena i prośba właściciela:** `#ocena` `#ekran-smierci`
-- spływająca czerwień z kroku 41: „o coś takiego mi chodziło”;
+- spływająca czerwień z kroku 56: „o coś takiego mi chodziło”;
 - prośba o podgląd: spływanie rozdzielone dla grup 2–3 liter, „by bardziej zaimitować tempo spływania w różnych miejscach”.
 
 **Wariant:**
@@ -2888,7 +3462,7 @@ Makieta generatora:
 
 ---
 
-## Krok 43 — Ekran śmierci: szerszy czarny pas
+## Krok 58 — Ekran śmierci: szerszy czarny pas
 
 **Prośba właściciela:** `#decyzja` `#ekran-smierci`
 - przyciemniony pas za napisem rozszerzyć w górę **tuż do dolnego końca HUD-u** i **o połowę w stronę tablicy rekordów**.
@@ -2904,11 +3478,11 @@ Makieta generatora:
 
 **Weryfikacja:** `npm run build`; zrzut z przeglądarki po 7 s. Wdrożone na GitHub Pages.
 
-**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — rozwiązane w kroku 44 (ikony w jednym rzędzie, pas od y = 142).
+**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — rozwiązane w kroku 59 (ikony w jednym rzędzie, pas od y = 147 po scaleniu).
 
 ---
 
-## Krok 44 — HUD: przedmioty jako ikony
+## Krok 59 — HUD: przedmioty jako ikony
 
 **Decyzja właściciela:** `#decyzja` `#hud`
 - z dwóch makiet na kanwie (A: ikony pod złotem, B: pasek na dole) wybrany **wariant A**;
@@ -2930,6 +3504,21 @@ Makieta generatora:
 **Testy:** pas ekranu śmierci zaczyna się na dole rzędu ikon (142). Ikony korzystają z klatek sprawdzanych w `tests/assets/loot.test.ts`.
 
 **Weryfikacja:** `npm run build` (900 testów); przeglądarka — 12 przedmiotów przez `window.__game` (8 rodzajów, liczniki ×2/×3), podpis „Kołczan — +1 ładunek strzału”, ekran śmierci z pasem pod ikonami; brak błędów w konsoli. Wdrożone na GitHub Pages.
+
+---
+
+## Scalenie z main po krokach 51–59 `#ekran-startowy` `#ekran-smierci` `#hud`
+
+**Problem:** kroki ekranu startowego, ekranu śmierci i HUD-u z tej sesji powstawały na gałęzi `claude/beautiful-knuth-7datv1` równolegle z `main` (kroki 36–50a: Czarodziejka, Piekło, elity, pętla wieży, zasadzki). Wdrożenie z `main` nadpisało `gh-pages` wersją bez nich.
+
+**Co zrobiono:**
+- `main` scalony z gałęzią; kroki tej gałęzi 36–44 **przenumerowane na 51–59** (numery 36–50a są zajęte przez `main`);
+- `SplashScene`: przejście do gry przez `startFirstFloor` z `main` (ekran wyboru bohatera);
+- `DeathScreen` (wersja Dark Souls ze spływającą czerwienią) przejął z `main` wspólną listę wyników: pole na imię po pierwszej śmierci, imiona w wierszach, nagłówek zależny od źródła (lokalna / łączenie / wszyscy gracze / run testowy), „C — ZMIANA BOHATERA”; podczas wpisywania imienia komunikat o nowej wspinaczce ukryty;
+- `HudScene`: ikony przedmiotów (krok 59) razem z paskiem promienia Czarodziejki, podpowiedzią zależną od bohatera i złotem w runie testowym;
+- pasek promienia przesunął HUD o 5 px w dół — rząd ikon kończy się na y = 147, więc pas ekranu śmierci zaczyna się od 147.
+
+**Weryfikacja:** `npm run build`; przeglądarka (ekran startowy → wybór bohatera, ikony w HUD, śmierć z polem na imię). Wdrożone na GitHub Pages.
 
 ---
 
@@ -2966,11 +3555,11 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **1. Następny etap (decyzja właściciela po kroku 27):** `#decyzja` nowe biomy i kolejne piętra — większy zbiór mechanik i poziomów tematycznych; strojenie wszystkiego później.
 
-**Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Zostaje animacja śmierci Króla (dziś ginie od razu i zostaje plama).
+**Grzybnia (piętro 3) gotowa** `#grzybnia`: paleta, kafle i mgła (28a), płynne światło, zarażony pająk i grzybiec (28b), Król Pająków z paraliżem (29), purchawki (28c). Animacja śmierci Króla: krok 40.
 
 **Plan właściciela po kroku 28c:** `#decyzja` najpierw powrót do „Mroku” (p. 2 backlogu) — zrobiony w kroku 30, test właściciela: „super” — potem kolejny biom. Krok 31: lekko losowa kolejność ataków bossów.
 
-**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a (paleta C, kafle, dekoracje, mgiełka) i 32b (zarażony i siewca) zrobione. Krok 33: Wampirzy Lord (spiżarnia, uczta, kąsanie, szarża, tasak, zew) — czeka na test właściciela; sprite Lorda do przeróbki.
+**Cmentarzysko (piętro 4) w toku** `#cmentarzysko`: krok 32a (paleta C, kafle, dekoracje, mgiełka) i 32b (zarażony i siewca) zrobione. Krok 33: Wampirzy Lord (spiżarnia, uczta, kąsanie, szarża, tasak, zew). Krok 39: wygląd z paczki właściciela — boss to teraz **Grzybowy Pożeracz** (zamach łapami zamiast tasaka, tron, kokony z zarażonymi); czeka na test właściciela.
 
 **Boss Cmentarzyska — pomysł właściciela (po kroku 32a):** `#decyzja` `#cmentarzysko` `#wampirzy-lord`
 - „wampirzy lord”, ale nie typowy wampir: zainfekowany człowiek, który **zjada mniejsze zombiaki**;
@@ -2995,7 +3584,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - kokony;
   - lepkie pajęczyny.
 - **Kandydaci na kolejny krok** (wybiera właściciel): powrót do „Mroku” (p. 2), kolejny biom, ewentualne strojenie liczb leża.
-- **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają tylko w trybie dev.
+- **Schody:** od kroku 47 wejście wyżej klawiszem E na schodach.
+- **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają też na Pages jako run testowy (bez zapisu wyniku, krok 41g).
 - **Do oceny w testach właściciela:** trudność walki z Matką Pająków po kroku 27 (pościg, smagnięcie, trucizna). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
 - **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.
 - **Ewentualne uszczelnienie areny przed ostrzałem bossa z korytarza** (otwarte od kroku 9):
@@ -3008,27 +3598,30 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **HUD z ikonami (krok 44):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).
-- **Ekran śmierci (kroki 40–41):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
-- **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
+- **HUD z ikonami (krok 59):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).
+- **Ekran śmierci (kroki 55–57):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
+- **Ekran startowy (krok 52):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
-- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
+- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (także na Pages jako run testowy bez zapisu wyniku, `systems/startOverrides.ts`, krok 41g). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
 **3. Brakująca grafika**
+- **Czarodziejka (kroki 36–38):** sprite'y, mechanika i ekran wyboru gotowe. Do rozważenia: bohater przy wpisie na liście wyników, strojenie liczb po testach.
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.
 - **Boss „Matka Pająków”:** wdrożony w kroku 22, klatki śmierci w kroku 24.
-- **Strażnik (Sludge King):** bez animacji śmierci (błysk i plama szlamu) — można dorobić tak samo jak w kroku 24.
+- **Strażnik (Sludge King) i Król Pająków:** animacje śmierci zrobione w kroku 40. Grzybowy Pożeracz nadal ginie bez animacji.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
-- **Imię gracza na tablicy rekordów:** dziś tylko wynik, piętro i data.
+- **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
+
+**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
 
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
 
