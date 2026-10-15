@@ -111,7 +111,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
    * Zwraca nowy plan ataku, jeśli boss właśnie go rozpoczyna. `summonsAlive` — żywe pajączki z wylęgów;
    * `larders` — kokony spiżarni, które Pożeracz może pożreć.
    */
-  tick(target: Vector2, now: number, summonsAlive = 0, larders: readonly Vector2[] = []): BossAttackPlan | null {
+  tick(target: Vector2, now: number, summonsAlive = 0, larders: readonly Vector2[] = [], braziers: readonly Vector2[] = []): BossAttackPlan | null {
     if (this.isDead) {
       this.setVelocity(0, 0);
       return null;
@@ -130,6 +130,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       hpRatio: this.health.value / this.health.max,
       summonsAlive,
       larders,
+      braziers,
     });
     this.enraged = decision.enraged;
     const speed = decision.speed * this.status.speedMultiplier(now);

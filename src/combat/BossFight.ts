@@ -57,8 +57,10 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
-import { reflectDirection } from '@/systems/Shield';
+import { BRAZIER_VISUAL, FIRE_RING_VISUAL, SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
+import { fireRingRadius, reflectDirection } from '@/systems/Shield';
+import { arenaBrazierSpots } from '@/dungeon/BrazierPlanner';
+import { BossAttackKind } from '@/core/bossTypes';
 import type { CombatDecalKind } from '@/config/dressingConfig';
 import { THRONE_ROOM } from '@/config/dressingConfig';
 
@@ -172,6 +174,11 @@ export class BossFight {
   private readonly throneRoomFx: boolean;
 
   private readonly shieldArc: Phaser.GameObjects.Graphics | null;
+  /** Kat Otchłani (krok 41f): paleniska areny (oddech), pierścień ognia, rozgrzanie tarczy promieniem. */
+  private readonly arenaBraziers: Array<{ readonly at: Vector2; readonly sprite: Phaser.GameObjects.Sprite }> = [];
+  private readonly fireRingGfx: Phaser.GameObjects.Graphics | null;
+  private fireRingStartAt: number | null = null;
+  private shieldHeat = 0;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -191,6 +198,15 @@ export class BossFight {
     this.spiderlings = new SpiderlingSwarm(deps);
     // Tarcza (Strażnik Bram, krok 41e): łuk chronionego stożka przed bossem.
     this.shieldArc = definition.shield ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) : null;
+    this.fireRingGfx = definition.fireRing
+      ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash).setBlendMode(Phaser.BlendModes.ADD)
+      : null;
+    for (const tile of arenaBrazierSpots(arena, definition.arenaBraziers ?? 0)) {
+      const at = DungeonView.tileToWorldCenter(tile);
+      const sprite = deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[BRAZIER_VISUAL.sheet].key).setDepth(RENDER_DEPTH.shrine);
+      sprite.play(animationKey(BRAZIER_VISUAL.sheet, BRAZIER_VISUAL.idle));
+      this.arenaBraziers.push({ at, sprite });
+    }
 
     this.larderRng = createRng(deriveSeed(deps.floor.seed, LARDER_SEED_SALT));
     const feast = definition.feast;
@@ -257,7 +273,10 @@ export class BossFight {
   update(now: number): void {
     const boss = this.boss;
     this.drawShieldArc(boss);
-    if (!boss) return;
+    if (!boss) {
+      this.fireRingGfx?.clear();
+      return;
+    }
     const { player } = this.deps;
 
     if (!boss.isFighting && !player.isDead) {
@@ -273,7 +292,9 @@ export class BossFight {
     }
 
     const larders = this.larders.map((larder) => larder.position);
-    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length, larders);
+    const braziers = this.arenaBraziers.map((b) => b.at);
+    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length, larders, braziers);
+    this.updateFireRing(boss, now);
     if (plan) this.schedule(plan);
     this.updateLarders(boss, now);
     this.updatePresence(boss);
@@ -309,8 +330,9 @@ export class BossFight {
   /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
   resolvePlayerBeam(beam: BeamStrike): number {
     if (!this.boss) return 0;
-    // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie.
+    // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie. U Kata rozgrzewa tarczę.
     const shielded = this.boss.isShieldedFrom(beam.source);
+    if (shielded) this.heatShield(this.boss, beam.now);
     const targets = shielded ? this.targets().filter((t) => t !== this.boss) : this.targets();
     const { hit, killed } = resolveBeam(beam, targets);
     this.handleKills(killed);
@@ -368,6 +390,7 @@ export class BossFight {
 
   private schedule(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
+    if (plan.kind === BossAttackKind.Kindle) this.kindleBraziers(plan);
     // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
     const planned = plan.leap;
     const landing = planned ? this.startLeap(planned) : null;
@@ -726,6 +749,11 @@ export class BossFight {
         };
         if (player.takeHit(hit, now)) {
           onPlayerHit();
+          // Hak Kata: złapany gracz ląduje tuż przed tarczą (zaraz potem uderzenie tarczą).
+          if (strike.pullTo && player.body instanceof Phaser.Physics.Arcade.Body) {
+            player.body.reset(strike.pullTo.x, strike.pullTo.y);
+            effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
+          }
           this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
           const boss = this.boss;
           if (strike.healOnHit && boss) {
@@ -764,6 +792,83 @@ export class BossFight {
       }
       return false;
     });
+  }
+
+  /** Rozgrzanie tarczy promieniem (Kat): po `heat.ticks` tickach wybuch żaru wokół bossa (telegrafowany). */
+  private heatShield(boss: Boss, now: number): void {
+    const heat = boss.definition.shield?.heat;
+    if (!heat) return;
+    this.shieldHeat++;
+    if (this.shieldHeat < heat.ticks) return;
+    this.shieldHeat = 0;
+    const strike = {
+      center: { x: boss.x, y: boss.y },
+      radius: heat.radius,
+      telegraphStartAt: now,
+      impactAt: now + heat.telegraphMs,
+      damage: heat.damage,
+      knockback: heat.knockback,
+    };
+    this.strikes.push({ strike, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+    this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 10, 'Żar!', '#ff8a3c');
+  }
+
+  /** Oddech palenisk: paleniska areny rosną przez telegraf i buchają w chwili uderzenia stref. */
+  private kindleBraziers(plan: BossAttackPlan): void {
+    const scene = this.deps.scene;
+    const first = plan.strikes[0];
+    if (!first) return;
+    const leadMs = Math.max(1, first.impactAt - scene.time.now);
+    const { sheet, warn, burst, idle } = BRAZIER_VISUAL;
+    for (const { sprite } of this.arenaBraziers) {
+      const frames = scene.anims.get(animationKey(sheet, warn))?.frames.length ?? 1;
+      sprite.play({ key: animationKey(sheet, warn), frameRate: (frames * 1000) / leadMs });
+      scene.time.delayedCall(leadMs, () => {
+        sprite.play(animationKey(sheet, burst));
+        scene.time.delayedCall(700, () => sprite.active && sprite.play(animationKey(sheet, idle)));
+      });
+    }
+  }
+
+  /**
+   * Pierścień ognia (Kat, po wściekłości): brzeg areny płonie, wolne koło w środku się kurczy.
+   * Gracz poza kołem parzy się (przez trafienie z nietykalnością) i jest odpychany do środka.
+   */
+  private updateFireRing(boss: Boss, now: number): void {
+    const ring = boss.definition.fireRing;
+    const gfx = this.fireRingGfx;
+    if (!ring || !gfx) return;
+    gfx.clear();
+    if (!boss.isEnraged || !boss.isFighting) return;
+    this.fireRingStartAt ??= now;
+    const a = this.arena;
+    const center = { x: (a.x + a.width / 2) * TILE_SIZE, y: (a.y + a.height / 2) * TILE_SIZE };
+    const start = (Math.min(a.width, a.height) * TILE_SIZE) / 2;
+    const radius = fireRingRadius(start, ring.minRadius, ring.shrinkMs, now - this.fireRingStartAt);
+    const outer = (Math.hypot(a.width, a.height) * TILE_SIZE) / 2;
+    const { fill, fillAlpha, edge, edgeAlpha, edgeWidth } = FIRE_RING_VISUAL;
+    // Pas ognia od koła do narożników areny: 64 czworokąty pierścienia (gruba linia okręgu rozpada się
+    // w Phaserze na klinowe paski, a wielokąt z dziurką źle się trianguluje).
+    const segments = 64;
+    gfx.fillStyle(fill, fillAlpha);
+    for (let i = 0; i < segments; i++) {
+      const t0 = (i / segments) * Math.PI * 2;
+      const t1 = ((i + 1) / segments) * Math.PI * 2;
+      gfx.fillPoints(
+        [
+          { x: center.x + Math.cos(t0) * radius, y: center.y + Math.sin(t0) * radius },
+          { x: center.x + Math.cos(t0) * outer, y: center.y + Math.sin(t0) * outer },
+          { x: center.x + Math.cos(t1) * outer, y: center.y + Math.sin(t1) * outer },
+          { x: center.x + Math.cos(t1) * radius, y: center.y + Math.sin(t1) * radius },
+        ],
+        true,
+      );
+    }
+    gfx.lineStyle(edgeWidth, edge, edgeAlpha).strokeCircle(center.x, center.y, radius);
+    const { player } = this.deps;
+    if (player.isDead || Math.hypot(player.x - center.x, player.y - center.y) <= radius) return;
+    const hit = { damage: ring.damage, knockback: knockbackFrom(player, center, ring.knockback) };
+    if (player.takeHit(hit, now)) this.deps.onPlayerHit();
   }
 
   /** Łuk tarczy przed bossem: widać, skąd trafienia się odbijają (tylko w walce). */

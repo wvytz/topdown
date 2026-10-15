@@ -21,6 +21,8 @@ export interface AttackPlanContext {
   readonly rng: Rng;
   /** Żywe pajączki z poprzednich wylęgów (limit `brood.maxAlive`). */
   readonly summonsAlive?: number;
+  /** Paleniska areny (Kat Otchłani) — oddech zapala je wszystkie. */
+  readonly braziers?: readonly Vector2[];
 }
 
 /** Buduje plan ataku (strefy, fale pocisków, czasy). Czysta funkcja — poza RNG nie ma stanu. */
@@ -50,6 +52,10 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planCleave(ctx);
     case BossAttackKind.Call:
       return planCall(ctx);
+    case BossAttackKind.Hook:
+      return planHook(ctx);
+    case BossAttackKind.Kindle:
+      return planKindle(ctx);
     case BossAttackKind.Feast:
       throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }
@@ -76,6 +82,57 @@ function planCleave(ctx: AttackPlanContext): BossAttackPlan {
   const impactAt = ctx.now + telegraph(ctx, cleave.telegraphMs);
   const strike = frontStrike(ctx, cleave.reach, cleave.radius, impactAt, cleave.damage, cleave.knockback);
   return { kind: BossAttackKind.Cleave, ...EMPTY, strikes: [strike], endsAt: impactAt + cleave.recoveryMs };
+}
+
+/**
+ * Hak (Kat Otchłani, krok 41f): linia stref od bossa w stronę gracza aż do `maxRange`, wszystkie uderzają
+ * naraz po telegrafie; trafienie przyciąga gracza pod tarczę (`pullTo` tuż przed bossem). Potem uderzenie
+ * tarczą przed sobą — złapany gracz ma chwilę na unik.
+ */
+function planHook(ctx: AttackPlanContext): BossAttackPlan {
+  const hook = required(ctx.definition.hook, BossAttackKind.Hook, ctx);
+  const impactAt = ctx.now + telegraph(ctx, hook.telegraphMs);
+  const dir = towardTarget(ctx);
+  const front = ctx.definition.radius + hook.radius;
+  const pullTo = { x: ctx.self.x + dir.x * front, y: ctx.self.y + dir.y * front };
+  const strikes: AreaStrike[] = [];
+  for (let d = front; d <= hook.maxRange; d += hook.step) {
+    strikes.push({
+      center: { x: ctx.self.x + dir.x * d, y: ctx.self.y + dir.y * d },
+      radius: hook.radius,
+      telegraphStartAt: ctx.now,
+      impactAt,
+      damage: hook.damage,
+      knockback: 0,
+      pullTo,
+    });
+  }
+  const { followUp } = hook;
+  const bashAt = impactAt + followUp.delayMs;
+  strikes.push({
+    center: { x: ctx.self.x + dir.x * followUp.reach, y: ctx.self.y + dir.y * followUp.reach },
+    radius: followUp.radius,
+    telegraphStartAt: impactAt,
+    impactAt: bashAt,
+    damage: followUp.damage,
+    knockback: followUp.knockback,
+  });
+  return { kind: BossAttackKind.Hook, ...EMPTY, strikes, endsAt: bashAt + hook.recoveryMs };
+}
+
+/** Oddech palenisk: strefa wokół każdego paleniska areny, wszystkie naraz po telegrafie. */
+function planKindle(ctx: AttackPlanContext): BossAttackPlan {
+  const kindle = required(ctx.definition.kindle, BossAttackKind.Kindle, ctx);
+  const impactAt = ctx.now + telegraph(ctx, kindle.telegraphMs);
+  const strikes: AreaStrike[] = (ctx.braziers ?? []).map((center) => ({
+    center,
+    radius: kindle.radius,
+    telegraphStartAt: ctx.now,
+    impactAt,
+    damage: kindle.damage,
+    knockback: kindle.knockback,
+  }));
+  return { kind: BossAttackKind.Kindle, ...EMPTY, strikes, endsAt: impactAt + kindle.recoveryMs };
 }
 
 /** Zew spiżarni: kokony drżą przez telegraf, potem `count` z nich pęka (po wściekłości jeden więcej). */

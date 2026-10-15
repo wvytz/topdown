@@ -3020,6 +3020,27 @@ Makieta generatora:
 
 ---
 
+## Krok 41f — Kat Otchłani (boss piętra 6) `#pieklo` `#kat-otchlani`
+
+**Decyzja właściciela:** `#decyzja` `#kat-otchlani` propozycja przyjęta — boss zupełnie inny od dotychczasowych, utrudniający grę postaci dystansowej; koniec dwupiętrowego Piekła.
+
+**Mechanika (czysto: `ai/bossAttacks.ts`, `ai/BossBrain.ts`, `systems/Shield.ts`, `dungeon/BrazierPlanner.ts`; liczby w `ABYSS_EXECUTIONER`):**
+- **tarcza** jak u Strażnika Bram (stożek 120°, odbija pociski, połowa ciosu), obrót 120°/s; **promień w tarczę ją rozgrzewa** — po 6 tickach (ok. 1,2 s) Kat odpowiada wybuchem żaru wokół siebie (telegraf 0,6 s, promień 96 px);
+- **hak** (poza wzorem): gdy gracz stoi 130–260 px od Kata i minęło 4,5 s — linia stref od Kata w stronę gracza (telegraf 0,65 s); trafienie przyciąga gracza tuż przed tarczę („Hak!”), a 0,45 s później uderzenie tarczą przed sobą. Dash w bok = unik. Pierwszy hak najwcześniej w połowie otwarcia walki;
+- wzór w „worku”: **uderzenie tarczą**, **wirujący łańcuch** (dookoła) i **oddech palenisk** — cztery paleniska w ćwiartkach areny rosną przez 1 s i buchają naraz (promień 56 px);
+- **wściekłość („Otchłań płonie!”):** brzeg areny płonie, wolne koło w środku kurczy się od połowy krótszego boku areny do 110 px przez 25 s; poza kołem ogień parzy (8, przez trafienie z nietykalnością) i odpycha do środka;
+- 520 HP bazowo (910 na piętrze 6); skalowanie obejmuje też hak, uderzenie po haku, oddech, pierścień i wybuch żaru.
+
+**Wygląd:** wariant generatora Strażnika (`tools/gatekeeper_sprites.py` → `abyss-executioner_walk-spin-bash-hook-kindle.png`, 96×96, 20 kolumn): czerniejsze żelazo, korona z sześciu rogów, żarzące się serce w napierśniku; 12–15 rzut hakiem, 16–19 oddech (serce i wizjer rozbłyskują). Arkusz Strażnika Bram bez zmian. Pierścień ognia: pas czworokątów (ADD, stała alfa) i jasna krawędź koła — gruba linia okręgu rysowała się w klinowe paski. Bez animacji śmierci.
+
+**Testy:** `tests/ai/GateWarden.test.ts` — Kat na piętrze 6, tarcza z rozgrzaniem; hak (linia do gracza, przyciągnięcie pod tarczę, uderzenie po haku), hak tylko z dystansu i po otwarciu walki; oddech na wszystkich paleniskach naraz; paleniska areny w ćwiartkach; kurczenie pierścienia. `npm run build`: 1014 testów.
+
+**Weryfikacja w przeglądarce** (`?hero=sorceress&seed=7&floor=6`): plansza „Kat Otchłani — Pan Łańcuchów”; Czarodziejka 171 px od Kata — hak przyciąga ją na 45 px, potem uderzenie tarczą; oddech palenisk; po zbiciu HP poniżej połowy pierścień ognia; bez błędów w konsoli.
+
+**Do oceny w testach właściciela:** zasięg i odstęp haka, siła odbić i wybuchu żaru, tempo kurczenia pierścienia, trudność całego Piekła.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

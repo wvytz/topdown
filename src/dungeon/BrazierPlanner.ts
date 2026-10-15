@@ -1,4 +1,4 @@
-import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
+import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
 import type { BrazierConfig } from '@/systems/Braziers';
@@ -37,4 +37,20 @@ export function planBraziers(
     braziers.push(...spots.filter((t) => floor.tiles[t.y * floor.width + t.x] === TileType.Floor));
   }
   return braziers;
+}
+
+/**
+ * Paleniska na arenie Kata Otchłani (krok 41f): w środkach ćwiartek areny (na 1/4 i 3/4 boków), pierwsze
+ * `count` z kolejności NW, NE, SE, SW. Środek areny zostaje wolny (schody po walce, start bossa).
+ */
+export function arenaBrazierSpots(arena: Room, count: number): TilePoint[] {
+  const xs = [arena.x + Math.floor(arena.width / 4), arena.x + Math.floor((arena.width * 3) / 4)];
+  const ys = [arena.y + Math.floor(arena.height / 4), arena.y + Math.floor((arena.height * 3) / 4)];
+  const spots: TilePoint[] = [
+    { x: xs[0]!, y: ys[0]! },
+    { x: xs[1]!, y: ys[0]! },
+    { x: xs[1]!, y: ys[1]! },
+    { x: xs[0]!, y: ys[1]! },
+  ];
+  return spots.slice(0, Math.max(0, Math.min(4, count)));
 }

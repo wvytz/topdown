@@ -359,6 +359,61 @@ export const GATE_WARDEN = {
 } satisfies BossDefinition;
 
 /**
+ * „Kat Otchłani” (krok 41f, boss piętra 6 — propozycja przyjęta przez właściciela): demon z tarczą-wrotami
+ * i łańcuchem z hakiem. Jedyny boss, którego trzeba obchodzić, i jedyny, który sam przyciąga gracza.
+ * - tarcza jak u Strażnika Bram, a promień w nią rozgrzewa żelazo — po chwili wybuch żaru wokół Kata;
+ * - hak (poza wzorem) na gracza trzymającego dystans: przyciąga pod tarczę, potem uderzenie tarczą;
+ * - wirujący łańcuch dookoła i uderzenie tarczą przed sobą;
+ * - oddech palenisk: cztery paleniska areny buchają naraz;
+ * - wściekłość: brzeg areny płonie, wolne koło w środku się kurczy — nie da się kitować pod ścianą.
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const ABYSS_EXECUTIONER = {
+  id: BossId.AbyssExecutioner,
+  name: 'Kat Otchłani',
+  title: 'Pan Łańcuchów',
+  enragedLabel: 'Otchłań płonie!',
+  radius: 32,
+  color: 0x6a1010,
+  maxHp: 520,
+  moveSpeed: 66,
+  engageDistance: 58,
+  openingDelayMs: 1400,
+  restBetweenAttacksMs: 1200,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam, BossAttackKind.Kindle],
+  patternOrder: PatternOrder.Shuffled,
+  shield: {
+    arcDeg: 120,
+    turnRateDegPerSec: 120,
+    frontMeleeMultiplier: 0.5,
+    reflectSpeed: 0.9,
+    heat: { ticks: 6, radius: 96, telegraphMs: 600, damage: 16, knockback: 320 },
+  },
+  slam: { radius: 96, telegraphMs: 850, recoveryMs: 650, damage: 20, knockback: 340 },
+  cleave: { reach: 42, radius: 46, telegraphMs: 600, recoveryMs: 750, damage: 22, knockback: 360 },
+  hook: {
+    minRange: 130,
+    maxRange: 260,
+    cooldownMs: 4500,
+    telegraphMs: 650,
+    recoveryMs: 500,
+    step: 22,
+    radius: 14,
+    damage: 6,
+    knockback: 0,
+    followUp: { delayMs: 450, reach: 42, radius: 46, damage: 18, knockback: 340 },
+  },
+  kindle: { radius: 56, telegraphMs: 1000, recoveryMs: 500, damage: 16, knockback: 260 },
+  arenaBraziers: 4,
+  fireRing: { minRadius: 110, shrinkMs: 25000, damage: 8, knockback: 200 },
+  enrage: {
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
  * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
  */
@@ -367,6 +422,7 @@ export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   3: SPIDER_KING,
   4: FUNGAL_DEVOURER,
   5: GATE_WARDEN,
+  6: ABYSS_EXECUTIONER,
 };
 
 export function bossForFloor(floor: number): BossDefinition {
@@ -401,6 +457,10 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.flurry && { flurry: dmg(boss.flurry) }),
     ...(boss.cocoonThrow && { cocoonThrow: dmg(boss.cocoonThrow) }),
     ...(boss.cleave && { cleave: dmg(boss.cleave) }),
+    ...(boss.hook && { hook: { ...dmg(boss.hook)!, followUp: dmg(boss.hook.followUp)! } }),
+    ...(boss.kindle && { kindle: dmg(boss.kindle) }),
+    ...(boss.fireRing && { fireRing: dmg(boss.fireRing) }),
+    ...(boss.shield?.heat && { shield: { ...boss.shield, heat: dmg(boss.shield.heat)! } }),
     ...(boss.spiderling && { spiderling: dmg(boss.spiderling) }),
   };
 }

@@ -11,6 +11,11 @@ gate-warden_walk-spin-bash.png (1152x768, komórka 96x96, pivot 48,48, 8 kierunk
   8–11 uderzenie tarczą (cofnięcie, pchnięcie, rozbłysk run, powrót).
 Dominująca cecha: tarcza (prostokątne wrota z żelaza z żarzącą się runą) zawsze z przodu — czytelna w sylwetce.
 Kolory: żelazo (§4.3), ciemnoczerwona skóra demona, żar palety „krwawy bazalt” na oczach i runie.
+
+abyss-executioner_walk-spin-bash-hook-kindle.png (1920x768, krok 41f): Kat Otchłani — ten sam szkielet co
+Strażnik, ale czerniejsze żelazo, korona z sześciu rogów, żarzące się serce w napierśniku i dłuższy łańcuch;
+kolumny 0–11 jak u Strażnika, 12–15 rzut hakiem (zamach, wyrzut, łańcuch naprężony, ściągnięcie),
+16–19 oddech palenisk (ręce rozłożone, serce i hełm rozbłyskują).
 """
 import argparse
 import math
@@ -68,12 +73,31 @@ def chain(img, a, b, hook=True):
         img.put(int(b[0]), int(b[1]), EMBER[1])
 
 
-def warden_frame(f):
-    """Strażnik na N. f 0–3 chód; 4–7 wirowanie łańcuchem; 8–11 uderzenie tarczą."""
+# Kat Otchłani: czerniejsze żelazo i głębsza czerwień (każdy kolejny boss mroczniejszy).
+KAT_STEEL = (ok(.20, .012, 260), ok(.27, .014, 255), ok(.36, .016, 250), ok(.47, .018, 245), ok(.62, .016, 240))
+KAT_HIDE = (ok(.26, .085, 20), ok(.32, .100, 22), ok(.39, .110, 24), ok(.47, .115, 27), ok(.57, .105, 32))
+
+
+def warden_frame(f, kat=False):
+    """Strażnik (albo Kat) na N. f 0–3 chód; 4–7 wirowanie łańcuchem; 8–11 uderzenie tarczą;
+    Kat: 12–15 rzut hakiem, 16–19 oddech palenisk."""
+    global STEEL, HIDE
+    base_steel, base_hide = STEEL, HIDE
+    if kat:
+        STEEL, HIDE = KAT_STEEL, KAT_HIDE
+    try:
+        return _warden_frame(f, kat)
+    finally:
+        STEEL, HIDE = base_steel, base_hide
+
+
+def _warden_frame(f, kat):
     img = trt.Img(CELL, CELL)
     walk = f < 4
     spin = 4 <= f < 8
-    bash = f >= 8
+    bash = 8 <= f < 12
+    hook = 12 <= f < 16
+    kindle = f >= 16
     step = (0, 2, 0, -2)[f] if walk else 0
     cy = C + 4
     thrust = (2, -5, -6, 0)[f - 8] if bash else 0
@@ -87,6 +111,11 @@ def warden_frame(f):
         a = math.radians(-60 + (f - 4) * 90)
         tip = (C + math.cos(a) * 34, cy - 2 + math.sin(a) * 34)
         chain(img, hand, tip)
+    elif hook:  # rzut hakiem przed siebie: zamach w bok, wyrzut, łańcuch naprężony, ściągnięcie
+        tip = ((C + 30, cy - 8), (C + 12, cy - 38), (C + 6, cy - 40), (C + 14, cy - 24))[f - 12]
+        chain(img, hand, tip)
+    elif kindle:
+        chain(img, hand, (C + 24, cy + 10))
     elif bash:
         chain(img, hand, (C + 18, cy + 14))
     else:
@@ -101,17 +130,26 @@ def warden_frame(f):
     # prawe ramię do łańcucha
     stroke(img, [(C + 17, cy), hand], 5.5, HIDE[2], edge=HIDE[3])
     # lewe ramię trzyma tarczę przed sobą — pod głową, od barku do lewej krawędzi tarczy
-    sy = cy - 26 + thrust
+    sy = cy - 26 + thrust + (4 if kindle else 0)
     stroke(img, [(C - 18, cy - 2), (C - 16, sy + 8), (C - 11, sy + 4)], 5.5, HIDE[2], edge=HIDE[3])
-    # głowa: hełm z rogami, szpara z żarem
+    # Kat: żarzące się serce w napierśniku (akcent), rozbłyskuje przy oddechu
+    if kat:
+        heart = EMBER[2] if kindle and f in (17, 18) else EMBER[1]
+        ellipse(img, C, cy + 3, 3.2, 2.6, lambda nx, ny: heart if nx * nx + ny * ny < .5 else EMBER[0])
+    # głowa: hełm z rogami (Kat: korona z sześciu rogów), szpara z żarem
     hy = cy - 11
+    horns = ((6, 11, 12), (3, 6, 6), (8, 15, 17)) if kat else ((6, 11, 12),)
     for side in (-1, 1):
-        stroke(img, [(C + side * 6, hy + 1), (C + side * 11, hy - 4), (C + side * 12, hy - 9)], 3, HELL.bone[0], edge=HELL.bone[1])
+        for base_x, mid_x, tip_x in horns:
+            stroke(img, [(C + side * base_x, hy + 1), (C + side * mid_x, hy - 4), (C + side * tip_x, hy - 9)], 3, HELL.bone[0], edge=HELL.bone[1])
     ellipse(img, C, hy, 7.5, 7, band_shade(STEEL, light=(-.4, -.6)))
     for x in range(int(C - 3), int(C + 4)):
         img.put(x, int(hy - 3), EMBER[1])
     img.put(int(C - 2), int(hy - 3), EMBER[2])
     img.put(int(C + 2), int(hy - 3), EMBER[2])
+    if kindle and f in (17, 18):  # oddech: płomień z wizjera hełmu (bez obrysu dorysowuje gra jako światło)
+        for dy in range(1, 4):
+            img.put(int(C), int(hy - 5 - dy), EMBER[2] if dy < 3 else EMBER[1])
     # tarcza zawsze z przodu (dominująca cecha)
     shield(img, C - 1, sy, 36, 10, glow=bash and f in (9, 10))
     if bash and f == 10:  # rozbłysk przy uderzeniu: iskry przed tarczą
@@ -123,7 +161,11 @@ def warden_frame(f):
 
 def build():
     sheet, frames = directional_sheet(CELL, warden_frame, 12)
-    return {'gate-warden_walk-spin-bash.png': (sheet, frames, CELL, MARGIN)}
+    kat, kf = directional_sheet(CELL, lambda f: warden_frame(f, kat=True), 20)
+    return {
+        'gate-warden_walk-spin-bash.png': (sheet, frames, CELL, MARGIN),
+        'abyss-executioner_walk-spin-bash-hook-kindle.png': (kat, kf, CELL, MARGIN),
+    }
 
 
 def main():

@@ -16,6 +16,8 @@ export interface BossBrainInput {
   readonly summonsAlive?: number;
   /** Kokony w spiżarni, które boss może pożreć (Grzybowy Pożeracz); brak = żadnych. */
   readonly larders?: readonly Vector2[];
+  /** Paleniska areny (Kat Otchłani). */
+  readonly braziers?: readonly Vector2[];
 }
 
 export interface BossDecision {
@@ -41,6 +43,7 @@ export class BossBrain {
   private nextAttackAt = Infinity;
   private currentAttack: BossAttackPlan | null = null;
   private nextLashAt = 0;
+  private nextHookAt = 0;
   private nextFeastAt = Infinity;
   /** Stosy wzmocnienia z uczt (Grzybowy Pożeracz). */
   private stacks = 0;
@@ -60,6 +63,8 @@ export class BossBrain {
     if (this.phase !== BossPhase.Dormant) return;
     this.phase = BossPhase.Fighting;
     this.nextAttackAt = now + this.definition.openingDelayMs;
+    // Hak (Kat) też czeka chwilę po otwarciu walki — gracz najpierw widzi bossa.
+    this.nextHookAt = now + this.definition.openingDelayMs / 2;
     if (this.definition.feast) this.nextFeastAt = now + this.definition.feast.firstAfterMs;
   }
 
@@ -127,6 +132,16 @@ export class BossBrain {
       return stand(plan);
     }
 
+    // Hak poza wzorem (Kat Otchłani): gracz trzyma dystans — boss przyciąga go pod tarczę.
+    const hook = this.definition.hook;
+    if (hook && gap >= hook.minRange && gap <= hook.maxRange && input.now >= this.nextHookAt) {
+      const plan = this.plan(BossAttackKind.Hook, input, enraged);
+      this.currentAttack = plan;
+      this.nextHookAt = plan.endsAt + hook.cooldownMs;
+      this.nextAttackAt = Math.max(this.nextAttackAt, plan.endsAt);
+      return stand(plan);
+    }
+
     if (gap <= this.definition.engageDistance) return stand(null);
     return { move: directionTo(input.self, input.target), speed: this.speedFor(gap), newAttack: null, enraged };
   }
@@ -156,6 +171,7 @@ export class BossBrain {
       enraged,
       rng: this.rng,
       summonsAlive: input.summonsAlive ?? 0,
+      ...(input.braziers && { braziers: input.braziers }),
     });
   }
 }

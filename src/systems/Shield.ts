@@ -32,3 +32,13 @@ export function turnToward(current: number, target: number, maxStep: number): nu
 export function reflectDirection(velocity: Vector2): Vector2 {
   return { x: -velocity.x, y: -velocity.y };
 }
+
+/**
+ * Pierścień ognia (Kat Otchłani, krok 41f): promień wolnego koła w środku areny `elapsedMs` od zapłonu —
+ * kurczy się liniowo od `startRadius` do `minRadius` przez `shrinkMs`.
+ */
+export function fireRingRadius(startRadius: number, minRadius: number, shrinkMs: number, elapsedMs: number): number {
+  if (elapsedMs <= 0) return startRadius;
+  const t = shrinkMs > 0 ? Math.min(1, elapsedMs / shrinkMs) : 1;
+  return startRadius + (minRadius - startRadius) * t;
+}

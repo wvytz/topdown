@@ -30,6 +30,10 @@ export enum BossAttackKind {
   Call = 'call',
   /** Uczta (Grzybowy Pożeracz): boss pożera kokon ze spiżarni — leczy się i rośnie w siłę. Poza wzorem. */
   Feast = 'feast',
+  /** Hak na łańcuchu (Kat Otchłani, krok 41f): z dystansu przyciąga gracza pod tarczę. Poza wzorem. */
+  Hook = 'hook',
+  /** Oddech palenisk (Kat Otchłani): wszystkie paleniska areny buchają naraz. */
+  Kindle = 'kindle',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -40,6 +44,8 @@ export enum BossId {
   FungalDevourer = 'fungal-devourer',
   /** Piekło, piętro 5 (krok 41e): Strażnik Bram — tarcza z przodu, wirujący łańcuch. */
   GateWarden = 'gate-warden',
+  /** Piekło, piętro 6 (krok 41f): Kat Otchłani — tarcza, hak, oddech palenisk, pierścień ognia. */
+  AbyssExecutioner = 'abyss-executioner',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -267,12 +273,49 @@ export interface SpiderlingDefinition {
 export interface ShieldDefinition {
   /** Szerokość chronionego stożka (stopnie, całość). */
   readonly arcDeg: number;
+  /**
+   * Rozgrzanie (Kat, krok 41f): tyle ticków promienia w tarczę i boss odpowiada wybuchem żaru wokół siebie.
+   * Brak = promień w tarczę po prostu nie rani.
+   */
+  readonly heat?: { readonly ticks: number; readonly radius: number; readonly telegraphMs: number; readonly damage: number; readonly knockback: number };
   /** Prędkość obrotu tarczy do gracza (stopnie na sekundę). */
   readonly turnRateDegPerSec: number;
   /** Cios wręcz (i dash) w tarczę zadaje tyle obrażeń (0–1). */
   readonly frontMeleeMultiplier: number;
   /** Odbity pocisk leci z prędkością pocisku ×tyle i zadaje tyle obrażeń co oryginał. */
   readonly reflectSpeed: number;
+}
+
+/**
+ * Hak na łańcuchu (Kat Otchłani, krok 41f): poza wzorem, gdy gracz stoi dalej niż `minRange` (do `maxRange`)
+ * i minął `cooldownMs`. Telegraf: linia stref od bossa w stronę gracza; trafienie przyciąga gracza pod tarczę,
+ * a po `followUp.delayMs` boss uderza tarczą przed sobą. Dash w bok = unik.
+ */
+export interface HookAttackDefinition extends BaseBossAttackDefinition {
+  readonly minRange: number;
+  readonly maxRange: number;
+  readonly cooldownMs: number;
+  /** Strefy wzdłuż łańcucha: co `step` px, promień `radius`. */
+  readonly step: number;
+  readonly radius: number;
+  readonly followUp: { readonly delayMs: number; readonly reach: number; readonly radius: number; readonly damage: number; readonly knockback: number };
+}
+
+/** Oddech palenisk: po telegrafie wszystkie paleniska areny buchają naraz (strefa `radius` wokół każdego). */
+export interface KindleAttackDefinition extends BaseBossAttackDefinition {
+  readonly radius: number;
+}
+
+/**
+ * Pierścień ognia (Kat, po wściekłości): brzeg areny płonie, a wolne koło w środku kurczy się
+ * od połowy krótszego boku areny do `minRadius` przez `shrinkMs`. Poza kołem ogień parzy (przez trafienie
+ * z nietykalnością) i odpycha do środka.
+ */
+export interface FireRingDefinition {
+  readonly minRadius: number;
+  readonly shrinkMs: number;
+  readonly damage: number;
+  readonly knockback: number;
 }
 
 export interface BossEnrageConfig {
@@ -320,6 +363,11 @@ export interface BossDefinition {
   readonly feast?: FeastDefinition;
   /** Tarcza z przodu (Strażnik Bram, Kat Otchłani). */
   readonly shield?: ShieldDefinition;
+  readonly hook?: HookAttackDefinition;
+  readonly kindle?: KindleAttackDefinition;
+  /** Paleniska na arenie (Kat): tyle, rozstawione w ćwiartkach areny; buchają przy oddechu. */
+  readonly arenaBraziers?: number;
+  readonly fireRing?: FireRingDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -337,6 +385,8 @@ export interface AreaStrike {
   readonly status?: StatusApplication;
   /** Trafienie gracza leczy bossa (kąsanie Pożeracza). */
   readonly healOnHit?: number;
+  /** Trafienie przyciąga gracza w to miejsce (hak Kata). */
+  readonly pullTo?: Vector2;
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
