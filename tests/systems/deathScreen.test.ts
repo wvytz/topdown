@@ -142,11 +142,11 @@ describe('flowGroupOf — grupy liter spływające w swoim tempie', () => {
   });
 });
 
-describe('pas za napisem (krok 43)', () => {
+describe('pas za napisem (kroki 43–44)', () => {
   const B = DEATH_LAYOUT.band;
 
   it('pełna czerń zaczyna się tuż pod HUD-em i obejmuje cały napis', () => {
-    expect(B.top + B.fadeTopPx).toBe(128);
+    expect(B.top + B.fadeTopPx).toBe(142);
     const half = ((7 - title.top) * DEATH_LAYOUT.title.unit * T.titleToScale) / 2;
     expect(B.top + B.fadeTopPx).toBeLessThanOrEqual(DEATH_LAYOUT.title.centerY - half);
   });

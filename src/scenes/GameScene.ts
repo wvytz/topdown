@@ -5,6 +5,7 @@ import type {
   HudData,
   HudSceneData,
   HudSource,
+  HudItemNotice,
   HudToast,
   Vector2,
 } from '@/core/types';
@@ -12,7 +13,8 @@ import { SceneKey } from '@/core/types';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
-import { PickupKind } from '@/core/lootTypes';
+import { ItemKind, PickupKind } from '@/core/lootTypes';
+import { itemFrames } from '@/config/spriteConfig';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
@@ -97,6 +99,8 @@ const COCOON_SEED_SALT = 0xc0c0;
 const STICKY_WEB_SEED_SALT = 0x3eb5;
 const PUFFBALL_SEED_SALT = 0x9bff;
 const TOAST_DURATION_MS = 2500;
+/** Nazwa i efekt zdobytego przedmiotu pod ikonami w HUD (krok 44). */
+const ITEM_NOTICE_MS = 3000;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
 /** Liczby obrażeń od trucizny nad graczem — zieleń jadu (krok 27). */
@@ -125,6 +129,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private run = new RunState(NEW_RUN);
   private startHp: number | null = null;
   private toast: { text: string; at: number; durationMs: number } | null = null;
+  private itemNotice: { itemId: ItemId; at: number } | null = null;
   private floorModifier: FloorModifierDefinition | null = null;
   private floorEffects: FloorModifierEffects = NO_FLOOR_EFFECTS;
   private lighting!: LightingOverlay;
@@ -161,6 +166,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.run = new RunState(data.run);
     this.startHp = data.run.hp;
     this.toast = null;
+    this.itemNotice = null;
     this.death = null;
     this.stairsUnlocked = false;
     this.isTransitioning = false;
@@ -273,8 +279,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
         name: ITEM_DEFINITIONS[id].name,
         count,
         color: ITEM_DEFINITIONS[id].color,
+        frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
+        rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
       })),
       toast: this.currentToast(),
+      itemNotice: this.currentItemNotice(),
       death: this.death,
     };
   }
@@ -465,10 +474,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       rng: createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)),
       config: applyFloorToShrine(SHRINE_CONFIG, this.floorEffects),
       onBlessing: (itemId, cost) => {
-        const item = ITEM_DEFINITIONS[itemId];
         this.player.applyLoadout(this.currentLoadout());
         this.effects.floatingText(this.player.x, this.player.y, `-${cost}`, '#f5c542');
-        this.showToast(`Kapliczka: ${item.name} — ${item.effect}`);
+        this.showItemNotice(itemId);
       },
     });
   }
@@ -494,10 +502,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private grantItem(itemId: ItemId): void {
-    const item = ITEM_DEFINITIONS[itemId];
     this.run.addItem(itemId);
     this.player.applyLoadout(this.currentLoadout());
-    this.showToast(`${item.name}: ${item.effect}`);
+    this.showItemNotice(itemId);
   }
 
   /** Nagroda za bossa: gra staje, gracz wybiera 1 z kart. Po wyborze gra rusza dalej. */
@@ -523,6 +530,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private showToast(text: string, durationMs = TOAST_DURATION_MS): void {
     this.toast = { text, at: this.time.now, durationMs };
+  }
+
+  private showItemNotice(itemId: ItemId): void {
+    this.itemNotice = { itemId, at: this.time.now };
+  }
+
+  private currentItemNotice(): HudItemNotice | null {
+    if (!this.itemNotice) return null;
+    const remainingMs = ITEM_NOTICE_MS - (this.time.now - this.itemNotice.at);
+    const item = ITEM_DEFINITIONS[this.itemNotice.itemId];
+    return remainingMs > 0 ? { name: item.name, effect: item.effect, remainingMs } : null;
   }
 
   private currentToast(): HudToast | null {

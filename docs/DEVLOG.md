@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#ekran-startowy`, `#ekran-smierci` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#ekran-startowy`, `#ekran-smierci`, `#hud` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2904,7 +2904,32 @@ Makieta generatora:
 
 **Weryfikacja:** `npm run build`; zrzut z przeglądarki po 7 s. Wdrożone na GitHub Pages.
 
-**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — do sprawdzenia w testach.
+**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — rozwiązane w kroku 44 (ikony w jednym rzędzie, pas od y = 142).
+
+---
+
+## Krok 44 — HUD: przedmioty jako ikony
+
+**Decyzja właściciela:** `#decyzja` `#hud`
+- z dwóch makiet na kanwie (A: ikony pod złotem, B: pasek na dole) wybrany **wariant A**;
+- przy zdobyciu przedmiotu pokazywać jego **nazwę i efekt mniejszą złotą czcionką**; od razu wdrożyć.
+
+**Co widać:**
+- zamiast tekstowej listy przedmiotów — rząd slotów 28 px pod złotem (y = 114–142): ikona z atlasu łupów (16 px, 1:1), ramka **kości** dla przedmiotów bazowych i **złota** dla rzadszych z efektem broni, licznik kopii ×2, ×3 w rogu;
+- slot na każdy rodzaj przedmiotu (najwyżej 12, kolejność zdobywania);
+- po zdobyciu przedmiotu (podniesienie, kapliczka, nagroda za bossa) pod ikonami przez 3 s: „Nazwa — efekt” (12 px, złoto #f5c542), wygasa w ostatnich 0,8 s;
+- duży komunikat na środku ekranu zostaje dla innych zdarzeń (modyfikator piętra, kraty areny) — przedmioty już go nie używają;
+- pas na ekranie śmierci zaczyna się teraz tuż pod rzędem ikon (pełna czerń od y = 142).
+
+**Kod:**
+- `core/types.ts`: `HudItem.frame`, `HudItem.rare`, `HudItemNotice`, `HudData.itemNotice`;
+- `GameScene`: klatka ikony (`itemFrames`), `rare` = `ItemKind.Effect`, `showItemNotice` zamiast toastu przy przedmiotach;
+- `HudScene`: sloty (ramka, ikona, licznik) budowane raz, przerysowywane tylko przy zmianie listy; podpis pod ikonami;
+- `config/deathScreenConfig.ts`: góra pasa 116 → 130.
+
+**Testy:** pas ekranu śmierci zaczyna się na dole rzędu ikon (142). Ikony korzystają z klatek sprawdzanych w `tests/assets/loot.test.ts`.
+
+**Weryfikacja:** `npm run build` (900 testów); przeglądarka — 12 przedmiotów przez `window.__game` (8 rodzajów, liczniki ×2/×3), podpis „Kołczan — +1 ładunek strzału”, ekran śmierci z pasem pod ikonami; brak błędów w konsoli. Wdrożone na GitHub Pages.
 
 ---
 
@@ -2983,6 +3008,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **HUD z ikonami (krok 44):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).
 - **Ekran śmierci (kroki 40–41):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
 - **Ekran startowy (krok 37):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.

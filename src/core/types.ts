@@ -61,6 +61,8 @@ export interface HudData {
   readonly items: readonly HudItem[];
   /** Ostatni komunikat (np. zdobyty przedmiot); null, gdy nic do pokazania. */
   readonly toast: HudToast | null;
+  /** Ostatnio zdobyty przedmiot (podniesiony, z kapliczki, nagroda za bossa); null, gdy nic do pokazania. */
+  readonly itemNotice: HudItemNotice | null;
   /** Podsumowanie runu po śmierci; null, dopóki gracz żyje. */
   readonly death: DeathSummary | null;
 }
@@ -83,6 +85,17 @@ export interface HudItem {
   readonly name: string;
   readonly count: number;
   readonly color: number;
+  /** Klatka ikony w atlasie łupów (krok 44: ikony zamiast tekstu). */
+  readonly frame: string;
+  /** Rzadszy przedmiot z efektem broni — złota ramka zamiast kościanej. */
+  readonly rare: boolean;
+}
+
+/** Nazwa i efekt świeżo zdobytego przedmiotu — HUD pokazuje je pod ikonami i wygasza. */
+export interface HudItemNotice {
+  readonly name: string;
+  readonly effect: string;
+  readonly remainingMs: number;
 }
 
 export interface HudToast {

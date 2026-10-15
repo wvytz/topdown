@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
-import type { BossHudData, HudSceneData, HudSource, RangedHudData } from '@/core/types';
+import type { BossHudData, HudItem, HudItemNotice, HudSceneData, HudSource, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
+import { ITEM_POOL } from '@/config/lootConfig';
+import { LOOT_ATLAS } from '@/config/spriteConfig';
 import { DeathScreen } from '@/effects/DeathScreen';
 
 const BAR_X = 16;
@@ -22,6 +24,24 @@ const BANNER_MS = 3000;
 const BANNER_FADE_IN_MS = 300;
 const BANNER_FADE_OUT_MS = 900;
 const BANNER_Y = 150;
+/** Przedmioty jako ikony (krok 44, wariant A): rząd slotów pod złotem. */
+const ITEM_SLOT_Y = TEXT_Y + 40;
+const ITEM_SLOT_SIZE = 28;
+const ITEM_SLOT_GAP = 4;
+const ITEM_SLOT_BORDER = 2;
+/** Ramka: kość = przedmiot bazowy, złoto = rzadszy z efektem broni. */
+const ITEM_FRAME_COMMON = 0x9c8f74;
+const ITEM_FRAME_RARE = 0xe7b140;
+/** Nazwa i efekt zdobytego przedmiotu — mniejsza złota czcionka pod ikonami. */
+const ITEM_NOTICE_Y = ITEM_SLOT_Y + ITEM_SLOT_SIZE + 6;
+const ITEM_NOTICE_FADE_MS = 800;
+
+/** Jeden slot przedmiotu w HUD: tło z ramką, ikona i licznik kopii. */
+interface ItemSlot {
+  readonly frame: Phaser.GameObjects.Rectangle;
+  readonly icon: Phaser.GameObjects.Image;
+  readonly count: Phaser.GameObjects.Text;
+}
 /**
  * Osobna scena nakładki — nie podlega zoomowi ani przesuwaniu kamery gry.
  * Co klatkę odczytuje stan z HudSource (GameScene).
@@ -36,7 +56,10 @@ export class HudScene extends Phaser.Scene {
   private deathScreen!: DeathScreen;
   private bossNameText!: Phaser.GameObjects.Text;
   private goldText!: Phaser.GameObjects.Text;
-  private itemsText!: Phaser.GameObjects.Text;
+  private itemSlots: ItemSlot[] = [];
+  /** Podpis ostatnio narysowanych slotów — przerysowujemy tylko przy zmianie. */
+  private itemsSignature = '';
+  private itemNoticeText!: Phaser.GameObjects.Text;
   private toastText!: Phaser.GameObjects.Text;
   private bannerTitle!: Phaser.GameObjects.Text;
   private bannerSubtitle!: Phaser.GameObjects.Text;
@@ -66,12 +89,10 @@ export class HudScene extends Phaser.Scene {
     this.hintText = this.add.text(BAR_X, TEXT_Y, '', { ...style, fontSize: '13px' });
 
     this.goldText = this.add.text(BAR_X, TEXT_Y + 18, '', { ...style, fontSize: '14px', color: '#f5c542' });
-    this.itemsText = this.add.text(BAR_X, TEXT_Y + 38, '', {
-      ...style,
-      fontSize: '12px',
-      color: '#c8c8d8',
-      wordWrap: { width: 460 },
-    });
+    this.itemSlots = this.buildItemSlots(style);
+    this.itemNoticeText = this.add
+      .text(BAR_X, ITEM_NOTICE_Y, '', { ...style, fontSize: '12px', color: '#f5c542', strokeThickness: 3 })
+      .setAlpha(0);
     this.toastText = this.add
       .text(this.scale.width / 2, 70, '', { ...style, fontSize: '18px', color: '#ffe08a' })
       .setOrigin(0.5);
@@ -126,7 +147,8 @@ export class HudScene extends Phaser.Scene {
     }
 
     this.goldText.setText(`Złoto (wynik): ${hud.gold}`);
-    this.itemsText.setText(hud.items.map((i) => (i.count > 1 ? `${i.name} ×${i.count}` : i.name)).join(' · '));
+    this.updateItemSlots(hud.items);
+    this.updateItemNotice(hud.itemNotice);
 
     // Komunikat wygasa w ostatniej sekundzie wyświetlania.
     this.toastText.setText(hud.toast?.text ?? '');
@@ -135,6 +157,48 @@ export class HudScene extends Phaser.Scene {
     this.deathScreen.update(hud.death, time);
     this.drawBossBar(hud.boss);
     this.updateBanner(hud.boss);
+  }
+
+  /** Sloty na wszystkie przedmioty z puli (każdy rodzaj zajmuje jeden slot, kopie liczy licznik). */
+  private buildItemSlots(style: Phaser.Types.GameObjects.Text.TextStyle): ItemSlot[] {
+    return ITEM_POOL.map((_, i) => {
+      const x = BAR_X + i * (ITEM_SLOT_SIZE + ITEM_SLOT_GAP);
+      const inner = ITEM_SLOT_SIZE - ITEM_SLOT_BORDER;
+      const frame = this.add
+        .rectangle(x + ITEM_SLOT_SIZE / 2, ITEM_SLOT_Y + ITEM_SLOT_SIZE / 2, inner, inner, 0x0f0e18, 0.75)
+        .setStrokeStyle(ITEM_SLOT_BORDER, ITEM_FRAME_COMMON);
+      const icon = this.add.image(x + ITEM_SLOT_SIZE / 2, ITEM_SLOT_Y + ITEM_SLOT_SIZE / 2, LOOT_ATLAS.key);
+      const count = this.add
+        .text(x + ITEM_SLOT_SIZE + 1, ITEM_SLOT_Y + ITEM_SLOT_SIZE + 2, '', {
+          ...style,
+          fontSize: '11px',
+          fontStyle: 'bold',
+          strokeThickness: 3,
+        })
+        .setOrigin(1, 1);
+      for (const part of [frame, icon, count]) part.setVisible(false);
+      return { frame, icon, count };
+    });
+  }
+
+  private updateItemSlots(items: readonly HudItem[]): void {
+    const signature = items.map((i) => `${i.frame}:${i.count}`).join('|');
+    if (signature === this.itemsSignature) return;
+    this.itemsSignature = signature;
+    this.itemSlots.forEach((slot, i) => {
+      const item = items[i];
+      for (const part of [slot.frame, slot.icon, slot.count]) part.setVisible(item !== undefined);
+      if (!item) return;
+      slot.frame.setStrokeStyle(ITEM_SLOT_BORDER, item.rare ? ITEM_FRAME_RARE : ITEM_FRAME_COMMON);
+      slot.icon.setFrame(item.frame);
+      slot.count.setText(item.count > 1 ? `×${item.count}` : '');
+    });
+  }
+
+  /** „Nazwa — efekt” pod ikonami; wygasa pod koniec wyświetlania. */
+  private updateItemNotice(notice: HudItemNotice | null): void {
+    this.itemNoticeText.setText(notice ? `${notice.name} — ${notice.effect}` : '');
+    this.itemNoticeText.setAlpha(notice ? Math.min(1, notice.remainingMs / ITEM_NOTICE_FADE_MS) : 0);
   }
 
   /** Plansza: imię i tytuł bossa przy przebudzeniu, okrzyk przy wściekłości (tylko bossowie z tytułem). */

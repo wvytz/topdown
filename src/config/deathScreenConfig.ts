@@ -91,10 +91,10 @@ export const DEATH_LAYOUT = {
   /** Litery szeroko rozstawione (gap 2) — spokojny, ciężki napis. */
   title: { centerY: 196, unit: 8, gap: 2, outline: 2 },
   /**
-   * Pas: pełna szerokość ekranu. Pełna czerń zaczyna się tuż pod HUD-em (lista przedmiotów kończy się ok. y = 128;
-   * nad nią krótkie rozmycie), a w dół sięga o połowę dalej niż w kroku 40 (dół 271 → 346) — w stronę tablicy.
+   * Pas: pełna szerokość ekranu. Pełna czerń zaczyna się tuż pod HUD-em (od kroku 44 rząd ikon przedmiotów
+   * kończy się na y = 142; nad nią krótkie rozmycie), a w dół sięga o połowę dalej niż w kroku 40 (dół 271 → 346).
    */
-  band: { top: 116, bottom: 346, fadeTopPx: 12, fadeBottomPx: 46, alpha: 0.85 },
+  band: { top: 130, bottom: 346, fadeTopPx: 12, fadeBottomPx: 46, alpha: 0.85 },
   glow: { width: 620, height: 150, alpha: 0.3 },
   score: { y: 296, fontSize: 15 },
   /** Gotycki ozdobnik: cienkie linie i mały krzyż pośrodku. */
