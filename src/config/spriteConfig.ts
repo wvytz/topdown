@@ -892,6 +892,9 @@ export const ELITE_VISUAL = {
   /** Plama wybuchu Wybuchowego i kolor jego strefy. */
   volatileZone: 0xffb02e,
   lifestealText: '#7dff9a',
+  /** Komunikat o elicie, gdy pierwszy raz widzi gracza bliżej niż tyle (px; ok. pół widoku). */
+  spotRange: 220,
+  toastMs: 3500,
 } as const;
 
 /**

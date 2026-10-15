@@ -3,6 +3,7 @@ import { floorInLoop } from '@/systems/TowerLoop';
 import type { BossDefinition } from '@/core/bossTypes';
 import { BossAttackKind, BossId, PatternOrder } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
+import { EnemyType } from '@/core/combatTypes';
 import { scaleForFloor } from '@/systems/CombatMath';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
 
@@ -329,6 +330,8 @@ export const GATE_WARDEN = {
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1300,
   pattern: [BossAttackKind.Cleave, BossAttackKind.Slam],
+  // Krok 44 (pomysł właściciela): z trzech stron areny kultyści rzucają bombami zza krat; wychodzą po śmierci Strażnika.
+  galleries: { sides: 3, depth: 2, enemy: EnemyType.Kiter },
   patternOrder: PatternOrder.Shuffled,
   shield: {
     arcDeg: 120,

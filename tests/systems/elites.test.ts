@@ -9,6 +9,7 @@ import { planEncounters } from '@/dungeon/EncounterPlanner';
 import {
   applyElite,
   availableAffixes,
+  eliteAnnouncement,
   eliteLoot,
   eliteRoomChance,
   eliteTitle,
@@ -56,6 +57,20 @@ describe('elity — losowanie (krok 42)', () => {
     expect(eliteRoomChance(ELITE_CONFIG, 40)).toBe(eliteRoomChance(ELITE_CONFIG, 3));
   });
 
+  it('co najmniej jedna elita na piętrze (krok 44), także przy szansie 0', () => {
+    const spawns = [
+      { type: EnemyType.Rusher, room: 1 },
+      { type: EnemyType.Kiter, room: 2 },
+      { type: EnemyType.Rusher, room: 3 },
+    ];
+    for (let seed = 0; seed < 20; seed++) {
+      const none = rollElites(spawns, { ...ELITE_CONFIG, roomChanceByFloor: [0] }, 1, 1, createRng(seed));
+      expect(none.filter((a) => a.length > 0)).toHaveLength(ELITE_CONFIG.minPerFloor);
+    }
+    expect(ELITE_CONFIG.minPerFloor).toBeGreaterThanOrEqual(1);
+    expect(rollElites([], ELITE_CONFIG, 1, 1, createRng(1))).toEqual([]);
+  });
+
   it('cechy odblokowują się z piętrem', () => {
     const first = availableAffixes(ELITE_CONFIG, EnemyType.Rusher, 1);
     expect(first).toContain(EliteAffix.Swift);
@@ -100,5 +115,6 @@ describe('elity — statystyki i łupy', () => {
     expect(lifestealHeal(10, ELITE_CONFIG)).toBe(Math.round(10 * ELITE_CONFIG.vampiric.lifesteal));
     expect(lifestealHeal(0, ELITE_CONFIG)).toBe(0);
     expect(eliteTitle([EliteAffix.Swift, EliteAffix.Fiery], ELITE_CONFIG)).toBe('SZYBKI · OGNISTY');
+    expect(eliteAnnouncement([EliteAffix.Shielded], ELITE_CONFIG)).toBe(`Elita! Tarczownik — ${ELITE_CONFIG.affixes.shielded.hint}`);
   });
 });

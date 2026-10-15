@@ -10,21 +10,23 @@ import type {
   Vector2,
 } from '@/core/types';
 import { SceneKey } from '@/core/types';
-import type { DungeonFloor } from '@/core/dungeonTypes';
+import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { PickupKind } from '@/core/lootTypes';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
-import { CAMERA_CONFIG, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { CAMERA_CONFIG, TILE_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
+import { bossForFloor } from '@/config/bossConfig';
+import { carveArenaGalleries } from '@/dungeon/ArenaGalleries';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { ELITE_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { BeamStrike } from '@/systems/Sorcery';
 import { beamReach, crystalPoint } from '@/systems/Sorcery';
 import {
@@ -42,7 +44,7 @@ import {
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { eliteAffixCount } from '@/systems/TowerLoop';
-import { eliteLoot, isElite, rollElites } from '@/systems/Elites';
+import { eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
 import { BossFight } from '@/combat/BossFight';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
 import { CocoonManager } from '@/combat/CocoonManager';
@@ -156,6 +158,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private death: DeathSummary | null = null;
   private shrine!: ShrineSite;
   private arenaGates!: ArenaGates;
+  /** Wnęki galerii areny (krok 44); pusto, gdy boss piętra ich nie ma. */
+  private galleryPosts: readonly TilePoint[] = [];
+  /** Wrogowie galerii — zawsze widoczni (za kratą w półmroku byliby niewidzialnym działem). */
+  private galleryEnemies = new Set<Phaser.GameObjects.Sprite>();
   /** Cele trafione Burzowym pędem w dashu o numerze `dashHitsFor`. */
   private dashHits = new Set<object>();
   private dashHitsFor = -1;
@@ -198,13 +204,19 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.dashHits = new Set();
     this.dashHitsFor = -1;
     this.healCooldown = new Timer();
+    this.galleryEnemies = new Set();
     // Restart sceny niszczy obiekty — grafika promienia powstanie od nowa.
     this.beamGfx = null;
   }
 
   create(): void {
     const generator = new DungeonGenerator(getDungeonConfigForFloor(this.floorNumber));
-    this.dungeon = generator.generate(deriveSeed(this.runSeed, this.floorNumber));
+    const generated = generator.generate(deriveSeed(this.runSeed, this.floorNumber));
+    // Galerie za kratami na arenie bossa (krok 44, Strażnik Bram) — przed dekorowaniem, bo zmieniają kafle.
+    const galleries = bossForFloor(this.floorNumber).galleries;
+    const carved = galleries ? carveArenaGalleries(generated, galleries.sides, galleries.depth) : { floor: generated, posts: [] };
+    this.dungeon = carved.floor;
+    this.galleryPosts = carved.posts;
     const biome = biomeForFloor(this.floorNumber);
     this.biome = biome;
     const tileset = this.cache.json.get(biome.tileset.jsonKey) as TilesetMeta;
@@ -479,6 +491,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
       },
+      onEliteSpotted: (enemy) => this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs),
     });
 
     const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
@@ -586,8 +599,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
       effects: this.effects,
       isBossFighting: () => this.bossFight.isFighting,
       isBossDefeated: () => this.bossFight.isDefeated,
-      onSealed: () => this.showToast('Kraty opadły — nie ma odwrotu!'),
+      onSealed: () => {
+        this.showToast('Kraty opadły — nie ma odwrotu!');
+        this.manGalleries();
+      },
     });
+  }
+
+  /** Kraty opadły: w galeriach areny stają wrogowie (krok 44); wyjdą, gdy kraty się podniosą. */
+  private manGalleries(): void {
+    const galleries = bossForFloor(this.floorNumber).galleries;
+    if (!galleries) return;
+    for (const post of this.galleryPosts) {
+      const at = DungeonView.tileToWorldCenter(post);
+      this.galleryEnemies.add(this.enemies.spawnAt(galleries.enemy, at));
+      this.effects.impact(at.x, at.y, TILE_SIZE * 0.5);
+    }
   }
 
   private setupLoot(): void {
@@ -819,7 +846,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Wrogowie ukrywani poza światłem: zwykli wrogowie i wszystkie pajączki (bez bossa). */
   private *hideableEnemies(): Iterable<Phaser.GameObjects.Sprite> {
-    if (this.enemies) yield* this.enemies.living;
+    if (this.enemies) for (const enemy of this.enemies.living) if (!this.galleryEnemies.has(enemy)) yield enemy;
     if (this.cocoons) yield* this.cocoons.spiderlings;
     if (this.bossFight) yield* this.bossFight.minions;
   }

@@ -8,14 +8,15 @@ import type { EliteConfig } from '@/systems/Elites';
 export const ELITE_CONFIG: EliteConfig = {
   // Piętro 1 — rzadko (nauka), potem co 2–3 pokoje.
   roomChanceByFloor: [0.2, 0.3, 0.4],
+  minPerFloor: 1,
   hpMultiplier: 2.5,
   damageMultiplier: 1.3,
   affixes: {
-    [EliteAffix.Swift]: { name: 'Szybki', color: 0x5fd4ff, minFloor: 1 },
-    [EliteAffix.Shielded]: { name: 'Tarczownik', color: 0xc9ccd6, minFloor: 1 },
-    [EliteAffix.Vampiric]: { name: 'Wampiryczny', color: 0xe0304a, minFloor: 2 },
-    [EliteAffix.Volatile]: { name: 'Wybuchowy', color: 0xffd23c, minFloor: 2 },
-    [EliteAffix.Fiery]: { name: 'Ognisty', color: 0xff7a1c, minFloor: 3 },
+    [EliteAffix.Swift]: { name: 'Szybki', hint: 'szybko biega i często bije', color: 0x5fd4ff, minFloor: 1 },
+    [EliteAffix.Shielded]: { name: 'Tarczownik', hint: 'z przodu tarcza, obejdź go', color: 0xc9ccd6, minFloor: 1 },
+    [EliteAffix.Vampiric]: { name: 'Wampiryczny', hint: 'leczy się, gdy cię trafi', color: 0xe0304a, minFloor: 2 },
+    [EliteAffix.Volatile]: { name: 'Wybuchowy', hint: 'po śmierci wybucha, odskocz', color: 0xffd23c, minFloor: 2 },
+    [EliteAffix.Fiery]: { name: 'Ognisty', hint: 'zostawia żar na podłodze', color: 0xff7a1c, minFloor: 3 },
   },
   swift: { moveSpeed: 1.35, windup: 0.8, cooldown: 0.7 },
   // Tarcza obraca się wolniej niż chodzi gracz po okręgu — obejście albo dash za plecy się opłaca.

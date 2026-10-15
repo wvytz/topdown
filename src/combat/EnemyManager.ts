@@ -11,7 +11,7 @@ import type { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import { EliteAffix } from '@/core/combatTypes';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { ELITE_VISUAL } from '@/config/spriteConfig';
-import { applyElite, lifestealHeal } from '@/systems/Elites';
+import { applyElite, isElite, lifestealHeal } from '@/systems/Elites';
 import { attachEliteMarker } from '@/effects/EliteMarker';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
 import { facingDirection } from '@/systems/Facing';
@@ -53,6 +53,8 @@ export interface EnemyManagerDeps {
   readonly decals: CombatDecals;
   readonly onPlayerHit: () => void;
   readonly onEnemyKilled: (enemy: Enemy) => void;
+  /** Elita pierwszy raz widzi gracza z bliska (krok 44: komunikat z podpowiedzią). */
+  readonly onEliteSpotted?: (enemy: Enemy) => void;
 }
 
 /** Bomba smolna w locie (krok 41d). */
@@ -85,6 +87,7 @@ export class EnemyManager implements EnemyAttackHandler {
   private blasts: PendingBlast[] = [];
   /** Ognista elita: miejsce ostatniego kawałka smugi żaru. */
   private readonly trailFrom = new WeakMap<Enemy, Vector2>();
+  private readonly spotted = new WeakSet<Enemy>();
   private readonly telegraphs: Phaser.GameObjects.Graphics;
   private readonly fire: Phaser.GameObjects.Graphics;
 
@@ -166,6 +169,10 @@ export class EnemyManager implements EnemyAttackHandler {
       const canSeeTarget = !player.isDead && hasLineOfSight(floor, enemy, target, TILE_SIZE);
       enemy.tick({ target, canSeeTarget }, now, this);
       this.updateFieryTrail(enemy, now);
+      if (canSeeTarget && isElite(enemy.definition) && !this.spotted.has(enemy) && distance(enemy, player) <= ELITE_VISUAL.spotRange) {
+        this.spotted.add(enemy);
+        this.deps.onEliteSpotted?.(enemy);
+      }
     }
     this.updateHellAttacks(now);
   }

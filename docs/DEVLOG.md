@@ -3099,6 +3099,24 @@ Co kilka pokojów jeden zwykły wróg jest **elitą**: 2,5× HP, 1,3× obrażeni
 
 **Do decyzji później:** finałowy boss (koniec kręgu albo osobne piętro), ewentualne dodatkowe utrudnienia kręgu poza skalowaniem i cechami elit.
 
+## Krok 44 — Galerie za kratami u Strażnika Bram; wyraźniejsze elity `#elity` `#pieklo`
+
+**Ocena właściciela po krokach 42–43** `#ocena` `#elity` `#pieklo`: „nie zauważyłem żadnego potwora elity”; „Tarczownik jest mega wolny i może niech tak zostanie” — chodzi o Strażnika Bram (boss z tarczą, piętro 5; tylko arena bossa ma kraty). Pomysł właściciela `#decyzja`: z 3 stron jego pokoju magowie rzucający bombami zza krat, które otwierają się dopiero po jego pokonaniu. Prędkość Strażnika bez zmian.
+
+**Galerie areny** (`dungeon/ArenaGalleries.ts`, czyste, bez RNG):
+- `carveArenaGalleries(floor, 3, 2)` wykuwa w litej skale za ścianą areny wnęki głębokie na 2 kafle, w ścianach bez wejść (najpierw), jak najbliżej środka ściany. Ściana bez miejsca (np. przy krawędzi mapy) jest pomijana — w próbce średnio ponad 2,5 galerii na arenę.
+- Kafel ściany przed wnęką staje się przejściem w pierścieniu wokół areny, więc dostaje zwykłą kratę (`findRoomEntrances`): opada z resztą, gdy zaczyna się walka, i podnosi się po śmierci bossa. Krata blokuje kule, strzały i promień; z wnęki (2 kafle) nie sięga cios wręcz.
+- Gdy kraty opadną, w każdej wnęce staje Kiter piętra (w Piekle kultysta) i rzuca bomby łukiem ponad kratą. Po śmierci Strażnika wychodzi z galerii. Wrogowie galerii nie znikają w półmroku (za kratą byliby niewidzialnym działem).
+- `BossDefinition.galleries` (`ArenaGalleryDefinition`): Strażnik Bram `{ sides: 3, depth: 2, enemy: Kiter }`.
+
+**Elity — wyraźniej:**
+- Co najmniej jedna elita na piętrze (`ELITE_CONFIG.minPerFloor = 1`) — wcześniej na piętrze 1 ok. 35% pięter nie miało żadnej.
+- Gdy elita pierwszy raz widzi gracza z bliska (220 px), komunikat z podpowiedzią, np. „Elita! Tarczownik — z przodu tarcza, obejdź go”.
+
+**Testy:** `tests/dungeon/ArenaGalleries.test.ts` (wnęki tylko w skale, nowe wejścia areny, różne ściany, determinizm), `elites.test.ts` (minimum elit, komunikat); `ArenaGalleries.ts` w `PURE_FILES`. Build: 1039 testów.
+
+**Weryfikacja w przeglądarce:** `?floor=5&seed=7&hero=sorceress` — dwie galerie (północ przy krawędzi mapy), kraty galerii zamknięte w walce (kafle kolizji), kultyści widoczni za kratami i rzucają bomby; `?floor=1&seed=5` — komunikat o Tarczowniku; bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

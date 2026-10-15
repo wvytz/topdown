@@ -1,5 +1,5 @@
 /** Typy domenowe bossa — czyste dane, bez zależności od Phasera. */
-import type { ParalysisEffect, PoisonEffect, StatusApplication } from '@/core/combatTypes';
+import type { EnemyType, ParalysisEffect, PoisonEffect, StatusApplication } from '@/core/combatTypes';
 import type { IntRange } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 
@@ -325,6 +325,17 @@ export interface BossEnrageConfig {
   readonly restMultiplier: number;
 }
 
+/**
+ * Galerie areny (krok 44): w `sides` ścianach areny (najpierw tych bez wejść) wnęka głęboka na `depth` kafli,
+ * odgrodzona kratą. Gdy kraty opadną, w każdej staje wróg `enemy` (dystansowy rzuca łukiem ponad kratą);
+ * kraty galerii podnoszą się razem z resztą po pokonaniu bossa — wtedy wrogowie wychodzą.
+ */
+export interface ArenaGalleryDefinition {
+  readonly sides: number;
+  readonly depth: number;
+  readonly enemy: EnemyType;
+}
+
 export interface BossDefinition {
   readonly id: BossId;
   readonly name: string;
@@ -367,6 +378,8 @@ export interface BossDefinition {
   readonly kindle?: KindleAttackDefinition;
   /** Paleniska na arenie (Kat): tyle, rozstawione w ćwiartkach areny; buchają przy oddechu. */
   readonly arenaBraziers?: number;
+  /** Galerie za kratami (Strażnik Bram, krok 44): wnęki w ścianach areny z wrogami dystansowymi. */
+  readonly galleries?: ArenaGalleryDefinition;
   readonly fireRing?: FireRingDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;

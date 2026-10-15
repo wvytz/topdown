@@ -16,6 +16,8 @@ export interface EliteAffixDefinition {
   readonly color: number;
   /** Najniższe piętro, na którym cecha się pojawia. */
   readonly minFloor: number;
+  /** Podpowiedź w komunikacie przy pierwszym spotkaniu elity (krok 44). */
+  readonly hint: string;
   /** Archetypy, które mogą ją dostać; brak = każdy. */
   readonly types?: readonly EnemyType[];
 }
@@ -23,6 +25,8 @@ export interface EliteAffixDefinition {
 export interface EliteConfig {
   /** Szansa na elitę w pokoju z wrogami, wg piętra (indeks 0 = piętro 1; dalej ostatnia wartość). */
   readonly roomChanceByFloor: readonly number[];
+  /** Najmniej elit na piętrze (krok 44: właściciel nie trafił na żadną) — dolosowane w pokojach bez elity. */
+  readonly minPerFloor: number;
   readonly hpMultiplier: number;
   readonly damageMultiplier: number;
   readonly affixes: Readonly<Record<EliteAffix, EliteAffixDefinition>>;
@@ -64,7 +68,7 @@ export function availableAffixes(config: EliteConfig, type: EnemyType, floor: nu
 
 /**
  * Wybiera elity: w każdym pokoju z wrogami z szansą piętra jeden wróg dostaje `affixCount` różnych cech
- * (mniej, jeśli tyle nie ma). Zwraca cechy dla każdego spawnu (pusto = zwykły wróg), w kolejności spawnów.
+ * (mniej, jeśli tyle nie ma); na piętrze jest co najmniej `minPerFloor` elit (o ile starczy pokojów). Zwraca cechy dla każdego spawnu (pusto = zwykły wróg), w kolejności spawnów.
  * Losuje zawsze tyle samo razy na pokój — elity w jednym pokoju nie zależą od reszty piętra.
  */
 export function rollElites(
@@ -77,11 +81,18 @@ export function rollElites(
   const result: EliteAffix[][] = spawns.map(() => []);
   const rooms = [...new Set(spawns.map((s) => s.room))];
   const chance = eliteRoomChance(config, floor);
-  for (const room of rooms) {
+  const picks = rooms.map((room) => {
     const members = spawns.flatMap((s, i) => (s.room === room ? [i] : []));
     const roll = rng.next();
-    const pick = members[Math.floor(rng.next() * members.length)]!;
-    if (roll >= chance) continue;
+    return { pick: members[Math.floor(rng.next() * members.length)]!, elite: roll < chance };
+  });
+  // Za mało elit: dolosowujemy pokoje spośród tych bez elity.
+  const spare = picks.filter((p) => !p.elite);
+  while (picks.filter((p) => p.elite).length < config.minPerFloor && spare.length > 0) {
+    spare.splice(Math.floor(rng.next() * spare.length), 1)[0]!.elite = true;
+  }
+  for (const { pick, elite } of picks) {
+    if (!elite) continue;
     const pool = availableAffixes(config, spawns[pick]!.type, floor);
     const chosen: EliteAffix[] = [];
     while (chosen.length < affixCount && pool.length > 0) {
@@ -131,6 +142,11 @@ export function eliteLoot(table: LootTable, config: EliteConfig): LootTable {
 /** Leczenie wampirycznej elity za zadane obrażenia (co najmniej 1, gdy coś zadała). */
 export function lifestealHeal(damageDealt: number, config: EliteConfig): number {
   return damageDealt > 0 ? Math.max(1, Math.round(damageDealt * config.vampiric.lifesteal)) : 0;
+}
+
+/** Komunikat przy pierwszym spotkaniu: nazwy cech i podpowiedź do każdej. */
+export function eliteAnnouncement(affixes: readonly EliteAffix[], config: EliteConfig): string {
+  return `Elita! ${affixes.map((a) => `${config.affixes[a].name} — ${config.affixes[a].hint}`).join(' · ')}`;
 }
 
 /** Napis nad elitą: nazwy cech po kolei. */
