@@ -1,5 +1,5 @@
 /**
- * Ekran startowy (krok 34): czasy, układ, paleta i rysunek tła.
+ * Ekran startowy (krok 34, „epicka” wersja z nazwą TOP DOWN w kroku 36): czasy, układ, paleta i rysunek tła.
  * Paleta z systemu „Matka Pająków” (chityna, ogień jaj, oczy, kość); projekt na kanwie Claude Design.
  */
 
@@ -19,43 +19,56 @@ export const SPLASH_PALETTE = {
   eye2: 0xf4c7a3,
   bone0: 0x9c8f74,
   bone1: 0xd8ccb0,
+  bone2: 0xe8e0c0,
 } as const;
 
-/** Oś czasu w ms od startu sceny. Całość ok. 2,8 s; tytuł trzyma się dłużej, jeśli gra jeszcze się ładuje. */
+/** Napis na ekranie startowym: nazwa gry, słowa uderzają po kolei (krok 36). */
+export const SPLASH_TITLE_WORDS = ['TOP', 'DOWN'] as const;
+
+/**
+ * Oś czasu w ms od startu sceny (krok 36: wersja „epicka”). Całość ok. 3,9 s;
+ * tytuł trzyma się dłużej, jeśli gra jeszcze się ładuje.
+ */
 export const SPLASH_TIMING = {
-  /** Wyjście tła z czerni. */
-  backdropIn: 300,
-  /** Start uderzenia „CRAWLER”. */
-  slamAt: 400,
-  /** Lot napisu ze skali `slamFromScale` do `slamUndershoot`. */
+  /** Błyski pioruna w ciemności — na moment wydobywają sylwetkę wieży. */
+  lightningAt: [150, 330],
+  lightningPeak: [0.85, 0.55],
+  lightningDecay: 170,
+  /** Wyjście tła z czerni po piorunach. */
+  backdropAt: 500,
+  backdropIn: 450,
+  /** Uderzenia słów (TOP, potem mocniej DOWN). */
+  wordSlamAt: [700, 1050],
+  /** Lot słowa ze skali `slamFromScale` do `slamUndershoot`. */
   slamDuration: 180,
-  slamFromScale: 2.6,
-  slamUndershoot: 0.94,
-  slamOvershoot: 1.04,
+  slamFromScale: 3,
+  slamUndershoot: 0.92,
+  slamOvershoot: 1.05,
   /** Odbicie po uderzeniu: undershoot → overshoot → 1. */
-  settleDuration: 160,
-  flashAlpha: 0.8,
-  flashDuration: 300,
-  shakeDuration: 250,
-  shakeIntensity: 0.006,
-  /** Opadanie „TOWER” w `towerSteps` skokach (pikselowo, bez płynnego ruchu). */
-  towerAt: 800,
-  towerDuration: 200,
-  towerSteps: 4,
-  towerDropPx: 24,
+  settleDuration: 180,
+  /** Błysk i wstrząs każdego uderzenia (ostatnie najmocniejsze). */
+  flashAlpha: [0.5, 0.85],
+  flashDuration: 350,
+  shakeDuration: [200, 420],
+  shakeIntensity: [0.005, 0.013],
+  /** Promienie światła zza ruin rozjaśniają się po ostatnim uderzeniu. */
+  raysFadeIn: 700,
+  /** Rozgrzany połysk przesuwa się po literach. */
+  shineAt: 1500,
+  shineDuration: 650,
   /** Oczy w ruinach: zapalają się i co jakiś czas mrugają. */
-  eyesAt: 1200,
+  eyesAt: 1700,
   /** Druga grupa oczu zapala się później. */
-  lateEyesDelay: 700,
+  lateEyesDelay: 600,
   blinkPeriod: 2200,
   blinkOffset: 900,
   blinkLength: 120,
   /** Wpisywanie podtytułu znak po znaku. */
-  subtitleAt: 1500,
+  subtitleAt: 2000,
   subtitleCharMs: 28,
   /** Wygaszenie do czerni i start pierwszej planszy. */
-  fadeOutAt: 2400,
-  fadeOutDuration: 400,
+  fadeOutAt: 3400,
+  fadeOutDuration: 500,
 } as const;
 
 export type SplashTiming = typeof SPLASH_TIMING;
@@ -66,18 +79,24 @@ export const SPLASH_LAYOUT = {
   artScale: 4,
   detailScale: 2,
   centerX: 480,
-  tower: { top: 150, unit: 5, gap: 3, ornamentWidth: 72, ornamentGap: 20 },
-  crawler: { centerY: 266, unit: 16, gap: 1, extrude: 4 },
-  subtitle: { y: 372, fontSize: 14, letterSpacing: 6 },
-  glow: { width: 600, height: 300, alpha: 0.38 },
+  title: { centerY: 238, unit: 16, gap: 1, extrude: 4 },
+  /** Połysk: ukośny pas w pikselach fontu (szerokość, pochylenie na wiersz). */
+  shine: { width: 2.5, slant: 0.5 },
+  ornament: { y: 330, width: 120, gap: 18 },
+  subtitle: { y: 368, fontSize: 14, letterSpacing: 6 },
+  glow: { width: 760, height: 340, alpha: 0.42 },
+  /** Promienie światła z punktu za tytułem. */
+  rays: { count: 14, size: 1100, alpha: 0.13, spinDegPerSec: 3 },
+  /** Piorun ma chłodny, kościany kolor — tylko na moment. */
+  lightningColor: 0xe8e0c0,
   vignetteAlpha: 0.92,
   scanlineAlpha: 0.28,
-  embers: { count: 12, minDurationMs: 3900, maxDurationMs: 6600, risePx: 340 },
+  embers: { count: 20, minDurationMs: 3200, maxDurationMs: 6000, risePx: 380 },
   spiderDangle: { px: 6, periodMs: 4000, steps: 6 },
   primeBlinkMs: 400,
 } as const;
 
-/** Pasy ognia w wierszach liter „CRAWLER” (7 wierszy fontu): od blasku do bazy. */
+/** Pasy ognia w wierszach liter (7 wierszy fontu): od blasku do bazy. */
 export const SPLASH_TITLE_BANDS = [
   SPLASH_PALETTE.egg3,
   SPLASH_PALETTE.egg3,

@@ -17,19 +17,34 @@ import {
   SPLASH_SPIDER_EYES,
   SPLASH_TIMING,
   SPLASH_TITLE_BANDS,
+  SPLASH_TITLE_WORDS,
   SPLASH_WEBS,
 } from '@/config/splashConfig';
-import { pixelLine, pixelText } from '@/core/pixelArt';
+import { GLYPH_WIDTH, pixelLine, pixelText } from '@/core/pixelArt';
+import type { PixelCell } from '@/core/pixelArt';
 import type { SplashFrame } from '@/systems/splashTimeline';
-import { splashFadeStart, splashFrame, splashImpactAt } from '@/systems/splashTimeline';
+import { splashFadeStart, splashFrame, splashImpacts } from '@/systems/splashTimeline';
 import { BOOT_START_DATA_KEY } from '@/scenes/BootScene';
 
 const GLOW_TEXTURE = 'splash-glow';
 const VIGNETTE_TEXTURE = 'splash-vignette';
 const SCANLINE_TEXTURE = 'splash-scanlines';
+const RAYS_TEXTURE = 'splash-rays';
+
+/** Słowo tytułu: kontener (skala przy uderzeniu), warstwa połysku i jego piksele. */
+interface TitleWord {
+  readonly container: Phaser.GameObjects.Container;
+  readonly shine: Phaser.GameObjects.Graphics;
+  readonly cells: readonly PixelCell[];
+  /** Lewy górny róg słowa w kontenerze (px) i jego pierwsza kolumna w całym napisie (piksele fontu). */
+  readonly left: number;
+  readonly top: number;
+  readonly column: number;
+}
 
 /**
- * Ekran startowy (krok 34): logo w stylu automatów na tle ruin wieży, przez ok. 2,8 s.
+ * Ekran startowy (krok 34; od kroku 36 nazwa TOP DOWN i „epickie” otwarcie): pioruny w ciemności,
+ * słowa uderzają po kolei, promienie światła zza ruin i połysk na literach — ok. 3,9 s.
  * W tym czasie w tle ładuje się BootScene; tytuł trzyma się dłużej, jeśli ładowanie trwa.
  * Wszystko rysujemy prostokątami — ekran nie potrzebuje żadnych plików.
  */
@@ -39,11 +54,15 @@ export class SplashScene extends Phaser.Scene {
   private startTime: number | null = null;
   private fadeFrom: number | null = null;
   private skipRequested = false;
-  private impactDone = false;
+  /** Ile uderzeń słów już obsłużono (wstrząs kamery). */
+  private impactsDone = 0;
   private finished = false;
 
-  private crawler!: Phaser.GameObjects.Container;
-  private tower!: Phaser.GameObjects.Container;
+  private words: TitleWord[] = [];
+  /** Szerokość całego napisu w pikselach fontu (połysk przechodzi przez nią). */
+  private titleColumns = 0;
+  private rays!: Phaser.GameObjects.Image;
+  private lightning!: Phaser.GameObjects.Rectangle;
   private subtitle!: Phaser.GameObjects.Text;
   private subtitleFull = '';
   private glow!: Phaser.GameObjects.Image;
@@ -64,16 +83,22 @@ export class SplashScene extends Phaser.Scene {
     this.scene.launch(SceneKey.Boot);
     this.cameras.main.setBackgroundColor(P.chitin0);
 
+    // Promienie za ruinami: sylwetki tła je zasłaniają, więc światło „wychodzi” zza wieży.
+    this.rays = this.add
+      .image(L.centerX, L.title.centerY, this.raysTexture())
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0);
     this.drawBackdrop();
-    this.glow = this.add.image(L.centerX, L.crawler.centerY, this.glowTexture()).setAlpha(0);
+    this.glow = this.add.image(L.centerX, L.title.centerY, this.glowTexture()).setAlpha(0);
     this.addEmbers();
-    this.tower = this.buildTowerTitle();
-    this.crawler = this.buildCrawlerTitle();
+    this.words = this.buildTitle();
+    this.buildOrnament();
     this.subtitle = this.buildSubtitle();
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.vignetteTexture());
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, this.scanlineTexture()).setOrigin(0);
     this.flash = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.egg3).setOrigin(0).setAlpha(0);
     this.blackout = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.chitin0).setOrigin(0);
+    this.lightning = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, L.lightningColor).setOrigin(0).setAlpha(0);
 
     const skip = (): void => {
       this.skipRequested = true;
@@ -100,9 +125,11 @@ export class SplashScene extends Phaser.Scene {
     const frame = splashFrame(this.elapsed, this.fadeFrom);
     this.drawFrame(frame);
 
-    if (!this.impactDone && this.elapsed >= splashImpactAt()) {
-      this.impactDone = true;
-      this.cameras.main.shake(SPLASH_TIMING.shakeDuration, SPLASH_TIMING.shakeIntensity);
+    const impacts = splashImpacts();
+    const nextImpact = impacts[this.impactsDone];
+    if (nextImpact !== undefined && this.elapsed >= nextImpact) {
+      const i = this.impactsDone++;
+      this.cameras.main.shake(SPLASH_TIMING.shakeDuration[i] ?? 0, SPLASH_TIMING.shakeIntensity[i] ?? 0, true);
     }
     if (frame.done && bootData) {
       this.finished = true;
@@ -116,8 +143,13 @@ export class SplashScene extends Phaser.Scene {
     this.flash.setAlpha(f.flashAlpha);
     // Poświata lekko „oddycha” jak płomień pochodni (efekt czysto wizualny).
     this.glow.setAlpha(f.glowAlpha * (0.85 + 0.15 * Math.sin(this.elapsed / 260)));
-    this.crawler.setVisible(f.titleVisible).setScale(f.titleScale);
-    this.tower.setAlpha(f.towerAlpha).setY(L.tower.top - f.towerOffsetY);
+    this.lightning.setAlpha(f.lightning * 0.35);
+    this.rays.setAlpha(f.raysAlpha).setAngle((this.elapsed / 1000) * L.rays.spinDegPerSec);
+    this.words.forEach((word, i) => {
+      const state = f.words[i];
+      word.container.setVisible(state?.visible ?? false).setScale(state?.scale ?? 1);
+      this.drawShine(word, f.shine);
+    });
     this.subtitle.setText(this.subtitleFull.slice(0, f.subtitleChars));
     this.eyes.setVisible(f.eyesOn);
     this.lateEyes.setVisible(f.lateEyesOn);
@@ -186,50 +218,66 @@ export class SplashScene extends Phaser.Scene {
 
   // ——— napisy ———
 
-  private buildTowerTitle(): Phaser.GameObjects.Container {
-    const { unit, gap, ornamentWidth, ornamentGap } = L.tower;
-    const text = pixelText('TOWER', gap);
-    const w = text.width * unit;
-    const h = text.height * unit;
-    const g = this.add.graphics();
-    const left = -w / 2;
-    for (const [dy, color] of [[unit, P.outline], [0, P.bone1]] as const) {
-      g.fillStyle(color);
-      for (const { x, y } of text.cells) g.fillRect(left + x * unit, y * unit + dy, unit, unit);
-    }
-    // Ozdobniki: romb ognia i belka po obu stronach.
-    const midY = h / 2;
-    const ornaments = [-1, 1].flatMap((side) => {
-      const inner = side * (w / 2 + ornamentGap);
-      return [
-        this.add.rectangle(inner + side * 4, midY, 8, 8, P.egg1).setAngle(45),
-        this.add.rectangle(inner + side * (12 + ornamentWidth / 2), midY, ornamentWidth, 4, P.chitin3),
-      ];
+  /** Napis TOP DOWN: każde słowo we własnym kontenerze (uderzają osobno), wspólny układ jak jeden napis. */
+  private buildTitle(): TitleWord[] {
+    const { unit, gap, extrude: e } = L.title;
+    const full = pixelText(SPLASH_TITLE_WORDS.join(' '), gap);
+    this.titleColumns = full.width;
+    const fullLeft = (-full.width * unit) / 2;
+    let column = 0;
+    return SPLASH_TITLE_WORDS.map((word) => {
+      const text = pixelText(word, gap);
+      const width = text.width * unit;
+      const left = -width / 2;
+      const top = (-text.height * unit) / 2;
+      const g = this.add.graphics();
+      const layer = (dx: number, dy: number, color: number): void => {
+        g.fillStyle(color);
+        for (const { x, y } of text.cells) g.fillRect(left + x * unit + dx, top + y * unit + dy, unit, unit);
+      };
+      // Wytłoczenie w dół (od najgłębszego cienia), obrys, ognista warga i lico w pasach ognia.
+      layer(0, 6 * e, P.chitin0);
+      layer(0, 5 * e, P.chitin0);
+      layer(0, 4 * e, P.chitin1);
+      layer(0, 3 * e, P.chitin2);
+      layer(0, 2 * e, P.chitin3);
+      for (const [dx, dy] of [[-e, 0], [e, 0], [0, -e], [-e, e], [e, e]] as const) layer(dx, dy, P.outline);
+      layer(0, e, P.egg0);
+      for (const { x, y } of text.cells) {
+        g.fillStyle(SPLASH_TITLE_BANDS[y] ?? P.egg1).fillRect(left + x * unit, top + y * unit, unit, unit);
+      }
+      const shine = this.add.graphics();
+      const centerX = L.centerX + fullLeft + (column * unit + width / 2);
+      const container = this.add.container(centerX, L.title.centerY, [g, shine]).setVisible(false);
+      const built: TitleWord = { container, shine, cells: text.cells, left, top, column };
+      column += word.length * (GLYPH_WIDTH + gap) + GLYPH_WIDTH + gap; // słowo + spacja
+      return built;
     });
-    return this.add.container(L.centerX, L.tower.top, [g, ...ornaments]);
   }
 
-  private buildCrawlerTitle(): Phaser.GameObjects.Container {
-    const { unit, gap, extrude: e } = L.crawler;
-    const text = pixelText('CRAWLER', gap);
-    const left = (-text.width * unit) / 2;
-    const top = (-text.height * unit) / 2;
-    const g = this.add.graphics();
-    const layer = (dx: number, dy: number, color: number): void => {
-      g.fillStyle(color);
-      for (const { x, y } of text.cells) g.fillRect(left + x * unit + dx, top + y * unit + dy, unit, unit);
-    };
-    // Wytłoczenie w dół (od najgłębszego cienia), obrys, ognista warga i lico w pasach ognia.
-    layer(0, 5 * e, P.chitin0);
-    layer(0, 4 * e, P.chitin1);
-    layer(0, 3 * e, P.chitin2);
-    layer(0, 2 * e, P.chitin3);
-    for (const [dx, dy] of [[-e, 0], [e, 0], [0, -e], [-e, e], [e, e]] as const) layer(dx, dy, P.outline);
-    layer(0, e, P.egg0);
-    for (const { x, y } of text.cells) {
-      g.fillStyle(SPLASH_TITLE_BANDS[y] ?? P.egg1).fillRect(left + x * unit, top + y * unit, unit, unit);
+  /** Połysk: ukośny pas jasnych pikseli przesuwa się po literach (jak po rozgrzanym metalu). */
+  private drawShine(word: TitleWord, shine: number | null): void {
+    word.shine.clear();
+    if (shine === null) return;
+    const { unit } = L.title;
+    const { width, slant } = L.shine;
+    const travel = this.titleColumns + width * 2 + 7 * slant;
+    const pos = -width + shine * travel;
+    for (const { x, y } of word.cells) {
+      const d = Math.abs(word.column + x + y * slant - pos);
+      if (d > width) continue;
+      word.shine.fillStyle(d < width / 2 ? P.bone2 : P.egg3).fillRect(word.left + x * unit, word.top + y * unit, unit, unit);
     }
-    return this.add.container(L.centerX, L.crawler.centerY, [g]).setVisible(false);
+  }
+
+  /** Ozdobnik pod napisem: belki i romby ognia. */
+  private buildOrnament(): void {
+    const { y, width, gap } = L.ornament;
+    for (const side of [-1, 1]) {
+      this.add.rectangle(L.centerX + side * gap, y, 8, 8, P.egg1).setAngle(45);
+      this.add.rectangle(L.centerX + side * (gap + 12 + width / 2), y, width, 4, P.chitin3);
+    }
+    this.add.rectangle(L.centerX, y, 6, 6, P.egg2).setAngle(45);
   }
 
   private buildSubtitle(): Phaser.GameObjects.Text {
@@ -269,6 +317,34 @@ export class SplashScene extends Phaser.Scene {
     ctx.restore();
     canvas.refresh();
     return key;
+  }
+
+  /** Promienie: naprzemienne kliny ciepłego światła gasnące ku brzegom. */
+  private raysTexture(): string {
+    if (this.textures.exists(RAYS_TEXTURE)) return RAYS_TEXTURE;
+    const { count, size, alpha } = L.rays;
+    const canvas = this.textures.createCanvas(RAYS_TEXTURE, size, size);
+    const ctx = canvas?.getContext();
+    if (!canvas || !ctx) return RAYS_TEXTURE;
+    const r = size / 2;
+    const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
+    grad.addColorStop(0, `rgba(241, 226, 169, ${alpha})`);
+    grad.addColorStop(0.5, `rgba(231, 177, 64, ${alpha * 0.6})`);
+    grad.addColorStop(1, 'rgba(211, 108, 0, 0)');
+    ctx.fillStyle = grad;
+    const step = (Math.PI * 2) / count;
+    for (let i = 0; i < count; i++) {
+      // Kliny o lekko różnej szerokości — mniej mechanicznie.
+      const a = i * step;
+      const w = step * (i % 3 === 0 ? 0.42 : 0.26);
+      ctx.beginPath();
+      ctx.moveTo(r, r);
+      ctx.arc(r, r, r, a - w / 2, a + w / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    canvas.refresh();
+    return RAYS_TEXTURE;
   }
 
   private vignetteTexture(): string {

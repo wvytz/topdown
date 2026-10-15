@@ -2701,6 +2701,34 @@ Makieta generatora:
 
 ---
 
+## Krok 36 — Ekran startowy: nazwa TOP DOWN i epickie otwarcie
+
+**Decyzja właściciela:** `#decyzja` `#ekran-startowy`
+- na ekranie startowym ma być oryginalna nazwa gry: **TOP DOWN** (zamiast „Tower Crawler”);
+- klimat zostaje, ale otwarcie ma być „jeszcze bardziej doniosłe, bardziej epickie”.
+
+**Sekwencja (ok. 3,9 s, dalej do pominięcia klawiszem lub klikiem):**
+- 0,15 s i 0,33 s: dwa błyski pioruna w ciemności — na moment odsłaniają sylwetkę wieży, potem znowu czerń;
+- 0,5 s: ruiny wychodzą z mroku;
+- 0,7 s: uderza **TOP** (skala 3 → 1 z odbiciem), lżejszy błysk i wstrząs;
+- 1,05 s: uderza **DOWN** — mocniejszy błysk i dwa razy silniejszy wstrząs; od tej chwili pełna poświata;
+- po ostatnim uderzeniu zza ruin wychodzą wolno obracające się promienie ciepłego światła (sylwetki ruin je zasłaniają, więc światło bije zza wieży);
+- 1,5 s: po literach przechodzi ukośny połysk (kość i blask ognia), jak po rozgrzanym metalu;
+- litery głębiej wytłoczone (6 stopni), pod napisem ozdobnik z rombami ognia, więcej iskier (20);
+- 1,7 s: oczy w ruinach, 2,0 s: „— PIĘTRO 1 · RUINY WIEŻY —”, 3,4 s: wygaszenie i start piętra 1.
+
+**Kod:**
+- `core/pixelArt.ts`: litery D i N;
+- `config/splashConfig.ts`: `SPLASH_TITLE_WORDS`, nowa oś czasu (pioruny, uderzenia słów z własnym błyskiem i wstrząsem, promienie, połysk), układ;
+- `systems/splashTimeline.ts`: `splashFrame` zwraca stan pioruna, każdego słowa, promieni i połysku; `splashImpacts` zamiast jednego uderzenia;
+- `scenes/SplashScene.ts`: słowa w osobnych kontenerach, warstwa połysku, tekstura promieni (mieszanie ADD), piorun.
+
+**Testy:** `splashTimeline.test.ts` przepisany (14): nazwa składa się z fontu, piorun odsłania tło, kolejność i odbicie słów, mocniejsze ostatnie uderzenie, poświata i promienie, połysk, oczy, podtytuł, zapas przed wygaszeniem, przejście do gry.
+
+**Weryfikacja:** `npm run build` (892 testy); przeglądarka — zrzuty uderzenia DOWN, promieni z połyskiem i stanu końcowego, potem aktywne `GameScene`, brak błędów w konsoli.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -2777,7 +2805,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **2. Do oceny przy okazji**
 - **Ekran śmierci (krok 35):** `#ekran-smierci` siła przyciemnienia (62%), tempo i zasięg rozkładu napisu (30% bloków w 7 s), ilość krwi.
-- **Ekran startowy (krok 34):** `#ekran-startowy` długość (ok. 2,8 s), siła wstrząsu i błysku, czytelność tła — do oceny w teście właściciela.
+- **Ekran startowy (kroki 34, 36):** `#ekran-startowy` długość (ok. 3,9 s), siła wstrząsu i błysku, czytelność tła — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (tylko `npm run dev`, `BootScene.devStartOverrides`). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
