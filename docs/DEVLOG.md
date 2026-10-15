@@ -2617,6 +2617,35 @@ Makieta generatora:
 
 **Ograniczenie:** `?seed=N&floor=M` działa tylko w `npm run dev` — testerzy zaczynają od piętra 1.
 
+## Wspólna lista wyników — Cloudflare Worker `#highscore`
+
+**Decyzja właściciela:** `#decyzja` `#highscore`
+- GitHub Pages tylko serwuje pliki, więc wspólna lista wyników stoi na osobnej usłudze: **Cloudflare Worker + baza D1** (wybór właściciela po porównaniu Supabase / Firebase / Cloudflare).
+- **Imię gracza (decyzja właściciela): wpisywane po śmierci.** Przy pierwszej śmierci panel prosi o imię (max 12 znaków: litery, cyfry, spacja, `_`, `-`; Enter zapisuje, Esc pomija). Gra je zapamiętuje i kolejne wyniki idą już z nim.
+
+**Zrobione:**
+- `persistence/SharedHighscores.ts`: obudowuje dotychczasowy `HighscoreStorage` (interfejs bez zmian):
+  - zapis lokalny od razu, panel śmierci pokazuje go natychmiast;
+  - wspólna lista dochodzi asynchronicznie i podmienia podium i miejsce;
+  - bez sieci wynik czeka w kolejce (`localStorage`, max 20) i leci przy następnej śmierci.
+- `persistence/remoteScores.ts`: adapter workera (`GET/POST /scores`); adres z `VITE_SCORES_URL`. Bez adresu gra działa jak dawniej (lista lokalna).
+- `worker/`: kod workera, schemat D1 i instrukcja wdrożenia (`worker/README.md`). Walidacja wpisu, zapis tylko ze strony gry i `localhost:5173`, limit 10 wpisów / 10 min z jednego IP (IP jako skrót).
+- Panel śmierci: nagłówek „łączenie…” / „WSZYSCY GRACZE”; wiersze z imieniem („—” dla wpisów bez imienia).
+- Imię: `sanitizePlayerName` / `isNameChar` w `systems/Highscores.ts` (czyste), zapamiętane w `persistence/PlayerName.ts`; worker sprawdza je tymi samymi zasadami.
+- Liczby (limit czasu 5 s, kolejka 20) w `HIGHSCORE_CONFIG`.
+
+**Testy:** `tests/persistence/sharedHighscores.test.ts` (miejsce na wspólnej liście, kolejka offline, limit kolejki, uszkodzone dane), `tests/persistence/remoteScores.test.ts` (adapter HTTP, imię null), `tests/persistence/playerName.test.ts`, czyszczenie imienia w `tests/systems/highscores.test.ts`. Worker sprawdzony skryptem z atrapą D1 (walidacja wpisu i imienia, 403 z obcej strony, 429 po limicie).
+
+**Weryfikacja w przeglądarce:** `npm run dev` z `VITE_SCORES_URL` na lokalnym serwerze z kodem workera i atrapą D1. Śmierć → panel imienia (wpisane „Wi<c>io” daje „Wicio”) → Enter → wpis trafia do bazy, panel pokazuje „WSZYSCY GRACZE” i miejsce 2 za wpisem z bazy. Bez błędów w konsoli gry.
+
+**Wdrożenie (zrobione):**
+- Konto Cloudflare właściciela, subdomena workers.dev `wvytz`.
+- Baza D1 `tower-crawler-scores` (id w `worker/wrangler.toml`), schemat nałożony `--remote`.
+- Worker: https://tower-crawler-scores.wvytz.workers.dev (`GET/POST /scores`).
+- `.env.production` z `VITE_SCORES_URL` jest w repozytorium (adres nie jest tajny); gra na GitHub Pages wdrożona z nim przez `npm run deploy:pages`.
+
+**Ograniczenie:** wynik liczy przeglądarka, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury.
+
 ---
 
 ## Krok 34 — Ekran startowy w stylu automatów
@@ -2698,6 +2727,23 @@ Makieta generatora:
 - `npm run build`: typy, 890 testów, build;
 - przeglądarka (`?nosplash&seed=7&floor=2`, śmierć wymuszona przez `window.__game`): zrzuty po 0,35–8 s — gra widoczna pod spodem, napis kruszy się i krwawi, tablica czytelna; R startuje nowy run; brak błędów w konsoli;
 - wdrożone na GitHub Pages razem z krokiem 34.
+
+---
+
+## Kroki 34–35 + wspólna lista wyników — scalenie `#highscore` `#ekran-smierci`
+
+**Problem (zgłoszenie właściciela):** na GitHub Pages nie było ekranu startowego, a ekran śmierci był stary. Kroki 34–35 leżały na osobnej gałęzi (`claude/beautiful-knuth-7datv1`) i nie trafiły do `main`; wdrożenie wspólnej listy wyników z `main` nadpisało `gh-pages` wersją bez nich.
+
+**Co zrobiono:**
+- `main` scalony z gałęzią kroków 34–35; jedyny konflikt w `HudScene` — zostaje nowy `DeathScreen`, stary panel śmierci usunięty;
+- `effects/DeathScreen.ts` obsługuje wspólną listę:
+  - przy pierwszej śmierci bez zapamiętanego imienia: „TWOJE IMIĘ NA TABLICY WYNIKÓW”, pole z kursorem, „ENTER — ZAPISZ · ESC — BEZ IMIENIA”; bez miejsca w wyniku i bez „R — NOWA WSPINACZKA”;
+  - wiersze tablicy z imieniem; nagłówek zależny od źródła (lokalna / łączenie… / wszyscy gracze);
+  - nowy obiekt tej samej śmierci (litera imienia, przyjście wspólnej tablicy) odświeża tylko tekst — animacja rozkładu nie startuje od nowa.
+
+**Uwaga:** na gałęzi `claude/vibrant-thompson-o7nlmz` jest inny „Krok 34” (Grzybowy Pożeracz) — numer koliduje, do przenumerowania przy jej scalaniu.
+
+**Weryfikacja:** `npm run build` (903 testy); przeglądarka: ekran startowy, śmierć wymuszona przez `window.__game`, wpisanie imienia i tablica z imieniem.
 
 ---
 
@@ -2794,7 +2840,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
-- **Imię gracza na tablicy rekordów:** dziś tylko wynik, piętro i data.
+- **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
 
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.

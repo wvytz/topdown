@@ -58,6 +58,11 @@ import { computeLoadout } from '@/systems/PlayerLoadout';
 import { Timer } from '@/systems/Timer';
 import { NEW_RUN, RunState } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
+import { SharedHighscores } from '@/persistence/SharedHighscores';
+import { createRemoteScoreSource } from '@/persistence/remoteScores';
+import { PlayerName } from '@/persistence/PlayerName';
+import type { ScoreEntry } from '@/systems/Highscores';
+import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { DustMotes } from '@/effects/DustMotes';
@@ -140,11 +145,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dashHitsFor = -1;
   /** Wampirzy kieł: odstęp między leczeniami za cios. */
   private healCooldown = new Timer();
-  private readonly highscores = new HighscoreStorage(
+  private readonly highscores = new SharedHighscores(
+    new HighscoreStorage(HighscoreStorage.browserStorage(), HIGHSCORE_CONFIG.maxEntries, HIGHSCORE_CONFIG.podiumSize),
+    createRemoteScoreSource(),
     HighscoreStorage.browserStorage(),
-    HIGHSCORE_CONFIG.maxEntries,
-    HIGHSCORE_CONFIG.podiumSize,
+    {
+      maxEntries: HIGHSCORE_CONFIG.maxEntries,
+      podiumSize: HIGHSCORE_CONFIG.podiumSize,
+      timeoutMs: HIGHSCORE_CONFIG.remoteTimeoutMs,
+      maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
+    },
   );
+  private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
   private runSeed = 0;
   private floorNumber = 1;
   private stairsUnlocked = false;
@@ -536,9 +548,45 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.deathHandled = true;
 
     // Złoto w chwili śmierci to wynik runu.
-    const entry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now() };
+    const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now() };
+    const remembered = this.playerName.load();
+    if (remembered) {
+      this.recordDeath({ ...base, name: remembered });
+      return;
+    }
+
+    // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
+    const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
+    let typed = '';
+    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '' };
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Enter' || event.key === 'Escape') {
+        this.input.keyboard?.off('keydown', onKey);
+        const name = event.key === 'Enter' ? sanitizePlayerName(typed, maxLength) : '';
+        if (name) this.playerName.save(name);
+        this.recordDeath(name ? { ...base, name } : base);
+        return;
+      }
+      if (event.key === 'Backspace') typed = [...typed].slice(0, -1).join('');
+      else if (isNameChar(event.key) && [...typed].length < maxLength) typed += event.key;
+      if (this.death) this.death = { ...this.death, nameEntry: typed };
+    };
+    this.input.keyboard?.on('keydown', onKey);
+  }
+
+  /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. */
+  private recordDeath(entry: ScoreEntry): void {
     const { rank, board } = this.highscores.record(entry);
-    this.death = { score: entry.score, floor: entry.floor, rank, board };
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null };
+    this.death = death;
+    if (this.highscores.hasRemote) {
+      this.death = { ...death, source: 'pending' };
+      void this.highscores.recordShared(entry).then((shared) => {
+        // Scena mogła już ruszyć z nową wspinaczką — podmieniamy tylko panel tej śmierci.
+        if (this.death?.board !== board) return;
+        this.death = shared ? { ...death, rank: shared.rank, board: shared.board, source: 'shared' } : death;
+      });
+    }
 
     // Nowa wspinaczka: nowy seed, piętro 1, pusty run.
     this.input.keyboard?.once('keydown-R', () => {

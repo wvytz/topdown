@@ -190,6 +190,12 @@ export const SHRINE_CONFIG: ShrineConfig = {
 export const HIGHSCORE_CONFIG = {
   maxEntries: 50,
   podiumSize: 3,
+  /** Limit czasu jednego zapytania do wspólnej listy; po nim zostaje lista lokalna. */
+  remoteTimeoutMs: 5000,
+  /** Ile niewysłanych wyników trzymamy w kolejce, gdy brak sieci. */
+  maxOutbox: 20,
+  /** Najdłuższe imię gracza na tablicy wyników. */
+  nameMaxLength: 12,
 } as const;
 
 export const PICKUP_CONFIG = {

@@ -37,8 +37,15 @@ interface LiveParticle {
   readonly swellMs: number;
 }
 
+/** Nagłówek tablicy zależnie od źródła wyników (wspólna lista, krok 36). */
+const HEADERS: Record<DeathSummary['source'], string> = {
+  local: 'NAJLEPSZE WSPINACZKI',
+  pending: 'NAJLEPSZE WSPINACZKI · ŁĄCZENIE…',
+  shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
+};
+
 function formatScoreRow(row: RankedEntry): string {
-  const label = `${row.rank}. ${row.entry.score} złota · piętro ${row.entry.floor}`;
+  const label = `${row.rank}. ${row.entry.name ?? '—'} · ${row.entry.score} złota · piętro ${row.entry.floor}`;
   return row.isCurrent ? `► ${label} ◄` : label;
 }
 
@@ -147,13 +154,18 @@ export class DeathScreen {
     this.root.setVisible(false);
   }
 
-  /** Co klatkę z HUD: `death` = null chowa ekran (np. po restarcie runu). */
+  /**
+   * Co klatkę z HUD: `death` = null chowa ekran (np. po restarcie runu).
+   * Ta sama śmierć może przyjść jako nowy obiekt (wpisywanie imienia, wspólna tablica) —
+   * wtedy odświeżamy tylko tekst, animacja biegnie dalej.
+   */
   update(death: DeathSummary | null, now: number, deltaMs: number): void {
     if (!death) {
       if (this.shownFor) this.reset();
       return;
     }
-    if (this.shownFor !== death) this.start(death, now);
+    if (!this.shownFor) this.start(death, now);
+    else if (this.shownFor !== death) this.fill(death);
     const t = now - (this.startedAt ?? now);
     const f = deathFrame(t);
 
@@ -166,7 +178,7 @@ export class DeathScreen {
     this.ornament.setAlpha(f.scoreAlpha);
     this.header.setAlpha(f.scoreAlpha);
     this.rows.forEach((row, i) => row.setAlpha(i < f.rowsVisible ? 1 : 0));
-    this.prompt.setVisible(f.promptVisible);
+    this.prompt.setVisible(f.promptVisible && this.shownFor?.nameEntry === null);
 
     if (!this.impactDone && t >= deathImpactAt()) {
       this.impactDone = true;
@@ -184,8 +196,24 @@ export class DeathScreen {
     this.startedAt = now;
     this.root.setVisible(true);
     this.redrawFill();
+    this.fill(death);
+  }
 
-    this.score.setText(`WYNIK: ${death.score} ZŁOTA · PIĘTRO ${death.floor} · MIEJSCE ${death.rank}`);
+  /** Wynik i tablica albo pole na imię (pierwsza śmierć bez zapamiętanego imienia). */
+  private fill(death: DeathSummary): void {
+    this.shownFor = death;
+    const place = death.nameEntry === null ? ` · MIEJSCE ${death.rank}` : '';
+    this.score.setText(`WYNIK: ${death.score} ZŁOTA · PIĘTRO ${death.floor}${place}`);
+    if (death.nameEntry !== null) {
+      this.header.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');
+      const entry = [
+        { text: `${death.nameEntry}_`, color: '#f1e2a9' },
+        { text: 'ENTER — ZAPISZ · ESC — BEZ IMIENIA', color: '#9c8f74' },
+      ];
+      this.rows.forEach((row, i) => row.setText(entry[i]?.text ?? '').setColor(entry[i]?.color ?? '#d8ccb0'));
+      return;
+    }
+    this.header.setText(HEADERS[death.source]);
     const lines: Array<{ text: string; current: boolean }> = death.board.top.map((row) => ({
       text: formatScoreRow(row),
       current: row.isCurrent,
