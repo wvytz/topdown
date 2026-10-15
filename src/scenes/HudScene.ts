@@ -31,7 +31,7 @@ const DEATH_HEADERS: Record<DeathSummary['source'], string> = {
 };
 
 function formatScoreRow(row: RankedEntry): string {
-  const label = `${row.rank}. ${row.entry.score} złota · piętro ${row.entry.floor}`;
+  const label = `${row.rank}. ${row.entry.name ?? '—'} · ${row.entry.score} złota · piętro ${row.entry.floor}`;
   return row.isCurrent ? `► ${label} ◄` : label;
 }
 
@@ -50,6 +50,7 @@ export class HudScene extends Phaser.Scene {
   private deathScoreText!: Phaser.GameObjects.Text;
   private deathRows: Phaser.GameObjects.Text[] = [];
   private deathHeader!: Phaser.GameObjects.Text;
+  private deathRestart!: Phaser.GameObjects.Text;
   private bossNameText!: Phaser.GameObjects.Text;
   private goldText!: Phaser.GameObjects.Text;
   private itemsText!: Phaser.GameObjects.Text;
@@ -206,9 +207,9 @@ export class HudScene extends Phaser.Scene {
     this.deathRows = Array.from({ length: DEATH_ROWS }, (_, i) =>
       this.add.text(cx, top + 116 + i * 22, '', { ...style, fontSize: '15px' }).setOrigin(0.5, 0),
     );
-    const restart = this.add
+    const restart = (this.deathRestart = this.add
       .text(cx, top + 250, 'R — nowa wspinaczka', { ...style, fontSize: '15px', color: '#e8e8f0' })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5, 0));
 
     this.deathPanel = this.add.container(0, 0, [backdrop, title, this.deathScoreText, header, ...this.deathRows, restart]);
     this.deathPanel.setVisible(false);
@@ -218,7 +219,20 @@ export class HudScene extends Phaser.Scene {
     this.deathPanel.setVisible(death !== null);
     if (!death) return;
 
-    this.deathScoreText.setText(`Wynik: ${death.score} złota · piętro ${death.floor} · miejsce ${death.rank}`);
+    const place = death.nameEntry === null ? ` · miejsce ${death.rank}` : '';
+    this.deathScoreText.setText(`Wynik: ${death.score} złota · piętro ${death.floor}${place}`);
+    this.deathRestart.setVisible(death.nameEntry === null);
+    if (death.nameEntry !== null) {
+      // Wpisywanie imienia: zamiast tablicy jedno pole z kursorem.
+      this.deathHeader.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');
+      const hint = 'Enter — zapisz · Esc — bez imienia';
+      this.deathRows.forEach((row, i) => {
+        row.setVisible(i <= 1);
+        if (i === 0) row.setText(`${death.nameEntry}_`).setColor('#ffe08a');
+        if (i === 1) row.setText(hint).setColor('#a0a0b8');
+      });
+      return;
+    }
     this.deathHeader.setText(DEATH_HEADERS[death.source]);
 
     const lines: Array<{ text: string; current: boolean }> = death.board.top.map((row) => ({

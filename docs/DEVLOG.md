@@ -2621,7 +2621,7 @@ Makieta generatora:
 
 **Decyzja właściciela:** `#decyzja` `#highscore`
 - GitHub Pages tylko serwuje pliki, więc wspólna lista wyników stoi na osobnej usłudze: **Cloudflare Worker + baza D1** (wybór właściciela po porównaniu Supabase / Firebase / Cloudflare).
-- Imię gracza: do decyzji właściciela; na razie lista bez imion, kolumna `name` w bazie czeka.
+- **Imię gracza (decyzja właściciela): wpisywane po śmierci.** Przy pierwszej śmierci panel prosi o imię (max 12 znaków: litery, cyfry, spacja, `_`, `-`; Enter zapisuje, Esc pomija). Gra je zapamiętuje i kolejne wyniki idą już z nim.
 
 **Zrobione:**
 - `persistence/SharedHighscores.ts`: obudowuje dotychczasowy `HighscoreStorage` (interfejs bez zmian):
@@ -2630,10 +2630,13 @@ Makieta generatora:
   - bez sieci wynik czeka w kolejce (`localStorage`, max 20) i leci przy następnej śmierci.
 - `persistence/remoteScores.ts`: adapter workera (`GET/POST /scores`); adres z `VITE_SCORES_URL`. Bez adresu gra działa jak dawniej (lista lokalna).
 - `worker/`: kod workera, schemat D1 i instrukcja wdrożenia (`worker/README.md`). Walidacja wpisu, zapis tylko ze strony gry i `localhost:5173`, limit 10 wpisów / 10 min z jednego IP (IP jako skrót).
-- Panel śmierci: nagłówek „łączenie…” / „WSZYSCY GRACZE”.
+- Panel śmierci: nagłówek „łączenie…” / „WSZYSCY GRACZE”; wiersze z imieniem („—” dla wpisów bez imienia).
+- Imię: `sanitizePlayerName` / `isNameChar` w `systems/Highscores.ts` (czyste), zapamiętane w `persistence/PlayerName.ts`; worker sprawdza je tymi samymi zasadami.
 - Liczby (limit czasu 5 s, kolejka 20) w `HIGHSCORE_CONFIG`.
 
-**Testy:** `tests/persistence/sharedHighscores.test.ts` (miejsce na wspólnej liście, kolejka offline, limit kolejki, uszkodzone dane), `tests/persistence/remoteScores.test.ts` (adapter HTTP). Worker sprawdzony skryptem z atrapą D1 (walidacja, 403 z obcej strony, 429 po limicie).
+**Testy:** `tests/persistence/sharedHighscores.test.ts` (miejsce na wspólnej liście, kolejka offline, limit kolejki, uszkodzone dane), `tests/persistence/remoteScores.test.ts` (adapter HTTP, imię null), `tests/persistence/playerName.test.ts`, czyszczenie imienia w `tests/systems/highscores.test.ts`. Worker sprawdzony skryptem z atrapą D1 (walidacja wpisu i imienia, 403 z obcej strony, 429 po limicie).
+
+**Weryfikacja w przeglądarce:** `npm run dev` z `VITE_SCORES_URL` na lokalnym serwerze z kodem workera i atrapą D1. Śmierć → panel imienia (wpisane „Wi<c>io” daje „Wicio”) → Enter → wpis trafia do bazy, panel pokazuje „WSZYSCY GRACZE” i miejsce 2 za wpisem z bazy. Bez błędów w konsoli gry.
 
 **Do zrobienia przez właściciela:** wdrożyć workera wg `worker/README.md`, wpisać adres do `.env.production`, `npm run deploy:pages`.
 
@@ -2732,7 +2735,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
-- **Imię gracza na tablicy rekordów:** dziś tylko wynik, piętro i data. Wspólna lista (Cloudflare) ma już kolumnę `name`.
+- **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
 
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.

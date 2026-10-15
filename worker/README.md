@@ -18,7 +18,11 @@ Bez `VITE_SCORES_URL` gra działa jak dawniej: tylko lista lokalna.
 ## Ochrona
 
 - Wynik liczy przeglądarka, więc da się go sfałszować. Worker odrzuca tylko oczywiste bzdury
-  (ujemne, ponad 1 000 000 złota, piętro poza 1–100, data spoza ±1 doby).
+  (ujemne, ponad 1 000 000 złota, piętro poza 1–100, data spoza ±1 doby, imię z niedozwolonymi znakami lub dłuższe niż 12).
 - Zapis tylko z adresów w `ALLOWED_ORIGINS` (strona gry i `localhost:5173`).
 - Do 10 wpisów na 10 minut z jednego adresu IP (IP trzymamy jako skrót SHA-256).
 - Darmowy plan Cloudflare (Workers + D1) z zapasem wystarcza na grę testerów.
+
+## Aktualizacja bazy utworzonej przed imionami
+
+Schemat od początku ma kolumnę `name`, więc nic nie trzeba migrować — wystarczy `npx wrangler deploy`.

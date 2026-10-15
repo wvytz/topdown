@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ScoreEntry } from '@/systems/Highscores';
-import { buildScoreboard, compareScores, insertScore } from '@/systems/Highscores';
+import { buildScoreboard, compareScores, insertScore, isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { KeyValueStorage } from '@/persistence/HighscoreStorage';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 
@@ -121,5 +121,20 @@ describe('HighscoreStorage', () => {
     const storage = new FakeStorage();
     storage.failWrites = true;
     expect(() => new HighscoreStorage(storage, 50, 3).record(e(5))).not.toThrow();
+  });
+});
+
+describe('imię gracza', () => {
+  it('dopuszcza litery (także polskie), cyfry, spację, _ i -', () => {
+    for (const ch of ['a', 'Ż', 'ł', '7', ' ', '_', '-']) expect(isNameChar(ch)).toBe(true);
+    for (const ch of ['<', '!', '.', 'ab', '']) expect(isNameChar(ch)).toBe(false);
+  });
+
+  it('czyści imię: znaki, spacje i długość', () => {
+    expect(sanitizePlayerName('  Wi<c>io  ', 12)).toBe('Wicio');
+    expect(sanitizePlayerName('Zła   Żółw', 12)).toBe('Zła Żółw');
+    expect(sanitizePlayerName('abcdefghijklmnop', 12)).toBe('abcdefghijkl');
+    expect(sanitizePlayerName('abcdefghijk xyz', 12)).toBe('abcdefghijk');
+    expect(sanitizePlayerName('!!!', 12)).toBe('');
   });
 });

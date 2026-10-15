@@ -12,13 +12,18 @@ export function createWorkerScoreSource(baseUrl: string, fetchFn: FetchFn): Remo
       if (!response.ok) throw new Error(`scores: HTTP ${response.status}`);
       const data: unknown = await response.json();
       if (!Array.isArray(data)) throw new Error('scores: zła odpowiedź');
-      return data as ScoreEntry[];
+      // Wpis bez imienia przychodzi jako `name: null` — w grze to brak pola.
+      return data.map((row: unknown) => {
+        if (typeof row !== 'object' || row === null) return row;
+        const { name, ...rest } = row as Record<string, unknown>;
+        return name === null ? rest : { ...rest, name };
+      }) as ScoreEntry[];
     },
     async submit(entry, signal) {
       const response = await fetchFn(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: entry.score, floor: entry.floor, timestamp: entry.timestamp }),
+        body: JSON.stringify({ score: entry.score, floor: entry.floor, timestamp: entry.timestamp, name: entry.name }),
         signal,
       });
       if (!response.ok) throw new Error(`scores: HTTP ${response.status}`);

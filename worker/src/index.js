@@ -1,7 +1,7 @@
 /**
  * Worker wspólnej listy wyników Tower Crawlera.
- *   GET  /scores?limit=N  → [{ score, floor, timestamp }], najlepsze pierwsze
- *   POST /scores          ← { score, floor, timestamp }
+ *   GET  /scores?limit=N  → [{ score, floor, timestamp, name }], najlepsze pierwsze (name może być null)
+ *   POST /scores          ← { score, floor, timestamp, name? }
  * Wynik liczy klient, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury i zalew wpisów.
  */
 
@@ -10,6 +10,7 @@ const MAX_SCORE = 1_000_000;
 const MAX_FLOOR = 100;
 const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 const MAX_LIMIT = 100;
+const MAX_NAME_LENGTH = 12;
 // Ochrona przed zalewem: tyle wpisów z jednego adresu w oknie czasu.
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -36,7 +37,7 @@ async function getScores(url, env, cors) {
   const requested = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
   const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), MAX_LIMIT) : 50;
   const { results } = await env.DB.prepare(
-    'SELECT score, floor, timestamp FROM scores ORDER BY score DESC, floor DESC, id ASC LIMIT ?',
+    'SELECT score, floor, timestamp, name FROM scores ORDER BY score DESC, floor DESC, id ASC LIMIT ?',
   )
     .bind(limit)
     .all();
@@ -62,19 +63,24 @@ async function postScore(request, env, cors) {
     .first();
   if ((recent?.n ?? 0) >= RATE_LIMIT) return json({ error: 'too many requests' }, 429, cors);
 
-  await env.DB.prepare('INSERT INTO scores (score, floor, timestamp, ip_hash, created_at) VALUES (?, ?, ?, ?, ?)')
-    .bind(entry.score, entry.floor, entry.timestamp, ipHash, now)
+  await env.DB.prepare('INSERT INTO scores (score, floor, timestamp, name, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  )
+    .bind(entry.score, entry.floor, entry.timestamp, entry.name, ipHash, now)
     .run();
   return json({ ok: true }, 201, cors);
 }
 
 export function validate(body, now) {
   if (typeof body !== 'object' || body === null) return null;
-  const { score, floor, timestamp } = body;
+  const { score, floor, timestamp, name } = body;
   if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return null;
   if (!Number.isInteger(floor) || floor < 1 || floor > MAX_FLOOR) return null;
   if (!Number.isInteger(timestamp) || Math.abs(timestamp - now) > MAX_CLOCK_SKEW_MS) return null;
-  return { score, floor, timestamp };
+  if (name === undefined || name === null || name === '') return { score, floor, timestamp, name: null };
+  // Te same zasady co w grze (sanitizePlayerName): litery, cyfry, spacja, „_”, „-”, max 12 znaków.
+  if (typeof name !== 'string' || name !== name.trim() || /\s{2,}/.test(name)) return null;
+  if (!/^[\p{L}\p{N} _-]+$/u.test(name) || [...name].length > MAX_NAME_LENGTH) return null;
+  return { score, floor, timestamp, name };
 }
 
 function allowedOrigins(env) {

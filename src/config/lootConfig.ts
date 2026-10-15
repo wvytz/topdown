@@ -194,6 +194,8 @@ export const HIGHSCORE_CONFIG = {
   remoteTimeoutMs: 5000,
   /** Ile niewysłanych wyników trzymamy w kolejce, gdy brak sieci. */
   maxOutbox: 20,
+  /** Najdłuższe imię gracza na tablicy wyników. */
+  nameMaxLength: 12,
 } as const;
 
 export const PICKUP_CONFIG = {

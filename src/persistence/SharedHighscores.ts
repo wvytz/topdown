@@ -109,5 +109,5 @@ export class SharedHighscores {
 }
 
 function sameEntry(a: ScoreEntry, b: ScoreEntry): boolean {
-  return a.score === b.score && a.floor === b.floor && a.timestamp === b.timestamp;
+  return a.score === b.score && a.floor === b.floor && a.timestamp === b.timestamp && a.name === b.name;
 }

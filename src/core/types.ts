@@ -78,6 +78,8 @@ export interface DeathSummary {
   readonly board: ScoreboardView;
   /** Skąd tablica: lokalna, wspólna albo lokalna w oczekiwaniu na wspólną. */
   readonly source: 'local' | 'pending' | 'shared';
+  /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
+  readonly nameEntry: string | null;
 }
 
 export interface HudItem {
