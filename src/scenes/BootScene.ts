@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { diag } from '@/diagnostics/DiagnosticsHub';
 import type { FloorSceneData, HeroSelectData } from '@/core/types';
 import { SceneKey, TextureKey } from '@/core/types';
 import { BIOMES } from '@/config/biomeConfig';
@@ -24,6 +25,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // Błędy ładowania zasobów (brak pliku, zła ścieżka, sieć) trafiają do dziennika diagnostycznego (krok 56).
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
+      diag.note('asset-load-error', { key: file.key, type: file.type, url: file.src }, 'error', `Nie załadowano zasobu „${file.key}”`);
+    });
     loadSpriteSheets(this);
     // Arkusze kafli wszystkich biomów (krok 23a) — piętro wybiera swój w GameScene.
     for (const { tileset } of Object.values(BIOMES)) {

@@ -1,5 +1,9 @@
 import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
+import type { InputRecording, RecordingMeta } from '@/core/diagnosticsTypes';
 import { DiagnosticStorage } from '@/persistence/DiagnosticStorage';
+import { InputRecordingStorage } from '@/persistence/InputRecordingStorage';
+import type { InputSample } from '@/systems/InputRecorder';
+import { InputRecorder } from '@/systems/InputRecorder';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import type { DiagData, DiagLevel, DiagSession } from '@/systems/Diagnostics';
 import { DiagnosticLog, describeError, endedAbnormally, formatReport } from '@/systems/Diagnostics';
@@ -19,9 +23,17 @@ export class DiagnosticsHub {
   private provider: StateProvider | null = null;
   private readonly listeners: Listener[] = [];
   private readonly clock: () => number;
+  private readonly recorder = new InputRecorder();
+  private recordings: InputRecording[];
 
-  constructor(storage: DiagnosticStorage, env: DiagData, clock: () => number = () => Date.now()) {
+  constructor(
+    storage: DiagnosticStorage,
+    env: DiagData,
+    clock: () => number = () => Date.now(),
+    private readonly inputStorage: InputRecordingStorage = new InputRecordingStorage(null),
+  ) {
     this.storage = storage;
+    this.recordings = inputStorage.load();
     this.clock = clock;
     this.previous = storage.load();
     const startedAt = clock();
@@ -39,7 +51,8 @@ export class DiagnosticsHub {
   }
 
   static create(env: DiagData): DiagnosticsHub {
-    return new DiagnosticsHub(new DiagnosticStorage(HighscoreStorage.browserStorage()), env);
+    const storage = HighscoreStorage.browserStorage();
+    return new DiagnosticsHub(new DiagnosticStorage(storage), env, () => Date.now(), new InputRecordingStorage(storage));
   }
 
   /** Okruch: zwykłe zdarzenie w grze (nowe piętro, boss, śmierć…) — kontekst do późniejszej awarii. */
@@ -81,6 +94,7 @@ export class DiagnosticsHub {
     try {
       this.log.heartbeat(this.clock(), this.currentState(), fps, heapMB);
       this.persist();
+      this.flushInputs();
     } catch {
       // Nic.
     }
@@ -90,9 +104,45 @@ export class DiagnosticsHub {
     try {
       this.log.markCleanEnd();
       this.persist();
+      this.flushInputs();
     } catch {
       // Nic.
     }
+  }
+
+  /** Nagrywanie wejść (krok 56): start nowego piętra zamyka poprzednie nagranie i zaczyna kolejne. */
+  startRecording(meta: RecordingMeta, now: number): void {
+    try {
+      this.flushInputs();
+      this.recorder.start(meta, now);
+    } catch {
+      // Nic.
+    }
+  }
+
+  recordInput(input: InputSample, now: number): void {
+    try {
+      this.recorder.sample(input, now);
+    } catch {
+      // Nic.
+    }
+  }
+
+  /** Zapis bieżącego nagrania (obok poprzednich pięter) — przy pulsie, błędzie i zamknięciu. */
+  flushInputs(): void {
+    const current = this.recorder.snapshot();
+    if (!current) return;
+    const key = (r: InputRecording) => `${r.meta.startedAt}:${r.meta.floor}:${r.meta.runSeed}`;
+    const rest = this.recordings.filter((r) => key(r) !== key(current));
+    this.recordings = [...rest, current].slice(-DIAGNOSTICS.inputs.maxRecordings);
+    this.inputStorage.save(this.recordings);
+  }
+
+  /** Ostatnie nagranie jako JSON do wklejenia (null, gdy brak). */
+  lastRecordingJson(): string | null {
+    this.flushInputs();
+    const last = this.recordings[this.recordings.length - 1];
+    return last ? JSON.stringify(last) : null;
   }
 
   onEvent(listener: Listener): void {
@@ -105,7 +155,13 @@ export class DiagnosticsHub {
 
   /** Raport z ostatnich sesji (łącznie z bieżącą). */
   report(): string {
-    return formatReport([...this.previous, this.log.snapshot()].slice(-DIAGNOSTICS.maxSessions));
+    this.flushInputs();
+    const lines = this.recordings.map(
+      (r) =>
+        `piętro ${r.meta.floor}, seed ${r.meta.runSeed}, ${r.meta.hero}: ${r.count} zmian wejścia, ${Math.round(r.durationMs / 1000)} s${r.truncated ? ' (PRZYCIĘTE — bez pełnego odtworzenia)' : ''}`,
+    );
+    const recordings = lines.length > 0 ? `\n\nNagrania wejść (do odtworzenia w trybie dev: __replay):\n${lines.join('\n')}` : '';
+    return formatReport([...this.previous, this.log.snapshot()].slice(-DIAGNOSTICS.maxSessions)) + recordings;
   }
 
   private persist(): void {
@@ -127,5 +183,11 @@ export const diag = {
   },
   setState(provider: StateProvider | null): void {
     active?.setStateProvider(provider);
+  },
+  startRecording(meta: RecordingMeta, now: number): void {
+    active?.startRecording(meta, now);
+  },
+  recordInput(input: InputSample, now: number): void {
+    active?.recordInput(input, now);
   },
 };

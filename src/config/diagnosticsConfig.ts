@@ -28,6 +28,29 @@ export const DIAGNOSTICS = {
     lowFps: 20,
     lowFpsCooldownMs: 30_000,
   },
+  /** Nagrywanie wejść gracza od początku piętra (krok 56). */
+  inputs: {
+    /** Limit zmian wejścia na piętro (po przekroczeniu najstarsze wypadają, nagranie jest „przycięte”). */
+    maxEntries: 2500,
+    /** Celowanie zapisujemy, gdy przesunie się o tyle px świata. */
+    aimStepPx: 24,
+    /** Ile ostatnich nagrań (pięter) trzymamy w pamięci przeglądarki i twardy limit rozmiaru zapisu. */
+    maxRecordings: 3,
+    maxStorageChars: 160_000,
+    storageKey: 'tower-crawler.inputs.v1',
+  },
+  /** Wykrywacze zawieszeń i niemożliwych sytuacji w grze (krok 56). */
+  anomalies: {
+    /** Co ile ms próbkujemy stan gry. */
+    sampleMs: 500,
+    /** Gracz trzyma klawisze ruchu co najmniej `windowMs`, a przesunął się o mniej niż `minMovePx`. */
+    stuck: { windowMs: 4000, minMovePx: 6, cooldownMs: 30_000 },
+    /** Walka z bossem trwa, a jego HP nie zmienia się tak długo. */
+    bossStallMs: 90_000,
+    /** Limity liczności (obiekty na scenie, żywi wrogowie); po przekroczeniu zapisujemy raz na `limitCooldownMs`. */
+    limits: { displayObjects: 3000, enemies: 60 },
+    limitCooldownMs: 60_000,
+  },
   /** Sterta JS (MB), od której zapisujemy ostrzeżenie (raz na sesję). */
   highHeapMB: 700,
   /** Klawisz otwierający panel z raportem. */

@@ -29,11 +29,12 @@ export class ReportOverlay {
     banner.querySelector('[data-line]')!.textContent = message;
     const copy = this.button('Kopiuj raport', () => void this.copy(copy));
     const show = this.button('Pokaż', () => this.togglePanel());
+    const rec = this.button('Kopiuj nagranie', () => void this.copyRecording(rec));
     const close = this.button('Zamknij', () => {
       banner.remove();
       this.banner = null;
     });
-    banner.append(copy, show, close);
+    banner.append(copy, show, rec, close);
     document.body.appendChild(banner);
     this.banner = banner;
   }
@@ -52,10 +53,11 @@ export class ReportOverlay {
     area.value = this.hub.report();
     area.setAttribute('style', 'display:block;width:min(740px,calc(100vw - 40px));height:min(60vh,420px);font:11px/1.35 monospace;background:#120b0e;color:#f4e9d0;border:1px solid #555;');
     const copy = this.button('Kopiuj raport', () => void this.copy(copy, area));
+    const rec = this.button('Kopiuj nagranie', () => void this.copyRecording(rec));
     const close = this.button('Zamknij (F9)', () => this.togglePanel());
     const bar = document.createElement('div');
     bar.style.marginTop = '6px';
-    bar.append(copy, close);
+    bar.append(copy, rec, close);
     panel.append(area, bar);
     document.body.appendChild(panel);
     this.panel = panel;
@@ -68,6 +70,21 @@ export class ReportOverlay {
     button.setAttribute('style', BUTTON);
     button.addEventListener('click', onClick);
     return button;
+  }
+
+  /** Nagranie wejść z ostatniego piętra jako JSON (do odtworzenia w trybie dev przez `__replay`). */
+  private async copyRecording(button: HTMLButtonElement): Promise<void> {
+    const json = this.hub.lastRecordingJson();
+    if (!json) {
+      button.textContent = 'Brak nagrania';
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(json);
+      button.textContent = 'Skopiowano nagranie';
+    } catch {
+      window.prompt('Skopiuj nagranie (Ctrl+C):', json);
+    }
   }
 
   private async copy(button: HTMLButtonElement, area?: HTMLTextAreaElement): Promise<void> {

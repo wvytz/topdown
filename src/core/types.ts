@@ -1,3 +1,4 @@
+import type { InputRecording } from '@/core/diagnosticsTypes';
 import type { HeroId } from '@/core/heroTypes';
 /** Czyste typy domenowe — bez zależności od Phasera. */
 import type { RunSnapshot } from '@/core/lootTypes';
@@ -52,6 +53,8 @@ export interface FloorSceneData {
   readonly floor: number;
   /** Złoto, przedmioty i HP przenoszone z poprzedniego piętra. */
   readonly run: RunSnapshot;
+  /** Odtworzenie nagrania wejść (krok 56, tylko tryb dev): wejścia z nagrania zamiast klawiatury. */
+  readonly replay?: InputRecording;
 }
 
 /** Promień Czarodziejki w HUD: świeci (pasek = pozostały czas) albo odnawia się po zgaśnięciu. */
