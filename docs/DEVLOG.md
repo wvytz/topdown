@@ -3282,7 +3282,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 - `endRoomChance` w `getDungeonConfigForFloor` zależy od biomu: **1** w Grzybni (`SECRET_ROOM_BIOME`, `config/gameConfig.ts`; piętro 3 i powtórzenia w kolejnych kręgach: 9, 15…), **0** gdzie indziej (dawniej 50% od piętra 2). Reguła „arena na końcu piętra” (krok 45) bez zmian — arena nadal ma jedno wejście, tylko bez pokoju końcowego poza Grzybnią.
 - Piętro Grzybni ma zawsze pokój końcowy (o ile generator zmieści układ; przy nieudanej próbie jak dotąd kolejna z RNG).
 
-**Testy:** `bossRoomRule.test.ts` — szansa 0/1 według biomu, pokój końcowy zawsze na piętrze 3 i nigdy na 4; udział pokoi końcowych w badanych piętrach 10–20%. Build nie był uruchamiany w tej sesji (brak zainstalowanych zależności).
+**Testy:** `bossRoomRule.test.ts` — szansa 0/1 według biomu, pokój końcowy zawsze na piętrze 3 i nigdy na 4; udział pokoi końcowych w badanych piętrach 10–20%. Build: 1082 testy.
 
 ## Znane ograniczenia i backlog
 
