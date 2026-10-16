@@ -3,7 +3,7 @@ import type { DungeonFloor } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, GRAVEYARD_DRESSING } from '@/config/dressingConfig';
+import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
 import type { DressedFloor, DressedLayer, DressingExtras } from '@/dungeon/FloorDressing';
 import { EMPTY_TILE, dressFloor, gateOrientation, wallDistances } from '@/dungeon/FloorDressing';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
@@ -519,5 +519,75 @@ describe('FloorDressing — krok 19b: bruk, lico, łuki, pajęczyny', () => {
       for (const name of TILESET.groups[g]!) expect(TILESET.tiles[name]!.layer, name).toBe('overheadDecor');
     }
     for (const name of TILESET.groups[wallFace.group]!) expect(TILESET.tiles[name]!.layer).toBe('wallDecor');
+  });
+});
+
+describe('FloorDressing — gniazdo bossa pająków (krok 52)', () => {
+  const LAIR = loadTileset('spider_lair_tileset.json');
+  const lairFrame = (name: string) => LAIR.tiles[name]!.frame;
+  // Arena (pokój 0, x 3–6) i pokój daleko na prawo (x 40–43).
+  const wide = (): DungeonFloor => {
+    const pad = (n: number) => '#'.repeat(n);
+    const row = (a: string, b: string) => `###${a}${pad(33)}${b}###`;
+    return floorFromAscii(
+      [
+        pad(47),
+        pad(47),
+        pad(47),
+        row('....', '....'),
+        row('....', '....'),
+        row('....', '....'),
+        row('....', '....'),
+        pad(47),
+        pad(47),
+        pad(47),
+      ],
+      [room(0, 3, 3, 4, 4, RoomKind.Boss), room(1, 40, 3, 4, 4, RoomKind.Normal)],
+    );
+  };
+  const quiet: FloorDressingConfig = {
+    ...SPIDER_LAIR_DRESSING,
+    cobweb: { ...SPIDER_LAIR_DRESSING.cobweb, chance: 0 },
+    wallFace: { ...SPIDER_LAIR_DRESSING.wallFace, chance: 0 },
+  };
+  const nest = { radiusTiles: 10, cobwebChance: 1, wallFaceChance: 1, wallFaceGroup: 'wallFace.lair' };
+
+  it('przy arenie pajęczyny w narożnikach nawet przy zerowej szansie bazowej; daleki pokój bez zmian', () => {
+    const d = dressFloor(wide(), LAIR, { ...quiet, nest }, SEED);
+    expect(at(d.overheadDecor, 3, 3)).toBe(lairFrame('cobweb_nw'));
+    expect(at(d.overheadDecor, 6, 3)).toBe(lairFrame('cobweb_ne'));
+    expect(at(d.overheadDecor, 40, 3)).toBe(EMPTY_TILE);
+    expect(at(d.overheadDecor, 43, 3)).toBe(EMPTY_TILE);
+    const none = dressFloor(wide(), LAIR, { ...quiet, nest: null }, SEED);
+    expect(at(none.overheadDecor, 3, 3)).toBe(EMPTY_TILE);
+  });
+
+  it('nici i jaja na licu muru tylko w zasięgu gniazda', () => {
+    const d = dressFloor(wide(), LAIR, { ...quiet, nest }, SEED);
+    const lair = new Set(LAIR.groups['wallFace.lair']!.map(lairFrame));
+    const near = [3, 4, 5, 6].filter((x) => lair.has(at(d.wallDecor, x, 2)));
+    expect(near.length).toBeGreaterThan(0);
+    for (let x = 38; x < 46; x++) expect(at(d.wallDecor, x, 2), `x=${x}`).toBe(EMPTY_TILE);
+  });
+
+  it('konfiguracja: gniazdo mają tylko biomy z bossami-pająkami', () => {
+    expect(SPIDER_LAIR_DRESSING.nest).not.toBeNull();
+    expect(FUNGAL_GROVE_DRESSING.nest).not.toBeNull();
+    expect(FLOOR_DRESSING.nest).toBeNull();
+    expect(GRAVEYARD_DRESSING.nest).toBeNull();
+  });
+
+  it('gęstość pajęczyn rośnie ku arenie (piętra z gniazdem mają ich więcej niż bez)', () => {
+    const count = (config: FloorDressingConfig) => {
+      let n = 0;
+      for (const floor of sampleFloors([2, 3], 6)) {
+        const d = dressFloor(floor, LAIR, config, SEED);
+        d.overheadDecor.frames.forEach((f) => {
+          if (f === lairFrame('cobweb_nw') || f === lairFrame('cobweb_ne')) n++;
+        });
+      }
+      return n;
+    };
+    expect(count(SPIDER_LAIR_DRESSING)).toBeGreaterThan(count({ ...SPIDER_LAIR_DRESSING, nest: null }));
   });
 });

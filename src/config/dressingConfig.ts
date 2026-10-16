@@ -40,13 +40,32 @@ export interface FloorDressingConfig {
   readonly archGroup: string;
   /** Pajęczyny w górnych narożnikach pokojów. */
   readonly cobweb: { readonly chance: number; readonly nwGroup: string; readonly neGroup: string };
+  /**
+   * Gniazdo bossa pająków (krok 52): im bliżej areny, tym gęstsze pajęczyny — gracz ma wyczuć, że zbliża się do gniazda.
+   * Szansa rośnie liniowo od zwykłej (daleko) do `*Chance` (przy arenie); null = bez gniazda.
+   */
+  readonly nest: NestDressing | null;
   /** Trwałe ślady walki: pojemność puli (FIFO) i grupy kafli. */
   readonly combatDecals: { readonly capacity: number; readonly groups: Readonly<Record<CombatDecalKind, string>> };
   readonly stairsTiles: { readonly locked: string; readonly open: string };
   readonly gateTiles: Readonly<Record<'h' | 'v', Readonly<Record<'open' | 'half' | 'closed', string>>>>;
 }
 
+export interface NestDressing {
+  /** Zasięg gniazda: odległość (kafle, w linii prostej) od areny, na której pajęczyn jest jeszcze więcej niż zwykle. */
+  readonly radiusTiles: number;
+  /** Szansa pajęczyny w górnym narożniku pokoju przy arenie. */
+  readonly cobwebChance: number;
+  /** Szansa nici/jaj (`wallFaceGroup`) na licu muru przy arenie. */
+  readonly wallFaceChance: number;
+  readonly wallFaceGroup: string;
+}
+
+/** Gniazdo pająków (krok 52): Pajęcze leże i Grzybnia, czyli piętra z bossami-pająkami. */
+const SPIDER_NEST: NestDressing = { radiusTiles: 22, cobwebChance: 1, wallFaceChance: 0.55, wallFaceGroup: 'wallFace.lair' };
+
 export const FLOOR_DRESSING: FloorDressingConfig = {
+  nest: null,
   macroChance: 0.04,
   flipChance: 0.5,
   decalChance: 0.1,
@@ -90,6 +109,7 @@ export const SPIDER_LAIR_DRESSING: FloorDressingConfig = {
   decalGroupWeights: { ...FLOOR_DRESSING.decalGroupWeights, 'decal.husk': 2.5 },
   wallFace: { chance: 0.18, group: 'wallFace.lair' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.7 },
+  nest: SPIDER_NEST,
 };
 
 /**
@@ -115,6 +135,7 @@ export const FUNGAL_GROVE_DRESSING: FloorDressingConfig = {
   },
   wallFace: { chance: 0.22, group: 'wallFace.fungus' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.5 },
+  nest: SPIDER_NEST,
 };
 
 /**

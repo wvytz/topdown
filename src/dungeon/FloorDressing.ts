@@ -182,6 +182,19 @@ class DressingContext {
     readonly rng: Rng,
   ) {}
 
+  /**
+   * Siła gniazda w kaflu (0..1): 1 w arenie bossa, liniowo malejąca do 0 na `nest.radiusTiles` od jej krawędzi.
+   * 0 bez gniazda w konfiguracji albo bez areny.
+   */
+  nestStrength(x: number, y: number): number {
+    const { nest } = this.config;
+    const arena = this.floor.rooms[this.floor.bossRoomId];
+    if (!nest || !arena) return 0;
+    const dx = Math.max(arena.x - x, 0, x - (arena.x + arena.width - 1));
+    const dy = Math.max(arena.y - y, 0, y - (arena.y + arena.height - 1));
+    return Math.max(0, 1 - Math.hypot(dx, dy) / nest.radiusTiles);
+  }
+
   inBounds(x: number, y: number): boolean {
     return x >= 0 && y >= 0 && x < this.floor.width && y < this.floor.height;
   }
@@ -526,11 +539,27 @@ function dressWallFaces(
     for (let x = 0; x < floor.width; x++) {
       const straightFace = ctx.isWall(x, y) && ctx.isWall(x, y - 1) && ctx.isWall(x - 1, y) && ctx.isWall(x + 1, y);
       if (!straightFace || !isPlain(x, y + 1) || nearTorch(x, y)) continue;
-      if (!rng.chance(config.wallFace.chance)) continue;
+      if (!rng.chance(config.wallFace.chance)) {
+        // Gniazdo (krok 52): przy arenie bossa-pająka dodatkowe nici i jaja na licu.
+        const nest = config.nest;
+        const boost = nest ? ctx.nestStrength(x, y) : 0;
+        if (nest && boost > 0 && layer.isEmpty(x, y) && rng.chance(nest.wallFaceChance * boost)) {
+          const name = ctx.pickVariant(nest.wallFaceGroup, [layer.nameAt(x - 1, y), layer.nameAt(x - 2, y)]);
+          layer.set(x, y, ctx.tile(name).frame, false, name);
+        }
+        continue;
+      }
       const name = ctx.pickVariant(config.wallFace.group, [layer.nameAt(x - 1, y), layer.nameAt(x - 2, y)]);
       layer.set(x, y, ctx.tile(name).frame, false, name);
     }
   }
+}
+
+/** Szansa pajęczyny w narożniku: zwykła, a w gnieździe (krok 52) rośnie ku arenie do `nest.cobwebChance`. */
+function cobwebChance(ctx: DressingContext, x: number, y: number): number {
+  const { cobweb, nest } = ctx.config;
+  if (!nest) return cobweb.chance;
+  return cobweb.chance + Math.max(0, nest.cobwebChance - cobweb.chance) * ctx.nestStrength(x, y);
 }
 
 /**
@@ -566,7 +595,7 @@ function dressOverheadDecor(ctx: DressingContext, layer: LayerBuilder, gateSet: 
     ];
     for (const c of corners) {
       const tucked = ctx.isWall(c.x, c.y - 1) && ctx.isWall(c.x + c.side, c.y);
-      if (!tucked || ctx.isWall(c.x, c.y) || !layer.isEmpty(c.x, c.y) || !rng.chance(config.cobweb.chance)) continue;
+      if (!tucked || ctx.isWall(c.x, c.y) || !layer.isEmpty(c.x, c.y) || !rng.chance(cobwebChance(ctx, c.x, c.y))) continue;
       const name = ctx.pickVariant(c.group, []);
       layer.set(c.x, c.y, ctx.tile(name).frame, false, name);
     }

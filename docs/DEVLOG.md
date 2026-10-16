@@ -3284,6 +3284,17 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** `bossRoomRule.test.ts` — szansa 0/1 według biomu, pokój końcowy zawsze na piętrze 3 i nigdy na 4; udział pokoi końcowych w badanych piętrach 10–20%. Build: 1082 testy.
 
+## Krok 52 — Gniazdo pająków: coraz więcej pajęczyn ku arenie `#decyzja` `#pajecze-leze` `#grzybnia`
+
+**Prośba właściciela** `#decyzja`: więcej pajęczyn w bliskim otoczeniu komnaty bossów pająków, żeby gracz wyczuł, że zbliża się do gniazda. Przy okazji sprawdzenie w przeglądarce ukrytej komnaty z kroku 51.
+
+- `FloorDressingConfig.nest` (`config/dressingConfig.ts`, `SPIDER_NEST`): tylko Pajęcze leże (Matka Pająków) i Grzybnia (Król Pająków). Siła gniazda spada liniowo od 1 w arenie do 0 na **22 kafle** od jej krawędzi (`DressingContext.nestStrength`).
+- Pajęczyna w górnym narożniku pokoju: szansa rośnie ku arenie do 100% (zwykle 70% w leżu, 50% w Grzybni). Przy arenie dochodzą też nici i jaja na licu muru (`wallFace.lair`, do 55%). Same dekoracje — bez kolizji i bez zmian w rozgrywce (lepkie pajęczyny-pułapki bez zmian).
+
+**Testy:** `FloorDressing.test.ts` — narożniki przy arenie mają pajęczyny przy zerowej szansie bazowej, daleki pokój nie; lico muru tylko w zasięgu; gniazdo tylko w leżu i Grzybni; łącznie więcej pajęczyn niż bez gniazda.
+
+**Weryfikacja w przeglądarce (`?hero=sorceress&seed=7`):** piętro 3 — wejście do ukrytej komnaty: odsłonięcie z 2 kafli i komunikat, kokony, pajęczyny w narożnikach; piętro 2 — pokój przy arenie ma pajęczyny w obu górnych narożnikach, pokój daleko od niej bez. Bez błędów w konsoli (poza 404 pliku pomocniczego). Build: 1086 testów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
