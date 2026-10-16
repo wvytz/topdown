@@ -57,6 +57,11 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
   - światło (mrok, mgła, pochodnie) przechodzi płynnie — bez twardych pasm (decyzja z kroku 28a, odwołuje pasma z 19a);
   - dekoracje bez kolizji (kolidujące rekwizyty tylko za zgodą, bo zmieniają linię wzroku Kiterów).
 
+## Diagnostyka (krok 55)
+
+- Gra zapisuje błędy i niespotykane zdarzenia w `localStorage` (`systems/Diagnostics.ts`, `diagnostics/`); **F9** otwiera raport do skopiowania. Wyjątek w pętli gry jest łapany w `game.step` (inaczej Phaser zamiera). Nowe istotne zdarzenia gry zgłaszaj przez `diag.note(...)` z `diagnostics/DiagnosticsHub`.
+- Prośba o diagnozę „wyrzuciło mnie z gry”: poproś o raport z F9 (albo z `localStorage` klucz `tower-crawler.diagnostics.v1`).
+
 ## Znane pułapki
 
 - **Projekt leży w OneDrive, a watcher Vite potrafi przegapić zmianę pliku.** Objaw: błąd w przeglądarce sprzeczny z kodem na dysku.

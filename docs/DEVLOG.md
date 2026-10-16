@@ -3330,6 +3330,20 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja w przeglądarce (`?hero=sorceress&seed=7`):** piętro 4 — smuga krwi w korytarzu prowadzącym do areny Pożeracza; piętro 1 — plamy i ślady ku arenie; piętro 5 — czerwona poświata i iskra; bez błędów w konsoli (poza 404 pliku pomocniczego). Build: 1107 testów.
 
+## Krok 55 — Dziennik błędów i niespotykanych zdarzeń `#decyzja` `#diagnostyka`
+
+**Powód** `#ocena`: właściciel i tester („Mycha”) zgłaszają, że gra czasem „wyrzuca” w trakcie rozgrywki (druga rozgrywka). Nie udało się tego odtworzyć (testy botem: wspinaczki do piętra 9, wszystkie przedmioty, śmierć i restarty, 60 restartów sceny, build produkcyjny — bez błędów), a gra nie miała żadnej obsługi błędów: wyjątek w pętli gry zatrzymuje Phasera na stałe (`RequestAnimationFrame` planuje następną klatkę dopiero po udanej obsłudze bieżącej), więc obraz zamiera bez śladu.
+
+**Co powstało** (`systems/Diagnostics.ts` czyste, `config/diagnosticsConfig.ts`, `persistence/DiagnosticStorage.ts`, `diagnostics/*`):
+- **Błędy:** `window.onerror`, odrzucone obietnice i wyjątki w pętli gry (`game.step` owinięte w try/catch — gra gra dalej, błąd trafia do dziennika zamiast zamrażać grę); deduplikacja (ten sam błąd liczy się jako ×N, po 4 wpisach nie spamuje).
+- **Niespotykane zdarzenia:** zacięcia klatek (≥ 600 ms) i długie mulenie (średni FPS < 20 przez 5 s), utrata/przywrócenie kontekstu WebGL, ukrycie karty, wysoka sterta (≥ 700 MB), „niemożliwy” stan gracza (NaN, poza mapą, HP poza zakresem — kontrola co sekundę).
+- **Okruchy z gry:** nowe piętro (seed, bohater, biom), kraty areny, start/koniec walki z bossem, nagroda, ofiara w kapliczce, schody, śmierć.
+- **Puls co 5 s** ze stanem gry (piętro, seed, bohater, HP, złoto, kafel, walka z bossem…), FPS i stertą. Sesja bez zgłoszonego zamknięcia (`pagehide`) jest oznaczana jako **urwana** — przy następnym uruchomieniu dziennik zapisuje „poprzednia sesja urwała się” razem z ostatnim stanem. To jedyny ślad po twardym wyrzuceniu karty (zabicie przez przeglądarkę, awaria).
+- **Raport:** ostatnie 3 sesje w `localStorage` (limit ~120 kB, najstarsze zdarzenia wypadają). Klawisz **F9** otwiera pole z raportem do skopiowania; po pierwszym błędzie pokazuje się dyskretna nakładka „Wystąpił błąd w grze — raport zapisano” z przyciskami Kopiuj / Pokaż / Zamknij. Tester wkleja raport autorowi.
+- Dziennik nigdy nie rzuca wyjątków (zepsuty magazyn, zepsuty dostawca stanu są połykane).
+
+**Testy:** `tests/systems/diagnostics.test.ts` (opis błędów, ring i deduplikacja, sesja urwana, limit rozmiaru, uszkodzony zapis, monitor klatek, kontrola stanu, raport, hub z fałszywym magazynem). **Weryfikacja w przeglądarce:** celowo rzucony wyjątek w każdej klatce — pętla żyje dalej (153 klatki w 2,5 s), nakładka błędu się pokazuje, dziennik ma `error:loop ×332` i puls ze stanem, F9 otwiera raport. Build: 1121 testów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

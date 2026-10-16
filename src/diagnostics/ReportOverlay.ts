@@ -1,0 +1,85 @@
+import type { DiagnosticsHub } from '@/diagnostics/DiagnosticsHub';
+
+const STYLE =
+  'position:fixed;left:8px;bottom:8px;z-index:99999;max-width:min(520px,calc(100vw - 16px));font:12px/1.4 monospace;color:#f4e9d0;' +
+  'background:rgba(20,10,14,.94);border:1px solid #a33;border-radius:4px;padding:8px 10px;box-shadow:0 2px 12px #000a;';
+const BUTTON =
+  'font:inherit;color:#f4e9d0;background:#3a2a30;border:1px solid #777;border-radius:3px;padding:2px 8px;margin-right:6px;cursor:pointer;';
+
+/**
+ * Nakładka DOM z komunikatem o błędzie i raportem do skopiowania (krok 55). Nie blokuje gry (poza polem raportu
+ * otwartym klawiszem F9); pokazuje się przy pierwszym błędzie sesji i po F9.
+ */
+export class ReportOverlay {
+  private banner: HTMLDivElement | null = null;
+  private panel: HTMLDivElement | null = null;
+
+  constructor(private readonly hub: DiagnosticsHub) {}
+
+  showError(message: string): void {
+    if (typeof document === 'undefined') return;
+    if (this.banner) {
+      const line = this.banner.querySelector('[data-line]');
+      if (line) line.textContent = message;
+      return;
+    }
+    const banner = document.createElement('div');
+    banner.setAttribute('style', STYLE);
+    banner.innerHTML = '<div style="color:#ff9b8a;margin-bottom:4px">Wystąpił błąd w grze — raport zapisano.</div><div data-line style="opacity:.8;margin-bottom:6px;word-break:break-word"></div>';
+    banner.querySelector('[data-line]')!.textContent = message;
+    const copy = this.button('Kopiuj raport', () => void this.copy(copy));
+    const show = this.button('Pokaż', () => this.togglePanel());
+    const close = this.button('Zamknij', () => {
+      banner.remove();
+      this.banner = null;
+    });
+    banner.append(copy, show, close);
+    document.body.appendChild(banner);
+    this.banner = banner;
+  }
+
+  togglePanel(): void {
+    if (typeof document === 'undefined') return;
+    if (this.panel) {
+      this.panel.remove();
+      this.panel = null;
+      return;
+    }
+    const panel = document.createElement('div');
+    panel.setAttribute('style', `${STYLE}left:8px;top:8px;bottom:auto;max-width:min(760px,calc(100vw - 16px));`);
+    const area = document.createElement('textarea');
+    area.readOnly = true;
+    area.value = this.hub.report();
+    area.setAttribute('style', 'display:block;width:min(740px,calc(100vw - 40px));height:min(60vh,420px);font:11px/1.35 monospace;background:#120b0e;color:#f4e9d0;border:1px solid #555;');
+    const copy = this.button('Kopiuj raport', () => void this.copy(copy, area));
+    const close = this.button('Zamknij (F9)', () => this.togglePanel());
+    const bar = document.createElement('div');
+    bar.style.marginTop = '6px';
+    bar.append(copy, close);
+    panel.append(area, bar);
+    document.body.appendChild(panel);
+    this.panel = panel;
+    area.focus();
+  }
+
+  private button(label: string, onClick: () => void): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.setAttribute('style', BUTTON);
+    button.addEventListener('click', onClick);
+    return button;
+  }
+
+  private async copy(button: HTMLButtonElement, area?: HTMLTextAreaElement): Promise<void> {
+    const text = this.hub.report();
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = 'Skopiowano';
+    } catch {
+      // Bez uprawnień do schowka: zaznaczamy tekst, użytkownik skopiuje Ctrl+C.
+      if (!this.panel) this.togglePanel();
+      (area ?? this.panel?.querySelector('textarea'))?.select();
+      button.textContent = 'Zaznacz i Ctrl+C';
+    }
+  }
+}

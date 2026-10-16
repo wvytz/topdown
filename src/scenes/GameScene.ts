@@ -90,8 +90,10 @@ import type { ScoreEntry } from '@/systems/Highscores';
 import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
+import { diag } from '@/diagnostics/DiagnosticsHub';
 import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
+import { sanityIssues } from '@/systems/Diagnostics';
 import { BOSS_HERALD, HERALD_RUMBLE } from '@/config/bossHeraldConfig';
 import { FogWisps } from '@/effects/FogWisps';
 import { LightingOverlay } from '@/effects/LightingOverlay';
@@ -320,10 +322,55 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.showToast('Run testowy — wynik nie trafi na tablicę');
     }
     this.cameras.main.fadeIn(250, 0, 0, 0);
+    this.setupDiagnostics();
+  }
+
+  /** Dziennik diagnostyczny (krok 55): okruch „nowe piętro” i stan gry do pulsu (po twardym wyrzuceniu to ostatni ślad). */
+  private setupDiagnostics(): void {
+    diag.note('floor-start', { floor: this.floorNumber, seed: this.runSeed, hero: this.run.hero, biome: this.biome.id, practice: this.run.practice, gold: this.run.gold });
+    diag.setState(() => {
+      const tile = DungeonView.worldToTile(this.player.x, this.player.y);
+      return {
+        scene: 'game',
+        floor: this.floorNumber,
+        seed: this.runSeed,
+        hero: this.run.hero,
+        hp: Math.round(this.player.health.value),
+        maxHp: Math.round(this.player.health.max),
+        gold: this.run.gold,
+        items: this.run.items.length,
+        tile: `${tile.x},${tile.y}`,
+        bossFight: this.bossFight.isFighting,
+        bossDefeated: this.bossFight.isDefeated,
+        stairsUnlocked: this.stairsUnlocked,
+        dead: this.player.isDead,
+        transition: this.isTransitioning,
+      };
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => diag.setState(null));
+  }
+
+  private lastBossFighting = false;
+  private nextSanityAt = 0;
+
+  /** Co sekundę: zmiany walki z bossem (okruchy) i kontrola poprawności stanu gracza (NaN, poza mapą, HP poza zakresem). */
+  private diagnosticsTick(time: number): void {
+    if (this.bossFight.isFighting !== this.lastBossFighting) {
+      this.lastBossFighting = this.bossFight.isFighting;
+      diag.note(this.lastBossFighting ? 'boss-fight-start' : 'boss-fight-end', { floor: this.floorNumber, defeated: this.bossFight.isDefeated });
+    }
+    if (time < this.nextSanityAt) return;
+    this.nextSanityAt = time + 1000;
+    const issues = sanityIssues(
+      { x: this.player.x, y: this.player.y, hp: this.player.health.value, maxHp: this.player.health.max },
+      { width: this.dungeon.width * TILE_SIZE, height: this.dungeon.height * TILE_SIZE },
+    );
+    for (const issue of issues) diag.note('insane-state', { floor: this.floorNumber }, 'error', issue);
   }
 
   override update(time: number): void {
     if (this.isTransitioning) return;
+    this.diagnosticsTick(time);
 
     const actions = this.inputController.getActions();
     const turn = this.player.tick(actions, time);
@@ -700,6 +747,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       isBossFighting: () => this.bossFight.isFighting,
       isBossDefeated: () => this.bossFight.isDefeated,
       onSealed: () => {
+        diag.note('arena-sealed', { floor: this.floorNumber });
         this.showToast('Kraty opadły — nie ma odwrotu!');
         this.manGalleries();
       },
@@ -814,6 +862,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       rng: createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)),
       config: applyFloorToShrine(SHRINE_CONFIG, this.floorEffects),
       onBlessing: (itemId, cost) => {
+        diag.note('shrine-offering', { floor: this.floorNumber, item: itemId, cost });
         const item = ITEM_DEFINITIONS[itemId];
         this.player.applyLoadout(this.currentLoadout());
         this.effects.floatingText(this.player.x, this.player.y, `-${cost}`, '#f5c542');
@@ -866,6 +915,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.grantItem(itemId);
       },
     };
+    diag.note('boss-reward-offered', { floor: this.floorNumber, choices: choices.length });
     this.scene.pause();
     this.scene.launch(SceneKey.Reward, data);
   }
@@ -883,6 +933,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private handlePlayerDeath(): void {
     if (this.deathHandled) return;
     this.deathHandled = true;
+    diag.note('player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
 
     // Złoto w chwili śmierci to wynik runu.
     const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now() };
@@ -982,6 +1033,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private goToNextFloor(): void {
+    diag.note('stairs-up', { from: this.floorNumber });
     this.isTransitioning = true;
     this.player.setVelocity(0, 0);
     this.cameras.main.fadeOut(250, 0, 0, 0);
