@@ -10,3 +10,9 @@ ALLOWED_ORIGINS = "https://wvytz.github.io,http://localhost:5173"
 binding = "DB"
 database_name = "tower-crawler-scores"
 database_id = "98c0f8f3-a6e3-4fa6-b67f-5a2981ecfed2"
+
+# Czyszczenie starych zgłoszeń diagnostycznych (retencja w worker/src/reports.js) — codziennie o 03:17 UTC.
+[triggers]
+crons = ["17 3 * * *"]
+
+# Sekret administratora do odczytu zgłoszeń: `npx wrangler secret put REPORTS_TOKEN` (bez niego GET/DELETE /reports zwracają 404).

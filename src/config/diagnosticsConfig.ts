@@ -39,6 +39,22 @@ export const DIAGNOSTICS = {
     maxStorageChars: 160_000,
     storageKey: 'tower-crawler.inputs.v1',
   },
+  /**
+   * Wysyłka zgłoszeń do workera (krok 57). Limity rozmiaru i wersja koperty muszą zgadzać się z `worker/src/reports.js`
+   * (worker odrzuci więcej); limity częstotliwości po stronie gry chronią przed przypadkowym zalewem i darmowy plan.
+   */
+  reports: {
+    version: 1,
+    maxTextChars: 80_000,
+    maxAttachmentChars: 150_000,
+    maxBodyChars: 262_144,
+    /** Najkrótszy odstęp między wysyłkami i limit na sesję (strony). */
+    minIntervalMs: 60_000,
+    maxPerSession: 3,
+    /** Limit czasu żądania. */
+    timeoutMs: 15_000,
+    clientIdKey: 'tower-crawler.client-id.v1',
+  },
   /** Wykrywacze zawieszeń i niemożliwych sytuacji w grze (krok 56). */
   anomalies: {
     /** Co ile ms próbkujemy stan gry. */

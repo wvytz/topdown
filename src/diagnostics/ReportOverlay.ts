@@ -59,6 +59,7 @@ export class ReportOverlay {
     bar.style.marginTop = '6px';
     bar.append(copy, rec, close);
     panel.append(area, bar);
+    if (this.hub.canSendReports) panel.append(this.sendControls());
     document.body.appendChild(panel);
     this.panel = panel;
     area.focus();
@@ -70,6 +71,54 @@ export class ReportOverlay {
     button.setAttribute('style', BUTTON);
     button.addEventListener('click', onClick);
     return button;
+  }
+
+  /**
+   * Wysyłka raportu autorowi (krok 57): ręczna, z jasną informacją o zawartości; opcja dołączenia nagrania wejść.
+   * Wynik (wysłano / za często / błąd sieci) pokazuje się obok przycisku.
+   */
+  private sendControls(): HTMLDivElement {
+    const box = document.createElement('div');
+    box.setAttribute('style', 'margin-top:8px;padding-top:6px;border-top:1px solid #555;');
+    const note = document.createElement('div');
+    note.setAttribute('style', 'opacity:.75;margin-bottom:4px;max-width:720px');
+    note.textContent =
+      'Wysyłane: raport tekstowy powyżej (przeglądarka, rozdzielczość, zdarzenia i stan gry) oraz losowy anonimowy identyfikator przeglądarki. Bez imienia i adresu IP.';
+    const label = document.createElement('label');
+    label.setAttribute('style', 'margin-right:8px;cursor:pointer');
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = true;
+    label.append(check, document.createTextNode(' dołącz nagranie wejść z ostatniego piętra (ruchy i kliknięcia)'));
+    const status = document.createElement('span');
+    const send = this.button('Wyślij autorowi', () => {
+      send.disabled = true;
+      status.textContent = 'Wysyłam…';
+      void this.hub.sendReport('diagnostic', check.checked).then((result) => {
+        send.disabled = false;
+        status.textContent = result.ok ? (result.duplicate ? 'Ten raport już wysłano.' : 'Wysłano — dziękuję!') : this.describeFailure(result.reason, result.retryAfterS);
+      });
+    });
+    box.append(note, label, send, status);
+    return box;
+  }
+
+  private describeFailure(reason: string, retryAfterS?: number): string {
+    const wait = retryAfterS !== undefined ? ` Spróbuj za ${retryAfterS >= 120 ? `${Math.round(retryAfterS / 60)} min` : `${retryAfterS} s`}.` : '';
+    switch (reason) {
+      case 'throttled':
+        return `Za często — raport można wysłać co minutę (maks. 3 na sesję).${wait}`;
+      case 'rate-limited':
+        return `Limit wysyłek wyczerpany.${wait}`;
+      case 'unavailable':
+        return `Serwis chwilowo niedostępny.${wait}`;
+      case 'too-large':
+        return 'Raport za duży — odznacz nagranie wejść i spróbuj ponownie.';
+      case 'network':
+        return 'Brak połączenia — spróbuj później.';
+      default:
+        return 'Serwer odrzucił raport.';
+    }
   }
 
   /** Nagranie wejść z ostatniego piętra jako JSON (do odtworzenia w trybie dev przez `__replay`). */

@@ -2,10 +2,13 @@ import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
 import type { InputRecording, RecordingMeta } from '@/core/diagnosticsTypes';
 import { DiagnosticStorage } from '@/persistence/DiagnosticStorage';
 import { InputRecordingStorage } from '@/persistence/InputRecordingStorage';
+import type { ReportSink } from '@/persistence/remoteReports';
 import type { InputSample } from '@/systems/InputRecorder';
 import { InputRecorder } from '@/systems/InputRecorder';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import type { DiagData, DiagLevel, DiagSession } from '@/systems/Diagnostics';
+import type { ReportKind, SendResult } from '@/systems/ReportEnvelope';
+import { SendThrottle, buildEnvelope } from '@/systems/ReportEnvelope';
 import { DiagnosticLog, describeError, endedAbnormally, formatReport } from '@/systems/Diagnostics';
 
 type StateProvider = () => DiagData;
@@ -25,6 +28,8 @@ export class DiagnosticsHub {
   private readonly clock: () => number;
   private readonly recorder = new InputRecorder();
   private recordings: InputRecording[];
+  private reporting: { readonly sink: ReportSink; readonly clientId: string; readonly build: string } | null = null;
+  private readonly throttle = new SendThrottle();
 
   constructor(
     storage: DiagnosticStorage,
@@ -143,6 +148,39 @@ export class DiagnosticsHub {
     this.flushInputs();
     const last = this.recordings[this.recordings.length - 1];
     return last ? JSON.stringify(last) : null;
+  }
+
+  /** Włącza wysyłkę zgłoszeń do zdalnego celu (krok 57); bez tego `canSendReports` jest false i przycisk się nie pokazuje. */
+  setReporting(sink: ReportSink | null, clientId: string, build: string): void {
+    this.reporting = sink ? { sink, clientId, build } : null;
+  }
+
+  get canSendReports(): boolean {
+    return this.reporting !== null;
+  }
+
+  /**
+   * Wysyła zgłoszenie (ręcznie, z przycisku): koperta z bieżącego dziennika i opcjonalnie nagraniem ostatniego piętra.
+   * Limity po stronie gry (odstęp, liczba na sesję) — limity workera są dodatkowym zabezpieczeniem. Nigdy nie rzuca.
+   */
+  async sendReport(kind: ReportKind, withRecording: boolean): Promise<SendResult> {
+    try {
+      if (!this.reporting) return { ok: false, reason: 'unavailable' };
+      const now = this.clock();
+      const wait = this.throttle.waitMs(now);
+      if (wait !== null) return { ok: false, reason: 'throttled', ...(Number.isFinite(wait) ? { retryAfterS: Math.ceil(wait / 1000) } : {}) };
+      this.flushInputs();
+      const text = this.report();
+      const sessions = [...this.previous, this.log.snapshot()].slice(-DIAGNOSTICS.maxSessions);
+      const recording = withRecording ? (this.recordings[this.recordings.length - 1] ?? null) : null;
+      const envelope = buildEnvelope({ kind, build: this.reporting.build, clientId: this.reporting.clientId, sessions, reportText: text, recording });
+      const result = await this.reporting.sink.send(envelope);
+      if (result.ok) this.throttle.record(now);
+      this.note('report-sent', { ok: result.ok, kind, withRecording, ...(result.ok ? {} : { reason: result.reason }) });
+      return result;
+    } catch {
+      return { ok: false, reason: 'network' };
+    }
   }
 
   onEvent(listener: Listener): void {

@@ -1,9 +1,15 @@
 /**
- * Worker wspólnej listy wyników Tower Crawlera.
- *   GET  /scores?limit=N  → [{ score, floor, timestamp, name }], najlepsze pierwsze (name może być null)
- *   POST /scores          ← { score, floor, timestamp, name? }
+ * Worker Tower Crawlera: wspólna lista wyników i zgłoszenia diagnostyczne.
+ *   GET    /scores?limit=N  → [{ score, floor, timestamp, name }], najlepsze pierwsze (name może być null)
+ *   POST   /scores          ← { score, floor, timestamp, name? }
+ *   POST   /reports         ← koperta zgłoszenia (patrz `reports.js`); 201 { ok, id } | 200 { duplicate } | 400/413/429/503
+ *   GET    /reports?limit&kind&since&floor  → lista metadanych       } tylko z nagłówkiem
+ *   GET    /reports/:id                     → pełne zgłoszenie       } Authorization: Bearer <REPORTS_TOKEN>
+ *   DELETE /reports/:id                     → usunięcie              } (bez sekretu te trasy zwracają 404)
+ *   cron (codziennie)       → usuwa zgłoszenia starsze niż REPORT_LIMITS.retentionDays
  * Wynik liczy klient, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury i zalew wpisów.
  */
+import { REPORT_LIMITS, processReport, retentionCutoff, sha256Hex, tokensEqual } from './reports.js';
 
 // Granice sensownego wpisu — luźne, żeby nie odrzucać prawdziwych runów.
 const MAX_SCORE = 1_000_000;
@@ -21,17 +27,140 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     const url = new URL(request.url);
-    if (url.pathname !== '/scores') return json({ error: 'not found' }, 404, cors);
-
     try {
-      if (request.method === 'GET') return await getScores(url, env, cors);
-      if (request.method === 'POST') return await postScore(request, env, cors);
-      return json({ error: 'method not allowed' }, 405, cors);
+      if (url.pathname === '/scores') {
+        if (request.method === 'GET') return await getScores(url, env, cors);
+        if (request.method === 'POST') return await postScore(request, env, cors);
+        return json({ error: 'method not allowed' }, 405, cors);
+      }
+      const reportPath = /^\/reports(?:\/(\d+))?$/.exec(url.pathname);
+      if (reportPath) return await routeReports(request, url, reportPath[1], env, cors);
+      return json({ error: 'not found' }, 404, cors);
     } catch {
       return json({ error: 'server error' }, 500, cors);
     }
   },
+
+  /** Cron: usuwanie starych zgłoszeń (retencja). */
+  async scheduled(_event, env) {
+    await purgeOldReports(env, Date.now());
+  },
 };
+
+// ---------------------------------------------------------------- zgłoszenia diagnostyczne
+
+async function routeReports(request, url, idText, env, cors) {
+  if (request.method === 'POST' && idText === undefined) return await postReport(request, env, cors);
+  // Reszta to trasy administratora: bez skonfigurowanego sekretu nie istnieją, bez poprawnego tokena — 404 (nie zdradzamy ich).
+  const header = request.headers.get('Authorization') ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!(await tokensEqual(token, env.REPORTS_TOKEN))) return json({ error: 'not found' }, 404, cors);
+  if (request.method === 'GET' && idText === undefined) return await listReports(url, env);
+  if (request.method === 'GET') return await getReport(Number(idText), env);
+  if (request.method === 'DELETE' && idText !== undefined) {
+    await env.DB.prepare('DELETE FROM reports WHERE id = ?').bind(Number(idText)).run();
+    return json({ ok: true }, 200, {});
+  }
+  return json({ error: 'method not allowed' }, 405, cors);
+}
+
+async function postReport(request, env, cors) {
+  if (!originAllowed(request, env)) return json({ error: 'origin not allowed' }, 403, cors);
+  // Odrzucamy zbyt duże zgłoszenia, zanim wczytamy treść do pamięci.
+  const declared = Number(request.headers.get('Content-Length') ?? '0');
+  const maxBytes = REPORT_LIMITS.maxBodyChars * 4;
+  if (declared > maxBytes) return json({ error: 'payload too large' }, 413, cors);
+  const raw = await request.text();
+  if (raw.length > REPORT_LIMITS.maxBodyChars + 4096) return json({ error: 'payload too large' }, 413, cors);
+
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return json({ error: 'bad json' }, 400, cors);
+  }
+  const now = Date.now();
+  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const result = await processReport({ body, ipHash, now, repo: d1Repo(env), limits: REPORT_LIMITS });
+  // Sprzątanie przy okazji zapisu (co ok. 50. zgłoszenie) — obok codziennego crona.
+  if (result.status === 201 && Math.random() < 0.02) await purgeOldReports(env, now);
+  return json(result.body, result.status, { ...cors, ...(result.headers ?? {}) });
+}
+
+function d1Repo(env) {
+  return {
+    async countByIp(ipHash, since) {
+      const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE ip_hash = ? AND created_at > ?').bind(ipHash, since).first();
+      return row?.n ?? 0;
+    },
+    async countAll(since) {
+      const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE created_at > ?').bind(since).first();
+      return row?.n ?? 0;
+    },
+    async findDuplicate(clientId, textHash, since) {
+      const row = await env.DB.prepare('SELECT 1 AS x FROM reports WHERE client_id = ? AND text_hash = ? AND created_at > ? LIMIT 1')
+        .bind(clientId, textHash, since)
+        .first();
+      return row !== null && row !== undefined;
+    },
+    async insert(r) {
+      const result = await env.DB.prepare(
+        'INSERT INTO reports (created_at, ip_hash, schema_version, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, text_hash, size, text, attachments) ' +
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+        .bind(
+          r.createdAt, r.ipHash, r.version, r.kind, r.build, r.clientId, r.sessionId,
+          r.summary.errors ?? null, r.summary.warnings ?? null, r.summary.floor ?? null, r.summary.hero ?? null, r.summary.seed ?? null,
+          r.summary.abnormalPrev === undefined ? null : r.summary.abnormalPrev ? 1 : 0,
+          r.textHash, r.size, r.text, r.attachments.length > 0 ? JSON.stringify(r.attachments) : null,
+        )
+        .run();
+      return result.meta?.last_row_id ?? 0;
+    },
+  };
+}
+
+async function purgeOldReports(env, now) {
+  await env.DB.prepare('DELETE FROM reports WHERE created_at < ?').bind(retentionCutoff(now, REPORT_LIMITS)).run();
+}
+
+async function listReports(url, env) {
+  const requested = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
+  const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), REPORT_LIMITS.maxListLimit) : 50;
+  const conditions = [];
+  const params = [];
+  const kind = url.searchParams.get('kind');
+  if (kind) {
+    conditions.push('kind = ?');
+    params.push(kind);
+  }
+  const since = Number.parseInt(url.searchParams.get('since') ?? '', 10);
+  if (Number.isFinite(since)) {
+    conditions.push('created_at > ?');
+    params.push(since);
+  }
+  const floor = Number.parseInt(url.searchParams.get('floor') ?? '', 10);
+  if (Number.isFinite(floor)) {
+    conditions.push('floor = ?');
+    params.push(floor);
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const { results } = await env.DB.prepare(
+    `SELECT id, created_at, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, size FROM reports ${where} ORDER BY id DESC LIMIT ?`,
+  )
+    .bind(...params, limit)
+    .all();
+  return json(results, 200, { 'Cache-Control': 'no-store' });
+}
+
+async function getReport(id, env) {
+  const row = await env.DB.prepare('SELECT * FROM reports WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: 'not found' }, 404, {});
+  const { ip_hash: _ip, ...rest } = row;
+  return json({ ...rest, attachments: rest.attachments ? JSON.parse(rest.attachments) : [] }, 200, { 'Cache-Control': 'no-store' });
+}
+
+// ---------------------------------------------------------------- wyniki
 
 async function getScores(url, env, cors) {
   const requested = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
@@ -93,15 +222,14 @@ function originAllowed(request, env) {
 }
 
 function corsHeaders(request, env) {
-  const headers = { 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' };
+  const headers = { 'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' };
   if (originAllowed(request, env)) headers['Access-Control-Allow-Origin'] = request.headers.get('Origin');
   return headers;
 }
 
 /** Adres IP trzymamy tylko jako skrót — do limitu wpisów, nie do identyfikacji. */
 async function hashIp(ip) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`tower-crawler:${ip}`));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return sha256Hex(`tower-crawler:${ip}`);
 }
 
 function json(data, status, headers) {

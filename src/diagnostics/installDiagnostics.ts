@@ -2,6 +2,9 @@ import type Phaser from 'phaser';
 import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
 import { DiagnosticsHub, setDiagnostics } from '@/diagnostics/DiagnosticsHub';
 import { ReportOverlay } from '@/diagnostics/ReportOverlay';
+import { HighscoreStorage } from '@/persistence/HighscoreStorage';
+import { getClientId } from '@/persistence/ClientId';
+import { createRemoteReportSink } from '@/persistence/remoteReports';
 import { FrameMonitor } from '@/systems/Diagnostics';
 import type { DiagData } from '@/systems/Diagnostics';
 
@@ -40,6 +43,8 @@ function environment(): DiagData {
 export function installDiagnostics(game: Phaser.Game): DiagnosticsHub {
   const hub = DiagnosticsHub.create(environment());
   setDiagnostics(hub);
+  // Wysyłka raportów do workera (krok 57) — tylko gdy skonfigurowano `VITE_SCORES_URL`; ręczna, z przycisku w F9.
+  hub.setReporting(createRemoteReportSink(), getClientId(HighscoreStorage.browserStorage()), import.meta.env.MODE);
   const overlay = new ReportOverlay(hub);
   hub.note('session-start', { href: location.search || null });
 

@@ -3355,6 +3355,34 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** `inputRecorder.test.ts` (zapis zmian, limit/przycięcie, odtwarzanie w czasie, jednorazowe dash/E, uszkodzone nagranie, zapis nagrań, hub), `anomalyDetectors.test.ts` (utknięcie, boss, limity, osiągalność, spójność — także na wygenerowanych piętrach 1–12). **Weryfikacja:** w przeglądarce nagranie i `__replay` działają, przytrzymanie ruchu w ścianę daje `player-stuck`; `npm run smoke` (Czarodziejka, piętra 1–4) — OK. Build: 1138 testów.
 
+## Krok 57 — Endpoint zgłoszeń diagnostycznych w workerze `#decyzja` `#diagnostyka`
+
+**Decyzja właściciela** `#decyzja`: osobny endpoint z limitami, przygotowany na późniejsze, bardziej złożone raportowanie błędów; logika i proces opisane w DEVLOG. Pytanie o koszty: przy skali testerów wysyłka mieści się z dużym zapasem w darmowym planie Cloudflare (orientacyjnie: raport to jedno żądanie i jeden zapis w D1; limity niżej chronią przed zalewem). **Limity planu darmowego do potwierdzenia w dokumentacji Cloudflare — podane z pamięci.**
+
+### Logika i proces
+
+**1. Koperta zgłoszenia (kontrakt gry ↔ worker, wersja 1)** — `systems/ReportEnvelope.ts` (gra), `worker/src/reports.js` (worker):
+`{ v, kind, app{build}, client{id, sessionId}, summary{errors, warnings, floor, hero, seed, abnormalPrev}, text, attachments[] }`.
+- `kind`: `diagnostic` (ręczne z F9), `crash` i `feedback` (zarezerwowane na kolejne kroki).
+- `summary` trafia do osobnych kolumn D1 — po nich filtruje się listę (piętro, bohater, seed, liczba błędów, „poprzednia sesja urwana”) bez parsowania tekstu.
+- `text` to raport z F9; `attachments` — dziś nagranie wejść (`input-recording`), docelowo np. zrzut obrazu, czasy systemów.
+- `client.id`: anonimowy losowy identyfikator przeglądarki (`persistence/ClientId.ts`, localStorage) — składa zgłoszenia jednego testera w całość i służy deduplikacji; to nie dane osobowe. IP worker zapisuje wyłącznie jako skrót SHA-256 (do limitów).
+- **Rozszerzalność:** nieznane pola są ignorowane (zgodność w przód); nowy rodzaj zgłoszenia = wpis w `REPORT_LIMITS.kinds` + deploy; nowa wersja koperty = podbicie `v` i obsługa obu wersji w `validateReport`; nowy typ załącznika = wpis w `attachmentTypes`.
+
+**2. Droga zgłoszenia:**
+1. Tester w F9 klika „Wyślij autorowi” (z opcją dołączenia nagrania wejść; panel opisuje, co jest wysyłane). `DiagnosticsHub.sendReport` → limity w grze (`SendThrottle`: minuta odstępu, 3 na sesję) → `buildEnvelope` (podsumowanie z bieżącej sesji, tekst przycięty do 80 000 znaków z zachowaniem początku i końca, nagranie dołączone w całości albo wcale) → `ReportSink` (`persistence/remoteReports.ts`, adapter workera, `POST <VITE_SCORES_URL>/reports`, limit czasu 15 s, bez wyjątków).
+2. Worker (`index.js` → `processReport`): origin z `ALLOWED_ORIGINS` (403) → rozmiar po nagłówku i po wczytaniu (413) → JSON (400) → **walidacja koperty** (400 z `reason`) → **deduplikacja** (200 `duplicate`, bez zapisu i bez zużycia limitu) → **limity** (429 + `Retry-After`; 503 przy globalnym bezpieczniku) → zapis w D1 (`201 {id}`).
+3. Autor odczytuje przez `GET /reports…` z `Authorization: Bearer <REPORTS_TOKEN>` (bez sekretu trasy zwracają 404); `DELETE /reports/:id` usuwa. Nagranie z załącznika wkleja do `__replay` w trybie dev (krok 56).
+4. Retencja: cron codziennie 03:17 UTC kasuje zgłoszenia starsze niż 30 dni (plus sprzątanie co ok. 50. zapis).
+
+**3. Limity** (`REPORT_LIMITS`): całość ≤ 262 144 znaków, tekst ≤ 80 000, ≤ 2 załączniki po ≤ 150 000; 5/godz. i 20/dobę z adresu; 1000/dobę globalnie; dedup 24 h; retencja 30 dni. Limity gry (rozmiary, wersja koperty) nie mogą przekraczać limitów workera — pilnuje tego test kontraktu.
+
+**4. Co przygotowane na później (nie zrobione):** automatyczna wysyłka przy błędzie krytycznym (`kind: 'crash'` z limitem 1 na sesję i zgodą testera), formularz „opisz, co się stało” (`feedback`), załączniki z krokiem 56+ (zrzut obrazu, czasy systemów, telemetria balansu), panel administratora zamiast `curl`, powiadomienie o nowych zgłoszeniach.
+
+**5. Wdrożenie — czeka na właściciela (nic nie wdrożono):** `cd worker`; `npx wrangler d1 execute tower-crawler-scores --remote --file=schema.sql`; `npx wrangler secret put REPORTS_TOKEN`; `npx wrangler deploy`; potem `npm run smoke` i `npm run deploy:pages`. Szczegóły i przykłady `curl` w `worker/README.md`.
+
+**Testy:** `tests/worker/reports.test.ts` (walidacja koperty, limity i `processReport` na atrapie repozytorium, deduplikacja, globalny bezpiecznik, kontrakt gra ↔ worker), `tests/worker/index.test.ts` (routing, CORS, 403/400/413/429, odczyt tylko z tokenem, usuwanie, cron — na atrapie D1), `tests/persistence/remoteReports.test.ts` (adapter, błędy sieci, koperta, throttling, identyfikator klienta). **Weryfikacja w przeglądarce** (z lokalnym atrapą workera): w F9 pojawia się „Wyślij autorowi”, wysyłka z nagraniem kończy się „Wysłano”, druga w ciągu minuty — „Za często”. Build: 1180 testów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
