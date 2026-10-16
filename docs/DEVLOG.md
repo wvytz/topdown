@@ -3404,7 +3404,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 ### Publikacja
 - Zmiany z gałęzi roboczej wprowadzone do `main` (fast-forward) i wdrożone na GitHub Pages (`npm run deploy:pages`, commit z adresem noreply właściciela); przed wdrożeniem `npm run build` i `npm run smoke` (Czarodziejka i barbarzyńca, piętra 1–4) — bez błędów.
 
-**Testy:** `tests/systems/autoReport.test.ts` (krytyczne zdarzenia, polityka: zgoda/brak/pytanie/limit/zaległe zgłoszenie, magazyn zgody, hub: automatyczne omija ręczny odstęp, wykrycie urwanej sesji), rozszerzone `tests/worker/index.test.ts` (nagłówek `X-Reports-Token`). **Weryfikacja w przeglądarce** (lokalna atrapa workera): awaria bez zgody → pytanie → „Tak” → `crash` z załączonym nagraniem trafia do workera, zgoda zapisana; po urwanej sesji z zgodą „tak” raport wysyłany automatycznie bez pytania. Build: wynik poniżej.
+**Testy:** `tests/systems/autoReport.test.ts` (krytyczne zdarzenia, polityka: zgoda/brak/pytanie/limit/zaległe zgłoszenie, magazyn zgody, hub: automatyczne omija ręczny odstęp, wykrycie urwanej sesji), rozszerzone `tests/worker/index.test.ts` (nagłówek `X-Reports-Token`). **Weryfikacja w przeglądarce** (lokalna atrapa workera): awaria bez zgody → pytanie → „Tak” → `crash` z załączonym nagraniem trafia do workera, zgoda zapisana; po urwanej sesji z zgodą „tak” raport wysyłany automatycznie bez pytania. Build: 1189 testów; smoke OK.
 
 ## Znane ograniczenia i backlog
 
