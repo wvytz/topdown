@@ -1,5 +1,6 @@
 import type { PlayerStats } from '@/core/types';
 import type { DungeonGeneratorConfig } from '@/core/dungeonTypes';
+import { BiomeId, biomeForFloor } from '@/config/biomeConfig';
 
 /** Rozdzielczość logiczna (skalowana trybem FIT). */
 export const GAME_WIDTH = 960;
@@ -21,8 +22,11 @@ export const BASE_DUNGEON_CONFIG: DungeonGeneratorConfig = {
   extraConnectionRatio: 0.25,
   maxPlacementAttempts: 300,
   bossRoomAtEnd: true,
-  endRoomChance: 0.5,
+  endRoomChance: 0,
 };
+
+/** Ukryta komnata za areną (krok 46) jest nagrodą za pokonanie Króla Pająków — tylko w Grzybni (krok 51, decyzja właściciela). */
+export const SECRET_ROOM_BIOME = BiomeId.FungalGrove;
 
 /** Na wyższych piętrach mapa rośnie i pojawia się więcej pokojów (z górnym limitem). */
 export function getDungeonConfigForFloor(floor: number): DungeonGeneratorConfig {
@@ -31,6 +35,8 @@ export function getDungeonConfigForFloor(floor: number): DungeonGeneratorConfig 
     ...BASE_DUNGEON_CONFIG,
     // Krok 45: arena na końcu piętra wszędzie poza piętrem 1 (szybsze przejście do drugiego biomu).
     bossRoomAtEnd: floor !== 1,
+    // Krok 51: pokój końcowy z ukrytą komnatą zawsze na piętrach Grzybni (też w kolejnych kręgach), nigdzie indziej.
+    endRoomChance: biomeForFloor(floor).id === SECRET_ROOM_BIOME ? 1 : 0,
     widthTiles: BASE_DUNGEON_CONFIG.widthTiles + growth * 4,
     heightTiles: BASE_DUNGEON_CONFIG.heightTiles + growth * 2,
     roomCount: {

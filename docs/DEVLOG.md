@@ -3275,6 +3275,15 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Test botem (Czarodziejka, bez uników):** piętro 9 — przedtem śmierć, teraz 25,2 s, 75 → 55 HP (4 trafienia); piętro 6 — 29,0 s / 39 HP → 22,9 s / 60 HP. Build: 1081 testów.
 
+## Krok 51 — Ukryta komnata tylko po Królu Pająków `#wieza` `#grzybnia`
+
+**Decyzja właściciela** `#decyzja` `#wieza`: ukryta komnata z kokonami (krok 46) ma być tylko nagrodą za pokonanie Króla Pająków. Dodatkowe sekretne komnaty po innych bossach — do rozważenia w innym terminie.
+
+- `endRoomChance` w `getDungeonConfigForFloor` zależy od biomu: **1** w Grzybni (`SECRET_ROOM_BIOME`, `config/gameConfig.ts`; piętro 3 i powtórzenia w kolejnych kręgach: 9, 15…), **0** gdzie indziej (dawniej 50% od piętra 2). Reguła „arena na końcu piętra” (krok 45) bez zmian — arena nadal ma jedno wejście, tylko bez pokoju końcowego poza Grzybnią.
+- Piętro Grzybni ma zawsze pokój końcowy (o ile generator zmieści układ; przy nieudanej próbie jak dotąd kolejna z RNG).
+
+**Testy:** `bossRoomRule.test.ts` — szansa 0/1 według biomu, pokój końcowy zawsze na piętrze 3 i nigdy na 4; udział pokoi końcowych w badanych piętrach 10–20%. Build nie był uruchamiany w tej sesji (brak zainstalowanych zależności).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
