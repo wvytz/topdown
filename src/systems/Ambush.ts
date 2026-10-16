@@ -21,7 +21,7 @@ export interface AmbushConfig {
   readonly preferredChance: number;
   /** Kraty opadają, gdy gracz stoi co najmniej tyle kafli od krawędzi pokoju. */
   readonly triggerMargin: number;
-  /** Liczba upiorów w kolejnych falach. */
+  /** Liczba upiorów w kolejnych falach (od kroku 51 jedna fala). */
   readonly waves: readonly number[];
   /** Od zamknięcia krat (albo końca fali) do pojawienia się następnej. */
   readonly waveDelayMs: number;
