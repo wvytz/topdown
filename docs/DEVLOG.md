@@ -3295,6 +3295,22 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja w przeglądarce (`?hero=sorceress&seed=7`):** piętro 3 — wejście do ukrytej komnaty: odsłonięcie z 2 kafli i komunikat, kokony, pajęczyny w narożnikach; piętro 2 — pokój przy arenie ma pajęczyny w obu górnych narożnikach, pokój daleko od niej bez. Bez błędów w konsoli (poza 404 pliku pomocniczego). Build: 1086 testów.
 
+## Krok 53 — Pajęczyny w korytarzach i „zapowiedź bossa” na pozostałych piętrach `#decyzja` `#pajecze-leze` `#grzybnia`
+
+**Prośba właściciela** `#decyzja`: pajęczyny także w korytarzach przed areną; przemyśleć i przygotować dodatkowe elementy wizualne, które na pozostałych piętrach wskażą bliskość pokoju bossa.
+
+- **Korytarze:** `NestDressing.corridorCobwebChance` (`SPIDER_NEST`: 0,6 ku arenie, malejąco z odległością). Pajęczyna w narożniku kafla korytarza przy murze (górnym albo bocznym), bez dwóch sąsiadujących (`dressCorridorCobwebs`). Korytarze do aren są krótkie, więc efekt jest subtelny — zapowiedź robią głównie pokoje.
+- **Pozostałe piętra (gotowe z istniejącej grafiki, bez nowych kafli):** to samo „gniazdo” (`FloorDressingConfig.nest`) ma teraz Cmentarzysko (gęstnieją nisze z czaszkami, kostnica, epitafia — `wallFace.grave`) i Piekło (okowy, czaszki na kolcach, żar — `wallFace.infernal`). Bez pajęczyn. Ruiny bez zmian (piętro 1).
+- **Pomysły na dalej (wymagają nowej grafiki lub decyzji — do wyboru przez właściciela):**
+  - ślady wleczenia i krew prowadzące do wejścia areny (naklejki na podłodze, jak ślady tronu z kroku 39);
+  - Ruiny: smugi szlamu i kałuże ku arenie Strażnika (Sludge King);
+  - Cmentarzysko: stosy kości i ślady pazurów na podłodze;
+  - Piekło: żarzące się szczeliny na posadzce, iskry unoszące się z podłogi;
+  - światło: lekki odcień światła pochodni (cieplejszy / czerwieńszy) w pobliżu areny;
+  - dźwięk i kamera: ledwo wyczuwalne drżenie ekranu w promieniu kilku kafli od areny.
+
+**Testy:** korytarz — pajęczyny pod murem blisko areny, daleko brak, dolny rząd bez; konfiguracja gniazd (pająki z pajęczynami, Cmentarzysko i Piekło tylko lico). Build: 1087 testów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

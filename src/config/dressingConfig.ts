@@ -54,15 +54,23 @@ export interface FloorDressingConfig {
 export interface NestDressing {
   /** Zasięg gniazda: odległość (kafle, w linii prostej) od areny, na której pajęczyn jest jeszcze więcej niż zwykle. */
   readonly radiusTiles: number;
-  /** Szansa pajęczyny w górnym narożniku pokoju przy arenie. */
+  /** Szansa pajęczyny w górnym narożniku pokoju przy arenie (0 = biom bez pajęczyn). */
   readonly cobwebChance: number;
+  /** Szansa pajęczyny przy murze korytarza przy arenie (krok 53); też rośnie ku arenie. */
+  readonly corridorCobwebChance: number;
   /** Szansa nici/jaj (`wallFaceGroup`) na licu muru przy arenie. */
   readonly wallFaceChance: number;
   readonly wallFaceGroup: string;
 }
 
-/** Gniazdo pająków (krok 52): Pajęcze leże i Grzybnia, czyli piętra z bossami-pająkami. */
-const SPIDER_NEST: NestDressing = { radiusTiles: 22, cobwebChance: 1, wallFaceChance: 0.55, wallFaceGroup: 'wallFace.lair' };
+/** Gniazdo pająków (krok 52–53): Pajęcze leże i Grzybnia, czyli piętra z bossami-pająkami. */
+const SPIDER_NEST: NestDressing = {
+  radiusTiles: 22,
+  cobwebChance: 1,
+  corridorCobwebChance: 0.6,
+  wallFaceChance: 0.55,
+  wallFaceGroup: 'wallFace.lair',
+};
 
 export const FLOOR_DRESSING: FloorDressingConfig = {
   nest: null,
@@ -162,6 +170,8 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
   ],
   wallFace: { chance: 0.3, group: 'wallFace.grave' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.3 },
+  // Krok 53: ku arenie gęstnieją nisze z czaszkami, kostnica i epitafia na licach.
+  nest: { radiusTiles: 18, cobwebChance: 0, corridorCobwebChance: 0, wallFaceChance: 0.5, wallFaceGroup: 'wallFace.grave' },
 };
 
 /**
@@ -182,6 +192,8 @@ export const INFERNAL_DRESSING: FloorDressingConfig = {
   largeDecals: [{ chance: 0.006, group: 'decal.sigil' }],
   wallFace: { chance: 0.3, group: 'wallFace.infernal' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0 },
+  // Krok 53: ku arenie gęstnieją okowy, czaszki na kolcach i żar na licach — bez pajęczyn.
+  nest: { radiusTiles: 18, cobwebChance: 0, corridorCobwebChance: 0, wallFaceChance: 0.5, wallFaceGroup: 'wallFace.infernal' },
 };
 
 /**

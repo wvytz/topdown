@@ -600,4 +600,29 @@ function dressOverheadDecor(ctx: DressingContext, layer: LayerBuilder, gateSet: 
       layer.set(c.x, c.y, ctx.tile(name).frame, false, name);
     }
   }
+  dressCorridorCobwebs(ctx, layer, gateSet);
+}
+
+/**
+ * Pajęczyny w korytarzach przed areną (krok 53): pod górnym murem albo przy bocznym murze korytarza, im bliżej areny,
+ * tym gęściej. Wariant (NW/NE) wg muru z boku; bez dwóch sąsiadujących, żeby korytarz nie zamienił się w kokon.
+ */
+function dressCorridorCobwebs(ctx: DressingContext, layer: LayerBuilder, gateSet: ReadonlySet<number>): void {
+  const { floor, config, rng } = ctx;
+  const nest = config.nest;
+  if (!nest || nest.corridorCobwebChance <= 0) return;
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      if (floor.tiles[y * floor.width + x] !== TileType.Floor || gateSet.has(y * floor.width + x)) continue;
+      if (floor.rooms.some((room) => roomContainsTile(room, { x, y }))) continue;
+      const wallEast = ctx.isWall(x + 1, y);
+      const wallWest = ctx.isWall(x - 1, y);
+      if ((!ctx.isWall(x, y - 1) && !wallEast && !wallWest) || !layer.isEmpty(x, y) || !layer.isEmpty(x - 1, y) || !layer.isEmpty(x, y - 1)) continue;
+      const strength = ctx.nestStrength(x, y);
+      if (strength <= 0 || !rng.chance(nest.corridorCobwebChance * strength)) continue;
+      const side = wallEast ? 1 : wallWest ? -1 : rng.chance(0.5) ? 1 : -1;
+      const name = ctx.pickVariant(side === 1 ? config.cobweb.neGroup : config.cobweb.nwGroup, []);
+      layer.set(x, y, ctx.tile(name).frame, false, name);
+    }
+  }
 }
