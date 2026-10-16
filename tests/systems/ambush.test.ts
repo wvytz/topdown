@@ -73,8 +73,7 @@ describe('pokój zasadzki', () => {
 });
 
 describe('przebieg zasadzki', () => {
-  it('wejście → kraty → jedna duża fala → koniec', () => {
-    expect(AMBUSH_CONFIG.waves).toHaveLength(1);
+  it('wejście → kraty → fale po kolei → koniec', () => {
     const state = new AmbushState(AMBUSH_CONFIG);
     const step = (inside: boolean, alive: number, now: number) => state.update({ playerInside: inside, playerDead: false, aliveInWave: alive }, now);
     expect(step(false, 0, 0)).toBeNull();
@@ -82,7 +81,9 @@ describe('przebieg zasadzki', () => {
     expect(step(true, 0, 100 + AMBUSH_CONFIG.waveDelayMs - 1)).toBeNull();
     expect(step(true, 0, 100 + AMBUSH_CONFIG.waveDelayMs)).toEqual({ kind: 'wave', index: 0, count: AMBUSH_CONFIG.waves[0] });
     expect(step(true, 3, 2000)).toBeNull();
-    expect(step(true, 0, 5000)).toEqual({ kind: 'clear' }); // wybita jedyna fala kończy zasadzkę
+    expect(step(true, 0, 2100)).toBeNull(); // przerwa przed kolejną falą
+    expect(step(true, 0, 2100 + AMBUSH_CONFIG.waveDelayMs)).toEqual({ kind: 'wave', index: 1, count: AMBUSH_CONFIG.waves[1] });
+    expect(step(true, 0, 5000)).toEqual({ kind: 'clear' });
     expect(state.phase).toBe(AmbushPhase.Cleared);
     expect(step(true, 0, 6000)).toBeNull();
   });

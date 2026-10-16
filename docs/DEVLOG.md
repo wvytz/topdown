@@ -3275,13 +3275,6 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Test botem (Czarodziejka, bez uników):** piętro 9 — przedtem śmierć, teraz 25,2 s, 75 → 55 HP (4 trafienia); piętro 6 — 29,0 s / 39 HP → 22,9 s / 60 HP. Build: 1081 testów.
 
-## Krok 51 — Zasadzka: jedna duża fala upiorów `#zasadzka`
-
-**Decyzja właściciela** `#decyzja` `#zasadzka`: jeden duży spawn duchów zamiast dwóch fal.
-
-- `AMBUSH_CONFIG.waves`: `[4, 5]` → `[9]` (ta sama łączna liczba upiorów, pojawiają się naraz po zamknięciu krat). Maszyna stanów `AmbushState` obsługuje dowolną liczbę fal, więc zmiana to tylko konfiguracja.
-- Test przebiegu zasadzki: wejście → kraty → jedna fala → koniec.
-
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
