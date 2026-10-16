@@ -214,7 +214,7 @@ describe('FloorDressing — podłoga, cienie, nakładki', () => {
   });
 
   it('nakładki tylko na zwykłej podłodze, z dala od spawnu, schodów i krat', () => {
-    const dense = { ...FLOOR_DRESSING, decalChance: 1 };
+    const dense = { ...FLOOR_DRESSING, decalChance: 1, nest: null };
     const floors = [ARENA, ...sampleFloors([1, 4], 3)];
     for (const floor of floors) {
       const d = dress(floor, dense);
@@ -550,7 +550,7 @@ describe('FloorDressing — gniazdo bossa pająków (krok 52)', () => {
     cobweb: { ...SPIDER_LAIR_DRESSING.cobweb, chance: 0 },
     wallFace: { ...SPIDER_LAIR_DRESSING.wallFace, chance: 0 },
   };
-  const nest = { radiusTiles: 10, cobwebChance: 1, corridorCobwebChance: 0, wallFaceChance: 1, wallFaceGroup: 'wallFace.lair' };
+  const nest = { radiusTiles: 10, cobwebChance: 1, corridorCobwebChance: 0, wallFaceChance: 1, wallFaceGroup: 'wallFace.lair', decals: null, trail: null };
 
   it('przy arenie pajęczyny w narożnikach nawet przy zerowej szansie bazowej; daleki pokój bez zmian', () => {
     const d = dressFloor(wide(), LAIR, { ...quiet, nest }, SEED);
@@ -595,7 +595,9 @@ describe('FloorDressing — gniazdo bossa pająków (krok 52)', () => {
       expect(config.nest!.corridorCobwebChance).toBe(0);
       expect(config.nest!.wallFaceGroup).toBe(config.wallFace.group);
     }
-    expect(FLOOR_DRESSING.nest).toBeNull();
+    // Ruiny: bez pajęczyn i lica, ale ze śladami i plamami ku arenie (krok 54).
+    expect(FLOOR_DRESSING.nest!.cobwebChance).toBe(0);
+    expect(FLOOR_DRESSING.nest!.trail).not.toBeNull();
   });
 
   it('gęstość pajęczyn rośnie ku arenie (piętra z gniazdem mają ich więcej niż bez)', () => {
@@ -610,5 +612,50 @@ describe('FloorDressing — gniazdo bossa pająków (krok 52)', () => {
       return n;
     };
     expect(count(SPIDER_LAIR_DRESSING)).toBeGreaterThan(count({ ...SPIDER_LAIR_DRESSING, nest: null }));
+  });
+
+  it('ślady wleczenia prowadzą do areny: tylko na podłodze, nigdy w arenie ani przy spawnie, gęstsze przy wejściu (krok 54)', () => {
+    const GRAVE = loadTileset('graveyard_tileset.json');
+    const trailFrames = new Set(['decal.trailH', 'decal.trailV', 'decal.trailDrop'].flatMap((g) => GRAVE.groups[g]!.map((n) => GRAVE.tiles[n]!.frame)));
+    let near = 0;
+    let far = 0;
+    for (const floor of sampleFloors([4, 5, 6], 6)) {
+      const arena = floor.rooms[floor.bossRoomId]!;
+      const d = dressFloor(floor, GRAVE, GRAVEYARD_DRESSING, SEED);
+      for (let y = 0; y < floor.height; y++) {
+        for (let x = 0; x < floor.width; x++) {
+          if (!trailFrames.has(at(d.floorDecal, x, y))) continue;
+          expect(floor.tiles[y * floor.width + x], `(${x},${y})`).toBe(TileType.Floor);
+          expect(x >= arena.x && x < arena.x + arena.width && y >= arena.y && y < arena.y + arena.height, `w arenie (${x},${y})`).toBe(false);
+          expect(Math.max(Math.abs(x - floor.playerSpawn.x), Math.abs(y - floor.playerSpawn.y)), `przy spawnie (${x},${y})`).toBeGreaterThan(2);
+          const dist = Math.hypot(Math.max(arena.x - x, 0, x - (arena.x + arena.width - 1)), Math.max(arena.y - y, 0, y - (arena.y + arena.height - 1)));
+          if (dist <= 6) near++;
+          else far++;
+        }
+      }
+    }
+    expect(near).toBeGreaterThan(10);
+    expect(near).toBeGreaterThan(far * 0.3); // ślad kończy się w pobliżu areny — większość jest blisko niej
+    const none = { ...GRAVEYARD_DRESSING, nest: { ...GRAVEYARD_DRESSING.nest!, trail: null } };
+    const floor = sampleFloors([4], 1)[0]!;
+    const d = dressFloor(floor, GRAVE, none, SEED);
+    expect(d.floorDecal.frames.some((f) => trailFrames.has(f))).toBe(false);
+  });
+
+  it('stosy kości (Cmentarzysko) gęstnieją ku arenie', () => {
+    const GRAVE = loadTileset('graveyard_tileset.json');
+    const bones = new Set(GRAVE.groups['decal.bones']!.map((n) => GRAVE.tiles[n]!.frame));
+    const count = (config: FloorDressingConfig) => {
+      let n = 0;
+      for (const floor of sampleFloors([4], 8)) {
+        const d = dressFloor(floor, GRAVE, config, SEED);
+        d.floorDecal.frames.forEach((f) => {
+          if (!bones.has(f)) return;
+          n++;
+        });
+      }
+      return n;
+    };
+    expect(count(GRAVEYARD_DRESSING)).toBeGreaterThan(count({ ...GRAVEYARD_DRESSING, nest: null }));
   });
 });

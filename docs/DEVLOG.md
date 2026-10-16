@@ -3311,6 +3311,25 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** korytarz — pajęczyny pod murem blisko areny, daleko brak, dolny rząd bez; konfiguracja gniazd (pająki z pajęczynami, Cmentarzysko i Piekło tylko lico). Build: 1087 testów.
 
+## Krok 54 — Zapowiedź bossa: ślady wleczenia, odcień światła, drżenie, iskry `#decyzja` `#zapowiedz-bossa`
+
+**Prośba właściciela** `#decyzja`: ślady krwi i wleczenia prowadzące do areny, a do tego wszystkie pomysły z kroku 53 („idealne”) — wdrożone, ile się dało; efekt do oceny po powrocie.
+
+- **Ślady wleczenia i krwi (wszystkie biomy):** nowe kafle `decal_trail_{h,v}_{a,b}` (smuga przez cały kafel, łączy się z sąsiednimi) i `decal_trail_drops_{a,b}` (ciąg kropli) — generator `tools/tower_ruins_tiles.py` (`trail_decal`, dopisane na końcu manifestu, więc nic się nie przesuwa; wszystkie 5 arkuszy zregenerowane). Kolor = płyn biomu (`stain`): zaschnięta krew w ruinach i na Cmentarzysku, zielony ichor w leżu, błękit w Grzybni, krew w Piekle. `FloorDressing.dressTrail`: najkrótsza droga po podłodze od startu do wejścia areny (BFS), ostatnie 18 kafli, szansa 85% tuż przy wejściu → 20% na końcu; kierunek smugi wg kierunku marszu; bez areny, krat i okolic spawnu. `TrailDressing` w `NestDressing` (`config/dressingConfig.ts`).
+- **Nakładki ku arenie** (`NestDressing.decals`): Ruiny — plamy (`decal.stain`), Cmentarzysko — stosy kości, Piekło — żarzące się szczeliny; gęstsze ku arenie, nie w samej arenie.
+- **Ruiny dostały gniazdo** (tylko ślady i plamy; bez pajęczyn i lica), Cmentarzysko i Piekło — ślady i nakładki w dodatku do lica z kroku 53.
+- **Odcień światła** (`effects/BossHerald.ts`, `config/bossHeraldConfig.ts`): ledwo widoczna poświata (ADD, alfa ≤ 0,07) rosnąca ku arenie — ciepła w ruinach, zielona w leżu, fioletowa w Grzybni, blada na Cmentarzysku, czerwona w Piekle.
+- **Drżenie ekranu:** powyżej siły 0,35 co 4,2 s (daleko) → 1,7 s (blisko), 420 ms, intensywność ≤ 0,0011 (`HERALD_RUMBLE`; uszczelnienie krat to 0,004).
+- **Iskry z posadzki** (tylko Piekło): cząstki w kolorach żaru, gęstsze ku arenie.
+- Zapowiedź milknie w samej arenie, w trakcie walki i po niej. Siła zapowiedzi = czysta `systems/BossHerald.roomProximity` (linia prosta od krawędzi areny, liniowy spadek do zasięgu 16–20 kafli wg biomu).
+- Same efekty wizualne, bez wpływu na rozgrywkę. Liczby do strojenia: `TRAIL`, `NestDressing`, `BOSS_HERALD`, `HERALD_RUMBLE`.
+
+**Nie zrobione (za mało pewne bez oceny właściciela):** stosy kości i ślady pazurów jako osobna grafika (są tylko stosy kości), smugi szlamu w Ruinach jako osobny rodzaj (ślad ma kolor krwi/płynu biomu).
+
+**Testy:** `systems/bossHerald.test.ts` (siła, odstępy drżeń, konfiguracja); `FloorDressing.test.ts` (ślady tylko na podłodze, nie w arenie ani przy spawnie, kończą się blisko areny; kości gęstnieją ku arenie; konfiguracja gniazd).
+
+**Weryfikacja w przeglądarce (`?hero=sorceress&seed=7`):** piętro 4 — smuga krwi w korytarzu prowadzącym do areny Pożeracza; piętro 1 — plamy i ślady ku arenie; piętro 5 — czerwona poświata i iskra; bez błędów w konsoli (poza 404 pliku pomocniczego). Build: 1107 testów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

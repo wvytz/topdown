@@ -1284,6 +1284,66 @@
    "layer": "floorDecal",
    "weight": 1,
    "flipX": true
+  },
+  "decal_trail_h_a": {
+   "frame": 153,
+   "col": 9,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_b": {
+   "frame": 154,
+   "col": 10,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_a": {
+   "frame": 155,
+   "col": 11,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_b": {
+   "frame": 156,
+   "col": 12,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_a": {
+   "frame": 157,
+   "col": 13,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_b": {
+   "frame": 159,
+   "col": 15,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
   }
  },
  "groups": {
@@ -1515,6 +1575,18 @@
   "decal.mycelFaint": [
    "decal_mycel_faint_a",
    "decal_mycel_faint_b"
+  ],
+  "decal.trailH": [
+   "decal_trail_h_a",
+   "decal_trail_h_b"
+  ],
+  "decal.trailV": [
+   "decal_trail_v_a",
+   "decal_trail_v_b"
+  ],
+  "decal.trailDrop": [
+   "decal_trail_drops_a",
+   "decal_trail_drops_b"
   ]
  },
  "colors": {

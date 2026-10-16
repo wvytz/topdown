@@ -5,7 +5,7 @@
  "image": "tower_ruins_tileset.png",
  "tileSize": 32,
  "columns": 16,
- "rows": 9,
+ "rows": 10,
  "envShadowAlpha": 0.4,
  "tiles": {
   "floor_slab16_a": {
@@ -1148,6 +1148,66 @@
    "w": 1,
    "h": 1,
    "layer": "prop"
+  },
+  "decal_trail_h_a": {
+   "frame": 139,
+   "col": 11,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_b": {
+   "frame": 140,
+   "col": 12,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_a": {
+   "frame": 141,
+   "col": 13,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_b": {
+   "frame": 142,
+   "col": 14,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_a": {
+   "frame": 143,
+   "col": 15,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_b": {
+   "frame": 144,
+   "col": 0,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
   }
  },
  "groups": {
@@ -1355,6 +1415,18 @@
    "rubble_a",
    "rubble_b",
    "bones"
+  ],
+  "decal.trailH": [
+   "decal_trail_h_a",
+   "decal_trail_h_b"
+  ],
+  "decal.trailV": [
+   "decal_trail_v_a",
+   "decal_trail_v_b"
+  ],
+  "decal.trailDrop": [
+   "decal_trail_drops_a",
+   "decal_trail_drops_b"
   ]
  },
  "colors": {

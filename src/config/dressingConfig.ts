@@ -61,7 +61,23 @@ export interface NestDressing {
   /** Szansa nici/jaj (`wallFaceGroup`) na licu muru przy arenie. */
   readonly wallFaceChance: number;
   readonly wallFaceGroup: string;
+  /** Dodatkowe nakładki na podłodze ku arenie (krok 54): grupa i szansa przy arenie, malejąca z odległością; null = brak. */
+  readonly decals: { readonly group: string; readonly chance: number } | null;
+  /** Ślady wleczenia i krwi od startu do wejścia areny (krok 54). */
+  readonly trail: TrailDressing | null;
 }
+
+/** Ślad prowadzący do areny: ostatnie `lengthTiles` kafli drogi od startu do wejścia, gęstsze przy arenie. */
+export interface TrailDressing {
+  readonly lengthTiles: number;
+  /** Szansa śladu na kaflu tuż przy wejściu i na końcu śladu (liniowo pomiędzy). */
+  readonly chanceNear: number;
+  readonly chanceFar: number;
+  /** Udział ciągów kropli wśród śladów (reszta to smugi wleczenia). */
+  readonly dropChance: number;
+}
+
+const TRAIL: TrailDressing = { lengthTiles: 18, chanceNear: 0.85, chanceFar: 0.2, dropChance: 0.3 };
 
 /** Gniazdo pająków (krok 52–53): Pajęcze leże i Grzybnia, czyli piętra z bossami-pająkami. */
 const SPIDER_NEST: NestDressing = {
@@ -70,10 +86,21 @@ const SPIDER_NEST: NestDressing = {
   corridorCobwebChance: 0.6,
   wallFaceChance: 0.55,
   wallFaceGroup: 'wallFace.lair',
+  decals: null,
+  trail: TRAIL,
 };
 
 export const FLOOR_DRESSING: FloorDressingConfig = {
-  nest: null,
+  // Ruiny (krok 54): bez pajęczyn i lica — ku arenie Strażnika tylko ślady wleczenia i plamy na posadzce.
+  nest: {
+    radiusTiles: 16,
+    cobwebChance: 0,
+    corridorCobwebChance: 0,
+    wallFaceChance: 0,
+    wallFaceGroup: 'wallFace',
+    decals: { group: 'decal.stain', chance: 0.2 },
+    trail: TRAIL,
+  },
   macroChance: 0.04,
   flipChance: 0.5,
   decalChance: 0.1,
@@ -171,7 +198,16 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.3, group: 'wallFace.grave' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.3 },
   // Krok 53: ku arenie gęstnieją nisze z czaszkami, kostnica i epitafia na licach.
-  nest: { radiusTiles: 18, cobwebChance: 0, corridorCobwebChance: 0, wallFaceChance: 0.5, wallFaceGroup: 'wallFace.grave' },
+  nest: {
+    radiusTiles: 18,
+    cobwebChance: 0,
+    corridorCobwebChance: 0,
+    wallFaceChance: 0.5,
+    wallFaceGroup: 'wallFace.grave',
+    // Stosy kości ku arenie (pomysł właściciela, krok 54).
+    decals: { group: 'decal.bones', chance: 0.22 },
+    trail: TRAIL,
+  },
 };
 
 /**
@@ -193,7 +229,16 @@ export const INFERNAL_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.3, group: 'wallFace.infernal' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0 },
   // Krok 53: ku arenie gęstnieją okowy, czaszki na kolcach i żar na licach — bez pajęczyn.
-  nest: { radiusTiles: 18, cobwebChance: 0, corridorCobwebChance: 0, wallFaceChance: 0.5, wallFaceGroup: 'wallFace.infernal' },
+  nest: {
+    radiusTiles: 18,
+    cobwebChance: 0,
+    corridorCobwebChance: 0,
+    wallFaceChance: 0.5,
+    wallFaceGroup: 'wallFace.infernal',
+    // Żarzące się szczeliny na posadzce ku arenie (pomysł właściciela, krok 54).
+    decals: { group: 'decal.ember', chance: 0.2 },
+    trail: TRAIL,
+  },
 };
 
 /**

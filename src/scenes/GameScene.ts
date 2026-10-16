@@ -90,7 +90,9 @@ import type { ScoreEntry } from '@/systems/Highscores';
 import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
+import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
+import { BOSS_HERALD, HERALD_RUMBLE } from '@/config/bossHeraldConfig';
 import { FogWisps } from '@/effects/FogWisps';
 import { LightingOverlay } from '@/effects/LightingOverlay';
 import type { PointLight } from '@/effects/LightingOverlay';
@@ -151,6 +153,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private projectiles!: ProjectileManager;
   private playerShots!: PlayerShotManager;
   private bossFight!: BossFight;
+  private herald: BossHeraldEffects | null = null;
   /** Pająki z sufitu — tylko w biomie, który je ma (krok 23c). */
   private ceilingDrops: CeilingDropManager | null = null;
   /** Kokony na podłodze — tylko w biomie, który je ma (krok 23d). */
@@ -237,6 +240,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.healCooldown = new Timer();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
+    this.herald = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
     this.traps = null;
@@ -345,6 +349,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.breakables?.update();
     this.braziers?.update(time);
     this.bossFight.update(time);
+    this.herald?.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
     this.playerShots.update(
@@ -674,6 +679,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Animacja śmierci bossa trwa chwilę — gracz mógł w tym czasie zginąć (np. od pocisku w locie).
         if (!this.player.isDead) this.offerBossReward();
       },
+    });
+
+    // Zapowiedź bossa (krok 54): odcień światła, drżenie i iskry ku arenie; milknie w walce i po niej.
+    this.herald = new BossHeraldEffects({
+      scene: this,
+      arena: this.dungeon.rooms[this.dungeon.bossRoomId]!,
+      config: BOSS_HERALD[this.biome.id],
+      rumble: HERALD_RUMBLE,
+      player: this.player,
+      isSilenced: () => this.bossFight.isFighting || this.bossFight.isDefeated,
     });
 
     this.arenaGates = new ArenaGates({
