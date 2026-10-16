@@ -155,6 +155,11 @@ export class DiagnosticsHub {
     this.reporting = sink ? { sink, clientId, build } : null;
   }
 
+  /** Czy poprzednia sesja urwała się bez zamknięcia (ustalone przy starcie) — powód zgłoszenia „wyrzuciło mnie”. */
+  get previousEndedAbnormally(): boolean {
+    return endedAbnormally(this.previous[this.previous.length - 1]);
+  }
+
   get canSendReports(): boolean {
     return this.reporting !== null;
   }
@@ -163,11 +168,12 @@ export class DiagnosticsHub {
    * Wysyła zgłoszenie (ręcznie, z przycisku): koperta z bieżącego dziennika i opcjonalnie nagraniem ostatniego piętra.
    * Limity po stronie gry (odstęp, liczba na sesję) — limity workera są dodatkowym zabezpieczeniem. Nigdy nie rzuca.
    */
-  async sendReport(kind: ReportKind, withRecording: boolean): Promise<SendResult> {
+  async sendReport(kind: ReportKind, withRecording: boolean, automatic = false): Promise<SendResult> {
     try {
       if (!this.reporting) return { ok: false, reason: 'unavailable' };
       const now = this.clock();
-      const wait = this.throttle.waitMs(now);
+      // Zgłoszenie automatyczne (awaria, za zgodą gracza) ma własny limit w `AutoReportPolicy`; nie blokuje go ręczny odstęp.
+      const wait = automatic ? null : this.throttle.waitMs(now);
       if (wait !== null) return { ok: false, reason: 'throttled', ...(Number.isFinite(wait) ? { retryAfterS: Math.ceil(wait / 1000) } : {}) };
       this.flushInputs();
       const text = this.report();
@@ -175,8 +181,8 @@ export class DiagnosticsHub {
       const recording = withRecording ? (this.recordings[this.recordings.length - 1] ?? null) : null;
       const envelope = buildEnvelope({ kind, build: this.reporting.build, clientId: this.reporting.clientId, sessions, reportText: text, recording });
       const result = await this.reporting.sink.send(envelope);
-      if (result.ok) this.throttle.record(now);
-      this.note('report-sent', { ok: result.ok, kind, withRecording, ...(result.ok ? {} : { reason: result.reason }) });
+      if (result.ok && !automatic) this.throttle.record(now);
+      this.note('report-sent', { ok: result.ok, kind, withRecording, automatic, ...(result.ok ? {} : { reason: result.reason }) });
       return result;
     } catch {
       return { ok: false, reason: 'network' };

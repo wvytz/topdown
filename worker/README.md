@@ -32,7 +32,7 @@ Schemat od początku ma kolumnę `name`, więc nic nie trzeba migrować — wyst
 | Metoda i ścieżka | Kto | Działanie |
 |---|---|---|
 | `POST /reports` | gra (tylko z `ALLOWED_ORIGINS`) | przyjęcie koperty zgłoszenia: `201 {ok,id}`, `200 {duplicate}`, `400 {reason}`, `403`, `413`, `429` + `Retry-After`, `503` |
-| `GET /reports?limit&kind&since&floor` | autor (nagłówek `Authorization: Bearer <REPORTS_TOKEN>`) | lista metadanych, najnowsze pierwsze |
+| `GET /reports?limit&kind&since&floor` | autor (nagłówek `Authorization: Bearer <REPORTS_TOKEN>` albo `X-Reports-Token: <REPORTS_TOKEN>`) | lista metadanych, najnowsze pierwsze |
 | `GET /reports/:id` | autor | pełne zgłoszenie (tekst + załączniki, bez skrótu IP) |
 | `DELETE /reports/:id` | autor | usunięcie |
 | cron 03:17 UTC | Cloudflare | usuwa zgłoszenia starsze niż 30 dni |
@@ -48,6 +48,8 @@ Bez ustawionego sekretu `REPORTS_TOKEN` (albo z błędnym tokenem) trasy autora 
 5. W katalogu gry `.env.production` zostaje bez zmian (`VITE_SCORES_URL`); przycisk „Wyślij autorowi” w F9 pojawia się, gdy adres jest ustawiony. `npm run deploy:pages` publikuje grę.
 
 ### Odczyt zgłoszeń
+
+Nagłówek `X-Reports-Token: $TOKEN` (ma pierwszeństwo) albo `Authorization: Bearer $TOKEN` — w przykładach niżej wystarczy zamienić jedno na drugie.
 
 ```
 curl -H "Authorization: Bearer $TOKEN" "https://<worker>/reports?limit=20"

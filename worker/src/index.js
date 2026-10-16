@@ -3,8 +3,8 @@
  *   GET    /scores?limit=N  → [{ score, floor, timestamp, name }], najlepsze pierwsze (name może być null)
  *   POST   /scores          ← { score, floor, timestamp, name? }
  *   POST   /reports         ← koperta zgłoszenia (patrz `reports.js`); 201 { ok, id } | 200 { duplicate } | 400/413/429/503
- *   GET    /reports?limit&kind&since&floor  → lista metadanych       } tylko z nagłówkiem
- *   GET    /reports/:id                     → pełne zgłoszenie       } Authorization: Bearer <REPORTS_TOKEN>
+ *   GET    /reports?limit&kind&since&floor  → lista metadanych       } tylko z nagłówkiem Authorization: Bearer <REPORTS_TOKEN>
+ *   GET    /reports/:id                     → pełne zgłoszenie       } albo X-Reports-Token: <REPORTS_TOKEN>
  *   DELETE /reports/:id                     → usunięcie              } (bez sekretu te trasy zwracają 404)
  *   cron (codziennie)       → usuwa zgłoszenia starsze niż REPORT_LIMITS.retentionDays
  * Wynik liczy klient, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury i zalew wpisów.
@@ -52,8 +52,10 @@ export default {
 async function routeReports(request, url, idText, env, cors) {
   if (request.method === 'POST' && idText === undefined) return await postReport(request, env, cors);
   // Reszta to trasy administratora: bez skonfigurowanego sekretu nie istnieją, bez poprawnego tokena — 404 (nie zdradzamy ich).
+  // Token: `Authorization: Bearer <token>` albo `X-Reports-Token: <token>` (gdy pośrednik nadpisuje Authorization).
+  // `X-Reports-Token` ma pierwszeństwo: pośrednik (proxy, narzędzia) może dopisać własny Authorization.
   const header = request.headers.get('Authorization') ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const token = request.headers.get('X-Reports-Token') ?? (header.startsWith('Bearer ') ? header.slice(7) : '');
   if (!(await tokensEqual(token, env.REPORTS_TOKEN))) return json({ error: 'not found' }, 404, cors);
   if (request.method === 'GET' && idText === undefined) return await listReports(url, env);
   if (request.method === 'GET') return await getReport(Number(idText), env);

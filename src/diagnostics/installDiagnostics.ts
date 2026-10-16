@@ -3,7 +3,9 @@ import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
 import { DiagnosticsHub, setDiagnostics } from '@/diagnostics/DiagnosticsHub';
 import { ReportOverlay } from '@/diagnostics/ReportOverlay';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
+import { AutoReportConsentStore } from '@/persistence/AutoReportConsent';
 import { getClientId } from '@/persistence/ClientId';
+import { AutoReportPolicy } from '@/systems/AutoReport';
 import { createRemoteReportSink } from '@/persistence/remoteReports';
 import { FrameMonitor } from '@/systems/Diagnostics';
 import type { DiagData } from '@/systems/Diagnostics';
@@ -45,12 +47,34 @@ export function installDiagnostics(game: Phaser.Game): DiagnosticsHub {
   setDiagnostics(hub);
   // Wysyłka raportów do workera (krok 57) — tylko gdy skonfigurowano `VITE_SCORES_URL`; ręczna, z przycisku w F9.
   hub.setReporting(createRemoteReportSink(), getClientId(HighscoreStorage.browserStorage()), import.meta.env.MODE);
-  const overlay = new ReportOverlay(hub);
+  const consent = new AutoReportConsentStore(HighscoreStorage.browserStorage());
+  const overlay = new ReportOverlay(hub, consent);
+  const policy = new AutoReportPolicy();
   hub.note('session-start', { href: location.search || null });
 
   hub.onEvent((kind, level, message) => {
+    policy.onEvent(Date.now(), kind, level);
     if (level === 'error' && kind.startsWith('error:') && hub.errorCount <= 3) overlay.showError(message);
   });
+
+  // Awaria (krok 58): po krótkim zebraniu zdarzeń wysyłamy zgłoszenie `crash` — tylko za zgodą gracza; bez decyzji pytamy raz.
+  const sendCrashReport = () => {
+    void hub.sendReport('crash', true, true).then((result) => {
+      if (result.ok) overlay.showNotice('Raport o awarii wysłano autorowi — dziękuję!');
+    });
+  };
+  if (hub.previousEndedAbnormally) policy.onEvent(Date.now(), 'previous-session-ended-abnormally', 'warn');
+  window.setInterval(() => {
+    if (!hub.canSendReports) return;
+    const decision = policy.poll(Date.now(), consent.load());
+    if (decision === 'send') sendCrashReport();
+    else if (decision === 'ask') {
+      overlay.askConsent(hub.previousEndedAbnormally && hub.errorCount === 0 ? 'Poprzednia gra urwała się nagle.' : 'W grze wystąpił błąd.', (sendNow) => {
+        if (sendNow && policy.claimPending()) sendCrashReport();
+        else policy.dismissPending();
+      });
+    }
+  }, 1000);
 
   window.addEventListener('error', (e) => {
     hub.error('window', e.error ?? e.message, { file: e.filename ? e.filename.split('/').pop() ?? null : null, line: e.lineno ?? null, col: e.colno ?? null });

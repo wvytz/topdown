@@ -55,6 +55,14 @@ export const DIAGNOSTICS = {
     timeoutMs: 15_000,
     clientIdKey: 'tower-crawler.client-id.v1',
   },
+  /** Automatyczna wysyłka zgłoszenia przy awarii (krok 58) — tylko za zgodą gracza. */
+  autoReport: {
+    /** Po pierwszym krytycznym zdarzeniu czekamy tyle ms na kolejne (raport będzie pełniejszy), potem wysyłamy. */
+    debounceMs: 4000,
+    /** Ile automatycznych zgłoszeń na sesję (strony). */
+    maxPerSession: 1,
+    consentKey: 'tower-crawler.auto-report.v1',
+  },
   /** Wykrywacze zawieszeń i niemożliwych sytuacji w grze (krok 56). */
   anomalies: {
     /** Co ile ms próbkujemy stan gry. */

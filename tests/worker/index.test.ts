@@ -114,6 +114,10 @@ describe('worker: trasy /reports (krok 57)', () => {
       new Request(`https://w.example${path}`, { method, headers: token ? { Authorization: `Bearer ${token}` } : {} });
     expect((await worker.fetch(get('/reports'), envWith(db, 'tajny'))).status).toBe(404);
     expect((await worker.fetch(get('/reports', 'zly'), envWith(db, 'tajny'))).status).toBe(404);
+    const viaHeader = await worker.fetch(new Request('https://w.example/reports', { headers: { 'X-Reports-Token': 'tajny' } }), envWith(db, 'tajny'));
+    expect(viaHeader.status).toBe(200); // alternatywny nagłówek (gdy pośrednik nadpisuje Authorization)
+    const overridden = await worker.fetch(new Request('https://w.example/reports', { headers: { Authorization: 'Bearer cudzy', 'X-Reports-Token': 'tajny' } }), envWith(db, 'tajny'));
+    expect(overridden.status).toBe(200); // X-Reports-Token ma pierwszeństwo przed cudzym Authorization
     expect((await worker.fetch(get('/reports', 'tajny'), envWith(db))).status).toBe(404); // brak REPORTS_TOKEN
     const list = await worker.fetch(get('/reports?limit=5', 'tajny'), envWith(db, 'tajny'));
     expect(list.status).toBe(200);

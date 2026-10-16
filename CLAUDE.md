@@ -61,7 +61,8 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 
 - Gra zapisuje błędy i niespotykane zdarzenia w `localStorage` (`systems/Diagnostics.ts`, `diagnostics/`); **F9** otwiera raport do skopiowania. Wyjątek w pętli gry jest łapany w `game.step` (inaczej Phaser zamiera). Nowe istotne zdarzenia gry zgłaszaj przez `diag.note(...)` z `diagnostics/DiagnosticsHub`.
 - **Krok 56:** wejścia gracza są nagrywane od początku piętra (F9 → „Kopiuj nagranie”; w trybie dev `__replay(nagranie)` odtwarza), wykrywacze zawieszeń w `systems/AnomalyDetectors.ts`, błędy ładowania zasobów w dzienniku. **Przed wdrożeniem na Pages uruchom `npm run smoke`** (bot przechodzi piętra obiema postaciami w prawdziwej przeglądarce; Chrome albo `SMOKE_CHROMIUM`).
-- **Krok 57:** F9 → „Wyślij autorowi” wysyła zgłoszenie do workera (`POST /reports`, koperta wersji 1, limity i retencja w `worker/src/reports.js`, opis w `worker/README.md` i DEVLOG); odczyt tylko z `REPORTS_TOKEN`. Wdrożenie workera (migracja `schema.sql`, sekret, `wrangler deploy`) robi właściciel.
+- **Krok 57:** F9 → „Wyślij autorowi” wysyła zgłoszenie do workera (`POST /reports`, koperta wersji 1, limity i retencja w `worker/src/reports.js`, opis w `worker/README.md` i DEVLOG); odczyt tylko z `REPORTS_TOKEN`. Worker zgłoszeń **wdrożony** (krok 58; odczyt: nagłówek `X-Reports-Token`, wartość tylko u właściciela).
+- **Krok 58:** przy awarii (błędy `error:*`, utrata WebGL, urwana poprzednia sesja) gra — **tylko za zgodą gracza** (pytanie raz, zmiana w F9) — wysyła zgłoszenie `crash` z nagraniem wejść, najwyżej 1 na sesję (`systems/AutoReport.ts`).
 - Prośba o diagnozę „wyrzuciło mnie z gry”: poproś o raport z F9 (albo z `localStorage` klucz `tower-crawler.diagnostics.v1`).
 
 ## Znane pułapki

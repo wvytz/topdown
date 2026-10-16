@@ -1,4 +1,5 @@
 import type { DiagnosticsHub } from '@/diagnostics/DiagnosticsHub';
+import type { AutoReportConsentStore } from '@/persistence/AutoReportConsent';
 
 const STYLE =
   'position:fixed;left:8px;bottom:8px;z-index:99999;max-width:min(520px,calc(100vw - 16px));font:12px/1.4 monospace;color:#f4e9d0;' +
@@ -14,7 +15,13 @@ export class ReportOverlay {
   private banner: HTMLDivElement | null = null;
   private panel: HTMLDivElement | null = null;
 
-  constructor(private readonly hub: DiagnosticsHub) {}
+  private consentBox: HTMLDivElement | null = null;
+  private notice: HTMLDivElement | null = null;
+
+  constructor(
+    private readonly hub: DiagnosticsHub,
+    private readonly consent: AutoReportConsentStore,
+  ) {}
 
   showError(message: string): void {
     if (typeof document === 'undefined') return;
@@ -37,6 +44,61 @@ export class ReportOverlay {
     banner.append(copy, show, rec, close);
     document.body.appendChild(banner);
     this.banner = banner;
+  }
+
+  /** Krótka informacja (np. „Raport o awarii wysłano autorowi”), znika po kilku sekundach. */
+  showNotice(text: string): void {
+    if (typeof document === 'undefined') return;
+    this.notice?.remove();
+    const notice = document.createElement('div');
+    notice.setAttribute('style', `${STYLE}border-color:#6a8;`);
+    notice.textContent = text;
+    document.body.appendChild(notice);
+    this.notice = notice;
+    window.setTimeout(() => {
+      if (this.notice === notice) {
+        notice.remove();
+        this.notice = null;
+      }
+    }, 6000);
+  }
+
+  /**
+   * Pytanie o zgodę na automatyczne wysyłanie raportów o awariach (krok 58), zadawane raz — przy pierwszej awarii.
+   * Treść mówi wprost, co jest wysyłane. `onAnswer(true)` = wyślij też ten raport teraz.
+   */
+  askConsent(reason: string, onAnswer: (sendNow: boolean) => void): void {
+    if (typeof document === 'undefined' || this.consentBox) return;
+    const box = document.createElement('div');
+    box.setAttribute('style', `${STYLE}left:auto;right:8px;max-width:min(460px,calc(100vw - 16px));`);
+    const title = document.createElement('div');
+    title.setAttribute('style', 'color:#ffd98a;margin-bottom:4px');
+    title.textContent = reason;
+    const body = document.createElement('div');
+    body.setAttribute('style', 'opacity:.85;margin-bottom:6px');
+    body.textContent =
+      'Czy wysyłać autorowi gry raporty o awariach automatycznie? Wysyłane są: informacje o przeglądarce i ekranie, zdarzenia i stan gry oraz nagranie ruchów i kliknięć z ostatniego piętra. Bez imienia i adresu IP. Możesz to zmienić w panelu F9.';
+    const close = () => {
+      box.remove();
+      this.consentBox = null;
+    };
+    const yes = this.button('Tak, wysyłaj', () => {
+      this.consent.save('yes');
+      close();
+      onAnswer(true);
+    });
+    const once = this.button('Tylko ten raz', () => {
+      close();
+      onAnswer(true);
+    });
+    const no = this.button('Nie', () => {
+      this.consent.save('no');
+      close();
+      onAnswer(false);
+    });
+    box.append(title, body, yes, once, no);
+    document.body.appendChild(box);
+    this.consentBox = box;
   }
 
   togglePanel(): void {
@@ -82,6 +144,13 @@ export class ReportOverlay {
     box.setAttribute('style', 'margin-top:8px;padding-top:6px;border-top:1px solid #555;');
     const note = document.createElement('div');
     note.setAttribute('style', 'opacity:.75;margin-bottom:4px;max-width:720px');
+    const auto = document.createElement('label');
+    auto.setAttribute('style', 'display:block;margin-bottom:4px;cursor:pointer');
+    const autoCheck = document.createElement('input');
+    autoCheck.type = 'checkbox';
+    autoCheck.checked = this.consent.load() === 'yes';
+    autoCheck.addEventListener('change', () => this.consent.save(autoCheck.checked ? 'yes' : 'no'));
+    auto.append(autoCheck, document.createTextNode(' wysyłaj raporty o awariach automatycznie (z nagraniem ruchów i kliknięć)'));
     note.textContent =
       'Wysyłane: raport tekstowy powyżej (przeglądarka, rozdzielczość, zdarzenia i stan gry) oraz losowy anonimowy identyfikator przeglądarki. Bez imienia i adresu IP.';
     const label = document.createElement('label');
@@ -99,7 +168,7 @@ export class ReportOverlay {
         status.textContent = result.ok ? (result.duplicate ? 'Ten raport już wysłano.' : 'Wysłano — dziękuję!') : this.describeFailure(result.reason, result.retryAfterS);
       });
     });
-    box.append(note, label, send, status);
+    box.append(note, auto, label, send, status);
     return box;
   }
 

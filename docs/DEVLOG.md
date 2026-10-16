@@ -3379,9 +3379,32 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **4. Co przygotowane na później (nie zrobione):** automatyczna wysyłka przy błędzie krytycznym (`kind: 'crash'` z limitem 1 na sesję i zgodą testera), formularz „opisz, co się stało” (`feedback`), załączniki z krokiem 56+ (zrzut obrazu, czasy systemów, telemetria balansu), panel administratora zamiast `curl`, powiadomienie o nowych zgłoszeniach.
 
-**5. Wdrożenie — czeka na właściciela (nic nie wdrożono):** `cd worker`; `npx wrangler d1 execute tower-crawler-scores --remote --file=schema.sql`; `npx wrangler secret put REPORTS_TOKEN`; `npx wrangler deploy`; potem `npm run smoke` i `npm run deploy:pages`. Szczegóły i przykłady `curl` w `worker/README.md`.
+**5. Wdrożenie (wykonane w kroku 58, patrz niżej; pierwotnie czekało na właściciela):** `cd worker`; `npx wrangler d1 execute tower-crawler-scores --remote --file=schema.sql`; `npx wrangler secret put REPORTS_TOKEN`; `npx wrangler deploy`; potem `npm run smoke` i `npm run deploy:pages`. Szczegóły i przykłady `curl` w `worker/README.md`.
 
 **Testy:** `tests/worker/reports.test.ts` (walidacja koperty, limity i `processReport` na atrapie repozytorium, deduplikacja, globalny bezpiecznik, kontrakt gra ↔ worker), `tests/worker/index.test.ts` (routing, CORS, 403/400/413/429, odczyt tylko z tokenem, usuwanie, cron — na atrapie D1), `tests/persistence/remoteReports.test.ts` (adapter, błędy sieci, koperta, throttling, identyfikator klienta). **Weryfikacja w przeglądarce** (z lokalnym atrapą workera): w F9 pojawia się „Wyślij autorowi”, wysyłka z nagraniem kończy się „Wysłano”, druga w ciągu minuty — „Za często”. Build: 1180 testów.
+
+## Krok 58 — Wdrożenie workera zgłoszeń, automatyczna wysyłka przy awarii, publikacja `#decyzja` `#diagnostyka`
+
+**Decyzja właściciela** `#decyzja`: wykonać wszystko, co w kroku 57 było „po stronie właściciela”, przygotować wysyłkę przy błędzie krytycznym, wgrać całość do głównej wersji i uzupełnić DEVLOG.
+
+### Wdrożenie workera (Cloudflare, konto właściciela, 2026-10-16)
+- Migracja bazy: `wrangler d1 execute tower-crawler-scores --remote --file=schema.sql` — dopisała tabelę `reports` i 4 indeksy (tabela `scores` bez zmian, istniejące wyniki nietknięte).
+- Sekret `REPORTS_TOKEN` ustawiony przez `wrangler secret put` (losowe 48 znaków hex). **Wartość nie jest w repozytorium ani w DEVLOG** — została przekazana właścicielowi w rozmowie; do odczytu zgłoszeń potrzebny jest nagłówek `X-Reports-Token: <token>` (albo `Authorization: Bearer <token>`).
+- `wrangler deploy`: worker `tower-crawler-scores` (https://tower-crawler-scores.wvytz.workers.dev) + cron czyszczący `17 3 * * *`.
+- **Odkrycie podczas weryfikacji:** pośrednik w środowisku, w którym pracował Claude, dopisuje własny nagłówek `Authorization` do żądań na `*.workers.dev`, przez co `Bearer` nie działał. Dodano nagłówek **`X-Reports-Token`** z pierwszeństwem przed `Authorization` (worker, README, test) — przydatny też przy innych pośrednikach.
+- Weryfikacja na żywym workerze: `GET /scores` działa jak dawniej; `GET /reports` bez tokena i z błędnym — 404; `POST /reports` bez `Origin` — 403, z `Origin` gry — 201; ponowienie tej samej treści — 200 `duplicate` bez zapisu; lista i pełny wpis z tokenem; usunięcie testowego zgłoszenia (`DELETE`), baza po teście bez zgłoszeń.
+
+### Automatyczne zgłoszenie przy awarii (`kind: 'crash'`)
+- **Krytyczne zdarzenia** (`systems/AutoReport.isCriticalEvent`): błędy `error:*` (okno, obietnice, pętla gry), utrata kontekstu WebGL i **urwana poprzednia sesja** („wyrzuciło mnie z gry” — wykrywane przy następnym starcie).
+- **Zgoda gracza** (`persistence/AutoReportConsent`, localStorage): bez zgody nic nie jest wysyłane. Przy pierwszej awarii (jeśli worker jest skonfigurowany) gra raz pyta: *Tak, wysyłaj* / *Tylko ten raz* / *Nie* — treść pytania mówi wprost, co jest wysyłane (przeglądarka, ekran, zdarzenia i stan gry, nagranie ruchów i kliknięć z ostatniego piętra; bez imienia i IP). Zgodę zmienia się w F9 (pole „wysyłaj raporty o awariach automatycznie”).
+- **Polityka** (`AutoReportPolicy`): po pierwszym krytycznym zdarzeniu 4 s zbierania kolejnych (raport pełniejszy), potem wysyłka; **najwyżej 1 automatyczne zgłoszenie na sesję**; bez decyzji pytanie raz na sesję. Do tego limity workera (5/godz., 20/dobę z IP, deduplikacja treści, globalny bezpiecznik) — awaria w pętli nie zaleje workera ani darmowego planu.
+- Wysyłka automatyczna nie jest blokowana minutowym odstępem ręcznych wysyłek (`sendReport(kind, withRecording, automatic)`); po sukcesie krótka nakładka „Raport o awarii wysłano autorowi”.
+- **Znane ograniczenie:** dwie karty z grą naraz dzielą jeden dziennik w localStorage — druga może uznać pierwszą za „urwaną” i zgłosić fałszywą awarię (przy zgodzie: jedno zbędne zgłoszenie, które dedup/limity ograniczają). Do rozważenia przy kolejnym kroku diagnostyki (identyfikator karty w kluczu).
+
+### Publikacja
+- Zmiany z gałęzi roboczej wprowadzone do `main` (fast-forward) i wdrożone na GitHub Pages (`npm run deploy:pages`, commit z adresem noreply właściciela); przed wdrożeniem `npm run build` i `npm run smoke` (Czarodziejka i barbarzyńca, piętra 1–4) — bez błędów.
+
+**Testy:** `tests/systems/autoReport.test.ts` (krytyczne zdarzenia, polityka: zgoda/brak/pytanie/limit/zaległe zgłoszenie, magazyn zgody, hub: automatyczne omija ręczny odstęp, wykrycie urwanej sesji), rozszerzone `tests/worker/index.test.ts` (nagłówek `X-Reports-Token`). **Weryfikacja w przeglądarce** (lokalna atrapa workera): awaria bez zgody → pytanie → „Tak” → `crash` z załączonym nagraniem trafia do workera, zgoda zapisana; po urwanej sesji z zgodą „tak” raport wysyłany automatycznie bez pytania. Build: wynik poniżej.
 
 ## Znane ograniczenia i backlog
 
