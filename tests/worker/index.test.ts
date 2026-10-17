@@ -143,3 +143,55 @@ describe('worker: trasy /reports (krok 57)', () => {
     expect(unknown.status).toBe(404);
   });
 });
+
+describe('worker: bezpiecznik dobowy wyników', () => {
+  /** Atrapa D1 tylko dla `scores`: licznik wpisów z ostatniej doby i wstawianie. */
+  function scoresDb(inDay: number) {
+    const inserted: unknown[][] = [];
+    return {
+      inserted,
+      prepare(sql: string) {
+        let args: unknown[] = [];
+        const st = {
+          bind(...a: unknown[]) {
+            args = a;
+            return st;
+          },
+          async first() {
+            if (!sql.includes('COUNT(*)')) return null;
+            return { n: sql.includes('ip_hash') ? 0 : inDay };
+          },
+          async run() {
+            if (sql.startsWith('INSERT INTO scores')) inserted.push(args);
+            return { meta: {} };
+          },
+          async all() {
+            return { results: [] };
+          },
+        };
+        return st;
+      },
+    };
+  }
+  const postScore = () =>
+    new Request('https://w.example/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN, 'CF-Connecting-IP': '1.2.3.4' },
+      body: JSON.stringify({ score: 100, floor: 2, timestamp: Date.now() }),
+    });
+
+  it('poniżej progu zapisuje wynik (201)', async () => {
+    const db = scoresDb(499);
+    const res = await worker.fetch(postScore(), { DB: db, ALLOWED_ORIGINS: ORIGIN });
+    expect(res.status).toBe(201);
+    expect(db.inserted).toHaveLength(1);
+  });
+
+  it('po osiągnięciu progu 503 z Retry-After i bez zapisu', async () => {
+    const db = scoresDb(500);
+    const res = await worker.fetch(postScore(), { DB: db, ALLOWED_ORIGINS: ORIGIN });
+    expect(res.status).toBe(503);
+    expect(res.headers.get('Retry-After')).toBe('3600');
+    expect(db.inserted).toHaveLength(0);
+  });
+});

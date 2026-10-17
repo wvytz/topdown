@@ -3415,9 +3415,11 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 - Pliki `__pycache__`/`*.pyc` usunięte z gita, dopisane do `.gitignore` (razem z `.env.local`, `.dev.vars`, `.wrangler/`).
 - Worker: skrót IP z sekretną solą `IP_SALT` (`npx wrangler secret put IP_SALT`). Wcześniej sól była w publicznym kodzie, więc skróty z bazy dało się odwrócić dla każdego IPv4. Bez sekretu worker działa jak dawniej. Po ustawieniu soli liczniki limitów zaczynają od zera (bez szkody).
 
-**Do decyzji (nie wdrożone):** globalny dobowy bezpiecznik dla `/scores` (dziś tylko 10 wpisów/10 min z jednego IP; botnet mógłby wyczerpać darmowy limit zapisów D1 wspólny z `/reports`); sprawdzenie `Origin` chroni tylko przed przeglądarkami, skrypt może je podać sam.
+- Globalny dobowy bezpiecznik dla `/scores`: najwyżej 500 wpisów na dobę łącznie (503 + `Retry-After`), obok limitu 10 wpisów/10 min z jednego IP; chroni darmowy limit zapisów D1 wspólny z `/reports`. Dwa testy w `tests/worker/index.test.ts`. Gra przy 503 zachowuje się jak przy każdym błędzie sieci: wynik czeka w kolejce wysyłki (`SharedHighscores.flushOutbox`) i idzie przy następnej próbie.
 
-**Testy:** 1189 przechodzi. **Wdrożenie workera** (`wrangler secret put IP_SALT`, `wrangler deploy`) czeka na właściciela.
+**Uwaga:** sprawdzenie `Origin` chroni tylko przed przeglądarkami, skrypt może je podać sam.
+
+**Testy:** 1191 przechodzi. **Wdrożenie workera** (`wrangler secret put IP_SALT`, `wrangler deploy`) czeka na właściciela.
 
 ## Znane ograniczenia i backlog
 

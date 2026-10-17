@@ -20,6 +20,9 @@ const MAX_NAME_LENGTH = 12;
 // Ochrona przed zalewem: tyle wpisów z jednego adresu w oknie czasu.
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
+// Globalny bezpiecznik dobowy: chroni darmowy limit zapisów D1 (wspólny ze zgłoszeniami) przed zalewem z wielu adresów.
+const MAX_SCORES_PER_DAY = 500;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default {
   async fetch(request, env) {
@@ -193,6 +196,9 @@ async function postScore(request, env, cors) {
     .bind(ipHash, now - RATE_WINDOW_MS)
     .first();
   if ((recent?.n ?? 0) >= RATE_LIMIT) return json({ error: 'too many requests' }, 429, cors);
+
+  const today = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE created_at > ?').bind(now - DAY_MS).first();
+  if ((today?.n ?? 0) >= MAX_SCORES_PER_DAY) return json({ error: 'daily cap reached' }, 503, { ...cors, 'Retry-After': '3600' });
 
   await env.DB.prepare('INSERT INTO scores (score, floor, timestamp, name, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
   )
