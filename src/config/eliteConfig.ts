@@ -13,7 +13,7 @@ export const ELITE_CONFIG: EliteConfig = {
   damageMultiplier: 1.3,
   affixes: {
     [EliteAffix.Swift]: { name: 'Szybki', hint: 'szybko biega i często bije', color: 0x5fd4ff, minFloor: 1 },
-    [EliteAffix.Shielded]: { name: 'Tarczownik', hint: 'z przodu tarcza, obejdź go', color: 0xc9ccd6, minFloor: 1 },
+    [EliteAffix.Shielded]: { name: 'Tarczownik', hint: 'z przodu tarcza, obejdź go', color: 0xc9ccd6, minFloor: 1, groundedOnly: true },
     [EliteAffix.Vampiric]: { name: 'Wampiryczny', hint: 'leczy się, gdy cię trafi', color: 0xe0304a, minFloor: 2 },
     [EliteAffix.Volatile]: { name: 'Wybuchowy', hint: 'po śmierci wybucha, odskocz', color: 0xffd23c, minFloor: 2 },
     [EliteAffix.Fiery]: { name: 'Ognisty', hint: 'zostawia żar na podłodze', color: 0xff7a1c, minFloor: 3 },
@@ -25,7 +25,8 @@ export const ELITE_CONFIG: EliteConfig = {
     trail: { spacing: 16, radius: 9, durationMs: 2200, damage: 5 },
     deathPatch: { radius: 30, durationMs: 3500, damage: 6 },
   },
-  vampiric: { lifesteal: 2 },
+  // Krok 69: było 2 (leczenie 200% zadanych obrażeń — elita z 2,5× HP była nie do zabicia); teraz połowa zadanych.
+  vampiric: { lifesteal: 0.5 },
   volatile: { radius: 52, delayMs: 900, damage: 18, knockback: 260 },
   loot: { goldMultiplier: 3, goldChance: 1, healthChanceBonus: 0.2, itemChance: 0.25 },
 };

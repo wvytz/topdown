@@ -3697,6 +3697,24 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
+## Krok 69 — Wampiryczni i latające elity, wdrożenie minimapy `#elity` `#hud` `#ocena`
+
+**Zgłoszenie właściciela:** minimapy nie widać (na Pages była jeszcze wersja bez niej); wampiryczne potwory wydają się za mocne; latające moby nie mogą mieć cechy Tarczownika.
+
+**Wampiryczny `#elity` `#ocena`:**
+- przyczyna: `vampiric.lifesteal` było **2**, czyli elita leczyła się o 200% zadanych obrażeń (komentarz w kodzie mówił o „ułamku”), przy 2,5× HP i 1,3× obrażeń każde trafienie wyleczało ją o więcej, niż jej zadało;
+- teraz **0,5** (połowa zadanych obrażeń, co najmniej 1). Obrażenia ciosów elity (1,3×) bez zmian — do oceny, czy to wystarczy.
+
+**Latające moby bez Tarczownika `#decyzja` `#elity`:**
+- `EnemyVariantDefinition.flying` (na razie nietoperz), `EliteAffixDefinition.groundedOnly` (Tarczownik), `RoomSpawn.flying`; `availableAffixes`/`rollElites` pomijają takie cechy dla latających;
+- `GameScene` oznacza spawny z wariantu biomu.
+
+**Testy (+2):** latający nigdy nie dostaje Tarczownika (50 seedów), lifesteal ≤ 1.
+
+**Wdrożenie:** minimapa (krok 68) i ten krok idą na GitHub Pages z tej gałęzi (zawiera `main` po scaleniu z kroków 51–58).
+
+---
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

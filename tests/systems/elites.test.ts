@@ -78,6 +78,21 @@ describe('elity — losowanie (krok 42)', () => {
     expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3)).toHaveLength(5);
   });
 
+  it('latające moby nie dostają Tarczownika (krok 69)', () => {
+    expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3)).toContain(EliteAffix.Shielded);
+    expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3, true)).not.toContain(EliteAffix.Shielded);
+    const roomChance = { ...ELITE_CONFIG, roomChanceByFloor: [1] };
+    for (let seed = 0; seed < 50; seed++) {
+      const picked = rollElites([{ type: EnemyType.Kiter, room: 0, flying: true }], roomChance, 3, 5, createRng(seed));
+      expect(picked[0]).not.toContain(EliteAffix.Shielded);
+      expect(picked[0]).toHaveLength(4);
+    }
+  });
+
+  it('wampiryczny leczy się najwyżej tyle, ile zadał (krok 69)', () => {
+    expect(ELITE_CONFIG.vampiric.lifesteal).toBeLessThanOrEqual(1);
+  });
+
   it('więcej cech niż dostępnych — tyle, ile jest', () => {
     const affixes = rollElites([{ type: EnemyType.Rusher, room: 0 }], { ...ELITE_CONFIG, roomChanceByFloor: [1] }, 1, 5, createRng(1));
     expect(affixes[0]).toHaveLength(availableAffixes(ELITE_CONFIG, EnemyType.Rusher, 1).length);

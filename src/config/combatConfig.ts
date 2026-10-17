@@ -92,6 +92,7 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
   [EnemyVariant.Bat]: {
     type: EnemyType.Kiter,
     color: 0x4a3644,
+    flying: true,
     attack: {
       kind: EnemyAttackKind.Projectile,
       damage: 8,

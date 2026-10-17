@@ -15,6 +15,8 @@ export interface EnemyVariantDefinition {
   readonly maxHp?: number;
   /** Przenikanie (upiór, krok 49). */
   readonly phasing?: PhasingDefinition;
+  /** Latający wróg (nietoperz, upiór): nie dostaje cech wymagających stania na ziemi (Tarczownik). */
+  readonly flying?: boolean;
 }
 
 /**

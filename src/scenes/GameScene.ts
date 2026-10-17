@@ -38,7 +38,7 @@ import { planAmbushRoom } from '@/dungeon/AmbushPlanner';
 import { hasAmbush } from '@/systems/Ambush';
 import { BreakableManager } from '@/combat/BreakableManager';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
-import { getEncounterConfigForFloor } from '@/config/combatConfig';
+import { ENEMY_VARIANTS, getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, SECRET_ROOM_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
@@ -735,7 +735,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const spawns = planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng);
     // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
     const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
-    this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
+    // Latające warianty (nietoperz) nie dostają cech z `groundedOnly` (Tarczownik).
+    const eliteSpawns = spawns.map((s) => ({ ...s, flying: ENEMY_VARIANTS[this.biome.enemyVariants[s.type]].flying === true }));
+    this.enemies.spawnAll(spawns, rollElites(eliteSpawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
 
     const drops = this.biome.ceilingDrops;
     this.ceilingDrops = drops
