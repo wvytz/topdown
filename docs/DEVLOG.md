@@ -3677,6 +3677,12 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** 1191 przechodzi. **Wdrożenie workera wykonane** (sekret `IP_SALT` ustawiony, `wrangler deploy`; sprawdzone na żywo: `GET /scores` 200, `GET /reports` bez tokena 404, `POST /scores` bez `Origin` 403).
 
+## Krok 60 — Podręcznik właściciela `#decyzja` `#nauka`
+
+- **Co powstało:** `docs/PODRECZNIK.md`, czyli notatnik do nauki dla właściciela: proces pracy, słownik gita i GitHuba, narzędzi (Vite, Vitest, build), architektury gry, hostingu (Pages, Workers, D1), bezpieczeństwa i kosztów, pułapki z kroku 59 (OneDrive i `.git`, przerwany `git pull`), dziennik pojęć krok po kroku i ściąga do pisania wpisów DEVLOG.
+- **Decyzja właściciela:** od teraz po każdym kroku Claude dopisuje nowe pojęcia do podręcznika, prostym językiem, bez sekretów. Reguła dopisana do `CLAUDE.md` (zasada pracy nr 6).
+- **Testy:** brak (dokumentacja). **Weryfikacja:** przejrzenie treści; liczby limitów hostingu oznaczone jako „z pamięci, sprawdź cennik”.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
