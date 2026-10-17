@@ -3275,7 +3275,137 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Test botem (Czarodziejka, bez uników):** piętro 9 — przedtem śmierć, teraz 25,2 s, 75 → 55 HP (4 trafienia); piętro 6 — 29,0 s / 39 HP → 22,9 s / 60 HP. Build: 1081 testów.
 
-## Krok 51 — Ekran startowy: nazwa TOP DOWN i epickie otwarcie
+## Krok 51 — Ukryta komnata tylko po Królu Pająków `#wieza` `#grzybnia`
+
+**Decyzja właściciela** `#decyzja` `#wieza`: ukryta komnata z kokonami (krok 46) ma być tylko nagrodą za pokonanie Króla Pająków. Dodatkowe sekretne komnaty po innych bossach — do rozważenia w innym terminie.
+
+- `endRoomChance` w `getDungeonConfigForFloor` zależy od biomu: **1** w Grzybni (`SECRET_ROOM_BIOME`, `config/gameConfig.ts`; piętro 3 i powtórzenia w kolejnych kręgach: 9, 15…), **0** gdzie indziej (dawniej 50% od piętra 2). Reguła „arena na końcu piętra” (krok 45) bez zmian — arena nadal ma jedno wejście, tylko bez pokoju końcowego poza Grzybnią.
+- Piętro Grzybni ma zawsze pokój końcowy (o ile generator zmieści układ; przy nieudanej próbie jak dotąd kolejna z RNG).
+
+**Testy:** `bossRoomRule.test.ts` — szansa 0/1 według biomu, pokój końcowy zawsze na piętrze 3 i nigdy na 4; udział pokoi końcowych w badanych piętrach 10–20%. Build: 1082 testy.
+
+## Krok 52 — Gniazdo pająków: coraz więcej pajęczyn ku arenie `#decyzja` `#pajecze-leze` `#grzybnia`
+
+**Prośba właściciela** `#decyzja`: więcej pajęczyn w bliskim otoczeniu komnaty bossów pająków, żeby gracz wyczuł, że zbliża się do gniazda. Przy okazji sprawdzenie w przeglądarce ukrytej komnaty z kroku 51.
+
+- `FloorDressingConfig.nest` (`config/dressingConfig.ts`, `SPIDER_NEST`): tylko Pajęcze leże (Matka Pająków) i Grzybnia (Król Pająków). Siła gniazda spada liniowo od 1 w arenie do 0 na **22 kafle** od jej krawędzi (`DressingContext.nestStrength`).
+- Pajęczyna w górnym narożniku pokoju: szansa rośnie ku arenie do 100% (zwykle 70% w leżu, 50% w Grzybni). Przy arenie dochodzą też nici i jaja na licu muru (`wallFace.lair`, do 55%). Same dekoracje — bez kolizji i bez zmian w rozgrywce (lepkie pajęczyny-pułapki bez zmian).
+
+**Testy:** `FloorDressing.test.ts` — narożniki przy arenie mają pajęczyny przy zerowej szansie bazowej, daleki pokój nie; lico muru tylko w zasięgu; gniazdo tylko w leżu i Grzybni; łącznie więcej pajęczyn niż bez gniazda.
+
+**Weryfikacja w przeglądarce (`?hero=sorceress&seed=7`):** piętro 3 — wejście do ukrytej komnaty: odsłonięcie z 2 kafli i komunikat, kokony, pajęczyny w narożnikach; piętro 2 — pokój przy arenie ma pajęczyny w obu górnych narożnikach, pokój daleko od niej bez. Bez błędów w konsoli (poza 404 pliku pomocniczego). Build: 1086 testów.
+
+## Krok 53 — Pajęczyny w korytarzach i „zapowiedź bossa” na pozostałych piętrach `#decyzja` `#pajecze-leze` `#grzybnia`
+
+**Prośba właściciela** `#decyzja`: pajęczyny także w korytarzach przed areną; przemyśleć i przygotować dodatkowe elementy wizualne, które na pozostałych piętrach wskażą bliskość pokoju bossa.
+
+- **Korytarze:** `NestDressing.corridorCobwebChance` (`SPIDER_NEST`: 0,6 ku arenie, malejąco z odległością). Pajęczyna w narożniku kafla korytarza przy murze (górnym albo bocznym), bez dwóch sąsiadujących (`dressCorridorCobwebs`). Korytarze do aren są krótkie, więc efekt jest subtelny — zapowiedź robią głównie pokoje.
+- **Pozostałe piętra (gotowe z istniejącej grafiki, bez nowych kafli):** to samo „gniazdo” (`FloorDressingConfig.nest`) ma teraz Cmentarzysko (gęstnieją nisze z czaszkami, kostnica, epitafia — `wallFace.grave`) i Piekło (okowy, czaszki na kolcach, żar — `wallFace.infernal`). Bez pajęczyn. Ruiny bez zmian (piętro 1).
+- **Pomysły na dalej (wymagają nowej grafiki lub decyzji — do wyboru przez właściciela):**
+  - ślady wleczenia i krew prowadzące do wejścia areny (naklejki na podłodze, jak ślady tronu z kroku 39);
+  - Ruiny: smugi szlamu i kałuże ku arenie Strażnika (Sludge King);
+  - Cmentarzysko: stosy kości i ślady pazurów na podłodze;
+  - Piekło: żarzące się szczeliny na posadzce, iskry unoszące się z podłogi;
+  - światło: lekki odcień światła pochodni (cieplejszy / czerwieńszy) w pobliżu areny;
+  - dźwięk i kamera: ledwo wyczuwalne drżenie ekranu w promieniu kilku kafli od areny.
+
+**Testy:** korytarz — pajęczyny pod murem blisko areny, daleko brak, dolny rząd bez; konfiguracja gniazd (pająki z pajęczynami, Cmentarzysko i Piekło tylko lico). Build: 1087 testów.
+
+## Krok 54 — Zapowiedź bossa: ślady wleczenia, odcień światła, drżenie, iskry `#decyzja` `#zapowiedz-bossa`
+
+**Prośba właściciela** `#decyzja`: ślady krwi i wleczenia prowadzące do areny, a do tego wszystkie pomysły z kroku 53 („idealne”) — wdrożone, ile się dało; efekt do oceny po powrocie.
+
+- **Ślady wleczenia i krwi (wszystkie biomy):** nowe kafle `decal_trail_{h,v}_{a,b}` (smuga przez cały kafel, łączy się z sąsiednimi) i `decal_trail_drops_{a,b}` (ciąg kropli) — generator `tools/tower_ruins_tiles.py` (`trail_decal`, dopisane na końcu manifestu, więc nic się nie przesuwa; wszystkie 5 arkuszy zregenerowane). Kolor = płyn biomu (`stain`): zaschnięta krew w ruinach i na Cmentarzysku, zielony ichor w leżu, błękit w Grzybni, krew w Piekle. `FloorDressing.dressTrail`: najkrótsza droga po podłodze od startu do wejścia areny (BFS), ostatnie 18 kafli, szansa 85% tuż przy wejściu → 20% na końcu; kierunek smugi wg kierunku marszu; bez areny, krat i okolic spawnu. `TrailDressing` w `NestDressing` (`config/dressingConfig.ts`).
+- **Nakładki ku arenie** (`NestDressing.decals`): Ruiny — plamy (`decal.stain`), Cmentarzysko — stosy kości, Piekło — żarzące się szczeliny; gęstsze ku arenie, nie w samej arenie.
+- **Ruiny dostały gniazdo** (tylko ślady i plamy; bez pajęczyn i lica), Cmentarzysko i Piekło — ślady i nakładki w dodatku do lica z kroku 53.
+- **Odcień światła** (`effects/BossHerald.ts`, `config/bossHeraldConfig.ts`): ledwo widoczna poświata (ADD, alfa ≤ 0,07) rosnąca ku arenie — ciepła w ruinach, zielona w leżu, fioletowa w Grzybni, blada na Cmentarzysku, czerwona w Piekle.
+- **Drżenie ekranu:** powyżej siły 0,35 co 4,2 s (daleko) → 1,7 s (blisko), 420 ms, intensywność ≤ 0,0011 (`HERALD_RUMBLE`; uszczelnienie krat to 0,004).
+- **Iskry z posadzki** (tylko Piekło): cząstki w kolorach żaru, gęstsze ku arenie.
+- Zapowiedź milknie w samej arenie, w trakcie walki i po niej. Siła zapowiedzi = czysta `systems/BossHerald.roomProximity` (linia prosta od krawędzi areny, liniowy spadek do zasięgu 16–20 kafli wg biomu).
+- Same efekty wizualne, bez wpływu na rozgrywkę. Liczby do strojenia: `TRAIL`, `NestDressing`, `BOSS_HERALD`, `HERALD_RUMBLE`.
+
+**Nie zrobione (za mało pewne bez oceny właściciela):** stosy kości i ślady pazurów jako osobna grafika (są tylko stosy kości), smugi szlamu w Ruinach jako osobny rodzaj (ślad ma kolor krwi/płynu biomu).
+
+**Testy:** `systems/bossHerald.test.ts` (siła, odstępy drżeń, konfiguracja); `FloorDressing.test.ts` (ślady tylko na podłodze, nie w arenie ani przy spawnie, kończą się blisko areny; kości gęstnieją ku arenie; konfiguracja gniazd).
+
+**Weryfikacja w przeglądarce (`?hero=sorceress&seed=7`):** piętro 4 — smuga krwi w korytarzu prowadzącym do areny Pożeracza; piętro 1 — plamy i ślady ku arenie; piętro 5 — czerwona poświata i iskra; bez błędów w konsoli (poza 404 pliku pomocniczego). Build: 1107 testów.
+
+## Krok 55 — Dziennik błędów i niespotykanych zdarzeń `#decyzja` `#diagnostyka`
+
+**Powód** `#ocena`: właściciel i tester („Mycha”) zgłaszają, że gra czasem „wyrzuca” w trakcie rozgrywki (druga rozgrywka). Nie udało się tego odtworzyć (testy botem: wspinaczki do piętra 9, wszystkie przedmioty, śmierć i restarty, 60 restartów sceny, build produkcyjny — bez błędów), a gra nie miała żadnej obsługi błędów: wyjątek w pętli gry zatrzymuje Phasera na stałe (`RequestAnimationFrame` planuje następną klatkę dopiero po udanej obsłudze bieżącej), więc obraz zamiera bez śladu.
+
+**Co powstało** (`systems/Diagnostics.ts` czyste, `config/diagnosticsConfig.ts`, `persistence/DiagnosticStorage.ts`, `diagnostics/*`):
+- **Błędy:** `window.onerror`, odrzucone obietnice i wyjątki w pętli gry (`game.step` owinięte w try/catch — gra gra dalej, błąd trafia do dziennika zamiast zamrażać grę); deduplikacja (ten sam błąd liczy się jako ×N, po 4 wpisach nie spamuje).
+- **Niespotykane zdarzenia:** zacięcia klatek (≥ 600 ms) i długie mulenie (średni FPS < 20 przez 5 s), utrata/przywrócenie kontekstu WebGL, ukrycie karty, wysoka sterta (≥ 700 MB), „niemożliwy” stan gracza (NaN, poza mapą, HP poza zakresem — kontrola co sekundę).
+- **Okruchy z gry:** nowe piętro (seed, bohater, biom), kraty areny, start/koniec walki z bossem, nagroda, ofiara w kapliczce, schody, śmierć.
+- **Puls co 5 s** ze stanem gry (piętro, seed, bohater, HP, złoto, kafel, walka z bossem…), FPS i stertą. Sesja bez zgłoszonego zamknięcia (`pagehide`) jest oznaczana jako **urwana** — przy następnym uruchomieniu dziennik zapisuje „poprzednia sesja urwała się” razem z ostatnim stanem. To jedyny ślad po twardym wyrzuceniu karty (zabicie przez przeglądarkę, awaria).
+- **Raport:** ostatnie 3 sesje w `localStorage` (limit ~120 kB, najstarsze zdarzenia wypadają). Klawisz **F9** otwiera pole z raportem do skopiowania; po pierwszym błędzie pokazuje się dyskretna nakładka „Wystąpił błąd w grze — raport zapisano” z przyciskami Kopiuj / Pokaż / Zamknij. Tester wkleja raport autorowi.
+- Dziennik nigdy nie rzuca wyjątków (zepsuty magazyn, zepsuty dostawca stanu są połykane).
+
+**Testy:** `tests/systems/diagnostics.test.ts` (opis błędów, ring i deduplikacja, sesja urwana, limit rozmiaru, uszkodzony zapis, monitor klatek, kontrola stanu, raport, hub z fałszywym magazynem). **Weryfikacja w przeglądarce:** celowo rzucony wyjątek w każdej klatce — pętla żyje dalej (153 klatki w 2,5 s), nakładka błędu się pokazuje, dziennik ma `error:loop ×332` i puls ze stanem, F9 otwiera raport. Build: 1121 testów.
+
+## Krok 56 — Diagnostyka, część 2: nagrywanie wejść, wykrywacze zawieszeń, smoke test, błędy ładowania `#decyzja` `#diagnostyka`
+
+**Decyzja właściciela** `#decyzja`: z propozycji po kroku 55 wybrane punkty 2, 3, 8 i 5; reszta (wysyłka raportów do workera, czasy systemów, telemetria balansu, zrzut obrazu) na później.
+
+- **Nagrywanie wejść (2):** `systems/InputRecorder.ts` zapisuje od początku piętra tylko zmiany wejścia (ruch, atak, strzał, jednorazowe dash/E, celowanie co 24 px) w zwartym tekście; do 2500 wpisów na piętro (potem najstarsze wypadają, nagranie jest „przycięte” i nie do odtworzenia). Meta: seed, piętro, bohater, złoto, przedmioty i HP na starcie piętra. Zapis ostatnich 3 pięter w `localStorage` (`persistence/InputRecordingStorage.ts`, klucz `tower-crawler.inputs.v1`) przy pulsie, błędzie i zamknięciu. F9: przycisk „Kopiuj nagranie”, w raporcie lista nagrań. **Odtwarzanie (tylko tryb dev):** `__replay(nagranie)` w konsoli restartuje piętro z tym samym seedem i stanem runu i podaje zapisane wejścia zamiast klawiatury (`InputReplay`, `devTools.ts`). Odtworzenie jest **przybliżone** — seed i układ piętra te same, ale czas klatek i zachowanie wrogów mogą się różnić (w teście ruch wyszedł inny, bo nagranie zostało zablokowane przez wroga).
+- **Wykrywacze (3):** `systems/AnomalyDetectors.ts` — gracz trzyma klawisze ruchu 4 s i stoi w miejscu (`player-stuck`, poza paraliżem, dashem i śmiercią), HP bossa stoi 90 s (`boss-stalled`), przekroczone limity (obiekty sceny > 3000, żywi wrogowie > 60), schody odblokowane, ale nieosiągalne (`stairs-unreachable`) i **spójność piętra na starcie** (pokój albo schody nieosiągalne ze spawnu → `floor-disconnected`, BFS). Próbkowanie co 500 ms, odstępy między zgłoszeniami; wszystko do dziennika z kroku 55.
+- **Test dymny (8):** `npm run smoke` (`tools/smoke.mjs`) — sam startuje serwer dev (port 5199) i bot w prawdziwej przeglądarce przechodzi obiema postaciami piętra: faza 1 wchodzi na każde piętro × seed, faza 2 to pełna wspinaczka (wszystkie pokoje, arena, boss, nagroda, schody klawiszem E). Szuka wyjątków strony, błędów konsoli i zdarzeń `error` z dziennika gry; kod wyjścia 1 przy błędach. Opcje: `--floors 8 --seeds 2 --heroes both|barbarian|sorceress --room-seconds 1.5 --sweep-only`; przeglądarka: zainstalowany Chrome albo `SMOKE_CHROMIUM=<ścieżka>`. Nowa zależność dev: `playwright-core` (bez pobierania przeglądarek). Uruchamiać przed wdrożeniem na Pages.
+- **Błędy ładowania zasobów (5):** `BootScene` zapisuje `asset-load-error` (klucz, typ, URL) do dziennika.
+
+**Testy:** `inputRecorder.test.ts` (zapis zmian, limit/przycięcie, odtwarzanie w czasie, jednorazowe dash/E, uszkodzone nagranie, zapis nagrań, hub), `anomalyDetectors.test.ts` (utknięcie, boss, limity, osiągalność, spójność — także na wygenerowanych piętrach 1–12). **Weryfikacja:** w przeglądarce nagranie i `__replay` działają, przytrzymanie ruchu w ścianę daje `player-stuck`; `npm run smoke` (Czarodziejka, piętra 1–4) — OK. Build: 1138 testów.
+
+## Krok 57 — Endpoint zgłoszeń diagnostycznych w workerze `#decyzja` `#diagnostyka`
+
+**Decyzja właściciela** `#decyzja`: osobny endpoint z limitami, przygotowany na późniejsze, bardziej złożone raportowanie błędów; logika i proces opisane w DEVLOG. Pytanie o koszty: przy skali testerów wysyłka mieści się z dużym zapasem w darmowym planie Cloudflare (orientacyjnie: raport to jedno żądanie i jeden zapis w D1; limity niżej chronią przed zalewem). **Limity planu darmowego do potwierdzenia w dokumentacji Cloudflare — podane z pamięci.**
+
+### Logika i proces
+
+**1. Koperta zgłoszenia (kontrakt gry ↔ worker, wersja 1)** — `systems/ReportEnvelope.ts` (gra), `worker/src/reports.js` (worker):
+`{ v, kind, app{build}, client{id, sessionId}, summary{errors, warnings, floor, hero, seed, abnormalPrev}, text, attachments[] }`.
+- `kind`: `diagnostic` (ręczne z F9), `crash` i `feedback` (zarezerwowane na kolejne kroki).
+- `summary` trafia do osobnych kolumn D1 — po nich filtruje się listę (piętro, bohater, seed, liczba błędów, „poprzednia sesja urwana”) bez parsowania tekstu.
+- `text` to raport z F9; `attachments` — dziś nagranie wejść (`input-recording`), docelowo np. zrzut obrazu, czasy systemów.
+- `client.id`: anonimowy losowy identyfikator przeglądarki (`persistence/ClientId.ts`, localStorage) — składa zgłoszenia jednego testera w całość i służy deduplikacji; to nie dane osobowe. IP worker zapisuje wyłącznie jako skrót SHA-256 (do limitów).
+- **Rozszerzalność:** nieznane pola są ignorowane (zgodność w przód); nowy rodzaj zgłoszenia = wpis w `REPORT_LIMITS.kinds` + deploy; nowa wersja koperty = podbicie `v` i obsługa obu wersji w `validateReport`; nowy typ załącznika = wpis w `attachmentTypes`.
+
+**2. Droga zgłoszenia:**
+1. Tester w F9 klika „Wyślij autorowi” (z opcją dołączenia nagrania wejść; panel opisuje, co jest wysyłane). `DiagnosticsHub.sendReport` → limity w grze (`SendThrottle`: minuta odstępu, 3 na sesję) → `buildEnvelope` (podsumowanie z bieżącej sesji, tekst przycięty do 80 000 znaków z zachowaniem początku i końca, nagranie dołączone w całości albo wcale) → `ReportSink` (`persistence/remoteReports.ts`, adapter workera, `POST <VITE_SCORES_URL>/reports`, limit czasu 15 s, bez wyjątków).
+2. Worker (`index.js` → `processReport`): origin z `ALLOWED_ORIGINS` (403) → rozmiar po nagłówku i po wczytaniu (413) → JSON (400) → **walidacja koperty** (400 z `reason`) → **deduplikacja** (200 `duplicate`, bez zapisu i bez zużycia limitu) → **limity** (429 + `Retry-After`; 503 przy globalnym bezpieczniku) → zapis w D1 (`201 {id}`).
+3. Autor odczytuje przez `GET /reports…` z `Authorization: Bearer <REPORTS_TOKEN>` (bez sekretu trasy zwracają 404); `DELETE /reports/:id` usuwa. Nagranie z załącznika wkleja do `__replay` w trybie dev (krok 56).
+4. Retencja: cron codziennie 03:17 UTC kasuje zgłoszenia starsze niż 30 dni (plus sprzątanie co ok. 50. zapis).
+
+**3. Limity** (`REPORT_LIMITS`): całość ≤ 262 144 znaków, tekst ≤ 80 000, ≤ 2 załączniki po ≤ 150 000; 5/godz. i 20/dobę z adresu; 1000/dobę globalnie; dedup 24 h; retencja 30 dni. Limity gry (rozmiary, wersja koperty) nie mogą przekraczać limitów workera — pilnuje tego test kontraktu.
+
+**4. Co przygotowane na później (nie zrobione):** automatyczna wysyłka przy błędzie krytycznym (`kind: 'crash'` z limitem 1 na sesję i zgodą testera), formularz „opisz, co się stało” (`feedback`), załączniki z krokiem 56+ (zrzut obrazu, czasy systemów, telemetria balansu), panel administratora zamiast `curl`, powiadomienie o nowych zgłoszeniach.
+
+**5. Wdrożenie (wykonane w kroku 58, patrz niżej; pierwotnie czekało na właściciela):** `cd worker`; `npx wrangler d1 execute tower-crawler-scores --remote --file=schema.sql`; `npx wrangler secret put REPORTS_TOKEN`; `npx wrangler deploy`; potem `npm run smoke` i `npm run deploy:pages`. Szczegóły i przykłady `curl` w `worker/README.md`.
+
+**Testy:** `tests/worker/reports.test.ts` (walidacja koperty, limity i `processReport` na atrapie repozytorium, deduplikacja, globalny bezpiecznik, kontrakt gra ↔ worker), `tests/worker/index.test.ts` (routing, CORS, 403/400/413/429, odczyt tylko z tokenem, usuwanie, cron — na atrapie D1), `tests/persistence/remoteReports.test.ts` (adapter, błędy sieci, koperta, throttling, identyfikator klienta). **Weryfikacja w przeglądarce** (z lokalnym atrapą workera): w F9 pojawia się „Wyślij autorowi”, wysyłka z nagraniem kończy się „Wysłano”, druga w ciągu minuty — „Za często”. Build: 1180 testów.
+
+## Krok 58 — Wdrożenie workera zgłoszeń, automatyczna wysyłka przy awarii, publikacja `#decyzja` `#diagnostyka`
+
+**Decyzja właściciela** `#decyzja`: wykonać wszystko, co w kroku 57 było „po stronie właściciela”, przygotować wysyłkę przy błędzie krytycznym, wgrać całość do głównej wersji i uzupełnić DEVLOG.
+
+### Wdrożenie workera (Cloudflare, konto właściciela, 2026-10-16)
+- Migracja bazy: `wrangler d1 execute tower-crawler-scores --remote --file=schema.sql` — dopisała tabelę `reports` i 4 indeksy (tabela `scores` bez zmian, istniejące wyniki nietknięte).
+- Sekret `REPORTS_TOKEN` ustawiony przez `wrangler secret put` (losowe 48 znaków hex). **Wartość nie jest w repozytorium ani w DEVLOG** — została przekazana właścicielowi w rozmowie; do odczytu zgłoszeń potrzebny jest nagłówek `X-Reports-Token: <token>` (albo `Authorization: Bearer <token>`).
+- `wrangler deploy`: worker `tower-crawler-scores` (https://tower-crawler-scores.wvytz.workers.dev) + cron czyszczący `17 3 * * *`.
+- **Odkrycie podczas weryfikacji:** pośrednik w środowisku, w którym pracował Claude, dopisuje własny nagłówek `Authorization` do żądań na `*.workers.dev`, przez co `Bearer` nie działał. Dodano nagłówek **`X-Reports-Token`** z pierwszeństwem przed `Authorization` (worker, README, test) — przydatny też przy innych pośrednikach.
+- Weryfikacja na żywym workerze: `GET /scores` działa jak dawniej; `GET /reports` bez tokena i z błędnym — 404; `POST /reports` bez `Origin` — 403, z `Origin` gry — 201; ponowienie tej samej treści — 200 `duplicate` bez zapisu; lista i pełny wpis z tokenem; usunięcie testowego zgłoszenia (`DELETE`), baza po teście bez zgłoszeń.
+
+### Automatyczne zgłoszenie przy awarii (`kind: 'crash'`)
+- **Krytyczne zdarzenia** (`systems/AutoReport.isCriticalEvent`): błędy `error:*` (okno, obietnice, pętla gry), utrata kontekstu WebGL i **urwana poprzednia sesja** („wyrzuciło mnie z gry” — wykrywane przy następnym starcie).
+- **Zgoda gracza** (`persistence/AutoReportConsent`, localStorage): bez zgody nic nie jest wysyłane. Przy pierwszej awarii (jeśli worker jest skonfigurowany) gra raz pyta: *Tak, wysyłaj* / *Tylko ten raz* / *Nie* — treść pytania mówi wprost, co jest wysyłane (przeglądarka, ekran, zdarzenia i stan gry, nagranie ruchów i kliknięć z ostatniego piętra; bez imienia i IP). Zgodę zmienia się w F9 (pole „wysyłaj raporty o awariach automatycznie”).
+- **Polityka** (`AutoReportPolicy`): po pierwszym krytycznym zdarzeniu 4 s zbierania kolejnych (raport pełniejszy), potem wysyłka; **najwyżej 1 automatyczne zgłoszenie na sesję**; bez decyzji pytanie raz na sesję. Do tego limity workera (5/godz., 20/dobę z IP, deduplikacja treści, globalny bezpiecznik) — awaria w pętli nie zaleje workera ani darmowego planu.
+- Wysyłka automatyczna nie jest blokowana minutowym odstępem ręcznych wysyłek (`sendReport(kind, withRecording, automatic)`); po sukcesie krótka nakładka „Raport o awarii wysłano autorowi”.
+- **Znane ograniczenie:** dwie karty z grą naraz dzielą jeden dziennik w localStorage — druga może uznać pierwszą za „urwaną” i zgłosić fałszywą awarię (przy zgodzie: jedno zbędne zgłoszenie, które dedup/limity ograniczają). Do rozważenia przy kolejnym kroku diagnostyki (identyfikator karty w kluczu).
+
+### Publikacja
+- Zmiany z gałęzi roboczej wprowadzone do `main` (fast-forward) i wdrożone na GitHub Pages (`npm run deploy:pages`, commit z adresem noreply właściciela); przed wdrożeniem `npm run build` i `npm run smoke` (Czarodziejka i barbarzyńca, piętra 1–4) — bez błędów.
+
+**Testy:** `tests/systems/autoReport.test.ts` (krytyczne zdarzenia, polityka: zgoda/brak/pytanie/limit/zaległe zgłoszenie, magazyn zgody, hub: automatyczne omija ręczny odstęp, wykrycie urwanej sesji), rozszerzone `tests/worker/index.test.ts` (nagłówek `X-Reports-Token`). **Weryfikacja w przeglądarce** (lokalna atrapa workera): awaria bez zgody → pytanie → „Tak” → `crash` z załączonym nagraniem trafia do workera, zgoda zapisana; po urwanej sesji z zgodą „tak” raport wysyłany automatycznie bez pytania. Build: 1189 testów; smoke OK.
+## Krok 59 — Ekran startowy: nazwa TOP DOWN i epickie otwarcie
 
 **Decyzja właściciela:** `#decyzja` `#ekran-startowy`
 - na ekranie startowym ma być oryginalna nazwa gry: **TOP DOWN** (zamiast „Tower Crawler”);
@@ -3303,10 +3433,10 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 52 — Ekran startowy: TOP / DOWN i samotna wieża końca
+## Krok 60 — Ekran startowy: TOP / DOWN i samotna wieża końca
 
 **Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-startowy`
-- wersja z kroku 51 (jedna linia, promienie, połysk) „zupełnie się nie podoba”;
+- wersja z kroku 59 (jedna linia, promienie, połysk) „zupełnie się nie podoba”;
 - napis w **dwóch liniach**: TOP i DOWN;
 - motyw **jednej wieży**, obok **mrok i destrukcja**;
 - „nasza gra jest metaforą końca — być może świata, być może życia”.
@@ -3326,7 +3456,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 - 2,0 s: oczy w mroku (brama wieży, ciemność po bokach);
 - 3,7 s: wygaszenie i start piętra 1.
 
-**Usunięte z kroków 34/51:** pioruny, promienie, połysk, podtytuł, pająk na nitce, nietoperz, pajęczyny.
+**Usunięte z kroków 34/59:** pioruny, promienie, połysk, podtytuł, pająk na nitce, nietoperz, pajęczyny.
 
 **Kod:**
 - `core/pixelArt.ts`: `pixelDisc`, `pixelRing` (tarcza i korona zaćmienia);
@@ -3342,10 +3472,10 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 53 — Ekran śmierci w tonie TOP / DOWN: popiół zamiast krwi
+## Krok 61 — Ekran śmierci w tonie TOP / DOWN: popiół zamiast krwi
 
 **Decyzja właściciela:** `#decyzja` `#ekran-smierci`
-- po akceptacji ekranu startowego (krok 52): „przerób w podobnym tonie ekran końcowy” i od razu wdróż.
+- po akceptacji ekranu startowego (krok 60): „przerób w podobnym tonie ekran końcowy” i od razu wdróż.
 
 **Co się zmieniło względem kroku 35:**
 - POLEGŁEŚ ma lico z popiołu i kości jak TOP / DOWN (te same pasy kolorów) i żarzącą się krawędź egg-0;
@@ -3365,7 +3495,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 54 — Ekran śmierci: napis ociekający krwią na plamie
+## Krok 62 — Ekran śmierci: napis ociekający krwią na plamie
 
 **Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
 - rozpadające się słowo (kroki 35 i 38) „nie podoba się zupełnie”; wersja na czerwonym tle „jakoś wyglądała”;
@@ -3392,10 +3522,10 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 55 — Ekran śmierci w stylu Dark Souls / Castlevanii
+## Krok 63 — Ekran śmierci w stylu Dark Souls / Castlevanii
 
 **Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
-- krew z kroku 54 „wygląda sztucznie”; ma być „mniej banalnie, a bardziej mrocznie — w stylu Castlevanii lub Dark Souls”.
+- krew z kroku 62 „wygląda sztucznie”; ma być „mniej banalnie, a bardziej mrocznie — w stylu Castlevanii lub Dark Souls”.
 
 **Kierunek:** cisza i ciężar zamiast efektów. Żadnej krwi, plamy, uderzenia, wstrząsu ani cząstek.
 
@@ -3420,10 +3550,10 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 56 — Ekran śmierci: czerwień spływająca przez litery
+## Krok 64 — Ekran śmierci: czerwień spływająca przez litery
 
 **Prośba właściciela:** `#decyzja` `#ekran-smierci`
-- do ekranu z kroku 55: „animowany efekt w stylu spływającego w dół gradientu czerwieni wypełnienia liter”.
+- do ekranu z kroku 63: „animowany efekt w stylu spływającego w dół gradientu czerwieni wypełnienia liter”.
 
 **Co widać:**
 - lico liter POLEGŁEŚ to pasy czerwieni (od jasnej eye-1 przez eye-0 i blood-2 do zakrzepłej blood-1 i z powrotem), które **powoli i bez końca spływają w dół** (18 px/s) — jak krew przepływająca przez litery;
@@ -3442,10 +3572,10 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 57 — Ekran śmierci: spływanie osobno dla grup liter
+## Krok 65 — Ekran śmierci: spływanie osobno dla grup liter
 
 **Ocena i prośba właściciela:** `#ocena` `#ekran-smierci`
-- spływająca czerwień z kroku 56: „o coś takiego mi chodziło”;
+- spływająca czerwień z kroku 64: „o coś takiego mi chodziło”;
 - prośba o podgląd: spływanie rozdzielone dla grup 2–3 liter, „by bardziej zaimitować tempo spływania w różnych miejscach”.
 
 **Wariant:**
@@ -3462,7 +3592,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 58 — Ekran śmierci: szerszy czarny pas
+## Krok 66 — Ekran śmierci: szerszy czarny pas
 
 **Prośba właściciela:** `#decyzja` `#ekran-smierci`
 - przyciemniony pas za napisem rozszerzyć w górę **tuż do dolnego końca HUD-u** i **o połowę w stronę tablicy rekordów**.
@@ -3478,11 +3608,11 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja:** `npm run build`; zrzut z przeglądarki po 7 s. Wdrożone na GitHub Pages.
 
-**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — rozwiązane w kroku 59 (ikony w jednym rzędzie, pas od y = 147 po scaleniu).
+**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — rozwiązane w kroku 67 (ikony w jednym rzędzie, pas od y = 147 po scaleniu).
 
 ---
 
-## Krok 59 — HUD: przedmioty jako ikony
+## Krok 67 — HUD: przedmioty jako ikony
 
 **Decyzja właściciela:** `#decyzja` `#hud`
 - z dwóch makiet na kanwie (A: ikony pod złotem, B: pasek na dole) wybrany **wariant A**;
@@ -3507,7 +3637,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Scalenie z main po krokach 51–59 `#ekran-startowy` `#ekran-smierci` `#hud`
+## Scalenie z main po krokach 59–67 (dwa razy) `#ekran-startowy` `#ekran-smierci` `#hud`
 
 **Problem:** kroki ekranu startowego, ekranu śmierci i HUD-u z tej sesji powstawały na gałęzi `claude/beautiful-knuth-7datv1` równolegle z `main` (kroki 36–50a: Czarodziejka, Piekło, elity, pętla wieży, zasadzki). Wdrożenie z `main` nadpisało `gh-pages` wersją bez nich.
 
@@ -3515,12 +3645,22 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 - `main` scalony z gałęzią; kroki tej gałęzi 36–44 **przenumerowane na 51–59** (numery 36–50a są zajęte przez `main`);
 - `SplashScene`: przejście do gry przez `startFirstFloor` z `main` (ekran wyboru bohatera);
 - `DeathScreen` (wersja Dark Souls ze spływającą czerwienią) przejął z `main` wspólną listę wyników: pole na imię po pierwszej śmierci, imiona w wierszach, nagłówek zależny od źródła (lokalna / łączenie / wszyscy gracze / run testowy), „C — ZMIANA BOHATERA”; podczas wpisywania imienia komunikat o nowej wspinaczce ukryty;
-- `HudScene`: ikony przedmiotów (krok 59) razem z paskiem promienia Czarodziejki, podpowiedzią zależną od bohatera i złotem w runie testowym;
+- `HudScene`: ikony przedmiotów (krok 67) razem z paskiem promienia Czarodziejki, podpowiedzią zależną od bohatera i złotem w runie testowym;
 - pasek promienia przesunął HUD o 5 px w dół — rząd ikon kończy się na y = 147, więc pas ekranu śmierci zaczyna się od 147.
 
 **Weryfikacja:** `npm run build`; przeglądarka (ekran startowy → wybór bohatera, ikony w HUD, śmierć z polem na imię). Wdrożone na GitHub Pages.
 
 ---
+## Drugie scalenie z main (17.10) `#ekran-startowy` `#ekran-smierci` `#hud`
+
+**Problem (zgłoszenie właściciela):** na Pages znowu był stary ekran startowy i tekst zamiast ikon. Inna sesja wdrożyła 16.10 grę z `main` (kroki 51–58 tam: gniazdo pająków, zapowiedź bossa, diagnostyka) — `main` nadal nie miał zmian z tej gałęzi, więc wdrożenie je nadpisało.
+
+**Co zrobiono:** `main` scalony ponownie; kroki tej gałęzi przenumerowane drugi raz — teraz **59–67** (51–58 zajął `main`); w `GameScene` zostaje notatka diagnostyczna kapliczki z `main` (`diag.note`) i podpis przedmiotu pod ikonami. Wdrożone na GitHub Pages.
+
+**Na przyszłość:** dopóki ta gałąź nie trafi do `main`, każde wdrożenie z `main` cofnie ekran startowy, ekran śmierci i ikony w HUD.
+
+---
+
 
 ## Znane ograniczenia i backlog
 
@@ -3598,9 +3738,9 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **HUD z ikonami (krok 59):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).
-- **Ekran śmierci (kroki 55–57):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
-- **Ekran startowy (krok 52):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
+- **HUD z ikonami (krok 67):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).
+- **Ekran śmierci (kroki 63–65):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
+- **Ekran startowy (krok 60):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
 - **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (także na Pages jako run testowy bez zapisu wyniku, `systems/startOverrides.ts`, krok 41g). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).

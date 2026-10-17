@@ -1644,6 +1644,44 @@ def combat_mark(kind):
     return gen
 
 
+def trail_decal(kind):
+    """Ślady wleczenia i krwi prowadzące do areny bossa (krok 54): smuga przez cały kafel (łączy się z sąsiednimi)
+    albo ciąg kropli. Kolor to płyn biomu (`stain`): zaschnięta krew, ichor, grzybnia — bez nowych barw."""
+    def gen(p, r):
+        S = p.stain
+        img = Img(T, T)
+        if kind[0] in 'hv':
+            thick = 3 if kind.endswith('a') else 5
+            phase = r.choice((-1, 1))
+            raw = Img(T, T)
+            gaps = {r.randint(4, 26) for _ in range(2)}
+            for x in range(T):
+                yc = 16 + int(round(1.6 * phase * math.sin(2 * math.pi * x / (T - 1))))
+                for dy in range(-(thick // 2), thick // 2 + 1):
+                    if any(abs(x - g) <= 1 for g in gaps) and abs(dy) == thick // 2:
+                        continue  # przerwy: smuga „przerywa” tam, gdzie ciało uniosło się nad ziemię
+                    raw.put(x, yc + dy, S[1] if abs(dy) < thick // 2 or thick == 3 else S[0])
+            for _ in range(4):  # rozbryzgi obok smugi
+                raw.put(r.randint(2, T - 3), 16 + r.choice((-1, 1)) * r.randint(thick // 2 + 2, thick // 2 + 5), S[0])
+            for y in range(T):
+                for x in range(T):
+                    c = raw.get(x, y)
+                    if c and c[3]:
+                        img.put(x, y, c) if kind[0] == 'h' else img.put(y, x, c)
+        else:  # krople: ciąg 5 plamek po lekkim łuku, od większych do mniejszych
+            ox, oy = r.randint(2, 6), r.randint(8, 22)
+            for i in range(5):
+                cx, cy = ox + i * 6 + r.randint(-1, 1), oy + int(3 * math.sin(i * 1.3)) + r.randint(-1, 1)
+                rad = 2.4 - i * .3
+                for yy in range(T):
+                    for xx in range(T):
+                        d = math.hypot(xx + .5 - cx, (yy + .5 - cy) * 1.2)
+                        if d < rad:
+                            img.put(xx, yy, S[1] if d < rad * .55 else S[0])
+        return img
+    return gen
+
+
 # ---------------- manifest ----------------
 @dataclass(frozen=True)
 class Entry:
@@ -1762,6 +1800,10 @@ def manifest():
             m.append(Entry(f'decal_{kind}', infernal_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
         for kind in ('bones_a', 'bones_b'):
             m.append(Entry(f'decal_{kind}', grave_decal(kind), 'floorDecal', group='decal.bones', weight=1, flip_x=True))
+    # Ślady wleczenia i krwi ku arenie bossa (krok 54): na samym końcu (first-fit), nic się nie przesuwa.
+    for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
+                        ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):
+        m.append(Entry(f'decal_trail_{kind}', trail_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
     return m
 
 

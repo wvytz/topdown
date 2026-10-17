@@ -10,13 +10,15 @@
     "deploy:pages": "node tools/deploy-pages.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke": "node tools/smoke.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "playwright-core": "^1.56.1",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
     "vitest": "^4.1.11"

@@ -1,3 +1,4 @@
+import type { InputRecording } from '@/core/diagnosticsTypes';
 import type { HeroId } from '@/core/heroTypes';
 /** Czyste typy domenowe — bez zależności od Phasera. */
 import type { RunSnapshot } from '@/core/lootTypes';
@@ -52,6 +53,8 @@ export interface FloorSceneData {
   readonly floor: number;
   /** Złoto, przedmioty i HP przenoszone z poprzedniego piętra. */
   readonly run: RunSnapshot;
+  /** Odtworzenie nagrania wejść (krok 56, tylko tryb dev): wejścia z nagrania zamiast klawiatury. */
+  readonly replay?: InputRecording;
 }
 
 /** Promień Czarodziejki w HUD: świeci (pasek = pozostały czas) albo odnawia się po zgaśnięciu. */
@@ -114,7 +117,7 @@ export interface HudItem {
   readonly name: string;
   readonly count: number;
   readonly color: number;
-  /** Klatka ikony w atlasie łupów (krok 59: ikony zamiast tekstu). */
+  /** Klatka ikony w atlasie łupów (krok 67: ikony zamiast tekstu). */
   readonly frame: string;
   /** Rzadszy przedmiot z efektem broni — złota ramka zamiast kościanej. */
   readonly rare: boolean;

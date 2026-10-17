@@ -8,6 +8,7 @@ import { STAIRS_SIZE } from '@/config/gameConfig';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
 import { isStairsTile } from '@/dungeon/stairs';
 import { roomContainsTile } from '@/dungeon/rooms';
+import { roomProximity } from '@/systems/BossHerald';
 
 /** Brak kafla w warstwie. */
 export const EMPTY_TILE = -1;
@@ -148,6 +149,7 @@ export function dressFloor(
   const inRoom = (x: number, y: number) => floor.rooms.some((room) => roomContainsTile(room, { x, y }));
 
   dressFloorBase(ctx, floorBase, isPlain, inRoom);
+  dressTrail(ctx, floorDecal, isPlain);
   dressDecals(ctx, floorDecal, isPlain, clearZone(floor, gates, config.clearRadius));
   const stairs = dressStairs(ctx, floorFeature);
   dressEnvShadow(ctx, envShadow);
@@ -181,6 +183,17 @@ class DressingContext {
     readonly config: FloorDressingConfig,
     readonly rng: Rng,
   ) {}
+
+  /**
+   * Siła gniazda w kaflu (0..1): 1 w arenie bossa, liniowo malejąca do 0 na `nest.radiusTiles` od jej krawędzi.
+   * 0 bez gniazda w konfiguracji albo bez areny.
+   */
+  nestStrength(x: number, y: number): number {
+    const { nest } = this.config;
+    const arena = this.floor.rooms[this.floor.bossRoomId];
+    if (!nest || !arena) return 0;
+    return roomProximity({ x, y }, arena, nest.radiusTiles);
+  }
 
   inBounds(x: number, y: number): boolean {
     return x >= 0 && y >= 0 && x < this.floor.width && y < this.floor.height;
@@ -364,6 +377,7 @@ function dressDecals(
       }
     }
   }
+  dressNestDecals(ctx, layer, decorable);
 }
 
 /** Duża nakładka biomu (krok 32a), jeśli wylosowana i mieści się w całości na wolnej podłodze. */
@@ -526,11 +540,27 @@ function dressWallFaces(
     for (let x = 0; x < floor.width; x++) {
       const straightFace = ctx.isWall(x, y) && ctx.isWall(x, y - 1) && ctx.isWall(x - 1, y) && ctx.isWall(x + 1, y);
       if (!straightFace || !isPlain(x, y + 1) || nearTorch(x, y)) continue;
-      if (!rng.chance(config.wallFace.chance)) continue;
+      if (!rng.chance(config.wallFace.chance)) {
+        // Gniazdo (krok 52): przy arenie bossa-pająka dodatkowe nici i jaja na licu.
+        const nest = config.nest;
+        const boost = nest ? ctx.nestStrength(x, y) : 0;
+        if (nest && nest.wallFaceChance > 0 && boost > 0 && layer.isEmpty(x, y) && rng.chance(nest.wallFaceChance * boost)) {
+          const name = ctx.pickVariant(nest.wallFaceGroup, [layer.nameAt(x - 1, y), layer.nameAt(x - 2, y)]);
+          layer.set(x, y, ctx.tile(name).frame, false, name);
+        }
+        continue;
+      }
       const name = ctx.pickVariant(config.wallFace.group, [layer.nameAt(x - 1, y), layer.nameAt(x - 2, y)]);
       layer.set(x, y, ctx.tile(name).frame, false, name);
     }
   }
+}
+
+/** Szansa pajęczyny w narożniku: zwykła, a w gnieździe (krok 52) rośnie ku arenie do `nest.cobwebChance`. */
+function cobwebChance(ctx: DressingContext, x: number, y: number): number {
+  const { cobweb, nest } = ctx.config;
+  if (!nest) return cobweb.chance;
+  return cobweb.chance + Math.max(0, nest.cobwebChance - cobweb.chance) * ctx.nestStrength(x, y);
 }
 
 /**
@@ -566,9 +596,108 @@ function dressOverheadDecor(ctx: DressingContext, layer: LayerBuilder, gateSet: 
     ];
     for (const c of corners) {
       const tucked = ctx.isWall(c.x, c.y - 1) && ctx.isWall(c.x + c.side, c.y);
-      if (!tucked || ctx.isWall(c.x, c.y) || !layer.isEmpty(c.x, c.y) || !rng.chance(config.cobweb.chance)) continue;
+      if (!tucked || ctx.isWall(c.x, c.y) || !layer.isEmpty(c.x, c.y) || !rng.chance(cobwebChance(ctx, c.x, c.y))) continue;
       const name = ctx.pickVariant(c.group, []);
       layer.set(c.x, c.y, ctx.tile(name).frame, false, name);
+    }
+  }
+  dressCorridorCobwebs(ctx, layer, gateSet);
+}
+
+/** Dodatkowe nakładki ku arenie (krok 54): stosy kości, żar, plamy — gęstsze, im bliżej areny (poza samą areną). */
+function dressNestDecals(ctx: DressingContext, layer: LayerBuilder, decorable: (x: number, y: number) => boolean): void {
+  const { floor, config, rng } = ctx;
+  const nest = config.nest;
+  const arena = floor.rooms[floor.bossRoomId];
+  if (!nest?.decals || !arena) return;
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      if (!decorable(x, y) || roomContainsTile(arena, { x, y })) continue;
+      const strength = ctx.nestStrength(x, y);
+      if (strength <= 0 || !rng.chance(nest.decals.chance * strength)) continue;
+      const name = ctx.pickVariant(nest.decals.group, [layer.nameAt(x - 1, y), layer.nameAt(x, y - 1)]);
+      const tile = ctx.tile(name);
+      if (tile.w !== 1 || tile.h !== 1) throw new Error(`FloorDressing: nakładka gniazda „${name}” musi mieć 1×1.`);
+      placeTile(layer, x, y, name, tile, ctx.rollFlip(tile));
+    }
+  }
+}
+
+/**
+ * Ślady wleczenia i krwi (krok 54, pomysł właściciela): ostatnie kafle drogi od startu do wejścia areny. Smuga
+ * biegnie wzdłuż kierunku marszu (poziomo/pionowo), gęstniejąc ku arenie; część to ciągi kropli.
+ * Droga: najkrótsza po podłodze (BFS) ze spawnu do najbliższego wejścia; bez kafli areny, krat i okolic spawnu.
+ */
+function dressTrail(ctx: DressingContext, layer: LayerBuilder, isPlain: (x: number, y: number) => boolean): void {
+  const { floor, config, rng } = ctx;
+  const trail = config.nest?.trail;
+  const arena = floor.rooms[floor.bossRoomId];
+  if (!trail || !arena) return;
+  const entrances = new Set(findRoomEntrances(floor, arena).map((p) => p.y * floor.width + p.x));
+  const start = floor.playerSpawn.y * floor.width + floor.playerSpawn.x;
+  const parent = new Map<number, number>([[start, -1]]);
+  const queue = [start];
+  let goal = -1;
+  for (let head = 0; head < queue.length && goal < 0; head++) {
+    const cur = queue[head]!;
+    if (entrances.has(cur)) {
+      goal = cur;
+      break;
+    }
+    const cx = cur % floor.width;
+    const cy = Math.floor(cur / floor.width);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (!ctx.inBounds(nx, ny)) continue;
+      const next = ny * floor.width + nx;
+      if (parent.has(next) || floor.tiles[next] !== TileType.Floor) continue;
+      // Droga prowadzi przez wejścia do areny, ale nie przez jej wnętrze.
+      if (roomContainsTile(arena, { x: nx, y: ny })) continue;
+      parent.set(next, cur);
+      queue.push(next);
+    }
+  }
+  if (goal < 0) return;
+  const path: number[] = [];
+  for (let cur = goal; cur !== -1; cur = parent.get(cur)!) path.push(cur); // od wejścia ku startowi
+  for (let i = 1; i < path.length && i <= trail.lengthTiles; i++) {
+    const x = path[i]! % floor.width;
+    const y = Math.floor(path[i]! / floor.width);
+    const t = (i - 1) / Math.max(1, trail.lengthTiles - 1);
+    if (!rng.chance(trail.chanceNear + (trail.chanceFar - trail.chanceNear) * t)) continue;
+    if (!isPlain(x, y) || !layer.isEmpty(x, y) || roomContainsTile(arena, { x, y })) continue;
+    if (Math.max(Math.abs(x - floor.playerSpawn.x), Math.abs(y - floor.playerSpawn.y)) <= 2) continue;
+    // Kierunek marszu ku arenie: z kafla do poprzedniego na ścieżce (bliżej wejścia).
+    const toward = path[i - 1]!;
+    const dx = Math.abs((toward % floor.width) - x);
+    const dy = Math.abs(Math.floor(toward / floor.width) - y);
+    const group = rng.chance(trail.dropChance) ? 'decal.trailDrop' : dx >= dy ? 'decal.trailH' : 'decal.trailV';
+    const name = ctx.pickVariant(group, [layer.nameAt(x - 1, y), layer.nameAt(x, y - 1)]);
+    placeTile(layer, x, y, name, ctx.tile(name), ctx.rollFlip(ctx.tile(name)));
+  }
+}
+
+/**
+ * Pajęczyny w korytarzach przed areną (krok 53): pod górnym murem albo przy bocznym murze korytarza, im bliżej areny,
+ * tym gęściej. Wariant (NW/NE) wg muru z boku; bez dwóch sąsiadujących, żeby korytarz nie zamienił się w kokon.
+ */
+function dressCorridorCobwebs(ctx: DressingContext, layer: LayerBuilder, gateSet: ReadonlySet<number>): void {
+  const { floor, config, rng } = ctx;
+  const nest = config.nest;
+  if (!nest || nest.corridorCobwebChance <= 0) return;
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      if (floor.tiles[y * floor.width + x] !== TileType.Floor || gateSet.has(y * floor.width + x)) continue;
+      if (floor.rooms.some((room) => roomContainsTile(room, { x, y }))) continue;
+      const wallEast = ctx.isWall(x + 1, y);
+      const wallWest = ctx.isWall(x - 1, y);
+      if ((!ctx.isWall(x, y - 1) && !wallEast && !wallWest) || !layer.isEmpty(x, y) || !layer.isEmpty(x - 1, y) || !layer.isEmpty(x, y - 1)) continue;
+      const strength = ctx.nestStrength(x, y);
+      if (strength <= 0 || !rng.chance(nest.corridorCobwebChance * strength)) continue;
+      const side = wallEast ? 1 : wallWest ? -1 : rng.chance(0.5) ? 1 : -1;
+      const name = ctx.pickVariant(side === 1 ? config.cobweb.neGroup : config.cobweb.nwGroup, []);
+      layer.set(x, y, ctx.tile(name).frame, false, name);
     }
   }
 }

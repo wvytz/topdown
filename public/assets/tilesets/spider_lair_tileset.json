@@ -5,7 +5,7 @@
  "image": "spider_lair_tileset.png",
  "tileSize": 32,
  "columns": 16,
- "rows": 9,
+ "rows": 10,
  "envShadowAlpha": 0.4,
  "tiles": {
   "floor_slab16_a": {
@@ -1186,6 +1186,66 @@
    "layer": "floorDecal",
    "weight": 1,
    "flipX": true
+  },
+  "decal_trail_h_a": {
+   "frame": 143,
+   "col": 15,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_b": {
+   "frame": 144,
+   "col": 0,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_a": {
+   "frame": 145,
+   "col": 1,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_b": {
+   "frame": 146,
+   "col": 2,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_a": {
+   "frame": 147,
+   "col": 3,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_b": {
+   "frame": 148,
+   "col": 4,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
   }
  },
  "groups": {
@@ -1401,6 +1461,18 @@
   "decal.husk": [
    "decal_husk_a",
    "decal_husk_b"
+  ],
+  "decal.trailH": [
+   "decal_trail_h_a",
+   "decal_trail_h_b"
+  ],
+  "decal.trailV": [
+   "decal_trail_v_a",
+   "decal_trail_v_b"
+  ],
+  "decal.trailDrop": [
+   "decal_trail_drops_a",
+   "decal_trail_drops_b"
   ]
  },
  "colors": {

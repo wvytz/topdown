@@ -29,7 +29,7 @@ const BANNER_MS = 3000;
 const BANNER_FADE_IN_MS = 300;
 const BANNER_FADE_OUT_MS = 900;
 const BANNER_Y = 150;
-/** Przedmioty jako ikony (krok 59, wariant A): rząd slotów pod złotem. */
+/** Przedmioty jako ikony (krok 67, wariant A): rząd slotów pod złotem. */
 const ITEM_SLOT_Y = TEXT_Y + 40;
 const ITEM_SLOT_SIZE = 28;
 const ITEM_SLOT_GAP = 4;

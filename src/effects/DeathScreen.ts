@@ -26,7 +26,7 @@ function formatScoreRow(row: RankedEntry): string {
 }
 
 /**
- * Ekran śmierci (krok 35; od kroku 55 w stylu Dark Souls / Castlevanii) w scenie HUD:
+ * Ekran śmierci (krok 35; od kroku 63 w stylu Dark Souls / Castlevanii) w scenie HUD:
  * gra powoli tonie w ciemności (wrogowie dalej ruszają się pod spodem), przez środek ekranu czarny pas,
  * na nim POLEGŁEŚ w przygaszonej czerwieni — wyłania się powoli i bardzo wolno rośnie.
  * Pod spodem wynik i tablica rekordów. Czasy liczy `systems/deathScreen`; tu tylko rysujemy.

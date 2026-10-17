@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
+import { installDevTools } from '@/diagnostics/devTools';
+import { installDiagnostics } from '@/diagnostics/installDiagnostics';
 import { BootScene } from '@/scenes/BootScene';
 import { GameScene } from '@/scenes/GameScene';
 import { HeroSelectScene } from '@/scenes/HeroSelectScene';
@@ -32,6 +34,8 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
+// Dziennik błędów i niespotykanych zdarzeń (krok 55): raport pod F9; pętla gry nie zamiera po wyjątku.
+installDiagnostics(game);
 
 function applyPixelPerfectScale(): void {
   const parent = document.getElementById('game');
@@ -53,4 +57,5 @@ window.addEventListener('resize', applyPixelPerfectScale);
 // Dostęp z konsoli przeglądarki do debugowania (tylko w trybie dev).
 if (import.meta.env.DEV) {
   (window as unknown as { __game: Phaser.Game }).__game = game;
+  installDevTools(game);
 }

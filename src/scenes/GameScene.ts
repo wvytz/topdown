@@ -76,6 +76,7 @@ import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
 import { InputController } from '@/input/InputController';
 import { Player } from '@/entities/Player';
+import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { rollItemChoices } from '@/systems/RewardChoice';
 import type { RewardSceneData } from '@/scenes/RewardScene';
@@ -92,7 +93,14 @@ import type { ScoreEntry } from '@/systems/Highscores';
 import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
+import { diag } from '@/diagnostics/DiagnosticsHub';
+import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
+import { BossStallDetector, LimitWatch, StuckDetector, floorConnectivityIssues, reachable } from '@/systems/AnomalyDetectors';
+import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
+import { sanityIssues } from '@/systems/Diagnostics';
+import { InputReplay, canReplay } from '@/systems/InputRecorder';
+import { BOSS_HERALD, HERALD_RUMBLE } from '@/config/bossHeraldConfig';
 import { FogWisps } from '@/effects/FogWisps';
 import { LightingOverlay } from '@/effects/LightingOverlay';
 import type { PointLight } from '@/effects/LightingOverlay';
@@ -139,7 +147,7 @@ const AMBUSH_SEED_SALT = 0xa3b1;
 const DART_SEED_SALT = 0xda27;
 const BREAKABLE_SEED_SALT = 0xb7ea;
 const TOAST_DURATION_MS = 2500;
-/** Nazwa i efekt zdobytego przedmiotu pod ikonami w HUD (krok 59). */
+/** Nazwa i efekt zdobytego przedmiotu pod ikonami w HUD (krok 67). */
 const ITEM_NOTICE_MS = 3000;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
@@ -155,6 +163,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private projectiles!: ProjectileManager;
   private playerShots!: PlayerShotManager;
   private bossFight!: BossFight;
+  private herald: BossHeraldEffects | null = null;
   /** Pająki z sufitu — tylko w biomie, który je ma (krok 23c). */
   private ceilingDrops: CeilingDropManager | null = null;
   /** Kokony na podłodze — tylko w biomie, który je ma (krok 23d). */
@@ -226,6 +235,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   init(data: FloorSceneData): void {
+    this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
+    this.replayStart = -1;
     this.runSeed = data.runSeed;
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
@@ -243,6 +254,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.healCooldown = new Timer();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
+    this.herald = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
     this.traps = null;
@@ -322,12 +334,120 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.showToast('Run testowy — wynik nie trafi na tablicę');
     }
     this.cameras.main.fadeIn(250, 0, 0, 0);
+    this.setupDiagnostics();
+  }
+
+  /** Dziennik diagnostyczny (krok 55): okruch „nowe piętro” i stan gry do pulsu (po twardym wyrzuceniu to ostatni ślad). */
+  private setupDiagnostics(): void {
+    diag.startRecording(
+      {
+        runSeed: this.runSeed,
+        floor: this.floorNumber,
+        hero: this.run.hero,
+        gold: this.run.gold,
+        items: [...this.run.items],
+        hp: this.startHp,
+        practice: this.run.practice,
+        startedAt: Date.now(),
+      },
+      this.time.now,
+    );
+    this.stuck = new StuckDetector();
+    this.bossStall = new BossStallDetector();
+    this.lastStairsUnlocked = false;
+    this.lastBossFighting = false;
+    this.nextProbeAt = 0;
+    for (const issue of floorConnectivityIssues(this.dungeon)) diag.note('floor-disconnected', { floor: this.floorNumber, seed: this.runSeed }, 'error', issue);
+    diag.note('floor-start', { floor: this.floorNumber, seed: this.runSeed, hero: this.run.hero, biome: this.biome.id, practice: this.run.practice, gold: this.run.gold });
+    diag.setState(() => {
+      const tile = DungeonView.worldToTile(this.player.x, this.player.y);
+      return {
+        scene: 'game',
+        floor: this.floorNumber,
+        seed: this.runSeed,
+        hero: this.run.hero,
+        hp: Math.round(this.player.health.value),
+        maxHp: Math.round(this.player.health.max),
+        gold: this.run.gold,
+        items: this.run.items.length,
+        tile: `${tile.x},${tile.y}`,
+        bossFight: this.bossFight.isFighting,
+        bossDefeated: this.bossFight.isDefeated,
+        stairsUnlocked: this.stairsUnlocked,
+        dead: this.player.isDead,
+        transition: this.isTransitioning,
+      };
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => diag.setState(null));
+  }
+
+  private replay: InputReplay | null = null;
+  private replayStart = -1;
+  private lastBossFighting = false;
+  private nextSanityAt = 0;
+  private nextProbeAt = 0;
+  private lastStairsUnlocked = false;
+  private stuck = new StuckDetector();
+  private bossStall = new BossStallDetector();
+  private displayLimit = new LimitWatch('obiekty na scenie', DIAGNOSTICS.anomalies.limits.displayObjects);
+  private enemyLimit = new LimitWatch('żywi wrogowie', DIAGNOSTICS.anomalies.limits.enemies);
+  private moveHeld = false;
+
+  /** Co sekundę: zmiany walki z bossem (okruchy) i kontrola poprawności stanu gracza (NaN, poza mapą, HP poza zakresem). */
+  private diagnosticsTick(time: number): void {
+    if (this.bossFight.isFighting !== this.lastBossFighting) {
+      this.lastBossFighting = this.bossFight.isFighting;
+      diag.note(this.lastBossFighting ? 'boss-fight-start' : 'boss-fight-end', { floor: this.floorNumber, defeated: this.bossFight.isDefeated });
+    }
+    if (this.stairsUnlocked && !this.lastStairsUnlocked) {
+      this.lastStairsUnlocked = true;
+      const tile = DungeonView.worldToTile(this.player.x, this.player.y);
+      if (!reachable(this.dungeon, tile, this.dungeon.stairs)) diag.note('stairs-unreachable', { floor: this.floorNumber, tile: `${tile.x},${tile.y}` }, 'error', 'Schody odblokowane, ale nieosiągalne z miejsca gracza');
+    }
+    if (time >= this.nextProbeAt) {
+      this.nextProbeAt = time + DIAGNOSTICS.anomalies.sampleMs;
+      const found = [
+        this.stuck.update(time, { moveHeld: this.moveHeld, exempt: this.player.isDead || this.player.isParalyzed(time) || this.player.isDashing(time), x: this.player.x, y: this.player.y }),
+        this.bossStall.update(time, this.bossFight.getStatus()?.hp ?? null),
+        this.displayLimit.check(time, this.children.length),
+        this.enemyLimit.check(time, this.enemies.aliveCount),
+      ];
+      for (const anomaly of found) if (anomaly) diag.note(anomaly.kind, { floor: this.floorNumber, ...anomaly.data }, 'warn', anomaly.message);
+    }
+    if (time < this.nextSanityAt) return;
+    this.nextSanityAt = time + 1000;
+    const issues = sanityIssues(
+      { x: this.player.x, y: this.player.y, hp: this.player.health.value, maxHp: this.player.health.max },
+      { width: this.dungeon.width * TILE_SIZE, height: this.dungeon.height * TILE_SIZE },
+    );
+    for (const issue of issues) diag.note('insane-state', { floor: this.floorNumber }, 'error', issue);
+  }
+
+  /** Wejście z klawiatury albo (tryb dev) z odtwarzanego nagrania; prawdziwe wejście trafia do nagrywarki (krok 56). */
+  private nextActions(time: number): PlayerActions {
+    if (this.replay) {
+      if (this.replayStart < 0) {
+        this.replayStart = time;
+        diag.note('replay-start', { floor: this.floorNumber, seed: this.runSeed, durationS: Math.round(this.replay.durationMs / 1000) });
+      }
+      const actions = this.replay.actionsAt(time - this.replayStart);
+      if (this.replay.finished && time - this.replayStart > this.replay.durationMs) {
+        diag.note('replay-finished', { floor: this.floorNumber });
+        this.replay = null;
+      }
+      return actions;
+    }
+    const actions = this.inputController.getActions();
+    diag.recordInput(actions, time);
+    return actions;
   }
 
   override update(time: number): void {
     if (this.isTransitioning) return;
+    this.diagnosticsTick(time);
 
-    const actions = this.inputController.getActions();
+    const actions = this.nextActions(time);
+    this.moveHeld = actions.move.x !== 0 || actions.move.y !== 0;
     const turn = this.player.tick(actions, time);
     if (turn.poisonDamage > 0) {
       this.effects.floatingText(this.player.x, this.player.y - this.player.radius, `-${turn.poisonDamage}`, POISON_TEXT_COLOR);
@@ -351,6 +471,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.breakables?.update();
     this.braziers?.update(time);
     this.bossFight.update(time);
+    this.herald?.update(time);
     this.arenaGates.update();
     this.projectiles.update(time);
     this.playerShots.update(
@@ -685,6 +806,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
       },
     });
 
+    // Zapowiedź bossa (krok 54): odcień światła, drżenie i iskry ku arenie; milknie w walce i po niej.
+    this.herald = new BossHeraldEffects({
+      scene: this,
+      arena: this.dungeon.rooms[this.dungeon.bossRoomId]!,
+      config: BOSS_HERALD[this.biome.id],
+      rumble: HERALD_RUMBLE,
+      player: this.player,
+      isSilenced: () => this.bossFight.isFighting || this.bossFight.isDefeated,
+    });
+
     this.arenaGates = new ArenaGates({
       scene: this,
       floor: this.dungeon,
@@ -694,6 +825,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       isBossFighting: () => this.bossFight.isFighting,
       isBossDefeated: () => this.bossFight.isDefeated,
       onSealed: () => {
+        diag.note('arena-sealed', { floor: this.floorNumber });
         this.showToast('Kraty opadły — nie ma odwrotu!');
         this.manGalleries();
       },
@@ -808,6 +940,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       rng: createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)),
       config: applyFloorToShrine(SHRINE_CONFIG, this.floorEffects),
       onBlessing: (itemId, cost) => {
+        diag.note('shrine-offering', { floor: this.floorNumber, item: itemId, cost });
         this.player.applyLoadout(this.currentLoadout());
         this.effects.floatingText(this.player.x, this.player.y, `-${cost}`, '#f5c542');
         this.showItemNotice(itemId);
@@ -858,6 +991,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.grantItem(itemId);
       },
     };
+    diag.note('boss-reward-offered', { floor: this.floorNumber, choices: choices.length });
     this.scene.pause();
     this.scene.launch(SceneKey.Reward, data);
   }
@@ -886,6 +1020,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private handlePlayerDeath(): void {
     if (this.deathHandled) return;
     this.deathHandled = true;
+    diag.note('player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
 
     // Złoto w chwili śmierci to wynik runu.
     const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now() };
@@ -985,6 +1120,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private goToNextFloor(): void {
+    diag.note('stairs-up', { from: this.floorNumber });
     this.isTransitioning = true;
     this.player.setVelocity(0, 0);
     this.cameras.main.fadeOut(250, 0, 0, 0);

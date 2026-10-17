@@ -50,7 +50,7 @@ interface Debris {
 }
 
 /**
- * Ekran startowy (krok 34; motyw z kroku 52): samotna wieża w mroku i zniszczeniu, za nią zaćmione słońce,
+ * Ekran startowy (krok 34; motyw z kroku 60): samotna wieża w mroku i zniszczeniu, za nią zaćmione słońce,
  * z nieba opada popiół. TOP uderza nad szczytem wieży, DOWN — ciężej — u jej podstawy; od wieży odpadają kamienie,
  * a pęknięcia w ziemi zaczynają się żarzyć. W tym czasie w tle ładuje się BootScene.
  * Wszystko rysujemy prostokątami — ekran nie potrzebuje żadnych plików.
