@@ -3419,7 +3419,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Uwaga:** sprawdzenie `Origin` chroni tylko przed przeglądarkami, skrypt może je podać sam.
 
-**Testy:** 1191 przechodzi. **Wdrożenie workera** (`wrangler secret put IP_SALT`, `wrangler deploy`) czeka na właściciela.
+**Testy:** 1191 przechodzi. **Wdrożenie workera wykonane** (sekret `IP_SALT` ustawiony, `wrangler deploy`; sprawdzone na żywo: `GET /scores` 200, `GET /reports` bez tokena 404, `POST /scores` bez `Origin` 403).
 
 ## Znane ograniczenia i backlog
 
