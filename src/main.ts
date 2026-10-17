@@ -23,7 +23,7 @@ const config: Phaser.Types.Core.GameConfig = {
     // Centruje CSS (#game: flex) — wyliczenia Phasera po obrocie telefonu potrafiły przesunąć płótno poza ekran.
     autoCenter: Phaser.Scale.NO_CENTER,
   },
-  // Dotyk (krok 49): dwa kciuki na gałkach i trzeci palec na przycisku.
+  // Dotyk w menu (krok 49): kilka palców naraz. Gałki w grze słuchają dotyku same, na całej stronie (TouchScene).
   input: { activePointers: 4 },
   physics: {
     default: 'arcade',
@@ -39,6 +39,14 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
+/**
+ * Telefon (krok 49d): ekran dotykowy jako główne wejście i gęsty ekran (≥ 2 piksele urządzenia na piksel CSS).
+ * Tam płótno skalujemy ułamkowo i wypełnia ekran; na monitorach zostają całkowite krotności (STYLEGUIDE §2).
+ */
+function isPhone(): boolean {
+  return window.matchMedia('(pointer: coarse)').matches && (window.devicePixelRatio || 1) >= 2;
+}
+
 function applyPixelPerfectScale(): void {
   const parent = document.getElementById('game');
   if (!parent) return;
@@ -52,6 +60,7 @@ function applyPixelPerfectScale(): void {
       gameHeight: GAME_HEIGHT,
       devicePixelRatio: window.devicePixelRatio || 1,
       cameraZoom: CAMERA_CONFIG.zoom,
+      fractional: isPhone(),
     }),
   );
 }

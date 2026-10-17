@@ -3259,6 +3259,24 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Weryfikacja** (emulacja Pixel 7 w poziomie, 863×360): płótno w całości w oknie, wyśrodkowane; stuknięcie strefy ataku przy wrogu z lewej obraca cios w jego stronę; stuknięcie STRZAŁ przy wrogu poniżej — strzał prosto w niego (kąt zgodny co do 0,01 rad); E ukryte w pokoju, widoczne na otwartych schodach. Bez błędów w konsoli.
 
+## Krok 49d — Dotyk na całej stronie i skala ułamkowa na telefonach (gałąź testowa) `#sterowanie`
+
+**Decyzja właściciela** `#decyzja` `#sterowanie`: po omówieniu skalowania — „najpierw punkt pierwszy (dotyk w pasach), a potem punkt drugi (skala ułamkowa), tylko na telefonach”; nadal tylko na gałęzi testowej, bez `main` i bez Pages.
+
+**Dotyk na całej stronie:** Phaser śledzi palce tylko nad płótnem (dotyk zaczęty w czarnym pasie dostawał tylko „pointer down outside”, a ruch palca poza płótnem był pomijany). `TouchScene` słucha teraz dotyku sama — zdarzeniami przeglądarki na `#game` — i przelicza pozycję palca na piksele płótna (także poza nim). Kciuk w lewym pasie to gałka ruchu, w prawym — gałka ataku. Poza płótnem blokujemy udawane kliknięcia myszą i gesty przeglądarki. Ekrany menu (start, wybór bohatera, nagroda) dalej obsługuje Phaser.
+
+**Skala ułamkowa na telefonach** (`pixelPerfectScale({ fractional })`, `isPhone()` w `main.ts`): ekran dotykowy jako główne wejście (`pointer: coarse`) i gęstość ≥ 2 — płótno wypełnia ekran na wysokość; przy 2–3 pikselach urządzenia na piksel CSS nierówność pikseli jest praktycznie niewidoczna. Monitory bez zmian (całkowite krotności, STYLEGUIDE §2 z dopiskiem o wyjątku). Pasy po bokach zostają, bo telefony są szersze niż 16:9 — usunąć je może tylko szerszy kadr (punkt 3, decyzja projektowa).
+
+| Ekran (emulacja) | Przed | Po |
+|---|---|---|
+| Pixel 7 w poziomie (863×360) | 549×309, 55% ekranu | 640×360, 74% |
+| iPhone 13 w poziomie (750×342) | — | 608×342, 81% |
+| PC, okno 1600×900 | 1440×810 | 1440×810 (bez zmian) |
+
+**Testy:** `pixelScale` — telefon: skala ułamkowa wypełnia wysokość i jest większa niż całkowita. Build: 1094 testy.
+
+**Weryfikacja** (emulacja Pixel 7, dotyk przez CDP): oba kciuki w czarnych pasach — postać idzie w dół i celuje w lewo; wcześniejsze scenariusze (stuknięcia jak w Brawl Stars, gałka strzału, E na schodach) bez zmian; bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

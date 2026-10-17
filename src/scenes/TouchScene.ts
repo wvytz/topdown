@@ -8,6 +8,13 @@ import { stickState, stickToMovement } from '@/systems/Aim';
 
 type ButtonId = 'shoot' | 'dash' | 'interact';
 
+/** Palec na ekranie: identyfikator dotyku i pozycja w pikselach płótna (poza płótnem: < 0 albo > 960/540). */
+interface TouchPoint {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+}
+
 interface Stick {
   readonly pointerId: number;
   readonly originX: number;
@@ -37,6 +44,9 @@ const STICK_ALPHA = 0.3;
  * Sterowanie dotykowe (krok 49): pływające gałki (lewa — ruch, prawa — celowanie i atak) i przyciski
  * strzału/promienia (przytrzymaj i przeciągnij — kierunek strzału), zrywu i interakcji. Scena nad grą i HUD-em; tylko zapisuje touchState i rysuje.
  * Pokazuje się po pierwszym dotyku ekranu; mysz i klawiatura jej nie widzą.
+ *
+ * Krok 49d: dotyk słuchamy zdarzeniami przeglądarki na całej stronie (#game), nie przez Phasera — Phaser
+ * śledzi palce tylko nad płótnem, a kciuki na telefonie leżą przy krawędziach, w czarnych pasach obok płótna.
  */
 export class TouchScene extends Phaser.Scene {
   private gfx!: Phaser.GameObjects.Graphics;
@@ -72,10 +82,33 @@ export class TouchScene extends Phaser.Scene {
     for (const id of Object.keys(labels) as ButtonId[]) {
       this.labels.set(id, this.add.text(0, 0, labels[id], STYLE).setOrigin(0.5).setVisible(false));
     }
-    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => this.onDown(p));
-    this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => this.onMove(p));
-    this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer) => this.onUp(p));
-    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, (p: Phaser.Input.Pointer) => this.onUp(p));
+    const page = document.getElementById('game') ?? document.body;
+    const listen = (type: string, handler: (point: TouchPoint) => void): void => {
+      page.addEventListener(
+        type,
+        (event) => {
+          const touchEvent = event as TouchEvent;
+          // Poza płótnem: bez udawanych kliknięć myszą i gestów przeglądarki (na płótnie robi to Phaser).
+          if (touchEvent.target !== this.game.canvas && touchEvent.cancelable) touchEvent.preventDefault();
+          for (const touch of Array.from(touchEvent.changedTouches)) handler(this.toCanvas(touch));
+        },
+        { passive: false },
+      );
+    };
+    listen('touchstart', (p) => this.onDown(p));
+    listen('touchmove', (p) => this.onMove(p));
+    listen('touchend', (p) => this.onUp(p));
+    listen('touchcancel', (p) => this.onUp(p));
+  }
+
+  /** Pozycja palca w pikselach płótna — także poza nim, w czarnych pasach. */
+  private toCanvas(touch: Touch): TouchPoint {
+    const rect = this.game.canvas.getBoundingClientRect();
+    return {
+      id: touch.identifier,
+      x: ((touch.clientX - rect.left) * this.scale.width) / rect.width,
+      y: ((touch.clientY - rect.top) * this.scale.height) / rect.height,
+    };
   }
 
   override update(): void {
@@ -100,8 +133,7 @@ export class TouchScene extends Phaser.Scene {
     return game;
   }
 
-  private onDown(pointer: Phaser.Input.Pointer): void {
-    if (!pointer.wasTouch) return;
+  private onDown(pointer: TouchPoint): void {
     touchState.engaged = true;
     touchState.lastUsedAt = performance.now();
 
@@ -136,8 +168,7 @@ export class TouchScene extends Phaser.Scene {
     }
   }
 
-  private onMove(pointer: Phaser.Input.Pointer): void {
-    if (!pointer.wasTouch) return;
+  private onMove(pointer: TouchPoint): void {
     touchState.lastUsedAt = performance.now();
     if (this.moveStick?.pointerId === pointer.id) {
       touchState.move = stickToMovement(this.updateStick(this.moveStick, pointer));
@@ -152,7 +183,7 @@ export class TouchScene extends Phaser.Scene {
     }
   }
 
-  private onUp(pointer: Phaser.Input.Pointer): void {
+  private onUp(pointer: TouchPoint): void {
     if (this.moveStick?.pointerId === pointer.id) {
       this.moveStick = null;
       touchState.move = { x: 0, y: 0 };
@@ -172,12 +203,12 @@ export class TouchScene extends Phaser.Scene {
     }
   }
 
-  private newStick(pointer: Phaser.Input.Pointer): Stick {
+  private newStick(pointer: TouchPoint): Stick {
     return { pointerId: pointer.id, originX: pointer.x, originY: pointer.y, knobX: pointer.x, knobY: pointer.y };
   }
 
   /** Gałka za kciukiem: gałka nie wychodzi poza promień, kierunek i siła z czystej funkcji. */
-  private updateStick(stick: Stick, pointer: Phaser.Input.Pointer) {
+  private updateStick(stick: Stick, pointer: TouchPoint) {
     const dx = pointer.x - stick.originX;
     const dy = pointer.y - stick.originY;
     const state = stickState(dx, dy, TOUCH_STICK.radius, TOUCH_STICK.deadzone);
@@ -242,7 +273,7 @@ export class TouchScene extends Phaser.Scene {
     });
   }
 
-  private inDeathButton(button: DeathButton, pointer: Phaser.Input.Pointer): boolean {
+  private inDeathButton(button: DeathButton, pointer: TouchPoint): boolean {
     const { y, width, height } = TOUCH_DEATH_BUTTONS;
     return Math.abs(pointer.x - button.x) <= width / 2 && Math.abs(pointer.y - y) <= height / 2;
   }

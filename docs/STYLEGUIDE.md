@@ -23,7 +23,7 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 
 - Margines w komórce: min. **8 px** wolnego miejsca z każdej strony postaci (miejsce na obrót po przekątnej i animację).
 - Pivot zawsze w **geometrycznym środku komórki**. Środek tułowia/masy postaci leży na pivocie.
-- Natywna rozdzielczość = 1×. Nie robimy wersji HD; skaluje silnik, tylko całkowite krotności (2×, 3×, 4×).
+- Natywna rozdzielczość = 1×. Nie robimy wersji HD; skaluje silnik, tylko całkowite krotności (2×, 3×, 4×). Wyjątek (krok 49d, gałąź testowa sterowania): telefony — ekran dotykowy i gęstość ≥ 2 — skalują ułamkowo, żeby płótno wypełniało ekran.
 - Bez subpikseli i antyaliasingu. Każdy piksel jest pełny (alpha 0 albo 255) — jedyny wyjątek to cień (sekcja 6).
 
 ## 3. Obrys
