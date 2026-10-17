@@ -3662,6 +3662,21 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 ---
 
 
+## Krok 59 — Przegląd bezpieczeństwa repozytorium i workera `#decyzja` `#bezpieczenstwo`
+
+**Przegląd (repozytorium jest publiczne):** w repo nie ma haseł, kluczy ani prywatnego e-maila; `REPORTS_TOKEN` jest tylko u właściciela. Publiczne i niegroźne: adres workera, `database_id` D1, nazwa konta.
+
+**Zmiany**
+- `.env.production` wyszedł z gita (wpis w `.gitignore`); wzór w `.env.production.example`. Po świeżym klonie trzeba skopiować wzór do `.env.production`, inaczej build nie zna adresu workera i gra używa tylko listy lokalnej.
+- Pliki `__pycache__`/`*.pyc` usunięte z gita, dopisane do `.gitignore` (razem z `.env.local`, `.dev.vars`, `.wrangler/`).
+- Worker: skrót IP z sekretną solą `IP_SALT` (`npx wrangler secret put IP_SALT`). Wcześniej sól była w publicznym kodzie, więc skróty z bazy dało się odwrócić dla każdego IPv4. Bez sekretu worker działa jak dawniej. Po ustawieniu soli liczniki limitów zaczynają od zera (bez szkody).
+
+- Globalny dobowy bezpiecznik dla `/scores`: najwyżej 500 wpisów na dobę łącznie (503 + `Retry-After`), obok limitu 10 wpisów/10 min z jednego IP; chroni darmowy limit zapisów D1 wspólny z `/reports`. Dwa testy w `tests/worker/index.test.ts`. Gra przy 503 zachowuje się jak przy każdym błędzie sieci: wynik czeka w kolejce wysyłki (`SharedHighscores.flushOutbox`) i idzie przy następnej próbie.
+
+**Uwaga:** sprawdzenie `Origin` chroni tylko przed przeglądarkami, skrypt może je podać sam.
+
+**Testy:** 1191 przechodzi. **Wdrożenie workera wykonane** (sekret `IP_SALT` ustawiony, `wrangler deploy`; sprawdzone na żywo: `GET /scores` 200, `GET /reports` bez tokena 404, `POST /scores` bez `Origin` 403).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

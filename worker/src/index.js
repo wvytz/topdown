@@ -20,6 +20,9 @@ const MAX_NAME_LENGTH = 12;
 // Ochrona przed zalewem: tyle wpisów z jednego adresu w oknie czasu.
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
+// Globalny bezpiecznik dobowy: chroni darmowy limit zapisów D1 (wspólny ze zgłoszeniami) przed zalewem z wielu adresów.
+const MAX_SCORES_PER_DAY = 500;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default {
   async fetch(request, env) {
@@ -82,7 +85,7 @@ async function postReport(request, env, cors) {
     return json({ error: 'bad json' }, 400, cors);
   }
   const now = Date.now();
-  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown', env);
   const result = await processReport({ body, ipHash, now, repo: d1Repo(env), limits: REPORT_LIMITS });
   // Sprzątanie przy okazji zapisu (co ok. 50. zgłoszenie) — obok codziennego crona.
   if (result.status === 201 && Math.random() < 0.02) await purgeOldReports(env, now);
@@ -188,11 +191,14 @@ async function postScore(request, env, cors) {
   if (!entry) return json({ error: 'invalid entry' }, 400, cors);
 
   const now = Date.now();
-  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown', env);
   const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE ip_hash = ? AND created_at > ?')
     .bind(ipHash, now - RATE_WINDOW_MS)
     .first();
   if ((recent?.n ?? 0) >= RATE_LIMIT) return json({ error: 'too many requests' }, 429, cors);
+
+  const today = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE created_at > ?').bind(now - DAY_MS).first();
+  if ((today?.n ?? 0) >= MAX_SCORES_PER_DAY) return json({ error: 'daily cap reached' }, 503, { ...cors, 'Retry-After': '3600' });
 
   await env.DB.prepare('INSERT INTO scores (score, floor, timestamp, name, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
   )
@@ -229,9 +235,13 @@ function corsHeaders(request, env) {
   return headers;
 }
 
-/** Adres IP trzymamy tylko jako skrót — do limitu wpisów, nie do identyfikacji. */
-async function hashIp(ip) {
-  return sha256Hex(`tower-crawler:${ip}`);
+/**
+ * Adres IP trzymamy tylko jako skrót — do limitu wpisów, nie do identyfikacji.
+ * Sól `IP_SALT` (sekret: `npx wrangler secret put IP_SALT`) uniemożliwia odtworzenie adresów z bazy:
+ * bez niej skrót z publicznego kodu da się policzyć dla każdego adresu IPv4.
+ */
+async function hashIp(ip, env) {
+  return sha256Hex(`tower-crawler:${env.IP_SALT ?? ''}:${ip}`);
 }
 
 function json(data, status, headers) {
