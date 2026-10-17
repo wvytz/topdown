@@ -5,3 +5,9 @@ dist
 
 # Makiety i arkusze robocze generatora kafli (tools/tower_ruins_tiles.py --mockup)
 tools/out/
+__pycache__/
+*.pyc
+.env.local
+.dev.vars
+.wrangler/
+.env.production

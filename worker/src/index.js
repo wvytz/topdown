@@ -82,7 +82,7 @@ async function postReport(request, env, cors) {
     return json({ error: 'bad json' }, 400, cors);
   }
   const now = Date.now();
-  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown', env);
   const result = await processReport({ body, ipHash, now, repo: d1Repo(env), limits: REPORT_LIMITS });
   // Sprzątanie przy okazji zapisu (co ok. 50. zgłoszenie) — obok codziennego crona.
   if (result.status === 201 && Math.random() < 0.02) await purgeOldReports(env, now);
@@ -188,7 +188,7 @@ async function postScore(request, env, cors) {
   if (!entry) return json({ error: 'invalid entry' }, 400, cors);
 
   const now = Date.now();
-  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown', env);
   const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE ip_hash = ? AND created_at > ?')
     .bind(ipHash, now - RATE_WINDOW_MS)
     .first();
@@ -229,9 +229,13 @@ function corsHeaders(request, env) {
   return headers;
 }
 
-/** Adres IP trzymamy tylko jako skrót — do limitu wpisów, nie do identyfikacji. */
-async function hashIp(ip) {
-  return sha256Hex(`tower-crawler:${ip}`);
+/**
+ * Adres IP trzymamy tylko jako skrót — do limitu wpisów, nie do identyfikacji.
+ * Sól `IP_SALT` (sekret: `npx wrangler secret put IP_SALT`) uniemożliwia odtworzenie adresów z bazy:
+ * bez niej skrót z publicznego kodu da się policzyć dla każdego adresu IPv4.
+ */
+async function hashIp(ip, env) {
+  return sha256Hex(`tower-crawler:${env.IP_SALT ?? ''}:${ip}`);
 }
 
 function json(data, status, headers) {

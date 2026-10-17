@@ -3406,6 +3406,19 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** `tests/systems/autoReport.test.ts` (krytyczne zdarzenia, polityka: zgoda/brak/pytanie/limit/zaległe zgłoszenie, magazyn zgody, hub: automatyczne omija ręczny odstęp, wykrycie urwanej sesji), rozszerzone `tests/worker/index.test.ts` (nagłówek `X-Reports-Token`). **Weryfikacja w przeglądarce** (lokalna atrapa workera): awaria bez zgody → pytanie → „Tak” → `crash` z załączonym nagraniem trafia do workera, zgoda zapisana; po urwanej sesji z zgodą „tak” raport wysyłany automatycznie bez pytania. Build: 1189 testów; smoke OK.
 
+## Krok 59 — Przegląd bezpieczeństwa repozytorium i workera `#decyzja` `#bezpieczenstwo`
+
+**Przegląd (repozytorium jest publiczne):** w repo nie ma haseł, kluczy ani prywatnego e-maila; `REPORTS_TOKEN` jest tylko u właściciela. Publiczne i niegroźne: adres workera, `database_id` D1, nazwa konta.
+
+**Zmiany**
+- `.env.production` wyszedł z gita (wpis w `.gitignore`); wzór w `.env.production.example`. Po świeżym klonie trzeba skopiować wzór do `.env.production`, inaczej build nie zna adresu workera i gra używa tylko listy lokalnej.
+- Pliki `__pycache__`/`*.pyc` usunięte z gita, dopisane do `.gitignore` (razem z `.env.local`, `.dev.vars`, `.wrangler/`).
+- Worker: skrót IP z sekretną solą `IP_SALT` (`npx wrangler secret put IP_SALT`). Wcześniej sól była w publicznym kodzie, więc skróty z bazy dało się odwrócić dla każdego IPv4. Bez sekretu worker działa jak dawniej. Po ustawieniu soli liczniki limitów zaczynają od zera (bez szkody).
+
+**Do decyzji (nie wdrożone):** globalny dobowy bezpiecznik dla `/scores` (dziś tylko 10 wpisów/10 min z jednego IP; botnet mógłby wyczerpać darmowy limit zapisów D1 wspólny z `/reports`); sprawdzenie `Origin` chroni tylko przed przeglądarkami, skrypt może je podać sam.
+
+**Testy:** 1189 przechodzi. **Wdrożenie workera** (`wrangler secret put IP_SALT`, `wrangler deploy`) czeka na właściciela.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

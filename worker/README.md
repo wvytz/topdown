@@ -20,7 +20,7 @@ Bez `VITE_SCORES_URL` gra działa jak dawniej: tylko lista lokalna.
 - Wynik liczy przeglądarka, więc da się go sfałszować. Worker odrzuca tylko oczywiste bzdury
   (ujemne, ponad 1 000 000 złota, piętro poza 1–100, data spoza ±1 doby, imię z niedozwolonymi znakami lub dłuższe niż 12).
 - Zapis tylko z adresów w `ALLOWED_ORIGINS` (strona gry i `localhost:5173`).
-- Do 10 wpisów na 10 minut z jednego adresu IP (IP trzymamy jako skrót SHA-256).
+- Do 10 wpisów na 10 minut z jednego adresu IP (IP trzymamy jako skrót SHA-256 z sekretną solą `IP_SALT`: `npx wrangler secret put IP_SALT`; bez soli skrót da się odwrócić brute-forcem).
 - Darmowy plan Cloudflare (Workers + D1) z zapasem wystarcza na grę testerów.
 
 ## Aktualizacja bazy utworzonej przed imionami
