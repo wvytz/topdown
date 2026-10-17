@@ -4,6 +4,7 @@ import type {
   FloorSceneData,
   HeroSelectData,
   HudData,
+  MinimapHudData,
   HudSceneData,
   HudSource,
   HudItemNotice,
@@ -27,6 +28,8 @@ import { bossForFloor } from '@/config/bossConfig';
 import { carveArenaGalleries } from '@/dungeon/ArenaGalleries';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 import { disguiseFloor, secretArea } from '@/dungeon/SecretRoom';
+import { MINIMAP_CONFIG } from '@/config/minimapConfig';
+import { MinimapExplorer } from '@/systems/Minimap';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
 import { TrapManager } from '@/combat/TrapManager';
 import { AmbushManager } from '@/combat/AmbushManager';
@@ -173,6 +176,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Purchawki z trującą chmurą — tylko w biomie, który je ma (krok 28c). */
   private puffballs: PuffballManager | null = null;
   private secretArea: SecretArea | null = null;
+  private minimap: MinimapExplorer | null = null;
   private secretRoom: SecretRoomManager | null = null;
   private ambushRoomId: number | null = null;
   private ambush: AmbushManager | null = null;
@@ -254,6 +258,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.healCooldown = new Timer();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
+    this.minimap = null;
     this.herald = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
@@ -291,6 +296,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const dress = (floor: DungeonFloor) =>
       dressFloor(floor, tileset, biome.dressing, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT), { torches: torchSpots });
     const dressed = dress(shown);
+    // Minimapa widzi piętro w przebraniu — ukryta komnata nie wyda się przed odsłonięciem.
+    this.minimap = new MinimapExplorer(shown, MINIMAP_CONFIG.revealRadius);
     const secret = this.secretArea ? { dressed: dress(this.dungeon), tiles: this.secretArea.tiles } : null;
     this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset, secret);
     this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
@@ -508,6 +515,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
       isPlayerDead: ready && this.player.isDead,
+      minimap: ready ? this.minimapData() : null,
       boss: ready ? this.bossFight.getStatus() : null,
       gold: this.run.gold,
       practice: this.run.practice,
@@ -521,6 +529,20 @@ export class GameScene extends Phaser.Scene implements HudSource {
       toast: this.currentToast(),
       itemNotice: this.currentItemNotice(),
       death: this.death,
+    };
+  }
+
+  /** Odkrywa mgłę wokół gracza i oddaje dane minimapy; arena bossa znika ze znaczników po jego pokonaniu. */
+  private minimapData(): MinimapHudData | null {
+    if (!this.minimap) return null;
+    const player = DungeonView.worldToTile(this.player.x, this.player.y);
+    this.minimap.reveal(player);
+    const arena = this.dungeon.rooms[this.dungeon.bossRoomId];
+    return {
+      explorer: this.minimap,
+      player,
+      stairs: this.dungeon.stairs,
+      boss: arena && !this.bossFight.isDefeated ? { x: arena.x + Math.floor(arena.width / 2), y: arena.y + Math.floor(arena.height / 2) } : null,
     };
   }
 

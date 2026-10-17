@@ -81,6 +81,8 @@ export interface HudData {
   /** Gracz stoi na otwartych schodach — wejście wyżej klawiszem E (krok 47). */
   readonly onStairs: boolean;
   readonly isPlayerDead: boolean;
+  /** Minimapa bieżącego piętra (krok 68); null, zanim piętro powstanie. */
+  readonly minimap: MinimapHudData | null;
   /** null, gdy walka z bossem nie trwa. */
   readonly boss: BossHudData | null;
   readonly gold: number;
@@ -93,6 +95,15 @@ export interface HudData {
   readonly itemNotice: HudItemNotice | null;
   /** Podsumowanie runu po śmierci; null, dopóki gracz żyje. */
   readonly death: DeathSummary | null;
+}
+
+/** Dane minimapy: mgła wojny (współdzielona, mutowana przez scenę gry) i pozycje znaczników w kaflach. */
+export interface MinimapHudData {
+  readonly explorer: import('@/systems/Minimap').MinimapExplorer;
+  readonly player: { readonly x: number; readonly y: number };
+  readonly stairs: { readonly x: number; readonly y: number };
+  /** Środek areny bossa; null po jego pokonaniu (znacznik znika). */
+  readonly boss: { readonly x: number; readonly y: number } | null;
 }
 
 export interface RangedHudData {

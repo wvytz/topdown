@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
-import type { BeamHudData, BossHudData, HudItem, HudItemNotice, HudSceneData, HudSource, RangedHudData } from '@/core/types';
+import type { BeamHudData, BossHudData, HudItem, HudItemNotice, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
+import { MINIMAP_CONFIG } from '@/config/minimapConfig';
+import type { MinimapExplorer } from '@/systems/Minimap';
 import { DeathScreen } from '@/effects/DeathScreen';
 
 const BAR_X = 16;
@@ -68,6 +70,10 @@ export class HudScene extends Phaser.Scene {
   private helpText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private deathScreen!: DeathScreen;
+  /** Minimapa: tło i odkryte kafle rysujemy tylko przy zmianie, znaczniki co klatkę. */
+  private minimapMap!: Phaser.GameObjects.Graphics;
+  private minimapMarks!: Phaser.GameObjects.Graphics;
+  private minimapDrawn: { explorer: MinimapExplorer; version: number } | null = null;
   private bossNameText!: Phaser.GameObjects.Text;
   private goldText!: Phaser.GameObjects.Text;
   private itemSlots: ItemSlot[] = [];
@@ -103,6 +109,8 @@ export class HudScene extends Phaser.Scene {
     this.hintText = this.add.text(BAR_X, TEXT_Y, '', { ...style, fontSize: '13px' });
 
     this.goldText = this.add.text(BAR_X, TEXT_Y + 18, '', { ...style, fontSize: '14px', color: '#f5c542' });
+    this.minimapMap = this.add.graphics();
+    this.minimapMarks = this.add.graphics();
     this.itemSlots = this.buildItemSlots(style);
     this.itemNoticeText = this.add
       .text(BAR_X, ITEM_NOTICE_Y, '', { ...style, fontSize: '12px', color: '#f5c542', strokeThickness: 3 })
@@ -170,9 +178,47 @@ export class HudScene extends Phaser.Scene {
     this.toastText.setText(hud.toast?.text ?? '');
     this.toastText.setAlpha(hud.toast ? Math.min(1, hud.toast.remainingMs / 1000 + 0.2) : 0);
 
+    this.drawMinimap(hud.minimap, time);
     this.deathScreen.update(hud.death, time);
     this.drawBossBar(hud.boss);
     this.updateBanner(hud.boss);
+  }
+
+  /** Minimapa w prawym górnym rogu: odkryte kafle + znaczniki gracza, schodów i areny bossa. */
+  private drawMinimap(map: MinimapHudData | null, time: number): void {
+    const cfg = MINIMAP_CONFIG;
+    this.minimapMarks.clear();
+    if (!map) {
+      this.minimapMap.clear();
+      this.minimapDrawn = null;
+      return;
+    }
+    const { explorer } = map;
+    const { width, height } = explorer.floor;
+    const originX = this.scale.width - cfg.marginPx - width * cfg.tilePx;
+    const originY = cfg.marginPx;
+
+    const drawn = this.minimapDrawn;
+    if (!drawn || drawn.explorer !== explorer || drawn.version !== explorer.version) {
+      this.minimapDrawn = { explorer, version: explorer.version };
+      const g = this.minimapMap;
+      g.clear();
+      g.fillStyle(cfg.background.color, cfg.background.alpha).fillRect(originX - 2, originY - 2, width * cfg.tilePx + 4, height * cfg.tilePx + 4);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (!explorer.isRevealed(x, y)) continue;
+          const wall = explorer.floor.tiles[y * width + x] === 0;
+          g.fillStyle(wall ? cfg.colors.wall : cfg.colors.floor, 1).fillRect(originX + x * cfg.tilePx, originY + y * cfg.tilePx, cfg.tilePx, cfg.tilePx);
+        }
+      }
+    }
+
+    const marks = this.minimapMarks;
+    const dot = (p: { x: number; y: number }, color: number, size: number) =>
+      marks.fillStyle(color, 1).fillRect(originX + (p.x + 0.5) * cfg.tilePx - size / 2, originY + (p.y + 0.5) * cfg.tilePx - size / 2, size, size);
+    if (explorer.isRevealed(map.stairs.x, map.stairs.y)) dot(map.stairs, cfg.colors.stairs, cfg.playerPx);
+    if (map.boss && explorer.isRevealed(map.boss.x, map.boss.y)) dot(map.boss, cfg.colors.boss, cfg.playerPx);
+    if (Math.floor(time / 300) % 2 === 0) dot(map.player, cfg.colors.player, cfg.playerPx);
   }
 
   /** Sloty na wszystkie przedmioty z puli (każdy rodzaj zajmuje jeden slot, kopie liczy licznik). */

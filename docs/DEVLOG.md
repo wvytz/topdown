@@ -3677,6 +3677,32 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 **Testy:** 1191 przechodzi. **Wdrożenie workera wykonane** (sekret `IP_SALT` ustawiony, `wrangler deploy`; sprawdzone na żywo: `GET /scores` 200, `GET /reports` bez tokena 404, `POST /scores` bez `Origin` 403).
 
+## Krok 68 — Minimapa `#hud` `#decyzja`
+
+**Prośba właściciela:** dodać minimapę.
+
+**Co widać:**
+- w prawym górnym rogu HUD: mapa piętra z **mgłą wojny** — odkrywa się to, do czego gracz dojdzie po podłodze w promieniu 6 kafli (plus sąsiadujące ściany), więc mapa nie zdradza pokoi za murem;
+- znaczniki: zielony migający punkt — gracz, złoty — schody, czerwony — arena bossa (oba dopiero po odkryciu kafla; czerwony znika po pokonaniu bossa);
+- ukryta komnata (krok 46) nie pojawia się na mapie: minimapa używa piętra w przebraniu muru;
+- 3 px na kafel; tło półprzezroczyste.
+
+**Kod:** `systems/Minimap.ts` (czysty `MinimapExplorer`: odkrywanie BFS-em po podłodze, licznik `version`), `config/minimapConfig.ts` (promień, rozmiar, kolory), `HudData.minimap` (`MinimapHudData`), `GameScene.minimapData()`, `HudScene.drawMinimap()` (tło i kafle przerysowywane tylko przy zmianie `version`, znaczniki co klatkę).
+
+**Testy (+5, `tests/systems/minimap.test.ts`):** pusta mgła na starcie, promień odkrywania, osiągalność odkrytej podłogi i ściany tylko przy podłodze, wersja rośnie tylko przy zmianie, pozycje poza mapą ignorowane.
+
+**Weryfikacja:** `npm run build`.
+
+**Do oceny w testach właściciela:** rozmiar (3 px/kafel), promień odkrywania (6), czy chcemy klawisz do powiększenia/ukrycia mapy.
+
+---
+
+## Notka z sesji (17.10) `#ocena`
+
+Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
