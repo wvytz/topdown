@@ -3903,6 +3903,14 @@ Kolejny boss z prośby z kroku 71 (piętro 2):
 - Testy: `tests/ai/SpiderQueen.test.ts` (wzór 4 ciosów, skalowanie tupnięcia, prędkości); test w przeglądarce: `?seed=3&floor=2&boss=1`.
 - Dalej: Strażnik Piętra (piętro 1 i 7+).
 
+## Krok 78 — Wzmocnienie bossów: Strażnik Piętra `#decyzja` `#boss`
+
+Ostatni boss z prośby z kroku 71 (piętro 1 oraz piętra bez własnego bossa, np. 7):
+- **Skok** (`leap`): doskok na miejsce gracza, strefa promień 56, telegraf 750 ms, lot 450 ms, obrażenia 16, 700 ms okna na kontrę; czwarty cios w wzorze (obok uderzenia, pierścienia pocisków i ostrzału stref).
+- **Chód** 55 → 65, **sprint** 130 od 160 px (gracz 200). Strażnik pierwszego piętra jest wciąż najłagodniejszy z bossów (nauka gry).
+- Testy: `tests/ai/attackPattern.test.ts`, `tests/ai/BossBrain.test.ts` (długość rundy ze wzoru zamiast stałej 3); test w przeglądarce: `?seed=7&floor=1&boss=1`.
+- **Prośba „wzmocnij bossów” zrobiona dla wszystkich sześciu** (kroki 71–78, bez Kata/Strażnika z tarczą — patrz kroki 74 i 76). Do oceny właściciela w testach; nie łagodzimy bez sygnału.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

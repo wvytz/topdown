@@ -14,11 +14,13 @@ export const FLOOR_GUARDIAN = {
   radius: 26,
   color: 0xb5452a,
   maxHp: 300,
-  moveSpeed: 55,
+  // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i czwarty cios — skok.
+  moveSpeed: 65,
+  sprint: { speed: 130, distance: 160 },
   engageDistance: 90,
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1100,
-  pattern: [BossAttackKind.Slam, BossAttackKind.Nova, BossAttackKind.Barrage],
+  pattern: [BossAttackKind.Slam, BossAttackKind.Nova, BossAttackKind.Barrage, BossAttackKind.Leap],
   // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
   patternOrder: PatternOrder.Shuffled,
   slam: {
@@ -38,6 +40,15 @@ export const FLOOR_GUARDIAN = {
     recoveryMs: 300,
     damage: 10,
     knockback: 140,
+  },
+  // Skok na miejsce gracza: kto kituje z daleka, dostaje go na głowę; po lądowaniu okno na kontrę.
+  leap: {
+    telegraphMs: 750,
+    flightMs: 450,
+    radius: 56,
+    damage: 16,
+    knockback: 300,
+    recoveryMs: 700,
   },
   barrage: {
     zoneCount: 4,

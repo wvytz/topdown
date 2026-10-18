@@ -45,10 +45,11 @@ describe('BossBrain', () => {
   it('wykonuje ataki ze wzoru: zaczyna od pierwszego, każdy raz na rundę (krok 31: kolejność lekko losowa)', () => {
     const brain = new BossBrain(BOSS, createRng(1));
     brain.activate(0);
-    const kinds = collectAttacks(brain, 40_000).map((a) => a.plan.kind).slice(0, 6);
+    const n = BOSS.pattern.length;
+    const kinds = collectAttacks(brain, 60_000).map((a) => a.plan.kind).slice(0, 2 * n);
     expect(kinds[0]).toBe(BOSS.pattern[0]);
-    expect([...kinds.slice(0, 3)].sort()).toEqual([...BOSS.pattern].sort());
-    expect([...kinds.slice(3, 6)].sort()).toEqual([...BOSS.pattern].sort());
+    expect([...kinds.slice(0, n)].sort()).toEqual([...BOSS.pattern].sort());
+    expect([...kinds.slice(n, 2 * n)].sort()).toEqual([...BOSS.pattern].sort());
   });
 
   it('pierwszy atak po openingDelay, kolejne po zakończeniu poprzedniego + przerwie', () => {

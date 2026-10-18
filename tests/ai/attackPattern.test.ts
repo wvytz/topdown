@@ -7,6 +7,14 @@ import { BOSS_BY_FLOOR, FLOOR_GUARDIAN } from '@/config/bossConfig';
 const PATTERN = [BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow];
 const take = (p: AttackPattern, n: number) => Array.from({ length: n }, () => p.next()!);
 
+describe('Strażnik Piętra — wzmocnienie bossów', () => {
+  it('skok w wzorze, szybszy chód i sprint wolniejszy od gracza', () => {
+    expect(FLOOR_GUARDIAN.pattern).toContain(BossAttackKind.Leap);
+    expect(FLOOR_GUARDIAN.moveSpeed).toBeGreaterThan(55);
+    expect(FLOOR_GUARDIAN.sprint.speed).toBeLessThan(200);
+  });
+});
+
 describe('AttackPattern — kolejność ataków bossa (krok 31)', () => {
   it('po kolei: wzór w kółko', () => {
     const p = new AttackPattern(PATTERN, PatternOrder.Fixed, createRng(1));
