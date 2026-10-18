@@ -75,17 +75,16 @@ describe('elity — losowanie (krok 42)', () => {
     const first = availableAffixes(ELITE_CONFIG, EnemyType.Rusher, 1);
     expect(first).toContain(EliteAffix.Swift);
     expect(first).not.toContain(EliteAffix.Fiery);
-    expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3)).toHaveLength(5);
+    expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3)).toHaveLength(4);
   });
 
-  it('latające moby nie dostają Tarczownika (krok 69)', () => {
-    expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3)).toContain(EliteAffix.Shielded);
-    expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3, true)).not.toContain(EliteAffix.Shielded);
+  it('strzelcy (Kitery) nie dostają Tarczownika (krok 69)', () => {
+    expect(availableAffixes(ELITE_CONFIG, EnemyType.Rusher, 3)).toContain(EliteAffix.Shielded);
+    expect(availableAffixes(ELITE_CONFIG, EnemyType.Kiter, 3)).not.toContain(EliteAffix.Shielded);
     const roomChance = { ...ELITE_CONFIG, roomChanceByFloor: [1] };
     for (let seed = 0; seed < 50; seed++) {
-      const picked = rollElites([{ type: EnemyType.Kiter, room: 0, flying: true }], roomChance, 3, 5, createRng(seed));
+      const picked = rollElites([{ type: EnemyType.Kiter, room: 0 }], roomChance, 3, 5, createRng(seed));
       expect(picked[0]).not.toContain(EliteAffix.Shielded);
-      expect(picked[0]).toHaveLength(4);
     }
   });
 

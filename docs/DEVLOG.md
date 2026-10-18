@@ -3697,9 +3697,114 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
-## Krok 69 — Wampiryczni i latające elity, wdrożenie minimapy `#elity` `#hud` `#ocena`
+## Krok 69 — Wampiryczni i strzelcy-elity, wdrożenie minimapy `#elity` `#hud` `#ocena`
 
-**Zgłoszenie właściciela:** minimapy nie widać (na Pages była jeszcze wersja bez niej); wampiryczne potwory wydają się za mocne; latające moby nie mogą mieć cechy Tarczownika.
+**Zgłoszenie właściciela:** minimapy nie widać (na Pages była jeszcze wersja bez niej); wampiryczne potwory wydają się za mocne; strzelcy (Kitery) nie mogą mieć cechy Tarczownika.
+
+**Wampiryczny `#elity` `#ocena`:**
+- przyczyna: `vampiric.lifesteal` było **2**, czyli elita leczyła się o 200% zadanych obrażeń (komentarz w kodzie mówił o „ułamku”), przy 2,5× HP i 1,3× obrażeń każde trafienie wyleczało ją o więcej, niż jej zadało;
+- teraz **0,5** (połowa zadanych obrażeń, co najmniej 1). Obrażenia ciosów elity (1,3×) bez zmian — do oceny, czy to wystarczy.
+
+**Strzelcy bez Tarczownika `#decyzja` `#elity`:**
+- pierwsza wersja (nietoperz jako „latający”) była błędnie zrozumiana — właściciel miał na myśli **jednostki strzelające, czyli Kitery**;
+- Tarczownik ma teraz `types: [Rusher]` w `config/eliteConfig.ts` (istniejący mechanizm `EliteAffixDefinition.types`); Kitery losują z 4 pozostałych cech (Szybki, Wampiryczny, Wybuchowy, Ognisty); dodatkowa obsługa „latających” usunięta.
+
+**Testy (+2):** pełna czerń od dołu HUD-u i obejmuje napis po urośnięciu; dół pasa 346 px, poniżej wyniku.
+
+**Weryfikacja:** `npm run build`; zrzut z przeglądarki po 7 s. Wdrożone na GitHub Pages.
+
+**Uwaga:** gdy lista przedmiotów w HUD zawinie się do drugiej linii (wiele przedmiotów), jej dół zejdzie pod 128 px i wejdzie w rozmycie pasa — rozwiązane w kroku 67 (ikony w jednym rzędzie, pas od y = 147 po scaleniu).
+
+---
+
+## Krok 67 — HUD: przedmioty jako ikony
+
+**Decyzja właściciela:** `#decyzja` `#hud`
+- z dwóch makiet na kanwie (A: ikony pod złotem, B: pasek na dole) wybrany **wariant A**;
+- przy zdobyciu przedmiotu pokazywać jego **nazwę i efekt mniejszą złotą czcionką**; od razu wdrożyć.
+
+**Co widać:**
+- zamiast tekstowej listy przedmiotów — rząd slotów 28 px pod złotem (y = 114–142): ikona z atlasu łupów (16 px, 1:1), ramka **kości** dla przedmiotów bazowych i **złota** dla rzadszych z efektem broni, licznik kopii ×2, ×3 w rogu;
+- slot na każdy rodzaj przedmiotu (najwyżej 12, kolejność zdobywania);
+- po zdobyciu przedmiotu (podniesienie, kapliczka, nagroda za bossa) pod ikonami przez 3 s: „Nazwa — efekt” (12 px, złoto #f5c542), wygasa w ostatnich 0,8 s;
+- duży komunikat na środku ekranu zostaje dla innych zdarzeń (modyfikator piętra, kraty areny) — przedmioty już go nie używają;
+- pas na ekranie śmierci zaczyna się teraz tuż pod rzędem ikon (pełna czerń od y = 142).
+
+**Kod:**
+- `core/types.ts`: `HudItem.frame`, `HudItem.rare`, `HudItemNotice`, `HudData.itemNotice`;
+- `GameScene`: klatka ikony (`itemFrames`), `rare` = `ItemKind.Effect`, `showItemNotice` zamiast toastu przy przedmiotach;
+- `HudScene`: sloty (ramka, ikona, licznik) budowane raz, przerysowywane tylko przy zmianie listy; podpis pod ikonami;
+- `config/deathScreenConfig.ts`: góra pasa 116 → 130.
+
+**Testy:** pas ekranu śmierci zaczyna się na dole rzędu ikon (142). Ikony korzystają z klatek sprawdzanych w `tests/assets/loot.test.ts`.
+
+**Weryfikacja:** `npm run build` (900 testów); przeglądarka — 12 przedmiotów przez `window.__game` (8 rodzajów, liczniki ×2/×3), podpis „Kołczan — +1 ładunek strzału”, ekran śmierci z pasem pod ikonami; brak błędów w konsoli. Wdrożone na GitHub Pages.
+
+---
+
+## Scalenie z main po krokach 59–67 (dwa razy) `#ekran-startowy` `#ekran-smierci` `#hud`
+
+**Problem:** kroki ekranu startowego, ekranu śmierci i HUD-u z tej sesji powstawały na gałęzi `claude/beautiful-knuth-7datv1` równolegle z `main` (kroki 36–50a: Czarodziejka, Piekło, elity, pętla wieży, zasadzki). Wdrożenie z `main` nadpisało `gh-pages` wersją bez nich.
+
+**Co zrobiono:**
+- `main` scalony z gałęzią; kroki tej gałęzi 36–44 **przenumerowane na 51–59** (numery 36–50a są zajęte przez `main`);
+- `SplashScene`: przejście do gry przez `startFirstFloor` z `main` (ekran wyboru bohatera);
+- `DeathScreen` (wersja Dark Souls ze spływającą czerwienią) przejął z `main` wspólną listę wyników: pole na imię po pierwszej śmierci, imiona w wierszach, nagłówek zależny od źródła (lokalna / łączenie / wszyscy gracze / run testowy), „C — ZMIANA BOHATERA”; podczas wpisywania imienia komunikat o nowej wspinaczce ukryty;
+- `HudScene`: ikony przedmiotów (krok 67) razem z paskiem promienia Czarodziejki, podpowiedzią zależną od bohatera i złotem w runie testowym;
+- pasek promienia przesunął HUD o 5 px w dół — rząd ikon kończy się na y = 147, więc pas ekranu śmierci zaczyna się od 147.
+
+**Weryfikacja:** `npm run build`; przeglądarka (ekran startowy → wybór bohatera, ikony w HUD, śmierć z polem na imię). Wdrożone na GitHub Pages.
+
+---
+## Drugie scalenie z main (17.10) `#ekran-startowy` `#ekran-smierci` `#hud`
+
+**Problem (zgłoszenie właściciela):** na Pages znowu był stary ekran startowy i tekst zamiast ikon. Inna sesja wdrożyła 16.10 grę z `main` (kroki 51–58 tam: gniazdo pająków, zapowiedź bossa, diagnostyka) — `main` nadal nie miał zmian z tej gałęzi, więc wdrożenie je nadpisało.
+
+**Co zrobiono:** `main` scalony ponownie; kroki tej gałęzi przenumerowane drugi raz — teraz **59–67** (51–58 zajął `main`); w `GameScene` zostaje notatka diagnostyczna kapliczki z `main` (`diag.note`) i podpis przedmiotu pod ikonami. Wdrożone na GitHub Pages.
+
+**Na przyszłość:** dopóki ta gałąź nie trafi do `main`, każde wdrożenie z `main` cofnie ekran startowy, ekran śmierci i ikony w HUD.
+
+---
+
+
+## Krok 59 — Przegląd bezpieczeństwa repozytorium i workera `#decyzja` `#bezpieczenstwo`
+
+**Przegląd (repozytorium jest publiczne):** w repo nie ma haseł, kluczy ani prywatnego e-maila; `REPORTS_TOKEN` jest tylko u właściciela. Publiczne i niegroźne: adres workera, `database_id` D1, nazwa konta.
+
+**Zmiany**
+- `.env.production` wyszedł z gita (wpis w `.gitignore`); wzór w `.env.production.example`. Po świeżym klonie trzeba skopiować wzór do `.env.production`, inaczej build nie zna adresu workera i gra używa tylko listy lokalnej.
+- Pliki `__pycache__`/`*.pyc` usunięte z gita, dopisane do `.gitignore` (razem z `.env.local`, `.dev.vars`, `.wrangler/`).
+- Worker: skrót IP z sekretną solą `IP_SALT` (`npx wrangler secret put IP_SALT`). Wcześniej sól była w publicznym kodzie, więc skróty z bazy dało się odwrócić dla każdego IPv4. Bez sekretu worker działa jak dawniej. Po ustawieniu soli liczniki limitów zaczynają od zera (bez szkody).
+
+- Globalny dobowy bezpiecznik dla `/scores`: najwyżej 500 wpisów na dobę łącznie (503 + `Retry-After`), obok limitu 10 wpisów/10 min z jednego IP; chroni darmowy limit zapisów D1 wspólny z `/reports`. Dwa testy w `tests/worker/index.test.ts`. Gra przy 503 zachowuje się jak przy każdym błędzie sieci: wynik czeka w kolejce wysyłki (`SharedHighscores.flushOutbox`) i idzie przy następnej próbie.
+
+**Uwaga:** sprawdzenie `Origin` chroni tylko przed przeglądarkami, skrypt może je podać sam.
+
+**Testy:** 1191 przechodzi. **Wdrożenie workera wykonane** (sekret `IP_SALT` ustawiony, `wrangler deploy`; sprawdzone na żywo: `GET /scores` 200, `GET /reports` bez tokena 404, `POST /scores` bez `Origin` 403).
+
+## Krok 68 — Minimapa `#hud` `#decyzja`
+
+**Prośba właściciela:** dodać minimapę.
+
+**Co widać:**
+- w prawym górnym rogu HUD: mapa piętra z **mgłą wojny** — odkrywa się to, do czego gracz dojdzie po podłodze w promieniu 6 kafli (plus sąsiadujące ściany), więc mapa nie zdradza pokoi za murem;
+- znaczniki: zielony migający punkt — gracz, złoty — schody, czerwony — arena bossa (oba dopiero po odkryciu kafla; czerwony znika po pokonaniu bossa);
+- ukryta komnata (krok 46) nie pojawia się na mapie: minimapa używa piętra w przebraniu muru;
+- 3 px na kafel; tło półprzezroczyste.
+
+**Kod:** `systems/Minimap.ts` (czysty `MinimapExplorer`: odkrywanie BFS-em po podłodze, licznik `version`), `config/minimapConfig.ts` (promień, rozmiar, kolory), `HudData.minimap` (`MinimapHudData`), `GameScene.minimapData()`, `HudScene.drawMinimap()` (tło i kafle przerysowywane tylko przy zmianie `version`, znaczniki co klatkę).
+
+**Testy (+5, `tests/systems/minimap.test.ts`):** pusta mgła na starcie, promień odkrywania, osiągalność odkrytej podłogi i ściany tylko przy podłodze, wersja rośnie tylko przy zmianie, pozycje poza mapą ignorowane.
+
+**Weryfikacja:** `npm run build`.
+
+**Do oceny w testach właściciela:** rozmiar (3 px/kafel), promień odkrywania (6), czy chcemy klawisz do powiększenia/ukrycia mapy.
+
+---
+
+## Krok 69 — Wampiryczni i strzelcy-elity, wdrożenie minimapy `#elity` `#hud` `#ocena`
+
+**Zgłoszenie właściciela:** minimapy nie widać (na Pages była jeszcze wersja bez niej); wampiryczne potwory wydają się za mocne; strzelcy (Kitery) nie mogą mieć cechy Tarczownika.
 
 **Wampiryczny `#elity` `#ocena`:**
 - przyczyna: `vampiric.lifesteal` było **2**, czyli elita leczyła się o 200% zadanych obrażeń (komentarz w kodzie mówił o „ułamku”), przy 2,5× HP i 1,3× obrażeń każde trafienie wyleczało ją o więcej, niż jej zadało;
@@ -3709,7 +3814,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 - `EnemyVariantDefinition.flying` (na razie nietoperz), `EliteAffixDefinition.groundedOnly` (Tarczownik), `RoomSpawn.flying`; `availableAffixes`/`rollElites` pomijają takie cechy dla latających;
 - `GameScene` oznacza spawny z wariantu biomu.
 
-**Testy (+2):** latający nigdy nie dostaje Tarczownika (50 seedów), lifesteal ≤ 1.
+**Testy (+2):** Kiter nigdy nie dostaje Tarczownika (50 seedów), lifesteal ≤ 1.
 
 **Wdrożenie:** minimapa (krok 68) i ten krok idą na GitHub Pages z tej gałęzi (zawiera `main` po scaleniu z kroków 51–58).
 

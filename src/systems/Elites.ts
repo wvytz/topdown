@@ -20,8 +20,6 @@ export interface EliteAffixDefinition {
   readonly hint: string;
   /** Archetypy, które mogą ją dostać; brak = każdy. */
   readonly types?: readonly EnemyType[];
-  /** Cecha tylko dla wrogów chodzących — latające moby jej nie dostają (np. Tarczownik). */
-  readonly groundedOnly?: boolean;
 }
 
 export interface EliteConfig {
@@ -53,8 +51,6 @@ export interface EliteConfig {
 export interface RoomSpawn {
   readonly type: EnemyType;
   readonly room: number;
-  /** Latający wariant (np. nietoperz) — pomija cechy `groundedOnly`. */
-  readonly flying?: boolean;
 }
 
 export function eliteRoomChance(config: EliteConfig, floor: number): number {
@@ -63,10 +59,10 @@ export function eliteRoomChance(config: EliteConfig, floor: number): number {
 }
 
 /** Cechy dostępne dla archetypu na piętrze (kolejność jak w konfiguracji — stabilna dla RNG). */
-export function availableAffixes(config: EliteConfig, type: EnemyType, floor: number, flying = false): EliteAffix[] {
+export function availableAffixes(config: EliteConfig, type: EnemyType, floor: number): EliteAffix[] {
   return (Object.keys(config.affixes) as EliteAffix[]).filter((affix) => {
     const def = config.affixes[affix];
-    return floor >= def.minFloor && (!def.types || def.types.includes(type)) && !(flying && def.groundedOnly);
+    return floor >= def.minFloor && (!def.types || def.types.includes(type));
   });
 }
 
@@ -97,7 +93,7 @@ export function rollElites(
   }
   for (const { pick, elite } of picks) {
     if (!elite) continue;
-    const pool = availableAffixes(config, spawns[pick]!.type, floor, spawns[pick]!.flying);
+    const pool = availableAffixes(config, spawns[pick]!.type, floor);
     const chosen: EliteAffix[] = [];
     while (chosen.length < affixCount && pool.length > 0) {
       chosen.push(pool.splice(Math.floor(rng.next() * pool.length), 1)[0]!);

@@ -1,4 +1,4 @@
-import { EliteAffix } from '@/core/combatTypes';
+import { EliteAffix, EnemyType } from '@/core/combatTypes';
 import type { EliteConfig } from '@/systems/Elites';
 
 /**
@@ -13,7 +13,7 @@ export const ELITE_CONFIG: EliteConfig = {
   damageMultiplier: 1.3,
   affixes: {
     [EliteAffix.Swift]: { name: 'Szybki', hint: 'szybko biega i często bije', color: 0x5fd4ff, minFloor: 1 },
-    [EliteAffix.Shielded]: { name: 'Tarczownik', hint: 'z przodu tarcza, obejdź go', color: 0xc9ccd6, minFloor: 1, groundedOnly: true },
+    [EliteAffix.Shielded]: { name: 'Tarczownik', hint: 'z przodu tarcza, obejdź go', color: 0xc9ccd6, minFloor: 1, types: [EnemyType.Rusher] },
     [EliteAffix.Vampiric]: { name: 'Wampiryczny', hint: 'leczy się, gdy cię trafi', color: 0xe0304a, minFloor: 2 },
     [EliteAffix.Volatile]: { name: 'Wybuchowy', hint: 'po śmierci wybucha, odskocz', color: 0xffd23c, minFloor: 2 },
     [EliteAffix.Fiery]: { name: 'Ognisty', hint: 'zostawia żar na podłodze', color: 0xff7a1c, minFloor: 3 },
