@@ -3859,6 +3859,14 @@ Ciąg dalszy prośby z kroku 71, kolejny boss (piętro 4). Tak samo jak u Króla
 - Testy: `tests/ai/FungalDevourer.test.ts`; `npm run build` zielony. Test w przeglądarce: `?seed=7&floor=4&boss=1`.
 - Dalej: Strażnik Bram, Kat Otchłani, Matka Pająków, Strażnik Piętra.
 
+## Krok 73 — Wzmocnienie bossów: Strażnik Bram `#decyzja` `#piekło` `#boss`
+
+Kolejny boss z prośby z kroku 71 (piętro 5). Oba wzmocnienia:
+- **Skok** (`leap`, mechanika skoku Pożeracza): doskok na miejsce gracza z czerwoną strefą lądowania (promień 50, telegraf 700 ms, lot 420 ms, obrażenia 18), po lądowaniu 700 ms okna na kontrę; trzeci cios w wzorze (obok łańcucha i uderzenia tarczą). Karze kitowanie z dystansu, bez animacji (przysiad jak u Pożeracza).
+- **Chód** 62 → 72 i **sprint** 140 z odległości 150 px (gracz 200).
+- Testy: `tests/ai/GateWarden.test.ts`; test w przeglądarce: `?seed=7&floor=5&boss=1`.
+- Dalej: Kat Otchłani, Matka Pająków, Strażnik Piętra.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

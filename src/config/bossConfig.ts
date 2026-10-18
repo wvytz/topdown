@@ -345,11 +345,13 @@ export const GATE_WARDEN = {
   radius: 30,
   color: 0x8a2a1a,
   maxHp: 420,
-  moveSpeed: 62,
+  // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i trzeci cios — skok.
+  moveSpeed: 72,
+  sprint: { speed: 140, distance: 150 },
   engageDistance: 56,
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1300,
-  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam],
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam, BossAttackKind.Leap],
   // Krok 44 (pomysł właściciela): z trzech stron areny kultyści rzucają bombami zza krat; wychodzą po śmierci Strażnika.
   galleries: { sides: 3, depth: 2, enemy: EnemyType.Kiter },
   patternOrder: PatternOrder.Shuffled,
@@ -375,6 +377,15 @@ export const GATE_WARDEN = {
     recoveryMs: 800,
     damage: 20,
     knockback: 360,
+  },
+  // Skok na miejsce gracza (mechanika skoku Pożeracza): kto kituje z dystansu, dostaje na głowę; po lądowaniu okno na kontrę.
+  leap: {
+    telegraphMs: 700,
+    flightMs: 420,
+    radius: 50,
+    damage: 18,
+    knockback: 320,
+    recoveryMs: 700,
   },
   enrage: {
     hpThreshold: 0.5,

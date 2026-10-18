@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import { ABYSS_EXECUTIONER, GATE_WARDEN, bossForFloor } from '@/config/bossConfig';
+import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import type { AttackPlanContext } from '@/ai/bossAttacks';
 import { planBossAttack } from '@/ai/bossAttacks';
 import { BossBrain } from '@/ai/BossBrain';
@@ -28,6 +29,12 @@ describe('Strażnik Bram (krok 41e)', () => {
   it('wzór: wirujący łańcuch dookoła (karze stanie za plecami) i uderzenie tarczą przed sobą', () => {
     expect(GATE_WARDEN.pattern).toEqual(expect.arrayContaining([BossAttackKind.Slam, BossAttackKind.Cleave]));
     expect(GATE_WARDEN.slam.radius).toBeGreaterThan(GATE_WARDEN.radius * 2);
+  });
+
+  it('wzmocnienie: skok na gracza w wzorze, szybszy chód i sprint (wolniejszy od gracza)', () => {
+    expect(GATE_WARDEN.pattern).toContain(BossAttackKind.Leap);
+    expect(GATE_WARDEN.moveSpeed).toBeGreaterThan(62);
+    expect(GATE_WARDEN.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
   });
 
   it('wygląd: animacje ataków istnieją w arkuszu', () => {
