@@ -3877,6 +3877,15 @@ Kolejny boss z prośby z kroku 71 (piętro 5). Oba wzmocnienia:
 - Czysta logika: `ShieldGuard` w `systems/Shield.ts`; testy w `tests/ai/GateWarden.test.ts`. Do strojenia: `guard.hp`, `breakMs`.
 - Test: `?seed=7&floor=5&boss=1`.
 
+## Krok 75 — Schody przy krawędzi areny `#decyzja` `#schody`
+
+Prośba właściciela: zmiana rozmieszczenia schodów; wybrana opcja — **przy krawędzi areny** (zamiast pośrodku, pod bossem).
+- Schody 2×2 stoją teraz w **narożniku areny najdalszym od wejść** (`planStairs` w `dungeon/stairs.ts`; wejścia = także przejście do ukrytej komnaty), odsunięte od ścian o 1 kafel (`STAIRS_WALL_INSET`). Narożnik przy samych drzwiach odpada; remis rozstrzyga kolejność NW, NE, SE, SW. Deterministyczne (bez RNG).
+- **Boss** staje i budzi się w środku areny (`arenaCenter`), nie na schodach; punkt odniesienia skoku (clamp lądowania) też jest środkiem areny. `stairsCenter` usunięte.
+- Planery (kokony spiżarni, tron, naklejki, rekwizyty) pomijają schody, bo wybierają tylko kafle podłogi, a schody to `StairsLocked`.
+- Testy: `tests/dungeon/stairs.test.ts` (planStairs, arenaCenter), `tests/dungeon/DungeonGenerator.test.ts` (narożnik, odstęp od wejść) — dotychczasowy test „schody wyśrodkowane” zastąpiony. `npm run build` zielony; sprawdzone w przeglądarce (piętra 3, 4, 6 bez błędów).
+- Do oceny: czy narożnik (a nie np. środek ściany) wygląda dobrze i czy po walce nie jest za daleko od gracza.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

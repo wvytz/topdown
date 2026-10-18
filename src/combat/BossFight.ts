@@ -38,7 +38,7 @@ import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { SpiderlingSwarm, drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
-import { stairsCenter } from '@/dungeon/stairs';
+import { arenaCenter } from '@/dungeon/stairs';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
@@ -187,7 +187,7 @@ export class BossFight {
 
     const definition = scaleBossForFloor(bossForFloor(deps.floorNumber), deps.floorNumber, ENEMY_SCALING);
     this.spiderlingDefinition = definition.spiderling ?? null;
-    const center = stairsCenter(deps.floor);
+    const center = arenaCenter(arena);
     const spawn = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };
     const rng = createRng(deriveSeed(deps.floor.seed, BOSS_SEED_SALT));
     const boss = new Boss(deps.scene, spawn.x, spawn.y, definition, rng);
@@ -493,7 +493,7 @@ export class BossFight {
    */
   private startLeap(planned: BossLeap): Vector2 {
     const radius = this.boss?.radius ?? 0;
-    const center = stairsCenter(this.deps.floor);
+    const center = arenaCenter(this.arena);
     const anchor = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };
     const to = this.clampToward(planned.to, anchor, (point) => this.circleFits(point, radius));
     this.leap = { leap: { ...planned, to }, shadow: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) };

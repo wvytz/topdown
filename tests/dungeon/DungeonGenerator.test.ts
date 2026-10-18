@@ -3,7 +3,8 @@ import { RoomKind, TileType } from '@/core/dungeonTypes';
 import { BASE_DUNGEON_CONFIG, STAIRS_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { roomContainsTile } from '@/dungeon/rooms';
-import { stairsCenter, stairsTiles } from '@/dungeon/stairs';
+import { STAIRS_WALL_INSET, stairsTiles } from '@/dungeon/stairs';
+import { findRoomEntrances } from '@/dungeon/arenaGates';
 import { countReachable, countWalkable, sampleFloors } from '../helpers/floors';
 
 // Testy właściwości: sprawdzamy niezmienniki na wielu wygenerowanych piętrach.
@@ -49,12 +50,22 @@ describe('DungeonGenerator — niezmienniki pięter', () => {
     }
   });
 
-  it('schody są wyśrodkowane w arenie (środek bloku najwyżej pół kafla od środka komnaty)', () => {
+  it('schody stoją w narożniku areny (krok 75): odsunięte od ścian o STAIRS_WALL_INSET, poza wejściami, bez schodów pod bossem', () => {
     for (const floor of FLOORS) {
       const arena = floor.rooms[floor.bossRoomId]!;
-      const center = stairsCenter(floor);
-      expect(Math.abs(center.x - (arena.x + arena.width / 2))).toBeLessThanOrEqual(0.5);
-      expect(Math.abs(center.y - (arena.y + arena.height / 2))).toBeLessThanOrEqual(0.5);
+      const { stairs } = floor;
+      const left = stairs.x - arena.x;
+      const right = arena.x + arena.width - (stairs.x + STAIRS_SIZE);
+      const top = stairs.y - arena.y;
+      const bottom = arena.y + arena.height - (stairs.y + STAIRS_SIZE);
+      expect(Math.min(left, right)).toBe(STAIRS_WALL_INSET);
+      expect(Math.min(top, bottom)).toBe(STAIRS_WALL_INSET);
+      // Wejścia do areny nie są zasłonięte schodami: od każdego jest co najmniej kafel odstępu.
+      for (const e of findRoomEntrances(floor, arena)) {
+        const dx = Math.max(stairs.x - e.x, 0, e.x - (stairs.x + STAIRS_SIZE - 1));
+        const dy = Math.max(stairs.y - e.y, 0, e.y - (stairs.y + STAIRS_SIZE - 1));
+        expect(Math.max(dx, dy)).toBeGreaterThanOrEqual(2);
+      }
     }
   });
 
