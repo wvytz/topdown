@@ -284,6 +284,12 @@ export interface ShieldDefinition {
   readonly frontMeleeMultiplier: number;
   /** Odbity pocisk leci z prędkością pocisku ×tyle i zadaje tyle obrażeń co oryginał. */
   readonly reflectSpeed: number;
+  /**
+   * Wytrzymałość tarczy (krok 74, Strażnik Bram): ciosy wręcz w tarczę z przodu zbijają ją (pełnymi obrażeniami),
+   * a gdy spadnie do zera, tarcza pęka na `breakMs` — boss przyjmuje wtedy pełne obrażenia z każdej strony,
+   * potem tarcza wraca z pełną wytrzymałością. Brak = tarcza niezniszczalna (Kat Otchłani).
+   */
+  readonly guard?: { readonly hp: number; readonly breakMs: number };
 }
 
 /**

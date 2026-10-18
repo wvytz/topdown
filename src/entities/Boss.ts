@@ -16,7 +16,7 @@ import { StatusEffects } from '@/systems/StatusEffects';
 import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
 import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { isShielded, turnToward } from '@/systems/Shield';
+import { ShieldGuard, isShielded, turnToward } from '@/systems/Shield';
 
 const HIT_FLASH_MS = 70;
 const ENRAGE_TINT = 0xff7050;
@@ -37,6 +37,10 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   /** Kierunek tarczy (radiany; Strażnik Bram, krok 41e) — obraca się do gracza z ograniczoną prędkością. */
   private shieldFacing = Math.PI / 2;
   private lastTickAt: number | null = null;
+  /** Wytrzymałość tarczy (krok 74); null = tarcza niezniszczalna albo brak tarczy. */
+  private readonly guard: ShieldGuard | null;
+  private guardNow = 0;
+  private shieldBreakPending = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: BossDefinition, rng: Rng) {
     super(scene, x, y, SPRITE_SHEETS[BOSS_VISUALS[definition.id].sheet].key);
@@ -44,6 +48,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     this.visual = BOSS_VISUALS[definition.id];
     this.health = new Health(definition.maxHp);
     this.brain = new BossBrain(definition, rng);
+    const guard = definition.shield?.guard;
+    this.guard = guard ? new ShieldGuard(guard.hp, guard.breakMs) : null;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -82,7 +88,25 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   /** Czy atak z punktu `from` trafia w tarczę (przód bossa). */
   isShieldedFrom(from: Vector2): boolean {
     const shield = this.definition.shield;
-    return Boolean(shield) && this.isFighting && isShielded(this, this.shieldFacing, shield!.arcDeg, from);
+    if (!shield || !this.isFighting || this.isShieldBroken) return false;
+    return isShielded(this, this.shieldFacing, shield.arcDeg, from);
+  }
+
+  /** Tarcza pęknięta (krok 74) — boss odsłonięty ze wszystkich stron. */
+  get isShieldBroken(): boolean {
+    return this.guard?.isBroken(this.guardNow) ?? false;
+  }
+
+  /** Pozostała wytrzymałość tarczy (0..1); 1, gdy tarcza jej nie ma. */
+  get shieldFraction(): number {
+    return this.guard?.fraction(this.guardNow) ?? 1;
+  }
+
+  /** Tarcza właśnie pękła — jednorazowo, żeby gra pokazała efekt. */
+  consumeShieldBreak(): boolean {
+    const broke = this.shieldBreakPending;
+    this.shieldBreakPending = false;
+    return broke;
   }
 
   get isEnraged(): boolean {
@@ -146,7 +170,10 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     this.hitFlash.start(now, HIT_FLASH_MS);
     // Cios w tarczę (z przodu) zadaje tylko część obrażeń; pociski i promień obsługuje BossFight wcześniej.
     const shield = this.definition.shield;
-    const damage = shield && this.isShieldedFrom(source) ? Math.max(1, Math.round(hit.damage * shield.frontMeleeMultiplier)) : hit.damage;
+    this.guardNow = now;
+    const blocked = Boolean(shield) && this.isShieldedFrom(source);
+    const damage = shield && blocked ? Math.max(1, Math.round(hit.damage * shield.frontMeleeMultiplier)) : hit.damage;
+    if (blocked && this.guard?.absorb(hit.damage, now)) this.shieldBreakPending = true;
     const result = this.health.takeDamage(damage);
     if (!result.died) {
       // Ogłuszenie odsuwa też kolejny atak — boss „traci” ten czas, a nie tylko stoi.
@@ -173,6 +200,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
    */
   private updateAnimation(target: Vector2, newAttack: BossAttackPlan | null, now: number): void {
     const dt = this.lastTickAt === null ? 0 : now - this.lastTickAt;
+    this.guardNow = now;
     this.lastTickAt = now;
     const toTarget = Math.atan2(target.y - this.y, target.x - this.x);
     if (this.definition.shield) {

@@ -8,7 +8,7 @@ import { BossBrain } from '@/ai/BossBrain';
 import { RoomKind } from '@/core/dungeonTypes';
 import { createRng } from '@/core/random';
 import { arenaBrazierSpots } from '@/dungeon/BrazierPlanner';
-import { fireRingRadius } from '@/systems/Shield';
+import { ShieldGuard, fireRingRadius } from '@/systems/Shield';
 import { BOSS_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 
 describe('Strażnik Bram (krok 41e)', () => {
@@ -35,6 +35,25 @@ describe('Strażnik Bram (krok 41e)', () => {
     expect(GATE_WARDEN.pattern).toContain(BossAttackKind.Leap);
     expect(GATE_WARDEN.moveSpeed).toBeGreaterThan(62);
     expect(GATE_WARDEN.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
+  });
+
+  it('wytrzymałość tarczy: Strażnik ją ma, Kat nie; pęknięcie trwa kilka sekund i wymaga kilku ciosów', () => {
+    const guard = GATE_WARDEN.shield.guard;
+    expect(guard.hp).toBeGreaterThan(0);
+    expect(guard.breakMs).toBeGreaterThanOrEqual(2000);
+    expect(ABYSS_EXECUTIONER.shield).not.toHaveProperty('guard');
+  });
+
+  it('ShieldGuard: ciosy zbijają tarczę, zero ją pęka na czas, potem wraca pełna', () => {
+    const guard = new ShieldGuard(50, 3000);
+    expect(guard.absorb(20, 0)).toBe(false);
+    expect(guard.fraction(0)).toBeCloseTo(0.6);
+    expect(guard.absorb(30, 100)).toBe(true);
+    expect(guard.isBroken(2000)).toBe(true);
+    expect(guard.fraction(2000)).toBe(0);
+    expect(guard.absorb(99, 2000)).toBe(false); // pęknięta nie przyjmuje ciosów
+    expect(guard.isBroken(3100)).toBe(false);
+    expect(guard.fraction(3100)).toBe(1);
   });
 
   it('wygląd: animacje ataków istnieją w arkuszu', () => {

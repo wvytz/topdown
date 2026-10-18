@@ -3867,6 +3867,16 @@ Kolejny boss z prośby z kroku 71 (piętro 5). Oba wzmocnienia:
 - Testy: `tests/ai/GateWarden.test.ts`; test w przeglądarce: `?seed=7&floor=5&boss=1`.
 - Dalej: Kat Otchłani, Matka Pająków, Strażnik Piętra.
 
+## Krok 74 — Strażnik Bram: tarcza z wytrzymałością `#ocena` `#decyzja` `#piekło` `#boss`
+
+`#ocena` właściciela: walka ze Strażnikiem Bram sprowadza się do krążenia dookoła i szukania luki w tarczy.
+- **Rozwiązanie (moje, do oceny):** tarcza dostała **wytrzymałość** (`shield.guard`: `hp: 90`, `breakMs: 3500`). Ciosy wręcz w tarczę z przodu zbijają ją pełnymi obrażeniami (boss nadal dostaje `frontMeleeMultiplier` ×0,5); po wyzerowaniu tarcza **pęka na 3,5 s** — łuk znika, boss przyjmuje pełne obrażenia z każdej strony, pociski i promień go trafiają. Potem tarcza wraca z pełną wytrzymałością.
+- Łuk tarczy blednie i cienieje w miarę zużycia (czytelność bez dodatkowego paska); pęknięcie = błysk i wstrząs.
+- Obejście bossa zostaje opcją (cios w plecy = pełne obrażenia), ale nie jest konieczne.
+- **Kat Otchłani** nie ma `guard` (tarcza niezniszczalna jak dotąd) — czeka na decyzję właściciela, czy też zmienić.
+- Czysta logika: `ShieldGuard` w `systems/Shield.ts`; testy w `tests/ai/GateWarden.test.ts`. Do strojenia: `guard.hp`, `breakMs`.
+- Test: `?seed=7&floor=5&boss=1`.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

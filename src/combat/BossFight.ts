@@ -273,6 +273,10 @@ export class BossFight {
   update(now: number): void {
     const boss = this.boss;
     this.drawShieldArc(boss);
+    if (boss?.consumeShieldBreak()) {
+      this.deps.effects.impact(boss.x, boss.y, boss.radius * 1.4);
+      this.deps.effects.deathBurst(boss.x, boss.y, SHIELD_ARC_VISUAL.color, boss.radius);
+    }
     if (!boss) {
       this.fireRingGfx?.clear();
       return;
@@ -883,10 +887,12 @@ export class BossFight {
     if (!gfx) return;
     gfx.clear();
     const angle = boss?.shieldAngle;
-    if (!boss || angle === null || angle === undefined || !boss.isFighting) return;
+    if (!boss || angle === null || angle === undefined || !boss.isFighting || boss.isShieldBroken) return;
     const half = ((boss.definition.shield?.arcDeg ?? 0) * Math.PI) / 360;
     const { color, alpha, width, gap } = SHIELD_ARC_VISUAL;
-    gfx.lineStyle(width, color, alpha).beginPath();
+    // Wytrzymałość tarczy widać po łuku: im bliżej pęknięcia, tym cieńszy i bledszy.
+    const wear = boss.shieldFraction;
+    gfx.lineStyle(Math.max(1, Math.round(width * (0.5 + wear))), color, alpha * (0.5 + 0.5 * wear)).beginPath();
     gfx.arc(boss.x, boss.y, boss.radius + gap, angle - half, angle + half);
     gfx.strokePath();
   }

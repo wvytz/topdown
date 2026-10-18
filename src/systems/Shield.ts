@@ -28,6 +28,41 @@ export function turnToward(current: number, target: number, maxStep: number): nu
   return Math.abs(d) <= maxStep ? target : current + Math.sign(d) * maxStep;
 }
 
+/**
+ * Wytrzymałość tarczy (krok 74): trafienia ją zbijają, po wyzerowaniu tarcza jest pęknięta przez `breakMs`,
+ * a potem wraca z pełną wytrzymałością.
+ */
+export class ShieldGuard {
+  private hp: number;
+  private brokenUntil = -Infinity;
+
+  constructor(
+    private readonly maxHp: number,
+    private readonly breakMs: number,
+  ) {
+    this.hp = maxHp;
+  }
+
+  isBroken(now: number): boolean {
+    return now < this.brokenUntil;
+  }
+
+  /** Pozostała wytrzymałość (0..1); pęknięta tarcza = 0. */
+  fraction(now: number): number {
+    return this.isBroken(now) ? 0 : this.hp / this.maxHp;
+  }
+
+  /** Cios w tarczę; zwraca true, jeśli właśnie ją rozbił. */
+  absorb(damage: number, now: number): boolean {
+    if (this.isBroken(now)) return false;
+    this.hp -= damage;
+    if (this.hp > 0) return false;
+    this.hp = this.maxHp;
+    this.brokenUntil = now + this.breakMs;
+    return true;
+  }
+}
+
 /** Kierunek odbitego pocisku: z powrotem w stronę, z której przyleciał. */
 export function reflectDirection(velocity: Vector2): Vector2 {
   return { x: -velocity.x, y: -velocity.y };

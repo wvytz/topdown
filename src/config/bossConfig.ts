@@ -360,6 +360,9 @@ export const GATE_WARDEN = {
     turnRateDegPerSec: 110,
     frontMeleeMultiplier: 0.5,
     reflectSpeed: 0.8,
+    // Krok 74 (feedback właściciela: walka to krążenie i szukanie luki): ciosy w tarczę ją zbijają, pęknięta
+    // odsłania bossa na kilka sekund — da się go bić z przodu, a obejście go jest opcją, nie koniecznością.
+    guard: { hp: 90, breakMs: 3500 },
   },
   // Wirujący łańcuch: hak okrąża bossa — strefa dookoła, także za plecami.
   slam: {
