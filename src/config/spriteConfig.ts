@@ -960,6 +960,9 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
 export const FIRE_RING_VISUAL = { fill: 0xa82010, fillAlpha: 0.4, edge: 0xe0701c, edgeAlpha: 0.8, edgeWidth: 3 } as const;
 
 /** Tarcza bossa: łuk chronionego stożka rysowany przed bossem (cienki, w kolorze żaru, stała alfa). */
+/** Znacznik wyjścia świty bossa (krok 80): pulsujący krąg w kolorze kości — nie czerwony, bo to nie strefa obrażeń. */
+export const RETINUE_MARKER_VISUAL = { color: 0xd8c8a0, alpha: 0.7, fillAlpha: 0.15, radius: 12, pulseMs: 250, riseMs: 500 } as const;
+
 export const SHIELD_ARC_VISUAL = { color: 0xe0701c, alpha: 0.45, width: 2, gap: 6 } as const;
 
 /** Rozprysk kuli Czarodziejki (krok 50): pierścień w kolorze kul. */

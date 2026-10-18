@@ -342,6 +342,23 @@ export interface ArenaGalleryDefinition {
   readonly enemy: EnemyType;
 }
 
+/**
+ * Świta bossa (krok 80, prośba właściciela: pomocnicy w walce): co `everyMs` (po wściekłości `enragedEveryMs`)
+ * na arenie pojawiają się znaczniki, a po `telegraphMs` wychodzą z nich zwykli wrogowie biomu (`type`).
+ * `count` na wezwanie (po wściekłości jeden więcej), najwyżej `maxAlive` żywych naraz; z dala od gracza.
+ */
+export interface RetinueDefinition {
+  readonly type: EnemyType;
+  readonly firstAfterMs: number;
+  readonly everyMs: number;
+  readonly enragedEveryMs: number;
+  readonly count: number;
+  readonly maxAlive: number;
+  readonly telegraphMs: number;
+  /** Najmniejsza odległość miejsca wyjścia od gracza (kafle, Czebyszew). */
+  readonly minPlayerDistanceTiles: number;
+}
+
 export interface BossDefinition {
   readonly id: BossId;
   readonly name: string;
@@ -386,6 +403,8 @@ export interface BossDefinition {
   readonly arenaBraziers?: number;
   /** Galerie za kratami (Strażnik Bram, krok 44): wnęki w ścianach areny z wrogami dystansowymi. */
   readonly galleries?: ArenaGalleryDefinition;
+  /** Świta (krok 80): zwykli wrogowie biomu przywoływani w trakcie walki. */
+  readonly retinue?: RetinueDefinition;
   readonly fireRing?: FireRingDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;

@@ -3918,6 +3918,15 @@ Decyzja właściciela: tarcza Kata ma działać jak u Strażnika Bram (krok 74).
 - Rozgrzewanie żelaza promieniem (wybuch żaru po 6 tickach) i odbijanie pocisków zostają, dopóki tarcza stoi; pęknięta nie rozgrzewa się i nie odbija.
 - Test: `?seed=7&floor=6&boss=1`. Do strojenia: `guard.hp`, `breakMs`.
 
+## Krok 80 — Świta bossów (pomocnicy w walce) `#decyzja` `#boss`
+
+Druga runda wzmacniania bossów; wybór właściciela: **pomocnicy w walce** — bossowie przywołują zwykłych wrogów biomu, żeby gracz nie skupiał się tylko na bossie.
+- **Mechanika** (`BossDefinition.retinue`, czysta logika `systems/BossRetinue.ts`): po `firstAfterMs` (9 s) od początku walki, potem co `everyMs` (16 s; po wściekłości 11 s) na arenie pojawia się pulsujący znacznik w kolorze kości (nie czerwony — to nie strefa obrażeń), po 1 s wychodzi z niego wróg biomu (0,5 s wynurzania: nietykalny i nie atakuje). 1 na wezwanie (po wściekłości 2), **najwyżej 2 żywe naraz**; wezwanie przy pełnym limicie przepada. Miejsca: podłoga areny, kafel od muru, ≥ 3 kafle od gracza, 2 od siebie (własny strumień RNG).
+- **Kto kogo woła:** Strażnik Piętra — Rusher ruin (rzadziej: 18/13 s); Matka Pająków — nietoperz (Kiter); Król Pająków — Rusher Grzybni; Grzybowy Pożeracz — siewca (Kiter; zarażonych ma już ze spiżarni); Strażnik Bram — Rusher Piekła (strzelców ma w galeriach); Kat Otchłani — Rusher Piekła (częściej: 14/9 s).
+- Po śmierci bossa znaczniki znikają, a świta na arenie walczy dalej.
+- Liczby w `config/bossConfig.ts` (`RETINUE_BASE` + nadpisania), wygląd znacznika `RETINUE_MARKER_VISUAL` w `spriteConfig.ts`.
+- Testy: `tests/systems/BossRetinue.test.ts` (rytm, wściekłość, limit, miejsca, determinizm, konfiguracja). Przeglądarka: piętra 2 i 3 z `?boss=1` — po ok. 10 s walki przybywa jeden wróg, bez błędów. Znacznik w mroku/mgle bywa słabo widoczny — do oceny.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

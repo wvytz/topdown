@@ -7,6 +7,20 @@ import { EnemyType } from '@/core/combatTypes';
 import { scaleForFloor } from '@/systems/CombatMath';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
 
+/**
+ * Świta bossów (krok 80, prośba właściciela: pomocnicy w walce). Wspólny rytm; boss wybiera archetyp
+ * (wariant biomu dobiera gra) i może go podkręcić.
+ */
+const RETINUE_BASE = {
+  firstAfterMs: 9000,
+  everyMs: 16000,
+  enragedEveryMs: 11000,
+  count: 1,
+  maxAlive: 2,
+  telegraphMs: 1000,
+  minPlayerDistanceTiles: 3,
+} as const;
+
 /** Pierwszy boss: „Strażnik Piętra”. Sekwencja: uderzenie → pierścień pocisków → ostrzał stref. */
 export const FLOOR_GUARDIAN = {
   id: BossId.FloorGuardian,
@@ -23,6 +37,8 @@ export const FLOOR_GUARDIAN = {
   pattern: [BossAttackKind.Slam, BossAttackKind.Nova, BossAttackKind.Barrage, BossAttackKind.Leap],
   // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
   patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): szkielet-Rusher ruin; pierwszy boss — najrzadsze wezwania.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 18000, enragedEveryMs: 13000 },
   slam: {
     radius: 100,
     telegraphMs: 900,
@@ -95,6 +111,8 @@ export const SPIDER_QUEEN = {
   pattern: [BossAttackKind.Brood, BossAttackKind.Web, BossAttackKind.Leap, BossAttackKind.Slam],
   // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
   patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): nietoperz (Kiter) — strzela, gdy gracz ucieka przed pajączkami.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Kiter },
   lash: {
     // Gracz bliżej niż 56 px od środka królowej; strefa sięga 34 + 30 = 64 px.
     triggerRange: 56,
@@ -204,6 +222,8 @@ export const SPIDER_KING = {
   pattern: [BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow, BossAttackKind.Slam],
   // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
   patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): zarażony pająk (Rusher).
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher },
   // Ścięcie kosami: wolny, czytelny zamach, ale trafienie boli i paraliżuje.
   lash: {
     triggerRange: 70,
@@ -288,6 +308,8 @@ export const FUNGAL_DEVOURER = {
   restBetweenAttacksMs: 1500,
   pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Call, BossAttackKind.Slam],
   patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): siewca (Kiter) — zarażonych z kokonów Pożeracz ma już ze spiżarni.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Kiter },
   // Kąsanie paszczą: szybkie, z bliska; trafienie leczy Pożeracza.
   lash: {
     triggerRange: 62,
@@ -375,6 +397,8 @@ export const GATE_WARDEN = {
   // Krok 44 (pomysł właściciela): z trzech stron areny kultyści rzucają bombami zza krat; wychodzą po śmierci Strażnika.
   galleries: { sides: 3, depth: 2, enemy: EnemyType.Kiter },
   patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): Rusher z Piekła — strzelców ma już w galeriach.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher },
   shield: {
     arcDeg: 120,
     turnRateDegPerSec: 110,
@@ -443,6 +467,8 @@ export const ABYSS_EXECUTIONER = {
   restBetweenAttacksMs: 1200,
   pattern: [BossAttackKind.Cleave, BossAttackKind.Slam, BossAttackKind.Kindle, BossAttackKind.Leap],
   patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): Rusher z Piekła, najczęściej ze wszystkich bossów.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 14000, enragedEveryMs: 9000 },
   shield: {
     arcDeg: 120,
     turnRateDegPerSec: 120,

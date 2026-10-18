@@ -57,7 +57,9 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { BRAZIER_VISUAL, FIRE_RING_VISUAL, SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
+import { BRAZIER_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
+import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
+import type { EnemyType } from '@/core/combatTypes';
 import { fireRingRadius, reflectDirection } from '@/systems/Shield';
 import { arenaBrazierSpots } from '@/dungeon/BrazierPlanner';
 import { BossAttackKind } from '@/core/bossTypes';
@@ -79,6 +81,15 @@ export interface BossFightDeps {
   readonly onDefeated: (position: Vector2) => void;
   /** Zarażony wychodzący z kokonu spiżarni (Grzybowy Pożeracz): zwykły Rusher biomu. */
   readonly spawnRusher?: (at: Vector2) => void;
+  /** Świta bossa (krok 80): zwykły wróg biomu wychodzący na arenę; zwraca go, by liczyć żywych. */
+  readonly spawnHelper?: (type: EnemyType, at: Vector2) => { readonly isDead: boolean; readonly active: boolean };
+}
+
+/** Znacznik świty: za `at` ms wyjdzie wróg. */
+interface PendingHelper {
+  readonly at: number;
+  readonly position: Vector2;
+  readonly gfx: Phaser.GameObjects.Graphics;
 }
 
 export type BossStatus = BossHudData;
@@ -129,6 +140,7 @@ interface PendingBurst {
 }
 
 const BOSS_SEED_SALT = 0xb055;
+const RETINUE_SEED_SALT = 0x5717;
 const LARDER_SEED_SALT = 0x1a4d;
 const THRONE_SEED_SALT = 0x7407;
 /** Napisy uczty i leczenia Pożeracza. */
@@ -169,6 +181,10 @@ export class BossFight {
   private larders: LarderCocoon[] = [];
   private readonly larderRng: Rng;
   private pendingFeast: FeastBite | null = null;
+  private readonly retinue: RetinueSchedule | null;
+  private readonly retinueRng: Rng;
+  private pendingHelpers: PendingHelper[] = [];
+  private helpers: Array<{ readonly isDead: boolean; readonly active: boolean }> = [];
   private pendingRelease: { readonly at: number; readonly larders: LarderCocoon[] } | null = null;
   /** Sala tronowa Grzybowego Pożeracza (krok 39): krew na graczu po trafieniu, sok nad bossem przy leczeniu. */
   private readonly throneRoomFx: boolean;
@@ -192,6 +208,8 @@ export class BossFight {
     const rng = createRng(deriveSeed(deps.floor.seed, BOSS_SEED_SALT));
     const boss = new Boss(deps.scene, spawn.x, spawn.y, definition, rng);
     this.boss = boss;
+    this.retinue = definition.retinue && deps.spawnHelper ? new RetinueSchedule(definition.retinue) : null;
+    this.retinueRng = createRng(deriveSeed(deps.floor.seed, RETINUE_SEED_SALT));
 
     deps.scene.physics.add.collider(boss, deps.walls);
     deps.scene.physics.add.collider(deps.player, boss);
@@ -301,6 +319,7 @@ export class BossFight {
     this.updateFireRing(boss, now);
     if (plan) this.schedule(plan);
     this.updateLarders(boss, now);
+    this.updateRetinue(boss, now);
     this.updatePresence(boss);
     this.updateLeap(boss, now);
 
@@ -431,6 +450,42 @@ export class BossFight {
       for (const larder of chosen) larder.shake();
       this.pendingRelease = { at: plan.release.at, larders: chosen };
     }
+  }
+
+  /**
+   * Świta (krok 80): w rytmie z definicji pojawiają się znaczniki z dala od gracza, a po telegrafie wychodzą
+   * z nich wrogowie biomu. Limit liczy żywych i tych, którzy dopiero wychodzą.
+   */
+  private updateRetinue(boss: Boss, now: number): void {
+    const def = boss.definition.retinue;
+    const spawnHelper = this.deps.spawnHelper;
+    if (!this.retinue || !def || !spawnHelper || !boss.isFighting) return;
+    this.retinue.activate(now);
+    this.helpers = this.helpers.filter((h) => h.active && !h.isDead);
+    const alive = this.helpers.length + this.pendingHelpers.length;
+    const count = this.retinue.due(now, alive, boss.isEnraged);
+    if (count > 0) {
+      const { player } = this.deps;
+      const playerTile = { x: Math.floor(player.x / TILE_SIZE), y: Math.floor(player.y / TILE_SIZE) };
+      for (const tile of pickRetinueTiles(this.deps.floor, this.arena, playerTile, count, def.minPlayerDistanceTiles, this.retinueRng)) {
+        const position = { x: (tile.x + 0.5) * TILE_SIZE, y: (tile.y + 0.5) * TILE_SIZE };
+        const gfx = this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph);
+        this.pendingHelpers.push({ at: now + def.telegraphMs, position, gfx });
+      }
+    }
+    const { color, alpha, fillAlpha, radius, pulseMs } = RETINUE_MARKER_VISUAL;
+    this.pendingHelpers = this.pendingHelpers.filter((pending) => {
+      if (now >= pending.at) {
+        pending.gfx.destroy();
+        this.helpers.push(spawnHelper(def.type, pending.position));
+        this.deps.effects.impact(pending.position.x, pending.position.y, radius);
+        return false;
+      }
+      const pulse = 0.75 + 0.25 * Math.sin((now / pulseMs) * Math.PI);
+      const { x, y } = pending.position;
+      pending.gfx.clear().fillStyle(color, fillAlpha).fillCircle(x, y, radius * pulse).lineStyle(2, color, alpha).strokeCircle(x, y, radius * pulse);
+      return true;
+    });
   }
 
   /**
@@ -901,9 +956,11 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
-    for (const pending of [...this.strikes, ...this.bursts]) pending.gfx.destroy();
+    for (const pending of [...this.strikes, ...this.bursts, ...this.pendingHelpers]) pending.gfx.destroy();
     this.strikes = [];
     this.bursts = [];
+    // Świta, która jeszcze nie wyszła, przepada; ta na arenie walczy dalej.
+    this.pendingHelpers = [];
     // Sieci są częścią walki — znikają razem z Matką Pająków.
     for (const web of this.webs) this.removeWeb(web);
     for (const { sprite } of this.throws) sprite.destroy();

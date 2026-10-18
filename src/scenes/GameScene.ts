@@ -46,7 +46,7 @@ import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPl
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { ELITE_VISUAL, SECRET_ROOM_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
 import { beamReach, crystalPoint, splashDamage } from '@/systems/Sorcery';
 import {
@@ -831,6 +831,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       spawnRusher: (at) => {
         this.enemies.spawnAt(EnemyType.Rusher, at);
       },
+      // Świta (krok 80): wróg biomu wynurza się (chwilę nietykalny i niegroźny), zanim ruszy.
+      spawnHelper: (type, at) => this.enemies.spawnAt(type, at, [], { riseMs: RETINUE_MARKER_VISUAL.riseMs }),
       onDefeated: (position) => {
         this.unlockStairs();
         this.dropLoot(position, BOSS_LOOT);
