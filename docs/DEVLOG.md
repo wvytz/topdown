@@ -3848,6 +3848,7 @@ Prośba właściciela: wzmocnić bossów, zaczynając od drugiego pająka (Król
 - **Tupnięcie** (`slam`, mechanika Slam): fala dookoła Króla, promień 90, telegraf 850 ms, obrażenia 16 — czwarty cios w wzorze (worek losowej kolejności: każdy atak raz na rundę). Animacja „stab” jak przy pozostałych ciosach.
 - **Chód** 55 → 66, do tego **sprint** z daleka (120 px/s od 130 px; gracz ma 200, więc nadal da się uciec).
 - Testy: `tests/ai/SpiderKing.test.ts` (wzór 4 ciosów, tupnięcie, skalowanie, prędkości). `npm run build` zielony.
+- **Skrót `?boss=1`** (narzędzie dev, działa też na Pages jako run testowy): gracz startuje w arenie bossa piętra, 2 kafle od lewej ściany. Np. `?seed=7&floor=3&boss=1` = od razu walka z Królem. Parametr działa tylko na pierwsze piętro runu (`FloorSceneData.atBoss`). Test w `tests/systems/startOverrides.test.ts`; sprawdzone w przeglądarce.
 - Kolejni kandydaci do wzmocnienia (po ocenie Króla): Grzybowy Pożeracz, Strażnik Bram, Kat Otchłani, a także Matka Pająków i Strażnik Piętra.
 
 ## Notka z sesji (17.10) `#ocena`

@@ -15,6 +15,11 @@ describe('start z adresu — run testowy (krok 41g)', () => {
     expect(parseStartOverrides('?floor=1')).toEqual({ floor: 1, practice: false });
   });
 
+  it('?boss=1: start w arenie, run testowy; inne wartości pomijane', () => {
+    expect(parseStartOverrides('?boss=1&floor=3')).toEqual({ atBoss: true, floor: 3, practice: true });
+    expect(parseStartOverrides('?boss=0')).toEqual({ practice: false });
+  });
+
   it('błędne wartości są pomijane', () => {
     expect(parseStartOverrides('?floor=0&seed=abc')).toEqual({ practice: false });
     expect(parseStartOverrides('?floor=2.5&seed=')).toEqual({ practice: false });

@@ -56,6 +56,8 @@ export interface FloorSceneData {
   readonly run: RunSnapshot;
   /** Odtworzenie nagrania wejść (krok 56, tylko tryb dev): wejścia z nagrania zamiast klawiatury. */
   readonly replay?: InputRecording;
+  /** Start tuż przy wejściu na arenę bossa (`?boss=1`, tylko pierwsze piętro runu testowego). */
+  readonly atBoss?: boolean;
 }
 
 /** Promień Czarodziejki w HUD: świeci (pasek = pozostały czas) albo odnawia się po zgaśnięciu. */

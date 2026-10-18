@@ -232,6 +232,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   );
   private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
   private runSeed = 0;
+  /** Start w arenie bossa (`?boss=1`). */
+  private atBoss = false;
   private floorNumber = 1;
   private stairsUnlocked = false;
   /** Gracz stoi na otwartych schodach (HUD i napis nad schodami). */
@@ -248,6 +250,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;
     this.runSeed = data.runSeed;
+    this.atBoss = data.atBoss === true;
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
     this.startHp = data.run.hp;
@@ -320,7 +323,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
 
-    const spawn = DungeonView.tileToWorldCenter(this.dungeon.playerSpawn);
+    const spawn = DungeonView.tileToWorldCenter(this.atBoss ? this.bossStartTile() : this.dungeon.playerSpawn);
     this.player = new Player(this, spawn.x, spawn.y, this.run.hero, this.currentLoadout(), this.startHp);
     this.physics.add.collider(this.player, this.dungeonView.collisionLayer);
 
@@ -1206,6 +1209,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
       };
       this.scene.restart(next);
     });
+  }
+
+  /** `?boss=1`: kafel w arenie, dwa kafle od lewej ściany — dość głęboko, by kraty opadły, i daleko od bossa w środku. */
+  private bossStartTile(): { x: number; y: number } {
+    const arena = this.dungeon.rooms[this.dungeon.bossRoomId]!;
+    return { x: arena.x + 2, y: arena.y + Math.floor(arena.height / 2) };
   }
 
   private setupDebugKeys(): void {
