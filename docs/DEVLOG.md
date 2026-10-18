@@ -3820,6 +3820,28 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
+## Krok 70 — Ekran pauzy `#decyzja` `#hud`
+
+**Decyzja właściciela:** `#decyzja` pauza ma być (wcześniej jej nie było, a nie była to świadoma decyzja), **dostępna zawsze** i **uruchamiana automatycznie po utracie fokusu**.
+
+**Co widać:**
+- **Esc albo P** wstrzymuje grę (także w walce z bossem); ten sam klawisz, kliknięcie myszą lub drugi z klawiszy wznawia. Ekran: przyciemnienie, „PAUZA”, powód (ręczna / utrata fokusu), lista sterowania;
+- **auto-pauza:** gdy okno traci fokus (`blur`) albo karta zostaje ukryta (`hidden`), gra staje na pauzie; po powrocie trzeba ją świadomie wznowić;
+- pauza nie włącza się na ekranie śmierci (tam wpisuje się imię — litera P!), podczas przejścia między piętrami ani przy wyborze nagrody za bossa;
+- wznowienie kliknięciem następuje po **puszczeniu** przycisku, więc kliknięcie wracające do okna nie staje się atakiem; po wznowieniu klawisze są resetowane (puszczone w pauzie nie „zostają wciśnięte”).
+
+**Pułapka: czas gry.** `scene.pause()` zatrzymuje scenę, ale zegar Phasera płynie dalej — po wznowieniu wszystkie czasy odnowienia, zamachy bossów i komunikaty uznałyby, że minęły (pauza = darmowe odnowienie). Rozwiązanie: `systems/PauseClock.ts` — `main.ts` owija `game.step`, a zegar przekazuje scenom czas „zamrożony” na pauzie i ciągnięty dalej od miejsca zatrzymania po wznowieniu. Dziennik diagnostyczny widzi surowy czas (owija zewnętrznie). Nagroda za bossa (krok 9) zostaje bez zmian — ma tweeny, którym zamrożony czas by zaszkodził, a trwa krótko.
+
+**Auto-pauza a narzędzia:** w trybie dev (panel narzędzi zabiera fokus, a `game.step()` ręczny przy wstrzymanej scenie nic by nie dał) i dla bota (`navigator.webdriver`, `npm run smoke`) jest **domyślnie wyłączona**; `?autopause=1` włącza ją zawsze, `?autopause=0` wyłącza zawsze.
+
+**Kod:** `config/pauseConfig.ts` (klawisze, teksty, parametr adresu), `systems/PauseClock.ts` (czysty `PauseClock`, `autoPauseEnabled`), `scenes/PauseScene.ts` (nakładka, bez tweenów), `GameScene.setupPause/pauseGame/resumeGame`, `main.ts` (zegar w `game.registry`), `SceneKey.Pause`. Zdarzenie `pause` w diagnostyce.
+
+**Testy (+6, `tests/systems/pauseClock.test.ts`):** czas stoi w pauzie i płynie od miejsca zatrzymania, sumowanie kolejnych pauz, podwójne begin/end, polityka auto-pauzy.
+
+**Do oceny w testach właściciela:** czy auto-pauza po utracie fokusu nie przeszkadza (np. przy klikaniu poza oknem), czy pokazać na pauzie powiększoną minimapę.
+
+---
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

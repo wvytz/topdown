@@ -31,6 +31,7 @@ export enum SceneKey {
   Game = 'GameScene',
   Hud = 'HudScene',
   Reward = 'RewardScene',
+  Pause = 'PauseScene',
 }
 
 export enum TextureKey {

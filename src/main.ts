@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { PAUSE_CLOCK_KEY } from '@/config/pauseConfig';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import { installDevTools } from '@/diagnostics/devTools';
 import { installDiagnostics } from '@/diagnostics/installDiagnostics';
@@ -6,8 +7,10 @@ import { BootScene } from '@/scenes/BootScene';
 import { GameScene } from '@/scenes/GameScene';
 import { HeroSelectScene } from '@/scenes/HeroSelectScene';
 import { HudScene } from '@/scenes/HudScene';
+import { PauseScene } from '@/scenes/PauseScene';
 import { RewardScene } from '@/scenes/RewardScene';
 import { SplashScene } from '@/scenes/SplashScene';
+import { PauseClock } from '@/systems/PauseClock';
 import { pixelPerfectScale } from '@/systems/pixelScale';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -30,10 +33,15 @@ const config: Phaser.Types.Core.GameConfig = {
     },
   },
   // SplashScene startuje pierwsza i sama uruchamia BootScene (ładowanie pod ekranem startowym).
-  scene: [SplashScene, BootScene, HeroSelectScene, GameScene, HudScene, RewardScene],
+  scene: [SplashScene, BootScene, HeroSelectScene, GameScene, HudScene, RewardScene, PauseScene],
 };
 
 const game = new Phaser.Game(config);
+// Czas gry dla scen stoi w miejscu na pauzie (krok 70) — bez tego po wznowieniu wszystkie odnowienia by „wygasły”.
+const pauseClock = new PauseClock();
+game.registry.set(PAUSE_CLOCK_KEY, pauseClock);
+const stepWithGameTime = game.step.bind(game);
+game.step = (time: number, delta: number) => stepWithGameTime(pauseClock.shift(time), delta);
 // Dziennik błędów i niespotykanych zdarzeń (krok 55): raport pod F9; pętla gry nie zamiera po wyjątku.
 installDiagnostics(game);
 

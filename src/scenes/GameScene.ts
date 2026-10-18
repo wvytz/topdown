@@ -29,6 +29,11 @@ import { carveArenaGalleries } from '@/dungeon/ArenaGalleries';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 import { disguiseFloor, secretArea } from '@/dungeon/SecretRoom';
 import { MINIMAP_CONFIG } from '@/config/minimapConfig';
+import { PAUSE_CLOCK_KEY, PAUSE_CONFIG } from '@/config/pauseConfig';
+import type { PauseReason } from '@/config/pauseConfig';
+import { autoPauseEnabled } from '@/systems/PauseClock';
+import type { PauseClock } from '@/systems/PauseClock';
+import type { PauseSceneData } from '@/scenes/PauseScene';
 import { MinimapExplorer } from '@/systems/Minimap';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
 import { TrapManager } from '@/combat/TrapManager';
@@ -177,6 +182,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private puffballs: PuffballManager | null = null;
   private secretArea: SecretArea | null = null;
   private minimap: MinimapExplorer | null = null;
+  private gamePaused = false;
   private secretRoom: SecretRoomManager | null = null;
   private ambushRoomId: number | null = null;
   private ambush: AmbushManager | null = null;
@@ -259,6 +265,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
+    this.gamePaused = false;
     this.herald = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
@@ -327,6 +334,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.inputController = new InputController(this);
     this.setupCamera();
     this.setupDebugKeys();
+    this.setupPause();
 
     this.setupLighting(biome.tileset, tileset, torchSpots);
 
@@ -997,6 +1005,50 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   /** Nagroda za bossa: gra staje, gracz wybiera 1 z kart. Po wyborze gra rusza dalej. */
+  /** Pauza (krok 70): Esc / P zawsze; auto-pauza po utracie fokusu albo ukryciu karty. */
+  private setupPause(): void {
+    for (const key of PAUSE_CONFIG.keys) {
+      this.input.keyboard?.on(`keydown-${key}`, (event: KeyboardEvent) => {
+        if (!event.repeat) this.pauseGame('manual');
+      });
+    }
+    const onFocusLost = () => {
+      const enabled = autoPauseEnabled(
+        { search: window.location.search, dev: import.meta.env.DEV, webdriver: navigator.webdriver === true },
+        PAUSE_CONFIG.autoPauseParam,
+      );
+      if (enabled) this.pauseGame('focus');
+    };
+    const { events } = this.game;
+    events.on(Phaser.Core.Events.BLUR, onFocusLost);
+    events.on(Phaser.Core.Events.HIDDEN, onFocusLost);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      events.off(Phaser.Core.Events.BLUR, onFocusLost);
+      events.off(Phaser.Core.Events.HIDDEN, onFocusLost);
+    });
+  }
+
+  /** Wstrzymuje grę i pokazuje nakładkę; nic nie robi na ekranie śmierci, przy przejściu między piętrami i podczas wyboru nagrody. */
+  private pauseGame(reason: PauseReason): void {
+    if (this.gamePaused || this.isTransitioning || this.death || !this.player?.active || this.player.isDead) return;
+    if (this.scene.isPaused() || this.scene.isActive(SceneKey.Pause)) return;
+    this.gamePaused = true;
+    (this.registry.get(PAUSE_CLOCK_KEY) as PauseClock | undefined)?.begin();
+    diag.note('pause', { floor: this.floorNumber, reason });
+    const data: PauseSceneData = { reason, onResume: () => this.resumeGame() };
+    this.scene.pause();
+    this.scene.launch(SceneKey.Pause, data);
+  }
+
+  private resumeGame(): void {
+    if (!this.gamePaused) return;
+    this.gamePaused = false;
+    (this.registry.get(PAUSE_CLOCK_KEY) as PauseClock | undefined)?.end();
+    this.scene.resume();
+    // Klawisze puszczone w czasie pauzy nie dotarły do wstrzymanej sceny — bez resetu bohater szedłby sam.
+    this.input.keyboard?.resetKeys();
+  }
+
   private offerBossReward(): void {
     const rng = createRng(deriveSeed(this.dungeon.seed, REWARD_SEED_SALT));
     const choices = rollItemChoices(ITEM_POOL, BOSS_REWARD.choices, rng);
