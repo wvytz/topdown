@@ -22,8 +22,16 @@ describe('Grzybowy Pożeracz (kroki 33–34) — wybór i definicja', () => {
   });
 
   it('wzór: tasak, szarża, zew; kąsanie poza wzorem leczy Pożeracza', () => {
-    expect([...DEVOURER.pattern].sort()).toEqual([BossAttackKind.Call, BossAttackKind.Cleave, BossAttackKind.Leap].sort());
+    expect([...DEVOURER.pattern].sort()).toEqual([BossAttackKind.Call, BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Slam].sort());
     expect(DEVOURER.lash.healOnHit).toBeGreaterThan(0);
+  });
+
+  it('zgniecenie: strefa dookoła Pożeracza z telegrafem; szybszy niż dawniej, ale wolniejszy od gracza', () => {
+    const p = planBossAttack({ kind: BossAttackKind.Slam, definition: DEVOURER, self: SELF, target: { x: 150, y: 0 }, now: 100, enraged: false, rng: createRng(1) });
+    expect(p.strikes[0]!.center).toEqual(SELF);
+    expect(p.strikes[0]!.impactAt).toBe(100 + DEVOURER.slam.telegraphMs);
+    expect(DEVOURER.moveSpeed).toBeGreaterThan(60);
+    expect(DEVOURER.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
   });
 
   it('skalowanie piętra obejmuje tasak', () => {

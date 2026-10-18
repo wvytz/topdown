@@ -260,12 +260,13 @@ export const FUNGAL_DEVOURER = {
   radius: 28,
   color: 0x6a1e24,
   maxHp: 460,
-  moveSpeed: 60,
-  sprint: { speed: 135, distance: 150 },
+  // Wzmocnienie bossów (prośba właściciela): szybszy chód i sprint (gracz ma 200), czwarty cios — zgniecenie.
+  moveSpeed: 70,
+  sprint: { speed: 150, distance: 150 },
   engageDistance: 50,
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1500,
-  pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Call],
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Call, BossAttackKind.Slam],
   patternOrder: PatternOrder.Shuffled,
   // Kąsanie paszczą: szybkie, z bliska; trafienie leczy Pożeracza.
   lash: {
@@ -296,6 +297,14 @@ export const FUNGAL_DEVOURER = {
     recoveryMs: 600,
     damage: 22,
     knockback: 340,
+  },
+  // Zgniecenie: Pożeracz wali łapami w ziemię — fala dookoła niego; karze stanie przy nim.
+  slam: {
+    radius: 88,
+    telegraphMs: 850,
+    recoveryMs: 550,
+    damage: 18,
+    knockback: 320,
   },
   call: {
     telegraphMs: 700,

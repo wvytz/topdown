@@ -928,6 +928,7 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     move: 'walk',
     attacks: {
       [BossAttackKind.Cleave]: 'smash',
+      [BossAttackKind.Slam]: 'smash',
       [BossAttackKind.Lash]: 'bite',
       [BossAttackKind.Feast]: 'feed',
       [BossAttackKind.Call]: 'roar',

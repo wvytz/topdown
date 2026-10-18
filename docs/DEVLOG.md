@@ -3851,6 +3851,14 @@ Prośba właściciela: wzmocnić bossów, zaczynając od drugiego pająka (Król
 - **Skrót `?boss=1`** (narzędzie dev, działa też na Pages jako run testowy): gracz startuje w arenie bossa piętra, 2 kafle od lewej ściany. Np. `?seed=7&floor=3&boss=1` = od razu walka z Królem. Parametr działa tylko na pierwsze piętro runu (`FloorSceneData.atBoss`). Test w `tests/systems/startOverrides.test.ts`; sprawdzone w przeglądarce.
 - Kolejni kandydaci do wzmocnienia (po ocenie Króla): Grzybowy Pożeracz, Strażnik Bram, Kat Otchłani, a także Matka Pająków i Strażnik Piętra.
 
+## Krok 72 — Wzmocnienie bossów: Grzybowy Pożeracz `#decyzja` `#cmentarzysko` `#boss`
+
+Ciąg dalszy prośby z kroku 71, kolejny boss (piętro 4). Tak samo jak u Króla Pająków, **oba** wzmocnienia:
+- **Zgniecenie** (`slam`, mechanika Slam): fala dookoła Pożeracza, promień 88, telegraf 850 ms, obrażenia 18; czwarty cios w wzorze, animacja „smash”.
+- **Chód** 60 → 70, **sprint** 135 → 150 (gracz 200).
+- Testy: `tests/ai/FungalDevourer.test.ts`; `npm run build` zielony. Test w przeglądarce: `?seed=7&floor=4&boss=1`.
+- Dalej: Strażnik Bram, Kat Otchłani, Matka Pająków, Strażnik Piętra.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.
