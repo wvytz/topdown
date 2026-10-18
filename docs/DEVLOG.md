@@ -3895,6 +3895,14 @@ Kolejny boss z prośby z kroku 71 (piętro 6):
 - Testy: `tests/ai/GateWarden.test.ts`; test w przeglądarce: `?seed=7&floor=6&boss=1`.
 - Dalej: Matka Pająków, Strażnik Piętra.
 
+## Krok 77 — Wzmocnienie bossów: Matka Pająków `#decyzja` `#pajecze-leze` `#boss`
+
+Kolejny boss z prośby z kroku 71 (piętro 2):
+- **Tupnięcie** (`slam`): fala dookoła Matki, promień 84, telegraf 800 ms, obrażenia 14; czwarty cios w wzorze (obok wylęgu, sieci i skoku), bez osobnej animacji.
+- **Chód** 70 → 80, **sprint** 150 → 165 (nadal wolniejszy od gracza, 200, i szybszy od gracza spowolnionego siecią, 100 — test balansu).
+- Testy: `tests/ai/SpiderQueen.test.ts` (wzór 4 ciosów, skalowanie tupnięcia, prędkości); test w przeglądarce: `?seed=3&floor=2&boss=1`.
+- Dalej: Strażnik Piętra (piętro 1 i 7+).
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

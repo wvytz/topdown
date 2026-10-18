@@ -79,16 +79,16 @@ describe('Matka Pająków — wylęg z sufitu (krok 26)', () => {
     const brain = new BossBrain(QUEEN, createRng(1));
     brain.activate(0);
     const starts: Array<{ kind: BossAttackKind; at: number; endsAt: number }> = [];
-    for (let now = 0; now < 20_000; now += FRAME) {
+    for (let now = 0; now < 40_000; now += FRAME) {
       const decision = brain.think({ self: SELF, target: { x: 100, y: 0 }, now, hpRatio: 1, summonsAlive: 0 });
       if (decision.newAttack) starts.push({ kind: decision.newAttack.kind, at: now, endsAt: decision.newAttack.endsAt });
       if (!decision.newAttack && decision.speed > 0) expect(decision.move.x).toBeCloseTo(1); // idzie do gracza
     }
-    expect(starts.length).toBeGreaterThanOrEqual(6);
+    expect(starts.length).toBeGreaterThanOrEqual(8);
     expect(starts[0]!.kind).toBe(BossAttackKind.Brood);
     const sorted = [...QUEEN.pattern].sort();
-    expect(starts.slice(0, 3).map((s) => s.kind).sort()).toEqual(sorted);
-    expect(starts.slice(3, 6).map((s) => s.kind).sort()).toEqual(sorted);
+    expect(starts.slice(0, 4).map((s) => s.kind).sort()).toEqual(sorted);
+    expect(starts.slice(4, 8).map((s) => s.kind).sort()).toEqual(sorted);
     for (let i = 1; i < starts.length; i++) {
       const rhythm = starts[i - 1]!.endsAt + QUEEN.restBetweenAttacksMs;
       expect(starts[i]!.at).toBeGreaterThanOrEqual(rhythm);
@@ -96,10 +96,15 @@ describe('Matka Pająków — wylęg z sufitu (krok 26)', () => {
     }
   });
 
+  it('wzmocnienie: tupnięcie w wzorze, szybszy chód', () => {
+    expect(QUEEN.pattern).toContain(BossAttackKind.Slam);
+    expect(QUEEN.moveSpeed).toBeGreaterThan(70);
+  });
+
   it('nie atakuje Strażnikowymi atakami bez ich definicji (błąd konfiguracji jest głośny)', () => {
     expect(() =>
-      planBossAttack({ kind: BossAttackKind.Slam, definition: QUEEN, self: SELF, target: PLAYER_EAST, now: 0, enraged: false, rng: createRng(1) }),
-    ).toThrow(/slam/);
+      planBossAttack({ kind: BossAttackKind.Nova, definition: QUEEN, self: SELF, target: PLAYER_EAST, now: 0, enraged: false, rng: createRng(1) }),
+    ).toThrow(/nova/);
   });
 });
 
@@ -316,7 +321,8 @@ describe('wybór i skalowanie bossa', () => {
     expect(scaled.lash.damage).toBe(scaleForFloor(QUEEN.lash.damage, 2, ENEMY_SCALING.damagePerFloor));
     expect(scaled.lash.status).toEqual(QUEEN.lash.status); // trucizna = Ognista pięść, bez skalowania
     expect(scaled.spiderling.primeMs).toBe(QUEEN.spiderling.primeMs);
-    expect('slam' in scaled).toBe(false);
+    expect(scaled.slam.damage).toBe(scaleForFloor(QUEEN.slam.damage, 2, ENEMY_SCALING.damagePerFloor));
+    expect('nova' in scaled).toBe(false);
   });
 });
 

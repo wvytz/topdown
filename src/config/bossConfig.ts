@@ -71,15 +71,17 @@ export const SPIDER_QUEEN = {
   maxHp: 300,
   // Krok 27 (feedback właściciela: dalej za łatwo): królowa poluje — z daleka sprintem dopada gracza
   // (wolniej niż gracz 200, ale spowolniony siecią nie ucieknie), z bliska podchodzi i smaga nogami.
-  moveSpeed: 70,
-  sprint: { speed: 150, distance: 110 },
+  // Wzmocnienie bossów (prośba właściciela): chód 70 → 80, sprint 150 → 165 (gracz 200, spowolniony siecią 100).
+  moveSpeed: 80,
+  sprint: { speed: 165, distance: 110 },
   // Ciała stykają się przy 40 px (28 + 12) — królowa staje tuż przy graczu.
   engageDistance: 44,
   openingDelayMs: 900,
   // Krok 26: trzy ataki w cyklu, krótsza przerwa (feedback właściciela: walka „banalnie łatwa”).
   restBetweenAttacksMs: 1600,
   // Krok 25: sieć za plecy gracza odcina ucieczkę; krok 26: wylęg z sufitu osacza, a skok karze stanie w miejscu.
-  pattern: [BossAttackKind.Brood, BossAttackKind.Web, BossAttackKind.Leap],
+  // Wzmocnienie bossów: czwarty cios — tupnięcie (Slam) karze stanie przy królowej.
+  pattern: [BossAttackKind.Brood, BossAttackKind.Web, BossAttackKind.Leap, BossAttackKind.Slam],
   // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
   patternOrder: PatternOrder.Shuffled,
   lash: {
@@ -100,6 +102,13 @@ export const SPIDER_QUEEN = {
         durationMs: ITEM_EFFECTS.fireFist.durationMs,
       },
     },
+  },
+  slam: {
+    radius: 84,
+    telegraphMs: 800,
+    recoveryMs: 450,
+    damage: 14,
+    knockback: 280,
   },
   leap: {
     telegraphMs: 650,
