@@ -63,6 +63,14 @@ describe('Strażnik Bram (krok 41e)', () => {
   });
 });
 
+describe('Kat Otchłani — wzmocnienie bossów', () => {
+  it('skok w wzorze, szybszy chód i sprint (wolniejszy od gracza)', () => {
+    expect(ABYSS_EXECUTIONER.pattern).toContain(BossAttackKind.Leap);
+    expect(ABYSS_EXECUTIONER.moveSpeed).toBeGreaterThan(66);
+    expect(ABYSS_EXECUTIONER.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
+  });
+});
+
 describe('Kat Otchłani (krok 41f)', () => {
   const ctx = (over: Partial<AttackPlanContext>): AttackPlanContext => ({
     kind: BossAttackKind.Hook,

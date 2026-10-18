@@ -3886,6 +3886,15 @@ Prośba właściciela: zmiana rozmieszczenia schodów; wybrana opcja — **przy 
 - Testy: `tests/dungeon/stairs.test.ts` (planStairs, arenaCenter), `tests/dungeon/DungeonGenerator.test.ts` (narożnik, odstęp od wejść) — dotychczasowy test „schody wyśrodkowane” zastąpiony. `npm run build` zielony; sprawdzone w przeglądarce (piętra 3, 4, 6 bez błędów).
 - Do oceny: czy narożnik (a nie np. środek ściany) wygląda dobrze i czy po walce nie jest za daleko od gracza.
 
+## Krok 76 — Wzmocnienie bossów: Kat Otchłani `#decyzja` `#piekło` `#boss`
+
+Kolejny boss z prośby z kroku 71 (piętro 6):
+- **Skok** (`leap`): doskok na miejsce gracza, strefa promień 54, telegraf 700 ms, lot 420 ms, obrażenia 20, 700 ms okna na kontrę; czwarty cios w wzorze (obok oddechu palenisk, łańcucha i uderzenia tarczą; hak nadal poza wzorem).
+- **Chód** 66 → 76, **sprint** 145 od 150 px (gracz 200).
+- Tarcza Kata zostaje niezniszczalna (bez `guard` z kroku 74) — czeka na decyzję właściciela.
+- Testy: `tests/ai/GateWarden.test.ts`; test w przeglądarce: `?seed=7&floor=6&boss=1`.
+- Dalej: Matka Pająków, Strażnik Piętra.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

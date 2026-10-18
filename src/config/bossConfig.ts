@@ -415,11 +415,13 @@ export const ABYSS_EXECUTIONER = {
   radius: 32,
   color: 0x6a1010,
   maxHp: 520,
-  moveSpeed: 66,
+  // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i czwarty cios — skok.
+  moveSpeed: 76,
+  sprint: { speed: 145, distance: 150 },
   engageDistance: 58,
   openingDelayMs: 1400,
   restBetweenAttacksMs: 1200,
-  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam, BossAttackKind.Kindle],
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Slam, BossAttackKind.Kindle, BossAttackKind.Leap],
   patternOrder: PatternOrder.Shuffled,
   shield: {
     arcDeg: 120,
@@ -430,6 +432,8 @@ export const ABYSS_EXECUTIONER = {
   },
   slam: { radius: 96, telegraphMs: 850, recoveryMs: 650, damage: 20, knockback: 340 },
   cleave: { reach: 42, radius: 46, telegraphMs: 600, recoveryMs: 750, damage: 22, knockback: 360 },
+  // Skok na miejsce gracza: gdy trzyma dystans, Kat dopada go bez haka; po lądowaniu okno na kontrę.
+  leap: { telegraphMs: 700, flightMs: 420, radius: 54, damage: 20, knockback: 340, recoveryMs: 700 },
   hook: {
     minRange: 130,
     maxRange: 260,
