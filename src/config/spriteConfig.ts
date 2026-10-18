@@ -917,6 +917,7 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Lash]: 'stab',
       [BossAttackKind.Flurry]: 'stab',
       [BossAttackKind.CocoonThrow]: 'stab',
+      [BossAttackKind.Slam]: 'stab',
     },
     deathDecal: 'splat',
     death: { sheet: 'spiderKingDeath', animation: 'die' },

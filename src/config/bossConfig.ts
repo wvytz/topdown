@@ -173,12 +173,15 @@ export const SPIDER_KING = {
   radius: 34,
   color: 0x6a8a3a,
   maxHp: 420,
-  // Ciężki: chodzi powoli, ale nie odpuszcza — podchodzi na odległość kos.
-  moveSpeed: 55,
+  // Ciężki, ale nie ślamazarny (wzmocnienie bossów, prośba właściciela): z daleka dobiega sprintem,
+  // z bliska podchodzi na odległość kos. Sprint wolniejszy od gracza (200).
+  moveSpeed: 66,
+  sprint: { speed: 120, distance: 130 },
   engageDistance: 52,
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1500,
-  pattern: [BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow],
+  // Wzmocnienie bossów: czwarty cios — tupnięcie (Slam) karze stanie przy Królu.
+  pattern: [BossAttackKind.Bloom, BossAttackKind.Flurry, BossAttackKind.CocoonThrow, BossAttackKind.Slam],
   // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
   patternOrder: PatternOrder.Shuffled,
   // Ścięcie kosami: wolny, czytelny zamach, ale trafienie boli i paraliżuje.
@@ -214,6 +217,14 @@ export const SPIDER_KING = {
     recoveryMs: 400,
     damage: 6,
     knockback: 0,
+  },
+  // Tupnięcie: fala dookoła Króla, wolny czytelny zamach — trzeba odskoczyć poza zasięg.
+  slam: {
+    radius: 90,
+    telegraphMs: 850,
+    recoveryMs: 500,
+    damage: 16,
+    knockback: 300,
   },
   bloom: {
     telegraphMs: 800,

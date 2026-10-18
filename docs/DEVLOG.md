@@ -3842,6 +3842,14 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ---
 
+## Krok 71 — Wzmocnienie bossów: Król Pająków `#decyzja` `#grzybnia` `#boss`
+
+Prośba właściciela: wzmocnić bossów, zaczynając od drugiego pająka (Król Pająków, piętro 3) — dodatkowy cios albo większa prędkość. Zrobione **oba** (tylko Król; reszta czeka na ocenę):
+- **Tupnięcie** (`slam`, mechanika Slam): fala dookoła Króla, promień 90, telegraf 850 ms, obrażenia 16 — czwarty cios w wzorze (worek losowej kolejności: każdy atak raz na rundę). Animacja „stab” jak przy pozostałych ciosach.
+- **Chód** 55 → 66, do tego **sprint** z daleka (120 px/s od 130 px; gracz ma 200, więc nadal da się uciec).
+- Testy: `tests/ai/SpiderKing.test.ts` (wzór 4 ciosów, tupnięcie, skalowanie, prędkości). `npm run build` zielony.
+- Kolejni kandydaci do wzmocnienia (po ocenie Króla): Grzybowy Pożeracz, Strażnik Bram, Kat Otchłani, a także Matka Pająków i Strażnik Piętra.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

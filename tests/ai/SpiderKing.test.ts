@@ -81,6 +81,16 @@ describe('Król Pająków — ataki', () => {
     expect(enraged.throws[1]!.to.y).toBeCloseTo(PLAYER.y + T.behindDistance);
   });
 
+  it('tupnięcie: strefa dookoła Króla, wolny telegraf; Król jest szybszy niż dawniej, ale wolniejszy od gracza', () => {
+    const p = plan(BossAttackKind.Slam, 200);
+    expect(p.strikes[0]!.center).toEqual(SELF);
+    expect(p.strikes[0]!.impactAt).toBe(200 + KING.slam.telegraphMs);
+    expect(KING.pattern).toContain(BossAttackKind.Slam);
+    expect(KING.moveSpeed).toBeGreaterThan(55);
+    expect(KING.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
+    expect(scaleBossForFloor(KING, 3, ENEMY_SCALING).slam.damage).toBe(scaleForFloor(KING.slam.damage, 3, ENEMY_SCALING.damagePerFloor));
+  });
+
   it('wysyp grzybni: pierwszy płat pod graczem, reszta w pierścieniu; płat rośnie, truje i leży długo', () => {
     const B = KING.bloom;
     const p = plan(BossAttackKind.Bloom, 0);
@@ -105,16 +115,16 @@ describe('Król Pająków — ataki', () => {
     expect((PLAYER_BASE_STATS.moveSpeed * (KING.bloom.telegraphMs * KING.enrage.telegraphMultiplier - 200)) / 1000).toBeGreaterThan(KING.bloom.startRadius + 12);
   });
 
-  it('wzór: zaczyna od grzybni, potem grzybnia, sztylety i kokon w każdej rundzie (gracz poza zasięgiem kos)', () => {
+  it('wzór: zaczyna od grzybni, potem grzybnia, sztylety, kokon i tupnięcie w każdej rundzie (gracz poza zasięgiem kos)', () => {
     const brain = new BossBrain(KING, createRng(1));
     brain.activate(0);
     const kinds: BossAttackKind[] = [];
-    for (let now = 0; now < 20_000; now += FRAME) {
+    for (let now = 0; now < 40_000; now += FRAME) {
       const d = brain.think({ self: SELF, target: { x: 0, y: 200 }, now, hpRatio: 1 });
       if (d.newAttack) kinds.push(d.newAttack.kind);
     }
     expect(kinds[0]).toBe(BossAttackKind.Bloom);
-    for (const round of [kinds.slice(0, 3), kinds.slice(3, 6)]) expect([...round].sort()).toEqual([...KING.pattern].sort());
+    for (const round of [kinds.slice(0, 4), kinds.slice(4, 8)]) expect([...round].sort()).toEqual([...KING.pattern].sort());
   });
 });
 
