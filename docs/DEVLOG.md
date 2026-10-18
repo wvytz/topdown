@@ -3911,6 +3911,13 @@ Ostatni boss z prośby z kroku 71 (piętro 1 oraz piętra bez własnego bossa, n
 - Testy: `tests/ai/attackPattern.test.ts`, `tests/ai/BossBrain.test.ts` (długość rundy ze wzoru zamiast stałej 3); test w przeglądarce: `?seed=7&floor=1&boss=1`.
 - **Prośba „wzmocnij bossów” zrobiona dla wszystkich sześciu** (kroki 71–78; tarcza Strażnika Bram z wytrzymałością w kroku 74, tarcza Kata bez zmian). Do oceny właściciela w testach; nie łagodzimy bez sygnału.
 
+## Krok 79 — Kat Otchłani: pękająca tarcza `#ocena` `#decyzja` `#piekło` `#boss`
+
+Decyzja właściciela: tarcza Kata ma działać jak u Strażnika Bram (krok 74).
+- `ABYSS_EXECUTIONER.shield.guard`: `hp: 110`, `breakMs: 3500` (Kat ma więcej HP niż Strażnik, więc nieco wytrzymalsza tarcza). Ciosy wręcz w tarczę ją zbijają, po wyzerowaniu pęka na 3,5 s i Kat jest odsłonięty ze wszystkich stron, potem wraca pełna.
+- Rozgrzewanie żelaza promieniem (wybuch żaru po 6 tickach) i odbijanie pocisków zostają, dopóki tarcza stoi; pęknięta nie rozgrzewa się i nie odbija.
+- Test: `?seed=7&floor=6&boss=1`. Do strojenia: `guard.hp`, `breakMs`.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.

@@ -449,6 +449,8 @@ export const ABYSS_EXECUTIONER = {
     frontMeleeMultiplier: 0.5,
     reflectSpeed: 0.9,
     heat: { ticks: 6, radius: 96, telegraphMs: 600, damage: 16, knockback: 320 },
+    // Krok 79 (jak Strażnik Bram w kroku 74): ciosy w tarczę ją zbijają, pęknięta odsłania Kata na kilka sekund.
+    guard: { hp: 110, breakMs: 3500 },
   },
   slam: { radius: 96, telegraphMs: 850, recoveryMs: 650, damage: 20, knockback: 340 },
   cleave: { reach: 42, radius: 46, telegraphMs: 600, recoveryMs: 750, damage: 22, knockback: 360 },

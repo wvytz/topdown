@@ -37,11 +37,13 @@ describe('Strażnik Bram (krok 41e)', () => {
     expect(GATE_WARDEN.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
   });
 
-  it('wytrzymałość tarczy: Strażnik ją ma, Kat nie; pęknięcie trwa kilka sekund i wymaga kilku ciosów', () => {
-    const guard = GATE_WARDEN.shield.guard;
-    expect(guard.hp).toBeGreaterThan(0);
-    expect(guard.breakMs).toBeGreaterThanOrEqual(2000);
-    expect(ABYSS_EXECUTIONER.shield).not.toHaveProperty('guard');
+  it('wytrzymałość tarczy: Strażnik i Kat ją mają; pęknięcie trwa kilka sekund i wymaga kilku ciosów', () => {
+    for (const boss of [GATE_WARDEN, ABYSS_EXECUTIONER]) {
+      const guard = boss.shield.guard;
+      expect(guard.hp).toBeGreaterThan(0);
+      expect(guard.breakMs).toBeGreaterThanOrEqual(2000);
+    }
+    expect(ABYSS_EXECUTIONER.shield.heat.ticks).toBeGreaterThan(0); // rozgrzewanie promieniem zostaje
   });
 
   it('ShieldGuard: ciosy zbijają tarczę, zero ją pęka na czas, potem wraca pełna', () => {
