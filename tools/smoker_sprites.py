@@ -37,9 +37,10 @@ FLOOR = trt.PALETTES['piaskowiec'].floor[2]
 
 # Skóra: ciepły róż (łysa kopuła musi być jasna — „wysokie czoło” czytelne w sylwetce).
 SKIN = (ok(.46, .060, 40), ok(.58, .070, 42), ok(.69, .075, 45), ok(.78, .070, 50), ok(.88, .050, 60))
-# Brudny, rozciągnięty podkoszulek: wypłowiały szaro-niebieski.
-SHIRT = (ok(.44, .020, 250), ok(.54, .022, 250), ok(.64, .022, 250), ok(.74, .020, 250), ok(.84, .016, 250))
-PANTS = (ok(.24, .020, 270), ok(.30, .022, 270), ok(.37, .024, 270), ok(.44, .024, 270), ok(.52, .022, 270))
+# T-shirt: ciemnoszary (biały nadruk i paski muszą się odcinać), spodnie: niebieski jeans.
+SHIRT = (ok(.17, .008, 260), ok(.22, .008, 260), ok(.28, .008, 260), ok(.36, .008, 260), ok(.45, .008, 260))
+PANTS = (ok(.34, .080, 255), ok(.42, .090, 255), ok(.50, .100, 255), ok(.58, .100, 252), ok(.66, .090, 250))
+PRINT = ok(.96, .004, 90)  # biały nadruk i paski (nie czysta biel)
 WOOD = (ok(.28, .050, 55), ok(.36, .065, 55), ok(.45, .075, 55), ok(.54, .075, 58))
 # Dym: ciepła, jasna szarość (jaśniejsza od podłogi, ciemniejsza od kości).
 SMOKE = (ok(.62, .008, 90), ok(.72, .008, 90), ok(.81, .008, 90), ok(.89, .008, 90))
@@ -76,6 +77,26 @@ def can_sprite(img, x, y, tilt=0):
     img.put(int(x), int(y), CAN[2])  # błyskawica z logo
 
 
+GLYPHS = {
+    'G': ('.##', '#..', '#.#', '#.#', '.##'),
+    '2': ('##.', '..#', '.#.', '#..', '###'),
+    'B': ('##.', '#.#', '##.', '#.#', '##.'),
+    'A': ('.#.', '#.#', '###', '#.#', '#.#'),
+    'X': ('#.#', '#.#', '.#.', '#.#', '#.#'),
+    '4': ('#.#', '#.#', '###', '..#', '..#'),
+}
+
+
+def print_text(img, text, cx, top):
+    """Nadruk na koszulce: czcionka 3x5, litery co 4 px, wyśrodkowane na cx; tylko na istniejących pikselach."""
+    x0 = int(cx - (len(text) * 4 - 1) / 2)
+    for i, ch in enumerate(text):
+        for dy, row in enumerate(GLYPHS[ch]):
+            for dx, v in enumerate(row):
+                if v == '#' and img.get(x0 + i * 4 + dx, top + dy) and img.get(x0 + i * 4 + dx, top + dy)[3]:
+                    img.put(x0 + i * 4 + dx, top + dy, PRINT)
+
+
 def baron_frame(f):
     """Baron na N. f 0–3 chód; 4–7 smuga dymu; 8–11 uderzenie brzuchem; 12–15 rzut puszką; 16–19 łyk."""
     img = Img(CELL, CELL)
@@ -91,8 +112,8 @@ def baron_frame(f):
 
     # stopy (wielkie buty pod brzuchem), naprzemiennie
     for side, dy in ((-1, step), (1, -step)):
-        ellipse(img, C + side * 10, cy + 17 + dy, 6, 5.5, band_shade(PANTS))
-        img.put(int(C + side * 10), int(cy + 21 + dy), PANTS[0])
+        ellipse(img, C + side * 11, cy + 22 + dy, 7, 6.5, band_shade(PANTS))
+        img.put(int(C + side * 11), int(cy + 27 + dy), PANTS[0])
     # tułów: szerokie barki i plecy w koszulce
     ellipse(img, C, cy, 26, 21, band_shade(SHIRT))
     # BRZUCH: ogromny, wypychany do przodu (N); pod koszulką pasy napięcia, na dole kawałek skóry
@@ -103,6 +124,16 @@ def baron_frame(f):
             img.put(int(bx + dx + (1 if dy > 0 else 0)), int(by + 4 + dy + abs(i - 1)), SHIRT[0])
     ellipse(img, bx, by - 13 - belly_r, 7, 3.2, lambda nx, ny: SKIN[2] if ny < .2 else SKIN[1])  # odsłonięty pępek
     img.put(int(bx), int(by - 13 - belly_r), SKIN[0])
+    # paski na ramionach (białe, po dwa) i nadruk: „G2” na brzuchu, na plecach „BAX” nad numerem „4”
+    for side in (-1, 1):
+        for off in (21, 24):
+            for dy in range(-9, 4):
+                px = int(C + side * off - (1 if side < 0 else 0))
+                if img.get(px, int(cy + dy)) and img.get(px, int(cy + dy))[3]:
+                    img.put(px, int(cy + dy), PRINT)
+    print_text(img, 'G2', bx, int(by - 4))
+    print_text(img, 'BAX', C, int(cy + 10 + max(0, belly_r)))
+    print_text(img, '4', C, int(cy + 16 + max(0, belly_r)))
     # lewe ramię (obraz: lewa strona) z puszką; prawe z fajką
     lhand = (C - 25, cy - 20)
     rhand = (C + 25, cy - 20)
