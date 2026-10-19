@@ -54,6 +54,8 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planCall(ctx);
     case BossAttackKind.Hook:
       return planHook(ctx);
+    case BossAttackKind.Roar:
+      return planRoar(ctx);
     case BossAttackKind.Kindle:
       return planKindle(ctx);
     case BossAttackKind.Feast:
@@ -159,6 +161,15 @@ function required<T>(value: T | undefined, kind: BossAttackKind, ctx: AttackPlan
 
 function telegraph(ctx: AttackPlanContext, baseMs: number): number {
   return Math.round(baseMs * (ctx.enraged ? ctx.definition.enrage.telegraphMultiplier : 1));
+}
+
+/** Ryk wściekłości: fala wokół bossa po stałym telegrafie (wściekłość go nie skraca — to jej zapowiedź). */
+function planRoar(ctx: AttackPlanContext): BossAttackPlan {
+  const roar = ctx.definition.enrage.roar;
+  if (!roar) throw new Error(`Boss „${ctx.definition.name}”: ryk bez definicji (enrage.roar).`);
+  const impactAt = ctx.now + roar.telegraphMs;
+  const strike = { center: ctx.self, radius: roar.radius, telegraphStartAt: ctx.now, impactAt, damage: roar.damage, knockback: roar.knockback };
+  return { kind: BossAttackKind.Roar, ...EMPTY, strikes: [strike], endsAt: impactAt + roar.recoveryMs };
 }
 
 function planSlam(ctx: AttackPlanContext): BossAttackPlan {

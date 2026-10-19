@@ -420,6 +420,9 @@ export class BossFight {
   private schedule(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
     if (plan.kind === BossAttackKind.Kindle) this.kindleBraziers(plan);
+    if (plan.kind === BossAttackKind.Roar && this.boss) {
+      this.deps.effects.floatingText(this.boss.x, this.boss.y - this.boss.radius - 8, 'Ryk!', '#ff5a3c');
+    }
     // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
     const planned = plan.leap;
     const landing = planned ? this.startLeap(planned) : null;

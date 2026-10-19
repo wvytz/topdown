@@ -34,6 +34,8 @@ export enum BossAttackKind {
   Hook = 'hook',
   /** Oddech palenisk (Kat Otchłani): wszystkie paleniska areny buchają naraz. */
   Kindle = 'kindle',
+  /** Ryk wściekłości (krok 81): raz, przy wejściu we wściekłość — fala odrzuca gracza od bossa. Poza wzorem. */
+  Roar = 'roar',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -329,6 +331,14 @@ export interface BossEnrageConfig {
   readonly hpThreshold: number;
   readonly telegraphMultiplier: number;
   readonly restMultiplier: number;
+  /**
+   * Kombinacje (krok 81): we wściekłości ataki ze wzoru idą seriami po `comboLength` — między atakami serii
+   * tylko `comboGapMs` przerwy, pełna (skrócona wściekłością) przerwa dopiero po serii. Brak = bez serii.
+   */
+  readonly comboLength?: number;
+  readonly comboGapMs?: number;
+  /** Ryk przy wejściu we wściekłość (krok 81): fala wokół bossa, głównie odrzut. Brak = bez ryku. */
+  readonly roar?: SlamAttackDefinition;
 }
 
 /**

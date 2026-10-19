@@ -47,6 +47,11 @@ export class BossBrain {
   private nextFeastAt = Infinity;
   /** Stosy wzmocnienia z uczt (Grzybowy Pożeracz). */
   private stacks = 0;
+  /** Boss walczył już spokojnie (ryk tylko przy przejściu we wściekłość, nie gdy walka zaczyna się od niej). */
+  private wasCalm = false;
+  private roared = false;
+  /** Ataki ze wzoru wykonane we wściekłości — liczy serie kombinacji (krok 81). */
+  private enragedAttacks = 0;
 
   constructor(
     private readonly definition: BossDefinition,
@@ -95,13 +100,23 @@ export class BossBrain {
     if (this.currentAttack && input.now < this.currentAttack.endsAt) return stand(null);
     this.currentAttack = null;
 
+    // Ryk (krok 81): przy wejściu we wściekłość boss przerywa rytm i odrzuca gracza; kolejny atak po ryku.
+    const { enrage } = this.definition;
+    if (!enraged) this.wasCalm = true;
+    else if (enrage.roar && this.wasCalm && !this.roared) {
+      this.roared = true;
+      const plan = this.plan(BossAttackKind.Roar, input, enraged);
+      this.currentAttack = plan;
+      this.nextAttackAt = Math.max(this.nextAttackAt, plan.endsAt);
+      return stand(plan);
+    }
+
     if (input.now >= this.nextAttackAt) {
       const kind = this.pattern.next();
       if (kind !== null) {
         const plan = this.plan(kind, input, enraged);
-        const rest = this.definition.restBetweenAttacksMs * (enraged ? this.definition.enrage.restMultiplier : 1);
         this.currentAttack = plan;
-        this.nextAttackAt = plan.endsAt + rest;
+        this.nextAttackAt = plan.endsAt + this.restAfterAttack(enraged);
         return stand(plan);
       }
     }
@@ -144,6 +159,16 @@ export class BossBrain {
 
     if (gap <= this.definition.engageDistance) return stand(null);
     return { move: directionTo(input.self, input.target), speed: this.speedFor(gap), newAttack: null, enraged };
+  }
+
+  /** Przerwa po ataku ze wzoru; we wściekłości w środku serii kombinacji tylko krótka luka (krok 81). */
+  private restAfterAttack(enraged: boolean): number {
+    const { restBetweenAttacksMs, enrage } = this.definition;
+    if (!enraged) return restBetweenAttacksMs;
+    this.enragedAttacks++;
+    const combo = enrage.comboLength ?? 1;
+    if (combo > 1 && this.enragedAttacks % combo !== 0) return enrage.comboGapMs ?? 0;
+    return restBetweenAttacksMs * enrage.restMultiplier;
   }
 
   /** Chód albo sprint (z daleka), przyspieszony stosami uczt. */

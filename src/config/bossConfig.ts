@@ -21,6 +21,16 @@ const RETINUE_BASE = {
   minPlayerDistanceTiles: 3,
 } as const;
 
+/**
+ * Mocniejsza wściekłość (krok 81, wybór właściciela): ataki ze wzoru seriami po dwa (między nimi krótka luka)
+ * i ryk przy wejściu we wściekłość — fala odrzuca gracza od bossa, lekko rani. Telegrafy zostają.
+ */
+const ENRAGE_FURY = {
+  comboLength: 2,
+  comboGapMs: 300,
+  roar: { radius: 110, telegraphMs: 600, recoveryMs: 700, damage: 6, knockback: 420 },
+} as const;
+
 /** Pierwszy boss: „Strażnik Piętra”. Sekwencja: uderzenie → pierścień pocisków → ostrzał stref. */
 export const FLOOR_GUARDIAN = {
   id: BossId.FloorGuardian,
@@ -77,6 +87,7 @@ export const FLOOR_GUARDIAN = {
     knockback: 200,
   },
   enrage: {
+    ...ENRAGE_FURY,
     hpThreshold: 0.5,
     telegraphMultiplier: 0.75,
     restMultiplier: 0.6,
@@ -189,6 +200,7 @@ export const SPIDER_QUEEN = {
     knockback: 240,
   },
   enrage: {
+    ...ENRAGE_FURY,
     hpThreshold: 0.5,
     telegraphMultiplier: 0.75,
     restMultiplier: 0.6,
@@ -279,6 +291,7 @@ export const SPIDER_KING = {
     recoveryMs: 300,
   },
   enrage: {
+    ...ENRAGE_FURY,
     hpThreshold: 0.5,
     telegraphMultiplier: 0.75,
     restMultiplier: 0.6,
@@ -367,6 +380,7 @@ export const FUNGAL_DEVOURER = {
     maxStacks: 4,
   },
   enrage: {
+    ...ENRAGE_FURY,
     hpThreshold: 0.5,
     telegraphMultiplier: 0.8,
     restMultiplier: 0.65,
@@ -435,6 +449,7 @@ export const GATE_WARDEN = {
     recoveryMs: 700,
   },
   enrage: {
+    ...ENRAGE_FURY,
     hpThreshold: 0.5,
     telegraphMultiplier: 0.8,
     restMultiplier: 0.65,
@@ -498,6 +513,7 @@ export const ABYSS_EXECUTIONER = {
   arenaBraziers: 4,
   fireRing: { minRadius: 110, shrinkMs: 25000, damage: 8, knockback: 200 },
   enrage: {
+    ...ENRAGE_FURY,
     hpThreshold: 0.5,
     telegraphMultiplier: 0.8,
     restMultiplier: 0.65,
@@ -554,6 +570,7 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.fireRing && { fireRing: dmg(boss.fireRing) }),
     ...(boss.shield?.heat && { shield: { ...boss.shield, heat: dmg(boss.shield.heat)! } }),
     ...(boss.spiderling && { spiderling: dmg(boss.spiderling) }),
+    ...(boss.enrage.roar && { enrage: { ...boss.enrage, roar: dmg(boss.enrage.roar)! } }),
   };
 }
 

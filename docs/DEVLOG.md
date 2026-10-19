@@ -3927,6 +3927,14 @@ Druga runda wzmacniania bossów; wybór właściciela: **pomocnicy w walce** —
 - Liczby w `config/bossConfig.ts` (`RETINUE_BASE` + nadpisania), wygląd znacznika `RETINUE_MARKER_VISUAL` w `spriteConfig.ts`.
 - Testy: `tests/systems/BossRetinue.test.ts` (rytm, wściekłość, limit, miejsca, determinizm, konfiguracja). Przeglądarka: piętra 2 i 3 z `?boss=1` — po ok. 10 s walki przybywa jeden wróg, bez błędów. Znacznik w mroku/mgle bywa słabo widoczny — do oceny.
 
+## Krok 81 — Mocniejsza wściekłość bossów `#decyzja` `#boss`
+
+Trzecia runda wzmacniania; wybór właściciela: **mocniejsza wściekłość** (wyraźna druga faza walki).
+- **Ryk** (`BossAttackKind.Roar`, `enrage.roar`): przy wejściu we wściekłość (poniżej 50% HP) boss kończy bieżący atak i ryczy — czerwona strefa wokół niego (promień 110, telegraf 600 ms, stały — wściekłość go nie skraca), fala odrzuca gracza (knockback 420) i lekko rani (6, skaluje się z piętrem), napis „Ryk!”. Raz na walkę; nie ma go, gdy walka zaczyna się od wściekłości. Do tego dotychczasowy baner i drżenie ekranu.
+- **Serie** (`enrage.comboLength: 2`, `comboGapMs: 300`): we wściekłości ataki ze wzoru idą parami — między atakami pary tylko 0,3 s luki, pełna (skrócona wściekłością) przerwa dopiero po parze. Telegrafy zostają (czytelność), ale presja rośnie wyraźnie.
+- Wspólne dla wszystkich sześciu bossów (`ENRAGE_FURY` w `config/bossConfig.ts`).
+- Testy: `tests/ai/enrageFury.test.ts` (ryk raz i we właściwej chwili, brak ryku przy starcie we wściekłości, pary i przerwy, skalowanie). Przeglądarka: Strażnik Bram z HP zbitym poniżej progu — ryk, potem uderzenie tarczą i łańcuch z krótką luką, bez błędów.
+
 ## Notka z sesji (17.10) `#ocena`
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.
