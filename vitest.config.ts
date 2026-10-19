@@ -9,6 +9,8 @@ export default mergeConfig(
       include: ['tests/**/*.test.ts'],
       // Testujemy czystą logikę — bez przeglądarki i bez Phasera.
       environment: 'node',
+      // Testy arkuszy grafik (piksele, kafle) czytają duże PNG — na wolniejszym dysku (OneDrive, Windows) przekraczały 5 s.
+      testTimeout: 30_000,
     },
   }),
 );
