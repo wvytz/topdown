@@ -4009,6 +4009,15 @@ Prośba właściciela po przeglądzie nagrania: naprawić **ostrzał bossa z zew
 
 ---
 
+## Krok 87 — Osłabienie łucznika (LPM) `#ocena` `#decyzja` `#lucznik`
+
+Feedback właściciela: łucznik jest za mocny — obniżyć obrażenia i tempo ataku na LPM.
+- **Obrażenia łuku:** kliknięcie 5 → 4, pełne naciągnięcie 24 → 18 (−25%; salwa PPM bez zmian).
+- **Tempo LPM:** czas pełnego naciągnięcia 0,7 → 0,9 s, przerwa po strzale 0,25 → 0,4 s (łącznie najszybszy strzał pełny co ok. 1,3 s zamiast 0,95 s). Liczby moje — do potwierdzenia w testach właściciela.
+- Testy łuku liczą z konfiguracji, więc przechodzą bez zmian.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

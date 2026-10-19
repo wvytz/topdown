@@ -97,17 +97,18 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       kind: 'archery',
       archery: {
         bow: {
-          // Kliknięcie: słaba strzała; pełne naciągnięcie (0,7 s): mocna, szybsza, przebijająca.
-          minDamage: 5,
-          maxDamage: 24,
+          // Kliknięcie: słaba strzała; pełne naciągnięcie (0,9 s): mocna, szybsza, przebijająca.
+          // Krok 87 (feedback właściciela: łucznik za mocny): obrażenia −25% (5/24 → 4/18), wolniejszy LPM (naciąg 0,7 → 0,9 s, przerwa 0,25 → 0,4 s).
+          minDamage: 4,
+          maxDamage: 18,
           minKnockback: 60,
           maxKnockback: 200,
           minSpeed: 380,
           maxSpeed: 620,
           lifetimeMs: 600,
           radius: 4,
-          drawMs: 700,
-          cooldownMs: 250,
+          drawMs: 900,
+          cooldownMs: 400,
           fullDrawPierce: 1,
           moveSpeedMultiplier: 0.6,
           forwardOffset: 14,
