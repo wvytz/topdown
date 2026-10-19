@@ -521,6 +521,75 @@ export const ABYSS_EXECUTIONER = {
 } satisfies BossDefinition;
 
 /**
+ * „Baron Dymu” (krok 83, boss piętra 7 — prośba właściciela): gruby ziomek z wysokim czołem i wielkim brzuchem,
+ * puszką napoju energetycznego w lewej ręce i fajką w prawej (druga w ustach, dym przy twarzy). U boku ma czarnego doga.
+ * - smuga dymu z prawej fajki (atak „prawej ręki”): trafienie przywołuje doga z rogu widoku;
+ * - uderzenie brzuchem dookoła i salwa puszek z lewej ręki (lądują w strefach wokół gracza);
+ * - dog (`dog`) to osobny boss-pomocnik: własne HP, skok z rogu, pościg i kłapnięcia;
+ * - wściekłość: Baron wypija puszkę i ryczy (odrzut), potem ataki idą seriami.
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const SMOKE_BARON = {
+  id: BossId.SmokeBaron,
+  name: 'Baron Dymu',
+  title: 'Pan Puszki i Fajki',
+  enragedLabel: 'Pełen energii!',
+  radius: 34,
+  color: 0x8a8a80,
+  maxHp: 640,
+  moveSpeed: 62,
+  sprint: { speed: 130, distance: 170 },
+  engageDistance: 70,
+  openingDelayMs: 1300,
+  restBetweenAttacksMs: 1250,
+  pattern: [BossAttackKind.Smoke, BossAttackKind.Slam, BossAttackKind.Barrage],
+  patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): Rusher biomu; dog już jest pomocnikiem, więc wezwania rzadsze niż u Kata.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 17000, enragedEveryMs: 12000 },
+  smoke: {
+    telegraphMs: 800,
+    recoveryMs: 700,
+    damage: 8,
+    knockback: 120,
+    length: 280,
+    step: 22,
+    startRadius: 14,
+    endRadius: 34,
+  },
+  // Uderzenie brzuchem: strefa dookoła, ciężka.
+  slam: { radius: 92, telegraphMs: 850, recoveryMs: 650, damage: 18, knockback: 330 },
+  // Puszki z lewej ręki: lądują w strefach wokół gracza (pierwsza celuje w niego).
+  barrage: {
+    zoneCount: 4,
+    zoneRadius: 38,
+    spread: 110,
+    intervalMs: 300,
+    telegraphMs: 900,
+    recoveryMs: 450,
+    damage: 13,
+    knockback: 180,
+    thrown: { flightMs: 450 },
+  },
+  dog: {
+    radius: 15,
+    maxHp: 150,
+    moveSpeed: 150,
+    heelDistance: 54,
+    guardRange: 90,
+    lunge: { telegraphMs: 700, lockBeforeMs: 250, speed: 460, durationMs: 850, damage: 14, knockback: 300, recoveryMs: 900 },
+    bite: { triggerRange: 36, reach: 24, radius: 24, telegraphMs: 380, recoveryMs: 700, damage: 9, knockback: 160 },
+    summonCooldownMs: 9000,
+    respawnMs: 15000,
+  },
+  enrage: {
+    ...ENRAGE_FURY,
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
  * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
  */
@@ -530,6 +599,7 @@ export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   4: FUNGAL_DEVOURER,
   5: GATE_WARDEN,
   6: ABYSS_EXECUTIONER,
+  7: SMOKE_BARON,
 };
 
 /** Boss piętra; od piętra 7 kolejny krąg wieży powtarza bossów 1–6 (krok 43). */
@@ -567,6 +637,15 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.cleave && { cleave: dmg(boss.cleave) }),
     ...(boss.hook && { hook: { ...dmg(boss.hook)!, followUp: dmg(boss.hook.followUp)! } }),
     ...(boss.kindle && { kindle: dmg(boss.kindle) }),
+    ...(boss.smoke && { smoke: dmg(boss.smoke) }),
+    ...(boss.dog && {
+      dog: {
+        ...boss.dog,
+        maxHp: scaleForFloor(boss.dog.maxHp, floor, scaling.hpPerFloor),
+        lunge: dmg(boss.dog.lunge)!,
+        bite: dmg(boss.dog.bite)!,
+      },
+    }),
     ...(boss.fireRing && { fireRing: dmg(boss.fireRing) }),
     ...(boss.shield?.heat && { shield: { ...boss.shield, heat: dmg(boss.shield.heat)! } }),
     ...(boss.spiderling && { spiderling: dmg(boss.spiderling) }),

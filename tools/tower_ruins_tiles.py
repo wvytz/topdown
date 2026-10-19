@@ -302,6 +302,20 @@ PALETTES = {
         # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
         mycel=oks((.55, .045, 215), (.76, .075, 205)),
     ),
+    # Zadymiona palarnia (piętro 7, krok 83): brudny kamień zżółkły od nikotyny, dym zamiast mroku. Ciemniejsza od ruin
+    # (każdy biom mroczniejszy), ale jaśniejsza niż Piekło — dym ma być szary, nie czarny. Plamy to nikotynowa żółć.
+    'dymna_palarnia': Palette(
+        key='dymna_palarnia', label='Dymna palarnia (nikotynowa szarość)',
+        floor=oks((.31, .016, 85), (.38, .015, 85), (.44, .018, 88), (.485, .020, 90), (.53, .022, 92), (.58, .024, 95)),
+        floor_alt=ok(.42, .018, 80),
+        wall_top=oks((.18, .014, 85), (.28, .014, 85), (.40, .018, 88), (.47, .020, 90), (.55, .022, 92), (.63, .022, 95)),
+        wall_block_alt=ok(.38, .018, 82),
+        wall_face=oks((.14, .014, 85), (.20, .014, 85), (.25, .014, 85)),
+        wall_fade=oks((.11, .012, 85), (.16, .012, 85), (.19, .012, 85)),
+        deep=oks((.08, .010, 85), (.10, .010, 85)),
+        stain=oks((.36, .070, 85), (.42, .085, 88)),
+        ash=oks((.55, .010, 85), (.48, .010, 250)),
+    ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
     # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
     # A: krwawy bazalt — prawie czarna, chłodna skała z nutą czerwieni; czerwień niesie krew i żar.
@@ -364,6 +378,8 @@ BIOMES = {
     # Piekło (krok 41a): krwisty, demoniczny biom z paleniskami; czerwień i pomarańcz z prośby właściciela,
     # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
     'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
+    # Zadymiona palarnia (krok 83): piętro Barona Dymu; kafle bez dodatków (jak ruiny), inna paleta.
+    'smoke_den': {'palette': 'dymna_palarnia', 'extras': (), 'reserved_hues': True},
 }
 
 

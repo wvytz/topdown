@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { AreaStrike, SpiderlingDefinition } from '@/core/bossTypes';
 import type { Vector2 } from '@/core/types';
-import { SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { SMOKE_VISUAL, SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { isHitByAreaStrike } from '@/ai/bossAttacks';
 import type { CombatEffects } from '@/effects/CombatEffects';
@@ -121,7 +121,10 @@ export function drawAreaTelegraph(gfx: Phaser.GameObjects.Graphics, strike: Area
     0,
     1,
   );
-  gfx.lineStyle(2, TELEGRAPH_COLOR, 0.8).strokeCircle(strike.center.x, strike.center.y, strike.radius);
-  gfx.fillStyle(TELEGRAPH_COLOR, 0.12).fillCircle(strike.center.x, strike.center.y, strike.radius);
-  gfx.fillStyle(TELEGRAPH_COLOR, 0.3).fillCircle(strike.center.x, strike.center.y, strike.radius * progress);
+  // Smuga dymu Barona (krok 83) ma szary telegraf; reszta — czerwony.
+  const smoke = strike.look === 'smoke';
+  const color = smoke ? SMOKE_VISUAL.telegraph.color : TELEGRAPH_COLOR;
+  gfx.lineStyle(2, smoke ? SMOKE_VISUAL.telegraph.edge : TELEGRAPH_COLOR, smoke ? SMOKE_VISUAL.telegraph.edgeAlpha : 0.8).strokeCircle(strike.center.x, strike.center.y, strike.radius);
+  gfx.fillStyle(color, smoke ? 0.14 : 0.12).fillCircle(strike.center.x, strike.center.y, strike.radius);
+  gfx.fillStyle(color, smoke ? SMOKE_VISUAL.telegraph.fillAlpha : 0.3).fillCircle(strike.center.x, strike.center.y, strike.radius * progress);
 }

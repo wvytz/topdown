@@ -36,6 +36,8 @@ export enum BossAttackKind {
   Kindle = 'kindle',
   /** Ryk wściekłości (krok 81): raz, przy wejściu we wściekłość — fala odrzuca gracza od bossa. Poza wzorem. */
   Roar = 'roar',
+  /** Smuga dymu (Baron Dymu, krok 83): z fajki w prawej ręce; trafienie przywołuje doga z rogu ekranu. */
+  Smoke = 'smoke',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -48,6 +50,8 @@ export enum BossId {
   GateWarden = 'gate-warden',
   /** Piekło, piętro 6 (krok 41f): Kat Otchłani — tarcza, hak, oddech palenisk, pierścień ognia. */
   AbyssExecutioner = 'abyss-executioner',
+  /** Piętro 7 (krok 83): Baron Dymu — gruby z puszką i fajką, smuga dymu, czarny dog u boku. */
+  SmokeBaron = 'smoke-baron',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -96,6 +100,8 @@ export interface BarrageAttackDefinition extends BaseBossAttackDefinition {
   readonly spread: number;
   /** Odstęp między wybuchami kolejnych stref. */
   readonly intervalMs: number;
+  /** Strefy to lądujące puszki (Baron Dymu): każda leci łukiem od bossa przez `flightMs` przed uderzeniem. */
+  readonly thrown?: { readonly flightMs: number };
 }
 
 /**
@@ -326,6 +332,60 @@ export interface FireRingDefinition {
   readonly knockback: number;
 }
 
+/**
+ * Smuga dymu (Baron Dymu): z prawej fajki wylatuje długa smuga w stronę gracza — ciąg stref od bossa,
+ * które uderzają jednocześnie po telegrafie (uciec w bok albo dashem). Trafienie przywołuje doga
+ * (`BossDogDefinition`), jeśli jest gotowy do skoku.
+ */
+export interface SmokeAttackDefinition extends BaseBossAttackDefinition {
+  /** Zasięg smugi (px od środka bossa). */
+  readonly length: number;
+  /** Strefy wzdłuż smugi: co `step` px, rosnący promień od `startRadius` do `endRadius` (smuga rozchodzi się). */
+  readonly step: number;
+  readonly startRadius: number;
+  readonly endRadius: number;
+}
+
+/**
+ * Dog Barona (krok 83): osobny boss-pomocnik. U boku Barona warczy i pilnuje go (ugryzie, gdy gracz podejdzie).
+ * Trafienie smugą dymu: dog znika z boku Barona i wypada z rogu widoku — krótki telegraf (kierunek skoku
+ * blokuje się tuż przed wybiciem, da się go ominąć), szarża, a po niej okno na kontrę. Potem goni i gryzie.
+ * Zabity wraca po `respawnMs` (kolejna smuga go przywoła nie wcześniej).
+ */
+export interface BossDogDefinition {
+  readonly radius: number;
+  readonly maxHp: number;
+  readonly moveSpeed: number;
+  /** Pilnuje Barona: trzyma się tak blisko boku (px), a gracza w tej odległości od siebie atakuje. */
+  readonly heelDistance: number;
+  readonly guardRange: number;
+  /** Skok z rogu widoku. */
+  readonly lunge: {
+    readonly telegraphMs: number;
+    /** Kierunek skoku blokuje się tyle przed wybiciem (krótsza zapowiedź = trudniej uniknąć). */
+    readonly lockBeforeMs: number;
+    readonly speed: number;
+    readonly durationMs: number;
+    readonly damage: number;
+    readonly knockback: number;
+    readonly recoveryMs: number;
+  };
+  /** Kłapnięcie z bliska: strefa `radius` przed psem (środek `reach` px), po telegrafie. */
+  readonly bite: {
+    readonly triggerRange: number;
+    readonly reach: number;
+    readonly radius: number;
+    readonly telegraphMs: number;
+    readonly recoveryMs: number;
+    readonly damage: number;
+    readonly knockback: number;
+  };
+  /** Najwcześniej tyle po ostatnim skoku dog wypada z rogu znowu (inaczej smuga go nie przywoła). */
+  readonly summonCooldownMs: number;
+  /** Po śmierci dog wraca do boku Barona po tylu ms. */
+  readonly respawnMs: number;
+}
+
 export interface BossEnrageConfig {
   /** Próg HP (0..1), poniżej którego boss wpada we wściekłość. */
   readonly hpThreshold: number;
@@ -409,6 +469,10 @@ export interface BossDefinition {
   readonly shield?: ShieldDefinition;
   readonly hook?: HookAttackDefinition;
   readonly kindle?: KindleAttackDefinition;
+  /** Smuga dymu (Baron Dymu). */
+  readonly smoke?: SmokeAttackDefinition;
+  /** Dog Barona — boss-pomocnik. */
+  readonly dog?: BossDogDefinition;
   /** Paleniska na arenie (Kat): tyle, rozstawione w ćwiartkach areny; buchają przy oddechu. */
   readonly arenaBraziers?: number;
   /** Galerie za kratami (Strażnik Bram, krok 44): wnęki w ścianach areny z wrogami dystansowymi. */
@@ -435,6 +499,10 @@ export interface AreaStrike {
   readonly healOnHit?: number;
   /** Trafienie przyciąga gracza w to miejsce (hak Kata). */
   readonly pullTo?: Vector2;
+  /** Trafienie smugi dymu przywołuje doga (Baron Dymu). */
+  readonly summonsDog?: boolean;
+  /** Wygląd strefy: dym zamiast czerwonego telegrafu. */
+  readonly look?: 'smoke';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -490,6 +558,8 @@ export interface WebShot {
 
 /** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
 export interface ThrownObject {
+  /** Co leci: kokon Króla (domyślnie) albo puszka Barona. */
+  readonly look?: 'can';
   readonly from: Vector2;
   readonly to: Vector2;
   readonly launchAt: number;

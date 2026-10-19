@@ -37,6 +37,8 @@ export const BOSS_HERALD: Readonly<Record<BiomeId, BossHeraldConfig>> = {
   [BiomeId.FungalGrove]: { radiusTiles: 20, tint: { color: 0x9a8aff, maxAlpha: 0.045 }, sparks: null },
   // Blady, trupi odcień.
   [BiomeId.Graveyard]: { radiusTiles: 16, tint: { color: 0xa8c0ff, maxAlpha: 0.04 }, sparks: null },
+  // Duszny, szary dym gęstnieje ku arenie Barona.
+  [BiomeId.SmokeDen]: { radiusTiles: 18, tint: { color: 0xb8b4a4, maxAlpha: 0.06 }, sparks: null },
   // Rozżarzone powietrze i iskry z posadzki.
   [BiomeId.Infernal]: {
     radiusTiles: 18,

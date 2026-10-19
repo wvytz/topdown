@@ -7,29 +7,30 @@ import { eliteAffixCount, floorInLoop, floorLabel, toRoman, towerLoop } from '@/
 
 describe('pętla wieży (krok 43)', () => {
   it('krąg i piętro w kręgu', () => {
-    expect([1, 6, 7, 12, 13].map((f) => towerLoop(f, TOWER_CONFIG))).toEqual([0, 0, 1, 1, 2]);
-    expect([1, 6, 7, 12, 13].map((f) => floorInLoop(f, TOWER_CONFIG))).toEqual([1, 6, 1, 6, 1]);
+    expect([1, 7, 8, 14, 15].map((f) => towerLoop(f, TOWER_CONFIG))).toEqual([0, 0, 1, 1, 2]);
+    expect([1, 7, 8, 14, 15].map((f) => floorInLoop(f, TOWER_CONFIG))).toEqual([1, 7, 1, 7, 1]);
   });
 
-  it('po piętrze 6 biomy i bossowie wracają od początku', () => {
-    for (let floor = 1; floor <= 6; floor++) {
-      expect(biomeForFloor(floor + 6).id).toBe(biomeForFloor(floor).id);
-      expect(bossForFloor(floor + 12).id).toBe(bossForFloor(floor).id);
+  it('po piętrze 7 biomy i bossowie wracają od początku', () => {
+    for (let floor = 1; floor <= 7; floor++) {
+      expect(biomeForFloor(floor + 7).id).toBe(biomeForFloor(floor).id);
+      expect(bossForFloor(floor + 14).id).toBe(bossForFloor(floor).id);
     }
-    expect(biomeForFloor(8).id).toBe(BiomeId.SpiderLair);
-    expect(bossForFloor(12).id).toBe(BossId.AbyssExecutioner);
+    expect(biomeForFloor(9).id).toBe(BiomeId.SpiderLair);
+    expect(bossForFloor(13).id).toBe(BossId.AbyssExecutioner);
+    expect(bossForFloor(14).id).toBe(BossId.SmokeBaron);
   });
 
   it('elity: o cechę więcej w każdym kręgu, z limitem', () => {
-    expect(eliteAffixCount(6, TOWER_CONFIG)).toBe(1);
-    expect(eliteAffixCount(7, TOWER_CONFIG)).toBe(2);
-    expect(eliteAffixCount(13, TOWER_CONFIG)).toBe(3);
+    expect(eliteAffixCount(7, TOWER_CONFIG)).toBe(1);
+    expect(eliteAffixCount(8, TOWER_CONFIG)).toBe(2);
+    expect(eliteAffixCount(15, TOWER_CONFIG)).toBe(3);
     expect(eliteAffixCount(60, TOWER_CONFIG)).toBe(TOWER_CONFIG.eliteMaxAffixes);
   });
 
   it('napis piętra z kręgiem od drugiego kręgu', () => {
-    expect(floorLabel(6, TOWER_CONFIG)).toBe('Piętro 6');
-    expect(floorLabel(7, TOWER_CONFIG)).toBe('Piętro 7 · Krąg II');
+    expect(floorLabel(7, TOWER_CONFIG)).toBe('Piętro 7');
+    expect(floorLabel(8, TOWER_CONFIG)).toBe('Piętro 8 · Krąg II');
     expect(toRoman(4)).toBe('IV');
     expect(toRoman(14)).toBe('XIV');
   });

@@ -31,10 +31,10 @@ describe('arena na końcu piętra (krok 45)', () => {
   });
 
   it('ukryta komnata (pokój końcowy) tylko w Grzybni, także w kolejnych kręgach (krok 51)', () => {
-    for (const floorNumber of [1, 2, 4, 5, 6, 7, 8, 10, 11, 12]) {
+    for (const floorNumber of [1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14]) {
       expect(getDungeonConfigForFloor(floorNumber).endRoomChance, `piętro ${floorNumber}`).toBe(0);
     }
-    for (const floorNumber of [3, 9, 15]) expect(getDungeonConfigForFloor(floorNumber).endRoomChance, `piętro ${floorNumber}`).toBe(1);
+    for (const floorNumber of [3, 10, 17]) expect(getDungeonConfigForFloor(floorNumber).endRoomChance, `piętro ${floorNumber}`).toBe(1);
     for (let seed = 0; seed < 20; seed++) {
       expect(generate(3, seed * 31 + 1).endRoomId, `seed ${seed}`).toBeDefined();
       expect(generate(4, seed * 31 + 1).endRoomId, `seed ${seed}`).toBeUndefined();

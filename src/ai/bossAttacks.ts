@@ -58,6 +58,8 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planRoar(ctx);
     case BossAttackKind.Kindle:
       return planKindle(ctx);
+    case BossAttackKind.Smoke:
+      return planSmoke(ctx);
     case BossAttackKind.Feast:
       throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }
@@ -120,6 +122,31 @@ function planHook(ctx: AttackPlanContext): BossAttackPlan {
     knockback: followUp.knockback,
   });
   return { kind: BossAttackKind.Hook, ...EMPTY, strikes, endsAt: bashAt + hook.recoveryMs };
+}
+
+/**
+ * Smuga dymu (Baron Dymu): ciąg stref od krawędzi bossa w stronę gracza (kierunek z chwili planu), promień
+ * rośnie z dystansem (smuga się rozchodzi). Wszystkie uderzają naraz po telegrafie; każda trafiona przywołuje doga.
+ */
+function planSmoke(ctx: AttackPlanContext): BossAttackPlan {
+  const smoke = required(ctx.definition.smoke, BossAttackKind.Smoke, ctx);
+  const impactAt = ctx.now + telegraph(ctx, smoke.telegraphMs);
+  const dir = towardTarget(ctx);
+  const strikes: AreaStrike[] = [];
+  for (let d = ctx.definition.radius + smoke.startRadius; d <= smoke.length; d += smoke.step) {
+    const t = (d - ctx.definition.radius) / Math.max(1, smoke.length - ctx.definition.radius);
+    strikes.push({
+      center: { x: ctx.self.x + dir.x * d, y: ctx.self.y + dir.y * d },
+      radius: smoke.startRadius + (smoke.endRadius - smoke.startRadius) * Math.min(1, t),
+      telegraphStartAt: ctx.now,
+      impactAt,
+      damage: smoke.damage,
+      knockback: smoke.knockback,
+      summonsDog: true,
+      look: 'smoke',
+    });
+  }
+  return { kind: BossAttackKind.Smoke, ...EMPTY, strikes, endsAt: impactAt + smoke.recoveryMs };
 }
 
 /** Oddech palenisk: strefa wokół każdego paleniska areny, wszystkie naraz po telegrafie. */
@@ -230,7 +257,13 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
     });
   }
   const lastImpactAt = firstImpactAt + (zoneCount - 1) * barrage.intervalMs;
-  return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: lastImpactAt + barrage.recoveryMs };
+  // Puszki (Baron Dymu): każda strefa to puszka lecąca łukiem od bossa, lądująca w chwili uderzenia.
+  const flightMs = barrage.thrown?.flightMs;
+  const throws: ThrownObject[] =
+    flightMs === undefined
+      ? []
+      : strikes.map((strike) => ({ look: 'can', from: ctx.self, to: strike.center, launchAt: strike.impactAt - flightMs, landAt: strike.impactAt }));
+  return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], webs: [], leap: null, throws, endsAt: lastImpactAt + barrage.recoveryMs };
 }
 
 /**

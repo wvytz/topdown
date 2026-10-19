@@ -304,6 +304,64 @@ export const SPRITE_SHEETS = {
       spit: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Baron Dymu (krok 83, tools/smoker_sprites.py): 128×128, 8 kierunków; 0–3 chód, 4–7 smuga dymu (wdech, uniesienie
+  // fajki, wydmuch, trzymanie), 8–11 uderzenie brzuchem, 12–15 rzut puszką, 16–19 łyk z puszki (ryk wściekłości).
+  smokeBaron: {
+    key: 'sheet-smoke-baron',
+    url: 'assets/sprites/smoke-baron_walk-puff-slam-throw-drink.png',
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 2560,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      puff: { frames: [4, 5, 6, 7], loop: false },
+      slam: { frames: [8, 9, 10, 11], loop: false },
+      throw: { frames: [12, 13, 14, 15], loop: false },
+      drink: { frames: [16, 17, 18, 19], loop: false },
+    },
+  },
+  // Dog Barona: 80×80, 8 kierunków; 0–3 bieg, 4–7 skok z kłapnięciem (przysiad, wybicie, kłapnięcie, lądowanie).
+  blackDog: {
+    key: 'sheet-black-dog',
+    url: 'assets/sprites/black-dog_run-lunge.png',
+    frameWidth: 80,
+    frameHeight: 80,
+    sheetWidth: 640,
+    sheetHeight: 640,
+    directions: 8,
+    fps: 8,
+    animations: {
+      run: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      lunge: { frames: [4, 5, 6, 7], loop: false, fps: 6 },
+    },
+  },
+  // Obłok smugi dymu (4 klatki rosnącego kłębu; skalę i przezroczystość ustawia gra) i puszka w locie.
+  smokePuff: {
+    key: 'sheet-smoke-puff',
+    url: 'assets/sprites/smoke-puff.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 128,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 8,
+    animations: { grow: { frames: [0, 1, 2, 3], loop: false } },
+  },
+  energyCan: {
+    key: 'sheet-energy-can',
+    url: 'assets/sprites/energy-can.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 12,
+    animations: { spin: { frames: [0, 1, 2, 3], loop: true } },
+  },
   // Strażnik Bram (krok 41e, tools/gatekeeper_sprites.py): 96×96, 8 kierunków; 0–3 chód, 4–7 wirowanie
   // łańcuchem, 8–11 uderzenie tarczą (tempo z telegrafu ataku).
   gateWarden: {
@@ -1002,6 +1060,18 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     },
     deathDecal: 'splat',
   },
+  // Baron Dymu (krok 83): smuga dymu (puff), uderzenie brzuchem (slam), salwa puszek (throw); ryk wściekłości = łyk (drink).
+  [BossId.SmokeBaron]: {
+    sheet: 'smokeBaron',
+    move: 'walk',
+    attacks: {
+      [BossAttackKind.Smoke]: 'puff',
+      [BossAttackKind.Slam]: 'slam',
+      [BossAttackKind.Barrage]: 'throw',
+      [BossAttackKind.Roar]: 'drink',
+    },
+    deathDecal: 'splat',
+  },
   // Strażnik Bram (krok 41e): wirowanie łańcuchem (slam) i uderzenie tarczą (cleave).
   [BossId.GateWarden]: {
     sheet: 'gateWarden',
@@ -1010,6 +1080,29 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     deathDecal: 'splat',
   },
 };
+
+/** Dog Barona (krok 83): bieg, skok z kłapnięciem; cień jak u wrogów (chodzi po ziemi). */
+export const DOG_VISUAL = {
+  sheet: 'blackDog',
+  move: 'run',
+  idle: 'idle',
+  lunge: 'lunge',
+  groundShadow: { width: 26, height: 10, offsetX: 0, offsetY: 8 },
+  /** Pasek HP nad psem (osobny boss-pomocnik ma własny pasek). */
+  bar: { width: 34, height: 4, offsetY: 26, back: 0x1b1a22, fill: 0xc8c0a8, enraged: 0xff7050 },
+} as const;
+
+/** Smuga dymu Barona (krok 83): kłęby dymu w strefach (telegraf — półprzezroczyste, w uderzeniu pęcznieją) i puszka w locie. */
+export const SMOKE_VISUAL = {
+  puff: { sheet: 'smokePuff', animation: 'grow' },
+  can: { sheet: 'energyCan', animation: 'spin', arcHeight: 40 },
+  /** Telegraf: kłęby w kolorze dymu zamiast czerwieni; krawędź strefy cienka, ciemna szarość. */
+  telegraph: { fillAlpha: 0.28, edge: 0x6a665e, edgeAlpha: 0.7, color: 0xc8c4b8 },
+  /** Kłąb po uderzeniu: rośnie do `scale` i gaśnie przez `fadeMs`. */
+  burst: { scale: 1.6, fadeMs: 700 },
+  /** Napis nad graczem po trafieniu dymem, gdy dog skacze. */
+  text: '#d8d4c8',
+} as const;
 
 /** Pierścień ognia Kata (wściekłość): pas ognia poza wolnym kołem (ADD, stała alfa), jasna krawędź koła. */
 export const FIRE_RING_VISUAL = { fill: 0xa82010, fillAlpha: 0.4, edge: 0xe0701c, edgeAlpha: 0.8, edgeWidth: 3 } as const;

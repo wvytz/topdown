@@ -34,6 +34,17 @@ export const INFERNAL_TILESET_ASSET: TilesetAsset = {
   version: 2,
 };
 
+/** Zadymiona palarnia (krok 83): `python tools/tower_ruins_tiles.py --biome smoke_den`. Pochodnie jak w ruinach. */
+export const SMOKE_DEN_TILESET_ASSET: TilesetAsset = {
+  imageKey: 'tex-tileset-smoke-den',
+  jsonKey: 'json-tileset-smoke-den',
+  sheetKey: 'sheet-tileset-smoke-den',
+  imageUrl: 'assets/tilesets/smoke_den_tileset.png',
+  jsonUrl: 'assets/tilesets/smoke_den_tileset.json',
+  torchAnimation: 'torch-flame-smoke-den',
+  version: 2,
+};
+
 /** Cmentarzysko (krok 32a): `python tools/tower_ruins_tiles.py --biome graveyard`. Pochodnie to świece w uchwytach. */
 export const GRAVEYARD_TILESET_ASSET: TilesetAsset = {
   imageKey: 'tex-tileset-graveyard',

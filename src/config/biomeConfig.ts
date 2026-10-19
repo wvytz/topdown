@@ -5,7 +5,7 @@ import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
 import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
 import type { FogConfig } from '@/config/lightingConfig';
-import { FUNGAL_FOG, GRAVEYARD_MIST, INFERNAL_HAZE } from '@/config/lightingConfig';
+import { FUNGAL_FOG, GRAVEYARD_MIST, INFERNAL_HAZE, SMOKE_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { CeilingDropConfig } from '@/systems/CeilingDrops';
 import type { CocoonConfig } from '@/systems/Cocoons';
@@ -17,6 +17,7 @@ import {
   FUNGAL_GROVE_TILESET_ASSET,
   GRAVEYARD_TILESET_ASSET,
   INFERNAL_TILESET_ASSET,
+  SMOKE_DEN_TILESET_ASSET,
   SPIDER_LAIR_TILESET_ASSET,
   TILESET_ASSET,
 } from '@/config/tilesetConfig';
@@ -28,6 +29,7 @@ export enum BiomeId {
   FungalGrove = 'fungal-grove',
   Graveyard = 'graveyard',
   Infernal = 'infernal',
+  SmokeDen = 'smoke-den',
 }
 
 export interface BiomeDefinition {
@@ -234,10 +236,28 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     traps: null,
     breakables: null,
   },
+  // Zadymiona palarnia (krok 83, prośba właściciela: boss „następnego poziomu”): piętro Barona Dymu. Na razie
+  // osobny arkusz kafli (nikotynowa szarość, `--biome smoke_den`), a nastrój robi gęsty szary dym zamiast mroku.
+  // Wrogowie: ogar (Rusher, pies pasuje do Barona) i kultysta (Kiter).
+  [BiomeId.SmokeDen]: {
+    id: BiomeId.SmokeDen,
+    name: 'Zadymiona palarnia',
+    tileset: SMOKE_DEN_TILESET_ASSET,
+    dressing: FLOOR_DRESSING,
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Hellhound, [EnemyType.Kiter]: EnemyVariant.Cultist },
+    ceilingDrops: null,
+    cocoons: null,
+    stickyWebs: null,
+    puffballs: null,
+    fog: SMOKE_HAZE,
+    braziers: null,
+    traps: null,
+    breakables: null,
+  },
 };
 
 /**
- * Biom na piętrach pierwszego kręgu (1–6); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43). Każdy biom to jedno piętro zakończone swoim bossem
+ * Biom na piętrach pierwszego kręgu (1–7); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43). Każdy biom to jedno piętro zakończone swoim bossem
  * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków,
  * 4 — Cmentarzysko (krok 32a, Grzybowy Pożeracz), 5–6 — Piekło (krok 41; dwa piętra, Kat Otchłani na końcu 6.;
  * do tego czasu Strażnik).
@@ -249,6 +269,7 @@ export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   // Piekło ma dwa piętra (decyzja właściciela po kroku 41b): na 6, „gorętszym”, paleniska buchają częściej.
   5: BiomeId.Infernal,
   6: BiomeId.Infernal,
+  7: BiomeId.SmokeDen,
 };
 
 /** Biom piętra; od piętra 7 kolejny krąg wieży powtarza biomy 1–6 (krok 43). */

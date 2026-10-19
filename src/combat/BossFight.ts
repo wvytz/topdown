@@ -13,6 +13,7 @@ import type {
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
+import type { BossDogDefinition } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
@@ -42,6 +43,8 @@ import { arenaCenter } from '@/dungeon/stairs';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
+import { BossDog } from '@/entities/BossDog';
+import { DogPhase } from '@/ai/BossDogBrain';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { planLarders } from '@/dungeon/LarderPlanner';
 import { planThrone, planThroneDecals } from '@/dungeon/ThronePlanner';
@@ -57,7 +60,7 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { BRAZIER_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
+import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
 import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
 import type { EnemyType } from '@/core/combatTypes';
 import { fireRingRadius, reflectDirection } from '@/systems/Shield';
@@ -195,6 +198,13 @@ export class BossFight {
   private readonly fireRingGfx: Phaser.GameObjects.Graphics | null;
   private fireRingStartAt: number | null = null;
   private shieldHeat = 0;
+  /** Dog Barona (krok 83): osobny boss-pomocnik u boku bossa; po śmierci wraca po `respawnMs`. */
+  private dog: BossDog | null = null;
+  private readonly dogDefinition: BossDogDefinition | null;
+  private dogRespawnAt: number | null = null;
+  private readonly dogGfx: Phaser.GameObjects.Graphics | null;
+  /** Ostatnia chwila `update` — zabójstwa psa liczą od niej czas powrotu. */
+  private lastNow = 0;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -214,6 +224,9 @@ export class BossFight {
     deps.scene.physics.add.collider(boss, deps.walls);
     deps.scene.physics.add.collider(deps.player, boss);
     this.spiderlings = new SpiderlingSwarm(deps);
+    this.dogDefinition = definition.dog ?? null;
+    this.dogGfx = this.dogDefinition ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) : null;
+    if (this.dogDefinition) this.spawnDog(boss, null);
     // Tarcza (Strażnik Bram, krok 41e): łuk chronionego stożka przed bossem.
     this.shieldArc = definition.shield ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) : null;
     this.fireRingGfx = definition.fireRing
@@ -306,6 +319,7 @@ export class BossFight {
       if (roomContainsTile(this.arena, playerTile)) boss.activate(now);
     }
 
+    this.lastNow = now;
     const burn = boss.tickBurn(now);
     if (burn > 0) this.deps.effects.floatingText(boss.x, boss.y - boss.radius, `-${burn}`, '#ff8a3c');
     if (boss.isDead) {
@@ -322,6 +336,7 @@ export class BossFight {
     this.updateRetinue(boss, now);
     this.updatePresence(boss);
     this.updateLeap(boss, now);
+    this.updateDog(boss, now);
 
     this.updateStrikes(now);
     this.updateBursts(now);
@@ -337,8 +352,8 @@ export class BossFight {
   }
 
   /** Cele gracza: pajączki (żywa tarcza), kokony spiżarni i boss. */
-  private targets(): Array<Boss | Spiderling | LarderCocoon> {
-    const living = [...this.spiderlings.living, ...this.larders];
+  private targets(): Array<Boss | Spiderling | LarderCocoon | BossDog> {
+    const living: Array<Spiderling | LarderCocoon | BossDog> = [...this.spiderlings.living, ...this.larders, ...(this.dog ? [this.dog] : [])];
     return this.boss ? [...living, this.boss] : living;
   }
 
@@ -372,7 +387,7 @@ export class BossFight {
    * Pocisk gracza trafia najbliższy cel — pajączek między graczem a bossem przyjmuje strzał na siebie.
    * Zwraca trafiony cel (trafienie budzi bossa jak cios wręcz).
    */
-  resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | LarderCocoon | null {
+  resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | LarderCocoon | BossDog | null {
     const boss = this.boss;
     if (!boss) return null;
     // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, wraca do strzelca (już jako pocisk wroga).
@@ -407,8 +422,9 @@ export class BossFight {
   }
 
   /** Zabity pajączek ginie bez wybuchu; zabity boss kończy walkę. */
-  private handleKills(killed: readonly (Boss | Spiderling | LarderCocoon)[]): void {
-    this.spiderlings.handleKills(killed.filter((t): t is Spiderling | Boss => !(t instanceof LarderCocoon)));
+  private handleKills(killed: readonly (Boss | Spiderling | LarderCocoon | BossDog)[]): void {
+    if (this.dog && killed.includes(this.dog)) this.killDog(this.lastNow);
+    this.spiderlings.handleKills(killed.filter((t): t is Spiderling | Boss => !(t instanceof LarderCocoon) && !(t instanceof BossDog)));
     if (this.boss && killed.includes(this.boss)) this.defeat();
   }
 
@@ -435,7 +451,7 @@ export class BossFight {
     }
     for (const spawn of plan.spawns) this.spawns.push({ spawn, position: null, view: null });
     for (const thrown of plan.throws) {
-      const { sheet, animation } = KING_COCOON_VISUAL;
+      const { sheet, animation } = thrown.look === 'can' ? SMOKE_VISUAL.can : KING_COCOON_VISUAL;
       const sprite = scene.add
         .sprite(thrown.from.x, thrown.from.y, SPRITE_SHEETS[sheet].key)
         .setDepth(RENDER_DEPTH.projectile)
@@ -725,11 +741,16 @@ export class BossFight {
       if (now < thrown.launchAt) return true;
       if (now < thrown.landAt) {
         const t = (now - thrown.launchAt) / (thrown.landAt - thrown.launchAt);
-        const lift = Math.sin(Math.PI * t) * KING_COCOON_VISUAL.arcHeight;
+        const lift = Math.sin(Math.PI * t) * (thrown.look === 'can' ? SMOKE_VISUAL.can.arcHeight : KING_COCOON_VISUAL.arcHeight);
         sprite
           .setVisible(true)
           .setPosition(Math.round(thrown.from.x + (thrown.to.x - thrown.from.x) * t), Math.round(thrown.from.y + (thrown.to.y - thrown.from.y) * t - lift));
         return true;
+      }
+      if (thrown.look === 'can') {
+        // Puszka znika w chwili uderzenia strefy (`strikes` rani w tej samej klatce).
+        sprite.destroy();
+        return false;
       }
       sprite.setPosition(Math.round(thrown.to.x), Math.round(thrown.to.y)).setVisible(true);
       sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
@@ -807,8 +828,11 @@ export class BossFight {
         return true;
       }
       gfx.destroy();
-      effects.impact(strike.center.x, strike.center.y, strike.radius);
-      this.deps.decals.add('scorch', strike.center.x, strike.center.y);
+      if (strike.look === 'smoke') this.playSmokeBurst(strike);
+      else {
+        effects.impact(strike.center.x, strike.center.y, strike.radius);
+        this.deps.decals.add('scorch', strike.center.x, strike.center.y);
+      }
       if (isHitByAreaStrike(strike, player, player.radius)) {
         const hit = {
           damage: strike.damage,
@@ -824,6 +848,7 @@ export class BossFight {
           }
           this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
           const boss = this.boss;
+          if (strike.summonsDog) this.callDog(now);
           if (strike.healOnHit && boss) {
             boss.heal(strike.healOnHit);
             this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
@@ -836,6 +861,119 @@ export class BossFight {
       }
       return false;
     });
+  }
+
+  /** Dog u boku bossa (spawn na starcie i po powrocie): pojawia się przy Baronie, z odstępem przed skokiem. */
+  private spawnDog(boss: Boss, returnedAt: number | null): void {
+    const def = this.dogDefinition;
+    if (!def) return;
+    const dog = new BossDog(this.deps.scene, boss.x - def.heelDistance, boss.y, def);
+    // Pierwszy skok bez odstępu (dog czeka u boku); po powrocie z martwych odstęp liczy się od powrotu.
+    if (returnedAt !== null) dog.armSummonCooldown(returnedAt);
+    this.deps.scene.physics.add.collider(dog, this.deps.walls);
+    this.dog = dog;
+    this.dogRespawnAt = null;
+  }
+
+  /** Dog: tylko w walce (uśpiony stoi), powrót po śmierci, skok z rogu, kłapnięcia i pasek HP. */
+  private updateDog(boss: Boss, now: number): void {
+    const def = this.dogDefinition;
+    if (!def) return;
+    if (!this.dog && this.dogRespawnAt !== null && now >= this.dogRespawnAt && boss.isFighting) this.spawnDog(boss, now);
+    const dog = this.dog;
+    const gfx = this.dogGfx;
+    gfx?.clear();
+    if (!dog) return;
+    if (!boss.isFighting) {
+      dog.setVelocity(0, 0);
+      return;
+    }
+    const { player, effects } = this.deps;
+    const decision = dog.tick({ x: boss.x, y: boss.y }, { x: player.x, y: player.y }, now);
+    if (decision.newBite) {
+      const { center, radius, telegraphStartAt, impactAt, damage, knockback } = decision.newBite;
+      const strike: AreaStrike = { center, radius, telegraphStartAt, impactAt, damage, knockback };
+      this.strikes.push({ strike, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+    }
+    // Skok z rogu: jedno trafienie na szarżę (dash gracza daje nietykalność, więc unik działa).
+    if (dog.phase === DogPhase.Lunge && !dog.lungeHit && !player.isDead && Math.hypot(player.x - dog.x, player.y - dog.y) <= dog.radius + player.radius) {
+      dog.lungeHit = true;
+      const { damage, knockback } = def.lunge;
+      const hit = { damage, knockback: knockbackFrom(dog, player, knockback) };
+      if (player.takeHit(hit, now)) {
+        this.deps.onPlayerHit();
+        effects.floatingText(player.x, player.y - player.radius - 8, 'Pogryziony!', SMOKE_VISUAL.text);
+      }
+      effects.impact(dog.x, dog.y, dog.radius);
+    }
+    if (gfx) this.drawDog(gfx, dog);
+  }
+
+  /** Telegraf skoku (linia zasięgu szarży w kierunku zapowiedzi) i pasek HP psa. */
+  private drawDog(gfx: Phaser.GameObjects.Graphics, dog: BossDog): void {
+    const aim = dog.lungeAim;
+    if (aim) {
+      const { player } = this.deps;
+      const toPlayer = Math.hypot(player.x - dog.x, player.y - dog.y) || 1;
+      const unit = aim.direction ?? { x: (player.x - dog.x) / toPlayer, y: (player.y - dog.y) / toPlayer };
+      const reach = (dog.definition.lunge.speed * dog.definition.lunge.durationMs) / 1000;
+      const alpha = aim.direction ? 0.8 : 0.35;
+      gfx.lineStyle(dog.radius * 2, TELEGRAPH_COLOR, alpha * 0.25).lineBetween(dog.x, dog.y, dog.x + unit.x * reach, dog.y + unit.y * reach);
+      gfx.lineStyle(2, TELEGRAPH_COLOR, alpha).lineBetween(dog.x, dog.y, dog.x + unit.x * reach, dog.y + unit.y * reach);
+    }
+    const { width, height, offsetY, back, fill } = DOG_VISUAL.bar;
+    const x = Math.round(dog.x - width / 2);
+    const y = Math.round(dog.y - offsetY);
+    gfx.fillStyle(back, 1).fillRect(x - 1, y - 1, width + 2, height + 2);
+    gfx.fillStyle(fill, 1).fillRect(x, y, Math.max(0, Math.round(width * (dog.health.value / dog.health.max))), height);
+  }
+
+  /** Smuga trafiła gracza: dog (jeśli gotowy) znika z boku Barona i wypada z rogu widoku. */
+  private callDog(now: number): void {
+    const dog = this.dog;
+    if (!dog || !this.boss || !dog.canSummon(now)) return;
+    const { player, effects, scene } = this.deps;
+    const view = scene.cameras.main.worldView;
+    const inset = 18;
+    const corners: Vector2[] = [
+      { x: view.x + inset, y: view.y + inset },
+      { x: view.right - inset, y: view.y + inset },
+      { x: view.x + inset, y: view.bottom - inset },
+      { x: view.right - inset, y: view.bottom - inset },
+    ];
+    // Najdalszy od gracza róg: dog ma miejsce na zapowiedź i bieg.
+    const far = corners.reduce((best, c) => (Math.hypot(c.x - player.x, c.y - player.y) > Math.hypot(best.x - player.x, best.y - player.y) ? c : best));
+    const center = arenaCenter(this.arena);
+    const anchor = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };
+    const corner = this.clampToward(far, anchor, (p) => this.circleFits(p, dog.radius));
+    dog.summonFrom(corner, now);
+    effects.floatingText(player.x, player.y - player.radius - 8, 'Dog!', SMOKE_VISUAL.text);
+  }
+
+  /** Dog zabity przez gracza wraca do boku Barona po `respawnMs`; ginący z Baronem nie wraca. */
+  private killDog(now: number, announce = true): void {
+    const dog = this.dog;
+    if (!dog) return;
+    this.deps.effects.deathBurst(dog.x, dog.y, 0x3a3f4a, dog.radius * 1.6);
+    this.deps.decals.add('splat', dog.x, dog.y);
+    dog.destroy();
+    this.dog = null;
+    this.dogGfx?.clear();
+    if (announce && this.dogDefinition) this.dogRespawnAt = now + this.dogDefinition.respawnMs;
+  }
+
+  /** Kłąb dymu w strefie smugi: pęcznieje i gaśnie. */
+  private playSmokeBurst(strike: AreaStrike): void {
+    const { sheet, animation } = SMOKE_VISUAL.puff;
+    const { scale, fadeMs } = SMOKE_VISUAL.burst;
+    const base = (strike.radius * 2) / 26;
+    const sprite = this.deps.scene.add
+      .sprite(strike.center.x, strike.center.y, SPRITE_SHEETS[sheet].key)
+      .setDepth(RENDER_DEPTH.slash)
+      .setScale(base)
+      .setAlpha(0.9);
+    sprite.play(animationKey(sheet, animation));
+    this.deps.scene.tweens.add({ targets: sprite, scale: base * scale, alpha: 0, duration: fadeMs, onComplete: () => sprite.destroy() });
   }
 
   private updateBursts(now: number): void {
@@ -960,6 +1098,10 @@ export class BossFight {
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
     for (const pending of [...this.strikes, ...this.bursts, ...this.pendingHelpers]) pending.gfx.destroy();
+    // Dog ginie razem z Baronem (nie ma już kogo pilnować); nowy już nie wróci.
+    this.dogRespawnAt = null;
+    if (this.dog) this.killDog(this.lastNow, false);
+    this.dogGfx?.destroy();
     this.strikes = [];
     this.bursts = [];
     // Świta, która jeszcze nie wyszła, przepada; ta na arenie walczy dalej.

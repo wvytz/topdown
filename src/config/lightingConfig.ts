@@ -149,6 +149,26 @@ export const INFERNAL_HAZE: FogConfig = {
   motes: { ...LIGHTING.motes, maxParticles: 30, frequencyMs: 180, speed: { min: 3, max: 9 }, gravityY: -6 },
 };
 
+/**
+ * Dym palarni (krok 83): jasnoszara, gęsta mgła ograniczająca widok (nie mrok) — w dymie widać dalej niż w żarze piekła,
+ * ale kłęby przesuwają się po ekranie i zasłaniają wrogów. Dużo powolnych smug dymu, bez iskier.
+ */
+export const SMOKE_HAZE: FogConfig = {
+  color: 0x2a2a28,
+  profile: { fullLightRadius: 96, edgeRadius: 220, maxDarkness: 0.8 },
+  wisps: {
+    maxParticles: 14,
+    frequencyMs: 700,
+    lifespanMs: { min: 9000, max: 15000 },
+    speed: { min: 3, max: 9 },
+    scale: { min: 1.6, max: 3.2 },
+    width: 48,
+    height: 14,
+    alpha: 0.1,
+  },
+  motes: { ...LIGHTING.motes },
+};
+
 export interface TorchPlacementConfig {
   /** Minimalny odstęp między pochodniami (Czebyszew, w kaflach). */
   readonly minSpacing: number;
