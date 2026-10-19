@@ -36,8 +36,18 @@ const rnd = (n) => Math.floor(Math.random() * n);
 async function startServer() {
   const vite = join(root, 'node_modules', 'vite', 'bin', 'vite.js');
   if (!existsSync(vite)) throw new Error('Brak node_modules — uruchom najpierw `npm install`.');
-  const child = spawn(process.execPath, [vite, '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { cwd: root, stdio: 'ignore', env: { ...process.env, BROWSER: 'none' } });
+  const child = spawn(process.execPath, [vite, '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+    cwd: root,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, BROWSER: 'none' },
+  });
+  // Wyjście Vite zbieramy po cichu — pokazujemy je tylko, gdy serwer nie wstanie (np. brak esbuild, zajęty port).
+  let log = '';
+  const collect = (chunk) => (log = (log + chunk).slice(-4000));
+  child.stdout.on('data', collect);
+  child.stderr.on('data', collect);
   for (let i = 0; i < 60; i++) {
+    if (child.exitCode !== null) break;
     try {
       if ((await fetch(URL)).ok) return child;
     } catch {
@@ -46,7 +56,7 @@ async function startServer() {
     await sleep(500);
   }
   child.kill();
-  throw new Error('Serwer dev nie wystartował.');
+  throw new Error(`Serwer dev nie wystartował. Wyjście Vite:\n${log.trim() || '(puste)'}`);
 }
 
 async function launch() {
