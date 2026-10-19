@@ -3952,6 +3952,7 @@ Wybór właściciela po przeglądzie stanu gry: **nowy bohater — łucznik**. P
 - **Ekran wyboru:** trzy karty (272 px, odstęp 24), mniejsza czcionka opisów, żeby długie linie mieściły się w karcie. `?hero=archer` pomija wybór.
 - **Smoke:** `npm run smoke` domyślnie przechodzi piętra wszystkimi trzema bohaterami (`--heroes archer` tylko łucznikiem).
 - Testy: `tests/systems/archery.test.ts` (siła strzały, naciąganie, przerwa, przerwanie, wachlarz, przedmioty, wyczerpanie), `tests/assets/archer.test.ts` (paleta, wymiary, czytelność na płytach). Build: 1261 testów zielonych. Smoke (piętra 1–6, seed 1): łucznik, barbarzyńca i Czarodziejka bez błędów. Przeglądarka: pełne naciągnięcie — strzała 24 obrażeń z przebiciem, kliknięcie — 7; salwa — 3 strzały w wachlarzu, HUD pokazuje ładunki; ekran wyboru z trzema kartami, bez błędów.
+- **Wdrożenie (19.10):** PR #4 scalony, gra wdrożona na Pages z `7838a20`. Poprzednie wdrożenie (z `c87b072`) zbudowano bez `.env.production`, więc gra na Pages nie miała wspólnej listy wyników (tylko lokalna); to wdrożenie znów ma `VITE_SCORES_URL`. **Przed `npm run deploy:pages` sprawdź, że `.env.production` istnieje** (wzór: `.env.production.example`).
 - **Do oceny w testach właściciela:** liczby łuku (czas naciągania, obrażenia, spowolnienie), siła salwy, wygląd postaci i strzały, trafianie upiorów.
 
 ---
