@@ -11,6 +11,8 @@ export interface EnemyVariantDefinition {
   readonly attack?: EnemyAttackDefinition;
   /** Inna prędkość ruchu (px/s; np. szybszy ogar, krok 41d). */
   readonly moveSpeed?: number;
+  /** Inny promień ciała (px; wielki dog, krok 84). */
+  readonly radius?: number;
   /** Inne HP (upiór, krok 49). */
   readonly maxHp?: number;
   /** Przenikanie (upiór, krok 49). */
@@ -33,6 +35,7 @@ export function enemyDefinitionFor(
     variant,
     ...(def.color !== undefined && { color: def.color }),
     ...(def.attack && { attack: def.attack }),
+    ...(def.radius !== undefined && { radius: def.radius }),
     ...(def.moveSpeed !== undefined && { moveSpeed: def.moveSpeed }),
     ...(def.maxHp !== undefined && { maxHp: def.maxHp }),
     ...(def.phasing && { phasing: def.phasing }),

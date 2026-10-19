@@ -1149,7 +1149,7 @@
    "h": 1,
    "layer": "prop"
   },
-  "decal_trail_h_a": {
+  "decal_can_a": {
    "frame": 139,
    "col": 11,
    "row": 8,
@@ -1159,7 +1159,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_h_b": {
+  "decal_can_b": {
    "frame": 140,
    "col": 12,
    "row": 8,
@@ -1169,7 +1169,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_v_a": {
+  "decal_can_c": {
    "frame": 141,
    "col": 13,
    "row": 8,
@@ -1179,7 +1179,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_v_b": {
+  "decal_bucket": {
    "frame": 142,
    "col": 14,
    "row": 8,
@@ -1189,7 +1189,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_drops_a": {
+  "decal_box": {
    "frame": 143,
    "col": 15,
    "row": 8,
@@ -1199,9 +1199,69 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_drops_b": {
+  "decal_butts": {
    "frame": 144,
    "col": 0,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_a": {
+   "frame": 145,
+   "col": 1,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_b": {
+   "frame": 146,
+   "col": 2,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_a": {
+   "frame": 147,
+   "col": 3,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_b": {
+   "frame": 148,
+   "col": 4,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_a": {
+   "frame": 149,
+   "col": 5,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_b": {
+   "frame": 150,
+   "col": 6,
    "row": 9,
    "w": 1,
    "h": 1,
@@ -1415,6 +1475,18 @@
    "rubble_a",
    "rubble_b",
    "bones"
+  ],
+  "decal.cans": [
+   "decal_can_a",
+   "decal_can_b",
+   "decal_can_c"
+  ],
+  "decal.kfc": [
+   "decal_bucket",
+   "decal_box"
+  ],
+  "decal.butts": [
+   "decal_butts"
   ],
   "decal.trailH": [
    "decal_trail_h_a",

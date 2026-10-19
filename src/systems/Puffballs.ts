@@ -7,6 +7,8 @@ import type { Vector2 } from '@/core/types';
  * podejście budzi purchawkę, po `fuseMs` pęka; trafienie rozrywa ją od razu.
  */
 export interface PuffballConfig {
+  /** Wygląd: purchawka Grzybni (domyślnie) albo popielniczka palarni (krok 84). */
+  readonly look?: 'puffball' | 'ashtray';
   /** Ile purchawek w zwykłym pokoju (losowane; 0 = pokój bez purchawek). */
   readonly perRoom: IntRange;
   /** Odstęp od ścian pokoju (kafle) — purchawka nie rośnie w przejściu. */

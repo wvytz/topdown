@@ -339,6 +339,49 @@ export const SPRITE_SHEETS = {
       lunge: { frames: [4, 5, 6, 7], loop: false, fps: 6 },
     },
   },
+  // Popielniczka palarni (krok 84, tools/smoker_sprites.py): 32×32, jak purchawka — 0–1 spoczynek, 2–3 telegraf, 4–7 wybuch.
+  ashtray: {
+    key: 'sheet-ashtray',
+    url: 'assets/sprites/ashtray.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 256,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 3,
+    animations: {
+      idle: { frames: [0, 1], loop: true },
+      fuse: { frames: [2, 3], loop: true, fps: 14 },
+      burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
+    },
+  },
+  // Chmura dymu z popielniczki: rozrost (tempo liczy gra z czasu rozrostu) i kłębienie; promienie klatek jak poisonCloud.
+  smokeCloud: {
+    key: 'sheet-smoke-cloud',
+    url: 'assets/sprites/smoke-cloud.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 96,
+    directions: 1,
+    fps: 3,
+    animations: {
+      grow: { frames: [0, 1, 2, 3, 4, 5], loop: false },
+      swirl: { frames: [6, 7], loop: true },
+    },
+  },
+  // Dziura w murze (krok 84): nakładka na kafel muru; 0 ledwo widoczna rysa, 1–2 pęknięcia, 3 wygryziona dziura.
+  wallHole: {
+    key: 'sheet-wall-hole',
+    url: 'assets/sprites/wall-hole.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 128,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 3,
+    animations: { crack: { frames: [0, 1, 2], loop: false }, hole: { frames: [3], loop: false } },
+  },
   // Obłok smugi dymu (4 klatki rosnącego kłębu; skalę i przezroczystość ustawia gra) i puszka w locie.
   smokePuff: {
     key: 'sheet-smoke-puff',
@@ -890,6 +933,14 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.Fungoid]: { sheet: 'fungoid', move: 'crawl', attack: 'spit', groundShadow: { width: 20, height: 8, offsetX: 0, offsetY: 3 } },
   [EnemyVariant.Zombie]: { sheet: 'zombie', move: 'walk', idle: 'idle', attack: 'claw', groundShadow: WALKER_SHADOW },
   [EnemyVariant.Sower]: { sheet: 'sower', move: 'walk', attack: 'spit', groundShadow: WALKER_SHADOW },
+  // Wielki dog (krok 84): bieg, zamach to klatki skoku z kłapnięciem; cień większy niż u Rushera.
+  [EnemyVariant.BlackDog]: {
+    sheet: 'blackDog',
+    move: 'run',
+    idle: 'idle',
+    attack: 'lunge',
+    groundShadow: { width: 26, height: 10, offsetX: 0, offsetY: 8 },
+  },
   [EnemyVariant.Hellhound]: {
     sheet: 'hellhound',
     move: 'run',
@@ -1104,6 +1155,17 @@ export const SMOKE_VISUAL = {
   text: '#d8d4c8',
 } as const;
 
+/** Pies w ścianie (krok 84): rysa → pękanie → dziura (klatki arkusza `wallHole`), wstrząsy i kurz. */
+export const WALL_DOG_VISUAL = {
+  sheet: 'wallHole',
+  holeFrame: 3,
+  shake: 0.0025,
+  burstShake: { durationMs: 220, intensity: 0.007 },
+  warnText: 'Rumble…',
+  warnColor: '#d8d4c8',
+  rubbleColor: 0x8a8470,
+} as const;
+
 /** Pierścień ognia Kata (wściekłość): pas ognia poza wolnym kołem (ADD, stała alfa), jasna krawędź koła. */
 export const FIRE_RING_VISUAL = { fill: 0xa82010, fillAlpha: 0.4, edge: 0xe0701c, edgeAlpha: 0.8, edgeWidth: 3 } as const;
 
@@ -1221,6 +1283,35 @@ export const BRAZIER_VISUAL = {
   readonly fire: { readonly outer: number; readonly inner: number; readonly alpha: number; readonly innerScale: number };
   readonly light: { readonly idleRadius: number; readonly warnRadius: number; readonly burstRadius: number };
 };
+
+/** Wygląd pułapki-purchawki wg `PuffballConfig.look` (krok 84: popielniczka palarni ma własny arkusz i chmurę dymu). */
+export const PUFFBALL_VISUALS = {
+  puffball: {
+    sheet: 'puffball',
+    idle: 'idle',
+    fuse: 'fuse',
+    burst: 'burst',
+    groundShadow: { width: 16, height: 5, offsetX: 0, offsetY: 7 },
+    cloud: { sheet: 'poisonCloud', grow: 'grow', swirl: 'swirl', alpha: 0.6, fadeMs: 600 },
+  },
+  ashtray: {
+    sheet: 'ashtray',
+    idle: 'idle',
+    fuse: 'fuse',
+    burst: 'burst',
+    groundShadow: { width: 22, height: 6, offsetX: 0, offsetY: 8 },
+    cloud: { sheet: 'smokeCloud', grow: 'grow', swirl: 'swirl', alpha: 0.7, fadeMs: 600 },
+  },
+} as const satisfies Record<'puffball' | 'ashtray', PuffballLook>;
+
+export interface PuffballLook {
+  readonly sheet: SpriteSheetId;
+  readonly idle: string;
+  readonly fuse: string;
+  readonly burst: string;
+  readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
+  readonly cloud: { readonly sheet: SpriteSheetId; readonly grow: string; readonly swirl: string; readonly alpha: number; readonly fadeMs: number };
+}
 
 export const PUFFBALL_VISUAL = {
   sheet: 'puffball',

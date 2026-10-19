@@ -3,7 +3,7 @@ import type { BreakableConfig, DartConfig, SpikeConfig } from '@/systems/Traps';
 import { floorInLoop } from '@/systems/TowerLoop';
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, SMOKE_DEN_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
 import type { FogConfig } from '@/config/lightingConfig';
 import { FUNGAL_FOG, GRAVEYARD_MIST, INFERNAL_HAZE, SMOKE_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
@@ -12,6 +12,7 @@ import type { CocoonConfig } from '@/systems/Cocoons';
 import type { PuffballConfig } from '@/systems/Puffballs';
 import type { StickyWebConfig } from '@/systems/StickyWebs';
 import type { BrazierConfig } from '@/systems/Braziers';
+import type { WallDogConfig } from '@/systems/WallDogs';
 import { SPIDER_QUEEN } from '@/config/bossConfig';
 import {
   FUNGAL_GROVE_TILESET_ASSET,
@@ -55,6 +56,8 @@ export interface BiomeDefinition {
   readonly traps: { readonly spikes: SpikeConfig | null; readonly darts: DartConfig | null } | null;
   /** Urny i skrzynie do rozbicia (krok 48); null = brak. */
   readonly breakables: BreakableConfig | null;
+  /** Psy przegryzające się przez ściany pokoi (krok 84); brak = bez nich. */
+  readonly wallDogs?: WallDogConfig | null;
 }
 
 export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
@@ -243,16 +246,38 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     id: BiomeId.SmokeDen,
     name: 'Zadymiona palarnia',
     tileset: SMOKE_DEN_TILESET_ASSET,
-    dressing: FLOOR_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Hellhound, [EnemyType.Kiter]: EnemyVariant.Cultist },
+    dressing: SMOKE_DEN_DRESSING,
+    // Rusher to wielki czarny dog (pies Barona), Kiter — kultysta.
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.BlackDog, [EnemyType.Kiter]: EnemyVariant.Cultist },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
-    puffballs: null,
+    // Popielniczki (krok 84, prośba właściciela: dymne pułapki): 1–2 w zwykłym pokoju, bez kolizji. Podejście budzi
+    // popielniczkę, po krótkim telegrafie buchają kłęby dymu (chmura kaszle: trucizna jak w Grzybni), która wisi
+    // i zamyka przejście. Cios, strzał lub dash przewraca ją od razu — chmura i tak zostaje.
+    puffballs: {
+      look: 'ashtray',
+      perRoom: { min: 1, max: 2 },
+      wallMarginTiles: 1,
+      centerClearTiles: 1,
+      minSpacingTiles: 3,
+      radius: 9,
+      triggerRadius: 24,
+      fuseMs: 600,
+      cloud: {
+        startRadius: 20,
+        maxRadius: 44,
+        spreadMs: 400,
+        durationMs: 4500,
+        poison: { tickDamage: 2, tickMs: 500, durationMs: 1500 },
+      },
+    },
     fog: SMOKE_HAZE,
     braziers: null,
     traps: null,
     breakables: null,
+    // Pies w ścianie (krok 84): w co trzecim–czwartym zwykłym pokoju; podejście do rysy w murze budzi psa.
+    wallDogs: { roomChance: 0.3, minShortSide: 5, maxPerFloor: 3, triggerRadius: 52, crackMs: 900 },
   },
 };
 

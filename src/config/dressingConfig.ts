@@ -211,6 +211,33 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
 };
 
 /**
+ * Zadymiona palarnia (krok 84): podłoga zaśmiecona — puszki po energetykach, opakowania z kurczaka i pety
+ * (nakładki bez kolizji, jak reszta dekoracji). Ku arenie Barona gęstnieją śmieci z kurczaka. Moje liczby, do oceny.
+ */
+export const SMOKE_DEN_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalChance: 0.18,
+  decalGroupWeights: {
+    'decal.crack': 2,
+    'decal.debris': 1,
+    'decal.stain': 1.5,
+    'decal.broken': 0.3,
+    'decal.cans': 2.5,
+    'decal.kfc': 1.6,
+    'decal.butts': 2,
+  },
+  nest: {
+    radiusTiles: 18,
+    cobwebChance: 0,
+    corridorCobwebChance: 0,
+    wallFaceChance: 0,
+    wallFaceGroup: 'wallFace',
+    decals: { group: 'decal.kfc', chance: 0.18 },
+    trail: TRAIL,
+  },
+};
+
+/**
  * Piekło (krok 41a): rozżarzone szczeliny i krew na posadzce, rzadkie pieczęcie 2×2 (duże nakładki),
  * kości; na licach okowy, czaszki na kolcach i szczeliny z żarem. Bez pajęczyn — za gorąco.
  */

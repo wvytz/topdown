@@ -129,6 +129,9 @@ class Palette:
     mycel: tuple = ()  # 2: strzępka, świecąca końcówka
     # Piekło (krok 41a): żar w szczelinach — czerwień, pomarańcz, rozgrzany środek. Puste w innych biomach.
     ember: tuple = ()  # 3: czerwień, pomarańcz, rozgrzany środek
+    # Zadymiona palarnia (krok 84): śmieci na podłodze — puszki energetyków (zieleń, srebro) i opakowania z kurczaka
+    # (czerwień, krem, tłuszcz, frytki). Puste w innych biomach.
+    litter: tuple = ()  # 10: puszka cień, puszka, puszka neon, srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
     def colors(self):
@@ -315,6 +318,8 @@ PALETTES = {
         deep=oks((.08, .010, 85), (.10, .010, 85)),
         stain=oks((.36, .070, 85), (.42, .085, 88)),
         ash=oks((.55, .010, 85), (.48, .010, 250)),
+        litter=oks((.40, .120, 145), (.58, .190, 145), (.80, .220, 140), (.50, .008, 250), (.78, .008, 250),
+                   (.40, .150, 28), (.52, .190, 28), (.90, .030, 90), (.38, .070, 70), (.82, .150, 95)),
     ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
     # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
@@ -379,7 +384,7 @@ BIOMES = {
     # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
     'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
     # Zadymiona palarnia (krok 83): piętro Barona Dymu; kafle bez dodatków (jak ruiny), inna paleta.
-    'smoke_den': {'palette': 'dymna_palarnia', 'extras': (), 'reserved_hues': True},
+    'smoke_den': {'palette': 'dymna_palarnia', 'extras': ('smoke',), 'reserved_hues': True},
 }
 
 
@@ -1448,6 +1453,90 @@ def grave_face(kind):
     return gen
 
 
+def smoke_decal(kind):
+    """Śmieci palarni (krok 84): puszki po energetykach, opakowania z kurczaka (wiaderko, pudełko, kości, frytki), pety."""
+    def gen(p, r):
+        L, O = p.litter, p.outline
+        img = Img(T, T)
+
+        def can(cx, cy, horizontal=True, crushed=False, flip=False):
+            """Puszka na boku: srebrne denka, zielony walec z neonowym paskiem i błyskawicą; zgnieciona — krótsza, z wgnieceniem."""
+            ln = 7 if crushed else 10
+            for i in range(-ln, ln + 1):
+                x, y = (cx + i, cy) if horizontal else (cx, cy + i)
+                for w in range(-3, 4):
+                    px, py = (x, y + w) if horizontal else (x + w, y)
+                    edge = abs(i) >= ln - 1
+                    c = L[4] if edge else (L[3] if w == 3 else (L[2] if w == -2 else (L[0] if w >= 2 else L[1])))
+                    if crushed and abs(i) <= 2 and abs(w) <= 1:
+                        c = L[0]
+                    img.put(px, py, c)
+            for i in range(-2, 3):  # błyskawica z logo
+                px, py = (cx + i * 2, cy + (1 if i % 2 else -1)) if horizontal else (cx + (1 if i % 2 else -1), cy + i * 2)
+                img.put(px, py, L[2])
+            if flip:
+                img.put(cx + (ln if horizontal else 0), cy + (0 if horizontal else ln), L[3])
+
+        def bucket(cx, cy):
+            """Wiaderko z kurczakiem przewrócone na bok: czerwono-białe pasy (z góry), ciemne wnętrze, rozsypane kości."""
+            for i in range(-9, 10):
+                half = 8 - abs(i) * 0.25
+                for w in range(-int(half), int(half) + 1):
+                    stripe = ((i + 20) // 3) % 2 == 0
+                    img.put(cx + i, cy + w, L[6] if stripe else L[7])
+            for w in range(-8, 9):  # otwór wiaderka (lewy brzeg) — ciemne wnętrze z tłuszczem
+                if abs(w) <= 6:
+                    img.put(cx - 9, cy + w, L[8])
+                    img.put(cx - 10, cy + w, L[5])
+            for i in range(-9, 10):
+                img.put(cx + i, cy - 8 + int(abs(i) * .25), L[5])
+                img.put(cx + i, cy + 8 - int(abs(i) * .25), L[5])
+            for bx, by in ((cx - 14, cy + 4), (cx - 13, cy - 5), (cx - 17, cy + 1)):  # kości na podłodze
+                img.put(bx, by, p.bone[2])
+                img.put(bx + 1, by, p.bone[1])
+                img.put(bx + 2, by + 1, p.bone[2])
+            for gx, gy in ((cx - 12, cy + 9), (cx - 11, cy + 10), (cx - 14, cy + 10)):  # plama tłuszczu
+                img.put(gx, gy, L[8])
+
+        def box(cx, cy, tilt):
+            """Czerwone pudełko z frytkami / kubełkiem: krem na wierzchu, wysypane frytki."""
+            for y in range(-6, 7):
+                for x in range(-7, 8):
+                    px, py = cx + x + (y * tilt) // 6, cy + y
+                    edge = abs(x) == 7 or abs(y) == 6
+                    img.put(px, py, L[5] if edge else (L[7] if abs(x) < 3 and abs(y) < 3 else L[6]))
+            for k in range(7):  # frytki
+                img.put(cx + 9 + k // 2, cy - 4 + k, L[9])
+                img.put(cx + 10 + k // 2, cy - 4 + k, L[9])
+
+        if kind == 'can_a':
+            can(16, 14, True)
+            can(13, 24, True, crushed=True)
+        elif kind == 'can_b':
+            can(12, 9, False)
+            can(22, 20, True, crushed=True, flip=True)
+        elif kind == 'can_c':
+            can(18, 22, False, crushed=True)
+            can(9, 12, True)
+            can(21, 8, True, crushed=True)
+        elif kind == 'bucket':
+            bucket(20, 16)
+        elif kind == 'box':
+            box(11, 13, 1)
+            box(14, 24, -1)
+        elif kind == 'butts':  # pety i popiół
+            for _ in range(46):
+                a, d = r.uniform(0, math.tau), r.uniform(0, 12)
+                img.put(int(16 + math.cos(a) * d), int(16 + math.sin(a) * d * .8), p.ash[r.randrange(2)])
+            for bx, by, hz in ((8, 10, 1), (19, 13, 0), (13, 22, 1), (23, 24, 0), (6, 21, 0)):
+                for i in range(4):
+                    img.put(bx + (i if hz else 0), by + (0 if hz else i), p.bone[2] if i < 3 else p.flame[1])
+        if kind != 'butts':
+            outline(img, O)
+        return img
+    return gen
+
+
 def infernal_decal(kind):
     """Nakładki piekła (krok 41a): żarzące się szczeliny, krew, demoniczna pieczęć (2x2)."""
     def gen(p, r):
@@ -1816,6 +1905,11 @@ def manifest():
             m.append(Entry(f'decal_{kind}', infernal_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
         for kind in ('bones_a', 'bones_b'):
             m.append(Entry(f'decal_{kind}', grave_decal(kind), 'floorDecal', group='decal.bones', weight=1, flip_x=True))
+    if 'smoke' in BIOMES[BIOME]['extras']:
+        # Zadymiona palarnia (krok 84): śmieci na podłodze; dopisane na końcu (first-fit), wspólne kafle się nie przesuwają.
+        for kind, group in (('can_a', 'decal.cans'), ('can_b', 'decal.cans'), ('can_c', 'decal.cans'),
+                            ('bucket', 'decal.kfc'), ('box', 'decal.kfc'), ('butts', 'decal.butts')):
+            m.append(Entry(f'decal_{kind}', smoke_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
     # Ślady wleczenia i krwi ku arenie bossa (krok 54): na samym końcu (first-fit), nic się nie przesuwa.
     for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
                         ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):

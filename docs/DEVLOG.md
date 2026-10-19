@@ -3973,6 +3973,18 @@ Prośba właściciela: **boss następnego poziomu** — gruby ziomek z wysokim c
 
 ---
 
+## Krok 84 — Zadymiona palarnia: popielniczki, pies w ścianie, śmieci `#decyzja` `#zadymiona-palarnia` `#baron-dymu`
+
+Prośba właściciela: piętro Barona ma mieć **dymne pułapki w stylu popielniczki**, **wielkiego czarnego psa przegryzającego się przez ścianę, gdy zbliżysz się do krawędzi pokoju**, oraz **porozrzucane puszki po energetykach i opakowania KFC**.
+- **Popielniczki** (`BiomeDefinition.puffballs` z `look: 'ashtray'`): to mechanika purchawek Grzybni (podejście budzi, telegraf 0,6 s, chmura 20 → 44 px wisi 4,5 s i truje jak kaszel, cios/strzał/dash przewraca ją od razu), ale z własnym arkuszem `ashtray.png` (szklana miska z popiołem i petami, żar w telegrafie, przewrócona po wybuchu) i szarą chmurą dymu `smoke-cloud.png`. 1–2 w zwykłym pokoju. Wygląd wybiera `PUFFBALL_VISUALS[config.look]`.
+- **Pies w ścianie** (czysto: `systems/WallDogs.ts` — zapalnik `WallDogState`, `dungeon/WallDogPlanner.ts`; Phaser: `combat/WallDogManager.ts`): w ok. 30% zwykłych pokoi (najwyżej 3 na piętro, pokój min. 5 kafli, nie przy wejściu) w murze jest ledwo widoczna rysa (`wall-hole.png`). Gracz bliżej niż 52 px od niej → mur pęka 0,9 s (rysa rośnie, drży, wstrząs kamery), potem dziura i pies wypada na podłogę przed nią. Dziura zostaje (kolizja bez zmian). Pies to zwykły Rusher biomu.
+- **Wielki czarny dog jako wróg palarni** (`EnemyVariant.BlackDog`, Rusher biomu zamiast ogara): promień 14, 45 HP, chód 140, gryzie 12 (zamach 0,4 s, hitRange 48); sprite doga z kroku 83. Wariant może teraz zmieniać promień ciała (`EnemyVariantDefinition.radius`). Pies Barona zostaje osobnym bossem-pomocnikiem.
+- **Śmieci** (generator kafli `--biome smoke_den`, dodatek `smoke`, paleta `litter`): nakładki bez kolizji `decal.cans` (puszki, zgniecione, w kupkach), `decal.kfc` (czerwono-białe wiaderko z kośćmi i tłuszczem, pudełka z frytkami — bez logo) i `decal.butts` (pety i popiół); `SMOKE_DEN_DRESSING` ze zwiększoną gęstością (18% kafli), a ku arenie Barona gęstnieją opakowania.
+- Testy: `tests/dungeon/WallDogPlanner.test.ts` (planer w murze, zapalnik, popielniczka), `tests/assets/smoker.test.ts` (nowe arkusze, grupy śmieci). Przeglądarka (`?seed=7&floor=7`): 3 psy w ścianach i 16 popielniczek na piętrze; zbliżenie do rysy → pękanie → dziura → nowy dog atakuje gracza.
+- **Do oceny:** zasięg budzenia psa, gęstość psów i śmieci, siła popielniczek (kaszel jak purchawki), czytelność dziury (czarna plama), gęstość psów-Rusherów (teraz wszyscy Rusherzy palarni to dogi).
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

@@ -81,6 +81,7 @@ import { BossFight } from '@/combat/BossFight';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
 import { CocoonManager } from '@/combat/CocoonManager';
 import { PuffballManager } from '@/combat/PuffballManager';
+import { WallDogManager } from '@/combat/WallDogManager';
 import { BrazierManager } from '@/combat/BrazierManager';
 import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import { EnemyManager } from '@/combat/EnemyManager';
@@ -157,6 +158,7 @@ const CEILING_DROP_SEED_SALT = 0xce11;
 const COCOON_SEED_SALT = 0xc0c0;
 const STICKY_WEB_SEED_SALT = 0x3eb5;
 const PUFFBALL_SEED_SALT = 0x9bff;
+const WALL_DOG_SEED_SALT = 0x4d09;
 const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
@@ -192,6 +194,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private stickyWebs: StickyWebField | null = null;
   /** Purchawki z trującą chmurą — tylko w biomie, który je ma (krok 28c). */
   private puffballs: PuffballManager | null = null;
+  private wallDogs: WallDogManager | null = null;
   private secretArea: SecretArea | null = null;
   private minimap: MinimapExplorer | null = null;
   private gamePaused = false;
@@ -497,6 +500,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.cocoons?.update(time);
     this.stickyWebs?.update(time);
     this.puffballs?.update(time);
+    this.wallDogs?.update(time);
     this.secretRoom?.update();
     this.ambush?.update(time);
     this.traps?.update(time);
@@ -864,6 +868,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
           config: puffballs,
           rng: createRng(deriveSeed(this.dungeon.seed, PUFFBALL_SEED_SALT)),
           player: this.player,
+        })
+      : null;
+
+    // Psy w ścianach palarni (krok 84): pies to zwykły Rusher biomu (wielki czarny dog).
+    const wallDogs = this.biome.wallDogs;
+    this.wallDogs = wallDogs
+      ? new WallDogManager({
+          scene: this,
+          floor: this.dungeon,
+          config: wallDogs,
+          rng: createRng(deriveSeed(this.dungeon.seed, WALL_DOG_SEED_SALT)),
+          player: this.player,
+          effects: this.effects,
+          spawnDog: (at) => {
+            this.enemies.spawnAt(EnemyType.Rusher, at);
+          },
         })
       : null;
 

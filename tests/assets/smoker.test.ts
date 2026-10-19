@@ -10,7 +10,7 @@ import { TILESETS_DIR, loadTileset } from '../helpers/tileset';
 const PUBLIC = fileURLToPath(new URL('../../public/', import.meta.url));
 const RESERVED = ['#000000', '#ffffff', '#9cff57'];
 
-const sheets = [SPRITE_SHEETS.smokeBaron, SPRITE_SHEETS.blackDog, SPRITE_SHEETS.smokePuff, SPRITE_SHEETS.energyCan] as const;
+const sheets = [SPRITE_SHEETS.smokeBaron, SPRITE_SHEETS.blackDog, SPRITE_SHEETS.smokePuff, SPRITE_SHEETS.energyCan, SPRITE_SHEETS.ashtray, SPRITE_SHEETS.smokeCloud, SPRITE_SHEETS.wallHole] as const;
 
 describe('Baron Dymu i dog: arkusze', () => {
   it.each(sheets.map((s) => [s.url, s] as const))('%s: wymiary jak w spriteConfig, piksele pełne, bez barw zarezerwowanych', (_url, sheet) => {
@@ -34,6 +34,17 @@ describe('Baron Dymu i dog: arkusze', () => {
     const dog = SPRITE_SHEETS.blackDog;
     expect(dog.sheetWidth / dog.frameWidth).toBe(8);
     expect(dog.sheetHeight / dog.frameHeight).toBe(8);
+  });
+});
+
+describe('palarnia: śmieci na podłodze', () => {
+  it('kafle śmieci (puszki, KFC, pety) są w arkuszu i w konfiguracji dekorowania', async () => {
+    const meta = loadTileset('smoke_den_tileset.json');
+    const { SMOKE_DEN_DRESSING } = await import('@/config/dressingConfig');
+    for (const group of ['decal.cans', 'decal.kfc', 'decal.butts']) {
+      expect(meta.groups[group]?.length, group).toBeGreaterThan(0);
+      expect(SMOKE_DEN_DRESSING.decalGroupWeights[group], group).toBeGreaterThan(0);
+    }
   });
 });
 

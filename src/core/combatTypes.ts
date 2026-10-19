@@ -47,6 +47,8 @@ export enum EnemyVariant {
   Hellhound = 'hellhound',
   /** Piekło (krok 41d): kultysta popiołu (Kiter) — rzuca łukiem bombę smolną, po wybuchu płonie kałuża. */
   Cultist = 'cultist',
+  /** Zadymiona palarnia (krok 84): wielki czarny dog (Rusher) — biegnie i gryzie; wypada też ze ściany pokoju. */
+  BlackDog = 'black-dog',
   /** Zasadzki (krok 49): upiór (Rusher) — przenika (chwilami bezcielesny i nietykalny), dotyk mrozi i spowalnia. */
   Ghost = 'ghost',
 }

@@ -183,6 +183,24 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
   // Piekło (krok 41d, propozycja przyjęta przez właściciela). Piekielny ogar: szybszy od innych Rusherów;
   // z dystansu skacze po prostej w miejsce gracza z chwili zamachu (telegraf: linia i przysiad), chybiony
   // skok zostawia go na chwilę bez ruchu. Za skokiem zostaje smuga żaru.
+  // Zadymiona palarnia (krok 84): wielki czarny dog — większy, szybszy i twardszy od zwykłego Rushera, gryzie z krótkim
+  // zamachem (400 ms); bez statusów. Wypada też ze ściany pokoju (WallDogManager).
+  [EnemyVariant.BlackDog]: {
+    type: EnemyType.Rusher,
+    color: 0x2a2a34,
+    radius: 14,
+    maxHp: 45,
+    moveSpeed: 140,
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 12,
+      range: 36,
+      hitRange: 48,
+      windupMs: 400,
+      cooldownMs: 1100,
+      knockback: 240,
+    },
+  },
   [EnemyVariant.Hellhound]: {
     type: EnemyType.Rusher,
     color: 0x8a5a40,

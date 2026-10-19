@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
 import type { Vector2 } from '@/core/types';
-import { PUFFBALL_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { PUFFBALL_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
 import { planCocoons } from '@/dungeon/CocoonPlanner';
@@ -112,7 +112,7 @@ export class PuffballManager {
     puffball.destroy();
     this.playHusk(center);
 
-    const { cloud: look } = PUFFBALL_VISUAL;
+    const { cloud: look } = PUFFBALL_VISUALS[config.look ?? 'puffball'];
     const sprite = scene.add
       .sprite(center.x, center.y, SPRITE_SHEETS[look.sheet].key)
       .setDepth(RENDER_DEPTH.telegraph)
@@ -128,7 +128,7 @@ export class PuffballManager {
   private updateClouds(now: number): void {
     const { player, config, scene } = this.deps;
     const { durationMs } = config.cloud;
-    const { fadeMs } = PUFFBALL_VISUAL.cloud;
+    const { fadeMs } = PUFFBALL_VISUALS[config.look ?? 'puffball'].cloud;
     this.clouds = this.clouds.filter((cloud) => {
       const age = now - cloud.burstAt;
       if (age >= durationMs) {
@@ -149,7 +149,7 @@ export class PuffballManager {
 
   /** Pęknięcie; ostatnia klatka (sflaczała skórka) zostaje na podłodze jako trwały ślad. */
   private playHusk(at: Vector2): void {
-    const { sheet, burst } = PUFFBALL_VISUAL;
+    const { sheet, burst } = PUFFBALL_VISUALS[this.deps.config.look ?? 'puffball'];
     const sprite = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
     sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.setDepth(RENDER_DEPTH.combatDecal));
     sprite.play(animationKey(sheet, burst));

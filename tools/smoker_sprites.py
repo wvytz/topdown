@@ -294,16 +294,143 @@ def can_frame(k):
     return img
 
 
+# ---------------- pułapki palarni (krok 84) ----------------
+ASH_DISH = (ok(.22, .030, 200), ok(.30, .040, 200), ok(.38, .045, 200), ok(.48, .045, 200), ok(.60, .040, 200))
+ASH = (ok(.50, .008, 85), ok(.66, .008, 85), ok(.78, .008, 85))
+CLOUD = 96
+# Promienie klatek rozrostu = poisonCloudRadius w grze (biomeConfig palarni: startRadius 20 → maxRadius 44).
+CLOUD_RADII = (20, 25, 30, 34, 39, 44, 44, 44)
+
+
+def ashtray_frame(f):
+    """Popielniczka (32x32, z góry): szklano-metalowa miska z rowkami na pety, kopiec popiołu i pety.
+    0–1 spoczynek (stróżka dymu), 2–3 telegraf (drży, żar na petach, gęstszy dym), 4 wybuch dymu, 5–7 przewrócona, sypie popiół."""
+    img = Img(32, 32)
+    c = 15
+    cy = 20
+    shake = (0, 0, -1, 1)[f] if f < 4 else 0
+    tipped = f >= 5
+    ellipse(img, c + shake, cy + (2 if tipped else 0), 11, 8 if not tipped else 5.5, band_shade(ASH_DISH))
+    if not tipped:
+        ellipse(img, c + shake, cy, 9, 6.2, lambda nx, ny: ASH[1] if ny > .2 else ASH[2])  # wnętrze z popiołem
+        ellipse(img, c + shake - 1, cy + 1, 4.5, 3, lambda nx, ny: ASH[0])  # kopiec popiołu
+        for dx in (-10, 10):  # rowki na pety na obrzeżu
+            img.put(c + shake + dx, cy - 1, ASH_DISH[0])
+            img.put(c + shake + dx + (1 if dx < 0 else -1), cy - 1, ASH_DISH[0])
+        for bx, by in ((-6, -1), (2, -3), (3, 3)):  # pety w popiele: białe z pomarańczowym końcem
+            for i in range(3):
+                img.put(c + shake + bx + i, cy + by, PRINT)
+            glow = f in (2, 3)
+            img.put(c + shake + bx + 3, cy + by, EMBER[2] if glow else EMBER[0])
+    else:
+        # popiół wysypany z przewróconej miski
+        r = (3, 6, 8)[f - 5]
+        for k in range(r * 5):
+            a = (k * 2.4) % math.tau
+            d = 4 + (k * 7 % 10) * r / 10
+            img.put(int(c + 5 + math.cos(a) * d * .8), int(cy + 6 + math.sin(a) * d * .4), ASH[k % 2])
+    # dym: spoczynek — cienka stróżka; telegraf — gęstsze kłęby; wybuch — kłąb nad miską
+    n = 1 if f < 2 else (3 if f < 4 else (4 if f == 4 else 0))
+    for i in range(n):
+        puff(img, c + shake + 2 + (i % 2) * 2 - 1, cy - 8 - i * 2 - (f % 2), 1.5 + i * (0.5 if f >= 2 else 0.2), SMOKE)
+    return img
+
+
+def smoke_cloud_frame(f):
+    """Chmura dymu (96x96): kłęby szarości, jaśniejsze czubki; zasięg rysunku = promień chmury w tej klatce (hitbox)."""
+    import random as _r
+    img = Img(CLOUD, CLOUD)
+    c = CLOUD / 2
+    rad = CLOUD_RADII[f]
+    r = _r.Random(8410)
+    swirl = (f - 5) * .35 if f >= 6 else 0
+    puffs = []
+    for _ in range(9):
+        a = r.uniform(0, math.tau) + swirl
+        puffs.append((math.cos(a) * r.uniform(.25, .55), math.sin(a) * r.uniform(.25, .55), r.uniform(.42, .55)))
+    puffs.append((0, 0, .6))
+    front_first = sorted(puffs, key=lambda q: -q[1])
+    for y in range(CLOUD):
+        for x in range(CLOUD):
+            nx, ny = (x + .5 - c) / rad, (y + .5 - c) / rad
+            if nx * nx + ny * ny > 1:
+                continue
+            qs = [math.hypot(nx - px, ny - py) / pr for px, py, pr in puffs]
+            if min(qs) > 1:
+                continue
+            if min(qs) > .88:
+                img.put(x, y, SMOKE[0])
+                continue
+            px, py, pr = next(q for q in front_first if math.hypot(nx - q[0], ny - q[1]) <= q[2])
+            crescent = math.hypot(nx - px - pr * .22, ny - py - pr * .26) > pr * .92
+            img.put(x, y, SMOKE[3] if crescent else SMOKE[2])
+    for _ in range(12):  # popiół w dymie
+        a, d = r.uniform(0, math.tau) + swirl * 1.5, r.uniform(.1, .8)
+        img.put(int(c + math.cos(a) * d * rad), int(c + math.sin(a) * d * rad), ASH[0])
+    return img
+
+
+def wall_hole_frame(k):
+    """Nakładka na kafel muru (32x32): 0 ledwo widoczna rysa (wskazówka), 1–2 pęknięcia rosną (telegraf),
+    3 wygryziona dziura z gruzem i śladami pazurów. Bez obrysu — to część muru."""
+    import random as _r
+    img = Img(32, 32)
+    r = _r.Random(8420 + k)
+    DEEP = (ok(.07, .010, 85), ok(.12, .012, 85))
+    STONE = (ok(.30, .014, 85), ok(.44, .016, 88), ok(.58, .018, 92))
+    if k < 3:
+        n = (8, 16, 24)[k]
+        x, y = 16, 4
+        for i in range(n):
+            x += r.choice((-1, 0, 0, 1))
+            y += 1
+            img.put(x, y, DEEP[0])
+            if k >= 1 and i % 3 == 0:
+                img.put(x + 1, y, DEEP[1])
+            if k == 2 and i % 4 == 1:  # odpryskujące drobinki
+                img.put(x + r.choice((-3, 3)), y + 1, STONE[2])
+        return img
+    # dziura: nieregularna elipsa, ciemne wnętrze, jaśniejsze postrzępione brzegi
+    for y in range(32):
+        for x in range(32):
+            a = math.atan2(y - 16, x - 16)
+            reach = 10.5 + 2.2 * math.sin(3 * a + 1) + 1.6 * math.sin(5 * a)
+            d = math.hypot((x + .5 - 16) * .95, (y + .5 - 16) * 1.1)
+            if d < reach - 2:
+                img.put(x, y, DEEP[0] if d < reach - 5 else DEEP[1])
+            elif d < reach:
+                img.put(x, y, STONE[2] if (x + y) % 3 == 0 else STONE[1])
+    for _ in range(14):  # gruz wokół
+        a, d = r.uniform(0, math.tau), r.uniform(12, 15)
+        img.put(int(16 + math.cos(a) * d), int(16 + math.sin(a) * d), STONE[r.randrange(3)])
+    for i in range(3):  # ślady pazurów na brzegu
+        for j in range(5):
+            img.put(5 + i * 2 + j // 2, 8 + j, STONE[2])
+    return img
+
+
 def build():
     boss, bf = directional_sheet(CELL, baron_frame, 20)
     dog, df = directional_sheet(DOG, dog_frame, 8)
     smoke, sf = strip_sheet(32, smoke_frame, 4)
     can, cf = strip_sheet(16, can_frame, 4)
+    ash, af = strip_sheet(32, ashtray_frame, 8)
+    cloud, clf = strip_sheet(CLOUD, smoke_cloud_frame, 8)
+    # Dziura w murze to część muru: bez obrysu (strip_sheet go dodaje), więc sklejamy ręcznie.
+    hole = Img(32 * 4, 32)
+    hf = []
+    for k in range(4):
+        frame = wall_hole_frame(k)
+        hole.blit(frame, k * 32, 0)
+        hf.append((f'c{k}', frame))
     return {
         'smoke-baron_walk-puff-slam-throw-drink.png': (boss, bf, CELL, 8),
         'black-dog_run-lunge.png': (dog, df, DOG, 4),
         'smoke-puff.png': (smoke, sf, 32, 1),
         'energy-can.png': (can, cf, 16, 1),
+        'ashtray.png': (ash, af, 32, 1),
+        'smoke-cloud.png': (cloud, clf, CLOUD, 1),
+        'wall-hole.png': (hole, hf, 32, 0),
     }
 
 
