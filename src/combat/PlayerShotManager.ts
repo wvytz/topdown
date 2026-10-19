@@ -7,18 +7,20 @@ import type { PlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { LOOT_ATLAS, lootAnimationKey } from '@/config/spriteConfig';
 
-/** Parametry lotu i trafienia pocisku gracza (strzał barbarzyńcy albo kula Czarodziejki). */
+/** Parametry lotu i trafienia pocisku gracza (strzał barbarzyńcy, kula Czarodziejki, strzała łucznika). */
 export type ShotSpec = Pick<RangedConfig, 'damage' | 'knockback' | 'projectileSpeed' | 'projectileLifetimeMs' | 'projectileRadius'>;
 
-/** Wygląd pocisku z arkusza (kula Czarodziejki); brak = pocisk z atlasu łupów. */
+/** Wygląd pocisku z arkusza (kula Czarodziejki, strzała łucznika); brak = pocisk z atlasu łupów. */
 export interface ShotLook {
   readonly texture: string;
   readonly animation: string;
   /** Statusy kuli: wszystkie efekty broni (strzał + cios), bo kule są jej bronią główną. */
   readonly status: StatusApplication;
   readonly vampiric: boolean;
-  /** Magia (kula Czarodziejki) — trafia też bezcielesnych (krok 49b). */
+  /** Magia (kula Czarodziejki) — trafia też bezcielesnych (krok 49b); także strzały łucznika (krok 82). */
   readonly magic: boolean;
+  /** Przebicia ponad Szurikena (pełne naciągnięcie łuku). */
+  readonly extraPierce?: number;
 }
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. */
@@ -47,7 +49,7 @@ export class PlayerShotManager {
     shot.knockback = config.knockback;
     shot.expiresAt = this.scene.time.now + config.projectileLifetimeMs;
     shot.status = look?.status ?? effects.shotStatus;
-    shot.pierceLeft = effects.shotPierce;
+    shot.pierceLeft = effects.shotPierce + (look?.extraPierce ?? 0);
     shot.vampiric = look?.vampiric ?? false;
     shot.magic = look?.magic ?? false;
     shot.setDepth(RENDER_DEPTH.projectile);

@@ -24,13 +24,14 @@ export const HERO_SELECT_PALETTE = {
 export const HERO_SELECT_LAYOUT = {
   centerX: GAME_WIDTH / 2,
   title: { y: 44, fontSize: 30, letterSpacing: 6 },
-  card: { width: 300, height: 340, gap: 48, top: 104, borderWidth: 3 },
+  // Trzy karty (krok 82: łucznik) mieszczą się w szerokości gry: 3 × 272 + 2 × 24 = 864 px.
+  card: { width: 272, height: 340, gap: 24, top: 104, borderWidth: 3 },
   /** Postać na karcie: skala całkowita (pixel-perfect), środek względem górnej krawędzi karty. */
   sprite: { scale: 3, offsetY: 104 },
   name: { offsetY: 186, fontSize: 24, letterSpacing: 3 },
-  tagline: { offsetY: 220, fontSize: 13 },
+  tagline: { offsetY: 220, fontSize: 12 },
   stats: { offsetY: 246, fontSize: 13 },
-  attacks: { offsetY: 276, step: 22, fontSize: 13 },
+  attacks: { offsetY: 276, step: 22, fontSize: 12 },
   hint: { y: 478, fontSize: 14, letterSpacing: 3 },
   /** Kierunek, w którym patrzą postacie na kartach (wiersz arkusza: 4 = S, przodem do gracza). */
   facing: 4,

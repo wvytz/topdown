@@ -5,6 +5,7 @@ import type { PlayerStats } from '@/core/types';
 export enum HeroId {
   Barbarian = 'barbarian',
   Sorceress = 'sorceress',
+  Archer = 'archer',
 }
 
 /** Kule energii Czarodziejki (LPM): krążą wokół niej, atak wypuszcza jedną w stronę celownika. */
@@ -59,6 +60,65 @@ export interface SorceryConfig {
   readonly beam: BeamConfig;
 }
 
+/**
+ * Łuk (LPM, krok 82): przytrzymanie naciąga cięciwę, puszczenie wypuszcza strzałę.
+ * Siła strzały rośnie liniowo od „min” (szybkie kliknięcie) do „max” (pełne naciągnięcie po `drawMs`).
+ */
+export interface BowConfig {
+  readonly minDamage: number;
+  readonly maxDamage: number;
+  readonly minKnockback: number;
+  readonly maxKnockback: number;
+  readonly minSpeed: number;
+  readonly maxSpeed: number;
+  readonly lifetimeMs: number;
+  /** Promień ciała strzały (px). */
+  readonly radius: number;
+  /** Czas do pełnego naciągnięcia. */
+  readonly drawMs: number;
+  /** Przerwa po wypuszczeniu strzały, zanim można znów naciągać. */
+  readonly cooldownMs: number;
+  /** Dodatkowe przebicia strzały przy pełnym naciągnięciu (sumują się z Szurikenem). */
+  readonly fullDrawPierce: number;
+  /** Mnożnik prędkości ruchu w trakcie naciągania. */
+  readonly moveSpeedMultiplier: number;
+  /** Strzała wylatuje z łuku: tyle px przed pivotem … */
+  readonly forwardOffset: number;
+  /** … i tyle px w prawo od osi patrzenia. */
+  readonly sideOffset: number;
+}
+
+/** Salwa (PPM): wachlarz strzał na ładunkach strzału (`combat.ranged` — obrażenia, ładunki, odnowienie). */
+export interface VolleyConfig {
+  readonly arrows: number;
+  /** Rozpiętość wachlarza: kąt między skrajnymi strzałami (stopnie). */
+  readonly spreadDeg: number;
+}
+
+export interface ArcheryConfig {
+  readonly bow: BowConfig;
+  readonly volley: VolleyConfig;
+}
+
+/**
+ * Zestaw broni bohatera (krok 82): wręcz i strzał (barbarzyńca), magia (Czarodziejka) albo łuk (łucznik).
+ * Jedno pole zamiast osobnych `null` dla każdego bohatera.
+ */
+export type HeroKit =
+  | { readonly kind: 'melee' }
+  | { readonly kind: 'sorcery'; readonly sorcery: SorceryConfig }
+  | { readonly kind: 'archery'; readonly archery: ArcheryConfig };
+
+/** Zestaw Czarodziejki albo null. */
+export function sorceryOf(kit: HeroKit): SorceryConfig | null {
+  return kit.kind === 'sorcery' ? kit.sorcery : null;
+}
+
+/** Zestaw łucznika albo null. */
+export function archeryOf(kit: HeroKit): ArcheryConfig | null {
+  return kit.kind === 'archery' ? kit.archery : null;
+}
+
 export interface HeroDefinition {
   readonly id: HeroId;
   readonly name: string;
@@ -66,8 +126,8 @@ export interface HeroDefinition {
   readonly tagline: string;
   readonly attacks: readonly { readonly input: string; readonly text: string }[];
   readonly stats: PlayerStats;
-  /** Dash, nietykalność; u barbarzyńcy także cios i strzał. */
+  /** Dash, nietykalność; u barbarzyńcy także cios i strzał, u łucznika ładunki salwy (`ranged`). */
   readonly combat: PlayerCombatConfig;
-  /** Zestaw Czarodziejki; null = walka wręcz i strzał (barbarzyńca). */
-  readonly sorcery: SorceryConfig | null;
+  /** Broń: wręcz i strzał (barbarzyńca), magia (Czarodziejka) albo łuk (łucznik). */
+  readonly kit: HeroKit;
 }

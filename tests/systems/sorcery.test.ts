@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Hit } from '@/core/combatTypes';
-import { HeroId } from '@/core/heroTypes';
+import { HeroId, sorceryOf } from '@/core/heroTypes';
 import { ItemId } from '@/core/lootTypes';
 import type { Vector2 } from '@/core/types';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
@@ -15,7 +15,7 @@ import { BeamChannel, beamReach, crystalPoint, distanceToSegment, orbitOffsets, 
 
 const sorceress = HERO_DEFINITIONS[HeroId.Sorceress];
 const barbarian = HERO_DEFINITIONS[HeroId.Barbarian];
-const beamConfig = sorceress.sorcery!.beam;
+const beamConfig = sorceryOf(sorceress.kit)!.beam;
 const loadout = (items: ItemId[] = []) => computeHeroLoadout(sorceress, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
 
 const makeTarget = (x: number, y: number, hp = 100, radius = 10) => {
@@ -38,7 +38,7 @@ describe('bohaterowie', () => {
   it('Czarodziejka ma mniej HP i wolniejszy chód niż barbarzyńca (decyzja właściciela)', () => {
     expect(sorceress.stats.maxHp).toBeLessThan(barbarian.stats.maxHp);
     expect(sorceress.stats.moveSpeed).toBeLessThan(barbarian.stats.moveSpeed);
-    expect(barbarian.sorcery).toBeNull();
+    expect(sorceryOf(barbarian.kit)).toBeNull();
   });
 
   it('bohater przechodzi między piętrami w RunSnapshot; nowy run domyślnie barbarzyńcą', () => {
@@ -48,15 +48,15 @@ describe('bohaterowie', () => {
   });
 
   it('loadout barbarzyńcy nie ma zestawu Czarodziejki', () => {
-    expect(computeHeroLoadout(barbarian, [], ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS).sorcery).toBeNull();
+    expect(computeHeroLoadout(barbarian, [], ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS).kit.kind).toBe('melee');
   });
 });
 
 describe('przedmioty u Czarodziejki', () => {
-  const base = sorceress.sorcery!.orbs;
+  const base = sorceryOf(sorceress.kit)!.orbs;
 
   it('Ostrze dodaje obrażenia kul, Rękawice przyspieszają rzut, Kołczan dokłada kulę', () => {
-    const orbs = loadout([ItemId.Blade, ItemId.Gloves, ItemId.Quiver]).sorcery!.orbs;
+    const orbs = sorceryOf(loadout([ItemId.Blade, ItemId.Gloves, ItemId.Quiver]).kit)!.orbs;
     expect(orbs.damage).toBeGreaterThan(base.damage);
     expect(orbs.castCooldownMs).toBeLessThan(base.castCooldownMs);
     expect(orbs.castWindupMs).toBeLessThan(base.castWindupMs);
@@ -65,12 +65,12 @@ describe('przedmioty u Czarodziejki', () => {
 
   it('liczba kul ma ten sam limit co ładunki strzału', () => {
     const quivers = Array.from({ length: 20 }, () => ItemId.Quiver);
-    expect(loadout(quivers).sorcery!.orbs.maxOrbs).toBe(STAT_LIMITS.maxRangedCharges);
+    expect(sorceryOf(loadout(quivers).kit)!.orbs.maxOrbs).toBe(STAT_LIMITS.maxRangedCharges);
   });
 
   it('modyfikator piętra wydłuża odnawianie kul i blokadę promienia', () => {
     const effects = { playerRechargeMultiplier: 2 } as FloorModifierEffects;
-    const slowed = applyFloorToLoadout(loadout(), effects).sorcery!;
+    const slowed = sorceryOf(applyFloorToLoadout(loadout(), effects).kit)!;
     expect(slowed.orbs.rechargeMs).toBe(base.rechargeMs * 2);
     expect(slowed.beam.lockoutMs).toBe(beamConfig.lockoutMs * 2);
   });
@@ -203,7 +203,7 @@ describe('rozprysk kuli (krok 50)', () => {
   it('rani sąsiadów głównego celu ułamkiem obrażeń, magią i bez statusów; główny cel pomija', async () => {
     const { resolveSplash, splashDamage } = await import('@/systems/Sorcery');
     const { HERO_DEFINITIONS } = await import('@/config/heroConfig');
-    const splash = HERO_DEFINITIONS.sorceress.sorcery!.orbs.splash;
+    const splash = sorceryOf(HERO_DEFINITIONS.sorceress.kit)!.orbs.splash;
     const hits: Array<{ who: string; damage: number; magic?: boolean; status?: unknown }> = [];
     const mk = (who: string, x: number) => ({ x, y: 0, radius: 8, takeHit: (h: { damage: number; magic?: boolean; status?: unknown }) => (hits.push({ who, ...h }), { dealt: h.damage, died: false }) });
     const main = mk('main', 0);
