@@ -1132,12 +1132,40 @@ export class BossFight {
     this.dying = true;
     const { sheet, animation } = visual.death;
     const corpse = this.deps.scene.add.sprite(position.x, position.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.boss);
+    if (visual.death.risingSmoke) this.startRisingSmoke(position);
     corpse.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-      corpse.destroy();
+      // Plama po bossie zostaje na podłodze (pod postaciami), reszta zwłok znika.
+      if (visual.death?.keepCorpse) corpse.setDepth(RENDER_DEPTH.combatDecal);
+      else corpse.destroy();
       this.dying = false;
       this.finishDefeat(visual.deathDecal, position);
     });
     corpse.play(animationKey(sheet, animation, facing));
+  }
+
+  /** Dym znad plamy po Baronie: kłęby wznoszą się, rosną i gasną przez `rise.durationMs`. */
+  private startRisingSmoke(at: Vector2): void {
+    const { scene } = this.deps;
+    const { rise, puff } = SMOKE_VISUAL;
+    const key = SPRITE_SHEETS[puff.sheet].key;
+    scene.time.addEvent({
+      delay: rise.everyMs,
+      repeat: Math.floor(rise.durationMs / rise.everyMs),
+      callback: () => {
+        const x = at.x + Phaser.Math.Between(-rise.spread, rise.spread);
+        const y = at.y + Phaser.Math.Between(-rise.spread / 2, rise.spread / 2);
+        const sprite = scene.add.sprite(x, y, key, Phaser.Math.Between(0, 3)).setDepth(RENDER_DEPTH.slash).setScale(rise.scale.from).setAlpha(rise.alpha);
+        scene.tweens.add({
+          targets: sprite,
+          y: y - rise.riseHeight,
+          x: x + Phaser.Math.Between(-rise.driftX, rise.driftX),
+          scale: rise.scale.to,
+          alpha: 0,
+          duration: rise.lifeMs,
+          onComplete: () => sprite.destroy(),
+        });
+      },
+    });
   }
 
   private finishDefeat(decal: CombatDecalKind, position: Vector2): void {

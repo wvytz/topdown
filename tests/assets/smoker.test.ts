@@ -10,7 +10,7 @@ import { TILESETS_DIR, loadTileset } from '../helpers/tileset';
 const PUBLIC = fileURLToPath(new URL('../../public/', import.meta.url));
 const RESERVED = ['#000000', '#ffffff', '#9cff57'];
 
-const sheets = [SPRITE_SHEETS.smokeBaron, SPRITE_SHEETS.blackDog, SPRITE_SHEETS.smokePuff, SPRITE_SHEETS.energyCan, SPRITE_SHEETS.ashtray, SPRITE_SHEETS.smokeCloud, SPRITE_SHEETS.wallHole] as const;
+const sheets = [SPRITE_SHEETS.smokeBaron, SPRITE_SHEETS.blackDog, SPRITE_SHEETS.smokePuff, SPRITE_SHEETS.energyCan, SPRITE_SHEETS.smokeBaronDeath, SPRITE_SHEETS.ashtray, SPRITE_SHEETS.smokeCloud, SPRITE_SHEETS.wallHole] as const;
 
 describe('Baron Dymu i dog: arkusze', () => {
   it.each(sheets.map((s) => [s.url, s] as const))('%s: wymiary jak w spriteConfig, piksele pełne, bez barw zarezerwowanych', (_url, sheet) => {

@@ -3985,6 +3985,18 @@ Prośba właściciela: piętro Barona ma mieć **dymne pułapki w stylu popielni
 
 ---
 
+## Krok 85 — Śmierć Barona Dymu `#decyzja` `#baron-dymu` `#boss`
+
+Prośba właściciela: animacja śmierci Barona w brązowej plamie jak u Sludge Kinga, a znad plamy unosi się dym.
+- **Grafika** (`tools/smoker_sprites.py` → `smoke-baron_death.png`, 1024×1024, komórka 128, 8 kierunków, 8 klatek bez pętli, 6 kl./s): 0 ryk agonii, 1–3 ciało osiada i rozlewa się, 4–6 tonie w brązowej plamie z bąblami, 7 sama plama. Brąz i dithering brzegu jak szlam Sludge Kinga (STYLEGUIDE §4.5).
+- **Plama zostaje**: `BossVisual.death.keepCorpse` — ostatnia klatka nie znika, tylko ląduje na głębokości śladów walki (pod postaciami).
+- **Dym znad plamy**: `death.risingSmoke` + `SMOKE_VISUAL.rise` — przez 20 s co 0,32 s kłąb (klatka `smoke-puff`) pojawia się nad plamą, unosi o 52 px, rośnie i gaśnie; zaczyna się już w trakcie topnienia (`BossFight.startRisingSmoke`).
+- Test `SmokeBaron.test.ts` (wygląd śmierci), `smoker.test.ts` (arkusz). Przeglądarka: po pokonaniu Barona plama brązowa na podłodze i kłęby dymu unoszące się nad nią, nagroda i schody jak zwykle.
+- Uwaga poboczna (poza zakresem): plansza nagrody mówi „Strażnik pokonany” po każdym bossie (stary tekst).
+- **Do oceny:** tempo animacji, wielkość plamy (promień 30 px), ilość i długość dymu.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

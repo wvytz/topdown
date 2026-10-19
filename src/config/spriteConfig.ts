@@ -405,6 +405,21 @@ export const SPRITE_SHEETS = {
     fps: 12,
     animations: { spin: { frames: [0, 1, 2, 3], loop: true } },
   },
+  // Śmierć Barona (krok 85, tools/smoker_sprites.py): 128×128, 8 kierunków; 0 ryk agonii, 1–3 ciało osiada i rozlewa się,
+  // 4–6 tonie w brązowej plamie, 7 sama plama (zostaje na podłodze).
+  smokeBaronDeath: {
+    key: 'sheet-smoke-baron-death',
+    url: 'assets/sprites/smoke-baron_death.png',
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 1024,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 6 },
+    },
+  },
   // Strażnik Bram (krok 41e, tools/gatekeeper_sprites.py): 96×96, 8 kierunków; 0–3 chód, 4–7 wirowanie
   // łańcuchem, 8–11 uderzenie tarczą (tempo z telegrafu ataku).
   gateWarden: {
@@ -1050,7 +1065,14 @@ export interface BossVisual extends EnemyVisual {
   /** Trwały ślad w miejscu śmierci bossa. */
   readonly deathDecal: CombatDecalKind;
   /** Animacja śmierci (arkusz kierunkowy); brak = tylko błysk i ślad. Nagroda czeka na jej koniec. */
-  readonly death?: { readonly sheet: SpriteSheetId; readonly animation: string };
+  readonly death?: {
+    readonly sheet: SpriteSheetId;
+    readonly animation: string;
+    /** Ostatnia klatka (plama) zostaje na podłodze zamiast zniknąć (Baron Dymu, krok 85). */
+    readonly keepCorpse?: boolean;
+    /** Znad zwłok unosi się dym (kłęby w przestrzeni ekranu) — `SMOKE_VISUAL.rise`. */
+    readonly risingSmoke?: boolean;
+  };
 }
 
 /**
@@ -1122,6 +1144,7 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Roar]: 'drink',
     },
     deathDecal: 'splat',
+    death: { sheet: 'smokeBaronDeath', animation: 'die', keepCorpse: true, risingSmoke: true },
   },
   // Strażnik Bram (krok 41e): wirowanie łańcuchem (slam) i uderzenie tarczą (cleave).
   [BossId.GateWarden]: {
@@ -1151,6 +1174,8 @@ export const SMOKE_VISUAL = {
   telegraph: { fillAlpha: 0.28, edge: 0x6a665e, edgeAlpha: 0.7, color: 0xc8c4b8 },
   /** Kłąb po uderzeniu: rośnie do `scale` i gaśnie przez `fadeMs`. */
   burst: { scale: 1.6, fadeMs: 700 },
+  /** Dym znad plamy po Baronie (krok 85): co `everyMs` kłąb o losowym miejscu w promieniu `spread` unosi się o `riseHeight` i gaśnie. */
+  rise: { durationMs: 20000, everyMs: 320, spread: 18, riseHeight: 52, driftX: 12, lifeMs: 2600, scale: { from: 0.7, to: 1.5 }, alpha: 0.55 },
   /** Napis nad graczem po trafieniu dymem, gdy dog skacze. */
   text: '#d8d4c8',
 } as const;

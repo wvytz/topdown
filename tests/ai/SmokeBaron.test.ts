@@ -75,6 +75,8 @@ describe('Baron Dymu (krok 83)', () => {
     const animations: Readonly<Record<string, unknown>> = SPRITE_SHEETS[visual.sheet].animations;
     for (const name of Object.values(visual.attacks)) expect(animations).toHaveProperty(name!);
     expect(visual.attacks[BossAttackKind.Smoke]).toBe('puff');
+    expect(visual.death).toMatchObject({ sheet: 'smokeBaronDeath', animation: 'die', keepCorpse: true, risingSmoke: true });
+    expect(SPRITE_SHEETS.smokeBaronDeath.animations).toHaveProperty('die');
     expect(SPRITE_SHEETS.blackDog.animations).toHaveProperty('run');
     expect(SPRITE_SHEETS.blackDog.animations).toHaveProperty('lunge');
   });

@@ -14,6 +14,8 @@ smoke-baron_walk-puff-slam-throw-drink.png (2560x1024, komórka 128x128, pivot 4
 Dominująca cecha: ogromny brzuch w brudnym podkoszulku + wysokie, łyse czoło (jasna kopuła) + dym przy twarzy.
 Akcenty: neonowa zieleń puszki (jedyny jaskrawy kolor) i żar fajek.
 
+smoke-baron_death.png (1024x1024, komórka 128, krok 85): 8 klatek bez pętli, 8 kierunków — 0 ryk agonii, 1–3 ciało osiada i rozlewa się w brązową plamę,
+  4–6 tonie, 7 sama plama z bąblami; dym znad plamy dodaje gra.
 black-dog_run-lunge.png (640x640, komórka 80x80, pivot 40,40): kolumny 0–3 bieg, 4–7 skok z kłapnięciem
   (przysiad, wybicie, kłapnięcie z odsłoniętymi kłami, lądowanie).
 smoke-puff.png (128x32): obłok dymu smugi, 4 klatki rosnącego kłębu (gra skaluje i przezroczystość ustawia sama).
@@ -409,11 +411,77 @@ def wall_hole_frame(k):
     return img
 
 
+# ---------------- śmierć Barona: topnieje w brązową plamę (krok 85) ----------------
+# Brąz jak szlam Sludge Kinga (STYLEGUIDE §4.5); dym znad plamy dodaje gra (kłęby w przestrzeni ekranu).
+BROWN = (ok(.17, .030, 55), ok(.27, .050, 55), ok(.37, .065, 58), ok(.49, .070, 62), ok(.62, .065, 70))
+BAYER = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
+# Klatki: skala ciała, promień plamy, bąble. 0 ryk agonii, 1–3 ciało osiada, 4–6 tonie, 7 sama plama.
+DEATH_FRAMES = ((1.0, 0, 0), (0.92, 14, 0), (0.82, 19, 1), (0.7, 23, 2), (0.55, 26, 3), (0.4, 28, 3), (0.22, 29, 2), (0.0, 30, 2))
+
+
+def centroid(img):
+    pts = [(x, y) for y in range(img.h) for x in range(img.w) if img.p[y][x][3]]
+    return sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)
+
+
+def scaled(img, center, sx, sy, sink=0.0):
+    """Ciało skalowane wokół środka (najbliższy sąsiad); `sink` przesuwa je w dół (osiadanie)."""
+    out = Img(img.w, img.h)
+    if sx <= 0 or sy <= 0:
+        return out
+    cx, cy = center
+    for y in range(img.h):
+        for x in range(img.w):
+            c = img.get(round(cx + (x - cx) / sx), round(cy + (y - cy - sink) / sy))
+            if c and c[3]:
+                out.put(x, y, c)
+    return out
+
+
+def brown_pool(img, cx, cy, r):
+    """Brązowa plama: ciemny brzeg, przejście w jaśniejszy brąz ditheringiem Bayera 4×4, nieregularne języki."""
+    for y in range(img.h):
+        for x in range(img.w):
+            dx, dy = (x + .5 - cx) / r, (y + .5 - cy) / (r * .8)
+            a = math.atan2(dy, dx)
+            d = math.hypot(dx, dy) / (1 + .09 * math.sin(3 * a + .7) + .06 * math.sin(5 * a + 2))
+            if d > 1:
+                continue
+            if d > .9:
+                c = BROWN[0]
+            elif d > .62:
+                c = BROWN[1] if (d - .62) / .28 * 16 > BAYER[y % 4][x % 4] else BROWN[2]
+            else:
+                c = BROWN[3] if .38 < d < .5 and -2.6 < a < -1.7 else BROWN[2]
+            img.put(x, y, c)
+
+
+def baron_death_frame(f):
+    scale, pool_r, bubbles = DEATH_FRAMES[f]
+    base = baron_frame(0)
+    cx, cy = centroid(base)
+    img = Img(CELL, CELL)
+    if pool_r:
+        brown_pool(img, cx, cy + 4, pool_r)
+    img.blit(scaled(base, (cx, cy), scale * (1 + (1 - scale) * .35), scale, sink=(1 - scale) * 8), 0, 0)
+    import random as _r
+    r = _r.Random(8500 + f)
+    for _ in range(bubbles):  # bąble na plamie
+        a, d = r.uniform(0, math.tau), r.uniform(.3, .75) * pool_r
+        bx, by = int(cx + math.cos(a) * d), int(cy + 4 + math.sin(a) * d * .8)
+        for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            img.put(bx + ox, by + oy, BROWN[3])
+        img.put(bx, by, BROWN[1])
+        img.put(bx - 1, by - 1, BROWN[4])
+    return img
+
+
 def build():
     boss, bf = directional_sheet(CELL, baron_frame, 20)
     dog, df = directional_sheet(DOG, dog_frame, 8)
     smoke, sf = strip_sheet(32, smoke_frame, 4)
     can, cf = strip_sheet(16, can_frame, 4)
+    death, ddf = directional_sheet(CELL, baron_death_frame, 8)
     ash, af = strip_sheet(32, ashtray_frame, 8)
     cloud, clf = strip_sheet(CLOUD, smoke_cloud_frame, 8)
     # Dziura w murze to część muru: bez obrysu (strip_sheet go dodaje), więc sklejamy ręcznie.
@@ -425,6 +493,7 @@ def build():
         hf.append((f'c{k}', frame))
     return {
         'smoke-baron_walk-puff-slam-throw-drink.png': (boss, bf, CELL, 8),
+        'smoke-baron_death.png': (death, ddf, CELL, 8),
         'black-dog_run-lunge.png': (dog, df, DOG, 4),
         'smoke-puff.png': (smoke, sf, 32, 1),
         'energy-can.png': (can, cf, 16, 1),
