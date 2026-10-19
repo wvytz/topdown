@@ -102,6 +102,44 @@ export const SPRITE_SHEETS = {
       channel: { frames: [5, 6], loop: true },
     },
   },
+  // Łucznik, trzeci bohater (krok 82, tools/archer_sprites.py): chód (0–3) i łuk (4–7):
+  // nałożenie strzały, pół naciągnięcia, pełne naciągnięcie, zwolnienie cięciwy.
+  archer: {
+    key: 'sheet-archer',
+    url: 'assets/sprites/archer_walk-draw.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      // Etapy naciągania wybiera gra według siły (BowDraw); każdy to jedna klatka.
+      nock: { frames: [4], loop: false },
+      half: { frames: [5], loop: false },
+      full: { frames: [6], loop: false },
+      // Zwolnienie cięciwy trwa przez przerwę łuku (cooldownMs).
+      release: { frames: [7, 0], loop: false },
+    },
+  },
+  // Strzała łucznika (ten sam generator): wiersz = kierunek lotu (0 = N … 7 = NW), jedna klatka.
+  archerArrow: {
+    key: 'sheet-archer-arrow',
+    url: 'assets/sprites/archer_arrow.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 32,
+    sheetHeight: 128,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      // Kolumna 1: strzała z pełnego naciągnięcia (jaśniejszy grot i lotki).
+      fly: { frames: [0], loop: false },
+      flyFull: { frames: [1], loop: false },
+    },
+  },
   // Kula energii Czarodziejki (ten sam generator): okrągła, bez obrotu.
   sorceressOrb: {
     key: 'sheet-sorceress-orb',
@@ -845,11 +883,13 @@ export const PLAYER_VISUAL = {
   groundShadow: WALKER_SHADOW,
 } as const satisfies EnemyVisual;
 
-/** Wygląd bohatera; Czarodziejka ma dodatkowo animację promienia. */
+/** Wygląd bohatera; Czarodziejka ma dodatkowo animację promienia, łucznik etapy naciągania. */
 export interface HeroVisual extends EnemyVisual {
   readonly attack: string;
   readonly idle: string;
   readonly channel?: string;
+  /** Łucznik: animacje etapów naciągania łuku (od nałożenia strzały do pełnego naciągnięcia). */
+  readonly drawStages?: readonly string[];
   readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
 }
 
@@ -864,6 +904,21 @@ export const HERO_VISUALS: Readonly<Record<HeroId, HeroVisual>> = {
     channel: 'channel',
     groundShadow: WALKER_SHADOW,
   },
+  [HeroId.Archer]: {
+    sheet: 'archer',
+    move: 'walk',
+    idle: 'idle',
+    attack: 'release',
+    drawStages: ['nock', 'half', 'full'],
+    groundShadow: WALKER_SHADOW,
+  },
+};
+
+/** Strzała łucznika: klatka według kierunku lotu (8 wierszy arkusza). */
+export const ARCHER_ARROW_VISUAL = { sheet: 'archerArrow', animation: 'fly', fullAnimation: 'flyFull' } as const satisfies {
+  sheet: SpriteSheetId;
+  animation: string;
+  fullAnimation: string;
 };
 
 /** Kula energii Czarodziejki: okrągła, bez kierunków (także na orbicie). */

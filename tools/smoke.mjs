@@ -1,9 +1,9 @@
 /**
  * Test dymny (smoke) gry w prawdziwej przeglądarce (krok 56): sam uruchamia serwer dev, a bot przechodzi piętra
- * obiema postaciami (losowe wejścia, wszystkie pokoje, walka w arenie, pokonanie bossa, nagroda, schody) i szuka błędów:
+ * wszystkimi bohaterami (losowe wejścia, wszystkie pokoje, walka w arenie, pokonanie bossa, nagroda, schody) i szuka błędów:
  * wyjątków strony, błędów konsoli i zdarzeń `error` z dziennika diagnostycznego gry.
  *
- * Użycie:   npm run smoke -- [--floors 8] [--seeds 2] [--heroes both|barbarian|sorceress] [--room-seconds 1.5] [--sweep-only]
+ * Użycie:   npm run smoke -- [--floors 8] [--seeds 2] [--heroes all|barbarian|sorceress|archer] [--room-seconds 1.5] [--sweep-only]
  * Przeglądarka: domyślnie zainstalowany Chrome (kanał „chrome”); inna: SMOKE_CHROMIUM=<ścieżka do pliku wykonywalnego>.
  * Wymaga trybu dev (korzysta z `window.__game`). Kod wyjścia 1, gdy coś się wywróci.
  */
@@ -19,7 +19,7 @@ const opt = (name, fallback) => {
 };
 const FLOORS = Number(opt('floors', 8));
 const SEEDS = Number(opt('seeds', 2));
-const HEROES = opt('heroes', 'both') === 'both' ? ['barbarian', 'sorceress'] : [opt('heroes', 'barbarian')];
+const HEROES = ['all', 'both'].includes(opt('heroes', 'all')) ? ['barbarian', 'sorceress', 'archer'] : [opt('heroes', 'barbarian')];
 const ROOM_MS = Number(opt('room-seconds', 1.5)) * 1000;
 const SWEEP_ONLY = args.includes('--sweep-only');
 const PORT = Number(opt('port', 5199));

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Hit, PlayerCombatConfig, StatusApplication, WeaponEffects } from '@/core/combatTypes';
-import type { HeroId, SorceryConfig } from '@/core/heroTypes';
+import type { ArcheryConfig, HeroId, HeroKit, SorceryConfig } from '@/core/heroTypes';
+import { archeryOf, sorceryOf } from '@/core/heroTypes';
 import { AttackPhase } from '@/core/combatTypes';
 import type { BeamHudData, MovementIntent, PlayerStats, RangedHudData, Vector2 } from '@/core/types';
 import { PLAYER_SIZE } from '@/config/gameConfig';
@@ -20,6 +21,7 @@ import { computeVelocity } from '@/systems/MovementSystem';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
 import { BeamChannel, orbitOffsets } from '@/systems/Sorcery';
+import { BowDraw } from '@/systems/Archery';
 import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
@@ -51,9 +53,24 @@ export interface PlayerTickResult {
   readonly beam: boolean;
   /** Czarodziejka: ile razy promień zadaje obrażenia w tej klatce. */
   readonly beamTicks: number;
+  /** Łucznik: strzała z łuku wypuszczona w tej klatce (kierunek i siła naciągnięcia 0..1); null = brak. */
+  readonly arrow: { readonly direction: Vector2; readonly power: number } | null;
+  /** Łucznik: kierunek celowania salwy (wachlarz rozkłada scena); null = brak. */
+  readonly volley: Vector2 | null;
 }
 
-const IDLE: PlayerTickResult = { struck: false, shot: null, poisonDamage: 0, orb: null, beam: false, beamTicks: 0 };
+const IDLE: PlayerTickResult = {
+  struck: false,
+  shot: null,
+  poisonDamage: 0,
+  orb: null,
+  beam: false,
+  beamTicks: 0,
+  arrow: null,
+  volley: null,
+};
+/** Kolor znacznika celowania przy pełnym naciągnięciu łuku. */
+const FULL_DRAW_AIM_TINT = 0xffe08a;
 const KNOCKBACK_STUN_MS = 120;
 const AIM_MARKER_DISTANCE = 22;
 
@@ -79,11 +96,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private aimAngle = 0;
   private readonly animator: DirectionalAnimator;
   private readonly visual: HeroVisual;
-  /** Zestaw Czarodziejki (krok 37); null = barbarzyńca. */
-  private sorcery: SorceryConfig | null;
+  /** Broń bohatera: wręcz (barbarzyńca), magia (Czarodziejka, krok 37) albo łuk (łucznik, krok 82). */
+  private kit: HeroKit;
   private orbPool: ChargePool | null = null;
   private castCycle: AttackCycle | null = null;
   private beam: BeamChannel | null = null;
+  private bow: BowDraw | null = null;
+  /** Chwila ostatniej strzały z łuku — animacja zwolnienia cięciwy trwa przez przerwę łuku. */
+  private bowReleasedAt = -Infinity;
   /** Kule krążące wokół Czarodziejki (tyle, ile jest gotowych do rzutu). */
   private readonly orbitSprites: Phaser.GameObjects.Sprite[] = [];
 
@@ -102,13 +122,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dash = new DashController(loadout.combat.dash);
     this.shotCharges = new ChargePool(loadout.combat.ranged.maxCharges, loadout.combat.ranged.rechargeMs);
     this.shotCycle = new AttackCycle(0, loadout.combat.ranged.shotIntervalMs);
-    this.sorcery = loadout.sorcery;
-    if (loadout.sorcery) {
-      const { orbs, beam } = loadout.sorcery;
+    this.kit = loadout.kit;
+    const sorcery = sorceryOf(loadout.kit);
+    if (sorcery) {
+      const { orbs, beam } = sorcery;
       this.orbPool = new ChargePool(orbs.maxOrbs, orbs.rechargeMs);
       this.castCycle = new AttackCycle(orbs.castWindupMs, orbs.castCooldownMs);
       this.beam = new BeamChannel(beam);
     }
+    const archery = archeryOf(loadout.kit);
+    if (archery) this.bow = new BowDraw(archery.bow);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -156,18 +179,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.combat = loadout.combat;
     this.weaponEffects = loadout.effects;
     this.health.setMax(loadout.stats.maxHp);
-    this.sorcery = loadout.sorcery;
-    if (loadout.sorcery) {
-      const { orbs, beam } = loadout.sorcery;
+    this.kit = loadout.kit;
+    const sorcery = sorceryOf(loadout.kit);
+    if (sorcery) {
+      const { orbs, beam } = sorcery;
       this.orbPool?.resize(orbs.maxOrbs, this.scene.time.now);
       this.castCycle = new AttackCycle(orbs.castWindupMs, orbs.castCooldownMs);
       this.beam?.setConfig(beam);
     }
+    const archery = archeryOf(loadout.kit);
+    if (archery) this.bow?.setConfig(archery.bow);
   }
 
-  /** Zestaw Czarodziejki po przedmiotach; null = barbarzyńca. */
+  /** Zestaw Czarodziejki po przedmiotach; null = inny bohater. */
   get sorceryConfig(): SorceryConfig | null {
-    return this.sorcery;
+    return sorceryOf(this.kit);
+  }
+
+  /** Zestaw łucznika po przedmiotach; null = inny bohater. */
+  get archeryConfig(): ArcheryConfig | null {
+    return archeryOf(this.kit);
+  }
+
+  private get sorcery(): SorceryConfig | null {
+    return sorceryOf(this.kit);
   }
 
   /** Promień do HUD; null u barbarzyńcy. */
@@ -252,6 +287,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.status.isParalyzed(now)) {
       if (!this.knockbackStun.isActive(now)) this.setVelocity(0, 0);
       this.beam?.interrupt(now);
+      this.bow?.interrupt();
       this.updateVisuals(now);
       this.updateOrbit(now);
       this.animator.play(this.visual.idle);
@@ -263,11 +299,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const direction = moving ? actions.move : { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
       if (this.dash.tryStart(now, direction)) {
         this.dashCount++;
-        // Dash przerywa promień — jak puszczenie przycisku.
+        // Dash przerywa promień — jak puszczenie przycisku — i zwalnia naciągniętą cięciwę.
         this.beam?.interrupt(now);
+        this.bow?.interrupt();
       }
     }
     const beam = this.beam?.update(actions.shoot && !this.dash.isDashing(now), now) ?? { active: false, ticks: 0 };
+    // Łucznik: salwa (PPM) zwalnia cięciwę; LPM naciąga, puszczenie wypuszcza strzałę.
+    const aim = { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
+    const volley = this.bow && actions.shoot && !this.dash.isDashing(now) && this.tryShoot(now) ? aim : null;
+    if (volley) this.bow?.interrupt();
+    const bow = this.bow?.update(actions.attack && !volley && !this.dash.isDashing(now), now) ?? null;
 
     if (this.dash.isDashing(now)) {
       const velocity = this.dash.velocity();
@@ -275,7 +317,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     } else if (!this.knockbackStun.isActive(now)) {
       const velocity = computeVelocity(actions.move, this.stats);
       // Promień spowalnia Czarodziejkę (decyzja właściciela).
-      const channel = beam.active && this.sorcery ? this.sorcery.beam.moveSpeedMultiplier : 1;
+      // Naciąganie łuku spowalnia łucznika (krok 82).
+      const archery = this.archeryConfig;
+      const channel =
+        beam.active && this.sorcery
+          ? this.sorcery.beam.moveSpeedMultiplier
+          : bow?.drawing && archery
+            ? archery.bow.moveSpeedMultiplier
+            : 1;
       const slow = this.status.speedMultiplier(now) * channel;
       this.setVelocity(velocity.x * slow, velocity.y * slow);
     }
@@ -290,6 +339,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.updateOrbit(now);
       this.updateSorceryAnimation(actions, now, castStarted, beam.active);
       return { ...IDLE, poisonDamage, orb, beam: beam.active, beamTicks: beam.ticks };
+    }
+
+    if (bow) {
+      const arrow = bow.released !== null ? { direction: aim, power: bow.released } : null;
+      if (arrow) this.bowReleasedAt = now;
+      this.updateVisuals(now);
+      if (bow.power >= 1) this.aimMarker.setTint(FULL_DRAW_AIM_TINT);
+      else this.aimMarker.clearTint();
+      this.updateArcherAnimation(actions, now, bow.drawing, bow.power, arrow !== null);
+      return { ...IDLE, poisonDamage, arrow, volley };
     }
 
     const swingStarted = actions.attack && this.attackCycle.tryStart(now);
@@ -339,6 +398,25 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.animator.play(state === 'move' ? this.visual.move : this.visual.idle);
   }
 
+  /** Łucznik: naciąganie w etapach (siła), potem zwolnienie cięciwy przez przerwę łuku, potem chód. */
+  private updateArcherAnimation(actions: PlayerActions, now: number, drawing: boolean, power: number, released: boolean): void {
+    this.animator.face({ x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) });
+    const stages = this.visual.drawStages;
+    if (drawing && stages && stages.length > 0) {
+      const stage = power >= 1 ? stages.length - 1 : Math.min(stages.length - 2, Math.floor(power * (stages.length - 1)));
+      this.animator.play(stages[Math.max(0, stage)]!);
+      return;
+    }
+    const cooldown = this.archeryConfig?.bow.cooldownMs ?? 0;
+    if (now - this.bowReleasedAt < cooldown) {
+      if (released) this.animator.restart(this.visual.attack, cooldown);
+      else this.animator.play(this.visual.attack, cooldown);
+      return;
+    }
+    const moving = actions.move.x !== 0 || actions.move.y !== 0;
+    this.animator.play(moving ? this.visual.move : this.visual.idle);
+  }
+
   /** Strzał wymaga odstępu od poprzedniego i wolnego ładunku. */
   private tryShoot(now: number): boolean {
     if (this.shotCycle.phase(now) !== AttackPhase.Ready || this.shotCharges.available(now) <= 0) return false;
@@ -385,6 +463,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.animator.stop();
     this.aimMarker.setVisible(false);
     this.beam?.interrupt(this.scene.time.now);
+    this.bow?.interrupt();
     for (const sprite of this.orbitSprites.splice(0)) sprite.destroy();
   }
 

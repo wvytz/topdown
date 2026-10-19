@@ -80,7 +80,7 @@ export function applyFloorToEnemyLoot(table: LootTable, effects: FloorModifierEf
 export function applyFloorToLoadout(loadout: PlayerLoadout, effects: FloorModifierEffects): PlayerLoadout {
   const m = effects.playerRechargeMultiplier;
   if (m === 1) return loadout;
-  const { combat, sorcery } = loadout;
+  const { combat, kit } = loadout;
   return {
     ...loadout,
     combat: {
@@ -89,10 +89,17 @@ export function applyFloorToLoadout(loadout: PlayerLoadout, effects: FloorModifi
       ranged: { ...combat.ranged, rechargeMs: Math.round(combat.ranged.rechargeMs * m) },
     },
     // Czarodziejka: odnawianie kul i blokada promienia tak jak ładunki strzału.
-    sorcery: sorcery && {
-      orbs: { ...sorcery.orbs, rechargeMs: Math.round(sorcery.orbs.rechargeMs * m) },
-      beam: { ...sorcery.beam, lockoutMs: Math.round(sorcery.beam.lockoutMs * m) },
-    },
+    // Łucznik: salwa ma ładunki strzału (`combat.ranged`), więc wyczerpanie działa na nią już wyżej.
+    kit:
+      kit.kind === 'sorcery'
+        ? {
+            kind: 'sorcery',
+            sorcery: {
+              orbs: { ...kit.sorcery.orbs, rechargeMs: Math.round(kit.sorcery.orbs.rechargeMs * m) },
+              beam: { ...kit.sorcery.beam, lockoutMs: Math.round(kit.sorcery.beam.lockoutMs * m) },
+            },
+          }
+        : kit,
   };
 }
 

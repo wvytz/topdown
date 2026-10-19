@@ -46,7 +46,18 @@ import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPl
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import {
+  ARCHER_ARROW_VISUAL,
+  ELITE_VISUAL,
+  RETINUE_MARKER_VISUAL,
+  SECRET_ROOM_VISUAL,
+  SORCERESS_ORB_VISUAL,
+  SPRITE_SHEETS,
+  animationKey,
+} from '@/config/spriteConfig';
+import { sorceryOf } from '@/core/heroTypes';
+import { arrowSpec, volleyDirections } from '@/systems/Archery';
+import { facingDirection } from '@/systems/Facing';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
 import { beamReach, crystalPoint, splashDamage } from '@/systems/Sorcery';
 import {
@@ -75,6 +86,7 @@ import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
+import type { ShotLook } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -476,6 +488,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, effects);
     }
     if (turn.orb) this.fireOrb(turn.orb);
+    if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.power);
+    if (turn.volley) this.fireVolley(turn.volley);
     this.updateBeam(turn.beam, turn.beamTicks, time);
     this.resolveDashStrike(time);
     this.enemies.update(time);
@@ -568,7 +582,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Segmenty HUD przed zbudowaniem gracza: kule Czarodziejki albo ładunki strzału. */
   private get heroCharges(): number {
-    return this.hero.sorcery?.orbs.maxOrbs ?? this.hero.combat.ranged.maxCharges;
+    return sorceryOf(this.hero.kit)?.orbs.maxOrbs ?? this.hero.combat.ranged.maxCharges;
   }
 
   /** Kula Czarodziejki wylatuje z kryształu; niesie wszystkie efekty broni z przedmiotów. */
@@ -596,6 +610,57 @@ export class GameScene extends Phaser.Scene implements HudSource {
         magic: true,
       },
     );
+  }
+
+  /**
+   * Strzała łucznika z łuku (krok 82): siła z naciągnięcia, pełne naciągnięcie przebija.
+   * Łuk to broń główna, więc strzała niesie wszystkie efekty broni (strzał + cios), jak kula Czarodziejki,
+   * i trafia upiory zasadzki (domyślna decyzja z kroku 82, do oceny właściciela).
+   */
+  private fireArrow(direction: Vector2, power: number): void {
+    const archery = this.player.archeryConfig;
+    if (!archery) return;
+    const { bow } = archery;
+    const spec = arrowSpec(bow, power);
+    const origin = crystalPoint(this.player, Math.atan2(direction.y, direction.x), bow.forwardOffset, bow.sideOffset);
+    this.playerShots.fire(
+      origin,
+      direction,
+      {
+        damage: spec.damage,
+        knockback: spec.knockback,
+        projectileSpeed: spec.speed,
+        projectileLifetimeMs: bow.lifetimeMs,
+        projectileRadius: bow.radius,
+      },
+      this.player.effects,
+      this.arrowLook(direction, spec.full, spec.pierce),
+    );
+  }
+
+  /** Salwa łucznika (PPM): wachlarz strzał z obrażeniami i lotem ładunków strzału (`combat.ranged`). */
+  private fireVolley(aim: Vector2): void {
+    const archery = this.player.archeryConfig;
+    if (!archery) return;
+    const { bow, volley } = archery;
+    const angle = Math.atan2(aim.y, aim.x);
+    const origin = crystalPoint(this.player, angle, bow.forwardOffset, bow.sideOffset);
+    for (const direction of volleyDirections(angle, volley.arrows, volley.spreadDeg)) {
+      this.playerShots.fire(origin, direction, this.player.combatConfig.ranged, this.player.effects, this.arrowLook(direction, false, 0));
+    }
+  }
+
+  private arrowLook(direction: Vector2, full: boolean, extraPierce: number): ShotLook {
+    const { effects } = this.player;
+    const sheet = ARCHER_ARROW_VISUAL.sheet;
+    return {
+      texture: SPRITE_SHEETS[sheet].key,
+      animation: animationKey(sheet, full ? ARCHER_ARROW_VISUAL.fullAnimation : ARCHER_ARROW_VISUAL.animation, facingDirection(direction) ?? 0),
+      status: { ...effects.shotStatus, ...effects.meleeStatus },
+      vampiric: effects.meleeHeal > 0,
+      magic: true,
+      extraPierce,
+    };
   }
 
   /** Rozprysk kuli (krok 50): sąsiedzi trafionego dostają ułamek obrażeń; wrogowie, pajączki z bossa i boss. */

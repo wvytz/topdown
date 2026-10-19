@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -3939,6 +3939,21 @@ Trzecia runda wzmacniania; wybór właściciela: **mocniejsza wściekłość** (
 
 Właściciel zgłosił, że w trakcie tej sesji jest **naćpany**. Zapis na jego prośbę — na wypadek, gdyby dziwne decyzje projektowe z tego dnia wymagały przeglądu na trzeźwo.
 
+## Krok 82 — Łucznik, trzeci bohater `#decyzja` `#lucznik`
+
+Wybór właściciela po przeglądzie stanu gry: **nowy bohater — łucznik**. Połowa puli przedmiotów to efekty strzału (Szuriken, Elektryczna strzała, Lodowy odłamek, Kołczan); u łucznika są bronią główną.
+- **Statystyki** (`config/heroConfig.ts`): 85 HP (między barbarzyńcą a Czarodziejką), chód 215 (najszybszy).
+- **LPM — łuk z naciąganiem** (czysta logika `systems/Archery.ts`, `BowDraw`): przytrzymanie naciąga cięciwę przez 0,7 s, puszczenie wypuszcza strzałę. Siła rośnie liniowo: kliknięcie 5 obrażeń, pełne naciągnięcie 24, szybsza i z mocniejszym odrzutem; **pełne naciągnięcie przebija 1 wroga** (sumuje się z Szurikenem), a znacznik celowania świeci wtedy na złoto. W trakcie naciągania łucznik idzie wolniej (×0,6). Po strzale 0,25 s przerwy. Dash, paraliż i salwa zwalniają cięciwę bez strzału.
+- **PPM — salwa:** wachlarz 3 strzał (30°) po 8 obrażeń, na ładunkach strzału (`combat.ranged`: 2 ładunki, odnowienie 2,2 s). Z bliska wszystkie trzy trafiają jeden cel.
+- **Przedmioty:** Ostrze dodaje obrażenia łuku, Rękawice skracają naciąganie i przerwę, Kołczan dokłada ładunek salwy, a wyczerpanie (modyfikator piętra) wydłuża jej odnowienie. Strzały niosą wszystkie efekty broni (strzał + cios, jak kule Czarodziejki): Ognista pięść podpala, Wampirzy kieł leczy (z dotychczasowym cooldownem).
+- **Upiory zasadzek:** strzały łucznika trafiają je zawsze, jak magia Czarodziejki — **domyślna decyzja, do potwierdzenia przez właściciela** (bez tego zasadzki byłyby dla łucznika karą).
+- **Refaktor:** `HeroDefinition.sorcery` zastąpiło jedno pole `kit` (`melee` / `sorcery` / `archery`, `core/heroTypes.ts` z `sorceryOf`/`archeryOf`); tak samo `PlayerLoadout`. Kolejny bohater dopisuje tylko swój wariant.
+- **Grafika:** generator `tools/archer_sprites.py` — arkusz `archer_walk-draw.png` (chód 0–3; łuk 4–7: nałożenie strzały, pół, pełne naciągnięcie, zwolnienie cięciwy; etap wybiera gra według siły) i `archer_arrow.png` (8 kierunków, druga kolumna jaśniejsza dla pełnego naciągnięcia). Zielona peleryna z kapturem, skórzany kaftan i kołczan. **Czeka na ocenę właściciela.**
+- **Ekran wyboru:** trzy karty (272 px, odstęp 24), mniejsza czcionka opisów, żeby długie linie mieściły się w karcie. `?hero=archer` pomija wybór.
+- **Smoke:** `npm run smoke` domyślnie przechodzi piętra wszystkimi trzema bohaterami (`--heroes archer` tylko łucznikiem).
+- Testy: `tests/systems/archery.test.ts` (siła strzały, naciąganie, przerwa, przerwanie, wachlarz, przedmioty, wyczerpanie), `tests/assets/archer.test.ts` (paleta, wymiary, czytelność na płytach). Build: 1261 testów zielonych. Smoke (piętra 1–6, seed 1): łucznik, barbarzyńca i Czarodziejka bez błędów. Przeglądarka: pełne naciągnięcie — strzała 24 obrażeń z przebiciem, kliknięcie — 7; salwa — 3 strzały w wachlarzu, HUD pokazuje ładunki; ekran wyboru z trzema kartami, bez błędów.
+- **Do oceny w testach właściciela:** liczby łuku (czas naciągania, obrażenia, spowolnienie), siła salwy, wygląd postaci i strzały, trafianie upiorów.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -4027,6 +4042,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **3. Brakująca grafika**
 - **Czarodziejka (kroki 36–38):** sprite'y, mechanika i ekran wyboru gotowe. Do rozważenia: bohater przy wpisie na liście wyników, strojenie liczb po testach.
+- **Łucznik (krok 82):** sprite'y z generatora, mechanika i trzecia karta wyboru gotowe; czekają na ocenę właściciela (wygląd, liczby, upiory).
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.
