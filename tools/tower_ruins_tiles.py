@@ -131,7 +131,7 @@ class Palette:
     ember: tuple = ()  # 3: czerwień, pomarańcz, rozgrzany środek
     # Zadymiona palarnia (krok 84): śmieci na podłodze — puszki energetyków (zieleń, srebro) i opakowania z kurczaka
     # (czerwień, krem, tłuszcz, frytki). Puste w innych biomach.
-    litter: tuple = ()  # 10: puszka cień, puszka, puszka neon, srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
+    litter: tuple = ()  # 10: puszka cień, puszka, puszka jasny brąz, srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
     def colors(self):
@@ -318,7 +318,7 @@ PALETTES = {
         deep=oks((.08, .010, 85), (.10, .010, 85)),
         stain=oks((.36, .070, 85), (.42, .085, 88)),
         ash=oks((.55, .010, 85), (.48, .010, 250)),
-        litter=oks((.40, .120, 145), (.58, .190, 145), (.80, .220, 140), (.50, .008, 250), (.78, .008, 250),
+        litter=oks((.30, .055, 60), (.42, .075, 62), (.55, .080, 68), (.50, .008, 250), (.78, .008, 250),
                    (.40, .150, 28), (.52, .190, 28), (.90, .030, 90), (.38, .070, 70), (.82, .150, 95)),
     ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
@@ -1459,23 +1459,36 @@ def smoke_decal(kind):
         L, O = p.litter, p.outline
         img = Img(T, T)
 
-        def can(cx, cy, horizontal=True, crushed=False, flip=False):
-            """Puszka na boku: srebrne denka, zielony walec z neonowym paskiem i błyskawicą; zgnieciona — krótsza, z wgnieceniem."""
-            ln = 7 if crushed else 10
-            for i in range(-ln, ln + 1):
-                x, y = (cx + i, cy) if horizontal else (cx, cy + i)
-                for w in range(-3, 4):
-                    px, py = (x, y + w) if horizontal else (x + w, y)
-                    edge = abs(i) >= ln - 1
-                    c = L[4] if edge else (L[3] if w == 3 else (L[2] if w == -2 else (L[0] if w >= 2 else L[1])))
-                    if crushed and abs(i) <= 2 and abs(w) <= 1:
-                        c = L[0]
+        def can(cx, cy, horizontal=True, crushed=True, flip=False):
+            """Zgnieciona puszka po energetyku (brąz): spłaszczony, lekko pogięty walec z jednym głębokim zgnieceniem,
+            srebrne denko tylko z jednej strony, urwana zawleczka obok. Leży na boku; `horizontal` wybiera oś."""
+            widths = (3, 4, 4, 3, 2, 3, 4, 3, 2)
+            ln = len(widths)
+            for i, w in enumerate(widths):
+                bend = (i * i) // 28  # puszka lekko wygięta
+                for k in range(-w, w + 1):
+                    kk = k + bend
+                    px, py = (cx + i - ln // 2, cy + kk) if horizontal else (cx + kk, cy + i - ln // 2)
+                    c = L[2] if k == -w else (L[0] if k == w else L[1])
+                    if i == 0:
+                        c = L[4] if k < w else L[3]
+                    if i == 4:  # zgniecenie w poprzek
+                        c = L[0] if k > -w else L[1]
                     img.put(px, py, c)
-            for i in range(-2, 3):  # błyskawica z logo
-                px, py = (cx + i * 2, cy + (1 if i % 2 else -1)) if horizontal else (cx + (1 if i % 2 else -1), cy + i * 2)
-                img.put(px, py, L[2])
-            if flip:
-                img.put(cx + (ln if horizontal else 0), cy + (0 if horizontal else ln), L[3])
+            ex, ey = (cx + ln // 2 + 2, cy + 3) if horizontal else (cx + 3, cy + ln // 2 + 2)
+            img.put(ex, ey, L[4])  # urwana zawleczka
+            img.put(ex + 1, ey, L[3])
+
+        def upright(cx, cy):
+            """Jedna puszka stoi (z góry): srebrna obręcz, ciemny otwór z zawleczką, brązowy bok z lewej-góry jaśniejszy."""
+            disc(img, cx + .5, cy + 1.5, 5, lambda dx, dy, d: L[3] if d > 3.7 else L[4])
+            disc(img, cx + .5, cy + 1.5, 3.2, lambda dx, dy, d: L[0])
+            img.put(cx - 1, cy, L[3])
+            img.put(cx, cy, L[3])
+            img.put(cx + 2, cy + 3, L[4])
+            for y in range(cy + 5, cy + 8):  # bok puszki widoczny pod denkiem
+                for x in range(cx - 4, cx + 5):
+                    img.put(x, y, L[2] if x < cx - 1 else (L[1] if x < cx + 3 else L[0]))
 
         def bucket(cx, cy):
             """Wiaderko z kurczakiem przewrócone na bok: czerwono-białe pasy (z góry), ciemne wnętrze, rozsypane kości."""
@@ -1509,16 +1522,18 @@ def smoke_decal(kind):
                 img.put(cx + 9 + k // 2, cy - 4 + k, L[9])
                 img.put(cx + 10 + k // 2, cy - 4 + k, L[9])
 
-        if kind == 'can_a':
-            can(16, 14, True)
-            can(13, 24, True, crushed=True)
-        elif kind == 'can_b':
-            can(12, 9, False)
-            can(22, 20, True, crushed=True, flip=True)
-        elif kind == 'can_c':
-            can(18, 22, False, crushed=True)
-            can(9, 12, True)
-            can(21, 8, True, crushed=True)
+        if kind == 'can_a':  # dwie zgniecione puszki
+            can(15, 12, True)
+            can(13, 23, False)
+        elif kind == 'can_b':  # jedna wyprostowana wśród zgniecionych
+            upright(11, 10)
+            can(21, 14, True)
+            can(10, 24, True)
+        elif kind == 'can_c':  # kupka zgniecionych (jak po nocy przy komputerze)
+            can(16, 8, True)
+            can(9, 17, False)
+            can(21, 21, True)
+            can(14, 27, True)
         elif kind == 'bucket':
             bucket(20, 16)
         elif kind == 'box':
