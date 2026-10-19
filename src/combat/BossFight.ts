@@ -205,6 +205,7 @@ export class BossFight {
   private readonly dogGfx: Phaser.GameObjects.Graphics | null;
   /** Ostatnia chwila `update` — zabójstwa psa liczą od niej czas powrotu. */
   private lastNow = 0;
+  private lastUntouchableTextAt = -Infinity;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -357,9 +358,32 @@ export class BossFight {
     return this.boss ? [...living, this.boss] : living;
   }
 
+  /**
+   * Boss i jego pomocnicy są nietykalni z zewnątrz areny (krok 86, uszczelnienie ostrzału zza krat): cios, strzał,
+   * promień, rozprysk i dash gracza stojącego poza prostokątem areny nic im nie robią i nie budzą bossa.
+   * Gracz musi wejść na arenę — tam walka się zaczyna, a kraty opadają.
+   */
+  private playerOutsideArena(): boolean {
+    const { player } = this.deps;
+    if (!this.boss || player.isDead) return false;
+    return !roomContainsTile(this.arena, DungeonView.worldToTile(player.x, player.y));
+  }
+
+  /** Krótka informacja przy próbie zranienia bossa z zewnątrz (najwyżej raz na sekundę). */
+  private warnUntouchable(): void {
+    const { player, effects } = this.deps;
+    if (this.lastNow - this.lastUntouchableTextAt < 1000) return;
+    this.lastUntouchableTextAt = this.lastNow;
+    effects.floatingText(player.x, player.y - player.radius - 8, 'Wejdź na arenę!', '#c8c0a8');
+  }
+
   /** Cios gracza — zwraca liczbę trafionych (boss i pajączki w łuku; kokony nie liczą się do Wampirzego kła). */
   resolvePlayerMelee(swing: MeleeSwing): number {
     if (!this.boss) return 0;
+    if (this.playerOutsideArena()) {
+      this.warnUntouchable();
+      return 0;
+    }
     const { hit, killed } = resolveMeleeSwing(swing, this.targets());
     this.handleKills(killed);
     return hit.filter((t) => !(t instanceof LarderCocoon)).length;
@@ -368,12 +392,17 @@ export class BossFight {
   /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
   /** Rozprysk kuli Czarodziejki (krok 50): pajączki, kokony spiżarni i boss (tarcza działa jak przy ciosie). */
   resolveSplash(splash: OrbSplash): void {
+    if (this.playerOutsideArena()) return;
     const { killed } = resolveSplash(splash, this.targets());
     this.handleKills(killed);
   }
 
   resolvePlayerBeam(beam: BeamStrike): number {
     if (!this.boss) return 0;
+    if (this.playerOutsideArena()) {
+      this.warnUntouchable();
+      return 0;
+    }
     // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie. U Kata rozgrzewa tarczę.
     const shielded = this.boss.isShieldedFrom(beam.source);
     if (shielded) this.heatShield(this.boss, beam.now);
@@ -390,6 +419,10 @@ export class BossFight {
   resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | LarderCocoon | BossDog | null {
     const boss = this.boss;
     if (!boss) return null;
+    if (this.playerOutsideArena()) {
+      this.warnUntouchable();
+      return null;
+    }
     // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, wraca do strzelca (już jako pocisk wroga).
     const shield = boss.definition.shield;
     const touches = Math.hypot(shot.position.x - boss.x, shot.position.y - boss.y) <= shot.radius + boss.radius;
@@ -416,6 +449,7 @@ export class BossFight {
   resolveDashSweep(sweep: DashSweep, alreadyHit: Set<object>): void {
     const boss = this.boss;
     if (!boss) return;
+    if (this.playerOutsideArena()) return;
     const { hit, killed } = resolveDashSweep(sweep, this.targets(), alreadyHit);
     if (hit.includes(boss)) this.deps.effects.floatingText(boss.x, boss.y - boss.radius, `-${sweep.damage}`, '#b8a8ff');
     this.handleKills(killed);

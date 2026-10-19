@@ -1532,18 +1532,17 @@ def smoke_decal(kind):
                 img.put(cx + 9 + k // 2, cy - 4 + k, L[9])
                 img.put(cx + 10 + k // 2, cy - 4 + k, L[9])
 
-        if kind == 'can_a':  # puszka i zgnieciona obok
-            can(15, 11, True)
-            can(13, 23, True, crushed=True)
-        elif kind == 'can_b':  # jedna wyprostowana wśród leżących
-            upright(10, 9)
-            can(20, 16, False, crushed=True)
-            can(14, 26, True)
-        elif kind == 'can_c':  # kupka zgniecionych (jak po nocy przy komputerze)
-            can(16, 7, True, crushed=True)
-            can(8, 17, False, crushed=True)
-            can(22, 20, True, crushed=True)
-            can(14, 27, True, crushed=True)
+        if kind == 'can_a':  # pojedyncza puszka (leży)
+            can(15, 15, True)
+        elif kind == 'can_b':  # jedna wyprostowana
+            upright(16, 12)
+        elif kind == 'can_c':  # dwie zgniecione obok siebie
+            can(14, 10, True, crushed=True)
+            can(18, 22, False, crushed=True)
+        elif kind == 'can_d':  # pojedyncza zgnieciona
+            can(16, 17, False, crushed=True)
+        elif kind == 'can_e':  # pojedyncza zgnieciona, poziomo
+            can(15, 13, True, crushed=True)
         elif kind == 'bucket':
             bucket(20, 16)
         elif kind == 'box':
@@ -1932,7 +1931,7 @@ def manifest():
             m.append(Entry(f'decal_{kind}', grave_decal(kind), 'floorDecal', group='decal.bones', weight=1, flip_x=True))
     if 'smoke' in BIOMES[BIOME]['extras']:
         # Zadymiona palarnia (krok 84): śmieci na podłodze; dopisane na końcu (first-fit), wspólne kafle się nie przesuwają.
-        for kind, group in (('can_a', 'decal.cans'), ('can_b', 'decal.cans'), ('can_c', 'decal.cans'),
+        for kind, group in (('can_a', 'decal.cans'), ('can_b', 'decal.cans'), ('can_c', 'decal.cans'), ('can_d', 'decal.cans'), ('can_e', 'decal.cans'),
                             ('bucket', 'decal.kfc'), ('box', 'decal.kfc'), ('butts', 'decal.butts')):
             m.append(Entry(f'decal_{kind}', smoke_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
     # Ślady wleczenia i krwi ku arenie bossa (krok 54): na samym końcu (first-fit), nic się nie przesuwa.

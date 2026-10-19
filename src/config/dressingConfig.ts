@@ -222,7 +222,8 @@ export const SMOKE_DEN_DRESSING: FloorDressingConfig = {
     'decal.debris': 1,
     'decal.stain': 1.5,
     'decal.broken': 0.3,
-    'decal.cans': 2.5,
+    // Puszki rozrzucone pojedynczo po wielu kaflach (feedback właściciela), nie w kupkach.
+    'decal.cans': 4,
     'decal.kfc': 1.6,
     'decal.butts': 2,
   },

@@ -3999,6 +3999,16 @@ Prośba właściciela: animacja śmierci Barona w brązowej plamie jak u Sludge 
 
 ---
 
+## Krok 86 — Boss nietykalny z zewnątrz areny (koniec ostrzału zza krat) `#decyzja` `#boss`
+
+Prośba właściciela po przeglądzie nagrania: naprawić **ostrzał bossa z zewnątrz areny** (stary punkt backlogu z kroku 9/21, „exploit zostaje do odwołania” — odwołany).
+- **Reguła:** gdy gracz stoi poza prostokątem areny bossa, jego cios, strzał, promień, rozprysk kuli i dash **nie ranią** bossa, doga, pajączków ani kokonów spiżarni i **nie budzą bossa** (`BossFight.playerOutsideArena`, `roomContainsTile` jak przy aktywacji). Przy próbie pojawia się napis „Wejdź na arenę!” (najwyżej raz na sekundę). Walka zaczyna się dopiero z wnętrza areny, gdzie opadają kraty — to jedyna zmiana; sam boss ani jego liczby nie są łagodzone.
+- Dotyczy wszystkich bossów (kod wspólny). Podpalenie nałożone wcześniej dalej zadaje obrażenia.
+- Przeglądarka (`?seed=7&floor=7`): ze kafla tuż poza areną cios 360° o zasięgu 900 px → 0 trafień, HP bossa bez zmian, walka nie startuje; z wnętrza areny → 2 trafienia (boss i dog), HP spada, walka startuje.
+- **Rozrzut puszek (feedback):** puszki to teraz pojedyncze kafle (leżąca, wyprostowana, zgnieciona, para) o większej wadze (4), więc są rozrzucone po wielu kaflach zamiast w kupkach.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4064,7 +4074,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Schody:** od kroku 47 wejście wyżej klawiszem E na schodach.
 - **Szybki start:** `npm run dev`, potem `http://localhost:5173/?seed=7&floor=2`. Parametry `?seed=N&floor=M` działają też na Pages jako run testowy (bez zapisu wyniku, krok 41g).
 - **Do oceny w testach właściciela:** trudność walki z Matką Pająków po kroku 27 (pościg, smagnięcie, trucizna). Śmierć Matki Pająków zaakceptowana (krok 24). Liczby leża (kroki 22–23e) zaakceptowane ogólnie; stroimy tylko na sygnał właściciela.
-- **Exploit z ostrzałem bossa z korytarza zostaje do odwołania** (decyzja właściciela po kroku 21) — poniższy opis tylko do wglądu.
+- **Exploit z ostrzałem bossa z korytarza naprawiony w kroku 86** (boss nietykalny z zewnątrz areny) — poniższy opis tylko historyczny.
 - **Ewentualne uszczelnienie areny przed ostrzałem bossa z korytarza** (otwarte od kroku 9):
   - **Problem:** strzał budzi i rani bossa, zanim gracz wejdzie na arenę, a kraty opadają dopiero wtedy, gdy gracz jest w środku.
   - **Najpierw** sprawdzić w grze, czy da się na tym realnie zyskać (boss podchodzi do gracza).
