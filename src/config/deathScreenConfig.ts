@@ -4,7 +4,6 @@
  * i bardzo wolno rośnie. Bez krwi, wstrząsów i cząstek. Pod spodem wynik i tablica rekordów.
  */
 import { SPLASH_PALETTE } from '@/config/splashConfig';
-import { HeroId } from '@/core/heroTypes';
 
 /** Głęboka, przygaszona czerwień + zakrzepłe tony. */
 export const DEATH_PALETTE = {
@@ -108,11 +107,16 @@ export const DEATH_LAYOUT = {
 } as const;
 
 /**
- * Oznaczenie bohatera przy wpisie na tablicy (krok 89): pełna nazwa małymi literami — czytelna bez legendy.
- * Wpis bez bohatera (sprzed kroku 89) albo z nieznanym bohaterem zostaje bez oznaczenia.
+ * Miniaturka bohatera przy wpisie na tablicy (krok 89a, prośba właściciela: ikona zamiast nazwy):
+ * pierwsza klatka chodu z arkusza bohatera, zwrócona w dół, zmniejszona i wygładzona do kwadratu `sizePx`.
+ * Miniaturki stoją w jednej kolumnie po lewej stronie tablicy (przed najszerszym wierszem). Są trochę wyższe od wiersza,
+ * ale postać nie wypełnia klatki, więc sąsiednie się nie stykają. Wpis bez bohatera (sprzed kroku 89) albo z nieznanym bohaterem zostaje bez ikony.
  */
-export const DEATH_HERO_LABELS: Readonly<Record<HeroId, string>> = {
-  [HeroId.Barbarian]: 'barbarzyńca',
-  [HeroId.Sorceress]: 'czarodziejka',
-  [HeroId.Archer]: 'łucznik',
-};
+export const DEATH_HERO_ICON = {
+  /** Kierunek w arkuszu (4 = w dół, jak na ekranie wyboru). */
+  facing: 4,
+  /** Kadr postaci w klatce 48×48 (wspólny dla bohaterów, z zapasem na broń). */
+  crop: { x: 8, y: 10, size: 32 },
+  sizePx: 22,
+  gapPx: 8,
+} as const;

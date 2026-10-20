@@ -1,18 +1,18 @@
 import type { DeathFlowGroup, DeathTiming, DeathTitleFlow } from '@/config/deathScreenConfig';
-import { DEATH_HERO_LABELS, DEATH_TIMING, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
+import { DEATH_TIMING, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
+import { HeroId } from '@/core/heroTypes';
 import type { RankedEntry } from '@/systems/Highscores';
 
-/** Oznaczenie bohatera wpisu; null dla wpisu bez bohatera (sprzed kroku 89) i nieznanego bohatera. */
-export function heroLabel(hero: string | undefined): string | null {
-  if (hero === undefined || !Object.hasOwn(DEATH_HERO_LABELS, hero)) return null;
-  return DEATH_HERO_LABELS[hero as keyof typeof DEATH_HERO_LABELS];
+const HERO_IDS: readonly string[] = Object.values(HeroId);
+
+/** Bohater wpisu do miniaturki; null dla wpisu bez bohatera (sprzed kroku 89) i nieznanego bohatera. */
+export function knownHero(hero: string | undefined): HeroId | null {
+  return hero !== undefined && HERO_IDS.includes(hero) ? (hero as HeroId) : null;
 }
 
-/** Wiersz tablicy: miejsce, imię, bohater (jeśli znany), wynik, piętro; bieżący run w znacznikach › ‹. */
+/** Wiersz tablicy: miejsce, imię, wynik, piętro; bieżący run w znacznikach › ‹. Bohatera pokazuje miniaturka obok. */
 export function formatScoreRow(row: RankedEntry): string {
-  const hero = heroLabel(row.entry.hero);
-  const parts = [`${row.rank}. ${row.entry.name ?? '—'}`, ...(hero ? [hero] : []), `${row.entry.score} złota`, `piętro ${row.entry.floor}`];
-  const label = parts.join(' · ');
+  const label = `${row.rank}. ${row.entry.name ?? '—'} · ${row.entry.score} złota · piętro ${row.entry.floor}`;
   return row.isCurrent ? `› ${label} ‹` : label;
 }
 

@@ -1,14 +1,18 @@
 import Phaser from 'phaser';
 import type { DeathSummary } from '@/core/types';
-import { DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW } from '@/config/deathScreenConfig';
+import { DEATH_HERO_ICON as ICON, DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW } from '@/config/deathScreenConfig';
+import { HERO_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
+import type { HeroId } from '@/core/heroTypes';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
 import type { PixelText } from '@/core/pixelArt';
-import { deathFrame, flowGroupOf, formatScoreRow, titleFlowIndex } from '@/systems/deathScreen';
+import { deathFrame, flowGroupOf, formatScoreRow, knownHero, titleFlowIndex } from '@/systems/deathScreen';
+import type { RankedEntry } from '@/systems/Highscores';
 
 const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
 const GLOW_TEXTURE = 'death-glow';
+const heroIconTexture = (hero: HeroId): string => `death-hero-icon-${hero}`;
 /** Wiersze tablicy: podium + separator + wiersz bieżącego runu. */
 const ROWS = HIGHSCORE_CONFIG.podiumSize + 2;
 
@@ -42,6 +46,8 @@ export class DeathScreen {
   private readonly ornament: Phaser.GameObjects.Container;
   private readonly header: Phaser.GameObjects.Text;
   private readonly rows: Phaser.GameObjects.Text[];
+  /** Miniaturki bohatera po lewej stronie wierszy (krok 89a). */
+  private readonly icons: Phaser.GameObjects.Image[];
   private readonly prompt: Phaser.GameObjects.Text;
   private startedAt: number | null = null;
   private shownFor: DeathSummary | null = null;
@@ -78,6 +84,7 @@ export class DeathScreen {
     this.rows = Array.from({ length: ROWS }, (_, i) =>
       scene.add.text(L.centerX, L.rows.y + i * L.rows.step, '', { ...style, fontSize: `${L.rows.fontSize}px` }).setOrigin(0.5, 0),
     );
+    this.icons = this.rows.map((row) => scene.add.image(row.x, row.y, '__DEFAULT').setVisible(false));
     this.prompt = scene.add
       .text(L.centerX, L.prompt.y, 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA', { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#9c8f74' })
       .setOrigin(0.5, 0)
@@ -93,6 +100,7 @@ export class DeathScreen {
       this.ornament,
       this.header,
       ...this.rows,
+      ...this.icons,
       this.prompt,
     ]);
     this.root.setVisible(false);
@@ -122,6 +130,7 @@ export class DeathScreen {
     this.ornament.setAlpha(f.scoreAlpha);
     this.header.setAlpha(f.scoreAlpha);
     this.rows.forEach((row, i) => row.setAlpha(f.rowAlphas[i] ?? 0));
+    this.icons.forEach((icon, i) => icon.setAlpha(f.rowAlphas[i] ?? 0));
     // Podczas wpisywania imienia komunikat o nowej wspinaczce jest ukryty (R i C wpisują litery).
     this.prompt.setAlpha(this.shownFor?.nameEntry === null ? f.promptAlpha : 0);
   }
@@ -144,21 +153,54 @@ export class DeathScreen {
         { text: 'ENTER — ZAPISZ · ESC — BEZ IMIENIA', color: '#9c8f74' },
       ];
       this.rows.forEach((row, i) => row.setText(entry[i]?.text ?? '').setColor(entry[i]?.color ?? '#9c8f74'));
+      this.icons.forEach((icon) => icon.setVisible(false));
       return;
     }
     this.header.setText(HEADERS[death.source]);
-    const lines: Array<{ text: string; current: boolean }> = death.board.top.map((row) => ({
-      text: formatScoreRow(row),
-      current: row.isCurrent,
-    }));
+    const lines: Array<{ text: string; current: boolean; hero: HeroId | null }> = death.board.top.map((row) => this.line(row));
     if (death.board.current) {
-      lines.push({ text: '· · ·', current: false });
-      lines.push({ text: formatScoreRow(death.board.current), current: true });
+      lines.push({ text: '· · ·', current: false, hero: null });
+      lines.push(this.line(death.board.current));
     }
     this.rows.forEach((row, i) => {
       const line = lines[i];
       row.setText(line?.text ?? '').setColor(line?.current ? '#d8ccb0' : '#9c8f74');
     });
+    // Wiersze są wyśrodkowane — miniaturki w jednej kolumnie przed najszerszym z nich.
+    const widest = Math.max(...this.rows.map((row) => (row.text === '' ? 0 : row.width)));
+    const iconX = L.centerX - widest / 2 - ICON.gapPx - ICON.sizePx / 2;
+    this.icons.forEach((icon, i) => {
+      const hero = lines[i]?.hero ?? null;
+      const row = this.rows[i];
+      icon.setVisible(hero !== null);
+      if (hero === null || !row) return;
+      icon.setTexture(this.heroIcon(hero)).setPosition(iconX, row.y + row.height / 2);
+    });
+  }
+
+  private line(row: RankedEntry): { text: string; current: boolean; hero: HeroId | null } {
+    return { text: formatScoreRow(row), current: row.isCurrent, hero: knownHero(row.entry.hero) };
+  }
+
+  /**
+   * Miniaturka bohatera: pierwsza klatka chodu zwrócona w dół, kadrowana i zmniejszona z wygładzaniem
+   * (zwykłe skalowanie najbliższym sąsiadem gubiłoby co drugi piksel). Tworzona raz na bohatera.
+   */
+  private heroIcon(hero: HeroId): string {
+    const key = heroIconTexture(hero);
+    const textures = this.scene.textures;
+    if (textures.exists(key)) return key;
+    const sheet = SPRITE_SHEETS[HERO_VISUALS[hero].sheet];
+    const canvas = textures.createCanvas(key, ICON.sizePx, ICON.sizePx);
+    const ctx = canvas?.getContext();
+    if (!canvas || !ctx || !textures.exists(sheet.key)) return key;
+    const source = textures.get(sheet.key).getSourceImage() as CanvasImageSource;
+    const { x, y, size } = ICON.crop;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(source, x, ICON.facing * sheet.frameHeight + y, size, size, 0, 0, ICON.sizePx, ICON.sizePx);
+    canvas.refresh();
+    return key;
   }
 
   private reset(): void {

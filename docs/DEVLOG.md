@@ -4032,6 +4032,16 @@ Prośba właściciela: oznaczyć przy wyniku bohatera, którym go osiągnięto (
 
 ---
 
+## Krok 89a — Miniaturka bohatera zamiast nazwy `#ocena` `#highscore` `#ekran-smierci`
+
+Feedback właściciela po kroku 89: przy wyniku ma być miniaturka wskazująca bohatera, nie pełne słowo.
+- **Miniaturka:** pierwsza klatka chodu z arkusza bohatera zwrócona w dół (jak na ekranie wyboru), kadr 32×32 z klatki 48×48 zmniejszony z wygładzaniem do 22×22 px (skalowanie najbliższym sąsiadem gubiło piksele). Tekstura powstaje raz na bohatera z płótna (`DeathScreen.heroIcon`), bez nowej grafiki i generatora; liczby w `DEATH_HERO_ICON` (`config/deathScreenConfig.ts`).
+- **Układ:** miniaturki stoją w jednej kolumnie przed najszerszym wierszem (wiersze są wyśrodkowane, więc ikony przy każdym wierszu osobno skakałyby w poziomie). Wpis bez bohatera i separator „· · ·” są bez ikony. Wiersz tekstu wrócił do postaci sprzed kroku 89 („2. Wicio · 120 złota · piętro 4”); `DEATH_HERO_LABELS` usunięte, `knownHero` w `systems/deathScreen.ts` odsiewa wpisy bez bohatera i z nieznanym bohaterem.
+- **Testy:** wiersz bez nazwy bohatera, `knownHero`, miniaturka mieści się w wierszu i kadr w klatce. Build zielony.
+- **Weryfikacja:** zrzuty Playwright 1280×720, 800×450, 640×400 — kolumna miniaturek równa, układ bez zmian; postacie rozpoznawalne po kolorach (blond barbarzyńca, niebieska Czarodziejka, zielony łucznik).
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
