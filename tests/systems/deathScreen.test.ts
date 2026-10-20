@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEATH_LAYOUT, DEATH_TIMING as T, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
+import { DEATH_HERO_ICON, DEATH_LAYOUT, DEATH_TIMING as T, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 import { pixelText } from '@/core/pixelArt';
-import { deathFrame, flowGroupOf, formatScoreRow, heroLabel, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
+import { deathFrame, flowGroupOf, formatScoreRow, knownHero, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { HeroId } from '@/core/heroTypes';
 
@@ -159,31 +159,31 @@ describe('pas za napisem (kroki 66–67)', () => {
   });
 });
 
-describe('wiersz tablicy z bohaterem (krok 89)', () => {
-  const row = (hero: string | undefined, isCurrent = false) => ({
-    rank: 2,
-    isCurrent,
-    entry: { score: 120, floor: 4, timestamp: 0, name: 'Wicio', ...(hero === undefined ? {} : { hero }) },
+describe('wiersz tablicy i miniaturka bohatera (krok 89)', () => {
+  const row = (isCurrent = false) => ({ rank: 2, isCurrent, entry: { score: 120, floor: 4, timestamp: 0, name: 'Wicio', hero: 'archer' } });
+
+  it('wiersz bez nazwy bohatera — bohatera pokazuje miniaturka', () => {
+    expect(formatScoreRow(row())).toBe('2. Wicio · 120 złota · piętro 4');
+    expect(formatScoreRow(row(true))).toBe('› 2. Wicio · 120 złota · piętro 4 ‹');
   });
 
-  it('pokazuje bohatera między imieniem a wynikiem', () => {
-    expect(formatScoreRow(row('archer'))).toBe('2. Wicio · łucznik · 120 złota · piętro 4');
-    expect(formatScoreRow(row('sorceress', true))).toBe('› 2. Wicio · czarodziejka · 120 złota · piętro 4 ‹');
-  });
-
-  it('stary wpis bez bohatera i nieznany bohater zostają bez oznaczenia', () => {
-    expect(formatScoreRow(row(undefined))).toBe('2. Wicio · 120 złota · piętro 4');
-    expect(formatScoreRow(row('paladin'))).toBe('2. Wicio · 120 złota · piętro 4');
-    expect(heroLabel('toString')).toBeNull();
-  });
-
-  it('każdy bohater ma oznaczenie', () => {
-    for (const id of Object.values(HeroId)) expect(heroLabel(id)).toBeTruthy();
+  it('miniaturka tylko dla znanego bohatera', () => {
+    for (const id of Object.values(HeroId)) expect(knownHero(id)).toBe(id);
+    expect(knownHero(undefined)).toBeNull();
+    expect(knownHero('paladin')).toBeNull();
+    expect(knownHero('toString')).toBeNull();
   });
 
   it('podium + separator + bieżący run mieszczą się nad komunikatem R / C', () => {
     const rows = HIGHSCORE_CONFIG.podiumSize + 2;
     const lastBottom = DEATH_LAYOUT.rows.y + (rows - 1) * DEATH_LAYOUT.rows.step + DEATH_LAYOUT.rows.fontSize + 4;
     expect(lastBottom).toBeLessThanOrEqual(DEATH_LAYOUT.prompt.y);
+  });
+
+  it('miniaturka mieści się w wierszu, a kadr w klatce 48×48', () => {
+    expect(DEATH_HERO_ICON.sizePx).toBeLessThanOrEqual(DEATH_LAYOUT.rows.step);
+    const { x, y, size } = DEATH_HERO_ICON.crop;
+    expect(x + size).toBeLessThanOrEqual(48);
+    expect(y + size).toBeLessThanOrEqual(48);
   });
 });
