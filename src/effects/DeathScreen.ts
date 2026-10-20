@@ -1,16 +1,16 @@
 import Phaser from 'phaser';
 import type { DeathSummary } from '@/core/types';
-import type { RankedEntry } from '@/systems/Highscores';
 import { DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW } from '@/config/deathScreenConfig';
+import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
 import type { PixelText } from '@/core/pixelArt';
-import { deathFrame, flowGroupOf, titleFlowIndex } from '@/systems/deathScreen';
+import { deathFrame, flowGroupOf, formatScoreRow, titleFlowIndex } from '@/systems/deathScreen';
 
 const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
 const GLOW_TEXTURE = 'death-glow';
-/** Wiersze tablicy: podium (3) + separator + wiersz bieżącego runu. */
-const ROWS = 5;
+/** Wiersze tablicy: podium + separator + wiersz bieżącego runu. */
+const ROWS = HIGHSCORE_CONFIG.podiumSize + 2;
 
 /** Nagłówek tablicy zależnie od źródła wyników (wspólna lista z main, krok 36 tam). */
 const HEADERS: Record<DeathSummary['source'], string> = {
@@ -19,11 +19,6 @@ const HEADERS: Record<DeathSummary['source'], string> = {
   shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
   practice: 'RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ',
 };
-
-function formatScoreRow(row: RankedEntry): string {
-  const label = `${row.rank}. ${row.entry.name ?? '—'} · ${row.entry.score} złota · piętro ${row.entry.floor}`;
-  return row.isCurrent ? `› ${label} ‹` : label;
-}
 
 /**
  * Ekran śmierci (krok 35; od kroku 63 w stylu Dark Souls / Castlevanii) w scenie HUD:

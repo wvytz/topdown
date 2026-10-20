@@ -12,18 +12,17 @@ export function createWorkerScoreSource(baseUrl: string, fetchFn: FetchFn): Remo
       if (!response.ok) throw new Error(`scores: HTTP ${response.status}`);
       const data: unknown = await response.json();
       if (!Array.isArray(data)) throw new Error('scores: zła odpowiedź');
-      // Wpis bez imienia przychodzi jako `name: null` — w grze to brak pola.
+      // Wpis bez imienia albo bohatera przychodzi z `null` (np. wpisy sprzed kroku 89) — w grze to brak pola.
       return data.map((row: unknown) => {
         if (typeof row !== 'object' || row === null) return row;
-        const { name, ...rest } = row as Record<string, unknown>;
-        return name === null ? rest : { ...rest, name };
+        return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== null));
       }) as ScoreEntry[];
     },
     async submit(entry, signal) {
       const response = await fetchFn(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: entry.score, floor: entry.floor, timestamp: entry.timestamp, name: entry.name }),
+        body: JSON.stringify({ score: entry.score, floor: entry.floor, timestamp: entry.timestamp, name: entry.name, hero: entry.hero }),
         signal,
       });
       if (!response.ok) throw new Error(`scores: HTTP ${response.status}`);

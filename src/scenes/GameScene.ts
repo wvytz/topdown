@@ -1187,7 +1187,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     diag.note('player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
 
     // Złoto w chwili śmierci to wynik runu.
-    const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now() };
+    const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now(), hero: this.run.hero };
     // Run testowy (start z adresu, krok 41g): bez zapisu i bez pytania o imię.
     if (this.run.practice) {
       this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'practice', nameEntry: null };

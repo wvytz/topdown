@@ -1,7 +1,7 @@
 /**
  * Worker Tower Crawlera: wspólna lista wyników i zgłoszenia diagnostyczne.
- *   GET    /scores?limit=N  → [{ score, floor, timestamp, name }], najlepsze pierwsze (name może być null)
- *   POST   /scores          ← { score, floor, timestamp, name? }
+ *   GET    /scores?limit=N  → [{ score, floor, timestamp, name, hero }], najlepsze pierwsze (name i hero mogą być null)
+ *   POST   /scores          ← { score, floor, timestamp, name?, hero? }
  *   POST   /reports         ← koperta zgłoszenia (patrz `reports.js`); 201 { ok, id } | 200 { duplicate } | 400/413/429/503
  *   GET    /reports?limit&kind&since&floor  → lista metadanych       } tylko z nagłówkiem Authorization: Bearer <REPORTS_TOKEN>
  *   GET    /reports/:id                     → pełne zgłoszenie       } albo X-Reports-Token: <REPORTS_TOKEN>
@@ -17,6 +17,8 @@ const MAX_FLOOR = 100;
 const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 const MAX_LIMIT = 100;
 const MAX_NAME_LENGTH = 12;
+// Bohater (krok 89): identyfikator `HeroId` z gry; wzorzec zamiast listy, żeby nowy bohater nie wymagał wdrożenia workera.
+const HERO_PATTERN = /^[a-z_]{1,16}$/;
 // Ochrona przed zalewem: tyle wpisów z jednego adresu w oknie czasu.
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -171,7 +173,7 @@ async function getScores(url, env, cors) {
   const requested = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
   const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), MAX_LIMIT) : 50;
   const { results } = await env.DB.prepare(
-    'SELECT score, floor, timestamp, name FROM scores ORDER BY score DESC, floor DESC, id ASC LIMIT ?',
+    'SELECT score, floor, timestamp, name, hero FROM scores ORDER BY score DESC, floor DESC, id ASC LIMIT ?',
   )
     .bind(limit)
     .all();
@@ -200,24 +202,28 @@ async function postScore(request, env, cors) {
   const today = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE created_at > ?').bind(now - DAY_MS).first();
   if ((today?.n ?? 0) >= MAX_SCORES_PER_DAY) return json({ error: 'daily cap reached' }, 503, { ...cors, 'Retry-After': '3600' });
 
-  await env.DB.prepare('INSERT INTO scores (score, floor, timestamp, name, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  await env.DB.prepare('INSERT INTO scores (score, floor, timestamp, name, hero, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   )
-    .bind(entry.score, entry.floor, entry.timestamp, entry.name, ipHash, now)
+    .bind(entry.score, entry.floor, entry.timestamp, entry.name, entry.hero, ipHash, now)
     .run();
   return json({ ok: true }, 201, cors);
 }
 
 export function validate(body, now) {
   if (typeof body !== 'object' || body === null) return null;
-  const { score, floor, timestamp, name } = body;
+  const { score, floor, timestamp, name, hero } = body;
   if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return null;
   if (!Number.isInteger(floor) || floor < 1 || floor > MAX_FLOOR) return null;
   if (!Number.isInteger(timestamp) || Math.abs(timestamp - now) > MAX_CLOCK_SKEW_MS) return null;
-  if (name === undefined || name === null || name === '') return { score, floor, timestamp, name: null };
+  // Bohater opcjonalny (starsze wersje gry go nie wysyłają).
+  const heroOk = hero === undefined || hero === null || (typeof hero === 'string' && HERO_PATTERN.test(hero));
+  if (!heroOk) return null;
+  const heroValue = hero ?? null;
+  if (name === undefined || name === null || name === '') return { score, floor, timestamp, name: null, hero: heroValue };
   // Te same zasady co w grze (sanitizePlayerName): litery, cyfry, spacja, „_”, „-”, max 12 znaków.
   if (typeof name !== 'string' || name !== name.trim() || /\s{2,}/.test(name)) return null;
   if (!/^[\p{L}\p{N} _-]+$/u.test(name) || [...name].length > MAX_NAME_LENGTH) return null;
-  return { score, floor, timestamp, name };
+  return { score, floor, timestamp, name, hero: heroValue };
 }
 
 function allowedOrigins(env) {

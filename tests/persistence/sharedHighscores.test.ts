@@ -75,6 +75,19 @@ describe('SharedHighscores', () => {
     expect(remote.stored.map((x) => x.score)).toEqual([4, 5, 6]);
   });
 
+  it('wpis z bohaterem nie liczy się dwa razy, gdy stary worker zwraca go bez bohatera (krok 89)', async () => {
+    const remote = new FakeRemote();
+    remote.submit = async (entry) => {
+      const { hero: _dropped, ...rest } = entry;
+      remote.stored.push(rest);
+    };
+    const { shared } = setup(remote);
+    const result = await shared.recordShared({ ...e(30), hero: 'archer' });
+    expect(result?.rank).toBe(1);
+    expect(result?.board.top).toHaveLength(1);
+    expect(result?.board.top[0]?.entry.hero).toBe('archer');
+  });
+
   it('odrzuca uszkodzone wpisy z usługi', async () => {
     const remote = new FakeRemote();
     remote.stored = [{ score: 'x' } as unknown as ScoreEntry, e(40)];
