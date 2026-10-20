@@ -82,8 +82,9 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
     combat: {
       ...PLAYER_COMBAT,
       // Ładunki salwy (PPM): Kołczan dokłada kolejne; każda strzała wachlarza zadaje `damage`.
+      // Krok 88: 8 → 7, tyle co strzał barbarzyńcy.
       ranged: {
-        damage: 8,
+        damage: 7,
         knockback: 110,
         projectileSpeed: 480,
         projectileLifetimeMs: 550,
@@ -99,8 +100,9 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
         bow: {
           // Kliknięcie: słaba strzała; pełne naciągnięcie (0,9 s): mocna, szybsza, przebijająca.
           // Krok 87 (feedback właściciela: łucznik za mocny): obrażenia −25% (5/24 → 4/18), wolniejszy LPM (naciąg 0,7 → 0,9 s, przerwa 0,25 → 0,4 s).
-          minDamage: 4,
-          maxDamage: 18,
+          // Krok 88 (wyrównanie bohaterów): pełne naciągnięcie 18 → 14, jak kula Czarodziejki (cios barbarzyńcy 12); kliknięcie 4 → 3.
+          minDamage: 3,
+          maxDamage: 14,
           minKnockback: 60,
           maxKnockback: 200,
           minSpeed: 380,

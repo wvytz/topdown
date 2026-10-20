@@ -4018,6 +4018,17 @@ Feedback właściciela: łucznik jest za mocny — obniżyć obrażenia i tempo 
 
 ---
 
+## Krok 88 — Wyrównanie startowych obrażeń bohaterów `#ocena` `#decyzja` `#lucznik`
+
+Feedback właściciela: obniżyć obrażenia po pełnym naciągnięciu i wyrównać startowy poziom obrażeń wszystkich bohaterów.
+- **Punkt odniesienia — pojedyncze trafienie broni głównej:** cios barbarzyńcy 12, kula Czarodziejki 14 (bez zmian). Przed krokiem pełna strzała łucznika miała 18 (na Pages jeszcze 24 — krok 87 nie był wdrożony).
+- **Łucznik:** pełne naciągnięcie 18 → 14 (jak kula), kliknięcie 4 → 3, strzała salwy 8 → 7 (jak strzał barbarzyńcy). Tempo z kroku 87 zostaje (0,9 s naciągu + 0,4 s przerwy).
+- **Barbarzyńca i Czarodziejka bez zmian:** ich liczby już leżą w paśmie 12–14.
+- **Obrażenia na sekundę celowo nie są równe:** barbarzyńca bije częściej (co 0,32 s), ale z bliska; łucznik ma ok. 11/s z pełnych strzał, za to z dystansu i z przebiciem; kule Czarodziejki to seria 3×14, potem 1 kula na 1,5 s, plus promień 25/s. Gdyby łucznik wydawał się za słaby, pierwszym pokrętłem jest `drawMs`, nie obrażenia.
+- Testy łuku liczą z konfiguracji, więc przechodzą bez zmian. Build zielony (1307 testów). Liczby do potwierdzenia w testach właściciela.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
