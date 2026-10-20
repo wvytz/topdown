@@ -4027,6 +4027,7 @@ Prośba właściciela: oznaczyć przy wyniku bohatera, którym go osiągnięto (
 - **Worker (zmiana wymaga wdrożenia — jeszcze niewdrożony):** `POST /scores` przyjmuje opcjonalne `hero` (wzorzec `^[a-z_]{1,16}$`, żeby nowy bohater nie wymagał nowego workera), zapisuje je w nowej kolumnie `hero`, `GET /scores` je zwraca. Kolejność wdrożenia: najpierw migracja `worker/migrations/0002_scores_hero.sql`, potem `npx wrangler deploy` (opis w `worker/README.md`). Do tego czasu nowa gra działa ze starym workerem — wspólna lista po prostu nie ma oznaczeń.
 - **Testy:** worker (walidacja i zapis bohatera, wpis bez bohatera), adapter workera (wysyłka, `null` → brak pola), wspólna lista (brak podwójnego liczenia przy starym workerze), wiersz tablicy (z bohaterem, bez, nieznany) i układ 7 wierszy. Build zielony (1316 testów).
 - **Weryfikacja w przeglądarce:** Playwright z przygotowaną listą (mieszane wpisy z bohaterem i bez) i śmiercią łucznikiem, okna 1280×720, 800×450 i 640×400 — układ się nie rozjeżdża; w małych oknach całość jest tylko mniejsza (skala pixel-perfect, jak dotąd).
+- **Wdrożenie (20.10.2026, na prośbę właściciela):** migracja bazy (kolumna `hero`), worker (sekrety i cron zachowane; `GET /scores` zwraca `hero`, zły bohater → 400), smoke OK, gra na Pages z 3e31fb8 (zawiera też niewdrożone wcześniej kroki 85–87; bez kroku 88 z PR #5).
 - **Do oceny właściciela:** czy zostajemy przy top 5, czy oznaczenie ma być nazwą, skrótem czy ikoną.
 
 ---
