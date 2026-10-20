@@ -4,6 +4,7 @@
  * i bardzo wolno rośnie. Bez krwi, wstrząsów i cząstek. Pod spodem wynik i tablica rekordów.
  */
 import { SPLASH_PALETTE } from '@/config/splashConfig';
+import { HeroId } from '@/core/heroTypes';
 
 /** Głęboka, przygaszona czerwień + zakrzepłe tony. */
 export const DEATH_PALETTE = {
@@ -100,7 +101,18 @@ export const DEATH_LAYOUT = {
   /** Gotycki ozdobnik: cienkie linie i mały krzyż pośrodku. */
   ornament: { y: 326, width: 130, gap: 14 },
   header: { y: 342, fontSize: 12 },
-  rows: { y: 364, step: 22, fontSize: 14 },
-  prompt: { y: 496, fontSize: 14 },
+  /** Krok 89: 7 wierszy (podium 5 + separator + bieżący run) — gęściej i drobniej niż przy podium 3 (krok 22 px, 14 px). */
+  rows: { y: 362, step: 18, fontSize: 13 },
+  prompt: { y: 502, fontSize: 14 },
   vignetteAlpha: 0.9,
 } as const;
+
+/**
+ * Oznaczenie bohatera przy wpisie na tablicy (krok 89): pełna nazwa małymi literami — czytelna bez legendy.
+ * Wpis bez bohatera (sprzed kroku 89) albo z nieznanym bohaterem zostaje bez oznaczenia.
+ */
+export const DEATH_HERO_LABELS: Readonly<Record<HeroId, string>> = {
+  [HeroId.Barbarian]: 'barbarzyńca',
+  [HeroId.Sorceress]: 'czarodziejka',
+  [HeroId.Archer]: 'łucznik',
+};

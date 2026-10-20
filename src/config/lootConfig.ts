@@ -190,7 +190,8 @@ export const SHRINE_CONFIG: ShrineConfig = {
 /** Ile wyników trzymamy i ile pokazujemy na podium. */
 export const HIGHSCORE_CONFIG = {
   maxEntries: 50,
-  podiumSize: 3,
+  /** Krok 89: testowo 5 (wcześniej 3) — czeka na ocenę właściciela. */
+  podiumSize: 5,
   /** Limit czasu jednego zapytania do wspólnej listy; po nim zostaje lista lokalna. */
   remoteTimeoutMs: 5000,
   /** Ile niewysłanych wyników trzymamy w kolejce, gdy brak sieci. */

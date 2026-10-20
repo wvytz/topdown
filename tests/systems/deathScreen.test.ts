@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEATH_LAYOUT, DEATH_TIMING as T, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 import { pixelText } from '@/core/pixelArt';
-import { deathFrame, flowGroupOf, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
+import { deathFrame, flowGroupOf, formatScoreRow, heroLabel, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
+import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
+import { HeroId } from '@/core/heroTypes';
 
 const ROWS = 5;
 const frame = (t: number) => deathFrame(t, ROWS);
@@ -154,5 +156,34 @@ describe('pas za napisem (kroki 66–67)', () => {
   it('sięga o połowę dalej w dół niż w kroku 63 (dół 271), w stronę tablicy', () => {
     expect(B.bottom).toBe(271 + 75);
     expect(B.bottom).toBeGreaterThan(DEATH_LAYOUT.score.y);
+  });
+});
+
+describe('wiersz tablicy z bohaterem (krok 89)', () => {
+  const row = (hero: string | undefined, isCurrent = false) => ({
+    rank: 2,
+    isCurrent,
+    entry: { score: 120, floor: 4, timestamp: 0, name: 'Wicio', ...(hero === undefined ? {} : { hero }) },
+  });
+
+  it('pokazuje bohatera między imieniem a wynikiem', () => {
+    expect(formatScoreRow(row('archer'))).toBe('2. Wicio · łucznik · 120 złota · piętro 4');
+    expect(formatScoreRow(row('sorceress', true))).toBe('› 2. Wicio · czarodziejka · 120 złota · piętro 4 ‹');
+  });
+
+  it('stary wpis bez bohatera i nieznany bohater zostają bez oznaczenia', () => {
+    expect(formatScoreRow(row(undefined))).toBe('2. Wicio · 120 złota · piętro 4');
+    expect(formatScoreRow(row('paladin'))).toBe('2. Wicio · 120 złota · piętro 4');
+    expect(heroLabel('toString')).toBeNull();
+  });
+
+  it('każdy bohater ma oznaczenie', () => {
+    for (const id of Object.values(HeroId)) expect(heroLabel(id)).toBeTruthy();
+  });
+
+  it('podium + separator + bieżący run mieszczą się nad komunikatem R / C', () => {
+    const rows = HIGHSCORE_CONFIG.podiumSize + 2;
+    const lastBottom = DEATH_LAYOUT.rows.y + (rows - 1) * DEATH_LAYOUT.rows.step + DEATH_LAYOUT.rows.fontSize + 4;
+    expect(lastBottom).toBeLessThanOrEqual(DEATH_LAYOUT.prompt.y);
   });
 });

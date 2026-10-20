@@ -8,6 +8,11 @@ export interface ScoreEntry {
   readonly timestamp: number;
   /** Imię gracza; brak = wpis anonimowy (także wszystkie wpisy sprzed imion). */
   readonly name?: string;
+  /**
+   * Bohater runu (`HeroId`, krok 89). Brak = wpis sprzed oznaczeń; nieznana wartość (np. bohater z nowszej wersji gry)
+   * zostaje w danych, ale ekran śmierci jej nie oznacza.
+   */
+  readonly hero?: string;
 }
 
 export interface RankedEntry {

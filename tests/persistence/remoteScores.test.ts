@@ -36,6 +36,17 @@ describe('createWorkerScoreSource', () => {
     expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ score: 7, floor: 2, timestamp: 3, name: 'Wicio' });
   });
 
+  it('bohater (krok 89): wysyłany z wpisem, null z workera to brak bohatera', async () => {
+    const post = fakeFetch(201, { ok: true });
+    await createWorkerScoreSource('u', post.fn).submit({ score: 7, floor: 2, timestamp: 3, hero: 'archer' }, signal);
+    expect(JSON.parse(String(post.calls[0]?.init?.body))).toEqual({ score: 7, floor: 2, timestamp: 3, hero: 'archer' });
+    const { fn } = fakeFetch(200, [{ score: 5, floor: 1, timestamp: 1, name: 'A', hero: null }, { score: 4, floor: 1, timestamp: 2, name: null, hero: 'sorceress' }]);
+    expect(await createWorkerScoreSource('u', fn).fetchTop(5, signal)).toEqual([
+      { score: 5, floor: 1, timestamp: 1, name: 'A' },
+      { score: 4, floor: 1, timestamp: 2, hero: 'sorceress' },
+    ]);
+  });
+
   it('błąd HTTP albo zła odpowiedź rzuca wyjątek (wtedy zostaje lista lokalna)', async () => {
     await expect(createWorkerScoreSource('u', fakeFetch(429, {}).fn).submit({ score: 1, floor: 1, timestamp: 1 }, signal)).rejects.toThrow();
     await expect(createWorkerScoreSource('u', fakeFetch(200, { a: 1 }).fn).fetchTop(5, signal)).rejects.toThrow();

@@ -27,6 +27,17 @@ Bez `VITE_SCORES_URL` gra działa jak dawniej: tylko lista lokalna.
 
 Schemat od początku ma kolumnę `name`, więc nic nie trzeba migrować — wystarczy `npx wrangler deploy`.
 
+## Bohater przy wpisie (krok 89) — wymaga migracji przed wdrożeniem
+
+Gra wysyła pole `hero` (`barbarian` / `sorceress` / `archer`), a worker je zapisuje i zwraca w `GET /scores`.
+Kolejność jest ważna — **najpierw migracja, potem wdrożenie** (nowy worker czyta kolumnę `hero`; bez niej `GET /scores` zwróci 500):
+
+1. `cd worker`
+2. `npx wrangler d1 execute tower-crawler-scores --remote --file=migrations/0002_scores_hero.sql` (jednorazowo; dla nowej bazy wystarczy `schema.sql`)
+3. `npx wrangler deploy`
+
+Zgodność: stare wpisy mają `hero = null` i na tablicy są bez oznaczenia. Stary worker ignoruje pole `hero`, więc nowa gra działa z nim dalej (tylko bez oznaczeń na wspólnej liście); stara gra działa z nowym workerem (wpisy bez bohatera).
+
 ## Zgłoszenia diagnostyczne (`/reports`, krok 57)
 
 | Metoda i ścieżka | Kto | Działanie |
