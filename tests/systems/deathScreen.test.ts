@@ -180,8 +180,11 @@ describe('wiersz tablicy i miniaturka bohatera (krok 89)', () => {
     expect(lastBottom).toBeLessThanOrEqual(DEATH_LAYOUT.prompt.y);
   });
 
-  it('miniaturka mieści się w wierszu, a kadr w klatce 48×48', () => {
-    expect(DEATH_HERO_ICON.sizePx).toBeLessThanOrEqual(DEATH_LAYOUT.rows.step);
+  it('miniaturka najwyżej trochę wyższa od wiersza i nad komunikatem R / C, a kadr w klatce 48×48', () => {
+    // Postać nie wypełnia kadru, więc miniaturka może zachodzić na sąsiedni wiersz o kilka pikseli.
+    expect(DEATH_HERO_ICON.sizePx).toBeLessThanOrEqual(DEATH_LAYOUT.rows.step * 1.25);
+    const lastCenter = DEATH_LAYOUT.rows.y + (HIGHSCORE_CONFIG.podiumSize + 1) * DEATH_LAYOUT.rows.step + DEATH_LAYOUT.rows.fontSize / 2;
+    expect(lastCenter + DEATH_HERO_ICON.sizePx / 2).toBeLessThanOrEqual(DEATH_LAYOUT.prompt.y);
     const { x, y, size } = DEATH_HERO_ICON.crop;
     expect(x + size).toBeLessThanOrEqual(48);
     expect(y + size).toBeLessThanOrEqual(48);
