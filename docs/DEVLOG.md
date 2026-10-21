@@ -4042,6 +4042,16 @@ Feedback właściciela po kroku 89: przy wyniku ma być miniaturka wskazująca b
 
 ---
 
+## Krok 86a — Napis „Wejdź na arenę!” tylko przy ataku na bossa `#ocena` `#boss`
+
+Zgłoszenie właściciela z nagraniem: napis „Wejdź na arenę!” pojawia się non stop podczas zwykłej walki na piętrze, daleko od areny.
+- **Przyczyna (błąd kroku 86):** `BossFight` żyje przez całe piętro i dostaje każdy cios, promień i pocisk gracza. Poza areną `warnUntouchable` wyświetlał napis przy każdym ataku (co sekundę), niezależnie od tego, czy atak w ogóle sięgał bossa — u łucznika i Czarodziejki pocisk w locie wywoływał go w każdej klatce.
+- **Poprawka:** napis pojawia się tylko wtedy, gdy atak spoza areny naprawdę dotknąłby bossa albo jego pomocnika (doga, pajączka, kokonu). Zasięg sprawdzają nowe czyste predykaty bez zadawania obrażeń: `swingReaches` (`systems/MeleeResolver.ts`), `beamReaches` (`systems/Sorcery.ts`), `shotTouches` (`systems/ShotResolver.ts`); rozstrzyganie trafień korzysta z tych samych funkcji, więc warunki się nie rozjadą. Reguła nietykalności z kroku 86 bez zmian.
+- **Testy:** `tests/systems/attackReach.test.ts` (cios, promień, pocisk; predykat zgodny z `resolveMeleeSwing`, nie rani celu). Build zielony (1319 testów).
+- **Przeglądarka (`?seed=7&floor=2`, 40 ataków LPM/PPM w pierwszych pokojach):** przed poprawką 16–21 napisów (Czarodziejka, barbarzyńca, łucznik), po poprawce 0.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
