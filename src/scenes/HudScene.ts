@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
+import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import type { BeamHudData, BossHudData, HudItem, HudItemNotice, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { ITEM_POOL } from '@/config/lootConfig';
@@ -142,7 +143,7 @@ export class HudScene extends Phaser.Scene {
   override update(time: number): void {
     const hud = this.source.getHudData();
 
-    this.floorText.setText(floorLabel(hud.floor, TOWER_CONFIG));
+    this.floorText.setText(hud.arenaLabel ?? floorLabel(hud.floor, TOWER_CONFIG));
     const modifier = hud.floorModifier;
     this.modifierText.setText(modifier ? `${modifier.name}: ${modifier.description}` : '');
     this.hpText.setText(`${hud.hp}/${hud.maxHp}`);
@@ -160,7 +161,9 @@ export class HudScene extends Phaser.Scene {
     this.drawBeam(hud.beam);
     this.helpText.setText(helpLine(hud.beam !== null));
 
-    if (hud.stairsUnlocked) {
+    if (hud.bossRush) {
+      this.hintText.setText(hud.boss ? BOSS_RUSH_TEXT.fightHint : `Wrogowie: ${hud.enemiesAlive} · ${BOSS_RUSH_TEXT.arenaHint}`).setColor('#c8a8ff');
+    } else if (hud.stairsUnlocked) {
       this.hintText
         .setText(hud.onStairs ? 'Naciśnij E, aby wspiąć się wyżej' : 'Schody otwarte — stań na nich i naciśnij E, aby wspiąć się wyżej')
         .setColor('#e0b84a');
@@ -170,7 +173,13 @@ export class HudScene extends Phaser.Scene {
       this.hintText.setText(`Wrogowie: ${hud.enemiesAlive} · znajdź komnatę bossa (zakratowane schody)`).setColor('#a0a0b0');
     }
 
-    this.goldText.setText(hud.practice ? `Złoto: ${hud.gold} (run testowy — bez wyniku)` : `Złoto (wynik): ${hud.gold}`);
+    this.goldText.setText(
+      hud.bossRush
+        ? `Złoto: ${hud.gold} ${BOSS_RUSH_TEXT.goldSuffix}`
+        : hud.practice
+          ? `Złoto: ${hud.gold} (run testowy — bez wyniku)`
+          : `Złoto (wynik): ${hud.gold}`,
+    );
     this.updateItemSlots(hud.items);
     this.updateItemNotice(hud.itemNotice);
 
