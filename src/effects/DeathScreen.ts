@@ -4,6 +4,7 @@ import { DEATH_HERO_ICON as ICON, DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_T
 import { HERO_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import type { HeroId } from '@/core/heroTypes';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
+import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
 import type { PixelText } from '@/core/pixelArt';
 import { deathFrame, flowGroupOf, formatScoreRow, knownHero, titleFlowIndex } from '@/systems/deathScreen';
@@ -13,6 +14,7 @@ const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
 const GLOW_TEXTURE = 'death-glow';
 const heroIconTexture = (hero: HeroId): string => `death-hero-icon-${hero}`;
+const TOWER_PROMPT = 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA';
 /** Wiersze tablicy: podium + separator + wiersz bieżącego runu. */
 const ROWS = HIGHSCORE_CONFIG.podiumSize + 2;
 
@@ -22,6 +24,7 @@ const HEADERS: Record<DeathSummary['source'], string> = {
   pending: 'NAJLEPSZE WSPINACZKI · ŁĄCZENIE…',
   shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
   practice: 'RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ',
+  bossRush: BOSS_RUSH_TEXT.deathHeader,
 };
 
 /**
@@ -86,7 +89,7 @@ export class DeathScreen {
     );
     this.icons = this.rows.map((row) => scene.add.image(row.x, row.y, '__DEFAULT').setVisible(false));
     this.prompt = scene.add
-      .text(L.centerX, L.prompt.y, 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA', { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#9c8f74' })
+      .text(L.centerX, L.prompt.y, TOWER_PROMPT, { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#9c8f74' })
       .setOrigin(0.5, 0)
       .setLetterSpacing(5);
 
@@ -144,8 +147,11 @@ export class DeathScreen {
   /** Wynik i tablica albo pole na imię (pierwsza śmierć bez zapamiętanego imienia). */
   private fill(death: DeathSummary): void {
     this.shownFor = death;
-    const place = death.nameEntry === null && death.source !== 'practice' ? ` · MIEJSCE ${death.rank}` : '';
-    this.score.setText(`${death.score} ZŁOTA · PIĘTRO ${death.floor}${place}`);
+    const unranked = death.source === 'practice' || death.source === 'bossRush';
+    const place = death.nameEntry === null && !unranked ? ` · MIEJSCE ${death.rank}` : '';
+    const where = death.source === 'bossRush' ? 'ARENA' : 'PIĘTRO';
+    this.score.setText(`${death.score} ZŁOTA · ${where} ${death.floor}${place}`);
+    this.prompt.setText(death.source === 'bossRush' ? BOSS_RUSH_TEXT.deathPrompt : TOWER_PROMPT);
     if (death.nameEntry !== null) {
       this.header.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');
       const entry = [

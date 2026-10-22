@@ -40,3 +40,16 @@ describe('ekran wyboru bohatera', () => {
     expect(parseHeroId(null)).toBeNull();
   });
 });
+
+describe('ekran wyboru — zakładki trybu (krok 90)', () => {
+  it('zakładki trybu leżą pod kartami, opis nad podpowiedzią, całość w oknie gry', async () => {
+    const { HERO_SELECT_LAYOUT: L } = await import('@/config/heroSelectConfig');
+    const { GAME_HEIGHT, GAME_WIDTH } = await import('@/config/gameConfig');
+    const cardsBottom = L.card.top + L.card.height;
+    expect(L.mode.y - L.mode.tabHeight / 2).toBeGreaterThan(cardsBottom);
+    expect(L.mode.descriptionY).toBeGreaterThan(L.mode.y + L.mode.tabHeight / 2);
+    expect(L.hint.y).toBeGreaterThan(L.mode.descriptionY + L.mode.descriptionFontSize);
+    expect(L.hint.y + L.hint.fontSize / 2).toBeLessThan(GAME_HEIGHT);
+    expect(2 * L.mode.tabWidth + L.mode.gap).toBeLessThan(GAME_WIDTH);
+  });
+});
