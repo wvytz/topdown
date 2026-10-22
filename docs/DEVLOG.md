@@ -4104,6 +4104,7 @@ Co powstało:
 - Teksty trybu (menu, ekran wyboru, HUD, toast) mówią o tablicy aren zamiast „bez wyniku”.
 - **Testy:** `tests/systems/arenaHighscores.test.ts` (porządek, miejsce, rozdzielne magazyny i kolejki, trasa adaptera), `tests/worker/index.test.ts` (tabela i kolejność aren, osobne limity). Build zielony (1379 testów).
 - **Przeglądarka:** menu z `?mode=arenas` → Łucznik → śmierć na arenie 3 z 450 złota przy tablicy [Ala: arena 4 / 120, Zbyszek: arena 2 / 900] → miejsce 2 (przed Zbyszkiem mimo mniejszego złota); tablica wspinaczki nietknięta.
+- **Wdrożenie (22.10.2026, na prośbę właściciela):** migracja `0003_arena_scores.sql` w D1, worker wdrożony (sekrety i cron zachowane, `/arena-scores` odpowiada 200), PR #9 scalony (po scaleniu main z krokiem 88), pełny smoke OK (8 pięter × 2 seedy × 3 bohaterów), gra na Pages z 6c71928.
 
 ---
 
@@ -4209,7 +4210,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).
 
-**Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
+**Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona i wdrożona w kroku 91a. Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
 
