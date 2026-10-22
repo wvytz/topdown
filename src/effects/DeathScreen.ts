@@ -5,6 +5,8 @@ import { HERO_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import type { HeroId } from '@/core/heroTypes';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
+import { SAVE_TEXT } from '@/config/saveConfig';
+import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
 import type { PixelText } from '@/core/pixelArt';
 import { deathFrame, flowGroupOf, formatScoreRow, knownHero, titleFlowIndex } from '@/systems/deathScreen';
@@ -14,7 +16,7 @@ const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
 const GLOW_TEXTURE = 'death-glow';
 const heroIconTexture = (hero: HeroId): string => `death-hero-icon-${hero}`;
-const TOWER_PROMPT = 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA';
+const TOWER_PROMPT = 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA · M — MENU';
 /** Wiersze tablicy: podium + separator + wiersz bieżącego runu. */
 const ROWS = HIGHSCORE_CONFIG.podiumSize + 2;
 
@@ -25,6 +27,8 @@ const HEADERS: Record<DeathSummary['source'], string> = {
   shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
   practice: 'RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ',
   bossRush: BOSS_RUSH_TEXT.deathHeader,
+  fromSave: SAVE_TEXT.deathHeader,
+  floorSelect: FLOOR_SELECT_TEXT.deathHeader,
 };
 
 /**
@@ -147,11 +151,11 @@ export class DeathScreen {
   /** Wynik i tablica albo pole na imię (pierwsza śmierć bez zapamiętanego imienia). */
   private fill(death: DeathSummary): void {
     this.shownFor = death;
-    const unranked = death.source === 'practice' || death.source === 'bossRush';
+    const unranked = death.source === 'practice' || death.source === 'bossRush' || death.source === 'fromSave' || death.source === 'floorSelect';
     const place = death.nameEntry === null && !unranked ? ` · MIEJSCE ${death.rank}` : '';
     const where = death.source === 'bossRush' ? 'ARENA' : 'PIĘTRO';
     this.score.setText(`${death.score} ZŁOTA · ${where} ${death.floor}${place}`);
-    this.prompt.setText(death.source === 'bossRush' ? BOSS_RUSH_TEXT.deathPrompt : TOWER_PROMPT);
+    this.prompt.setText(death.source === 'bossRush' ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT);
     if (death.nameEntry !== null) {
       this.header.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');
       const entry = [

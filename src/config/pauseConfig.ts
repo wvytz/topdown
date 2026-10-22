@@ -12,6 +12,12 @@ export const PAUSE_CONFIG = {
     focus: 'Gra wstrzymana — okno straciło fokus',
   },
   resumeHint: 'Esc / P / kliknięcie — wznów',
+  /** Zapis gry i wyjście do menu (krok 91). */
+  saveTitle: 'ZAPIS GRY — 1 / 2 / 3 (stan z wejścia na piętro)',
+  saveUnavailable: 'Zapis niedostępny podczas odtwarzania nagrania',
+  quitHint: 'M — menu główne (autozapis zostaje: Kontynuuj)',
+  /** Układ (y w pikselach płótna 960×540). */
+  layout: { titleY: 52, reasonY: 92, controlsY: 118, saveTitleY: 284, slotsY: 310, slotStep: 22, statusY: 384, quitY: 422, resumeY: 464 },
   controls: [
     'WASD — ruch',
     'LPM / PPM — ataki bohatera',

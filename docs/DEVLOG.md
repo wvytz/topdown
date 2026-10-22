@@ -4065,6 +4065,19 @@ Zgłoszenie właściciela z nagraniem: napis „Wejdź na arenę!” pojawia si�
 - **Przeglądarka (`?seed=7&floor=2`, 40 ataków LPM/PPM w pierwszych pokojach):** przed poprawką 16–21 napisów (Czarodziejka, barbarzyńca, łucznik), po poprawce 0.
 - **Wdrożenie (22.10.2026, na prośbę właściciela):** PR #7 scalony (po scaleniu z krokiem 90), smoke OK, gra na Pages z efdd2e0.
 
+## Krok 91 — Menu główne, zapis gry i wybór piętra `#ekran-startowy` `#zapis-gry` `#wybor-pietra`
+
+Prośba właściciela: „ekran startowy z prawdziwego zdarzenia”, trzeci tryb i save/load. Trzeci tryb wg właściciela: **swobodny wybór poziomu** — nowy run od piętra, którego bossa gracz pokonał, żeby szybciej dojść do kolejnych kręgów.
+- **Menu główne (`scenes/MenuScene.ts`, `systems/mainMenu.ts`, `config/menuConfig.ts`):** po intrze ekran startowy nie gaśnie — wieża, zaćmienie, popiół i żarzące się pęknięcia zostają jako tło (`SplashScene.holdForMenu`), a na nim lewy panel z pozycjami i prawy z opisem zaznaczonej. Pozycje: Kontynuuj, Nowa wspinaczka, Areny bossów · test, Wybór piętra, Wczytaj grę, Sterowanie. ↑ ↓ / W S / mysz, Enter / Spacja / klik, Esc wraca. Pominięcie intra przeskakuje od razu do menu. Powrót z gry (pauza → M, ekran śmierci → M) i z ekranu wyboru bohatera (Esc) otwiera menu bez intra i bez ponownego ładowania. `?hero=` w adresie dalej pomija menu i wybór (testy, smoke).
+- **Zapis gry (`systems/SaveGame.ts`, `persistence/SaveStorage.ts`, `config/saveConfig.ts`):** zapis to **punkt kontrolny z wejścia na piętro** (seed runu, piętro, bohater, złoto, przedmioty, HP, tryb) — piętra są deterministyczne, więc wczytanie odtwarza piętro od początku. Stan w trakcie piętra nie jest zapisywany (wymagałoby to serializacji całego świata).
+  - **Autozapis „Kontynuuj”:** przy wejściu na każde piętro (arenę); **znika po śmierci**; run z autozapisu zachowuje miejsce na tablicy (to ten sam run).
+  - **Ręczne sloty 1–3:** w pauzie klawisze 1 / 2 / 3 albo klik wiersza; w menu „Wczytaj grę” (X / Delete dwa razy usuwa). Run wczytany ze slotu dostaje znacznik `fromSave` i **nie trafia na tablicę** (`SAVE_CONFIG.manualLoadRanked = false`, inaczej wystarczy wczytywać przed trudnym piętrem) — do decyzji właściciela.
+  - Uszkodzony albo obcy wpis w magazynie = pusty slot; zablokowany magazyn — zapis w pamięci sesji. Odtwarzanie nagrania (`__replay`) nie rusza zapisów.
+- **Wybór piętra (`RunMode.FloorSelect`, `systems/FloorSelect.ts`, `persistence/BossProgress.ts`, `config/floorSelectConfig.ts`):** pokonanie bossa we wspinaczce (albo w wyborze piętra; nie w runie testowym z adresu ani w arenach) zapisuje najwyższe pokonane piętro. W menu ← → wybiera piętro 1…najwyższe (z kręgiem, biomem i bossem w opisie), potem zwykły ekran wyboru bohatera i zwykła wspinaczka od tego piętra, z pustymi rękami i pełnym HP. R po śmierci zaczyna od tego samego piętra. **Wynik nie trafia na tablicę** (`FLOOR_SELECT_CONFIG.ranked = false`: wyższe piętra dają więcej złota) — do decyzji właściciela.
+- **Pauza:** sekcja zapisu (sloty z opisem: bohater, piętro, złoto, przedmioty, data) i „M — menu główne”.
+- **Testy:** `tests/systems/saveGame.test.ts` (zapis↔odczyt, odrzucanie uszkodzonych danych, ranking autozapisu i slotu, opis, odmiana „przedmiot”), `tests/persistence/saveStorage.test.ts`, `tests/systems/mainMenu.test.ts`, `tests/systems/floorSelect.test.ts`. Build zielony (1371 testów).
+- **Przeglądarka (Playwright, Chromium):** intro → menu; nowa wspinaczka → wybór bohatera → Esc → menu; gra → pauza → zapis w slocie 2 → M → menu z aktywnym „Kontynuuj”; wybór piętra (postęp 9) → piętro 8 · Krąg II, tryb `floor-select`; śmierć → autozapis usunięty, nagłówek „WYBÓR PIĘTRA — WYNIK NIE TRAFIA NA TABLICĘ”, R → znów piętro 8; M → menu → wczytanie slotu 1 → piętro 8 z `fromSave`. `B` (pokonaj bossa) w zwykłym runie zapisuje postęp, w runie testowym `?floor=3` — nie. Smoke (`--floors 2 --seeds 1`, trzech bohaterów) OK.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -4166,6 +4179,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
+
+**Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Do decyzji: czy run ze slotu i run od wybranego piętra mają trafiać na tablicę (osobna tablica?), czy start od wyższego piętra ma dawać coś na start (np. kartę przedmiotu za każdego pominiętego bossa), większe nagrody i trudność w kolejnych kręgach (pomysł właściciela).
 
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: czeka na ocenę właściciela — leczenie między arenami, osobna tablica wyników, losowa kolejność aren.
 

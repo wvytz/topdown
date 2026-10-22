@@ -29,6 +29,6 @@ export const BOSS_RUSH_TEXT = {
   arenaHint: 'po bossie i pomocnikach — nagroda i teleport na kolejną arenę',
   goldSuffix: '(areny bossów — bez wyniku)',
   /** R zaczyna areny od nowa tym samym bohaterem, C wraca do ekranu wyboru (z zaznaczonym trybem aren). */
-  deathPrompt: 'R — ARENY OD NOWA · C — ZMIANA BOHATERA',
+  deathPrompt: 'R — ARENY OD NOWA · C — ZMIANA BOHATERA · M — MENU',
   deathHeader: 'ARENY BOSSÓW — WYNIK NIE TRAFIA NA TABLICĘ',
 } as const;

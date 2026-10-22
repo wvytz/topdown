@@ -12,6 +12,9 @@ import { newRun } from '@/systems/RunState';
 import { RunMode } from '@/core/runMode';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import { nextRunMode } from '@/systems/BossRush';
+import { openMainMenu } from '@/scenes/BootScene';
+import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
+import { startFloorInfo } from '@/systems/FloorSelect';
 
 interface HeroCard {
   readonly hero: HeroId;
@@ -34,6 +37,7 @@ const MODE_ORDER: readonly RunMode[] = [RunMode.Tower, RunMode.BossRush];
  * Ekran wyboru bohatera (krok 38): karty z postacią, statystykami i opisem ataków.
  * Strzałki / A, D / 1, 2 lub najechanie myszą zmieniają wybór; Enter, Spacja lub kliknięcie zaczyna run.
  * Pod kartami wybór trybu (krok 90): wspinaczka albo areny bossów — ↑ ↓ / W, S / Tab albo kliknięcie zakładki.
+ * Esc wraca do menu głównego (krok 91).
  */
 export class HeroSelectScene extends Phaser.Scene {
   private selectData!: HeroSelectData;
@@ -74,10 +78,12 @@ export class HeroSelectScene extends Phaser.Scene {
       this.cards.push(this.buildCard(hero, left + width / 2, top, style));
     });
 
-    this.buildModeTabs(style);
+    // Wybór piętra (krok 91) przychodzi z menu z wybranym piętrem — bez zakładek, sam opis startu.
+    if (this.mode !== RunMode.FloorSelect) this.buildModeTabs(style);
+    else this.modeDescription = this.add.text(L.centerX, L.mode.y, '', { ...style, fontSize: `${L.mode.fontSize}px` }).setOrigin(0.5);
 
     this.add
-      .text(L.centerX, L.hint.y, '← →  BOHATER   ·   ↑ ↓  TRYB   ·   ENTER — START', { ...style, fontSize: `${L.hint.fontSize}px`, color: P.hint })
+      .text(L.centerX, L.hint.y, this.hintText(), { ...style, fontSize: `${L.hint.fontSize}px`, color: P.hint })
       .setOrigin(0.5)
       .setLetterSpacing(L.hint.letterSpacing);
 
@@ -151,7 +157,7 @@ export class HeroSelectScene extends Phaser.Scene {
   }
 
   private setMode(mode: RunMode): void {
-    if (this.starting || mode === this.mode) return;
+    if (this.starting || mode === this.mode || this.mode === RunMode.FloorSelect) return;
     this.mode = mode;
     this.refresh();
   }
@@ -181,6 +187,9 @@ export class HeroSelectScene extends Phaser.Scene {
       case 'Enter':
       case ' ':
         this.confirm();
+        break;
+      case 'Escape':
+        this.backToMenu();
         break;
       default: {
         // 1, 2 … — wybór i start jednym klawiszem.
@@ -217,9 +226,33 @@ export class HeroSelectScene extends Phaser.Scene {
       tab.frame.setFillStyle(active ? P.cardSelected : P.card).setStrokeStyle(L.mode.borderWidth, active ? P.borderSelected : P.border);
       tab.label.setColor(active ? accent : P.textDim);
     }
+    if (this.mode === RunMode.FloorSelect) {
+      this.modeDescription.setText(`${FLOOR_SELECT_TEXT.modeName} · ${FLOOR_SELECT_TEXT.selectHint(startFloorInfo(this.selectData.floor).label)}`).setColor(P.name);
+      return;
+    }
     this.modeDescription
       .setText(this.mode === RunMode.BossRush ? BOSS_RUSH_TEXT.modeHint : BOSS_RUSH_TEXT.towerModeHint)
       .setColor(this.mode === RunMode.BossRush ? P.arenaMode : P.hint);
+  }
+
+  /** Podpowiedź klawiszy; przy wyborze piętra trybu się nie zmienia. */
+  private hintText(): string {
+    const mode = this.mode === RunMode.FloorSelect ? '' : '   ·   ↑ ↓  TRYB';
+    return `← →  BOHATER${mode}   ·   ENTER — START   ·   ESC — MENU`;
+  }
+
+  /** Esc — powrót do menu głównego (krok 91), z tym samym seedem i trybem. */
+  private backToMenu(): void {
+    if (this.starting) return;
+    this.starting = true;
+    const hero = this.cards[this.selected]!.hero;
+    const start: FloorSceneData = {
+      runSeed: this.selectData.runSeed,
+      floor: this.selectData.floor,
+      run: newRun(hero, this.selectData.practice ?? false, this.mode),
+    };
+    this.cameras.main.fadeOut(L.fadeMs, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => openMainMenu(this, start));
   }
 
   private confirm(): void {
@@ -230,7 +263,7 @@ export class HeroSelectScene extends Phaser.Scene {
     const start: FloorSceneData = {
       runSeed: this.selectData.runSeed,
       floor: this.selectData.floor,
-      run: newRun(hero, this.selectData.practice ?? false, this.mode),
+      run: newRun(hero, this.selectData.practice ?? false, this.mode, this.selectData.floor),
     };
     this.cameras.main.fadeOut(L.fadeMs, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(SceneKey.Game, start));
