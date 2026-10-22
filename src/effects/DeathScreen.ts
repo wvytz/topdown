@@ -26,7 +26,6 @@ const HEADERS: Record<DeathSummary['source'], string> = {
   pending: 'NAJLEPSZE WSPINACZKI · ŁĄCZENIE…',
   shared: 'NAJLEPSZE WSPINACZKI · WSZYSCY GRACZE',
   practice: 'RUN TESTOWY — WYNIK NIE TRAFIA NA TABLICĘ',
-  bossRush: BOSS_RUSH_TEXT.deathHeader,
   fromSave: SAVE_TEXT.deathHeader,
   floorSelect: FLOOR_SELECT_TEXT.deathHeader,
 };
@@ -151,11 +150,12 @@ export class DeathScreen {
   /** Wynik i tablica albo pole na imię (pierwsza śmierć bez zapamiętanego imienia). */
   private fill(death: DeathSummary): void {
     this.shownFor = death;
-    const unranked = death.source === 'practice' || death.source === 'bossRush' || death.source === 'fromSave' || death.source === 'floorSelect';
+    const unranked = death.source === 'practice' || death.source === 'fromSave' || death.source === 'floorSelect';
     const place = death.nameEntry === null && !unranked ? ` · MIEJSCE ${death.rank}` : '';
-    const where = death.source === 'bossRush' ? 'ARENA' : 'PIĘTRO';
-    this.score.setText(`${death.score} ZŁOTA · ${where} ${death.floor}${place}`);
-    this.prompt.setText(death.source === 'bossRush' ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT);
+    // Na tablicy aren (krok 91a) o miejscu decyduje arena, więc idzie pierwsza.
+    const result = death.arenas ? `ARENA ${death.floor} · ${death.score} ZŁOTA` : `${death.score} ZŁOTA · PIĘTRO ${death.floor}`;
+    this.score.setText(`${result}${place}`);
+    this.prompt.setText(death.arenas ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT);
     if (death.nameEntry !== null) {
       this.header.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');
       const entry = [
@@ -166,7 +166,7 @@ export class DeathScreen {
       this.icons.forEach((icon) => icon.setVisible(false));
       return;
     }
-    this.header.setText(HEADERS[death.source]);
+    this.header.setText(this.headerFor(death));
     const lines: Array<{ text: string; current: boolean; hero: HeroId | null }> = death.board.top.map((row) => this.line(row));
     if (death.board.current) {
       lines.push({ text: '· · ·', current: false, hero: null });
@@ -188,8 +188,15 @@ export class DeathScreen {
     });
   }
 
+  /** Nagłówek tablicy: areny bossów (krok 91a) mają własne nagłówki dla wyników z listy. */
+  private headerFor(death: DeathSummary): string {
+    const source = death.source;
+    if (death.arenas && (source === 'local' || source === 'pending' || source === 'shared')) return BOSS_RUSH_TEXT.boardHeaders[source];
+    return HEADERS[source];
+  }
+
   private line(row: RankedEntry): { text: string; current: boolean; hero: HeroId | null } {
-    return { text: formatScoreRow(row), current: row.isCurrent, hero: knownHero(row.entry.hero) };
+    return { text: formatScoreRow(row, this.shownFor?.arenas === true), current: row.isCurrent, hero: knownHero(row.entry.hero) };
   }
 
   /**

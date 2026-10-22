@@ -52,7 +52,7 @@ export const MENU_TEXT = {
   newTowerTitle: 'Wspinaczka',
   newTower: 'Piętra wieży, boss na końcu każdego.\nWynik = złoto w chwili śmierci.',
   bossRushTitle: 'Areny bossów',
-  bossRush: 'Same areny bossów, nagroda co arenę.\nTryb testowy — wynik nie trafia na tablicę.',
+  bossRush: 'Same areny bossów, nagroda co arenę.\nOsobna tablica wyników: najpierw arena, potem złoto.',
   floorSelectTitle: 'Wybór piętra',
   floorSelectLocked: 'Pokonaj bossa pierwszego piętra we wspinaczce, a odblokujesz start od dalszych pięter.',
   floorSelect: (best: string): string => `Nowy run od piętra, którego bossa już pokonałeś.\nNajdalej: ${best}.\nWynik nie trafia na tablicę.`,

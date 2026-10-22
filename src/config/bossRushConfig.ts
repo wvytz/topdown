@@ -20,15 +20,20 @@ export const BOSS_RUSH_TEXT = {
   towerModeName: 'WSPINACZKA',
   /** Dopisek przy nazwie trybu na ekranie wyboru. */
   testBadge: 'TEST',
-  modeHint: 'same areny bossów, nagroda co arenę · wynik nie trafia na tablicę',
+  modeHint: 'same areny bossów, nagroda co arenę · osobna tablica wyników aren',
   towerModeHint: 'piętra wieży, boss na końcu każdego',
-  startToast: 'Areny bossów — wynik nie trafi na tablicę',
+  startToast: 'Areny bossów — wynik trafi na tablicę aren',
   clearToast: 'Pokonaj pozostałych przeciwników!',
   teleportToast: 'Teleport na kolejną arenę…',
   fightHint: 'Pokonaj bossa i jego pomocników · unikaj czerwonych stref',
   arenaHint: 'po bossie i pomocnikach — nagroda i teleport na kolejną arenę',
-  goldSuffix: '(areny bossów — bez wyniku)',
+  goldSuffix: '(tablica aren: arena, potem złoto)',
   /** R zaczyna areny od nowa tym samym bohaterem, C wraca do ekranu wyboru (z zaznaczonym trybem aren). */
   deathPrompt: 'R — ARENY OD NOWA · C — ZMIANA BOHATERA · M — MENU',
-  deathHeader: 'ARENY BOSSÓW — WYNIK NIE TRAFIA NA TABLICĘ',
+  /** Nagłówki tablicy aren (krok 91a) — jak tablicy wspinaczki, zależnie od źródła wyników. */
+  boardHeaders: {
+    local: 'NAJLEPSZE ARENY',
+    pending: 'NAJLEPSZE ARENY · ŁĄCZENIE…',
+    shared: 'NAJLEPSZE ARENY · WSZYSCY GRACZE',
+  },
 } as const;

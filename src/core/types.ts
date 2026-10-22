@@ -130,7 +130,9 @@ export interface DeathSummary {
   readonly rank: number;
   readonly board: ScoreboardView;
   /** Skąd tablica: lokalna, wspólna albo lokalna w oczekiwaniu na wspólną. */
-  readonly source: 'local' | 'pending' | 'shared' | 'practice' | 'bossRush' | 'fromSave' | 'floorSelect';
+  readonly source: 'local' | 'pending' | 'shared' | 'practice' | 'fromSave' | 'floorSelect';
+  /** Śmierć w arenach bossów (krok 91a): tablica aren — `floor` to arena, ranking najpierw arena, potem złoto. */
+  readonly arenas?: boolean;
   /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
   readonly nameEntry: string | null;
 }

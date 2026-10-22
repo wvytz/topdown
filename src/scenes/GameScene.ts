@@ -73,6 +73,7 @@ import {
   BREAKABLE_LOOT,
   BOSS_REWARD,
   ENEMY_LOOT,
+  HIGHSCORE_BOARDS,
   HIGHSCORE_CONFIG,
   ITEM_DEFINITIONS,
   ITEM_EFFECTS,
@@ -119,7 +120,7 @@ import { SharedHighscores } from '@/persistence/SharedHighscores';
 import { createRemoteScoreSource } from '@/persistence/remoteScores';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
-import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
+import { compareArenaScores, isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
@@ -254,6 +255,26 @@ export class GameScene extends Phaser.Scene implements HudSource {
       podiumSize: HIGHSCORE_CONFIG.podiumSize,
       timeoutMs: HIGHSCORE_CONFIG.remoteTimeoutMs,
       maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
+    },
+  );
+  /** Tablica aren bossów (krok 91a): najpierw osiągnięta arena, potem złoto; własny klucz, kolejka i trasa workera. */
+  private readonly arenaHighscores = new SharedHighscores(
+    new HighscoreStorage(
+      HighscoreStorage.browserStorage(),
+      HIGHSCORE_CONFIG.maxEntries,
+      HIGHSCORE_CONFIG.podiumSize,
+      HIGHSCORE_BOARDS.arenas.storageKey,
+      compareArenaScores,
+    ),
+    createRemoteScoreSource(HIGHSCORE_BOARDS.arenas.path),
+    HighscoreStorage.browserStorage(),
+    {
+      maxEntries: HIGHSCORE_CONFIG.maxEntries,
+      podiumSize: HIGHSCORE_CONFIG.podiumSize,
+      timeoutMs: HIGHSCORE_CONFIG.remoteTimeoutMs,
+      maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
+      outboxKey: HIGHSCORE_BOARDS.arenas.outboxKey,
+      compare: compareArenaScores,
     },
   );
   private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
@@ -1280,26 +1301,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     // Złoto w chwili śmierci to wynik runu.
     const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now(), hero: this.run.hero };
-    // Areny bossów (krok 90, tryb testowy): wynik nie trafia na żadną tablicę.
-    if (this.bossRush) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'bossRush', nameEntry: null };
-      this.awaitNewRun();
-      return;
-    }
-    // Run testowy (start z adresu, krok 41g): bez zapisu i bez pytania o imię.
-    if (this.run.practice) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'practice', nameEntry: null };
-      this.awaitNewRun();
-      return;
-    }
-    // Run wczytany z ręcznego slotu albo od wybranego piętra (krok 91): bez zapisu wyniku.
-    if (this.run.fromSave) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'fromSave', nameEntry: null };
-      this.awaitNewRun();
-      return;
-    }
-    if (this.run.mode === RunMode.FloorSelect && !FLOOR_SELECT_CONFIG.ranked) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'floorSelect', nameEntry: null };
+    // Bez zapisu i bez pytania o imię: run testowy z adresu (krok 41g), run ze slotu i od wybranego piętra (krok 91).
+    // Areny bossów (krok 91a) mają własną tablicę — wynik idzie na nią, a nie na tablicę wspinaczki.
+    const unranked = this.run.practice
+      ? 'practice'
+      : this.run.fromSave
+        ? 'fromSave'
+        : this.run.mode === RunMode.FloorSelect && !FLOOR_SELECT_CONFIG.ranked
+          ? 'floorSelect'
+          : null;
+    if (unranked) {
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag() };
       this.awaitNewRun();
       return;
     }
@@ -1312,7 +1324,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
-    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '' };
+    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag() };
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Enter' || event.key === 'Escape') {
         this.input.keyboard?.off('keydown', onKey);
@@ -1328,14 +1340,20 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.input.keyboard?.on('keydown', onKey);
   }
 
-  /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. */
+  /** Znacznik tablicy aren na panelu śmierci (krok 91a). */
+  private arenaFlag(): { arenas?: true } {
+    return this.bossRush ? { arenas: true } : {};
+  }
+
+  /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. Areny bossów — na własnej tablicy (krok 91a). */
   private recordDeath(entry: ScoreEntry): void {
-    const { rank, board } = this.highscores.record(entry);
-    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null };
+    const highscores = this.bossRush ? this.arenaHighscores : this.highscores;
+    const { rank, board } = highscores.record(entry);
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag() };
     this.death = death;
-    if (this.highscores.hasRemote) {
+    if (highscores.hasRemote) {
       this.death = { ...death, source: 'pending' };
-      void this.highscores.recordShared(entry).then((shared) => {
+      void highscores.recordShared(entry).then((shared) => {
         // Scena mogła już ruszyć z nową wspinaczką — podmieniamy tylko panel tej śmierci.
         if (this.death?.board !== board) return;
         this.death = shared ? { ...death, rank: shared.rank, board: shared.board, source: 'shared' } : death;

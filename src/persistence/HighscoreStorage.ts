@@ -1,10 +1,10 @@
-import type { ScoreEntry, ScoreboardView } from '@/systems/Highscores';
-import { buildScoreboard, insertScore } from '@/systems/Highscores';
+import type { ScoreComparator, ScoreEntry, ScoreboardView } from '@/systems/Highscores';
+import { buildScoreboard, compareScores, insertScore } from '@/systems/Highscores';
 
 /** Minimalny interfejs magazynu — w grze localStorage, w testach atrapa. */
 export type KeyValueStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
-const STORAGE_KEY = 'tower-crawler.highscores.v1';
+import { HIGHSCORE_BOARDS } from '@/config/lootConfig';
 
 export interface RecordResult {
   readonly rank: number;
@@ -22,6 +22,9 @@ export class HighscoreStorage {
     private readonly storage: KeyValueStorage | null,
     private readonly maxEntries: number,
     private readonly podiumSize: number,
+    /** Domyślnie tablica wspinaczki; tablica aren (krok 91a) ma własny klucz. */
+    private readonly storageKey: string = HIGHSCORE_BOARDS.tower.storageKey,
+    private readonly compare: ScoreComparator = compareScores,
   ) {}
 
   /** Magazyn przeglądarki, jeśli jest dostępny. */
@@ -36,7 +39,7 @@ export class HighscoreStorage {
   load(): ScoreEntry[] {
     if (!this.storage) return [...this.memory];
     try {
-      const raw = this.storage.getItem(STORAGE_KEY);
+      const raw = this.storage.getItem(this.storageKey);
       if (!raw) return [];
       const parsed: unknown = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed.filter(isScoreEntry) : [];
@@ -46,16 +49,16 @@ export class HighscoreStorage {
   }
 
   record(entry: ScoreEntry): RecordResult {
-    const { entries, rank } = insertScore(this.load(), entry, this.maxEntries);
+    const { entries, rank } = insertScore(this.load(), entry, this.maxEntries, this.compare);
     this.save(entries);
-    return { rank, board: buildScoreboard(entries, { entry, rank }, this.podiumSize) };
+    return { rank, board: buildScoreboard(entries, { entry, rank }, this.podiumSize, this.compare) };
   }
 
   private save(entries: ScoreEntry[]): void {
     this.memory = entries;
     if (!this.storage) return;
     try {
-      this.storage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      this.storage.setItem(this.storageKey, JSON.stringify(entries));
     } catch {
       // Pełny lub zablokowany magazyn — wyniki zostają w pamięci do końca sesji.
     }
