@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4042,6 +4042,20 @@ Feedback właściciela po kroku 89: przy wyniku ma być miniaturka wskazująca b
 
 ---
 
+## Krok 90 — Tryb testowy „Areny bossów” `#decyzja` `#areny-bossow` `#boss`
+
+Prośba właściciela: dodatkowy, na razie testowy moduł, w którym walczymy tylko z bossami i ich pomocnikami — od razu na arenie bossa, po pokonaniu bossa i przeciwników wybór jednego przedmiotu i teleport na kolejną arenę.
+- **Wybór trybu:** na ekranie wyboru bohatera, pod kartami, dwie zakładki: „WSPINACZKA” i „ARENY BOSSÓW · TEST” (↑ ↓ / W, S / Tab albo kliknięcie), pod nimi jednolinijkowy opis trybu. Wybrałem ten ekran zamiast animacji tytułowej, bo to pierwszy ekran z wyborem — tryb nie dokłada zwykłej grze ani jednego kliknięcia (domyślnie zaznaczona wspinaczka). `?mode=arenas` (z `?hero=…`) wchodzi od razu w areny, `&floor=N` zaczyna od areny N.
+- **Arena N = arena bossa piętra N:** ten sam generator, biom, boss i skalowanie co we wspinaczce (także kolejne kręgi od areny 8). Gracz startuje w arenie (jak `?boss=1`), kraty opadają od razu. Na piętrze nie ma wrogów w pokojach, kapliczki, pułapek, urn, zasadzki, ukrytej komnaty, pająków z sufitu, kokonów, pajęczyn, purchawek, psów w ścianach, palenisk spoza areny, zapowiedzi bossa ani modyfikatora piętra. Wszystko, co należy do walki z bossem (pajączki, spiżarnia, świta, dog, galerie Strażnika Bram, paleniska Kata), działa bez zmian.
+- **Przebieg areny** (czysta maszyna stanów `systems/BossRush.ts`): walka → (jeśli zostali pomocnicy, np. z galerii albo świty: komunikat „Pokonaj pozostałych przeciwników!”) → karty nagrody (te same co za bossa, 1 z 3) → 2 s odliczania (czas na zebranie łupu z bossa; to, co zostanie, gracz dostaje przy teleporcie) → fioletowe wygaszenie i kolejna arena. HP i przedmioty przechodzą dalej jak między piętrami. Liczby w `config/bossRushConfig.ts`.
+- **Wyniki:** areny **nie zapisują wyniku** (ani lokalnie, ani na wspólnej liście) i nie pytają o imię. HUD: „Arena 3 · Król Pająków” i „Złoto: N (areny bossów — bez wyniku)”; ekran śmierci: „N ZŁOTA · ARENA 5”, „ARENY BOSSÓW — WYNIK NIE TRAFIA NA TABLICĘ”, R — areny od nowa, C — ekran wyboru z zaznaczonymi arenami. Wspinaczka i lista wyników bez zmian (`RunSnapshot.mode` pojawia się tylko w arenach).
+- **Testy:** maszyna stanów areny (nagroda od razu albo po pomocnikach, odliczanie od pierwszej klatki po wyborze, brak nagrody po śmierci), tryb z adresu, przenoszenie trybu między arenami i zgodność wsteczna zwykłego runu, napis areny, układ zakładek na ekranie wyboru. Build zielony (1329 testów).
+- **Weryfikacja w przeglądarce (Playwright):** ekran wyboru z zakładkami; areny 1→6 po kolei (pokonanie bossa, karty, teleport, przedmioty się sumują), arena 5 — galerie: faza dobijania, nagroda dopiero po ostatnim; arena 7 (Baron Dymu z dogiem) startuje; śmierć — panel bez tablicy, brak zapisu w `localStorage`, R wraca na arenę 1. `npm run smoke` (wspinaczka, 3 piętra, wszyscy bohaterowie) — OK.
+- **Wdrożenie (22.10.2026, na prośbę właściciela):** PR #8 scalony, smoke (piętra 1–7, wszyscy bohaterowie) OK, gra na Pages z 30138f4.
+- **Do oceny właściciela:** czy HP ma się odnawiać między arenami (teraz przechodzi jak między piętrami — tylko mikstury z łupu bossa leczą), czy dodać złoto/wynik i osobną tablicę dla aren, czy kolejność aren ma być losowa, czy wybór trybu ma trafić na samą animację tytułową.
+
+---
+
 ## Krok 86a — Napis „Wejdź na arenę!” tylko przy ataku na bossa `#ocena` `#boss`
 
 Zgłoszenie właściciela z nagraniem: napis „Wejdź na arenę!” pojawia się non stop podczas zwykłej walki na piętrze, daleko od areny.
@@ -4151,6 +4165,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
+
+**Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: czeka na ocenę właściciela — leczenie między arenami, osobna tablica wyników, losowa kolejność aren.
 
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
 

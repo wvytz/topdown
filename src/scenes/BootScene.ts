@@ -10,6 +10,9 @@ import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { newRun } from '@/systems/RunState';
 import { parseStartOverrides } from '@/systems/startOverrides';
 import { DEFAULT_HERO, parseHeroId } from '@/config/heroConfig';
+import { BOSS_RUSH_CONFIG } from '@/config/bossRushConfig';
+import { RunMode } from '@/core/runMode';
+import { parseRunMode } from '@/systems/BossRush';
 import { loadSpriteSheets, registerLootAnimations, registerSpriteAnimations } from '@/effects/spriteAnimations';
 
 /** Klucz rejestru: dane startu pierwszego piętra, gdy ekran startowy jeszcze trwa (krok 34). */
@@ -49,7 +52,9 @@ export class BootScene extends Phaser.Scene {
     const hero = heroParam() ?? DEFAULT_HERO;
     // `?floor=`/`?seed=` działają też na Pages, ale wtedy run jest testowy (krok 41g).
     const { practice, ...overrides } = parseStartOverrides(window.location.search);
-    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: newRun(hero, practice), ...overrides };
+    // `?mode=arenas` (krok 90): od razu areny bossów; ekran wyboru i tak pozwala zmienić tryb.
+    const mode = parseRunMode(window.location.search, BOSS_RUSH_CONFIG.urlParam, BOSS_RUSH_CONFIG.urlValue) ?? RunMode.Tower;
+    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: newRun(hero, practice, mode), ...overrides };
     if (this.scene.isActive(SceneKey.Splash)) {
       this.registry.set(BOOT_START_DATA_KEY, startData);
       this.scene.stop();
@@ -81,6 +86,11 @@ export function startFirstFloor(scene: Phaser.Scene, data: FloorSceneData): void
     scene.scene.start(SceneKey.Game, data);
     return;
   }
-  const select: HeroSelectData = { runSeed: data.runSeed, floor: data.floor, practice: data.run.practice ?? false };
+  const select: HeroSelectData = {
+    runSeed: data.runSeed,
+    floor: data.floor,
+    practice: data.run.practice ?? false,
+    ...(data.run.mode ? { mode: data.run.mode } : {}),
+  };
   scene.scene.start(SceneKey.Select, select);
 }

@@ -1,5 +1,6 @@
 import type { InputRecording } from '@/core/diagnosticsTypes';
 import type { HeroId } from '@/core/heroTypes';
+import type { RunMode } from '@/core/runMode';
 /** Czyste typy domenowe — bez zależności od Phasera. */
 import type { RunSnapshot } from '@/core/lootTypes';
 import type { ScoreboardView } from '@/systems/Highscores';
@@ -47,6 +48,8 @@ export interface HeroSelectData {
   readonly preselect?: HeroId;
   /** Run testowy z adresu (krok 41g). */
   readonly practice?: boolean;
+  /** Tryb zaznaczony na starcie (krok 90); brak = wspinaczka. */
+  readonly mode?: RunMode;
 }
 
 export interface FloorSceneData {
@@ -69,6 +72,8 @@ export interface BeamHudData {
 
 export interface HudData {
   readonly floor: number;
+  /** Areny bossów (krok 90): napis areny zamiast piętra; null we wspinaczce. */
+  readonly arenaLabel: string | null;
   /** Modyfikator bieżącego piętra; null na piętrach bez modyfikatora. */
   readonly floorModifier: { readonly name: string; readonly description: string } | null;
   readonly hp: number;
@@ -91,6 +96,8 @@ export interface HudData {
   readonly gold: number;
   /** Run testowy z adresu (krok 41g) — wynik nie trafia na tablicę. */
   readonly practice: boolean;
+  /** Areny bossów (krok 90) — wynik nie trafia na tablicę. */
+  readonly bossRush: boolean;
   readonly items: readonly HudItem[];
   /** Ostatni komunikat (np. zdobyty przedmiot); null, gdy nic do pokazania. */
   readonly toast: HudToast | null;
@@ -122,7 +129,7 @@ export interface DeathSummary {
   readonly rank: number;
   readonly board: ScoreboardView;
   /** Skąd tablica: lokalna, wspólna albo lokalna w oczekiwaniu na wspólną. */
-  readonly source: 'local' | 'pending' | 'shared' | 'practice';
+  readonly source: 'local' | 'pending' | 'shared' | 'practice' | 'bossRush';
   /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
   readonly nameEntry: string | null;
 }

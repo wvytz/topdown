@@ -145,6 +145,8 @@ import {
 import { ArenaGates } from '@/world/ArenaGates';
 import { ShrineSite } from '@/world/ShrineSite';
 import { StickyWebField } from '@/world/StickyWebField';
+import { BOSS_RUSH_CONFIG, BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
+import { BossRushArena, arenaLabel, isBossRush } from '@/systems/BossRush';
 
 /** Sole dla RNG — każdy system losuje ze swojego strumienia, niezależnie od pozostałych. */
 const ENCOUNTER_SEED_SALT = 0xe11e;
@@ -221,7 +223,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private torches!: Torches;
   private combatDecals!: CombatDecals;
   private death: DeathSummary | null = null;
-  private shrine!: ShrineSite;
+  /** Kapliczka piętra; null w arenach bossów (krok 90). */
+  private shrine: ShrineSite | null = null;
   private arenaGates!: ArenaGates;
   /** Wnęki galerii areny (krok 44); pusto, gdy boss piętra ich nie ma. */
   private galleryPosts: readonly TilePoint[] = [];
@@ -249,6 +252,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private runSeed = 0;
   /** Start w arenie bossa (`?boss=1`). */
   private atBoss = false;
+  /**
+   * Areny bossów (krok 90): piętro to sama arena — bez wrogów w pokojach, kapliczki, pułapek, zasadzki,
+   * ukrytej komnaty i modyfikatora piętra; gracz startuje w arenie, a po walce teleportuje się dalej.
+   */
+  private bossRushArena: BossRushArena | null = null;
   private floorNumber = 1;
   private stairsUnlocked = false;
   /** Gracz stoi na otwartych schodach (HUD i napis nad schodami). */
@@ -266,6 +274,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.replayStart = -1;
     this.runSeed = data.runSeed;
     this.atBoss = data.atBoss === true;
+    this.bossRushArena = isBossRush(data.run.mode) ? new BossRushArena(BOSS_RUSH_CONFIG.teleportDelayMs) : null;
+    this.shrine = null;
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
     this.startHp = data.run.hp;
@@ -307,14 +317,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Ukryta komnata (krok 46): rysujemy piętro z komnatą w przebraniu muru; prawdziwy obraz czeka na odsłonięcie.
     // Zasadzka (krok 49): co 1–2 piętra jeden zwykły pokój staje się pokojem zasadzki — przed dekorowaniem (kraty).
     this.ambushRoomId = null;
-    if (hasAmbush(this.runSeed, this.floorNumber, AMBUSH_CONFIG)) {
+    if (!this.bossRush && hasAmbush(this.runSeed, this.floorNumber, AMBUSH_CONFIG)) {
       const plan = planAmbushRoom(this.dungeon, AMBUSH_CONFIG, createRng(deriveSeed(this.dungeon.seed, AMBUSH_ROOM_SEED_SALT)));
       if (plan) {
         this.dungeon = plan.floor;
         this.ambushRoomId = plan.roomId;
       }
     }
-    this.secretArea = secretArea(this.dungeon);
+    this.secretArea = this.bossRush ? null : secretArea(this.dungeon);
     const shown = this.secretArea ? disguiseFloor(this.dungeon, this.secretArea) : this.dungeon;
     // Pochodnie przed dekorowaniem: detale lica muru omijają kafle z uchwytem.
     const torchSpots = planTorches(shown, TORCH_PLACEMENT, deriveSeed(this.dungeon.seed, TORCH_SEED_SALT));
@@ -326,28 +336,32 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const secret = this.secretArea ? { dressed: dress(this.dungeon), tiles: this.secretArea.tiles } : null;
     this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset, secret);
     this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
-    // Piętro z mgłą (krok 28a) nie losuje „Mroku” — dwa ograniczenia widoku naraz byłyby nieczytelne.
-    this.floorModifier = floorModifierFor(
-      this.runSeed,
-      this.floorNumber,
-      FLOOR_MODIFIER_POOL,
-      FLOOR_MODIFIER_CONFIG,
-      (floor, modifier) => biomeForFloor(floor).fog === null || !limitsVision(modifier),
-    );
+    // Piętro z mgłą (krok 28a) nie losuje „Mroku” — dwa ograniczenia widoku naraz byłyby nieczytelne. Areny bossów — bez modyfikatora.
+    this.floorModifier = this.bossRush
+      ? null
+      : floorModifierFor(
+          this.runSeed,
+          this.floorNumber,
+          FLOOR_MODIFIER_POOL,
+          FLOOR_MODIFIER_CONFIG,
+          (floor, modifier) => biomeForFloor(floor).fog === null || !limitsVision(modifier),
+        );
     this.floorEffects = floorEffectsOf(this.floorModifier);
 
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
 
-    const spawn = DungeonView.tileToWorldCenter(this.atBoss ? this.bossStartTile() : this.dungeon.playerSpawn);
+    const spawn = DungeonView.tileToWorldCenter(this.atBoss || this.bossRush ? this.bossStartTile() : this.dungeon.playerSpawn);
     this.player = new Player(this, spawn.x, spawn.y, this.run.hero, this.currentLoadout(), this.startHp);
     this.physics.add.collider(this.player, this.dungeonView.collisionLayer);
 
     this.setupCombat();
     this.setupLoot();
-    this.setupShrine();
+    if (!this.bossRush) {
+      this.setupShrine();
+      this.setupRuinsProps();
+    }
     this.setupSecretRoom();
     this.setupAmbush();
-    this.setupRuinsProps();
     this.createStairsPrompt();
     this.inputController = new InputController(this);
     this.setupCamera();
@@ -361,7 +375,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.scene.launch(SceneKey.Hud, hudData);
     }
 
-    if (this.floorModifier) {
+    if (this.bossRush) {
+      this.showToast(BOSS_RUSH_TEXT.startToast);
+    } else if (this.floorModifier) {
       this.showToast(`${this.floorModifier.name}: ${this.floorModifier.description}`, FLOOR_MODIFIER_TOAST_MS);
     } else if (this.run.practice) {
       this.showToast('Run testowy — wynik nie trafi na tablicę');
@@ -391,7 +407,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.lastBossFighting = false;
     this.nextProbeAt = 0;
     for (const issue of floorConnectivityIssues(this.dungeon)) diag.note('floor-disconnected', { floor: this.floorNumber, seed: this.runSeed }, 'error', issue);
-    diag.note('floor-start', { floor: this.floorNumber, seed: this.runSeed, hero: this.run.hero, biome: this.biome.id, practice: this.run.practice, gold: this.run.gold });
+    diag.note('floor-start', { floor: this.floorNumber, seed: this.runSeed, hero: this.run.hero, biome: this.biome.id, practice: this.run.practice, mode: this.run.mode, gold: this.run.gold });
     diag.setState(() => {
       const tile = DungeonView.worldToTile(this.player.x, this.player.y);
       return {
@@ -521,10 +537,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
       },
     );
     this.loot.update(time);
-    this.shrine.update(actions.interact);
+    this.shrine?.update(actions.interact);
 
     if (this.player.isDead) this.handlePlayerDeath();
     else this.checkStairs(actions.interact);
+    this.updateBossRush(time);
   }
 
   getHudData(): HudData {
@@ -532,6 +549,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const ready = Boolean(this.player?.active);
     return {
       floor: this.floorNumber,
+      arenaLabel: this.bossRush ? arenaLabel(this.floorNumber, bossForFloor(this.floorNumber).name, TOWER_CONFIG) : null,
       floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
       maxHp: ready ? this.player.health.max : this.hero.stats.maxHp,
@@ -548,6 +566,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       boss: ready ? this.bossFight.getStatus() : null,
       gold: this.run.gold,
       practice: this.run.practice,
+      bossRush: this.bossRush,
       items: this.run.itemCounts().map(({ id, count }) => ({
         name: ITEM_DEFINITIONS[id].name,
         count,
@@ -811,13 +830,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onEliteSpotted: (enemy) => this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs),
     });
 
-    const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
-    const spawns = planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng);
-    // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
-    const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
-    this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
+    // Areny bossów (krok 90): bez wrogów w pokojach i bez zagrożeń biomu poza areną — tylko boss i jego pomocnicy.
+    if (!this.bossRush) {
+      const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
+      const spawns = planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng);
+      // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
+      const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
+      this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
+    }
+    const biome = this.bossRush ? null : this.biome;
 
-    const drops = this.biome.ceilingDrops;
+    const drops = biome?.ceilingDrops;
     this.ceilingDrops = drops
       ? new CeilingDropManager({
           scene: this,
@@ -832,7 +855,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
-    const cocoons = this.biome.cocoons;
+    const cocoons = biome?.cocoons;
     this.cocoons = cocoons
       ? new CocoonManager({
           scene: this,
@@ -848,7 +871,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
-    const webs = this.biome.stickyWebs;
+    const webs = biome?.stickyWebs;
     this.stickyWebs = webs
       ? new StickyWebField({
           scene: this,
@@ -860,7 +883,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
-    const puffballs = this.biome.puffballs;
+    const puffballs = biome?.puffballs;
     this.puffballs = puffballs
       ? new PuffballManager({
           scene: this,
@@ -872,7 +895,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       : null;
 
     // Psy w ścianach palarni (krok 84): pies to zwykły Rusher biomu (wielki czarny dog).
-    const wallDogs = this.biome.wallDogs;
+    const wallDogs = biome?.wallDogs;
     this.wallDogs = wallDogs
       ? new WallDogManager({
           scene: this,
@@ -888,7 +911,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       : null;
 
     // Paleniska Piekła (krok 41b): nie w pokoju kapliczki — jej miejsce liczymy tym samym ziarnem co ShrineSite.
-    const braziers = this.biome.braziers;
+    const braziers = biome?.braziers;
     const shrineTile = planShrineLocation(this.dungeon, createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)));
     this.braziers = braziers
       ? new BrazierManager({
@@ -919,15 +942,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
       // Świta (krok 80): wróg biomu wynurza się (chwilę nietykalny i niegroźny), zanim ruszy.
       spawnHelper: (type, at) => this.enemies.spawnAt(type, at, [], { riseMs: RETINUE_MARKER_VISUAL.riseMs }),
       onDefeated: (position) => {
-        this.unlockStairs();
         this.dropLoot(position, BOSS_LOOT);
+        // Areny bossów: nagrodę i teleport prowadzi `updateBossRush` (najpierw arena musi być pusta).
+        if (this.bossRush) return;
+        this.unlockStairs();
         // Animacja śmierci bossa trwa chwilę — gracz mógł w tym czasie zginąć (np. od pocisku w locie).
         if (!this.player.isDead) this.offerBossReward();
       },
     });
 
     // Zapowiedź bossa (krok 54): odcień światła, drżenie i iskry ku arenie; milknie w walce i po niej.
-    this.herald = new BossHeraldEffects({
+    // W arenach bossów gracz już stoi na arenie — zapowiedź nie ma sensu.
+    this.herald = this.bossRush ? null : new BossHeraldEffects({
       scene: this,
       arena: this.dungeon.rooms[this.dungeon.bossRoomId]!,
       config: BOSS_HERALD[this.biome.id],
@@ -1139,10 +1165,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.input.keyboard?.resetKeys();
   }
 
-  private offerBossReward(): void {
+  private offerBossReward(onPicked?: () => void): void {
     const rng = createRng(deriveSeed(this.dungeon.seed, REWARD_SEED_SALT));
     const choices = rollItemChoices(ITEM_POOL, BOSS_REWARD.choices, rng);
-    if (choices.length === 0) return;
+    if (choices.length === 0) {
+      onPicked?.();
+      return;
+    }
 
     const owned: Partial<Record<ItemId, number>> = {};
     for (const { id, count } of this.run.itemCounts()) owned[id] = count;
@@ -1153,6 +1182,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onPick: (itemId) => {
         this.scene.resume(SceneKey.Game);
         this.grantItem(itemId);
+        onPicked?.();
       },
     };
     diag.note('boss-reward-offered', { floor: this.floorNumber, choices: choices.length });
@@ -1188,6 +1218,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     // Złoto w chwili śmierci to wynik runu.
     const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now(), hero: this.run.hero };
+    // Areny bossów (krok 90, tryb testowy): wynik nie trafia na żadną tablicę.
+    if (this.bossRush) {
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'bossRush', nameEntry: null };
+      this.awaitNewRun();
+      return;
+    }
     // Run testowy (start z adresu, krok 41g): bez zapisu i bez pytania o imię.
     if (this.run.practice) {
       this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'practice', nameEntry: null };
@@ -1240,13 +1276,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private awaitNewRun(): void {
     const freshSeed = (Date.now() ^ this.runSeed) >>> 0;
     this.input.keyboard?.once('keydown-R', () => {
-      // Ten sam bohater co w zakończonym runie.
-      const fresh: FloorSceneData = { runSeed: freshSeed, floor: 1, run: newRun(this.run.hero) };
+      // Ten sam bohater i tryb co w zakończonym runie.
+      const fresh: FloorSceneData = { runSeed: freshSeed, floor: 1, run: newRun(this.run.hero, false, this.run.mode) };
       this.scene.restart(fresh);
     });
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
     this.input.keyboard?.once('keydown-C', () => {
-      const select: HeroSelectData = { runSeed: freshSeed, floor: 1, preselect: this.run.hero };
+      const select: HeroSelectData = { runSeed: freshSeed, floor: 1, preselect: this.run.hero, mode: this.run.mode };
       this.scene.stop(SceneKey.Hud);
       this.scene.start(SceneKey.Select, select);
     });
@@ -1294,6 +1330,45 @@ export class GameScene extends Phaser.Scene implements HudSource {
         floor: this.floorNumber + 1,
         run: this.run.snapshot(this.player.health.value),
       };
+      this.scene.restart(next);
+    });
+  }
+
+  private get bossRush(): boolean {
+    return this.bossRushArena !== null;
+  }
+
+  /** Areny bossów (krok 90): po bossie i pomocnikach — karty nagrody, potem odliczanie i teleport na kolejną arenę. */
+  private updateBossRush(now: number): void {
+    const arena = this.bossRushArena;
+    if (!arena) return;
+    const step = arena.update({
+      bossDefeated: this.bossFight.isDefeated,
+      enemiesAlive: this.enemies.aliveCount,
+      playerDead: this.player.isDead,
+      now,
+    });
+    if (step === 'announce-clear') this.showToast(BOSS_RUSH_TEXT.clearToast);
+    else if (step === 'offer-reward') {
+      diag.note('boss-rush-cleared', { arena: this.floorNumber });
+      this.offerBossReward(() => {
+        arena.rewardTaken();
+        this.showToast(BOSS_RUSH_TEXT.teleportToast, BOSS_RUSH_CONFIG.teleportDelayMs);
+      });
+    } else if (step === 'teleport') this.teleportToNextArena();
+  }
+
+  private teleportToNextArena(): void {
+    diag.note('boss-rush-teleport', { from: this.floorNumber });
+    this.isTransitioning = true;
+    // Łup, którego gracz nie zdążył zebrać, nie przepada.
+    this.loot.collectAll();
+    this.player.setVelocity(0, 0);
+    this.effects.impact(this.player.x, this.player.y, TILE_SIZE);
+    const { r, g, b } = BOSS_RUSH_CONFIG.teleportFadeColor;
+    this.cameras.main.fadeOut(BOSS_RUSH_CONFIG.teleportFadeMs, r, g, b);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      const next: FloorSceneData = { runSeed: this.runSeed, floor: this.floorNumber + 1, run: this.run.snapshot(this.player.health.value) };
       this.scene.restart(next);
     });
   }

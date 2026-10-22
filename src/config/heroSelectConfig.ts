@@ -19,6 +19,8 @@ export const HERO_SELECT_PALETTE = {
   textDim: '#7a6e5c',
   input: '#e7b140',
   hint: '#9c8f74',
+  /** Zakładka trybu „Areny bossów” — fiolet teleportu, żeby tryb testowy było widać od razu. */
+  arenaMode: '#c8a8ff',
 } as const;
 
 export const HERO_SELECT_LAYOUT = {
@@ -32,7 +34,9 @@ export const HERO_SELECT_LAYOUT = {
   tagline: { offsetY: 220, fontSize: 12 },
   stats: { offsetY: 246, fontSize: 13 },
   attacks: { offsetY: 276, step: 22, fontSize: 12 },
-  hint: { y: 478, fontSize: 14, letterSpacing: 3 },
+  /** Wybór trybu pod kartami (krok 90): dwie zakładki i opis zaznaczonej. */
+  mode: { y: 468, tabWidth: 240, tabHeight: 26, gap: 16, fontSize: 13, letterSpacing: 2, borderWidth: 2, descriptionY: 494, descriptionFontSize: 11 },
+  hint: { y: 520, fontSize: 13, letterSpacing: 2 },
   /** Kierunek, w którym patrzą postacie na kartach (wiersz arkusza: 4 = S, przodem do gracza). */
   facing: 4,
   /** Wejście ekranu z czerni i wyjście do gry (ms). */
