@@ -4107,6 +4107,22 @@ Co powstało:
 
 ---
 
+## Krok 92 — Kliknięcia poza planszą nie blokują ruchu `#ocena`
+
+Zgłoszenie właściciela (test w MS Edge): PPM w ciemne pole obok planszy i bohater utknął w narożniku, ciągle idąc w prawo. `#ocena`
+
+Przyczyna: Phaser wyłącza menu kontekstowe tylko na płótnie. PPM obok płótna otwierał menu przeglądarki, menu przejmowało klawiaturę i puszczenie klawisza ruchu nie docierało do gry — klawisz zostawał „wciśnięty”. Do tego Phaser przetwarza kliknięcia poza płótnem (nasłuch na `window`), więc taki klik był też strzałem w ciemne pole.
+
+Co powstało:
+- **`systems/PageInputGuard.ts`** (bez Phasera i bez DOM-u wprost, podpięty w `main.ts`):
+  - menu kontekstowe zablokowane na całej stronie gry (tło, kontener, płótno); nakładki DOM (raport F9) zachowują zwykłe menu;
+  - klik myszą poza płótnem (nie w nakładkę) jest anulowany w fazie przechwytywania — gra go nie widzi, nie ma też zmiany fokusu ani zaznaczenia;
+  - gdy menu mimo to się otworzy (nad nakładką) albo karta zostanie ukryta, wszystkie sceny dostają `resetKeys()`; zdarzenie `input-released` trafia do diagnostyki. Utratę fokusu okna (`blur`) Phaser obsługuje sam.
+- **Testy:** `tests/systems/PageInputGuard.test.ts` (menu nad grą/płótnem/nakładką, klik poza płótnem, ukrycie karty, zdjęcie strażnika). Build zielony (1385 testów).
+- **Przeglądarka (Chromium, dev):** w grze `contextmenu` i `mousedown` na tle strony są anulowane, PPM obok płótna nie wciska przycisku wskaźnika; trzymany D po ukryciu karty jest puszczony. Natywnego menu Edge nie da się sprawdzić w automacie — czeka na test właściciela.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PAUSE_CLOCK_KEY } from '@/config/pauseConfig';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
+import { diag } from '@/diagnostics/DiagnosticsHub';
 import { installDevTools } from '@/diagnostics/devTools';
 import { installDiagnostics } from '@/diagnostics/installDiagnostics';
 import { BootScene } from '@/scenes/BootScene';
@@ -11,6 +12,7 @@ import { MenuScene } from '@/scenes/MenuScene';
 import { PauseScene } from '@/scenes/PauseScene';
 import { RewardScene } from '@/scenes/RewardScene';
 import { SplashScene } from '@/scenes/SplashScene';
+import { installPageInputGuard } from '@/systems/PageInputGuard';
 import { PauseClock } from '@/systems/PauseClock';
 import { pixelPerfectScale } from '@/systems/pixelScale';
 
@@ -45,6 +47,21 @@ const stepWithGameTime = game.step.bind(game);
 game.step = (time: number, delta: number) => stepWithGameTime(pauseClock.shift(time), delta);
 // Dziennik błędów i niespotykanych zdarzeń (krok 55): raport pod F9; pętla gry nie zamiera po wyjątku.
 installDiagnostics(game);
+
+// Kliknięcia poza planszą nie psują sterowania (krok 92): bez menu kontekstowego i bez „zawieszonych” klawiszy.
+const gameParent = document.getElementById('game');
+installPageInputGuard({
+  window,
+  document,
+  isGameSurface: (target) =>
+    target === window || target === document || target === document.documentElement || target === document.body ||
+    (target instanceof Node && gameParent !== null && gameParent.contains(target)),
+  isCanvas: (target) => target === game.canvas,
+  releaseInputs: (reason) => {
+    for (const scene of game.scene.getScenes(false)) scene.input?.keyboard?.resetKeys();
+    diag.note('input-released', { reason });
+  },
+});
 
 function applyPixelPerfectScale(): void {
   const parent = document.getElementById('game');
