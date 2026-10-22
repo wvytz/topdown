@@ -4063,6 +4063,7 @@ Zgłoszenie właściciela z nagraniem: napis „Wejdź na arenę!” pojawia si�
 - **Poprawka:** napis pojawia się tylko wtedy, gdy atak spoza areny naprawdę dotknąłby bossa albo jego pomocnika (doga, pajączka, kokonu). Zasięg sprawdzają nowe czyste predykaty bez zadawania obrażeń: `swingReaches` (`systems/MeleeResolver.ts`), `beamReaches` (`systems/Sorcery.ts`), `shotTouches` (`systems/ShotResolver.ts`); rozstrzyganie trafień korzysta z tych samych funkcji, więc warunki się nie rozjadą. Reguła nietykalności z kroku 86 bez zmian.
 - **Testy:** `tests/systems/attackReach.test.ts` (cios, promień, pocisk; predykat zgodny z `resolveMeleeSwing`, nie rani celu). Build zielony (1319 testów).
 - **Przeglądarka (`?seed=7&floor=2`, 40 ataków LPM/PPM w pierwszych pokojach):** przed poprawką 16–21 napisów (Czarodziejka, barbarzyńca, łucznik), po poprawce 0.
+- **Wdrożenie (22.10.2026, na prośbę właściciela):** PR #7 scalony (po scaleniu z krokiem 90), smoke OK, gra na Pages z efdd2e0.
 
 ---
 
