@@ -175,11 +175,16 @@ export function resolveSplash<T extends MeleeTarget>(splash: OrbSplash, targets:
   return { hit, killed };
 }
 
+/** Czy krąg celu dotyka promienia (bez zadawania obrażeń). */
+export function beamReaches(beam: BeamStrike, target: MeleeTarget): boolean {
+  return distanceToSegment(target, beam.from, beam.to) <= target.radius + beam.halfWidth;
+}
+
 export function resolveBeam<T extends MeleeTarget>(beam: BeamStrike, targets: readonly T[]): SwingResult<T> {
   const hit: T[] = [];
   const killed: T[] = [];
   for (const target of targets) {
-    if (distanceToSegment(target, beam.from, beam.to) > target.radius + beam.halfWidth) continue;
+    if (!beamReaches(beam, target)) continue;
     const blow: Hit = {
       damage: beam.damage,
       knockback: knockbackFrom(beam.from, target, beam.knockback),

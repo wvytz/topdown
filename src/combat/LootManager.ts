@@ -56,6 +56,15 @@ export class LootManager {
     }
   }
 
+  /** Zbiera od razu wszystko, co leży (teleport na kolejną arenę, krok 90) — łup nie przepada. */
+  collectAll(): void {
+    for (const child of [...this.group.getChildren()]) {
+      if (!(child instanceof Pickup)) continue;
+      this.deps.onCollect(child.drop, { x: child.x, y: child.y });
+      child.destroy();
+    }
+  }
+
   private spawnOne(position: Vector2, drop: LootDrop): void {
     const scene = this.deps.scene;
     const pickup = new Pickup(scene, position.x, position.y, drop, scene.time.now + PICKUP_CONFIG.collectDelayMs);

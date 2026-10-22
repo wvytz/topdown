@@ -1,6 +1,7 @@
 /** Typy domenowe łupów i postępu runu — czyste dane, bez zależności od Phasera. */
 import type { IntRange } from '@/core/dungeonTypes';
 import type { HeroId } from '@/core/heroTypes';
+import type { RunMode } from '@/core/runMode';
 
 export enum PickupKind {
   Gold = 'gold',
@@ -120,4 +121,6 @@ export interface RunSnapshot {
   readonly hp: number | null;
   /** Run testowy (start z `?floor=`/`?seed=`, krok 41g): wynik nie trafia na tablicę. */
   readonly practice?: boolean;
+  /** Tryb gry (krok 90); brak = wspinaczka. */
+  readonly mode?: RunMode;
 }

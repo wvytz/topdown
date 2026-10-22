@@ -108,6 +108,7 @@ export class SharedHighscores {
   }
 }
 
+/** Bez bohatera: stary worker go nie zwraca, a wpis i tak jest ten sam. */
 function sameEntry(a: ScoreEntry, b: ScoreEntry): boolean {
   return a.score === b.score && a.floor === b.floor && a.timestamp === b.timestamp && a.name === b.name;
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DEATH_LAYOUT, DEATH_TIMING as T, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
+import { DEATH_HERO_ICON, DEATH_LAYOUT, DEATH_TIMING as T, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 import { pixelText } from '@/core/pixelArt';
-import { deathFrame, flowGroupOf, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
+import { deathFrame, flowGroupOf, formatScoreRow, knownHero, stepParticle, titleFlowIndex } from '@/systems/deathScreen';
+import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
+import { HeroId } from '@/core/heroTypes';
 
 const ROWS = 5;
 const frame = (t: number) => deathFrame(t, ROWS);
@@ -154,5 +156,37 @@ describe('pas za napisem (kroki 66–67)', () => {
   it('sięga o połowę dalej w dół niż w kroku 63 (dół 271), w stronę tablicy', () => {
     expect(B.bottom).toBe(271 + 75);
     expect(B.bottom).toBeGreaterThan(DEATH_LAYOUT.score.y);
+  });
+});
+
+describe('wiersz tablicy i miniaturka bohatera (krok 89)', () => {
+  const row = (isCurrent = false) => ({ rank: 2, isCurrent, entry: { score: 120, floor: 4, timestamp: 0, name: 'Wicio', hero: 'archer' } });
+
+  it('wiersz bez nazwy bohatera — bohatera pokazuje miniaturka', () => {
+    expect(formatScoreRow(row())).toBe('2. Wicio · 120 złota · piętro 4');
+    expect(formatScoreRow(row(true))).toBe('› 2. Wicio · 120 złota · piętro 4 ‹');
+  });
+
+  it('miniaturka tylko dla znanego bohatera', () => {
+    for (const id of Object.values(HeroId)) expect(knownHero(id)).toBe(id);
+    expect(knownHero(undefined)).toBeNull();
+    expect(knownHero('paladin')).toBeNull();
+    expect(knownHero('toString')).toBeNull();
+  });
+
+  it('podium + separator + bieżący run mieszczą się nad komunikatem R / C', () => {
+    const rows = HIGHSCORE_CONFIG.podiumSize + 2;
+    const lastBottom = DEATH_LAYOUT.rows.y + (rows - 1) * DEATH_LAYOUT.rows.step + DEATH_LAYOUT.rows.fontSize + 4;
+    expect(lastBottom).toBeLessThanOrEqual(DEATH_LAYOUT.prompt.y);
+  });
+
+  it('miniaturka najwyżej trochę wyższa od wiersza i nad komunikatem R / C, a kadr w klatce 48×48', () => {
+    // Postać nie wypełnia kadru, więc miniaturka może zachodzić na sąsiedni wiersz o kilka pikseli.
+    expect(DEATH_HERO_ICON.sizePx).toBeLessThanOrEqual(DEATH_LAYOUT.rows.step * 1.25);
+    const lastCenter = DEATH_LAYOUT.rows.y + (HIGHSCORE_CONFIG.podiumSize + 1) * DEATH_LAYOUT.rows.step + DEATH_LAYOUT.rows.fontSize / 2;
+    expect(lastCenter + DEATH_HERO_ICON.sizePx / 2).toBeLessThanOrEqual(DEATH_LAYOUT.prompt.y);
+    const { x, y, size } = DEATH_HERO_ICON.crop;
+    expect(x + size).toBeLessThanOrEqual(48);
+    expect(y + size).toBeLessThanOrEqual(48);
   });
 });

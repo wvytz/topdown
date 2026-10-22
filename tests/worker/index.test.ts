@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import worker from '../../worker/src/index.js';
+import worker, { validate } from '../../worker/src/index.js';
 import { REPORT_LIMITS } from '../../worker/src/reports.js';
 
 /** Minimalna atrapa D1 dla zapytań workera (rozpoznaje je po treści SQL) — sprawdza routing, nagłówki i limity bez Cloudflare. */
@@ -193,5 +193,55 @@ describe('worker: bezpiecznik dobowy wyników', () => {
     expect(res.status).toBe(503);
     expect(res.headers.get('Retry-After')).toBe('3600');
     expect(db.inserted).toHaveLength(0);
+  });
+});
+
+describe('worker: bohater przy wpisie (krok 89)', () => {
+  const now = 1_800_000_000_000;
+  const entry = (over: Record<string, unknown> = {}) => ({ score: 10, floor: 2, timestamp: now, ...over });
+
+  it('przyjmuje znanego bohatera i wpis bez bohatera (zgodność ze starą grą)', () => {
+    expect(validate(entry({ hero: 'archer' }), now)).toEqual({ score: 10, floor: 2, timestamp: now, name: null, hero: 'archer' });
+    expect(validate(entry({ name: 'Wicio', hero: 'sorceress' }), now)?.hero).toBe('sorceress');
+    expect(validate(entry(), now)?.hero).toBeNull();
+    expect(validate(entry({ hero: null }), now)?.hero).toBeNull();
+  });
+
+  it('odrzuca bohatera o złym kształcie', () => {
+    for (const hero of ['', 'Archer', 'łucznik', 'a'.repeat(17), 5, { id: 'archer' }]) {
+      expect(validate(entry({ hero }), now)).toBeNull();
+    }
+  });
+
+  it('zapisuje bohatera w bazie', async () => {
+    const inserted: unknown[][] = [];
+    const db = {
+      prepare(sql: string) {
+        let args: unknown[] = [];
+        const st = {
+          bind(...a: unknown[]) {
+            args = a;
+            return st;
+          },
+          first: async () => ({ n: 0 }),
+          async run() {
+            if (sql.startsWith('INSERT INTO scores')) inserted.push(args);
+            return { meta: {} };
+          },
+          all: async () => ({ results: [] }),
+        };
+        return st;
+      },
+    };
+    const res = await worker.fetch(
+      new Request('https://w.example/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+        body: JSON.stringify({ score: 5, floor: 1, timestamp: Date.now(), hero: 'barbarian' }),
+      }),
+      { DB: db, ALLOWED_ORIGINS: ORIGIN },
+    );
+    expect(res.status).toBe(201);
+    expect(inserted[0]?.[4]).toBe('barbarian');
   });
 });

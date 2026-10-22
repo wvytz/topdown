@@ -51,14 +51,14 @@ import { planThrone, planThroneDecals } from '@/dungeon/ThronePlanner';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
-import type { MeleeSwing } from '@/systems/MeleeResolver';
-import { resolveMeleeSwing } from '@/systems/MeleeResolver';
+import type { MeleeSwing, MeleeTarget } from '@/systems/MeleeResolver';
+import { resolveMeleeSwing, swingReaches } from '@/systems/MeleeResolver';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
-import { resolveBeam, resolveSplash } from '@/systems/Sorcery';
+import { beamReaches, resolveBeam, resolveSplash } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
-import { resolvePlayerShot } from '@/systems/ShotResolver';
+import { resolvePlayerShot, shotTouches } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
 import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
@@ -369,8 +369,12 @@ export class BossFight {
     return !roomContainsTile(this.arena, DungeonView.worldToTile(player.x, player.y));
   }
 
-  /** Krótka informacja przy próbie zranienia bossa z zewnątrz (najwyżej raz na sekundę). */
-  private warnUntouchable(): void {
+  /**
+   * Krótka informacja przy próbie zranienia bossa z zewnątrz (najwyżej raz na sekundę) — tylko gdy atak
+   * naprawdę sięgnąłby bossa albo jego pomocnika. Zwykła walka gdzie indziej na piętrze nie wyświetla napisu.
+   */
+  private warnUntouchable(reaches: (target: MeleeTarget) => boolean): void {
+    if (!this.targets().some(reaches)) return;
     const { player, effects } = this.deps;
     if (this.lastNow - this.lastUntouchableTextAt < 1000) return;
     this.lastUntouchableTextAt = this.lastNow;
@@ -381,7 +385,7 @@ export class BossFight {
   resolvePlayerMelee(swing: MeleeSwing): number {
     if (!this.boss) return 0;
     if (this.playerOutsideArena()) {
-      this.warnUntouchable();
+      this.warnUntouchable((t) => swingReaches(swing, t));
       return 0;
     }
     const { hit, killed } = resolveMeleeSwing(swing, this.targets());
@@ -400,7 +404,7 @@ export class BossFight {
   resolvePlayerBeam(beam: BeamStrike): number {
     if (!this.boss) return 0;
     if (this.playerOutsideArena()) {
-      this.warnUntouchable();
+      this.warnUntouchable((t) => beamReaches(beam, t));
       return 0;
     }
     // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie. U Kata rozgrzewa tarczę.
@@ -420,7 +424,7 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return null;
     if (this.playerOutsideArena()) {
-      this.warnUntouchable();
+      this.warnUntouchable((t) => shotTouches(shot, t));
       return null;
     }
     // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, wraca do strzelca (już jako pocisk wroga).

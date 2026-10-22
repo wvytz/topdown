@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS scores (
   timestamp  INTEGER NOT NULL,
   -- Imię gracza: na razie puste, kolumna czeka na osobny krok.
   name       TEXT,
+  -- Bohater runu (krok 89, `HeroId` z gry); NULL = wpis sprzed oznaczeń. Starą bazę uzupełnia migrations/0002_scores_hero.sql.
+  hero       TEXT,
   ip_hash    TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );

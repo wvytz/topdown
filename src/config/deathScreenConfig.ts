@@ -100,7 +100,23 @@ export const DEATH_LAYOUT = {
   /** Gotycki ozdobnik: cienkie linie i mały krzyż pośrodku. */
   ornament: { y: 326, width: 130, gap: 14 },
   header: { y: 342, fontSize: 12 },
-  rows: { y: 364, step: 22, fontSize: 14 },
-  prompt: { y: 496, fontSize: 14 },
+  /** Krok 89: 7 wierszy (podium 5 + separator + bieżący run) — gęściej i drobniej niż przy podium 3 (krok 22 px, 14 px). */
+  rows: { y: 362, step: 18, fontSize: 13 },
+  prompt: { y: 502, fontSize: 14 },
   vignetteAlpha: 0.9,
+} as const;
+
+/**
+ * Miniaturka bohatera przy wpisie na tablicy (krok 89a, prośba właściciela: ikona zamiast nazwy):
+ * pierwsza klatka chodu z arkusza bohatera, zwrócona w dół, zmniejszona i wygładzona do kwadratu `sizePx`.
+ * Miniaturki stoją w jednej kolumnie po lewej stronie tablicy (przed najszerszym wierszem). Są trochę wyższe od wiersza,
+ * ale postać nie wypełnia klatki, więc sąsiednie się nie stykają. Wpis bez bohatera (sprzed kroku 89) albo z nieznanym bohaterem zostaje bez ikony.
+ */
+export const DEATH_HERO_ICON = {
+  /** Kierunek w arkuszu (4 = w dół, jak na ekranie wyboru). */
+  facing: 4,
+  /** Kadr postaci w klatce 48×48 (wspólny dla bohaterów, z zapasem na broń). */
+  crop: { x: 8, y: 10, size: 32 },
+  sizePx: 22,
+  gapPx: 8,
 } as const;

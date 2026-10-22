@@ -22,16 +22,21 @@ export interface SwingResult<T> {
   readonly killed: readonly T[];
 }
 
+/** Czy cel jest w łuku ciosu (bez zadawania obrażeń). */
+export function swingReaches(swing: MeleeSwing, target: MeleeTarget): boolean {
+  const arc = (swing.combat.meleeArcDeg * Math.PI) / 180;
+  return isInMeleeArc(swing.origin, swing.angle, arc, swing.combat.meleeRange, target, target.radius);
+}
+
 /** Zadaje obrażenia wszystkim celom w łuku. Zwraca trafione i zabite cele. */
 export function resolveMeleeSwing<T extends MeleeTarget>(swing: MeleeSwing, targets: readonly T[]): SwingResult<T> {
-  const { origin, angle, combat, now } = swing;
-  const arc = (combat.meleeArcDeg * Math.PI) / 180;
+  const { origin, combat, now } = swing;
   const source: Vector2 = { x: origin.x, y: origin.y };
   const hit: T[] = [];
   const killed: T[] = [];
 
   for (const target of targets) {
-    if (!isInMeleeArc(origin, angle, arc, combat.meleeRange, target, target.radius)) continue;
+    if (!swingReaches(swing, target)) continue;
     const blow: Hit = {
       damage: combat.meleeDamage,
       knockback: knockbackFrom(origin, target, combat.knockback),

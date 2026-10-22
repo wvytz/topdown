@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -2695,7 +2695,7 @@ Makieta generatora:
 
 ## Krok 35 — Ekran śmierci: rozkładający się napis i krew
 
-**Prośba właściciela:** `#decyzja` `#ekran-smierci`
+**Prośba właściciela:** `#decyzja` `#highscore` `#ekran-smierci`
 - ekran po śmierci dopasowany do ekranu startowego (krok 34);
 - gra pod spodem przyciemniona, ale dalej widać animacje przeciwników;
 - napis POLEGŁEŚ zostaje, ale z efektem rozkładu i drobinkami krwi;
@@ -3474,7 +3474,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ## Krok 61 — Ekran śmierci w tonie TOP / DOWN: popiół zamiast krwi
 
-**Decyzja właściciela:** `#decyzja` `#ekran-smierci`
+**Decyzja właściciela:** `#decyzja` `#highscore` `#ekran-smierci`
 - po akceptacji ekranu startowego (krok 60): „przerób w podobnym tonie ekran końcowy” i od razu wdróż.
 
 **Co się zmieniło względem kroku 35:**
@@ -3497,7 +3497,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ## Krok 62 — Ekran śmierci: napis ociekający krwią na plamie
 
-**Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
+**Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#highscore` `#ekran-smierci`
 - rozpadające się słowo (kroki 35 i 38) „nie podoba się zupełnie”; wersja na czerwonym tle „jakoś wyglądała”;
 - napis ma raczej **ociekać krwią**, dookoła **plama**, całość **bardziej przyciemniona**.
 
@@ -3524,7 +3524,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ## Krok 63 — Ekran śmierci w stylu Dark Souls / Castlevanii
 
-**Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#ekran-smierci`
+**Ocena i decyzja właściciela:** `#ocena` `#decyzja` `#highscore` `#ekran-smierci`
 - krew z kroku 62 „wygląda sztucznie”; ma być „mniej banalnie, a bardziej mrocznie — w stylu Castlevanii lub Dark Souls”.
 
 **Kierunek:** cisza i ciężar zamiast efektów. Żadnej krwi, plamy, uderzenia, wstrząsu ani cząstek.
@@ -3552,7 +3552,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ## Krok 64 — Ekran śmierci: czerwień spływająca przez litery
 
-**Prośba właściciela:** `#decyzja` `#ekran-smierci`
+**Prośba właściciela:** `#decyzja` `#highscore` `#ekran-smierci`
 - do ekranu z kroku 63: „animowany efekt w stylu spływającego w dół gradientu czerwieni wypełnienia liter”.
 
 **Co widać:**
@@ -3594,7 +3594,7 @@ Wcześniej korytarze łączyły pokoje drzewem rozpinającym z pętlami, a koryt
 
 ## Krok 66 — Ekran śmierci: szerszy czarny pas
 
-**Prośba właściciela:** `#decyzja` `#ekran-smierci`
+**Prośba właściciela:** `#decyzja` `#highscore` `#ekran-smierci`
 - przyciemniony pas za napisem rozszerzyć w górę **tuż do dolnego końca HUD-u** i **o połowę w stronę tablicy rekordów**.
 
 **Zmiana:**
@@ -4029,6 +4029,55 @@ Feedback właściciela: obniżyć obrażenia po pełnym naciągnięciu i wyrówn
 
 ---
 
+## Krok 89 — Bohater przy wpisie na liście wyników, testowo top 5 `#decyzja` `#highscore` `#ekran-smierci`
+
+Prośba właściciela: oznaczyć przy wyniku bohatera, którym go osiągnięto (pomysł z backlogu), i testowo pokazać 5 najlepszych zamiast 3. (Numer 88 zajmuje równoległy krok wyrównania obrażeń w PR #5.)
+- **Dane:** `ScoreEntry.hero` (opcjonalne, `HeroId` jako tekst). Gra zapisuje bohatera runu lokalnie, w kolejce offline i wysyła go do workera. Zgodność wstecz: stare wpisy (lokalne, w kolejce i z workera) nie mają pola i są wyświetlane bez oznaczenia; `null` z workera to brak pola; nieznany bohater (z nowszej wersji gry) zostaje w danych bez oznaczenia. Porównanie „ten sam wpis” na wspólnej liście pomija bohatera, bo stary worker go nie zwraca (bez tego wynik liczyłby się dwa razy).
+- **Oznaczenie:** pełna nazwa małymi literami między imieniem a wynikiem — „2. Wicio · łucznik · 120 złota · piętro 4” (`DEATH_HERO_LABELS` w `config/deathScreenConfig.ts`, formatowanie w czystym `systems/deathScreen.ts` → `formatScoreRow`). Wybrałem nazwę zamiast skrótu albo ikony: czytelna bez legendy, a wiersz i tak mieści się w szerokości ekranu.
+- **Top 5 (testowo):** `HIGHSCORE_CONFIG.podiumSize` 3 → 5; tablica ma teraz 7 wierszy (podium + „· · ·” + bieżący run), więc wiersze są gęstsze (krok 22 → 18 px, czcionka 14 → 13 px), a komunikat R / C zjechał o 6 px niżej (496 → 502). Test pilnuje, żeby ostatni wiersz nie wchodził na komunikat.
+- **Worker (zmiana wymaga wdrożenia — jeszcze niewdrożony):** `POST /scores` przyjmuje opcjonalne `hero` (wzorzec `^[a-z_]{1,16}$`, żeby nowy bohater nie wymagał nowego workera), zapisuje je w nowej kolumnie `hero`, `GET /scores` je zwraca. Kolejność wdrożenia: najpierw migracja `worker/migrations/0002_scores_hero.sql`, potem `npx wrangler deploy` (opis w `worker/README.md`). Do tego czasu nowa gra działa ze starym workerem — wspólna lista po prostu nie ma oznaczeń.
+- **Testy:** worker (walidacja i zapis bohatera, wpis bez bohatera), adapter workera (wysyłka, `null` → brak pola), wspólna lista (brak podwójnego liczenia przy starym workerze), wiersz tablicy (z bohaterem, bez, nieznany) i układ 7 wierszy. Build zielony (1316 testów).
+- **Weryfikacja w przeglądarce:** Playwright z przygotowaną listą (mieszane wpisy z bohaterem i bez) i śmiercią łucznikiem, okna 1280×720, 800×450 i 640×400 — układ się nie rozjeżdża; w małych oknach całość jest tylko mniejsza (skala pixel-perfect, jak dotąd).
+- **Wdrożenie (20.10.2026, na prośbę właściciela):** migracja bazy (kolumna `hero`), worker (sekrety i cron zachowane; `GET /scores` zwraca `hero`, zły bohater → 400), smoke OK, gra na Pages z 3e31fb8 (zawiera też niewdrożone wcześniej kroki 85–87; bez kroku 88 z PR #5).
+- **Do oceny właściciela:** czy zostajemy przy top 5, czy oznaczenie ma być nazwą, skrótem czy ikoną.
+
+---
+
+## Krok 89a — Miniaturka bohatera zamiast nazwy `#ocena` `#highscore` `#ekran-smierci`
+
+Feedback właściciela po kroku 89: przy wyniku ma być miniaturka wskazująca bohatera, nie pełne słowo.
+- **Miniaturka:** pierwsza klatka chodu z arkusza bohatera zwrócona w dół (jak na ekranie wyboru), kadr 32×32 z klatki 48×48 zmniejszony z wygładzaniem do 22×22 px (skalowanie najbliższym sąsiadem gubiło piksele). Tekstura powstaje raz na bohatera z płótna (`DeathScreen.heroIcon`), bez nowej grafiki i generatora; liczby w `DEATH_HERO_ICON` (`config/deathScreenConfig.ts`).
+- **Układ:** miniaturki stoją w jednej kolumnie przed najszerszym wierszem (wiersze są wyśrodkowane, więc ikony przy każdym wierszu osobno skakałyby w poziomie). Wpis bez bohatera i separator „· · ·” są bez ikony. Wiersz tekstu wrócił do postaci sprzed kroku 89 („2. Wicio · 120 złota · piętro 4”); `DEATH_HERO_LABELS` usunięte, `knownHero` w `systems/deathScreen.ts` odsiewa wpisy bez bohatera i z nieznanym bohaterem.
+- **Testy:** wiersz bez nazwy bohatera, `knownHero`, miniaturka mieści się w wierszu i kadr w klatce. Build zielony.
+- **Weryfikacja:** zrzuty Playwright 1280×720, 800×450, 640×400 — kolumna miniaturek równa, układ bez zmian; postacie rozpoznawalne po kolorach (blond barbarzyńca, niebieska Czarodziejka, zielony łucznik).
+
+---
+
+## Krok 90 — Tryb testowy „Areny bossów” `#decyzja` `#areny-bossow` `#boss`
+
+Prośba właściciela: dodatkowy, na razie testowy moduł, w którym walczymy tylko z bossami i ich pomocnikami — od razu na arenie bossa, po pokonaniu bossa i przeciwników wybór jednego przedmiotu i teleport na kolejną arenę.
+- **Wybór trybu:** na ekranie wyboru bohatera, pod kartami, dwie zakładki: „WSPINACZKA” i „ARENY BOSSÓW · TEST” (↑ ↓ / W, S / Tab albo kliknięcie), pod nimi jednolinijkowy opis trybu. Wybrałem ten ekran zamiast animacji tytułowej, bo to pierwszy ekran z wyborem — tryb nie dokłada zwykłej grze ani jednego kliknięcia (domyślnie zaznaczona wspinaczka). `?mode=arenas` (z `?hero=…`) wchodzi od razu w areny, `&floor=N` zaczyna od areny N.
+- **Arena N = arena bossa piętra N:** ten sam generator, biom, boss i skalowanie co we wspinaczce (także kolejne kręgi od areny 8). Gracz startuje w arenie (jak `?boss=1`), kraty opadają od razu. Na piętrze nie ma wrogów w pokojach, kapliczki, pułapek, urn, zasadzki, ukrytej komnaty, pająków z sufitu, kokonów, pajęczyn, purchawek, psów w ścianach, palenisk spoza areny, zapowiedzi bossa ani modyfikatora piętra. Wszystko, co należy do walki z bossem (pajączki, spiżarnia, świta, dog, galerie Strażnika Bram, paleniska Kata), działa bez zmian.
+- **Przebieg areny** (czysta maszyna stanów `systems/BossRush.ts`): walka → (jeśli zostali pomocnicy, np. z galerii albo świty: komunikat „Pokonaj pozostałych przeciwników!”) → karty nagrody (te same co za bossa, 1 z 3) → 2 s odliczania (czas na zebranie łupu z bossa; to, co zostanie, gracz dostaje przy teleporcie) → fioletowe wygaszenie i kolejna arena. HP i przedmioty przechodzą dalej jak między piętrami. Liczby w `config/bossRushConfig.ts`.
+- **Wyniki:** areny **nie zapisują wyniku** (ani lokalnie, ani na wspólnej liście) i nie pytają o imię. HUD: „Arena 3 · Król Pająków” i „Złoto: N (areny bossów — bez wyniku)”; ekran śmierci: „N ZŁOTA · ARENA 5”, „ARENY BOSSÓW — WYNIK NIE TRAFIA NA TABLICĘ”, R — areny od nowa, C — ekran wyboru z zaznaczonymi arenami. Wspinaczka i lista wyników bez zmian (`RunSnapshot.mode` pojawia się tylko w arenach).
+- **Testy:** maszyna stanów areny (nagroda od razu albo po pomocnikach, odliczanie od pierwszej klatki po wyborze, brak nagrody po śmierci), tryb z adresu, przenoszenie trybu między arenami i zgodność wsteczna zwykłego runu, napis areny, układ zakładek na ekranie wyboru. Build zielony (1329 testów).
+- **Weryfikacja w przeglądarce (Playwright):** ekran wyboru z zakładkami; areny 1→6 po kolei (pokonanie bossa, karty, teleport, przedmioty się sumują), arena 5 — galerie: faza dobijania, nagroda dopiero po ostatnim; arena 7 (Baron Dymu z dogiem) startuje; śmierć — panel bez tablicy, brak zapisu w `localStorage`, R wraca na arenę 1. `npm run smoke` (wspinaczka, 3 piętra, wszyscy bohaterowie) — OK.
+- **Wdrożenie (22.10.2026, na prośbę właściciela):** PR #8 scalony, smoke (piętra 1–7, wszyscy bohaterowie) OK, gra na Pages z 30138f4.
+- **Do oceny właściciela:** czy HP ma się odnawiać między arenami (teraz przechodzi jak między piętrami — tylko mikstury z łupu bossa leczą), czy dodać złoto/wynik i osobną tablicę dla aren, czy kolejność aren ma być losowa, czy wybór trybu ma trafić na samą animację tytułową.
+
+---
+
+## Krok 86a — Napis „Wejdź na arenę!” tylko przy ataku na bossa `#ocena` `#boss`
+
+Zgłoszenie właściciela z nagraniem: napis „Wejdź na arenę!” pojawia się non stop podczas zwykłej walki na piętrze, daleko od areny.
+- **Przyczyna (błąd kroku 86):** `BossFight` żyje przez całe piętro i dostaje każdy cios, promień i pocisk gracza. Poza areną `warnUntouchable` wyświetlał napis przy każdym ataku (co sekundę), niezależnie od tego, czy atak w ogóle sięgał bossa — u łucznika i Czarodziejki pocisk w locie wywoływał go w każdej klatce.
+- **Poprawka:** napis pojawia się tylko wtedy, gdy atak spoza areny naprawdę dotknąłby bossa albo jego pomocnika (doga, pajączka, kokonu). Zasięg sprawdzają nowe czyste predykaty bez zadawania obrażeń: `swingReaches` (`systems/MeleeResolver.ts`), `beamReaches` (`systems/Sorcery.ts`), `shotTouches` (`systems/ShotResolver.ts`); rozstrzyganie trafień korzysta z tych samych funkcji, więc warunki się nie rozjadą. Reguła nietykalności z kroku 86 bez zmian.
+- **Testy:** `tests/systems/attackReach.test.ts` (cios, promień, pocisk; predykat zgodny z `resolveMeleeSwing`, nie rani celu). Build zielony (1319 testów).
+- **Przeglądarka (`?seed=7&floor=2`, 40 ataków LPM/PPM w pierwszych pokojach):** przed poprawką 16–21 napisów (Czarodziejka, barbarzyńca, łucznik), po poprawce 0.
+- **Wdrożenie (22.10.2026, na prośbę właściciela):** PR #7 scalony (po scaleniu z krokiem 90), smoke OK, gra na Pages z efdd2e0.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4114,7 +4163,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
 **3. Brakująca grafika**
-- **Czarodziejka (kroki 36–38):** sprite'y, mechanika i ekran wyboru gotowe. Do rozważenia: bohater przy wpisie na liście wyników, strojenie liczb po testach.
+- **Czarodziejka (kroki 36–38):** sprite'y, mechanika i ekran wyboru gotowe. Bohater przy wpisie na liście wyników: krok 89. Do rozważenia: strojenie liczb po testach.
 - **Łucznik (krok 82):** sprite'y z generatora, mechanika i trzecia karta wyboru gotowe; czekają na ocenę właściciela (wygląd, liczby, upiory).
 - Animacja ciosu barbarzyńcy: zrobiona w kroku 21.
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
@@ -4128,6 +4177,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
+
+**Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: czeka na ocenę właściciela — leczenie między arenami, osobna tablica wyników, losowa kolejność aren.
 
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
 
