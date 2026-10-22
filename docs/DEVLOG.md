@@ -4026,6 +4026,7 @@ Feedback właściciela: obniżyć obrażenia po pełnym naciągnięciu i wyrówn
 - **Barbarzyńca i Czarodziejka bez zmian:** ich liczby już leżą w paśmie 12–14.
 - **Obrażenia na sekundę celowo nie są równe:** barbarzyńca bije częściej (co 0,32 s), ale z bliska; łucznik ma ok. 11/s z pełnych strzał, za to z dystansu i z przebiciem; kule Czarodziejki to seria 3×14, potem 1 kula na 1,5 s, plus promień 25/s. Gdyby łucznik wydawał się za słaby, pierwszym pokrętłem jest `drawMs`, nie obrażenia.
 - Testy łuku liczą z konfiguracji, więc przechodzą bez zmian. Build zielony (1307 testów). Liczby do potwierdzenia w testach właściciela.
+- **Wdrożenie (22.10.2026, na prośbę właściciela):** PR #5 scalony (po scaleniu z main do kroku 90), smoke OK, gra na Pages z a94309d.
 
 ---
 
