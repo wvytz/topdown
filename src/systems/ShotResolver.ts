@@ -28,6 +28,11 @@ export interface ShotResult<T> {
   readonly died: boolean;
 }
 
+/** Czy pocisk styka się z celem w tej klatce (bez zadawania obrażeń; pomija już trafione). */
+export function shotTouches(shot: PlayerShot, target: MeleeTarget): boolean {
+  return !shot.ignore?.has(target) && distance(shot.position, target) <= shot.radius + target.radius;
+}
+
 /**
  * Pocisk gracza trafia najbliższy cel, z którym się styka (jeden na klatkę), pomijając już trafione.
  * Odrzut działa w kierunku lotu. Zwraca null, gdy nic nie trafił.
