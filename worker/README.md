@@ -77,3 +77,10 @@ curl -H "Authorization: Bearer $TOKEN" "https://<worker>/reports/42" | jq -r '.a
 - Retencja: 30 dni (cron + sprzątanie co ok. 50. zgłoszenie).
 - Gra dodatkowo ogranicza wysyłkę: co najmniej minuta odstępu i 3 zgłoszenia na sesję, wyłącznie ręcznie.
 - Orientacyjnie (darmowy plan Cloudflare — sprawdź aktualne limity w ich dokumentacji): to kilka zapisów na zgłoszenie, a limity zostały dobrane tak, by nawet zalew nie zbliżył się do dobowych limitów żądań i zapisów D1.
+
+## Tablica aren bossów (krok 91a)
+
+Areny bossów mają osobną listę: `GET /arena-scores?limit=N` i `POST /arena-scores` (ten sam kształt wpisu co `/scores`; `floor` = osiągnięta arena). Kolejność: najpierw arena, potem złoto. Limity (10 wpisów / 10 min z adresu, 500 na dobę) liczone osobno dla każdej tablicy.
+Kolejność wdrożenia — **najpierw migracja, potem worker**:
+1. `npx wrangler d1 execute tower-crawler-scores --remote --file=migrations/0003_arena_scores.sql` (bezpieczne do powtórzenia)
+2. `npx wrangler deploy`

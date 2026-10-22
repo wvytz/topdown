@@ -1,7 +1,8 @@
-import type { ScoreEntry } from '@/systems/Highscores';
-import { buildScoreboard, insertScore } from '@/systems/Highscores';
+import type { ScoreComparator, ScoreEntry } from '@/systems/Highscores';
+import { buildScoreboard, compareScores, insertScore } from '@/systems/Highscores';
 import type { HighscoreStorage, KeyValueStorage, RecordResult } from '@/persistence/HighscoreStorage';
 import { isScoreEntry } from '@/persistence/HighscoreStorage';
+import { HIGHSCORE_BOARDS } from '@/config/lootConfig';
 
 /**
  * Zdalne źródło wspólnej listy — konkretną usługę (np. Supabase) podpinamy adapterem.
@@ -17,9 +18,12 @@ export interface SharedHighscoresOptions {
   readonly podiumSize: number;
   readonly timeoutMs: number;
   readonly maxOutbox: number;
+  /** Kolejka niewysłanych wyników; tablica aren (krok 91a) ma własną. Brak = kolejka wspinaczki. */
+  readonly outboxKey?: string;
+  /** Porządek tablicy; brak = wspinaczka (złoto, potem piętro). */
+  readonly compare?: ScoreComparator;
 }
 
-const OUTBOX_KEY = 'tower-crawler.highscores.outbox.v1';
 
 /**
  * Wspólna tablica wyników. Lokalny zapis (`HighscoreStorage`) działa zawsze i od razu;
@@ -62,8 +66,9 @@ export class SharedHighscores {
     // Wpis mógł już trafić na listę — liczymy miejsce bez niego, żeby nie policzyć go dwa razy.
     const own = top.findIndex((e) => sameEntry(e, entry));
     if (own !== -1) top.splice(own, 1);
-    const { entries, rank } = insertScore(top, entry, this.options.maxEntries);
-    return { rank, board: buildScoreboard(entries, { entry, rank }, this.options.podiumSize) };
+    const compare = this.options.compare ?? compareScores;
+    const { entries, rank } = insertScore(top, entry, this.options.maxEntries, compare);
+    return { rank, board: buildScoreboard(entries, { entry, rank }, this.options.podiumSize, compare) };
   }
 
   /** Wysyła kolejkę po kolei; przy pierwszym błędzie przerywa, reszta czeka na następny raz. */
@@ -81,6 +86,10 @@ export class SharedHighscores {
     if (sent > 0) this.saveOutbox(pending.slice(sent));
   }
 
+  private get outboxKey(): string {
+    return this.options.outboxKey ?? HIGHSCORE_BOARDS.tower.outboxKey;
+  }
+
   private timeout(): AbortSignal {
     return AbortSignal.timeout(this.options.timeoutMs);
   }
@@ -88,7 +97,7 @@ export class SharedHighscores {
   private loadOutbox(): ScoreEntry[] {
     if (!this.outboxStorage) return [...this.memoryOutbox];
     try {
-      const parsed: unknown = JSON.parse(this.outboxStorage.getItem(OUTBOX_KEY) ?? '[]');
+      const parsed: unknown = JSON.parse(this.outboxStorage.getItem(this.outboxKey) ?? '[]');
       return Array.isArray(parsed) ? parsed.filter(isScoreEntry) : [];
     } catch {
       return [...this.memoryOutbox];
@@ -101,7 +110,7 @@ export class SharedHighscores {
     this.memoryOutbox = kept;
     if (!this.outboxStorage) return;
     try {
-      this.outboxStorage.setItem(OUTBOX_KEY, JSON.stringify(kept));
+      this.outboxStorage.setItem(this.outboxKey, JSON.stringify(kept));
     } catch {
       // Zablokowany magazyn — kolejka zostaje w pamięci.
     }

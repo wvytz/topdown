@@ -200,6 +200,12 @@ export const HIGHSCORE_CONFIG = {
   nameMaxLength: 12,
 } as const;
 
+/** Tablice wyników (krok 91a): wspinaczka i osobna tablica aren bossów — klucze magazynu i trasy workera. */
+export const HIGHSCORE_BOARDS = {
+  tower: { storageKey: 'tower-crawler.highscores.v1', outboxKey: 'tower-crawler.highscores.outbox.v1', path: '/scores' },
+  arenas: { storageKey: 'tower-crawler.arena-highscores.v1', outboxKey: 'tower-crawler.arena-highscores.outbox.v1', path: '/arena-scores' },
+} as const;
+
 export const PICKUP_CONFIG = {
   /** Z tej odległości łupy same lecą do gracza. */
   magnetRadius: 80,

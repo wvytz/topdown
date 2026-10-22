@@ -23,7 +23,13 @@ import type { SplashFrame } from '@/systems/splashTimeline';
 import { splashFadeStart, splashFrame, splashImpacts } from '@/systems/splashTimeline';
 import type { Particle } from '@/systems/deathScreen';
 import { stepParticle } from '@/systems/deathScreen';
-import { BOOT_START_DATA_KEY, startFirstFloor } from '@/scenes/BootScene';
+import { BOOT_START_DATA_KEY, heroParam, startFirstFloor } from '@/scenes/BootScene';
+import type { MenuSceneData } from '@/scenes/MenuScene';
+
+export interface SplashSceneData {
+  /** Powrót do menu z gry (krok 91): bez intra i bez ładowania — od razu ostatnia klatka i menu. */
+  readonly menu?: MenuSceneData;
+}
 
 const GLOW_TEXTURE = 'splash-glow';
 const VIGNETTE_TEXTURE = 'splash-vignette';
@@ -66,6 +72,9 @@ export class SplashScene extends Phaser.Scene {
   private impactsDone = 0;
   private nextDribbleAt = 0;
   private finished = false;
+  /** Menu główne (krok 91) leży na ekranie: zamiast wygaszenia trzymamy ostatnią klatkę jako tło. */
+  private holding = false;
+  private resumeMenu: MenuSceneData | null = null;
 
   private words: Phaser.GameObjects.Container[] = [];
   private corona!: Phaser.GameObjects.Graphics;
@@ -83,9 +92,24 @@ export class SplashScene extends Phaser.Scene {
     super(SceneKey.Splash);
   }
 
+  init(data: SplashSceneData | undefined): void {
+    this.elapsed = 0;
+    this.startTime = null;
+    this.lastFrameAt = 0;
+    this.fadeFrom = null;
+    this.skipRequested = false;
+    this.impactsDone = 0;
+    this.nextDribbleAt = 0;
+    this.finished = false;
+    this.holding = false;
+    this.ash = [];
+    this.debris = [];
+    this.resumeMenu = data?.menu ?? null;
+  }
+
   create(): void {
-    // Zasoby gry ładują się równolegle, pod ekranem startowym.
-    this.scene.launch(SceneKey.Boot);
+    // Zasoby gry ładują się równolegle, pod ekranem startowym (przy powrocie z gry są już załadowane).
+    if (!this.resumeMenu) this.scene.launch(SceneKey.Boot);
     this.cameras.main.setBackgroundColor(P.chitin0);
 
     this.drawEclipse();
@@ -106,33 +130,60 @@ export class SplashScene extends Phaser.Scene {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('nosplash')) skip();
 
     this.drawFrame(splashFrame(0, null));
+    if (this.resumeMenu) this.holdForMenu(this.resumeMenu);
   }
 
   override update(time: number): void {
     if (this.finished) return;
-    this.startTime ??= time;
+    // Przy powrocie do menu czas zaczyna się od końca intra (holdForMenu ustawił elapsed).
+    this.startTime ??= time - this.elapsed;
     this.elapsed = time - this.startTime;
     const dt = Math.min(50, Math.max(0, this.elapsed - this.lastFrameAt));
     this.lastFrameAt = this.elapsed;
 
     const bootData = this.registry.get(BOOT_START_DATA_KEY) as FloorSceneData | undefined;
-    this.fadeFrom = splashFadeStart({
-      t: this.elapsed,
-      fadeFrom: this.fadeFrom,
-      bootReady: bootData !== undefined,
-      skipRequested: this.skipRequested,
-    });
-    const frame = splashFrame(this.elapsed, this.fadeFrom);
+    if (!this.holding) {
+      this.fadeFrom = splashFadeStart({
+        t: this.elapsed,
+        fadeFrom: this.fadeFrom,
+        bootReady: bootData !== undefined,
+        skipRequested: this.skipRequested,
+      });
+      // Bez `?hero=` w adresie zamiast wygaszenia pojawia się menu główne (krok 91).
+      if (this.fadeFrom !== null && bootData && heroParam() === null) {
+        this.registry.remove(BOOT_START_DATA_KEY);
+        this.holdForMenu({ start: bootData });
+      }
+    }
+    const frame = splashFrame(this.elapsed, this.holding ? null : this.fadeFrom);
     this.drawFrame(frame);
     this.handleImpacts();
     this.updateAsh(dt);
     this.updateDebris(dt);
 
-    if (frame.done && bootData) {
+    if (!this.holding && frame.done && bootData) {
       this.finished = true;
       this.registry.remove(BOOT_START_DATA_KEY);
       startFirstFloor(this, bootData);
     }
+  }
+
+  /**
+   * Menu na tle ekranu startowego: czas przeskakuje na koniec intra (tytuł, korona i żar w pęknięciach już są),
+   * wieża dalej się sypie, a popiół opada. Pominięte uderzenia nie wstrząsają już ekranem.
+   */
+  private holdForMenu(data: MenuSceneData): void {
+    this.holding = true;
+    const end = SPLASH_TIMING.fadeOutAt;
+    if (this.elapsed < end) {
+      if (this.startTime !== null) this.startTime -= end - this.elapsed;
+      this.elapsed = end;
+      this.lastFrameAt = end;
+      this.impactsDone = splashImpacts().length;
+      this.nextDribbleAt = end + L.debris.dribbleMs;
+    }
+    this.drawFrame(splashFrame(this.elapsed, null));
+    this.scene.launch(SceneKey.Menu, data);
   }
 
   private drawFrame(f: SplashFrame): void {

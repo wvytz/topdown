@@ -245,3 +245,57 @@ describe('worker: bohater przy wpisie (krok 89)', () => {
     expect(inserted[0]?.[4]).toBe('barbarian');
   });
 });
+
+describe('worker: tablica aren bossów (krok 91a)', () => {
+  /** Atrapa D1 zapamiętująca zapytania — sprawdza, że trasa aren trafia do własnej tabeli i kolejności. */
+  function recordingDb() {
+    const queries: string[] = [];
+    const inserted: Array<{ sql: string; args: unknown[] }> = [];
+    return {
+      queries,
+      inserted,
+      prepare(sql: string) {
+        queries.push(sql);
+        let args: unknown[] = [];
+        const st = {
+          bind(...a: unknown[]) {
+            args = a;
+            return st;
+          },
+          first: async () => ({ n: 0 }),
+          async run() {
+            if (sql.startsWith('INSERT')) inserted.push({ sql, args });
+            return { meta: {} };
+          },
+          all: async () => ({ results: [{ score: 40, floor: 5, timestamp: 1, name: 'Wicio', hero: 'archer' }] }),
+        };
+        return st;
+      },
+    };
+  }
+
+  it('GET czyta tabelę aren w kolejności: arena, potem złoto', async () => {
+    const db = recordingDb();
+    const res = await worker.fetch(new Request('https://w.example/arena-scores?limit=5', { headers: { Origin: ORIGIN } }), { DB: db, ALLOWED_ORIGINS: ORIGIN });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([{ score: 40, floor: 5, timestamp: 1, name: 'Wicio', hero: 'archer' }]);
+    expect(db.queries[0]).toContain('FROM arena_scores ORDER BY floor DESC, score DESC');
+  });
+
+  it('POST zapisuje do tabeli aren, a limity liczy osobno; wspinaczka bez zmian', async () => {
+    const db = recordingDb();
+    const send = (path: string) =>
+      worker.fetch(
+        new Request(`https://w.example${path}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+          body: JSON.stringify({ score: 40, floor: 5, timestamp: Date.now(), name: 'Wicio', hero: 'archer' }),
+        }),
+        { DB: db, ALLOWED_ORIGINS: ORIGIN },
+      );
+    expect((await send('/arena-scores')).status).toBe(201);
+    expect((await send('/scores')).status).toBe(201);
+    expect(db.inserted.map((i) => i.sql.split(' ')[2])).toEqual(['arena_scores', 'scores']);
+    expect(db.queries.filter((q) => q.includes('COUNT(*)') && q.includes('arena_scores'))).toHaveLength(2);
+  });
+});

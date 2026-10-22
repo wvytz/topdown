@@ -123,4 +123,8 @@ export interface RunSnapshot {
   readonly practice?: boolean;
   /** Tryb gry (krok 90); brak = wspinaczka. */
   readonly mode?: RunMode;
+  /** Run wczytany z ręcznego slotu zapisu (krok 91): wynik nie trafia na tablicę. */
+  readonly fromSave?: boolean;
+  /** Wybór piętra (krok 91): piętro startowe — R po śmierci zaczyna od niego. */
+  readonly startFloor?: number;
 }

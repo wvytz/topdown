@@ -4,15 +4,25 @@ import { RunMode } from '@/core/runMode';
 
 export const NEW_RUN: RunSnapshot = { hero: HeroId.Barbarian, gold: 0, items: [], hp: null, practice: false };
 
-/** Nowy run wybranym bohaterem; `practice` = run testowy z adresu (wynik nie trafia na tablicę); `mode` — tryb gry (krok 90). */
-export const newRun = (hero: HeroId, practice = false, mode = RunMode.Tower): RunSnapshot =>
-  mode === RunMode.Tower ? { ...NEW_RUN, hero, practice } : { ...NEW_RUN, hero, practice, mode };
+/**
+ * Nowy run wybranym bohaterem; `practice` = run testowy z adresu (wynik nie trafia na tablicę); `mode` — tryb gry (krok 90);
+ * `startFloor` — piętro startowe w trybie wyboru piętra (krok 91).
+ */
+export const newRun = (hero: HeroId, practice = false, mode = RunMode.Tower, startFloor?: number): RunSnapshot => {
+  if (mode === RunMode.Tower) return { ...NEW_RUN, hero, practice };
+  const run: RunSnapshot = { ...NEW_RUN, hero, practice, mode };
+  return mode === RunMode.FloorSelect && startFloor !== undefined ? { ...run, startFloor } : run;
+};
 
 /** Postęp runu (złoto, przedmioty) — żyje przez jedno piętro, przenoszony jako RunSnapshot. */
 export class RunState {
   readonly hero: HeroId;
   readonly practice: boolean;
   readonly mode: RunMode;
+  /** Wczytany z ręcznego slotu (krok 91) — wynik nie trafia na tablicę. */
+  readonly fromSave: boolean;
+  /** Piętro startowe w trybie wyboru piętra (krok 91); null w innych trybach. */
+  readonly startFloor: number | null;
   private goldAmount: number;
   private readonly itemIds: ItemId[];
 
@@ -20,6 +30,8 @@ export class RunState {
     this.hero = snapshot.hero;
     this.practice = snapshot.practice ?? false;
     this.mode = snapshot.mode ?? RunMode.Tower;
+    this.fromSave = snapshot.fromSave ?? false;
+    this.startFloor = snapshot.startFloor ?? null;
     this.goldAmount = snapshot.gold;
     this.itemIds = [...snapshot.items];
   }
@@ -56,7 +68,9 @@ export class RunState {
   }
 
   snapshot(hp: number | null): RunSnapshot {
-    const base = { hero: this.hero, gold: this.goldAmount, items: [...this.itemIds], hp, practice: this.practice };
-    return this.mode === RunMode.Tower ? base : { ...base, mode: this.mode };
+    const base: RunSnapshot = { hero: this.hero, gold: this.goldAmount, items: [...this.itemIds], hp, practice: this.practice };
+    const withMode = this.mode === RunMode.Tower ? base : { ...base, mode: this.mode };
+    const withStart = this.startFloor === null ? withMode : { ...withMode, startFloor: this.startFloor };
+    return this.fromSave ? { ...withStart, fromSave: true } : withStart;
   }
 }

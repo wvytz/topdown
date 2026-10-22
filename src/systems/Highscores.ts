@@ -28,9 +28,17 @@ export interface ScoreboardView {
   readonly current: RankedEntry | null;
 }
 
-/** Ujemny = `a` jest lepszy. Najpierw wynik, przy remisie wyższe piętro. */
+/** Porządek tablicy: ujemny = `a` jest lepszy. */
+export type ScoreComparator = (a: ScoreEntry, b: ScoreEntry) => number;
+
+/** Wspinaczka: najpierw wynik, przy remisie wyższe piętro. */
 export function compareScores(a: ScoreEntry, b: ScoreEntry): number {
   return b.score - a.score || b.floor - a.floor;
+}
+
+/** Areny bossów (krok 91a; `floor` = osiągnięta arena): najpierw dalsza arena, przy remisie więcej złota. */
+export function compareArenaScores(a: ScoreEntry, b: ScoreEntry): number {
+  return b.floor - a.floor || b.score - a.score;
 }
 
 /**
@@ -42,9 +50,10 @@ export function insertScore(
   entries: readonly ScoreEntry[],
   entry: ScoreEntry,
   maxEntries: number,
+  compare: ScoreComparator = compareScores,
 ): { entries: ScoreEntry[]; rank: number } {
-  const sorted = [...entries].sort(compareScores);
-  const index = sorted.findIndex((existing) => compareScores(entry, existing) < 0);
+  const sorted = [...entries].sort(compare);
+  const index = sorted.findIndex((existing) => compare(entry, existing) < 0);
   const position = index === -1 ? sorted.length : index;
   sorted.splice(position, 0, entry);
   return { entries: sorted.slice(0, Math.max(0, maxEntries)), rank: position + 1 };
@@ -55,8 +64,9 @@ export function buildScoreboard(
   entries: readonly ScoreEntry[],
   current: { entry: ScoreEntry; rank: number },
   topCount: number,
+  compare: ScoreComparator = compareScores,
 ): ScoreboardView {
-  const sorted = [...entries].sort(compareScores);
+  const sorted = [...entries].sort(compare);
   const top: RankedEntry[] = sorted.slice(0, topCount).map((entry, i) => ({
     rank: i + 1,
     entry,

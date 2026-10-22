@@ -7,6 +7,7 @@ import { BootScene } from '@/scenes/BootScene';
 import { GameScene } from '@/scenes/GameScene';
 import { HeroSelectScene } from '@/scenes/HeroSelectScene';
 import { HudScene } from '@/scenes/HudScene';
+import { MenuScene } from '@/scenes/MenuScene';
 import { PauseScene } from '@/scenes/PauseScene';
 import { RewardScene } from '@/scenes/RewardScene';
 import { SplashScene } from '@/scenes/SplashScene';
@@ -32,8 +33,8 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  // SplashScene startuje pierwsza i sama uruchamia BootScene (ładowanie pod ekranem startowym).
-  scene: [SplashScene, BootScene, HeroSelectScene, GameScene, HudScene, RewardScene, PauseScene],
+  // SplashScene startuje pierwsza i sama uruchamia BootScene (ładowanie pod ekranem startowym), potem menu (krok 91).
+  scene: [SplashScene, BootScene, MenuScene, HeroSelectScene, GameScene, HudScene, RewardScene, PauseScene],
 };
 
 const game = new Phaser.Game(config);

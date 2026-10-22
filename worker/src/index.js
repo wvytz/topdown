@@ -2,6 +2,8 @@
  * Worker Tower Crawlera: wspólna lista wyników i zgłoszenia diagnostyczne.
  *   GET    /scores?limit=N  → [{ score, floor, timestamp, name, hero }], najlepsze pierwsze (name i hero mogą być null)
  *   POST   /scores          ← { score, floor, timestamp, name?, hero? }
+ *   GET    /arena-scores?limit=N  → tablica aren bossów (krok 91a): floor = osiągnięta arena, ranking najpierw arena, potem złoto
+ *   POST   /arena-scores          ← jak /scores
  *   POST   /reports         ← koperta zgłoszenia (patrz `reports.js`); 201 { ok, id } | 200 { duplicate } | 400/413/429/503
  *   GET    /reports?limit&kind&since&floor  → lista metadanych       } tylko z nagłówkiem Authorization: Bearer <REPORTS_TOKEN>
  *   GET    /reports/:id                     → pełne zgłoszenie       } albo X-Reports-Token: <REPORTS_TOKEN>
@@ -26,6 +28,15 @@ const RATE_WINDOW_MS = 10 * 60 * 1000;
 const MAX_SCORES_PER_DAY = 500;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Tablice wyników: trasa → tabela i kolejność. Wspinaczka: złoto, potem piętro. Areny bossów (krok 91a): osiągnięta
+ * arena, potem złoto. Każda tablica ma własne limity (zalew jednej nie blokuje drugiej).
+ */
+const SCORE_BOARDS = {
+  '/scores': { table: 'scores', order: 'score DESC, floor DESC, id ASC' },
+  '/arena-scores': { table: 'arena_scores', order: 'floor DESC, score DESC, id ASC' },
+};
+
 export default {
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
@@ -33,9 +44,10 @@ export default {
 
     const url = new URL(request.url);
     try {
-      if (url.pathname === '/scores') {
-        if (request.method === 'GET') return await getScores(url, env, cors);
-        if (request.method === 'POST') return await postScore(request, env, cors);
+      const board = SCORE_BOARDS[url.pathname];
+      if (board) {
+        if (request.method === 'GET') return await getScores(url, env, cors, board);
+        if (request.method === 'POST') return await postScore(request, env, cors, board);
         return json({ error: 'method not allowed' }, 405, cors);
       }
       const reportPath = /^\/reports(?:\/(\d+))?$/.exec(url.pathname);
@@ -169,18 +181,18 @@ async function getReport(id, env) {
 
 // ---------------------------------------------------------------- wyniki
 
-async function getScores(url, env, cors) {
+async function getScores(url, env, cors, board) {
   const requested = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
   const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), MAX_LIMIT) : 50;
   const { results } = await env.DB.prepare(
-    'SELECT score, floor, timestamp, name, hero FROM scores ORDER BY score DESC, floor DESC, id ASC LIMIT ?',
+    `SELECT score, floor, timestamp, name, hero FROM ${board.table} ORDER BY ${board.order} LIMIT ?`,
   )
     .bind(limit)
     .all();
   return json(results, 200, { ...cors, 'Cache-Control': 'no-store' });
 }
 
-async function postScore(request, env, cors) {
+async function postScore(request, env, cors, board) {
   if (!originAllowed(request, env)) return json({ error: 'origin not allowed' }, 403, cors);
 
   let body;
@@ -194,16 +206,15 @@ async function postScore(request, env, cors) {
 
   const now = Date.now();
   const ipHash = await hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown', env);
-  const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE ip_hash = ? AND created_at > ?')
+  const recent = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${board.table} WHERE ip_hash = ? AND created_at > ?`)
     .bind(ipHash, now - RATE_WINDOW_MS)
     .first();
   if ((recent?.n ?? 0) >= RATE_LIMIT) return json({ error: 'too many requests' }, 429, cors);
 
-  const today = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE created_at > ?').bind(now - DAY_MS).first();
+  const today = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${board.table} WHERE created_at > ?`).bind(now - DAY_MS).first();
   if ((today?.n ?? 0) >= MAX_SCORES_PER_DAY) return json({ error: 'daily cap reached' }, 503, { ...cors, 'Retry-After': '3600' });
 
-  await env.DB.prepare('INSERT INTO scores (score, floor, timestamp, name, hero, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  )
+  await env.DB.prepare(`INSERT INTO ${board.table} (score, floor, timestamp, name, hero, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .bind(entry.score, entry.floor, entry.timestamp, entry.name, entry.hero, ipHash, now)
     .run();
   return json({ ok: true }, 201, cors);

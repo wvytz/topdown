@@ -12,6 +12,14 @@ import type {
   Vector2,
 } from '@/core/types';
 import { SceneKey } from '@/core/types';
+import { SAVE_TEXT } from '@/config/saveConfig';
+import { SaveStorage } from '@/persistence/SaveStorage';
+import type { SaveData } from '@/systems/SaveGame';
+import { openMainMenu } from '@/scenes/BootScene';
+import { RunMode } from '@/core/runMode';
+import { FLOOR_SELECT_CONFIG, FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
+import { BossProgress } from '@/persistence/BossProgress';
+import { startFloorInfo, unlocksFloor } from '@/systems/FloorSelect';
 import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
@@ -65,6 +73,7 @@ import {
   BREAKABLE_LOOT,
   BOSS_REWARD,
   ENEMY_LOOT,
+  HIGHSCORE_BOARDS,
   HIGHSCORE_CONFIG,
   ITEM_DEFINITIONS,
   ITEM_EFFECTS,
@@ -111,7 +120,7 @@ import { SharedHighscores } from '@/persistence/SharedHighscores';
 import { createRemoteScoreSource } from '@/persistence/remoteScores';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
-import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
+import { compareArenaScores, isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
@@ -248,8 +257,35 @@ export class GameScene extends Phaser.Scene implements HudSource {
       maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
     },
   );
+  /** Tablica aren bossów (krok 91a): najpierw osiągnięta arena, potem złoto; własny klucz, kolejka i trasa workera. */
+  private readonly arenaHighscores = new SharedHighscores(
+    new HighscoreStorage(
+      HighscoreStorage.browserStorage(),
+      HIGHSCORE_CONFIG.maxEntries,
+      HIGHSCORE_CONFIG.podiumSize,
+      HIGHSCORE_BOARDS.arenas.storageKey,
+      compareArenaScores,
+    ),
+    createRemoteScoreSource(HIGHSCORE_BOARDS.arenas.path),
+    HighscoreStorage.browserStorage(),
+    {
+      maxEntries: HIGHSCORE_CONFIG.maxEntries,
+      podiumSize: HIGHSCORE_CONFIG.podiumSize,
+      timeoutMs: HIGHSCORE_CONFIG.remoteTimeoutMs,
+      maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
+      outboxKey: HIGHSCORE_BOARDS.arenas.outboxKey,
+      compare: compareArenaScores,
+    },
+  );
   private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
   private runSeed = 0;
+  /** Zapis gry (krok 91): autozapis przy wejściu na piętro i ręczne sloty z pauzy. */
+  private readonly saves = new SaveStorage(SaveStorage.browserStorage());
+  /** Stan z wejścia na to piętro — to on trafia do zapisu; null przy odtwarzaniu nagrania (nie ruszamy zapisów). */
+  private checkpoint: SaveData | null = null;
+  /** Wybór piętra (krok 91): najwyższe piętro z pokonanym bossem; zapisujemy raz na piętro. */
+  private readonly bossProgress = new BossProgress(HighscoreStorage.browserStorage());
+  private bossProgressSaved = false;
   /** Start w arenie bossa (`?boss=1`). */
   private atBoss = false;
   /**
@@ -273,6 +309,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;
     this.runSeed = data.runSeed;
+    this.bossProgressSaved = false;
+    this.checkpoint = this.replay ? null : { runSeed: data.runSeed, floor: data.floor, run: data.run };
     this.atBoss = data.atBoss === true;
     this.bossRushArena = isBossRush(data.run.mode) ? new BossRushArena(BOSS_RUSH_CONFIG.teleportDelayMs) : null;
     this.shrine = null;
@@ -381,9 +419,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.showToast(`${this.floorModifier.name}: ${this.floorModifier.description}`, FLOOR_MODIFIER_TOAST_MS);
     } else if (this.run.practice) {
       this.showToast('Run testowy — wynik nie trafi na tablicę');
+    } else if (this.run.fromSave) {
+      this.showToast(SAVE_TEXT.loadedToast);
+    } else if (this.run.mode === RunMode.FloorSelect && !FLOOR_SELECT_CONFIG.ranked) {
+      this.showToast(FLOOR_SELECT_TEXT.startToast(startFloorInfo(this.floorNumber).label));
     }
     this.cameras.main.fadeIn(250, 0, 0, 0);
     this.setupDiagnostics();
+    // Autozapis „Kontynuuj” (krok 91): stan z wejścia na piętro; po śmierci znika.
+    if (this.checkpoint) this.saves.save('auto', this.checkpoint, Date.now());
   }
 
   /** Dziennik diagnostyczny (krok 55): okruch „nowe piętro” i stan gry do pulsu (po twardym wyrzuceniu to ostatni ślad). */
@@ -494,6 +538,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   override update(time: number): void {
     if (this.isTransitioning) return;
     this.diagnosticsTick(time);
+    this.trackBossProgress();
 
     const actions = this.nextActions(time);
     this.moveHeld = actions.move.x !== 0 || actions.move.y !== 0;
@@ -1151,9 +1196,45 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.gamePaused = true;
     (this.registry.get(PAUSE_CLOCK_KEY) as PauseClock | undefined)?.begin();
     diag.note('pause', { floor: this.floorNumber, reason });
-    const data: PauseSceneData = { reason, onResume: () => this.resumeGame() };
+    const data: PauseSceneData = {
+      reason,
+      onResume: () => this.resumeGame(),
+      onSave: this.checkpoint ? (slot) => this.saveToSlot(slot) : null,
+      onQuit: () => this.quitToMenu(),
+    };
     this.scene.pause();
     this.scene.launch(SceneKey.Pause, data);
+  }
+
+  /** Pokonany boss odblokowuje start od tego piętra w trybie wyboru piętra (krok 91). Nie przy nagraniu i runie testowym. */
+  private trackBossProgress(): void {
+    if (this.bossProgressSaved || !this.bossFight.isDefeated) return;
+    this.bossProgressSaved = true;
+    if (!this.replay && unlocksFloor(this.run.mode, this.run.practice)) {
+      const best = this.bossProgress.record(this.floorNumber);
+      diag.note('boss-progress', { floor: this.floorNumber, best });
+    }
+  }
+
+  /** Ręczny zapis (krok 91) — stan z wejścia na piętro, nie bieżąca chwila. */
+  private saveToSlot(slot: number): boolean {
+    if (!this.checkpoint) return false;
+    const ok = this.saves.save(slot, this.checkpoint, Date.now());
+    diag.note('save-slot', { slot, floor: this.floorNumber, ok });
+    return ok;
+  }
+
+  /** Wyjście do menu głównego z pauzy albo ekranu śmierci; autozapis zostaje (Kontynuuj). */
+  private quitToMenu(): void {
+    if (this.gamePaused) {
+      this.gamePaused = false;
+      (this.registry.get(PAUSE_CLOCK_KEY) as PauseClock | undefined)?.end();
+    }
+    diag.note('quit-to-menu', { floor: this.floorNumber });
+    this.scene.stop(SceneKey.Pause);
+    this.scene.stop(SceneKey.Hud);
+    const start: FloorSceneData = { runSeed: (Date.now() ^ this.runSeed) >>> 0, floor: 1, run: newRun(this.run.hero, false, this.run.mode) };
+    openMainMenu(this, start);
   }
 
   private resumeGame(): void {
@@ -1215,18 +1296,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (this.deathHandled) return;
     this.deathHandled = true;
     diag.note('player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
+    // Śmierć kończy run — „Kontynuuj” znika (ręczne sloty zostają).
+    if (this.checkpoint) this.saves.remove('auto');
 
     // Złoto w chwili śmierci to wynik runu.
     const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now(), hero: this.run.hero };
-    // Areny bossów (krok 90, tryb testowy): wynik nie trafia na żadną tablicę.
-    if (this.bossRush) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'bossRush', nameEntry: null };
-      this.awaitNewRun();
-      return;
-    }
-    // Run testowy (start z adresu, krok 41g): bez zapisu i bez pytania o imię.
-    if (this.run.practice) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'practice', nameEntry: null };
+    // Bez zapisu i bez pytania o imię: run testowy z adresu (krok 41g), run ze slotu i od wybranego piętra (krok 91).
+    // Areny bossów (krok 91a) mają własną tablicę — wynik idzie na nią, a nie na tablicę wspinaczki.
+    const unranked = this.run.practice
+      ? 'practice'
+      : this.run.fromSave
+        ? 'fromSave'
+        : this.run.mode === RunMode.FloorSelect && !FLOOR_SELECT_CONFIG.ranked
+          ? 'floorSelect'
+          : null;
+    if (unranked) {
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag() };
       this.awaitNewRun();
       return;
     }
@@ -1239,7 +1324,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
-    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '' };
+    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag() };
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Enter' || event.key === 'Escape') {
         this.input.keyboard?.off('keydown', onKey);
@@ -1255,14 +1340,20 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.input.keyboard?.on('keydown', onKey);
   }
 
-  /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. */
+  /** Znacznik tablicy aren na panelu śmierci (krok 91a). */
+  private arenaFlag(): { arenas?: true } {
+    return this.bossRush ? { arenas: true } : {};
+  }
+
+  /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. Areny bossów — na własnej tablicy (krok 91a). */
   private recordDeath(entry: ScoreEntry): void {
-    const { rank, board } = this.highscores.record(entry);
-    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null };
+    const highscores = this.bossRush ? this.arenaHighscores : this.highscores;
+    const { rank, board } = highscores.record(entry);
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag() };
     this.death = death;
-    if (this.highscores.hasRemote) {
+    if (highscores.hasRemote) {
       this.death = { ...death, source: 'pending' };
-      void this.highscores.recordShared(entry).then((shared) => {
+      void highscores.recordShared(entry).then((shared) => {
         // Scena mogła już ruszyć z nową wspinaczką — podmieniamy tylko panel tej śmierci.
         if (this.death?.board !== board) return;
         this.death = shared ? { ...death, rank: shared.rank, board: shared.board, source: 'shared' } : death;
@@ -1272,20 +1363,25 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.awaitNewRun();
   }
 
-  /** Po śmierci: R — nowa wspinaczka (nowy seed, piętro 1, pusty, zwykły run), C — zmiana bohatera. */
+  /** Po śmierci: R — nowa wspinaczka (nowy seed, piętro 1, pusty, zwykły run), C — zmiana bohatera, M — menu. */
   private awaitNewRun(): void {
     const freshSeed = (Date.now() ^ this.runSeed) >>> 0;
     this.input.keyboard?.once('keydown-R', () => {
       // Ten sam bohater i tryb co w zakończonym runie.
-      const fresh: FloorSceneData = { runSeed: freshSeed, floor: 1, run: newRun(this.run.hero, false, this.run.mode) };
+      // Wybór piętra (krok 91): R zaczyna od tego samego piętra startowego.
+      const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
+      const fresh: FloorSceneData = { runSeed: freshSeed, floor, run: newRun(this.run.hero, false, this.run.mode, floor) };
       this.scene.restart(fresh);
     });
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
     this.input.keyboard?.once('keydown-C', () => {
-      const select: HeroSelectData = { runSeed: freshSeed, floor: 1, preselect: this.run.hero, mode: this.run.mode };
+      const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
+      const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode };
       this.scene.stop(SceneKey.Hud);
       this.scene.start(SceneKey.Select, select);
     });
+    // M — menu główne (krok 91).
+    this.input.keyboard?.once('keydown-M', () => this.quitToMenu());
   }
 
   /**

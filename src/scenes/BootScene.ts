@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { diag } from '@/diagnostics/DiagnosticsHub';
-import type { FloorSceneData, HeroSelectData } from '@/core/types';
+import type { FloorSceneData } from '@/core/types';
+import type { SplashSceneData } from '@/scenes/SplashScene';
 import { SceneKey, TextureKey } from '@/core/types';
 import { BIOMES } from '@/config/biomeConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
@@ -75,22 +76,25 @@ export class BootScene extends Phaser.Scene {
   }
 }
 
-/** Bohater podany w adresie (`?hero=sorceress`); null = gracz wybiera na ekranie wyboru. */
-function heroParam() {
+/** Bohater podany w adresie (`?hero=sorceress`); null = gracz wybiera w menu i na ekranie wyboru. */
+export function heroParam() {
   return parseHeroId(new URLSearchParams(window.location.search).get('hero'));
 }
 
-/** Po ładowaniu (i ekranie startowym): ekran wyboru bohatera, chyba że adres już go podał (krok 38). */
+/**
+ * Po ładowaniu: z `?hero=` w adresie od razu gra (testy, smoke), bez niego — menu główne na tle ekranu startowego
+ * (krok 91). Zwykle menu otwiera sam ekran startowy; tu trafiamy, gdy ekran startowy już się skończył.
+ */
 export function startFirstFloor(scene: Phaser.Scene, data: FloorSceneData): void {
   if (heroParam() !== null) {
     scene.scene.start(SceneKey.Game, data);
     return;
   }
-  const select: HeroSelectData = {
-    runSeed: data.runSeed,
-    floor: data.floor,
-    practice: data.run.practice ?? false,
-    ...(data.run.mode ? { mode: data.run.mode } : {}),
-  };
-  scene.scene.start(SceneKey.Select, select);
+  openMainMenu(scene, data);
+}
+
+/** Menu główne: ekran startowy bez intra jako tło i menu na nim (także powrót z gry). */
+export function openMainMenu(scene: Phaser.Scene, start: FloorSceneData): void {
+  const splash: SplashSceneData = { menu: { start } };
+  scene.scene.start(SceneKey.Splash, splash);
 }
