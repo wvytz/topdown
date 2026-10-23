@@ -113,6 +113,7 @@ import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
+import { HealBudget } from '@/systems/HealBudget';
 import { Timer } from '@/systems/Timer';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
@@ -244,6 +245,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dashHitsFor = -1;
   /** Wampirzy kieł: odstęp między leczeniami za cios. */
   private healCooldown = new Timer();
+  /** Krok 93: sufit leczenia kła na sekundę (procent maks. HP). */
+  private healBudget = new HealBudget();
   /** Promień Czarodziejki (krok 37) — rysowany co klatkę, gdy świeci. */
   private beamGfx: Phaser.GameObjects.Graphics | null = null;
   private readonly highscores = new SharedHighscores(
@@ -328,6 +331,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.dashHits = new Set();
     this.dashHitsFor = -1;
     this.healCooldown = new Timer();
+    this.healBudget = new HealBudget();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
@@ -796,9 +800,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Wampirzy kieł: leczenie za trafienie (raz na cios lub kulę), najwyżej raz na meleeHealCooldownMs. */
   private tryVampireHeal(now: number): void {
-    const { meleeHeal: heal, meleeHealCooldownMs } = this.player.effects;
-    if (heal <= 0 || this.player.health.isFull || this.healCooldown.isActive(now)) return;
+    const { meleeHeal, meleeHealCooldownMs, meleeHealMaxHpPctPerSec } = this.player.effects;
+    if (meleeHeal <= 0 || this.player.health.isFull || this.healCooldown.isActive(now)) return;
     this.healCooldown.start(now, meleeHealCooldownMs);
+    const heal = this.healBudget.take(meleeHeal, now, this.player.health.max * meleeHealMaxHpPctPerSec);
+    if (heal <= 0) return;
     this.player.heal(heal);
     this.effects.floatingText(this.player.x, this.player.y - 14, `+${heal}`, '#ff6b8a');
   }

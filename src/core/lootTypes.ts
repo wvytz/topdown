@@ -103,6 +103,8 @@ export interface ItemEffectsConfig {
     readonly healPerStack: number;
     /** Krok 93: malejący przyrost kolejnych kopii, jak w Ognistej pięści. */
     readonly stackDecay: number;
+    /** Krok 93: kieł leczy najwyżej tyle maks. HP na sekundę (0,04 = 4%), niezależnie od liczby kopii. */
+    readonly maxHpPctPerSec: number;
     /** Leczenie najwyżej raz na tyle ms — bez tego szybkie ciosy dają ogromną regenerację. */
     readonly cooldownMs: number;
   };

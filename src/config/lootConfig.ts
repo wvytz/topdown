@@ -125,8 +125,9 @@ export const ITEM_EFFECTS: ItemEffectsConfig = {
   // Krok 93: przyrost kolejnych kopii maleje o połowę — tyknięcie 3 / 5 / 6 / 7 / 7 (wcześniej liniowo do 11).
   fireFist: { tickDamage: 3, tickDamagePerStack: 2, stackDecay: 0.5, tickMs: 500, durationMs: 2000 },
   // Raz na 0,7 s: ok. 2,9 HP/s przy jednej kopii (bez limitu: 2 HP co cios = 6,25 HP/s, ok. 60% DPS Rushera).
-  // Krok 93: leczenie 2 / 4 / 5 / 6 / 6 (wcześniej liniowo do 10) i sufit FANG_HEAL_CAP.
-  vampireFang: { heal: 2, healPerStack: 2, stackDecay: 0.5, cooldownMs: 700 },
+  // Krok 93: leczenie 2 / 4 / 5 / 6 / 6 (wcześniej liniowo do 10) i sufit 4% maks. HP/s
+  // (barbarzyńca 100 HP: 4 HP/s, Czarodziejka 75 HP: 3 HP/s) — jedna kopia (2,9 HP/s) mieści się pod nim.
+  vampireFang: { heal: 2, healPerStack: 2, stackDecay: 0.5, maxHpPctPerSec: 0.04, cooldownMs: 700 },
   stormDash: { damage: 10, damagePerStack: 6 },
   frostShard: { slowPct: 0.4, slowPctPerStack: 0.1, maxSlowPct: 0.7, durationMs: 1500 },
 };

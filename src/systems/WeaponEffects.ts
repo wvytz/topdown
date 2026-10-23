@@ -8,6 +8,7 @@ export const NO_WEAPON_EFFECTS: WeaponEffects = {
   meleeStatus: {},
   meleeHeal: 0,
   meleeHealCooldownMs: 0,
+  meleeHealMaxHpPctPerSec: 0,
   dashDamage: 0,
 };
 
@@ -64,6 +65,7 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
     meleeStatus,
     meleeHeal: diminished(fangs, config.vampireFang.heal, config.vampireFang.healPerStack, config.vampireFang.stackDecay),
     meleeHealCooldownMs: fangs > 0 ? config.vampireFang.cooldownMs : 0,
+    meleeHealMaxHpPctPerSec: fangs > 0 ? config.vampireFang.maxHpPctPerSec : 0,
     dashDamage: stacked(count(ItemId.StormDash), config.stormDash.damage, config.stormDash.damagePerStack),
   };
 }
