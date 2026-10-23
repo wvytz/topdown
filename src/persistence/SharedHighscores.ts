@@ -1,5 +1,5 @@
 import type { ScoreComparator, ScoreEntry } from '@/systems/Highscores';
-import { buildScoreboard, compareScores, insertScore } from '@/systems/Highscores';
+import { buildScoreboard, compareScores, insertScore, isSameEntry } from '@/systems/Highscores';
 import type { HighscoreStorage, KeyValueStorage, RecordResult } from '@/persistence/HighscoreStorage';
 import { isScoreEntry } from '@/persistence/HighscoreStorage';
 import { HIGHSCORE_BOARDS } from '@/config/lootConfig';
@@ -64,11 +64,30 @@ export class SharedHighscores {
       return null;
     }
     // Wpis mógł już trafić na listę — liczymy miejsce bez niego, żeby nie policzyć go dwa razy.
-    const own = top.findIndex((e) => sameEntry(e, entry));
+    const own = top.findIndex((e) => isSameEntry(e, entry));
     if (own !== -1) top.splice(own, 1);
     const compare = this.options.compare ?? compareScores;
     const { entries, rank } = insertScore(top, entry, this.options.maxEntries, compare);
     return { rank, board: buildScoreboard(entries, { entry, rank }, this.options.podiumSize, compare) };
+  }
+
+  /** Wyniki zapisane w tej przeglądarce. */
+  localEntries(): ScoreEntry[] {
+    return this.local.load();
+  }
+
+  /**
+   * Wspólna lista dla ekranu startowego (krok 93): najpierw wysyła zaległe wyniki z kolejki, potem pobiera listę.
+   * null = brak usługi albo sieci.
+   */
+  async fetchShared(): Promise<ScoreEntry[] | null> {
+    if (!this.remote) return null;
+    await this.flushOutbox(this.remote);
+    try {
+      return (await this.remote.fetchTop(this.options.maxEntries, this.timeout())).filter(isScoreEntry);
+    } catch {
+      return null;
+    }
   }
 
   /** Wysyła kolejkę po kolei; przy pierwszym błędzie przerywa, reszta czeka na następny raz. */
@@ -115,9 +134,4 @@ export class SharedHighscores {
       // Zablokowany magazyn — kolejka zostaje w pamięci.
     }
   }
-}
-
-/** Bez bohatera: stary worker go nie zwraca, a wpis i tak jest ten sam. */
-function sameEntry(a: ScoreEntry, b: ScoreEntry): boolean {
-  return a.score === b.score && a.floor === b.floor && a.timestamp === b.timestamp && a.name === b.name;
 }

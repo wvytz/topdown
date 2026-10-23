@@ -17,6 +17,8 @@ export const MENU_PALETTE = {
   text: '#d8ccb0',
   textDim: '#9c8f74',
   warn: '#ed4b40',
+  /** Własny wynik na tablicy ekranu startowego (krok 93). */
+  own: '#e7b140',
   /** Areny bossów — fiolet teleportu, jak zakładka na ekranie wyboru. */
   arenaMode: '#c8a8ff',
   fade: SPLASH_PALETTE.chitin0,
@@ -25,6 +27,11 @@ export const MENU_PALETTE = {
 export const MENU_LAYOUT = {
   /** Lewy panel z pozycjami menu (z dala od wieży na środku i napisów TOP / DOWN). */
   menu: { x: 40, y: 150, width: 300, height: 252, padX: 22, firstItemY: 22, step: 34, fontSize: 17, letterSpacing: 2 },
+  /**
+   * Środkowy panel najlepszych wyników (krok 93): wspinaczka i areny, między panelami menu i opisu.
+   * Przezroczystszy od bocznych, żeby przez niego prześwitywała wieża.
+   */
+  scores: { x: 354, y: 150, width: 252, height: 252, padX: 12, padY: 12, fontSize: 11, lineStep: 16, sectionGap: 10, panelAlpha: 0.72 },
   /** Prawy panel z opisem. */
   info: { x: 620, y: 150, width: 300, height: 252, padX: 18, padY: 18, titleFontSize: 15, fontSize: 12, lineSpacing: 5 },
   hint: { y: 524, fontSize: 12, letterSpacing: 2 },
@@ -76,4 +83,19 @@ export const MENU_TEXT = {
   mainHint: '↑ ↓  WYBÓR   ·   ENTER — OK',
   subHint: '↑ ↓  WYBÓR   ·   ENTER — OK   ·   ESC — WRÓĆ',
   floorHint: '← →  PIĘTRO   ·   ENTER — DALEJ   ·   ESC — WRÓĆ',
+} as const;
+
+/** Tablica wyników na ekranie startowym (krok 93): ile wpisów na sekcję i napisy. */
+export const MENU_SCORES = {
+  topCount: 3,
+  titles: {
+    tower: { local: 'WSPINACZKA', pending: 'WSPINACZKA · ŁĄCZENIE…', shared: 'WSPINACZKA · WSZYSCY GRACZE' },
+    arenas: { local: 'ARENY BOSSÓW', pending: 'ARENY BOSSÓW · ŁĄCZENIE…', shared: 'ARENY BOSSÓW · WSZYSCY GRACZE' },
+  },
+  text: {
+    empty: '  brak wyników',
+    ownPrefix: 'Ty: ',
+    overtaken: (from: number, to: number | null): string =>
+      to === null ? `▼ wyprzedzili cię: było ${from}. miejsce` : `▼ ktoś cię wyprzedził: ${from}. → ${to}.`,
+  },
 } as const;

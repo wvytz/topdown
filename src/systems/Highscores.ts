@@ -79,6 +79,11 @@ export function buildScoreboard(
   };
 }
 
+/** Ten sam wpis (bez bohatera: stary worker go nie zwraca, a wpis i tak jest ten sam). */
+export function isSameEntry(a: ScoreEntry, b: ScoreEntry): boolean {
+  return a.score === b.score && a.floor === b.floor && a.timestamp === b.timestamp && a.name === b.name;
+}
+
 /** Dozwolony znak imienia: litery (także polskie), cyfry, spacja, „_” i „-”. */
 export function isNameChar(char: string): boolean {
   return /^[\p{L}\p{N} _-]$/u.test(char);

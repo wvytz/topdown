@@ -200,11 +200,26 @@ export const HIGHSCORE_CONFIG = {
   nameMaxLength: 12,
 } as const;
 
-/** Tablice wyników (krok 91a): wspinaczka i osobna tablica aren bossów — klucze magazynu i trasy workera. */
+/**
+ * Tablice wyników (krok 91a): wspinaczka i osobna tablica aren bossów — klucze magazynu i trasy workera.
+ * `seenKey` (krok 93): ostatnio oglądane miejsce własnego rekordu na ekranie startowym.
+ */
 export const HIGHSCORE_BOARDS = {
-  tower: { storageKey: 'tower-crawler.highscores.v1', outboxKey: 'tower-crawler.highscores.outbox.v1', path: '/scores' },
-  arenas: { storageKey: 'tower-crawler.arena-highscores.v1', outboxKey: 'tower-crawler.arena-highscores.outbox.v1', path: '/arena-scores' },
+  tower: {
+    storageKey: 'tower-crawler.highscores.v1',
+    outboxKey: 'tower-crawler.highscores.outbox.v1',
+    seenKey: 'tower-crawler.highscores.seen.v1',
+    path: '/scores',
+  },
+  arenas: {
+    storageKey: 'tower-crawler.arena-highscores.v1',
+    outboxKey: 'tower-crawler.arena-highscores.outbox.v1',
+    seenKey: 'tower-crawler.arena-highscores.seen.v1',
+    path: '/arena-scores',
+  },
 } as const;
+
+export type HighscoreBoardId = keyof typeof HIGHSCORE_BOARDS;
 
 export const PICKUP_CONFIG = {
   /** Z tej odległości łupy same lecą do gracza. */

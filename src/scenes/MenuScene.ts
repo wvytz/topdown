@@ -14,11 +14,22 @@ import { loadFromRecord, saveSummary } from '@/systems/SaveGame';
 import { BossProgress } from '@/persistence/BossProgress';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { startFloorInfo, stepStartFloor } from '@/systems/FloorSelect';
+import { MENU_SCORES } from '@/config/menuConfig';
+import { HIGHSCORE_BOARDS } from '@/config/lootConfig';
+import type { HighscoreBoardId } from '@/config/lootConfig';
+import { BOARD_ORDER, createBoardHighscores } from '@/persistence/highscoreBoards';
+import { SeenRankStorage } from '@/persistence/SeenRankStorage';
+import { buildStartBoard, startBoardLines } from '@/systems/startScoreboard';
+import type { StartBoardLine } from '@/systems/startScoreboard';
+import type { ScoreEntry } from '@/systems/Highscores';
+import { StartScoresPanel } from '@/effects/StartScoresPanel';
 
 export interface MenuSceneData {
   /** Seed, flaga runu testowego i tryb z adresu (BootScene); seed nowej gry losujemy przy wyborze. */
   readonly start: FloorSceneData;
 }
+
+const SCORE_BOARDS: readonly HighscoreBoardId[] = ['tower', 'arenas'];
 
 /** Widok menu: lista główna, sloty zapisu albo wybór piętra startowego. */
 type View = 'main' | 'slots' | 'floors';
@@ -50,6 +61,9 @@ export class MenuScene extends Phaser.Scene {
   private infoBody!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private fade!: Phaser.GameObjects.Rectangle;
+  private scoresPanel!: StartScoresPanel;
+  /** Numer wejścia do menu — odpowiedź sieci z poprzedniego wejścia nie rysuje się w nowym. */
+  private scoresRequest = 0;
 
   constructor() {
     super(SceneKey.Menu);
@@ -96,7 +110,10 @@ export class MenuScene extends Phaser.Scene {
       .text(GAME_WIDTH / 2, L.hint.y, '', { ...style, fontSize: `${L.hint.fontSize}px`, color: P.textDim })
       .setOrigin(0.5)
       .setLetterSpacing(L.hint.letterSpacing);
-    this.fade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.fade).setOrigin(0).setAlpha(1);
+    this.scoresPanel = new StartScoresPanel(this);
+    void this.showScores();
+    // Wiersze tablicy dochodzą później (sieć) — wygaszenie musi zostać nad nimi.
+    this.fade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.fade).setOrigin(0).setAlpha(1).setDepth(1);
     this.tweens.add({ targets: this.fade, alpha: 0, duration: L.fadeInMs });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onKey(event));
@@ -109,6 +126,37 @@ export class MenuScene extends Phaser.Scene {
       hasSlots: this.saves.slots.some((slot) => this.saves.load(slot) !== null),
       bestBossFloor: this.bossProgress.load(),
     };
+  }
+
+  /**
+   * Tablice na środku (krok 93): od razu lista lokalna, potem wspólna z workera z oznaczeniem własnych wyników
+   * i ostrzeżeniem, że ktoś pobił rekord od ostatniego wejścia do menu.
+   */
+  private async showScores(): Promise<void> {
+    const request = ++this.scoresRequest;
+    const boards = SCORE_BOARDS.map((id) => ({ id, scores: createBoardHighscores(id) }));
+    const lines = (id: HighscoreBoardId, entries: readonly ScoreEntry[], own: readonly ScoreEntry[], title: string): StartBoardLine[] => {
+      const seen = own.length > 0 ? new SeenRankStorage(HighscoreStorage.browserStorage(), HIGHSCORE_BOARDS[id].seenKey) : null;
+      const view = buildStartBoard(entries, own, MENU_SCORES.topCount, BOARD_ORDER[id], seen?.load() ?? null);
+      if (seen && view.seen) seen.save(view.seen);
+      if (view.overtaken) diag.note('highscore-overtaken', { board: id, from: view.overtaken.from, to: view.overtaken.to });
+      return startBoardLines(view, title, id === 'arenas', MENU_SCORES.text);
+    };
+    const titles = MENU_SCORES.titles;
+    this.scoresPanel.show(
+      boards.map(({ id, scores }) => lines(id, scores.localEntries(), [], scores.hasRemote ? titles[id].pending : titles[id].local)),
+    );
+    if (!boards.some(({ scores }) => scores.hasRemote)) return;
+    const shared = await Promise.all(boards.map(({ scores }) => scores.fetchShared()));
+    // Menu mogło już zniknąć (start gry) — wtedy nie rysujemy.
+    if (request !== this.scoresRequest || !this.sys.isActive()) return;
+    this.scoresPanel.show(
+      boards.map(({ id, scores }, i) => {
+        const remote = shared[i];
+        const local = scores.localEntries();
+        return remote ? lines(id, remote, local, titles[id].shared) : lines(id, local, [], titles[id].local);
+      }),
+    );
   }
 
   private onKey(event: KeyboardEvent): void {
