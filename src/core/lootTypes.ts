@@ -93,12 +93,16 @@ export interface ItemEffectsConfig {
   readonly fireFist: {
     readonly tickDamage: number;
     readonly tickDamagePerStack: number;
+    /** Krok 93: każda kolejna kopia dodaje tyle razy mniej niż poprzednia (0,5 = połowę). */
+    readonly stackDecay: number;
     readonly tickMs: number;
     readonly durationMs: number;
   };
   readonly vampireFang: {
     readonly heal: number;
     readonly healPerStack: number;
+    /** Krok 93: malejący przyrost kolejnych kopii, jak w Ognistej pięści. */
+    readonly stackDecay: number;
     /** Leczenie najwyżej raz na tyle ms — bez tego szybkie ciosy dają ogromną regenerację. */
     readonly cooldownMs: number;
   };

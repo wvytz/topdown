@@ -15,6 +15,17 @@ export const NO_WEAPON_EFFECTS: WeaponEffects = {
 const stacked = (stacks: number, base: number, perStack: number): number =>
   stacks > 0 ? base + (stacks - 1) * perStack : 0;
 
+/**
+ * Krok 93: jak `stacked`, ale przyrost każdej kolejnej kopii mnoży się przez `decay`
+ * (0,5: +perStack, +perStack/2, +perStack/4…). Zaokrąglone, bo leczenie i tyknięcia są w całych HP.
+ */
+const diminished = (stacks: number, base: number, perStack: number, decay: number): number => {
+  if (stacks <= 0) return 0;
+  let value = base;
+  for (let copy = 1, step = perStack; copy < stacks; copy++, step *= decay) value += step;
+  return Math.round(value);
+};
+
 /** Zlicza przedmioty z efektem i zamienia je na efekty broni. Kolejne kopie wzmacniają efekt. */
 export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEffectsConfig): WeaponEffects {
   const count = (id: ItemId): number => itemIds.filter((item) => item === id).length;
@@ -38,7 +49,7 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
   const meleeStatus: StatusApplication = {
     ...(fire > 0 && {
       burn: {
-        tickDamage: stacked(fire, config.fireFist.tickDamage, config.fireFist.tickDamagePerStack),
+        tickDamage: diminished(fire, config.fireFist.tickDamage, config.fireFist.tickDamagePerStack, config.fireFist.stackDecay),
         tickMs: config.fireFist.tickMs,
         durationMs: config.fireFist.durationMs,
       },
@@ -51,7 +62,7 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
     shotPierce: stacked(count(ItemId.Shuriken), config.shuriken.pierce, config.shuriken.piercePerStack),
     shotStatus,
     meleeStatus,
-    meleeHeal: stacked(fangs, config.vampireFang.heal, config.vampireFang.healPerStack),
+    meleeHeal: diminished(fangs, config.vampireFang.heal, config.vampireFang.healPerStack, config.vampireFang.stackDecay),
     meleeHealCooldownMs: fangs > 0 ? config.vampireFang.cooldownMs : 0,
     dashDamage: stacked(count(ItemId.StormDash), config.stormDash.damage, config.stormDash.damagePerStack),
   };
