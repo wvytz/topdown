@@ -198,6 +198,22 @@ describe('StatusEffects', () => {
     expect(status.apply({ stun: { durationMs: 1000 } }, immuneAt).stunnedMs).toBeGreaterThan(0);
   });
 
+  it('krok 93: boss dostaje połowę obrażeń podpalenia, zwykły wróg pełne', () => {
+    const burn = { tickDamage: 7, tickMs: 500, durationMs: 2000 };
+    const boss = new StatusEffects(BOSS_STATUS_RESISTANCE);
+    const enemy = new StatusEffects(ENEMY_STATUS_RESISTANCE);
+    boss.apply({ burn }, 0);
+    enemy.apply({ burn }, 0);
+    expect(enemy.takeBurnDamage(2000)).toBe(4 * 7);
+    expect(boss.takeBurnDamage(2000)).toBe(4 * Math.round(7 * BOSS_STATUS_RESISTANCE.burnMultiplier!));
+  });
+
+  it('krok 93: odporność na ogień zostawia co najmniej 1 HP na tyknięcie', () => {
+    const status = new StatusEffects({ ...BOSS_STATUS_RESISTANCE, burnMultiplier: 0.1 });
+    status.apply({ burn: { tickDamage: 3, tickMs: 500, durationMs: 500 } }, 0);
+    expect(status.takeBurnDamage(500)).toBe(1);
+  });
+
   it('zwykły wróg stoi przez pełny czas ogłuszenia', () => {
     const status = new StatusEffects(ENEMY_STATUS_RESISTANCE);
     status.apply({ stun: { durationMs: 900 } }, 0);
