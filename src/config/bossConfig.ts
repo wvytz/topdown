@@ -656,9 +656,11 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
 /**
  * Boss znosi efekty gorzej niż zwykli wrogowie: ogłuszenie trwa 40% czasu, a potem
  * przez 3 s jest na nie odporny (serią strzał nie da się go zablokować). Spowolnienie ma połowę siły.
+ * Krok 93: podpalenie też ma połowę siły — boss nie topnieje od samego ognia.
  */
 export const BOSS_STATUS_RESISTANCE: StatusResistance = {
   stunMultiplier: 0.4,
   stunImmunityMs: 3000,
   slowMultiplier: 0.5,
+  burnMultiplier: 0.5,
 };

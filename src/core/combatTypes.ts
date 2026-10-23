@@ -121,6 +121,8 @@ export interface StatusResistance {
   readonly slowMultiplier: number;
   /** Po paraliżu cel jest na niego odporny przez ten czas (krok 29: Król nie zamknie gracza serią). */
   readonly paralysisImmunityMs?: number;
+  /** Krok 93: mnożnik obrażeń tyknięcia podpalenia (domyślnie 1; boss 0,5). */
+  readonly burnMultiplier?: number;
 }
 
 /** Pojedyncze trafienie: ile obrażeń i jaki odrzut (px/s) otrzymuje cel. */
@@ -144,6 +146,8 @@ export interface WeaponEffects {
   readonly meleeHeal: number;
   /** Minimalny odstęp między leczeniami za cios (ms). */
   readonly meleeHealCooldownMs: number;
+  /** Krok 93: sufit leczenia kła — część maks. HP na sekundę (0, gdy brak kła). */
+  readonly meleeHealMaxHpPctPerSec: number;
   /** Obrażenia zadawane wrogom, przez których gracz przelatuje dashem (0 = brak). */
   readonly dashDamage: number;
 }

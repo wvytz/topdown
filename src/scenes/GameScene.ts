@@ -105,6 +105,7 @@ import { isStairsTile } from '@/dungeon/stairs';
 import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
 import { InputController } from '@/input/InputController';
+import { LarderCocoon } from '@/entities/LarderCocoon';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
@@ -113,6 +114,7 @@ import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
+import { HealBudget } from '@/systems/HealBudget';
 import { Timer } from '@/systems/Timer';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
@@ -244,6 +246,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dashHitsFor = -1;
   /** Wampirzy kieł: odstęp między leczeniami za cios. */
   private healCooldown = new Timer();
+  /** Krok 93: sufit leczenia kła na sekundę (procent maks. HP). */
+  private healBudget = new HealBudget();
   /** Promień Czarodziejki (krok 37) — rysowany co klatkę, gdy świeci. */
   private beamGfx: Phaser.GameObjects.Graphics | null = null;
   private readonly highscores = new SharedHighscores(
@@ -328,6 +332,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.dashHits = new Set();
     this.dashHitsFor = -1;
     this.healCooldown = new Timer();
+    this.healBudget = new HealBudget();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
@@ -574,9 +579,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.playerShots.update(
       time,
       (shot) => {
+        // Krok 93: kieł leczy tylko za trafienie wroga lub bossa, nie kokonu (też spiżarni), purchawki czy urny.
+        const creature = this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot);
         const target =
-          this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot) ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? null;
-        if (target && shot.vampiric) this.tryVampireHeal(time);
+          creature ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? null;
+        if (creature && !(creature instanceof LarderCocoon) && shot.vampiric) this.tryVampireHeal(time);
         if (target && shot.magic) this.orbSplash(shot.position, shot.damage, target, time);
         return target;
       },
@@ -796,9 +803,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Wampirzy kieł: leczenie za trafienie (raz na cios lub kulę), najwyżej raz na meleeHealCooldownMs. */
   private tryVampireHeal(now: number): void {
-    const { meleeHeal: heal, meleeHealCooldownMs } = this.player.effects;
-    if (heal <= 0 || this.player.health.isFull || this.healCooldown.isActive(now)) return;
+    const { meleeHeal, meleeHealCooldownMs, meleeHealMaxHpPctPerSec } = this.player.effects;
+    if (meleeHeal <= 0 || this.player.health.isFull || this.healCooldown.isActive(now)) return;
     this.healCooldown.start(now, meleeHealCooldownMs);
+    const heal = this.healBudget.take(meleeHeal, now, this.player.health.max * meleeHealMaxHpPctPerSec);
+    if (heal <= 0) return;
     this.player.heal(heal);
     this.effects.floatingText(this.player.x, this.player.y - 14, `+${heal}`, '#ff6b8a');
   }
@@ -821,14 +830,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
     const arc = Phaser.Math.DegToRad(combat.meleeArcDeg);
     this.effects.slash(swing.origin.x, swing.origin.y, swing.angle, combat.meleeRange, arc);
-    const hits =
-      this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing) + (this.cocoons?.resolvePlayerMelee(swing) ?? 0) +
-      (this.puffballs?.resolvePlayerMelee(swing) ?? 0);
+    const creatureHits = this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing);
+    this.cocoons?.resolvePlayerMelee(swing);
+    this.puffballs?.resolvePlayerMelee(swing);
     this.secretRoom?.resolvePlayerMelee(swing);
     this.breakables?.resolvePlayerMelee(swing);
 
-    // Wampirzy kieł: leczenie za cios, który trafił (raz na cios, niezależnie od liczby celów).
-    if (hits > 0) this.tryVampireHeal(now);
+    // Wampirzy kieł: leczenie za cios, który trafił wroga lub bossa (raz na cios, niezależnie od liczby celów).
+    // Krok 93: kokony, purchawki i urny już nie leczą.
+    if (creatureHits > 0) this.tryVampireHeal(now);
   }
 
   /** Burzowy pęd: w trakcie dasha gracz rani dotkniętych wrogów (każdego raz na dash). */
