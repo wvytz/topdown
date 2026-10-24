@@ -27,6 +27,18 @@ export const PAUSE_CONFIG = {
     'Pad: lewa gałka — ruch · prawa — cel · RT / LT — ataki · A — dash · X — E',
     'Pad w pauzie: ↑ ↓ + A — zapis · Y — menu · Start / B — wznów',
   ],
+  /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wiersze slotów i napis menu się stuka. */
+  mobile: {
+    controls: [
+      'Lewa część ekranu — gałka ruchu',
+      'Prawa część — atak: przeciągnij, by celować; stuknij — celuje sam',
+      'STRZAŁ / PROMIEŃ / SALWA — przytrzymaj i przeciągnij w stronę celu',
+      'ZRYW — dash · E — kapliczka, schody (pojawia się na miejscu)',
+    ],
+    saveTitle: 'ZAPIS GRY — stuknij slot (stan z wejścia na piętro)',
+    quitHint: 'MENU GŁÓWNE — stuknij (autozapis zostaje: Kontynuuj)',
+    resumeHint: 'Stuknij gdziekolwiek — wznów',
+  },
 } as const;
 
 /** Klucz zegara pauzy w rejestrze gry (Phaser `game.registry`). */

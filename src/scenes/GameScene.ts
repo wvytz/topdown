@@ -64,6 +64,7 @@ import {
   animationKey,
 } from '@/config/spriteConfig';
 import { sorceryOf } from '@/core/heroTypes';
+import type { HeroKit } from '@/core/heroTypes';
 import { arrowSpec, volleyDirections } from '@/systems/Archery';
 import { facingDirection } from '@/systems/Facing';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
@@ -103,10 +104,13 @@ import { planEncounters } from '@/dungeon/EncounterPlanner';
 import { isStairsTile } from '@/dungeon/stairs';
 import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
-import { InputController } from '@/input/InputController';
+import type { PlayerInput } from '@/input/playerInput';
+import { createPlayerInput } from '@/input/playerInput';
 import { bindPadMenu } from '@/input/PadMenuInput';
 import { MenuCommand } from '@/systems/gamepadInput';
 import { GAMEPAD_CONFIG } from '@/config/gamepadConfig';
+import { AIM_ASSIST_MIN_VISIBILITY } from '@/config/touchConfig';
+import type { AimTarget } from '@/systems/touchAim';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
@@ -144,7 +148,7 @@ import type { TorchSpot } from '@/dungeon/LightPlanner';
 import { CombatDecals } from '@/effects/CombatDecals';
 import { darknessModifierProfile } from '@/systems/lighting';
 import { Torches } from '@/world/Torches';
-import { EnemyVisibility } from '@/effects/EnemyVisibility';
+import { EnemyVisibility, LIGHT_VISIBILITY_KEY } from '@/effects/EnemyVisibility';
 import {
   NO_FLOOR_EFFECTS,
   applyFloorToEnemyLoot,
@@ -192,7 +196,7 @@ const POISON_TEXT_COLOR = '#8cff6a';
 
 export class GameScene extends Phaser.Scene implements HudSource {
   private player!: Player;
-  private inputController!: InputController;
+  private inputController!: PlayerInput;
   private dungeon!: DungeonFloor;
   private dungeonView!: DungeonView;
   private enemies!: EnemyManager;
@@ -239,7 +243,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
    * Pad na ekranie śmierci (krok 95): co zrobi A (potwierdzenie), B (wstecz) i Y (dodatkowa), i od kiedy.
    * null — ekran nie czeka na wybór.
    */
-  private deathPad: { readonly readyAt: number; readonly on: (command: MenuCommand) => void } | null = null;
+  private deathPad: {
+    readonly readyAt: number;
+    /** Na co czeka ekran: imię (pierwsza śmierć) albo wybór, co dalej. */
+    readonly kind: 'name' | 'restart';
+    readonly on: (command: MenuCommand) => void;
+    /** Tylko przy imieniu: zapis podanego imienia (dotyk — okno przeglądarki); null = bez imienia. */
+    readonly submitName?: (name: string | null) => void;
+  } | null = null;
   /** Kapliczka piętra; null w arenach bossów (krok 90). */
   private shrine: ShrineSite | null = null;
   private arenaGates!: ArenaGates;
@@ -385,7 +396,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupSecretRoom();
     this.setupAmbush();
     this.createStairsPrompt();
-    this.inputController = new InputController(this);
+    this.inputController = createPlayerInput(this);
     this.setupCamera();
     this.setupDebugKeys();
     this.setupPause();
@@ -514,7 +525,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       }
       return actions;
     }
-    const actions = this.inputController.getActions({ x: this.player.x, y: this.player.y });
+    const actions = this.inputController.getActions({ origin: { x: this.player.x, y: this.player.y }, targets: () => this.aimTargets() });
     diag.recordInput(actions, time);
     return actions;
   }
@@ -592,6 +603,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
+      canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false)),
       isPlayerDead: ready && this.player.isDead,
       minimap: ready ? this.minimapData() : null,
       boss: ready ? this.bossFight.getStatus() : null,
@@ -1319,16 +1331,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
     this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag() };
-    const finish = (keepName: boolean): void => {
+    const finish = (raw: string | null): void => {
       this.input.keyboard?.off('keydown', onKey);
       this.deathPad = null;
-      const name = keepName ? sanitizePlayerName(typed, maxLength) : '';
+      const name = raw ? sanitizePlayerName(raw, maxLength) : '';
       if (name) this.playerName.save(name);
       this.recordDeath(name ? { ...base, name } : base);
     };
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Enter' || event.key === 'Escape') {
-        finish(event.key === 'Enter');
+        finish(event.key === 'Enter' ? typed : null);
         return;
       }
       if (event.key === 'Backspace') typed = [...typed].slice(0, -1).join('');
@@ -1339,9 +1351,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pad nie wpisze imienia: A zapisuje to, co wpisano z klawiatury (puste = bez imienia), B pomija.
     this.deathPad = {
       readyAt: this.time.now + GAMEPAD_CONFIG.deathInputDelayMs,
+      kind: 'name',
       on: (command) => {
-        if (command === MenuCommand.Confirm || command === MenuCommand.Back) finish(command === MenuCommand.Confirm);
+        if (command === MenuCommand.Confirm || command === MenuCommand.Back) finish(command === MenuCommand.Confirm ? typed : null);
       },
+      submitName: finish,
     };
   }
 
@@ -1402,7 +1416,42 @@ export class GameScene extends Phaser.Scene implements HudSource {
       [MenuCommand.Alt]: changeHero,
       [MenuCommand.Back]: toMenu,
     };
-    this.deathPad = { readyAt: this.time.now + GAMEPAD_CONFIG.deathInputDelayMs, on: (command) => padActions[command]?.() };
+    this.deathPad = { readyAt: this.time.now + GAMEPAD_CONFIG.deathInputDelayMs, kind: 'restart', on: (command) => padActions[command]?.() };
+  }
+
+  /** Na co czeka ekran śmierci (krok 96 — przyciski dotykowe); null, gdy bohater żyje albo wybór już padł. */
+  get deathChoice(): 'name' | 'restart' | null {
+    return this.deathPad?.kind ?? null;
+  }
+
+  /** Wybór na ekranie śmierci jak z klawiatury lub pada: Confirm — nowa wspinaczka, Alt — bohater, Back — menu. */
+  deathCommand(command: MenuCommand): void {
+    this.deathPad?.on(command);
+  }
+
+  /** Imię na tablicę z dotyku (okno przeglądarki); null = bez imienia. */
+  submitPlayerName(name: string | null): void {
+    this.deathPad?.submitName?.(name);
+  }
+
+  /** Broń bohatera — przycisk strzału na dotyku nazywa się STRZAŁ, PROMIEŃ albo SALWA (krok 96). */
+  get heroKit(): HeroKit['kind'] {
+    return this.hero.kit.kind;
+  }
+
+  /** Pauza z przycisku na ekranie (krok 96, dotyk) — jak Esc. */
+  requestPause(): void {
+    this.pauseGame('manual');
+  }
+
+  /** Cele automatycznego celowania na dotyku: żywi wrogowie widoczni w świetle (Mrok i mgła ich nie zdradzają) i boss z pomocnikami. */
+  private *aimTargets(): Iterable<AimTarget> {
+    for (const enemy of this.enemies.living) {
+      if (!enemy.active || enemy.isDead) continue;
+      const visibility = (enemy.getData(LIGHT_VISIBILITY_KEY) as number | undefined) ?? 1;
+      if (visibility >= AIM_ASSIST_MIN_VISIBILITY) yield { x: enemy.x, y: enemy.y, radius: enemy.radius };
+    }
+    yield* this.bossFight.aimTargets;
   }
 
   /**

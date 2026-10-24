@@ -4,6 +4,7 @@ import type { PlayerActions } from '@/entities/Player';
 import { GAMEPAD_CONFIG } from '@/config/gamepadConfig';
 import { PadGameplayReader, combineMovement, padAimDirection } from '@/systems/gamepadInput';
 import { readPadSnapshot } from '@/input/padSnapshot';
+import type { PlayerInput, PlayerInputContext } from '@/input/playerInput';
 
 interface MovementKeys {
   up: Phaser.Input.Keyboard.Key;
@@ -19,7 +20,15 @@ interface MovementKeys {
  * Przyciski i ruch z obu źródeł się sumują. Celowanie bierze ostatnio używane urządzenie: ruch lub klik myszy
  * oddaje cel myszy, użycie pada — padowi.
  */
-export class InputController {
+export interface InputControllerOptions {
+  /**
+   * Mysz celuje i atakuje (domyślnie tak). Wersja mobilna ją wyłącza: przeglądarka telefonu udaje po dotyku
+   * kliknięcia myszy, a dotyk obsługuje osobno (`src/mobile/`).
+   */
+  readonly mouse?: boolean;
+}
+
+export class InputController implements PlayerInput {
   private readonly wasd: MovementKeys;
   private readonly arrows: MovementKeys;
   private readonly dashKey: Phaser.Input.Keyboard.Key;
@@ -32,8 +41,13 @@ export class InputController {
   /** Ostatni kierunek celowania z pada — zostaje, gdy bohater stoi, a prawa gałka jest puszczona. */
   private padAim: Vector2 = { x: 1, y: 0 };
   private lastPointer: Vector2 | null = null;
+  private readonly mouse: boolean;
 
-  constructor(private readonly scene: Phaser.Scene) {
+  constructor(
+    private readonly scene: Phaser.Scene,
+    options: InputControllerOptions = {},
+  ) {
+    this.mouse = options.mouse ?? true;
     const keyboard = scene.input.keyboard;
     if (!keyboard) throw new Error('InputController: klawiatura niedostępna w tej scenie.');
 
@@ -55,6 +69,7 @@ export class InputController {
 
     // PPM = strzał; wyłączamy menu kontekstowe przeglądarki.
     scene.input.mouse?.disableContextMenu();
+    if (!this.mouse) return;
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
       if (pointer.rightButtonDown()) this.shootClickQueued = true;
     });
@@ -64,16 +79,16 @@ export class InputController {
    * Wywoływać raz na klatkę — „zjada” jednorazowe wciśnięcia (dash, klik PPM).
    * `origin` to pozycja bohatera: pad podaje kierunek, a akcje — punkt celowania w świecie.
    */
-  getActions(origin: Vector2): PlayerActions {
+  getActions({ origin }: PlayerInputContext): PlayerActions {
     const pointer = this.scene.input.activePointer;
     // Przeliczamy co klatkę: kamera się przesuwa, nawet gdy mysz stoi w miejscu.
     const mouseAim = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
-    const pointerMoved = this.lastPointer !== null && (this.lastPointer.x !== pointer.x || this.lastPointer.y !== pointer.y);
+    const pointerMoved = this.mouse && this.lastPointer !== null && (this.lastPointer.x !== pointer.x || this.lastPointer.y !== pointer.y);
     this.lastPointer = { x: pointer.x, y: pointer.y };
 
-    const mouseShoot = pointer.rightButtonDown() || this.shootClickQueued;
+    const mouseShoot = this.mouse && (pointer.rightButtonDown() || this.shootClickQueued);
     this.shootClickQueued = false;
-    const mouseAttack = pointer.leftButtonDown();
+    const mouseAttack = this.mouse && pointer.leftButtonDown();
     const keyboardMove = this.getMovementIntent();
 
     const pad = this.pad.read(readPadSnapshot());
@@ -81,8 +96,8 @@ export class InputController {
     // Każde użycie pada oddaje mu celowanie — także gra samą lewą gałką (cel idzie wtedy za ruchem).
     if (pad && (pad.aim || pad.move.x !== 0 || pad.move.y !== 0 || pad.attack || pad.shoot || pad.dash)) this.padAiming = true;
     let aim: Vector2 = { x: mouseAim.x, y: mouseAim.y };
-    if (pad && this.padAiming) {
-      this.padAim = padAimDirection(pad.aim, pad.move, this.padAim);
+    if (!this.mouse || (pad && this.padAiming)) {
+      if (pad) this.padAim = padAimDirection(pad.aim, pad.move, this.padAim);
       const distance = GAMEPAD_CONFIG.aimDistancePx;
       aim = { x: origin.x + this.padAim.x * distance, y: origin.y + this.padAim.y * distance };
     }

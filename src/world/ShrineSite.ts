@@ -28,6 +28,7 @@ export interface ShrineSiteDeps {
 /** Kapliczka na piętrze: podpowiedź w pobliżu i ofiara złota pod klawiszem E. */
 export class ShrineSite {
   private readonly shrine: Shrine | null;
+  private offerable = false;
 
   constructor(private readonly deps: ShrineSiteDeps) {
     const tile = planShrineLocation(deps.floor, deps.rng);
@@ -39,7 +40,13 @@ export class ShrineSite {
     this.shrine = new Shrine(deps.scene, position.x, position.y);
   }
 
+  /** Bohater stoi przy kapliczce i stać go na ofiarę — E zadziała (krok 96, przycisk E na dotyku). */
+  get canOffer(): boolean {
+    return this.offerable;
+  }
+
   update(interactPressed: boolean): void {
+    this.offerable = false;
     const shrine = this.shrine;
     if (!shrine || shrine.isUsed) return;
     const { player, run, floorNumber } = this.deps;
@@ -51,6 +58,7 @@ export class ShrineSite {
 
     const cost = shrineCost(floorNumber, this.deps.config);
     const affordable = run.gold >= cost;
+    this.offerable = affordable;
     shrine.showPrompt(
       affordable ? `[E] Ofiara: ${cost} złota\nlosowy bonus` : `Kapliczka: potrzeba ${cost} złota`,
       affordable ? '#ffe08a' : '#ff8080',

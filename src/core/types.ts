@@ -89,6 +89,8 @@ export interface HudData {
   readonly stairsUnlocked: boolean;
   /** Gracz stoi na otwartych schodach — wejście wyżej klawiszem E (krok 47). */
   readonly onStairs: boolean;
+  /** E (interakcja) coś teraz zrobi: otwarte schody pod bohaterem albo kapliczka, na którą go stać (krok 96 — przycisk E na dotyku). */
+  readonly canInteract: boolean;
   readonly isPlayerDead: boolean;
   /** Minimapa bieżącego piętra (krok 68); null, zanim piętro powstanie. */
   readonly minimap: MinimapHudData | null;

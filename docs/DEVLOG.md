@@ -4183,6 +4183,21 @@ Co powstało:
 - **Następny krok (plan):** wersja mobilna jako osobna strona (`mobile.html`, `src/mobile/`) z dotykiem przeniesionym z gałęzi testowej na te same gniazda; łucznik na dotyku, przycisk pauzy; osobna tablica wyników dla telefonu (wspomaganie celowania).
 - **Czeka na ocenę właściciela:** układ przycisków pada, martwe strefy, cel za ruchem bez prawej gałki, 1,5 s na ekranie śmierci. Podpowiedzi na ekranach (HUD, śmierć, wybór bohatera) są nadal klawiaturowe — do decyzji, czy zmieniać je zależnie od urządzenia.
 
+## Krok 96 — Wersja mobilna jako osobna strona `#sterowanie` `#decyzja`
+
+**Decyzja właściciela (24.10.2026):** „Test [pada] odkładam na później, wdrażać wersję mobilną”. Dotyk z gałęzi testowej `claude/bold-tesla-xr76xu` przeniesiony na aktualny kod jako osobna gra w tym samym repozytorium, bez scalania starej gałęzi. `#decyzja`
+
+Co powstało:
+- **Dwie strony, jeden kod:** `index.html` → `src/main.ts` (PC), `mobile.html` → `src/mobile/main.mobile.ts` (telefon). Obie startują przez `src/bootstrap.ts` (`startGame`: sceny, zegar pauzy, diagnostyka, strażnik wejścia, pad, skala). Build Vite robi obie strony; gra PC nie zawiera kodu mobilnego (osobny plik `mobile-*.js`). `npm run dev:phone` otwiera `/mobile.html` z dostępem z sieci lokalnej.
+- **Gniazda we wspólnym kodzie (niewidoczne na PC):** `input/playerInput.ts` (źródło sterowania; domyślnie `InputController`, telefon podstawia `TouchInput`), `core/platform.ts` (`pc`/`mobile`), w `GameScene`: cele automatycznego celowania (widoczni wrogowie, boss, pies, pajączki), `requestPause()`, `deathChoice` / `deathCommand()` / `submitPlayerName()` dla przycisków śmierci, `heroKit`; `HudData.canInteract` (schody pod bohaterem albo kapliczka, na którą go stać; `ShrineSite.canOffer`), `BossFight.aimTargets`. Napis „M — menu główne” na pauzie da się kliknąć także na PC. `InputController` dostał opcję `mouse: false` (telefon udaje kliknięcia myszą po dotyku).
+- **Dotyk (`src/mobile/`, z kroków „49–49d” gałęzi testowej):** pływające gałki — lewa część ekranu ruch, prawa atak (przeciągnięcie celuje, stuknięcie celuje samo w najbliższego widocznego wroga); przycisk STRZAŁ / PROMIEŃ / **SALWA** (łucznik) działa jak gałka: przytrzymaj i przeciągnij w stronę celu, przytrzymanie bez przeciągania celuje samo; ZRYW; E tylko tam, gdzie coś zrobi; **nowy przycisk pauzy** (II pod minimapą, działa po puszczeniu palca). Łucznik: przeciągnięta gałka ataku napina łuk, puszczenie strzela. Dotyk działa też w czarnych pasach obok płótna. Ekran śmierci: przyciski NOWA WSPINACZKA / ZMIEŃ BOHATERA / MENU, a przy pierwszej śmierci PODAJ IMIĘ (okno przeglądarki) / BEZ IMIENIA; napisy klawiszy na telefonie ukryte. Menu, wybór bohatera, nagroda i pauza działają stukaniem (Phaser). Pauza ma opis dotyku zamiast klawiszy.
+- **Skala ułamkowa tylko w wersji mobilnej** (`pixelPerfectScale({ fractional })`, wyjątek dopisany do STYLEGUIDE §2), wysokość z `visualViewport`, centrowanie płótna przez CSS, przeliczenie po obrocie i pełnym ekranie; pierwszy dotyk prosi o pełny ekran w poziomie; w pionie plansza „Obróć telefon poziomo”.
+- **Osobna tablica wyników telefonu:** tylko lokalna (klucze `….mobile` w `localStorage`, bez workera), bo stuknięcie celujące samo ułatwia grę. Wspólna tablica telefonów — do decyzji.
+- **Czysta logika:** `systems/touchAim.ts` (`stickState`, `stickToMovement`, `assistAimDirection`, `touchAimDirection`, `autoAimDirection`), liczby w `config/touchConfig.ts` (`TOUCH_AUTO_AIM_RANGE: 0` wyłącza celowanie samo).
+- **Testy:** `tests/systems/touchAim.test.ts` (gałki, wspomaganie w stożku, kolejność gałek, celowanie samo, zasięg 0), skala ułamkowa w `pixelScale.test.ts`, test architektury: żaden plik poza `src/mobile/` nie importuje `@/mobile/`. Build zielony (1664 testy).
+- **Przeglądarka (Playwright, emulacja Pixel 7 w poziomie):** płótno 640×360 na pełną wysokość ekranu 863×360 (pasy po bokach); gałka ruchu w lewym pasie rusza bohatera; gałka ataku obraca cel o 180°; SALWA przeciągnięta w dół strzela w dół i zużywa ładunki; przycisk pauzy → pauza, stuknięcie → wznowienie; menu → NOWA WSPINACZKA → karta bohatera → gra stukaniem; śmierć → PODAJ IMIĘ (okno) → wynik w `tower-crawler.highscores.v1.mobile`; ZMIEŃ BOHATERA → wybór bohatera. Wersja PC: test z wirtualnym padem i smoke bez zmian.
+- **Czeka na ocenę właściciela (na prawdziwym telefonie):** układ i wielkość przycisków, celowanie samo (zasięg 280 px), opóźnienie 150 ms strzału, pauza pod minimapą, tablica tylko lokalna. Nie wdrożone na Pages.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -4284,7 +4299,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`); od kroku 95 pad działa w wersji PC (drugi gracz na drugim padzie — do zrobienia).
-- **Wersja mobilna (krok 95, plan):** osobna strona `mobile.html` i `src/mobile/` na wspólnej logice; dotyk z gałęzi `claude/bold-tesla-xr76xu` do przeniesienia; osobna tablica wyników. `#sterowanie`
+- **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).
 
