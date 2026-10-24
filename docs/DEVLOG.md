@@ -4198,6 +4198,15 @@ Co powstało:
 - **Przeglądarka (Playwright, emulacja Pixel 7 w poziomie):** płótno 640×360 na pełną wysokość ekranu 863×360 (pasy po bokach); gałka ruchu w lewym pasie rusza bohatera; gałka ataku obraca cel o 180°; SALWA przeciągnięta w dół strzela w dół i zużywa ładunki; przycisk pauzy → pauza, stuknięcie → wznowienie; menu → NOWA WSPINACZKA → karta bohatera → gra stukaniem; śmierć → PODAJ IMIĘ (okno) → wynik w `tower-crawler.highscores.v1.mobile`; ZMIEŃ BOHATERA → wybór bohatera. Wersja PC: test z wirtualnym padem i smoke bez zmian.
 - **Czeka na ocenę właściciela (na prawdziwym telefonie):** układ i wielkość przycisków, celowanie samo (zasięg 280 px), opóźnienie 150 ms strzału, pauza pod minimapą, tablica tylko lokalna. Nie wdrożone na Pages.
 
+### Krok 96a — Nowy układ przycisków na telefonie `#ocena` `#sterowanie`
+
+Ocena właściciela po teście na telefonie: sterowanie „lekko kalekie”, nie widać ataku. Prośba: wielkie kółko ataku podstawowego, wyżej i bardziej w prawo atak z PPM, po lewej od kółka dash. „Gra lekko przycina” — do sprawdzenia później. `#ocena`
+- **Prawa ręka:** duże kółko ataku LPM (ATAK / KULA / ŁUK) w prawym dolnym rogu, nad nim i w prawo przycisk PPM (STRZAŁ / PROMIEŃ / SALWA), po lewej od kółka ZRYW, nad zrywem E (tylko gdy coś zrobi). Pauza bez zmian. Liczby w `TOUCH_BUTTONS` (`config/touchConfig.ts`).
+- **Oba przyciski ataku działają tak samo:** przeciągnięcie w stronę celu celuje ręcznie i atakuje (łucznik: napina łuk, puszczenie strzela), przytrzymanie bez przeciągania po 150 ms atakuje z celowaniem samym, stuknięcie to jeden atak w najbliższego wroga. Niewidoczna strefa ataku na prawej połowie ekranu zniknęła; ruch nadal pływającą gałką po lewej.
+- Przy nakładających się strefach dotyku wygrywa przycisk najbliżej kciuka. Opis sterowania na pauzie zaktualizowany.
+- **Przeglądarka (emulacja Pixel 7):** kółko przeciągnięte w lewo obraca cel o 180° i tnie; PPM przeciągnięty w górę strzela w górę; ZRYW robi dash; stuknięcie kółka bez wroga w zasięgu atakuje w bieżącym kierunku. Build zielony.
+- **Do sprawdzenia:** przycinanie na telefonie (emulacja bez karty graficznej nie da miarodajnego pomiaru).
+
 ---
 
 ## Znane ograniczenia i backlog

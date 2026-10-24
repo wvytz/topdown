@@ -6,7 +6,7 @@ export interface TouchTaps {
   readonly interact: boolean;
   /** Stuknięcie przycisku strzału — jeden strzał. */
   readonly shot: boolean;
-  /** Stuknięcie strefy ataku — jeden cios (u Czarodziejki kula, u łucznika krótki strzał). */
+  /** Stuknięcie przycisku ataku — jeden cios (u Czarodziejki kula, u łucznika krótki strzał). */
   readonly attack: boolean;
 }
 
@@ -20,8 +20,10 @@ export class TouchState {
   /** Gracz dotknął ekranu — od tej chwili widać gałki i przyciski. */
   engaged = false;
   move: MovementIntent = { x: 0, y: 0 };
-  /** Kierunek gałki ataku (wektor jednostkowy); null, gdy kciuk nie celuje. */
+  /** Kierunek przeciągniętego przycisku ataku (wektor jednostkowy); null — kciuk nie celuje (atak celuje sam). */
   aim: Vector2 | null = null;
+  /** Przycisk ataku (duże kółko) przytrzymany — ciosy, kule albo naciąganie łuku. */
+  attack = false;
   /** Przycisk strzału przytrzymany — salwa, promień Czarodziejki albo salwa łucznika. */
   shoot = false;
   /** Kierunek przeciągnięcia przycisku strzału (gałka strzału); null — strzał celuje sam. */
@@ -41,7 +43,7 @@ export class TouchState {
     this.queued = { ...this.queued, shot: true };
   }
 
-  /** Stuknięcie strefy ataku: jeden cios w najbliższego wroga. */
+  /** Stuknięcie przycisku ataku: jeden cios w najbliższego wroga. */
   queueAttack(): void {
     this.queued = { ...this.queued, attack: true };
   }
@@ -57,6 +59,7 @@ export class TouchState {
   release(): void {
     this.move = { x: 0, y: 0 };
     this.aim = null;
+    this.attack = false;
     this.shoot = false;
     this.shotAim = null;
     this.queued = NO_TAPS;

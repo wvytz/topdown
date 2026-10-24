@@ -16,8 +16,8 @@ import { touchState } from '@/mobile/TouchState';
  * Sterowanie wersji mobilnej (krok 96): dotyk (gałki i przyciski z TouchScene), a do tego klawiatura i pad
  * (np. tablet z padem) — bez myszy, bo przeglądarka telefonu udaje kliknięcia myszą po każdym dotyku.
  *
- * Celowanie jak w Brawl Stars: przeciągnięcie gałki ataku lub przycisku strzału celuje ręcznie (z lekkim
- * dociąganiem do wroga), stuknięcie celuje samo w najbliższego widocznego wroga.
+ * Celowanie jak w Brawl Stars: przeciągnięcie przycisku ataku (duże kółko) albo przycisku PPM celuje ręcznie
+ * (z lekkim dociąganiem do wroga), stuknięcie i przytrzymanie bez przeciągania celują same w najbliższego wroga.
  */
 export class TouchInput implements PlayerInput {
   private readonly base: InputController;
@@ -40,8 +40,9 @@ export class TouchInput implements PlayerInput {
     const touchMove = touchState.move;
     const move = touchMove.x !== 0 || touchMove.y !== 0 ? touchMove : base.move;
 
-    // Stuknięcie albo przytrzymanie przycisku strzału bez przeciągania: celuje sam.
-    const autoAim = taps.attack || taps.shot || (touchState.shoot && touchState.shotAim === null);
+    // Stuknięcie albo przytrzymanie przycisku ataku bez przeciągania: celuje sam.
+    const autoAim =
+      taps.attack || taps.shot || (touchState.attack && touchState.aim === null) || (touchState.shoot && touchState.shotAim === null);
     const auto = autoAim ? autoAimDirection(origin, context.targets(), TOUCH_AUTO_AIM_RANGE) : null;
     if (auto) {
       this.aim = auto;
@@ -58,7 +59,7 @@ export class TouchInput implements PlayerInput {
     return {
       move,
       aim: { x: origin.x + this.aim.x * TOUCH_AIM_POINT_DISTANCE, y: origin.y + this.aim.y * TOUCH_AIM_POINT_DISTANCE },
-      attack: base.attack || touchState.aim !== null || taps.attack,
+      attack: base.attack || touchState.attack || taps.attack,
       dash: base.dash || taps.dash,
       shoot: base.shoot || touchState.shoot || taps.shot,
       interact: base.interact || taps.interact,
