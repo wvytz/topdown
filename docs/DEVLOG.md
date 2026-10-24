@@ -4135,6 +4135,13 @@ Co powstało:
 - **Przeglądarka (Playwright, Chromium, worker podstawiony):** intro → menu; najpierw „ŁĄCZENIE…” z wynikami lokalnymi, potem wspólna lista: Zbyszek / Ala / Ola, „Ty: 4. Wicio”, „▼ ktoś cię wyprzedził: 2. → 4.”; areny: Wicio na 1. miejscu na złoto. Po przeładowaniu ostrzeżenie znika (zapamiętane 4. miejsce). Smoke (`--floors 1 --seeds 1`, trzech bohaterów) OK.
 - **Czeka na ocenę właściciela:** położenie panelu (zasłania wieżę), liczba wpisów (3), ostrzeżenie pokazywane raz.
 
+### Krok 93a — Wyniki bez panelu `#ocena` `#ekran-startowy`
+
+Ocena właściciela: „nie pasuje mi ten widok” — usunąć obramowanie, wyniki przezroczyste, bez dopisku „wszyscy gracze” w tytule. `#ocena`
+- Środek menu bez tła i ramki: same wiersze tekstu z ciemnym cieniem (`MENU_PALETTE.textShadow`, `MENU_LAYOUT.scores.shadowBlur`), wieża widoczna w całości.
+- Nagłówki listy wspólnej to po prostu „WSPINACZKA” i „ARENY BOSSÓW”; „· ŁĄCZENIE…” zostaje na czas pobierania. Ekran śmierci bez zmian.
+- Build zielony (1409 testów); zrzut z Playwrighta: tekst czytelny na tle wieży.
+
 ---
 
 ## Krok 93 — Balans Wampirzego kła i Ognistej pięści `#decyzja` `#ocena` `#balans`

@@ -10,14 +10,14 @@ const TONE_COLOR: Readonly<Record<StartBoardTone, string>> = {
   warn: P.warn,
 };
 
-/** Środkowy panel menu (krok 93): sekcje tablic wyników, każdy wiersz w kolorze swojego tonu. */
+/**
+ * Środek menu (krok 93): sekcje tablic wyników, każdy wiersz w kolorze swojego tonu.
+ * Bez tła i ramki (krok 93a); czytelność na tle wieży daje cień tekstu.
+ */
 export class StartScoresPanel {
   private texts: Phaser.GameObjects.Text[] = [];
 
-  constructor(private readonly scene: Phaser.Scene) {
-    const { x, y, width, height, panelAlpha } = MENU_LAYOUT.scores;
-    scene.add.rectangle(x, y, width, height, P.panel, panelAlpha).setOrigin(0).setStrokeStyle(MENU_LAYOUT.borderWidth, P.border);
-  }
+  constructor(private readonly scene: Phaser.Scene) {}
 
   /** Rysuje sekcje od góry panelu; poprzednie wiersze znikają. */
   show(sections: readonly (readonly StartBoardLine[])[]): void {
@@ -32,6 +32,7 @@ export class StartScoresPanel {
           fontSize: `${L.fontSize}px`,
           color: TONE_COLOR[line.tone],
         });
+        text.setShadow(1, 1, P.textShadow, L.shadowBlur, false, true);
         if (line.tone === 'title') text.setLetterSpacing(1);
         // Za długi wiersz (długie imię i wynik) zwężamy, zamiast wychodzić poza panel.
         const room = L.width - 2 * L.padX;
