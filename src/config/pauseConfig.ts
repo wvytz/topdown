@@ -31,8 +31,8 @@ export const PAUSE_CONFIG = {
   mobile: {
     controls: [
       'Lewa część ekranu — gałka ruchu',
-      'Prawa część — atak: przeciągnij, by celować; stuknij — celuje sam',
-      'STRZAŁ / PROMIEŃ / SALWA — przytrzymaj i przeciągnij w stronę celu',
+      'Duże kółko — atak: przeciągnij w stronę celu; stuknij lub przytrzymaj — celuje sam',
+      'STRZAŁ / PROMIEŃ / SALWA (nad kółkiem) — tak samo',
       'ZRYW — dash · E — kapliczka, schody (pojawia się na miejscu)',
     ],
     saveTitle: 'ZAPIS GRY — stuknij slot (stan z wejścia na piętro)',

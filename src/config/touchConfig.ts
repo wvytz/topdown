@@ -20,25 +20,26 @@ export const AIM_ASSIST_MIN_VISIBILITY = 0.5;
 /** Odległość punktu celowania od bohatera, gdy celowanie to sam kierunek (px świata). */
 export const TOUCH_AIM_POINT_DISTANCE = 64;
 
-/** Gałki: pojawiają się tam, gdzie kciuk dotknął ekranu. */
+/** Gałka ruchu: pojawia się tam, gdzie lewy kciuk dotknął ekranu. Przyciski ataku też działają jak gałki. */
 export const TOUCH_STICK = {
   /** Promień gałki: wychylenie na brzeg = pełna siła. */
   radius: 56,
-  /** Martwa strefa (ułamek promienia): drobny ruch kciuka nie rusza postaci ani nie atakuje. */
+  /** Martwa strefa (ułamek promienia): drobny ruch kciuka nie rusza postaci ani nie zmienia celu. */
   deadzone: 0.25,
-  /** Lewa część ekranu (ułamek szerokości) to strefa gałki ruchu; reszta — gałki ataku. */
+  /** Lewa część ekranu (ułamek szerokości) to strefa gałki ruchu. */
   moveZoneWidth: 0.45,
 } as const;
 
 /**
- * Przycisk strzału jako gałka: strzał czeka, aż kciuk zjedzie z przycisku w stronę celu
- * albo przytrzyma go tyle ms (wtedy celuje sam) — pierwszy pocisk nie leci w starą stronę.
+ * Przyciski ataku działają jak gałki (krok 96a): przeciągnięcie celuje ręcznie i atakuje, przytrzymanie bez
+ * przeciągania po tylu ms atakuje z celowaniem samym, a krótkie stuknięcie to jeden atak w najbliższego wroga.
+ * Dzięki temu pierwszy cios nie leci w starą stronę, zanim kciuk zdąży przesunąć się w bok.
  */
 export const TOUCH_SHOT_HOLD_MS = 150;
 
 /**
- * Jak w Brawl Stars: stuknięcie strefy ataku albo przycisku strzału oraz przytrzymanie przycisku strzału
- * bez przeciągania celują same w najbliższego widocznego wroga w tym zasięgu (px świata). 0 wyłącza.
+ * Jak w Brawl Stars: stuknięcie i przytrzymanie przycisku ataku bez przeciągania celują same
+ * w najbliższego widocznego wroga w tym zasięgu (px świata). 0 wyłącza.
  * Ułatwia grę względem myszy — dlatego wyniki z telefonu idą na osobną tablicę.
  */
 export const TOUCH_AUTO_AIM_RANGE = 280;
@@ -47,21 +48,31 @@ export const TOUCH_TAP_MAX_MS = 250;
 /** Jak długo (ms) kierunek z automatycznego celowania nie ustępuje kierunkowi ruchu — dłużej niż zamach kuli. */
 export const TOUCH_AUTO_AIM_HOLD_MS = 400;
 
-/** Przyciski (px płótna): środek liczony od prawego dolnego rogu; pauza — od prawego górnego. */
+/** Okrągły przycisk: środek liczony od prawego dolnego rogu płótna i promień. */
+export interface TouchButtonSpec {
+  readonly right: number;
+  readonly bottom: number;
+  readonly radius: number;
+}
+
+/**
+ * Układ prawej ręki (krok 96a, prośba właściciela): duże kółko ataku podstawowego (LPM) w rogu,
+ * atak PPM wyżej i bardziej w prawo, dash po lewej od kółka, E nad dashem (tylko gdy coś zrobi).
+ * Pauza — mały przycisk pod minimapą (od prawego górnego rogu).
+ */
 export const TOUCH_BUTTONS = {
-  radius: 30,
-  /** Strzał (barbarzyńca) / promień (Czarodziejka) / salwa (łucznik). */
-  shoot: { right: 70, bottom: 200 },
-  dash: { right: 160, bottom: 120 },
-  interact: { right: 150, bottom: 225 },
-  /** Pauza: mały przycisk pod minimapą. */
+  attack: { right: 120, bottom: 110, radius: 54 },
+  shoot: { right: 52, bottom: 222, radius: 34 },
+  dash: { right: 232, bottom: 66, radius: 34 },
+  interact: { right: 232, bottom: 172, radius: 28 },
   pause: { right: 40, top: 160, radius: 20 },
   /** Strefa dotyku jest trochę większa od rysunku — kciuk nie musi trafić idealnie. */
-  hitSlop: 1.15,
+  hitSlop: 1.2,
 } as const;
 
-/** Napisy na przyciskach; przycisk strzału zależy od broni bohatera. */
+/** Napisy na przyciskach; przyciski ataku zależą od broni bohatera. */
 export const TOUCH_LABELS = {
+  attack: { melee: 'ATAK', sorcery: 'KULA', archery: 'ŁUK' },
   shoot: { melee: 'STRZAŁ', sorcery: 'PROMIEŃ', archery: 'SALWA' },
   dash: 'ZRYW',
   interact: 'E',

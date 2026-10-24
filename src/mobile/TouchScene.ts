@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKey } from '@/core/types';
 import { DEATH_TIMING } from '@/config/deathScreenConfig';
+import type { TouchButtonSpec } from '@/config/touchConfig';
 import { TOUCH_BUTTONS, TOUCH_DEATH_BUTTONS, TOUCH_LABELS, TOUCH_SHOT_HOLD_MS, TOUCH_STICK, TOUCH_TAP_MAX_MS } from '@/config/touchConfig';
 import type { GameScene } from '@/scenes/GameScene';
 import { MenuCommand } from '@/systems/gamepadInput';
@@ -9,7 +10,9 @@ import { touchState } from '@/mobile/TouchState';
 
 export const TOUCH_SCENE_KEY = 'TouchScene';
 
-type ButtonId = 'shoot' | 'dash' | 'interact';
+type ButtonId = 'attack' | 'shoot' | 'dash' | 'interact';
+/** Przyciski ataku działają jak gałki zakotwiczone w środku przycisku. */
+type StickButton = 'attack' | 'shoot';
 
 /** Palec na ekranie: identyfikator dotyku i pozycja w pikselach płótna (poza płótnem: < 0 albo > 960/540). */
 interface TouchPoint {
@@ -24,6 +27,8 @@ interface Stick {
   readonly originY: number;
   knobX: number;
   knobY: number;
+  /** Kiedy kciuk dotknął przycisku (ms, performance.now) — dla przycisków ataku. */
+  readonly downAt: number;
 }
 
 interface DeathButton {
@@ -45,9 +50,10 @@ const STICK_ALPHA = 0.3;
 
 /**
  * Sterowanie dotykowe wersji mobilnej (krok 96; przeniesione z gałęzi testowej, kroki „49–49d”).
- * Pływające gałki (lewa — ruch, prawa — celowanie i atak) i przyciski: strzał/promień/salwa (przytrzymaj
- * i przeciągnij — kierunek), zryw, E (tylko gdy coś zrobi) i pauza. Scena nad grą i HUD-em: tylko zapisuje
- * `touchState` i rysuje; na ekranie śmierci daje przyciski zamiast klawiszy R / C / M.
+ * Lewa część ekranu — pływająca gałka ruchu. Prawa ręka (krok 96a, układ właściciela): duże kółko ataku
+ * podstawowego (LPM), nad nim i w prawo atak PPM (strzał / promień / salwa), po lewej zryw, nad zrywem E
+ * (tylko gdy coś zrobi); pauza pod minimapą. Przyciski ataku: przeciągnij — celujesz, stuknij — celuje samo.
+ * Scena nad grą i HUD-em: tylko zapisuje `touchState` i rysuje; na ekranie śmierci daje przyciski zamiast klawiszy R / C / M.
  *
  * Dotyku słuchamy zdarzeniami przeglądarki na całej stronie (#game), nie przez Phasera — Phaser śledzi palce
  * tylko nad płótnem, a kciuki na telefonie leżą przy krawędziach, często w czarnych pasach obok płótna.
@@ -58,22 +64,17 @@ export class TouchScene extends Phaser.Scene {
   private labels = new Map<ButtonId | 'pause', Phaser.GameObjects.Text>();
   private deathLabels: Phaser.GameObjects.Text[] = [];
   private moveStick: Stick | null = null;
-  private aimStick: Stick | null = null;
   /**
-   * Przycisk strzału działa jak gałka: przytrzymanie strzela (salwa / promień), przeciągnięcie od przycisku
-   * wybiera kierunek — obrót o 180° i salwa jednym kciukiem. Bez przeciągnięcia — celuje sam.
+   * Przyciski ataku jako gałki (krok 96a): duże kółko (LPM) i PPM. Przeciągnięcie od przycisku wybiera
+   * kierunek i atakuje — obrót o 180° i atak jednym kciukiem; przytrzymanie bez przeciągania atakuje
+   * z celowaniem samym; krótkie stuknięcie — jeden atak w najbliższego wroga.
    */
-  private shotStick: Stick | null = null;
-  /** Kiedy kciuk dotknął przycisku strzału (ms, performance.now). */
-  private shotDownAt = 0;
+  private sticks: Record<StickButton, Stick | null> = { attack: null, shoot: null };
   /** Palec, który dotknął przycisku pauzy — pauza rusza po jego puszczeniu (inaczej to samo puszczenie by ją zamknęło). */
   private pausePointer: number | null = null;
-  private shootLabel: string = TOUCH_LABELS.shoot.melee;
+  private kit: keyof typeof TOUCH_LABELS.attack = 'melee';
   /** E coś teraz zrobi (schody, kapliczka) — tylko wtedy przycisk E jest widoczny i działa. */
   private canInteract = false;
-  /** Gałka ataku: kiedy dotknięta i czy kciuk wyszedł poza martwą strefę (inaczej to stuknięcie). */
-  private aimDownAt = 0;
-  private aimMoved = false;
   private deathButtons: DeathButton[] = [];
   /** Od kiedy ekran śmierci czeka na gracza — przyciski wchodzą razem z napisem, nie pod kciukiem z walki. */
   private deathSince: number | null = null;
@@ -85,9 +86,10 @@ export class TouchScene extends Phaser.Scene {
 
   create(): void {
     this.gfx = this.add.graphics();
-    const labels = { shoot: this.shootLabel, dash: TOUCH_LABELS.dash, interact: TOUCH_LABELS.interact, pause: TOUCH_LABELS.pause };
-    for (const [id, text] of Object.entries(labels) as [ButtonId | 'pause', string][]) {
-      this.labels.set(id, this.add.text(0, 0, text, STYLE).setOrigin(0.5).setVisible(false));
+    const ids: readonly (ButtonId | 'pause')[] = ['attack', 'shoot', 'dash', 'interact', 'pause'];
+    for (const id of ids) {
+      const size = id === 'attack' ? '16px' : '13px';
+      this.labels.set(id, this.add.text(0, 0, '', { ...STYLE, fontSize: size }).setOrigin(0.5).setVisible(false));
     }
     const page = document.getElementById('game') ?? document.body;
     const listen = (type: string, handler: (point: TouchPoint) => void): void => {
@@ -121,9 +123,13 @@ export class TouchScene extends Phaser.Scene {
   override update(): void {
     this.scene.bringToTop();
     const game = this.playingScene();
-    if (!game) this.releaseAll();
-    else if (this.shotStick && !touchState.shoot && performance.now() - this.shotDownAt >= TOUCH_SHOT_HOLD_MS) {
-      touchState.shoot = true;
+    if (!game) {
+      this.releaseAll();
+    } else {
+      // Przytrzymanie przycisku ataku bez przeciągania: po chwili atak z celowaniem samym.
+      const now = performance.now();
+      if (this.sticks.attack && !touchState.attack && now - this.sticks.attack.downAt >= TOUCH_SHOT_HOLD_MS) touchState.attack = true;
+      if (this.sticks.shoot && !touchState.shoot && now - this.sticks.shoot.downAt >= TOUCH_SHOT_HOLD_MS) touchState.shoot = true;
     }
     this.layoutDeathButtons();
     this.draw(game !== null);
@@ -135,7 +141,7 @@ export class TouchScene extends Phaser.Scene {
     const game = this.scene.get(SceneKey.Game) as GameScene;
     const hud = game.getHudData();
     if (hud.isPlayerDead || hud.death) return null;
-    this.shootLabel = TOUCH_LABELS.shoot[game.heroKit];
+    this.kit = game.heroKit;
     this.canInteract = hud.canInteract;
     return game;
   }
@@ -159,34 +165,33 @@ export class TouchScene extends Phaser.Scene {
       touchState.queueDash();
     } else if (button === 'interact') {
       touchState.queueInteract();
-    } else if (button === 'shoot') {
-      if (!this.shotStick) {
-        // Środek gałki w środku przycisku: kierunek to strona, w którą kciuk zjedzie z przycisku.
-        const c = this.buttonCenter('shoot');
-        this.shotStick = { pointerId: pointer.id, originX: c.x, originY: c.y, knobX: c.x, knobY: c.y };
-        this.shotDownAt = performance.now();
-        // Strzał rusza dopiero po przeciągnięciu albo przytrzymaniu (update) — nie w starą stronę.
+    } else if (button === 'attack' || button === 'shoot') {
+      if (this.sticks[button]) return;
+      // Środek gałki w środku przycisku: kierunek to strona, w którą kciuk zjedzie z przycisku.
+      const c = this.buttonCenter(button);
+      this.sticks[button] = { pointerId: pointer.id, originX: c.x, originY: c.y, knobX: c.x, knobY: c.y, downAt: performance.now() };
+      // Atak rusza dopiero po przeciągnięciu albo przytrzymaniu (update) — nie w starą stronę.
+      if (button === 'attack') {
+        touchState.attack = false;
+        touchState.aim = null;
+      } else {
         touchState.shoot = false;
         touchState.shotAim = null;
       }
-    } else if (pointer.x < this.scale.width * TOUCH_STICK.moveZoneWidth) {
-      if (!this.moveStick) this.moveStick = this.newStick(pointer);
-    } else if (!this.aimStick) {
-      this.aimStick = this.newStick(pointer);
-      this.aimDownAt = performance.now();
-      this.aimMoved = false;
+    } else if (pointer.x < this.scale.width * TOUCH_STICK.moveZoneWidth && !this.moveStick) {
+      this.moveStick = { pointerId: pointer.id, originX: pointer.x, originY: pointer.y, knobX: pointer.x, knobY: pointer.y, downAt: performance.now() };
     }
   }
 
   private onMove(pointer: TouchPoint): void {
     if (this.moveStick?.pointerId === pointer.id) {
       touchState.move = stickToMovement(this.updateStick(this.moveStick, pointer));
-    } else if (this.aimStick?.pointerId === pointer.id) {
-      const stick = this.updateStick(this.aimStick, pointer);
+    } else if (this.sticks.attack?.pointerId === pointer.id) {
+      const stick = this.updateStick(this.sticks.attack, pointer);
       touchState.aim = stick.strength > 0 ? stick.direction : null;
-      if (touchState.aim) this.aimMoved = true;
-    } else if (this.shotStick?.pointerId === pointer.id) {
-      const stick = this.updateStick(this.shotStick, pointer);
+      if (touchState.aim) touchState.attack = true;
+    } else if (this.sticks.shoot?.pointerId === pointer.id) {
+      const stick = this.updateStick(this.sticks.shoot, pointer);
       touchState.shotAim = stick.strength > 0 ? stick.direction : null;
       if (touchState.shotAim) touchState.shoot = true;
     }
@@ -205,23 +210,20 @@ export class TouchScene extends Phaser.Scene {
       this.moveStick = null;
       touchState.move = { x: 0, y: 0 };
     }
-    if (this.aimStick?.pointerId === pointer.id) {
-      // Stuknięcie strefy ataku (jak w Brawl Stars): jeden cios w najbliższego wroga.
-      if (!this.aimMoved && performance.now() - this.aimDownAt <= TOUCH_TAP_MAX_MS) touchState.queueAttack();
-      this.aimStick = null;
+    const attack = this.sticks.attack;
+    if (attack?.pointerId === pointer.id) {
+      // Krótkie stuknięcie bez przeciągnięcia (jak w Brawl Stars): jeden atak w najbliższego wroga.
+      if (!touchState.attack && performance.now() - attack.downAt <= TOUCH_TAP_MAX_MS) touchState.queueAttack();
+      this.sticks.attack = null;
+      touchState.attack = false;
       touchState.aim = null;
     }
-    if (this.shotStick?.pointerId === pointer.id) {
-      // Krótkie stuknięcie bez przeciągnięcia: jeden strzał w najbliższego wroga.
+    if (this.sticks.shoot?.pointerId === pointer.id) {
       if (!touchState.shoot) touchState.queueShot();
-      this.shotStick = null;
+      this.sticks.shoot = null;
       touchState.shoot = false;
       touchState.shotAim = null;
     }
-  }
-
-  private newStick(pointer: TouchPoint): Stick {
-    return { pointerId: pointer.id, originX: pointer.x, originY: pointer.y, knobX: pointer.x, knobY: pointer.y };
   }
 
   /** Gałka za kciukiem: gałka nie wychodzi poza promień, kierunek i siła z czystej funkcji. */
@@ -238,23 +240,33 @@ export class TouchScene extends Phaser.Scene {
 
   private releaseAll(): void {
     this.moveStick = null;
-    this.aimStick = null;
-    this.shotStick = null;
+    this.sticks = { attack: null, shoot: null };
     touchState.release();
   }
 
+  private spec(id: ButtonId): TouchButtonSpec {
+    return TOUCH_BUTTONS[id];
+  }
+
   private buttonCenter(id: ButtonId): { x: number; y: number } {
-    const spec = TOUCH_BUTTONS[id];
+    const spec = this.spec(id);
     return { x: this.scale.width - spec.right, y: this.scale.height - spec.bottom };
   }
 
+  /** Przycisk pod kciukiem; przy nakładających się strefach wygrywa najbliższy środek. */
   private buttonAt(x: number, y: number): ButtonId | null {
-    for (const id of ['shoot', 'dash', 'interact'] as const) {
+    let best: ButtonId | null = null;
+    let bestDistance = Infinity;
+    for (const id of ['attack', 'shoot', 'dash', 'interact'] as const) {
       if (id === 'interact' && !this.canInteract) continue;
       const c = this.buttonCenter(id);
-      if (Math.hypot(x - c.x, y - c.y) <= TOUCH_BUTTONS.radius * TOUCH_BUTTONS.hitSlop) return id;
+      const distance = Math.hypot(x - c.x, y - c.y);
+      if (distance <= this.spec(id).radius * TOUCH_BUTTONS.hitSlop && distance < bestDistance) {
+        best = id;
+        bestDistance = distance;
+      }
     }
-    return null;
+    return best;
   }
 
   private pauseCenter(): { x: number; y: number } {
@@ -325,22 +337,29 @@ export class TouchScene extends Phaser.Scene {
         const c = this.pauseCenter();
         g.fillStyle(0x202030, BUTTON_ALPHA).fillCircle(c.x, c.y, TOUCH_BUTTONS.pause.radius);
         g.lineStyle(2, 0xe8e8f0, 0.5).strokeCircle(c.x, c.y, TOUCH_BUTTONS.pause.radius);
-        label.setPosition(c.x, c.y);
+        label.setText(TOUCH_LABELS.pause).setPosition(c.x, c.y);
         continue;
       }
       const c = this.buttonCenter(id);
-      const active = id === 'shoot' && touchState.shoot;
-      g.fillStyle(active ? 0x39c0d8 : 0x202030, active ? BUTTON_ACTIVE_ALPHA : BUTTON_ALPHA).fillCircle(c.x, c.y, TOUCH_BUTTONS.radius);
-      g.lineStyle(2, 0xe8e8f0, 0.5).strokeCircle(c.x, c.y, TOUCH_BUTTONS.radius);
-      if (id === 'shoot') label.setText(this.shootLabel);
-      label.setPosition(c.x, c.y);
+      const { radius } = this.spec(id);
+      const active = (id === 'attack' && touchState.attack) || (id === 'shoot' && touchState.shoot);
+      g.fillStyle(active ? 0x39c0d8 : 0x202030, active ? BUTTON_ACTIVE_ALPHA : BUTTON_ALPHA).fillCircle(c.x, c.y, radius);
+      g.lineStyle(id === 'attack' ? 3 : 2, 0xe8e8f0, id === 'attack' ? 0.7 : 0.5).strokeCircle(c.x, c.y, radius);
+      const text = id === 'attack' || id === 'shoot' ? TOUCH_LABELS[id][this.kit] : TOUCH_LABELS[id];
+      label.setText(text).setPosition(c.x, c.y);
     }
     if (!playing) return;
-    for (const stick of [this.moveStick, this.aimStick, this.shotStick]) {
-      if (!stick) continue;
-      g.fillStyle(0x202030, STICK_ALPHA).fillCircle(stick.originX, stick.originY, TOUCH_STICK.radius);
-      g.lineStyle(2, 0xe8e8f0, 0.4).strokeCircle(stick.originX, stick.originY, TOUCH_STICK.radius);
-      g.fillStyle(0xe8e8f0, 0.5).fillCircle(stick.knobX, stick.knobY, TOUCH_STICK.radius * 0.4);
+    if (this.moveStick) this.drawStick(g, this.moveStick, TOUCH_STICK.radius);
+    for (const id of ['attack', 'shoot'] as const) {
+      const stick = this.sticks[id];
+      // Przycisk ataku: obwódka zasięgu przeciągnięcia i gałka pod kciukiem.
+      if (stick) this.drawStick(g, stick, TOUCH_STICK.radius + this.spec(id).radius * 0.5);
     }
+  }
+
+  private drawStick(g: Phaser.GameObjects.Graphics, stick: Stick, radius: number): void {
+    g.fillStyle(0x202030, STICK_ALPHA).fillCircle(stick.originX, stick.originY, radius);
+    g.lineStyle(2, 0xe8e8f0, 0.4).strokeCircle(stick.originX, stick.originY, radius);
+    g.fillStyle(0xe8e8f0, 0.5).fillCircle(stick.knobX, stick.knobY, TOUCH_STICK.radius * 0.4);
   }
 }
