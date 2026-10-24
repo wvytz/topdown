@@ -40,4 +40,13 @@ describe('pixelPerfectScale', () => {
     const scale = pixelPerfectScale({ ...base, viewportWidth: 200, viewportHeight: 100 });
     expect(worldPixel(scale)).toBe(1);
   });
+
+  it('telefon (skala ułamkowa, krok 96): płótno wypełnia ekran na wysokość, zamiast 2/3 przy całkowitych krotnościach', () => {
+    const phone = { ...base, devicePixelRatio: 2.625, viewportWidth: 863, viewportHeight: 360 };
+    const whole = pixelPerfectScale(phone);
+    const fractional = pixelPerfectScale({ ...phone, fractional: true });
+    expect(540 * fractional).toBeCloseTo(360);
+    expect(960 * fractional).toBeLessThanOrEqual(863);
+    expect(fractional).toBeGreaterThan(whole);
+  });
 });

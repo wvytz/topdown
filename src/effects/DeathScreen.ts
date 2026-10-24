@@ -11,6 +11,7 @@ import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
 import type { PixelText } from '@/core/pixelArt';
 import { deathFrame, flowGroupOf, formatScoreRow, knownHero, titleFlowIndex } from '@/systems/deathScreen';
 import type { RankedEntry } from '@/systems/Highscores';
+import { currentPlatform } from '@/core/platform';
 
 const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
@@ -154,12 +155,14 @@ export class DeathScreen {
     // Na tablicy aren (krok 91a) o miejscu decyduje arena, więc idzie pierwsza.
     const result = death.arenas ? `ARENA ${death.floor} · ${death.score} ZŁOTA` : `${death.score} ZŁOTA · PIĘTRO ${death.floor}`;
     this.score.setText(`${result}${place}`);
-    this.prompt.setText(death.arenas ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT);
+    const prompt = death.arenas ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT;
+    // Wersja mobilna (krok 96): zamiast klawiszy są przyciski dotykowe w tym samym miejscu.
+    this.prompt.setText(currentPlatform() === 'mobile' ? '' : prompt);
     if (death.nameEntry !== null) {
       this.header.setText('TWOJE IMIĘ NA TABLICY WYNIKÓW');
       const entry = [
         { text: `${death.nameEntry}_`, color: '#d8ccb0' },
-        { text: 'ENTER — ZAPISZ · ESC — BEZ IMIENIA', color: '#9c8f74' },
+        { text: currentPlatform() === 'mobile' ? 'PODAJ IMIĘ PRZYCISKIEM PONIŻEJ' : 'ENTER — ZAPISZ · ESC — BEZ IMIENIA', color: '#9c8f74' },
       ];
       this.rows.forEach((row, i) => row.setText(entry[i]?.text ?? '').setColor(entry[i]?.color ?? '#9c8f74'));
       this.icons.forEach((icon) => icon.setVisible(false));

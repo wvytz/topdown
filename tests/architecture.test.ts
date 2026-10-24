@@ -84,3 +84,23 @@ describe('architektura: izolacja od silnika', () => {
     }
   });
 });
+
+/**
+ * Wersja mobilna (krok 96) to osobne wejście (`mobile.html` → `mobile/main.mobile.ts`): gra PC nie może
+ * zależeć od kodu telefonu — inaczej zmiana dotyku mogłaby zepsuć wersję PC.
+ */
+describe('architektura: wersja mobilna osobno', () => {
+  const allFiles = listTsFiles(SRC).map((file) => relative(SRC, file).split(sep).join('/'));
+  const outsideMobile = allFiles.filter((file) => !file.startsWith('mobile/'));
+
+  it('kod mobilny istnieje (sanity check)', () => {
+    expect(allFiles.some((file) => file.startsWith('mobile/'))).toBe(true);
+  });
+
+  it.each(outsideMobile)('%s nie importuje z src/mobile', (file) => {
+    const source = readFileSync(join(SRC, file), 'utf8');
+    for (const specifier of importsOf(source)) {
+      expect(specifier.startsWith('@/mobile/'), `${file} importuje kod mobilny: ${specifier}`).toBe(false);
+    }
+  });
+});

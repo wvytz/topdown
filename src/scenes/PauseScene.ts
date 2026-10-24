@@ -5,6 +5,9 @@ import { SAVE_TEXT } from '@/config/saveConfig';
 import { SceneKey } from '@/core/types';
 import { SaveStorage } from '@/persistence/SaveStorage';
 import { saveSummary } from '@/systems/SaveGame';
+import { MenuCommand } from '@/systems/gamepadInput';
+import { currentPlatform } from '@/core/platform';
+import { bindPadMenu } from '@/input/PadMenuInput';
 
 export interface PauseSceneData {
   readonly reason: PauseReason;
@@ -21,12 +24,15 @@ export interface PauseSceneData {
  * więc nakładka nie używa tweenów ani czasu sceny. Wznowienie: Esc, P albo kliknięcie (po puszczeniu przycisku,
  * żeby kliknięcie powracające do okna nie zamieniło się w atak).
  * Krok 91: 1 / 2 / 3 (albo kliknięcie wiersza) zapisuje grę w slocie, M wychodzi do menu głównego.
+ * Krok 95 (pad): Start / B — wznów, ↑ ↓ — wybór slotu, A — zapis w wybranym slocie, Y — menu główne.
  */
 export class PauseScene extends Phaser.Scene {
   private resumed = false;
   private readonly saves = new SaveStorage(SaveStorage.browserStorage());
   private slotRows: Phaser.GameObjects.Text[] = [];
   private status!: Phaser.GameObjects.Text;
+  /** Slot wybrany padem (krok 95); null — pad jeszcze nie wybierał. */
+  private padSlot: number | null = null;
 
   constructor() {
     super(SceneKey.Pause);
@@ -35,8 +41,10 @@ export class PauseScene extends Phaser.Scene {
   create(data: PauseSceneData): void {
     this.resumed = false;
     this.slotRows = [];
+    this.padSlot = null;
     const { width, height } = this.scale;
     const L = PAUSE_CONFIG.layout;
+    const texts = currentPlatform() === 'mobile' ? PAUSE_CONFIG.mobile : PAUSE_CONFIG;
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace',
       color: '#e8e8f0',
@@ -48,12 +56,12 @@ export class PauseScene extends Phaser.Scene {
     this.add.text(width / 2, L.titleY, PAUSE_CONFIG.title, { ...style, fontSize: '40px', color: '#f0d27a', strokeThickness: 6 }).setOrigin(0.5);
     this.add.text(width / 2, L.reasonY, PAUSE_CONFIG.reasonText[data.reason], { ...style, fontSize: '15px', color: '#d8c0ff' }).setOrigin(0.5);
     this.add
-      .text(width / 2, L.controlsY, PAUSE_CONFIG.controls.join('\n'), { ...style, fontSize: '14px', color: '#a0a0b8', align: 'center', lineSpacing: 6 })
+      .text(width / 2, L.controlsY, texts.controls.join('\n'), { ...style, fontSize: '14px', color: '#a0a0b8', align: 'center', lineSpacing: 6 })
       .setOrigin(0.5, 0);
 
     const onSave = data.onSave;
     this.add
-      .text(width / 2, L.saveTitleY, onSave ? PAUSE_CONFIG.saveTitle : PAUSE_CONFIG.saveUnavailable, { ...style, fontSize: '14px', color: '#f0d27a' })
+      .text(width / 2, L.saveTitleY, onSave ? texts.saveTitle : PAUSE_CONFIG.saveUnavailable, { ...style, fontSize: '14px', color: '#f0d27a' })
       .setOrigin(0.5);
     if (onSave) {
       for (const slot of this.saves.slots) {
@@ -70,8 +78,13 @@ export class PauseScene extends Phaser.Scene {
       this.refreshSlots();
     }
     this.status = this.add.text(width / 2, L.statusY, '', { ...style, fontSize: '14px', color: '#9be08a' }).setOrigin(0.5);
-    this.add.text(width / 2, L.quitY, PAUSE_CONFIG.quitHint, { ...style, fontSize: '14px', color: '#a0a0b8' }).setOrigin(0.5);
-    this.add.text(width / 2, L.resumeY, PAUSE_CONFIG.resumeHint, { ...style, fontSize: '16px', color: '#f5c542' }).setOrigin(0.5);
+    // Napis „M — menu główne” da się też kliknąć albo stuknąć (krok 96, telefon bez klawiatury).
+    this.add
+      .text(width / 2, L.quitY, texts.quitHint, { ...style, fontSize: '14px', color: '#a0a0b8' })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.quit(data));
+    this.add.text(width / 2, L.resumeY, texts.resumeHint, { ...style, fontSize: '16px', color: '#f5c542' }).setOrigin(0.5);
 
     for (const key of PAUSE_CONFIG.keys) {
       this.input.keyboard?.on(`keydown-${key}`, (event: KeyboardEvent) => {
@@ -79,14 +92,45 @@ export class PauseScene extends Phaser.Scene {
       });
     }
     this.input.keyboard?.on('keydown-M', (event: KeyboardEvent) => {
-      if (event.repeat || this.resumed) return;
-      this.resumed = true;
-      data.onQuit();
+      if (!event.repeat) this.quit(data);
     });
+    bindPadMenu(this, (command) => this.onPadCommand(command, data));
     // Kliknięcie poza wierszem slotu wznawia grę.
     this.input.on(Phaser.Input.Events.POINTER_UP, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (over.length === 0) this.resume(data);
     });
+  }
+
+  private onPadCommand(command: MenuCommand, data: PauseSceneData): void {
+    const slots = this.saves.slots;
+    switch (command) {
+      case MenuCommand.Pause:
+      case MenuCommand.Back:
+        this.resume(data);
+        break;
+      case MenuCommand.Alt:
+        this.quit(data);
+        break;
+      case MenuCommand.Up:
+      case MenuCommand.Down: {
+        if (!data.onSave || slots.length === 0) return;
+        const step = command === MenuCommand.Up ? -1 : 1;
+        const index = this.padSlot === null ? (step > 0 ? 0 : slots.length - 1) : (slots.indexOf(this.padSlot) + step + slots.length) % slots.length;
+        this.padSlot = slots[index] ?? null;
+        this.refreshSlots();
+        break;
+      }
+      case MenuCommand.Confirm:
+        if (data.onSave && this.padSlot !== null) this.save(data.onSave, this.padSlot);
+        break;
+      default:
+    }
+  }
+
+  private quit(data: PauseSceneData): void {
+    if (this.resumed) return;
+    this.resumed = true;
+    data.onQuit();
   }
 
   private save(onSave: (slot: number) => boolean, slot: number): void {
@@ -102,7 +146,7 @@ export class PauseScene extends Phaser.Scene {
       const record = this.saves.load(slot);
       const summary = record ? saveSummary(record) : null;
       row
-        .setText(`${slot} — ${SAVE_TEXT.slotName(slot)}: ${summary ? `${summary.title} · ${summary.details}` : SAVE_TEXT.emptySlot}`)
+        .setText(`${slot === this.padSlot ? '▶ ' : ''}${slot} — ${SAVE_TEXT.slotName(slot)}: ${summary ? `${summary.title} · ${summary.details}` : SAVE_TEXT.emptySlot}`)
         .setColor(summary ? '#e8e8f0' : '#80809a');
     });
   }

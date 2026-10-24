@@ -9,6 +9,7 @@ import { LOOT_ATLAS } from '@/config/spriteConfig';
 import { MINIMAP_CONFIG } from '@/config/minimapConfig';
 import type { MinimapExplorer } from '@/systems/Minimap';
 import { DeathScreen } from '@/effects/DeathScreen';
+import { currentPlatform } from '@/core/platform';
 
 const BAR_X = 16;
 const BAR_WIDTH = 200;
@@ -53,9 +54,16 @@ interface ItemSlot {
 
 /** Podpowiedź sterowania: Czarodziejka ma kule i promień zamiast ciosu i strzału. */
 function helpLine(sorceress: boolean): string {
+  // Wersja mobilna (krok 96): przyciski są podpisane na ekranie, a linia pomocy zasłaniałaby gałkę ruchu.
+  if (currentPlatform() === 'mobile') return '';
   const attacks = sorceress ? 'LPM — kule energii · PPM — promień (przytrzymaj)' : 'LPM — atak · PPM — strzał';
   const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
   return `WASD — ruch · ${attacks} · Spacja — dash · E — kapliczka, schody${devHelp}`;
+}
+
+/** „Naciśnij E” — na telefonie przycisk E pojawia się na ekranie dopiero na schodach. */
+function pressE(): string {
+  return currentPlatform() === 'mobile' ? 'Stuknij E' : 'Naciśnij E';
 }
 
 /**
@@ -165,7 +173,7 @@ export class HudScene extends Phaser.Scene {
       this.hintText.setText(hud.boss ? BOSS_RUSH_TEXT.fightHint : `Wrogowie: ${hud.enemiesAlive} · ${BOSS_RUSH_TEXT.arenaHint}`).setColor('#c8a8ff');
     } else if (hud.stairsUnlocked) {
       this.hintText
-        .setText(hud.onStairs ? 'Naciśnij E, aby wspiąć się wyżej' : 'Schody otwarte — stań na nich i naciśnij E, aby wspiąć się wyżej')
+        .setText(hud.onStairs ? `${pressE()}, aby wspiąć się wyżej` : `Schody otwarte — stań na nich i ${pressE().toLowerCase()}, aby wspiąć się wyżej`)
         .setColor('#e0b84a');
     } else if (hud.boss) {
       this.hintText.setText('Pokonaj bossa, aby otworzyć schody · unikaj czerwonych stref').setColor('#ffb0a0');

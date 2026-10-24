@@ -352,6 +352,13 @@ export class BossFight {
     return this.spiderlings.living;
   }
 
+  /** Cele automatycznego celowania na dotyku (krok 96): walczący boss, jego pies i pajączki. */
+  get aimTargets(): readonly { readonly x: number; readonly y: number; readonly radius: number }[] {
+    const boss = this.boss;
+    const fighting = boss && boss.isFighting && !boss.isDead ? [boss] : [];
+    return [...this.spiderlings.living, ...(this.dog ? [this.dog] : []), ...fighting];
+  }
+
   /** Cele gracza: pajączki (żywa tarcza), kokony spiżarni i boss. */
   private targets(): Array<Boss | Spiderling | LarderCocoon | BossDog> {
     const living: Array<Spiderling | LarderCocoon | BossDog> = [...this.spiderlings.living, ...this.larders, ...(this.dog ? [this.dog] : [])];

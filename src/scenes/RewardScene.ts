@@ -5,6 +5,8 @@ import { SceneKey } from '@/core/types';
 import { BOSS_REWARD, ITEM_DEFINITIONS } from '@/config/lootConfig';
 import { itemIconFrame } from '@/entities/Pickup';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
+import { MenuCommand } from '@/systems/gamepadInput';
+import { bindPadMenu } from '@/input/PadMenuInput';
 
 export interface RewardSceneData {
   readonly choices: readonly ItemId[];
@@ -26,6 +28,7 @@ const DIMMED_ALPHA = 0.35;
  * - przez `armDelayMs` karty są przygaszone i nie reagują;
  * - potem karta wymaga pełnego kliknięcia: wciśnięcia I puszczenia przycisku na tej samej karcie;
  * - klawisz 1–3 musi zostać wciśnięty po uaktywnieniu kart (puszczenie starego wciśnięcia nie liczy się).
+ * - pad (krok 95): ← → zaznacza kartę, A wybiera; liczy się tylko A wciśnięte po uaktywnieniu kart.
  */
 export class RewardScene extends Phaser.Scene {
   private picked = false;
@@ -36,6 +39,10 @@ export class RewardScene extends Phaser.Scene {
   private readonly armedKeys = new Set<number>();
   private cardObjects: Phaser.GameObjects.GameObject[] = [];
   private hintText!: Phaser.GameObjects.Text;
+  /** Ramki kart i ich kolor obwódki — do podświetlenia (mysz, pad). */
+  private cards: { readonly frame: Phaser.GameObjects.Rectangle; readonly accent: number }[] = [];
+  /** Karta zaznaczona padem; null — pad jeszcze nie wybierał. */
+  private padCard: number | null = null;
 
   constructor() {
     super(SceneKey.Reward);
@@ -47,6 +54,8 @@ export class RewardScene extends Phaser.Scene {
     this.pressedCard = null;
     this.armedKeys.clear();
     this.cardObjects = [];
+    this.cards = [];
+    this.padCard = null;
 
     const { width, height } = this.scale;
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -76,6 +85,8 @@ export class RewardScene extends Phaser.Scene {
       });
     });
 
+    bindPadMenu(this, (command) => this.onPadCommand(command, data));
+
     // Przygaszone karty rozjaśniają się; aktywne stają się dokładnie wtedy, gdy są w pełni widoczne.
     this.tweens.add({
       targets: this.cardObjects,
@@ -88,7 +99,7 @@ export class RewardScene extends Phaser.Scene {
 
   private arm(): void {
     this.armed = true;
-    this.hintText.setText('Wybierz nagrodę — kliknij kartę albo naciśnij 1–3').setColor('#c8c8d8');
+    this.hintText.setText('Wybierz nagrodę — kliknij kartę albo naciśnij 1–3 (pad: ← → i A)').setColor('#c8c8d8');
   }
 
   private createCard(
@@ -142,11 +153,12 @@ export class RewardScene extends Phaser.Scene {
     for (const part of parts) part.setAlpha(DIMMED_ALPHA);
     this.cardObjects.push(...parts);
 
+    this.cards.push({ frame: card, accent });
     card.on(Phaser.Input.Events.POINTER_OVER, () => {
-      if (this.armed) card.setFillStyle(0x2a2a3a, 0.98).setStrokeStyle(3, 0xffffff);
+      if (this.armed) this.highlight(index, true);
     });
     card.on(Phaser.Input.Events.POINTER_OUT, () => {
-      card.setFillStyle(0x1a1a24, 0.96).setStrokeStyle(2, accent);
+      this.highlight(index, false);
       if (this.pressedCard === index) this.pressedCard = null;
     });
     card.on(Phaser.Input.Events.POINTER_DOWN, () => {
@@ -155,6 +167,31 @@ export class RewardScene extends Phaser.Scene {
     card.on(Phaser.Input.Events.POINTER_UP, () => {
       if (this.pressedCard === index) this.pick(itemId, data);
     });
+  }
+
+  private highlight(index: number, on: boolean): void {
+    const card = this.cards[index];
+    if (!card) return;
+    if (on) card.frame.setFillStyle(0x2a2a3a, 0.98).setStrokeStyle(3, 0xffffff);
+    else card.frame.setFillStyle(0x1a1a24, 0.96).setStrokeStyle(2, card.accent);
+  }
+
+  /** Pad: zaznaczanie działa dopiero na aktywnych kartach, a A wybiera zaznaczoną. */
+  private onPadCommand(command: MenuCommand, data: RewardSceneData): void {
+    if (!this.armed || this.picked) return;
+    const count = data.choices.length;
+    if (command === MenuCommand.Left || command === MenuCommand.Right) {
+      const step = command === MenuCommand.Left ? -1 : 1;
+      const next = this.padCard === null ? (step > 0 ? 0 : count - 1) : (this.padCard + step + count) % count;
+      if (this.padCard !== null) this.highlight(this.padCard, false);
+      this.padCard = next;
+      this.highlight(next, true);
+      return;
+    }
+    if (command === MenuCommand.Confirm && this.padCard !== null) {
+      const itemId = data.choices[this.padCard];
+      if (itemId) this.pick(itemId, data);
+    }
   }
 
   private pick(itemId: ItemId, data: RewardSceneData): void {

@@ -25,6 +25,7 @@ import type { Particle } from '@/systems/deathScreen';
 import { stepParticle } from '@/systems/deathScreen';
 import { BOOT_START_DATA_KEY, heroParam, startFirstFloor } from '@/scenes/BootScene';
 import type { MenuSceneData } from '@/scenes/MenuScene';
+import { bindPadMenu } from '@/input/PadMenuInput';
 
 export interface SplashSceneData {
   /** Powrót do menu z gry (krok 91): bez intra i bez ładowania — od razu ostatnia klatka i menu. */
@@ -126,6 +127,7 @@ export class SplashScene extends Phaser.Scene {
     };
     this.input.keyboard?.on('keydown', skip);
     this.input.on('pointerdown', skip);
+    bindPadMenu(this, skip);
     // Tylko w trybie dev: `?nosplash` pomija ekran (szybkie testy).
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('nosplash')) skip();
 

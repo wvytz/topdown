@@ -17,14 +17,28 @@ export const PAUSE_CONFIG = {
   saveUnavailable: 'Zapis niedostępny podczas odtwarzania nagrania',
   quitHint: 'M — menu główne (autozapis zostaje: Kontynuuj)',
   /** Układ (y w pikselach płótna 960×540). */
-  layout: { titleY: 52, reasonY: 92, controlsY: 118, saveTitleY: 284, slotsY: 310, slotStep: 22, statusY: 384, quitY: 422, resumeY: 464 },
+  layout: { titleY: 52, reasonY: 92, controlsY: 118, saveTitleY: 330, slotsY: 356, slotStep: 22, statusY: 426, quitY: 458, resumeY: 494 },
   controls: [
     'WASD — ruch',
     'LPM / PPM — ataki bohatera',
     'Spacja — dash',
     'E — kapliczka, schody',
     'F9 — raport błędów',
+    'Pad: lewa gałka — ruch · prawa — cel · RT / LT — ataki · A — dash · X — E',
+    'Pad w pauzie: ↑ ↓ + A — zapis · Y — menu · Start / B — wznów',
   ],
+  /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wiersze slotów i napis menu się stuka. */
+  mobile: {
+    controls: [
+      'Lewa część ekranu — gałka ruchu',
+      'Prawa część — atak: przeciągnij, by celować; stuknij — celuje sam',
+      'STRZAŁ / PROMIEŃ / SALWA — przytrzymaj i przeciągnij w stronę celu',
+      'ZRYW — dash · E — kapliczka, schody (pojawia się na miejscu)',
+    ],
+    saveTitle: 'ZAPIS GRY — stuknij slot (stan z wejścia na piętro)',
+    quitHint: 'MENU GŁÓWNE — stuknij (autozapis zostaje: Kontynuuj)',
+    resumeHint: 'Stuknij gdziekolwiek — wznów',
+  },
 } as const;
 
 /** Klucz zegara pauzy w rejestrze gry (Phaser `game.registry`). */
