@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4166,6 +4166,23 @@ Prośba właściciela: tytuły list na środku i miniaturki postaci, którymi us
 - Rysowanie miniaturki wydzielone do `effects/heroIcon.ts` (`heroIconTexture`) — korzystają z niego ekran śmierci i menu. `StartBoardLine.hero` niesie bohatera wiersza (`knownHero`).
 - **Numeracja:** równoległy wątek balansu też użył numeru 93, więc ten krok (dawniej 93/93a) to **94/94a/94b**.
 
+## Krok 95 — Gniazda wejścia i pad w wersji PC `#sterowanie` `#decyzja`
+
+**Decyzja właściciela (24.10.2026):** wersja mobilna będzie osobną grą w tym samym repozytorium (`src/mobile/`, `mobile.html`), dzieląc logikę z wersją PC. Ocena wcześniejszych prób sterowania dotykowego (gałąź `claude/bold-tesla-xr76xu`, jej kroki „49–49d” to **nie** te same kroki co zasadzki w main) i zgoda na plan: najpierw „gniazda” wejścia w kodzie PC i pad, potem przeniesienie dotyku na aktualny main. `#decyzja`
+
+Co powstało:
+- **Pad w walce (`input/InputController.ts`):** lewa gałka albo krzyżak — ruch (analogowy, z martwą strefą), prawa gałka — celowanie, RT — atak LPM (cios, kule, naciąganie łuku), LT albo RB — atak PPM (strzał, promień, salwa), A albo LB — dash, X — interakcja (E). Pad i klawiatura się sumują; celowanie bierze ostatnio używane urządzenie (ruch lub klik myszy oddaje cel myszy, użycie pada — padowi). Bez prawej gałki cel idzie za ruchem, a gdy bohater stoi — zostaje ostatni kierunek. Encje nadal dostają tylko `PlayerActions`; nagrywanie wejść (F9) działa bez zmian.
+- **Pad poza walką:** wspólne komendy menu (`MenuCommand`: góra/dół/lewo/prawo, potwierdź, wstecz, dodatkowa, pauza). Menu główne i wybór bohatera tłumaczą klawisze na te same komendy (`menuCommandFromKey`), więc klawiatura działa jak dotąd, a pad (krzyżak lub gałka z powtarzaniem, A, B, Y) dochodzi bez osobnej logiki. Ekran startowy: dowolny przycisk pomija. Pauza: Start — pauza i wznowienie, B — wznów, ↑ ↓ + A — zapis w slocie (znacznik ▶), Y — menu główne. Nagroda za bossa: ← → zaznacza kartę, A wybiera (tylko po uaktywnieniu kart). Ekran śmierci: A — nowa wspinaczka (R), Y — zmiana bohatera (C), B — menu (M); przy wpisywaniu imienia A zapisuje wpisane z klawiatury, B pomija.
+- **Ochrona przed przypadkowym wyborem:** przycisk trzymany przy wejściu na ekran liczy się dopiero po puszczeniu (`ButtonEdges`), więc A z wyboru bohatera nie robi dasha, a spust z walki nie wybiera nagrody. Na ekranie śmierci pad czeka `deathInputDelayMs` (1,5 s), żeby dash wciskany w chwili śmierci nie restartował runu. R / C / M i pad nie mogą już wywołać dwóch akcji naraz.
+- **Odczyt pada:** prosto z Gamepad API przeglądarki (`input/padSnapshot.ts`), bez wtyczki pada Phasera (jej stan żyje osobno w każdej scenie). Przeglądarka pokazuje pad dopiero po pierwszym wciśnięciu przycisku. Podłączenie i odłączenie pada trafia do dziennika diagnostyki (`gamepad-connected` z nazwą i układem).
+- **Liczby w `config/gamepadConfig.ts`:** martwe strefy (ruch 0,2, celowanie 0,35), próg spustów, przyciski akcji, powtarzanie w menu, opóźnienie po śmierci. Standardowy układ W3C (Xbox; na PlayStation A = ✕, B = ○, X = □, Y = △).
+- **Pauza:** dwie linie z układem pada, sloty i dolne napisy przesunięte niżej.
+- **Czysta logika:** `systems/gamepadInput.ts` (`stickVector`, `ButtonEdges`, `PadGameplayReader`, `padAimDirection`, `combineMovement`, `menuCommandFromKey`, `PadMenuReader`).
+- **Testy:** `tests/systems/gamepadInput.test.ts` (20 przypadków: martwa strefa, zbocza i trzymany przycisk, spusty, dash jednorazowy, kierunek celowania, komendy z klawiszy, powtarzanie i próg gałki w menu). Build zielony (1432 testy).
+- **Przeglądarka (Playwright, Chromium, wirtualny pad podstawiony pod `navigator.getGamepads`):** menu ↓ ↑ A → wybór bohatera → → A → gra; lewa gałka przesuwa bohatera, prawa obraca cel o 180°, sama lewa gałka obraca cel za ruchem; Start → pauza, ↓ zaznacza slot, B → wznowienie; ruch myszy odbiera celowanie padowi. Nagroda: A przed uaktywnieniem nic nie robi, → → A bierze kartę. Śmierć: A po 0,5 s nic nie robi, Y po 2 s otwiera wybór bohatera. Bez błędów w dzienniku.
+- **Następny krok (plan):** wersja mobilna jako osobna strona (`mobile.html`, `src/mobile/`) z dotykiem przeniesionym z gałęzi testowej na te same gniazda; łucznik na dotyku, przycisk pauzy; osobna tablica wyników dla telefonu (wspomaganie celowania).
+- **Czeka na ocenę właściciela:** układ przycisków pada, martwe strefy, cel za ruchem bez prawej gałki, 1,5 s na ekranie śmierci. Podpowiedzi na ekranach (HUD, śmierć, wybór bohatera) są nadal klawiaturowe — do decyzji, czy zmieniać je zależnie od urządzenia.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -4266,7 +4283,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
+- **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`); od kroku 95 pad działa w wersji PC (drugi gracz na drugim padzie — do zrobienia).
+- **Wersja mobilna (krok 95, plan):** osobna strona `mobile.html` i `src/mobile/` na wspólnej logice; dotyk z gałęzi `claude/bold-tesla-xr76xu` do przeniesienia; osobna tablica wyników. `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).
 

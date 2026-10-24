@@ -15,6 +15,8 @@ import { nextRunMode } from '@/systems/BossRush';
 import { openMainMenu } from '@/scenes/BootScene';
 import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { startFloorInfo } from '@/systems/FloorSelect';
+import { MenuCommand, menuCommandFromKey } from '@/systems/gamepadInput';
+import { bindPadMenu } from '@/input/PadMenuInput';
 
 interface HeroCard {
   readonly hero: HeroId;
@@ -89,6 +91,7 @@ export class HeroSelectScene extends Phaser.Scene {
 
     const keyboard = this.input.keyboard;
     keyboard?.on('keydown', (event: KeyboardEvent) => this.onKey(event));
+    bindPadMenu(this, (command) => this.onCommand(command));
     this.refresh();
     this.cameras.main.fadeIn(L.fadeMs, 0, 0, 0);
   }
@@ -163,42 +166,45 @@ export class HeroSelectScene extends Phaser.Scene {
   }
 
   private onKey(event: KeyboardEvent): void {
-    switch (event.key) {
-      case 'ArrowUp':
-      case 'ArrowDown':
-      case 'w':
-      case 'W':
-      case 's':
-      case 'S':
-      case 'Tab':
-        event.preventDefault();
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      this.setMode(nextRunMode(this.mode));
+      return;
+    }
+    // Backspace w tym ekranie nie wraca do menu (tylko Esc) — jak przed krokiem 95.
+    const command = event.key === 'Backspace' ? null : menuCommandFromKey(event.key);
+    if (command) {
+      this.onCommand(command);
+      return;
+    }
+    // 1, 2 … — wybór i start jednym klawiszem.
+    const digit = Number(event.key);
+    if (Number.isInteger(digit) && digit >= 1 && digit <= this.cards.length) {
+      this.select(digit - 1);
+      this.confirm();
+    }
+  }
+
+  /** Klawiatura i pad (krok 95): ← → bohater, ↑ ↓ tryb, potwierdzenie — start, wstecz — menu. */
+  private onCommand(command: MenuCommand): void {
+    switch (command) {
+      case MenuCommand.Up:
+      case MenuCommand.Down:
         this.setMode(nextRunMode(this.mode));
         break;
-      case 'ArrowLeft':
-      case 'a':
-      case 'A':
+      case MenuCommand.Left:
         this.select(cycleIndex(this.selected, -1, this.cards.length));
         break;
-      case 'ArrowRight':
-      case 'd':
-      case 'D':
+      case MenuCommand.Right:
         this.select(cycleIndex(this.selected, 1, this.cards.length));
         break;
-      case 'Enter':
-      case ' ':
+      case MenuCommand.Confirm:
         this.confirm();
         break;
-      case 'Escape':
+      case MenuCommand.Back:
         this.backToMenu();
         break;
-      default: {
-        // 1, 2 … — wybór i start jednym klawiszem.
-        const digit = Number(event.key);
-        if (Number.isInteger(digit) && digit >= 1 && digit <= this.cards.length) {
-          this.select(digit - 1);
-          this.confirm();
-        }
-      }
+      default:
     }
   }
 

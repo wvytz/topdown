@@ -12,6 +12,6 @@ Top-down Action RPG 2D. Gracz przemierza kolejne piętra wieży/lochu. Każde pi
 
 ## 3. Kluczowe systemy (Architektura)
 - **Dungeon Generator:** Siatka kafelków (BSP lub pokoje łączone korytarzami). Każde piętro ma punkt startowy gracza i komnatę bossa.
-- **Sterowanie:** WASD / strzałki (ruch), kursor myszy (celowanie/kierunek ataku), LPM (atak podstawowy / strzał), Spacja/PPM (dash lub umiejętność).
+- **Sterowanie:** WASD / strzałki (ruch), kursor myszy (celowanie/kierunek ataku), LPM (atak podstawowy / strzał), Spacja/PPM (dash lub umiejętność). Pad (krok 95): lewa gałka — ruch, prawa — celowanie, RT / LT — ataki, A — dash, X — interakcja, Start — pauza; menu krzyżakiem i A / B.
 - **Combat & Stats:** System HP, prędkości ruchu, obrażeń, cooldownów ataków oraz hitboxów pocisków/ataków wręcz.
 - **AI Przeciwników:** Prosta maszyna stanów (FSM: IDLE, CHASE, ATTACK). Różne archetypy: Melee rusher, Ranged kiter, Boss (sekwencyjne ataki obszarowe).

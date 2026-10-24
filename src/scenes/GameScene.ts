@@ -104,6 +104,9 @@ import { isStairsTile } from '@/dungeon/stairs';
 import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
 import { InputController } from '@/input/InputController';
+import { bindPadMenu } from '@/input/PadMenuInput';
+import { MenuCommand } from '@/systems/gamepadInput';
+import { GAMEPAD_CONFIG } from '@/config/gamepadConfig';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
@@ -232,6 +235,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private torches!: Torches;
   private combatDecals!: CombatDecals;
   private death: DeathSummary | null = null;
+  /**
+   * Pad na ekranie śmierci (krok 95): co zrobi A (potwierdzenie), B (wstecz) i Y (dodatkowa), i od kiedy.
+   * null — ekran nie czeka na wybór.
+   */
+  private deathPad: { readonly readyAt: number; readonly on: (command: MenuCommand) => void } | null = null;
   /** Kapliczka piętra; null w arenach bossów (krok 90). */
   private shrine: ShrineSite | null = null;
   private arenaGates!: ArenaGates;
@@ -294,6 +302,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.toast = null;
     this.itemNotice = null;
     this.death = null;
+    this.deathPad = null;
     this.stairsUnlocked = false;
     this.onStairs = false;
     this.stairsPrompt = null;
@@ -491,7 +500,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     for (const issue of issues) diag.note('insane-state', { floor: this.floorNumber }, 'error', issue);
   }
 
-  /** Wejście z klawiatury albo (tryb dev) z odtwarzanego nagrania; prawdziwe wejście trafia do nagrywarki (krok 56). */
+  /** Wejście z klawiatury, myszy i pada albo (tryb dev) z odtwarzanego nagrania; prawdziwe wejście trafia do nagrywarki (krok 56). */
   private nextActions(time: number): PlayerActions {
     if (this.replay) {
       if (this.replayStart < 0) {
@@ -505,7 +514,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       }
       return actions;
     }
-    const actions = this.inputController.getActions();
+    const actions = this.inputController.getActions({ x: this.player.x, y: this.player.y });
     diag.recordInput(actions, time);
     return actions;
   }
@@ -1153,6 +1162,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (!event.repeat) this.pauseGame('manual');
       });
     }
+    // Pad (krok 95): Start — pauza; na ekranie śmierci A / Y / B jak R / C / M.
+    bindPadMenu(this, (command) => {
+      if (command === MenuCommand.Pause) this.pauseGame('manual');
+      else if (this.deathPad && this.time.now >= this.deathPad.readyAt) this.deathPad.on(command);
+    });
     const onFocusLost = () => {
       const enabled = autoPauseEnabled(
         { search: window.location.search, dev: import.meta.env.DEV, webdriver: navigator.webdriver === true },
@@ -1305,12 +1319,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
     this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag() };
+    const finish = (keepName: boolean): void => {
+      this.input.keyboard?.off('keydown', onKey);
+      this.deathPad = null;
+      const name = keepName ? sanitizePlayerName(typed, maxLength) : '';
+      if (name) this.playerName.save(name);
+      this.recordDeath(name ? { ...base, name } : base);
+    };
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Enter' || event.key === 'Escape') {
-        this.input.keyboard?.off('keydown', onKey);
-        const name = event.key === 'Enter' ? sanitizePlayerName(typed, maxLength) : '';
-        if (name) this.playerName.save(name);
-        this.recordDeath(name ? { ...base, name } : base);
+        finish(event.key === 'Enter');
         return;
       }
       if (event.key === 'Backspace') typed = [...typed].slice(0, -1).join('');
@@ -1318,6 +1336,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
       if (this.death) this.death = { ...this.death, nameEntry: typed };
     };
     this.input.keyboard?.on('keydown', onKey);
+    // Pad nie wpisze imienia: A zapisuje to, co wpisano z klawiatury (puste = bez imienia), B pomija.
+    this.deathPad = {
+      readyAt: this.time.now + GAMEPAD_CONFIG.deathInputDelayMs,
+      on: (command) => {
+        if (command === MenuCommand.Confirm || command === MenuCommand.Back) finish(command === MenuCommand.Confirm);
+      },
+    };
   }
 
   /** Znacznik tablicy aren na panelu śmierci (krok 91a). */
@@ -1343,10 +1368,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.awaitNewRun();
   }
 
-  /** Po śmierci: R — nowa wspinaczka (nowy seed, piętro 1, pusty, zwykły run), C — zmiana bohatera, M — menu. */
+  /** Po śmierci: R — nowa wspinaczka (nowy seed, piętro 1, pusty, zwykły run), C — zmiana bohatera, M — menu. Pad: A / Y / B. */
   private awaitNewRun(): void {
     const freshSeed = (Date.now() ^ this.runSeed) >>> 0;
-    this.input.keyboard?.once('keydown-R', () => {
+    let chosen = false;
+    const once = (action: () => void) => (): void => {
+      if (chosen) return;
+      chosen = true;
+      this.deathPad = null;
+      action();
+    };
+    const restart = once(() => {
       // Ten sam bohater i tryb co w zakończonym runie.
       // Wybór piętra (krok 91): R zaczyna od tego samego piętra startowego.
       const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
@@ -1354,14 +1386,23 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.scene.restart(fresh);
     });
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
-    this.input.keyboard?.once('keydown-C', () => {
+    const changeHero = once(() => {
       const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
       const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode };
       this.scene.stop(SceneKey.Hud);
       this.scene.start(SceneKey.Select, select);
     });
     // M — menu główne (krok 91).
-    this.input.keyboard?.once('keydown-M', () => this.quitToMenu());
+    const toMenu = once(() => this.quitToMenu());
+    this.input.keyboard?.once('keydown-R', restart);
+    this.input.keyboard?.once('keydown-C', changeHero);
+    this.input.keyboard?.once('keydown-M', toMenu);
+    const padActions: Partial<Record<MenuCommand, () => void>> = {
+      [MenuCommand.Confirm]: restart,
+      [MenuCommand.Alt]: changeHero,
+      [MenuCommand.Back]: toMenu,
+    };
+    this.deathPad = { readyAt: this.time.now + GAMEPAD_CONFIG.deathInputDelayMs, on: (command) => padActions[command]?.() };
   }
 
   /**

@@ -63,6 +63,12 @@ installPageInputGuard({
   },
 });
 
+// Pad (krok 95): w dzienniku, jaki pad i czy przeglądarka zna jego układ (bez „standard” przyciski mogą być przestawione).
+window.addEventListener('gamepadconnected', (event) => {
+  diag.note('gamepad-connected', { id: event.gamepad.id.slice(0, 80), mapping: event.gamepad.mapping || 'nieznany' });
+});
+window.addEventListener('gamepaddisconnected', () => diag.note('gamepad-disconnected'));
+
 function applyPixelPerfectScale(): void {
   const parent = document.getElementById('game');
   if (!parent) return;

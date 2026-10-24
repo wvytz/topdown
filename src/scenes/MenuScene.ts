@@ -23,6 +23,8 @@ import { buildStartBoard, startBoardLines } from '@/systems/startScoreboard';
 import type { StartBoardLine } from '@/systems/startScoreboard';
 import type { ScoreEntry } from '@/systems/Highscores';
 import { StartScoresPanel } from '@/effects/StartScoresPanel';
+import { MenuCommand, menuCommandFromKey } from '@/systems/gamepadInput';
+import { bindPadMenu } from '@/input/PadMenuInput';
 
 export interface MenuSceneData {
   /** Seed, flaga runu testowego i tryb z adresu (BootScene); seed nowej gry losujemy przy wyborze. */
@@ -116,7 +118,11 @@ export class MenuScene extends Phaser.Scene {
     this.fade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.fade).setOrigin(0).setAlpha(1).setDepth(1);
     this.tweens.add({ targets: this.fade, alpha: 0, duration: L.fadeInMs });
 
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onKey(event));
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      const command = menuCommandFromKey(event.key);
+      if (command) this.onCommand(command);
+    });
+    bindPadMenu(this, (command) => this.onCommand(command));
     this.refresh();
   }
 
@@ -159,40 +165,29 @@ export class MenuScene extends Phaser.Scene {
     );
   }
 
-  private onKey(event: KeyboardEvent): void {
+  /** Klawiatura (strzałki/WASD, Enter, Esc, X) i pad (krzyżak/gałka, A, B, Y) — te same komendy (krok 95). */
+  private onCommand(command: MenuCommand): void {
     if (this.leaving) return;
-    switch (event.key) {
-      case 'ArrowUp':
-      case 'w':
-      case 'W':
+    switch (command) {
+      case MenuCommand.Up:
         this.move(-1);
         break;
-      case 'ArrowDown':
-      case 's':
-      case 'S':
+      case MenuCommand.Down:
         this.move(1);
         break;
-      case 'Enter':
-      case ' ':
+      case MenuCommand.Confirm:
         this.confirm();
         break;
-      case 'ArrowLeft':
-      case 'a':
-      case 'A':
+      case MenuCommand.Left:
         if (this.view === 'floors') this.stepFloor(-1);
         break;
-      case 'ArrowRight':
-      case 'd':
-      case 'D':
+      case MenuCommand.Right:
         if (this.view === 'floors') this.stepFloor(1);
         break;
-      case 'Escape':
-      case 'Backspace':
+      case MenuCommand.Back:
         if (this.view !== 'main') this.openMain();
         break;
-      case 'x':
-      case 'X':
-      case 'Delete':
+      case MenuCommand.Alt:
         if (this.view === 'slots') this.deleteSlot();
         break;
       default:
