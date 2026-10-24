@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { DeathSummary } from '@/core/types';
 import { DEATH_HERO_ICON as ICON, DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW } from '@/config/deathScreenConfig';
-import { HERO_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { heroIconTexture } from '@/effects/heroIcon';
 import type { HeroId } from '@/core/heroTypes';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
@@ -15,7 +15,6 @@ import type { RankedEntry } from '@/systems/Highscores';
 const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
 const GLOW_TEXTURE = 'death-glow';
-const heroIconTexture = (hero: HeroId): string => `death-hero-icon-${hero}`;
 const TOWER_PROMPT = 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA · M — MENU';
 /** Wiersze tablicy: podium + separator + wiersz bieżącego runu. */
 const ROWS = HIGHSCORE_CONFIG.podiumSize + 2;
@@ -184,7 +183,7 @@ export class DeathScreen {
       const row = this.rows[i];
       icon.setVisible(hero !== null);
       if (hero === null || !row) return;
-      icon.setTexture(this.heroIcon(hero)).setPosition(iconX, row.y + row.height / 2);
+      icon.setTexture(heroIconTexture(this.scene, hero, ICON)).setPosition(iconX, row.y + row.height / 2);
     });
   }
 
@@ -197,27 +196,6 @@ export class DeathScreen {
 
   private line(row: RankedEntry): { text: string; current: boolean; hero: HeroId | null } {
     return { text: formatScoreRow(row, this.shownFor?.arenas === true), current: row.isCurrent, hero: knownHero(row.entry.hero) };
-  }
-
-  /**
-   * Miniaturka bohatera: pierwsza klatka chodu zwrócona w dół, kadrowana i zmniejszona z wygładzaniem
-   * (zwykłe skalowanie najbliższym sąsiadem gubiłoby co drugi piksel). Tworzona raz na bohatera.
-   */
-  private heroIcon(hero: HeroId): string {
-    const key = heroIconTexture(hero);
-    const textures = this.scene.textures;
-    if (textures.exists(key)) return key;
-    const sheet = SPRITE_SHEETS[HERO_VISUALS[hero].sheet];
-    const canvas = textures.createCanvas(key, ICON.sizePx, ICON.sizePx);
-    const ctx = canvas?.getContext();
-    if (!canvas || !ctx || !textures.exists(sheet.key)) return key;
-    const source = textures.get(sheet.key).getSourceImage() as CanvasImageSource;
-    const { x, y, size } = ICON.crop;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(source, x, ICON.facing * sheet.frameHeight + y, size, size, 0, 0, ICON.sizePx, ICON.sizePx);
-    canvas.refresh();
-    return key;
   }
 
   private reset(): void {

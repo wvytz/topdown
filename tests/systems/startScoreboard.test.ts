@@ -6,12 +6,12 @@ import { MENU_SCORES } from '@/config/menuConfig';
 
 const e = (score: number, floor: number, timestamp: number, name?: string): ScoreEntry => ({ score, floor, timestamp, ...(name ? { name } : {}) });
 
-const ala = e(900, 5, 1, 'Ala');
+const ala = { ...e(900, 5, 1, 'Ala'), hero: 'sorceress' };
 const ola = e(700, 4, 2, 'Ola');
 const ewa = e(500, 3, 3, 'Ewa');
 const wicio = e(300, 3, 4, 'Wicio');
 
-describe('tablica na ekranie startowym (krok 93)', () => {
+describe('tablica na ekranie startowym (krok 94)', () => {
   it('pokazuje top N w porządku tablicy i oznacza własne wpisy', () => {
     const view = buildStartBoard([ewa, ala, ola], [ola], 3, compareScores, null);
     expect(view.top.map((r) => r.entry.name)).toEqual(['Ala', 'Ola', 'Ewa']);
@@ -56,6 +56,13 @@ describe('tablica na ekranie startowym (krok 93)', () => {
     expect(buildStartBoard([ala, ola], [ola], 3, compareScores, { timestamp: 2, rank: 2 }).overtaken).toBeNull();
   });
 
+  it('miniaturka tylko dla znanego bohatera; wiersze bez wyniku bez pola bohatera', () => {
+    const odd = { ...e(100, 1, 7, 'X'), hero: 'paladin-z-przyszlosci' };
+    const archer = { ...e(50, 1, 8, 'Y'), hero: 'archer' };
+    const lines = startBoardLines(buildStartBoard([odd, archer], [], 3, compareScores, null), 'T', false, MENU_SCORES.text);
+    expect(lines.map((l) => l.hero)).toEqual([undefined, null, 'archer']);
+  });
+
   it('tablica aren: dalsza arena przed większym złotem', () => {
     const view = buildStartBoard([e(900, 2, 1, 'A'), e(10, 6, 2, 'B')], [], 3, compareArenaScores, null);
     expect(view.top.map((r) => r.entry.name)).toEqual(['B', 'A']);
@@ -66,16 +73,16 @@ describe('tablica na ekranie startowym (krok 93)', () => {
     const lines = startBoardLines(view, 'WSPINACZKA', false, MENU_SCORES.text);
     expect(lines).toEqual([
       { text: 'WSPINACZKA', tone: 'title' },
-      { text: '1. Ala    900 zł · piętro 5', tone: 'item' },
-      { text: '2. Ola    700 zł · piętro 4', tone: 'item' },
-      { text: 'Ty: 4. Wicio  300 zł · piętro 3', tone: 'own' },
+      { text: '1. Ala    900 zł · piętro 5', tone: 'item', hero: 'sorceress' },
+      { text: '2. Ola    700 zł · piętro 4', tone: 'item', hero: null },
+      { text: 'Ty: 4. Wicio  300 zł · piętro 3', tone: 'own', hero: null },
       { text: '▼ ktoś cię wyprzedził: 2. → 4.', tone: 'warn' },
     ]);
   });
 
   it('wiersze aren i pusta tablica', () => {
     const arenas = startBoardLines(buildStartBoard([e(120, 4, 1)], [], 3, compareArenaScores, null), 'ARENY', true, MENU_SCORES.text);
-    expect(arenas[1]).toEqual({ text: '1. —  arena 4 · 120 zł', tone: 'item' });
+    expect(arenas[1]).toEqual({ text: '1. —  arena 4 · 120 zł', tone: 'item', hero: null });
     const empty = startBoardLines(buildStartBoard([], [], 3, compareScores, null), 'ARENY', true, MENU_SCORES.text);
     expect(empty).toEqual([
       { text: 'ARENY', tone: 'title' },

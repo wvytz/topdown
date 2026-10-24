@@ -1,7 +1,7 @@
 import type { KeyValueStorage } from '@/persistence/HighscoreStorage';
 import type { SeenRank } from '@/systems/startScoreboard';
 
-/** Ostatnio oglądane miejsce własnego rekordu (krok 93). Uszkodzony wpis = brak; bez magazynu — pamięć sesji. */
+/** Ostatnio oglądane miejsce własnego rekordu (krok 94). Uszkodzony wpis = brak; bez magazynu — pamięć sesji. */
 export class SeenRankStorage {
   private memory: SeenRank | null = null;
 

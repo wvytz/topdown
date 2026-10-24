@@ -13,7 +13,7 @@ function memory(): KeyValueStorage & { data: Map<string, string> } {
 
 const options = { maxEntries: 50, podiumSize: 5, timeoutMs: 1000, maxOutbox: 20 };
 
-describe('wyniki na ekranie startowym (krok 93)', () => {
+describe('wyniki na ekranie startowym (krok 94)', () => {
   it('fetchShared wysyła zaległą kolejkę i zwraca wspólną listę', async () => {
     const stored: ScoreEntry[] = [{ score: 100, floor: 2, timestamp: 1, name: 'Ala' }];
     const remote: RemoteScoreSource = { fetchTop: async () => [...stored], submit: async (entry) => void stored.push(entry) };

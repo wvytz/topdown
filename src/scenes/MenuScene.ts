@@ -129,7 +129,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   /**
-   * Tablice na środku (krok 93): od razu lista lokalna, potem wspólna z workera z oznaczeniem własnych wyników
+   * Tablice na środku (krok 94): od razu lista lokalna, potem wspólna z workera z oznaczeniem własnych wyników
    * i ostrzeżeniem, że ktoś pobił rekord od ostatniego wejścia do menu.
    */
   private async showScores(): Promise<void> {

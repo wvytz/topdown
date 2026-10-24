@@ -77,7 +77,7 @@ export class SharedHighscores {
   }
 
   /**
-   * Wspólna lista dla ekranu startowego (krok 93): najpierw wysyła zaległe wyniki z kolejki, potem pobiera listę.
+   * Wspólna lista dla ekranu startowego (krok 94): najpierw wysyła zaległe wyniki z kolejki, potem pobiera listę.
    * null = brak usługi albo sieci.
    */
   async fetchShared(): Promise<ScoreEntry[] | null> {

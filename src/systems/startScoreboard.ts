@@ -1,8 +1,10 @@
 import type { ScoreComparator, ScoreEntry } from '@/systems/Highscores';
 import { isSameEntry } from '@/systems/Highscores';
+import type { HeroId } from '@/core/heroTypes';
+import { knownHero } from '@/systems/deathScreen';
 
 /**
- * Mała tablica wyników na ekranie startowym (krok 93): kilka najlepszych wpisów, najlepszy własny wynik
+ * Mała tablica wyników na ekranie startowym (krok 94): kilka najlepszych wpisów, najlepszy własny wynik
  * i informacja, że ktoś go wyprzedził od ostatniego oglądania. „Własny” = wpis z lokalnej listy tej przeglądarki.
  */
 
@@ -64,6 +66,8 @@ export type StartBoardTone = 'title' | 'item' | 'own' | 'dim' | 'warn';
 export interface StartBoardLine {
   readonly text: string;
   readonly tone: StartBoardTone;
+  /** Wiersz wyniku: bohater runu do miniaturki (null — wpis bez bohatera albo nieznany); brak — wiersz bez wyniku. */
+  readonly hero?: HeroId | null;
 }
 
 export interface StartBoardText {
@@ -86,8 +90,8 @@ export function startBoardLines(view: StartBoardView, title: string, arenas: boo
   const format = (row: StartBoardRow, prefix = ''): string =>
     `${prefix}${row.rank}. ${padEnd(nameOf(row.entry), nameWidth)}  ${startBoardValue(row.entry, arenas)}`;
   if (view.top.length === 0) lines.push({ text: text.empty, tone: 'dim' });
-  for (const row of view.top) lines.push({ text: format(row), tone: row.isOwn ? 'own' : 'item' });
-  if (view.own) lines.push({ text: format(view.own, text.ownPrefix), tone: 'own' });
+  for (const row of view.top) lines.push({ text: format(row), tone: row.isOwn ? 'own' : 'item', hero: knownHero(row.entry.hero) });
+  if (view.own) lines.push({ text: format(view.own, text.ownPrefix), tone: 'own', hero: knownHero(view.own.entry.hero) });
   if (view.overtaken) lines.push({ text: text.overtaken(view.overtaken.from, view.overtaken.to), tone: 'warn' });
   return lines;
 }

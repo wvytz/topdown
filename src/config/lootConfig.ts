@@ -205,7 +205,7 @@ export const HIGHSCORE_CONFIG = {
 
 /**
  * Tablice wyników (krok 91a): wspinaczka i osobna tablica aren bossów — klucze magazynu i trasy workera.
- * `seenKey` (krok 93): ostatnio oglądane miejsce własnego rekordu na ekranie startowym.
+ * `seenKey` (krok 94): ostatnio oglądane miejsce własnego rekordu na ekranie startowym.
  */
 export const HIGHSCORE_BOARDS = {
   tower: {
