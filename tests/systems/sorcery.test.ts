@@ -11,7 +11,7 @@ import { Health } from '@/systems/Health';
 import type { MeleeTarget } from '@/systems/MeleeResolver';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
-import { BeamChannel, beamReach, crystalPoint, distanceToSegment, orbitOffsets, resolveBeam } from '@/systems/Sorcery';
+import { BeamChannel, OrbSeries, beamReach, crystalPoint, distanceToSegment, orbitOffsets, resolveBeam, resolveSplash } from '@/systems/Sorcery';
 
 const sorceress = HERO_DEFINITIONS[HeroId.Sorceress];
 const barbarian = HERO_DEFINITIONS[HeroId.Barbarian];
@@ -55,9 +55,11 @@ describe('bohaterowie', () => {
 describe('przedmioty u Czarodziejki', () => {
   const base = sorceryOf(sorceress.kit)!.orbs;
 
-  it('Ostrze dodaje obrażenia kul, Rękawice przyspieszają rzut, Kołczan dokłada kulę', () => {
+  it('Ostrze dodaje obrażenia kul i fali, Rękawice przyspieszają rzut i powrót serii, Kołczan dokłada kulę', () => {
     const orbs = sorceryOf(loadout([ItemId.Blade, ItemId.Gloves, ItemId.Quiver]).kit)!.orbs;
     expect(orbs.damage).toBeGreaterThan(base.damage);
+    expect(orbs.nova.damage).toBeGreaterThan(base.nova.damage);
+    expect(orbs.reloadMs).toBeLessThan(base.reloadMs);
     expect(orbs.castCooldownMs).toBeLessThan(base.castCooldownMs);
     expect(orbs.castWindupMs).toBeLessThan(base.castWindupMs);
     expect(orbs.maxOrbs).toBe(base.maxOrbs + 1);
@@ -72,7 +74,62 @@ describe('przedmioty u Czarodziejki', () => {
     const effects = { playerRechargeMultiplier: 2 } as FloorModifierEffects;
     const slowed = sorceryOf(applyFloorToLoadout(loadout(), effects).kit)!;
     expect(slowed.orbs.rechargeMs).toBe(base.rechargeMs * 2);
+    expect(slowed.orbs.reloadMs).toBe(base.reloadMs * 2);
     expect(slowed.beam.lockoutMs).toBe(beamConfig.lockoutMs * 2);
+  });
+});
+
+describe('seria kul (OrbSeries, krok 97)', () => {
+  it('ostatnia kula serii wyzwala falę, potem wszystkie wracają naraz po reloadMs', () => {
+    const series = new OrbSeries(3, 900, 600);
+    expect(series.tryThrow(0)).toEqual({ last: false });
+    expect(series.tryThrow(300)).toEqual({ last: false });
+    expect(series.tryThrow(600)).toEqual({ last: true });
+    expect(series.tryThrow(700)).toBeNull();
+    expect(series.available(1199)).toBe(0);
+    expect(series.rechargeProgress(900)).toBeCloseTo(0.5);
+    expect(series.available(1200)).toBe(3);
+    expect(series.rechargeProgress(1200)).toBe(1);
+  });
+
+  it('seria przerwana w połowie odnawia się po jednej kuli co rechargeMs', () => {
+    const series = new OrbSeries(3, 900, 600);
+    series.tryThrow(0);
+    series.tryThrow(100);
+    expect(series.available(899)).toBe(1);
+    expect(series.available(900)).toBe(2);
+    expect(series.available(1800)).toBe(3);
+  });
+
+  it('Kołczan w trakcie powrotu daje kulę od razu; nowe czasy działają od kolejnej serii', () => {
+    const series = new OrbSeries(1, 900, 600);
+    expect(series.tryThrow(0)).toEqual({ last: true });
+    series.resize(2, 100);
+    expect(series.available(100)).toBe(1);
+    series.setTiming(900, 200);
+    series.tryThrow(100);
+    expect(series.available(299)).toBe(0);
+    expect(series.available(300)).toBe(2);
+  });
+
+  it('przytrzymany LPM nie traci rytmu: seria z falą trwa krócej niż dawne odnawianie trzech kul', () => {
+    const { orbs } = sorceryOf(sorceress.kit)!;
+    const cycle = orbs.castWindupMs + (orbs.maxOrbs - 1) * orbs.castCooldownMs + orbs.reloadMs;
+    expect(cycle).toBeLessThan(orbs.maxOrbs * 1500);
+  });
+});
+
+describe('fala uderzeniowa (krok 97)', () => {
+  it('rani i odpycha od Czarodziejki wszystkich w promieniu, magią', () => {
+    const { nova } = sorceryOf(sorceress.kit)!.orbs;
+    const near = makeTarget(nova.radius, 0, 100, 8);
+    const behind = makeTarget(-20, 0, 100, 8);
+    const far = makeTarget(nova.radius + 20, 0, 100, 8);
+    const center = { x: 0, y: 0 };
+    resolveSplash({ center, radius: nova.radius, damage: nova.damage, knockback: nova.knockback, now: 0, source: center, exclude: null }, [near, behind, far]);
+    expect(near.hits[0]).toMatchObject({ damage: nova.damage, magic: true, knockback: { x: nova.knockback, y: 0 } });
+    expect(behind.hits[0]!.knockback.x).toBeCloseTo(-nova.knockback);
+    expect(far.hits).toHaveLength(0);
   });
 });
 

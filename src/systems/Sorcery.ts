@@ -8,7 +8,7 @@ import type { MeleeTarget, SwingResult } from '@/systems/MeleeResolver';
 /**
  * Zestaw Czarodziejki (krok 37): przedmioty, orbita kul, promień.
  * Kule są jej bronią główną, więc biorą to, co u barbarzyńcy daje cios i strzał:
- * Ostrze (+obrażenia), Rękawice (szybszy rzut), Kołczan (+1 kula). Promień to umiejętność bazowa.
+ * Ostrze (+obrażenia kul i fali), Rękawice (szybszy rzut i powrót kul), Kołczan (+1 kula). Promień to umiejętność bazowa.
  */
 export function applySorceryModifiers(base: SorceryConfig, mods: StatModifiers, limits: StatLimits): SorceryConfig {
   const cooldown = Math.max(limits.minCooldownMultiplier, 1 + mods.attackCooldownPct);
@@ -20,6 +20,8 @@ export function applySorceryModifiers(base: SorceryConfig, mods: StatModifiers, 
       damage: Math.max(1, orbs.damage + mods.meleeDamage),
       castWindupMs: Math.round(orbs.castWindupMs * cooldown),
       castCooldownMs: Math.round(orbs.castCooldownMs * cooldown),
+      reloadMs: Math.round(orbs.reloadMs * cooldown),
+      nova: { ...orbs.nova, damage: Math.max(1, orbs.nova.damage + mods.meleeDamage) },
       maxOrbs: Math.min(Math.max(limits.maxRangedCharges, orbs.maxOrbs), orbs.maxOrbs + mods.rangedCharges),
     },
   };
@@ -39,6 +41,93 @@ export function orbitOffsets(count: number, now: number, radius: number, periodM
     const angle = phase + (i * Math.PI * 2) / count;
     return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
   });
+}
+
+/** Rzut kuli z serii: `last` = ostatnia kula — wyzwala falę uderzeniową. */
+export interface OrbThrow {
+  readonly last: boolean;
+}
+
+/**
+ * Seria kul na orbicie (krok 97, po raporcie testera: kule wracały za wolno).
+ * Rzut ostatniej kuli wyzwala falę i wszystkie kule wracają naraz po `reloadMs`, więc przytrzymanie LPM
+ * daje ciągły rytm: kula, kula, kula + fala, krótki powrót. Seria przerwana w połowie odnawia się po jednej kuli
+ * co `rechargeMs`. Stan liczony leniwie z jawnego `now` (ms), jak `ChargePool`.
+ */
+export class OrbSeries {
+  private stored: number;
+  private rechargeStartedAt = 0;
+  /** Chwila powrotu wszystkich kul po wyczerpaniu serii; null = seria niewyczerpana. */
+  private reloadAt: number | null = null;
+
+  constructor(
+    private max: number,
+    private rechargeMs: number,
+    private reloadMs: number,
+  ) {
+    this.stored = max;
+  }
+
+  get maxOrbs(): number {
+    return this.max;
+  }
+
+  /** Nowe czasy (Rękawice, modyfikator piętra); bieżące odliczanie zostaje. */
+  setTiming(rechargeMs: number, reloadMs: number): void {
+    this.rechargeMs = rechargeMs;
+    this.reloadMs = reloadMs;
+  }
+
+  /** Zmiana pojemności (Kołczan): nowe kule przychodzą od razu. */
+  resize(maxOrbs: number, now: number): void {
+    this.sync(now);
+    const gained = Math.max(0, maxOrbs - this.max);
+    this.max = maxOrbs;
+    this.stored = Math.min(this.max, this.stored + gained);
+    if (this.stored > 0) this.reloadAt = null;
+  }
+
+  available(now: number): number {
+    this.sync(now);
+    return this.stored;
+  }
+
+  /** Zużywa kulę; null, gdy orbita jest pusta. */
+  tryThrow(now: number): OrbThrow | null {
+    this.sync(now);
+    if (this.stored <= 0) return null;
+    if (this.stored === this.max) this.rechargeStartedAt = now;
+    this.stored--;
+    const last = this.stored === 0;
+    if (last) this.reloadAt = now + this.reloadMs;
+    return { last };
+  }
+
+  /** 0..1 do HUD: postęp powrotu serii albo kolejnej kuli; 1 = pełna orbita. */
+  rechargeProgress(now: number): number {
+    this.sync(now);
+    if (this.reloadAt !== null) return this.reloadMs > 0 ? Math.min(1, Math.max(0, 1 - (this.reloadAt - now) / this.reloadMs)) : 1;
+    if (this.stored >= this.max || this.rechargeMs <= 0) return 1;
+    return Math.min(1, Math.max(0, (now - this.rechargeStartedAt) / this.rechargeMs));
+  }
+
+  private sync(now: number): void {
+    if (this.reloadAt !== null) {
+      if (now < this.reloadAt) return;
+      this.stored = this.max;
+      this.reloadAt = null;
+      return;
+    }
+    if (this.stored >= this.max) return;
+    if (this.rechargeMs <= 0) {
+      this.stored = this.max;
+      return;
+    }
+    const gained = Math.floor((now - this.rechargeStartedAt) / this.rechargeMs);
+    if (gained <= 0) return;
+    this.stored = Math.min(this.max, this.stored + gained);
+    this.rechargeStartedAt += gained * this.rechargeMs;
+  }
 }
 
 /** Stan promienia w danej klatce. */
@@ -144,8 +233,7 @@ export interface BeamStrike {
   readonly status?: StatusApplication;
 }
 
-/** Promień rani każdy cel, którego krąg dotyka odcinka; odrzut wzdłuż promienia. */
-/** Rozprysk kuli (krok 50): wokół miejsca trafienia, bez głównego celu. */
+/** Rozprysk kuli (krok 50): wokół miejsca trafienia, bez głównego celu; też fala uderzeniowa (krok 97). */
 export interface OrbSplash {
   readonly center: Vector2;
   readonly radius: number;
@@ -155,6 +243,8 @@ export interface OrbSplash {
   readonly source: Vector2;
   /** Główny cel kuli — dostał już pełne obrażenia. */
   readonly exclude: object | null;
+  /** Odrzut od środka (fala uderzeniowa); brak = bez odrzutu. */
+  readonly knockback?: number;
 }
 
 /** Obrażenia rozprysku: ułamek obrażeń kuli, co najmniej 1. */
@@ -162,7 +252,7 @@ export function splashDamage(orbDamage: number, fraction: number): number {
   return Math.max(1, Math.round(orbDamage * fraction));
 }
 
-/** Rozprysk: rani cele, których krąg dotyka koła rozprysku (poza głównym celem); magia, bez statusów i odrzutu. */
+/** Rozprysk: rani cele, których krąg dotyka koła rozprysku (poza głównym celem); magia, bez statusów; odrzut tylko fali. */
 export function resolveSplash<T extends MeleeTarget>(splash: OrbSplash, targets: readonly T[]): SwingResult<T> {
   const hit: T[] = [];
   const killed: T[] = [];
@@ -170,7 +260,8 @@ export function resolveSplash<T extends MeleeTarget>(splash: OrbSplash, targets:
     if (target === splash.exclude) continue;
     if (Math.hypot(target.x - splash.center.x, target.y - splash.center.y) > splash.radius + target.radius) continue;
     hit.push(target);
-    if (target.takeHit({ damage: splash.damage, knockback: { x: 0, y: 0 }, magic: true }, splash.now, splash.source).died) killed.push(target);
+    const knockback = splash.knockback ? knockbackFrom(splash.center, target, splash.knockback) : { x: 0, y: 0 };
+    if (target.takeHit({ damage: splash.damage, knockback, magic: true }, splash.now, splash.source).died) killed.push(target);
   }
   return { hit, killed };
 }
@@ -180,6 +271,7 @@ export function beamReaches(beam: BeamStrike, target: MeleeTarget): boolean {
   return distanceToSegment(target, beam.from, beam.to) <= target.radius + beam.halfWidth;
 }
 
+/** Promień rani każdy cel, którego krąg dotyka odcinka; odrzut wzdłuż promienia. */
 export function resolveBeam<T extends MeleeTarget>(beam: BeamStrike, targets: readonly T[]): SwingResult<T> {
   const hit: T[] = [];
   const killed: T[] = [];

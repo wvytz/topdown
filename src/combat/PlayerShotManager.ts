@@ -19,7 +19,7 @@ export interface ShotLook {
   readonly vampiric: boolean;
   /** Magia (kula Czarodziejki) — trafia też bezcielesnych (krok 49b); także strzały łucznika (krok 82). */
   readonly magic: boolean;
-  /** Przebicia ponad Szurikena (pełne naciągnięcie łuku). */
+  /** Przebicia ponad Szurikena (mocna strzała łuku). */
   readonly extraPierce?: number;
 }
 

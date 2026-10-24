@@ -547,7 +547,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, effects);
     }
     if (turn.orb) this.fireOrb(turn.orb);
-    if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.power);
+    if (turn.nova) this.castNova(time);
+    if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.strong);
     if (turn.volley) this.fireVolley(turn.volley);
     this.updateBeam(turn.beam, turn.beamTicks, time);
     this.resolveDashStrike(time);
@@ -679,15 +680,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   /**
-   * Strzała łucznika z łuku (krok 82): siła z naciągnięcia, pełne naciągnięcie przebija.
+   * Strzała łucznika z łuku (krok 82; ciągły ostrzał od kroku 97): mocna strzała serii przebija.
    * Łuk to broń główna, więc strzała niesie wszystkie efekty broni (strzał + cios), jak kula Czarodziejki,
    * i trafia upiory zasadzki (domyślna decyzja z kroku 82, do oceny właściciela).
    */
-  private fireArrow(direction: Vector2, power: number): void {
+  private fireArrow(direction: Vector2, strong: boolean): void {
     const archery = this.player.archeryConfig;
     if (!archery) return;
     const { bow } = archery;
-    const spec = arrowSpec(bow, power);
+    const spec = arrowSpec(bow, strong);
     const origin = crystalPoint(this.player, Math.atan2(direction.y, direction.x), bow.forwardOffset, bow.sideOffset);
     this.playerShots.fire(
       origin,
@@ -700,7 +701,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         projectileRadius: bow.radius,
       },
       this.player.effects,
-      this.arrowLook(direction, spec.full, spec.pierce),
+      this.arrowLook(direction, spec.strong, spec.pierce),
     );
   }
 
@@ -716,12 +717,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
     }
   }
 
-  private arrowLook(direction: Vector2, full: boolean, extraPierce: number): ShotLook {
+  private arrowLook(direction: Vector2, strong: boolean, extraPierce: number): ShotLook {
     const { effects } = this.player;
     const sheet = ARCHER_ARROW_VISUAL.sheet;
     return {
       texture: SPRITE_SHEETS[sheet].key,
-      animation: animationKey(sheet, full ? ARCHER_ARROW_VISUAL.fullAnimation : ARCHER_ARROW_VISUAL.animation, facingDirection(direction) ?? 0),
+      animation: animationKey(sheet, strong ? ARCHER_ARROW_VISUAL.fullAnimation : ARCHER_ARROW_VISUAL.animation, facingDirection(direction) ?? 0),
       status: { ...effects.shotStatus, ...effects.meleeStatus },
       vampiric: effects.meleeHeal > 0,
       magic: true,
@@ -744,6 +745,20 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.enemies.resolveSplash(strike);
     this.bossFight.resolveSplash(strike);
     this.effects.splash(at.x, at.y, splash.radius);
+  }
+
+  /**
+   * Fala uderzeniowa Czarodziejki (krok 97): przy rzucie ostatniej kuli serii rani i odpycha wrogów wokół niej.
+   * Magia (trafia upiory), bez efektów przedmiotów — jak rozprysk kuli.
+   */
+  private castNova(now: number): void {
+    const nova = this.player.sorceryConfig?.orbs.nova;
+    if (!nova) return;
+    const center = { x: this.player.x, y: this.player.y };
+    const strike: OrbSplash = { center, radius: nova.radius, damage: nova.damage, knockback: nova.knockback, now, source: center, exclude: null };
+    this.enemies.resolveSplash(strike);
+    this.bossFight.resolveSplash(strike);
+    this.effects.nova(center.x, center.y, nova.radius);
   }
 
   /** Promień Czarodziejki: rysunek co klatkę, obrażenia w klatkach z tickiem; zatrzymuje się na ścianie. */

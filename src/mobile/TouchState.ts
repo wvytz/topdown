@@ -22,7 +22,7 @@ export class TouchState {
   move: MovementIntent = { x: 0, y: 0 };
   /** Kierunek przeciągniętego przycisku ataku (wektor jednostkowy); null — kciuk nie celuje (atak celuje sam). */
   aim: Vector2 | null = null;
-  /** Przycisk ataku (duże kółko) przytrzymany — ciosy, kule albo naciąganie łuku. */
+  /** Przycisk ataku (duże kółko) przytrzymany — ciosy, kule albo ostrzał z łuku. */
   attack = false;
   /** Przycisk strzału przytrzymany — salwa, promień Czarodziejki albo salwa łucznika. */
   shoot = false;
