@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
+import { NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
 
 /** Krótkie, czysto wizualne efekty walki (bez wpływu na logikę). */
 export class CombatEffects {
@@ -37,6 +37,14 @@ export class CombatEffects {
     const { color, alpha, fillAlpha, durationMs } = ORB_SPLASH_VISUAL;
     const ring = this.scene.add.circle(x, y, radius, color, fillAlpha).setStrokeStyle(2, color, alpha).setDepth(RENDER_DEPTH.groundFlash);
     this.scene.tweens.add({ targets: ring, alpha: 0, scale: 1.15, duration: durationMs, onComplete: () => ring.destroy() });
+  }
+
+  /** Fala uderzeniowa Czarodziejki (krok 97): pierścień rozchodzi się od niej do promienia fali. */
+  nova(x: number, y: number, radius: number): void {
+    const { color, core, alpha, fillAlpha, startScale, durationMs } = NOVA_VISUAL;
+    const ring = this.scene.add.circle(x, y, radius, color, fillAlpha).setStrokeStyle(3, core, alpha).setDepth(RENDER_DEPTH.groundFlash);
+    ring.setScale(startScale);
+    this.scene.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: durationMs, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
   }
 
   /** Unoszący się napis (np. „+3” złota) nad miejscem zdarzenia. */

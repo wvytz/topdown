@@ -4207,6 +4207,20 @@ Ocena właściciela po teście na telefonie: sterowanie „lekko kalekie”, nie
 - **Przeglądarka (emulacja Pixel 7):** kółko przeciągnięte w lewo obraca cel o 180° i tnie; PPM przeciągnięty w górę strzela w górę; ZRYW robi dash; stuknięcie kółka bez wroga w zasięgu atakuje w bieżącym kierunku. Build zielony.
 - **Do sprawdzenia:** przycinanie na telefonie (emulacja bez karty graficznej nie da miarodajnego pomiaru).
 
+## Krok 97 — Ciągły atak LPM dla każdego bohatera `#ocena` `#balans` `#czarodziejka` `#lucznik`
+
+**Raport testera (przekazany przez właściciela 24.10.2026):** gra „powtarzalna”, ale „świetna i sprawia kupę frajdy”. Barbarzyńca OP, bo przytrzymanie LPM tnie bez przerwy; Czarodziejka „tragiczna” — kule na LPM mają za długi cooldown, promień słabszy, niż się oczekuje; łucznik „w ogóle tragedia” przez naciąganie. Właściciel się zgadza: łucznik ma strzelać w kółko, kule Czarodziejki do zmiany (pomysły: czwarta kula wybuchowa albo po trzech kulach fala uderzeniowa wokół niej). `#ocena` `#decyzja`
+
+Co powstało:
+- **Łucznik — ciągły ostrzał zamiast naciągania:** przytrzymanie LPM strzela od razu i potem co 0,34 s (`BowRepeater` w `systems/Archery.ts`). Co 3. strzała serii jest **mocna** (14 zamiast 8, mocniejszy odrzut, szybsza, przebija; wygląd dawnej strzały z pełnego naciągnięcia), celownik żółknie przed mocną. Puszczenie LPM, dash, paraliż i salwa zaczynają serię od nowa. W trakcie ostrzału 80% prędkości (wcześniej 60% przy naciąganiu). Ostrze dodaje obrażenia obu strzał, Rękawice skracają odstęp. Ok. 29 obrażeń/s w jeden cel (wcześniej ok. 11/s), barbarzyńca ok. 37/s wręcz. Salwa (PPM) bez zmian. Dotyk i pad bez zmian w kodzie: przytrzymany przycisk ataku = ostrzał. Klatki naciągania zostają w arkuszu, gra ich już nie używa.
+- **Czarodziejka — seria kul z falą uderzeniową (wariant „po trzech kulach fala”):** przytrzymanie LPM rzuca kule jak dotąd; **rzut ostatniej kuli wyzwala falę uderzeniową wokół niej** (promień 56 px, 16 obrażeń, mocny odrzut, magia — trafia upiory, bez efektów przedmiotów) i wszystkie kule wracają **naraz po 0,6 s** (`OrbSeries` w `systems/Sorcery.ts`). Rytm przy trzymanym LPM: kula, kula, kula + fala, krótki powrót — ok. 1,6 s na serię (wcześniej po trzech kulach jedna kula co 1,5 s). Seria przerwana w połowie odnawia się po jednej kuli co 0,9 s. Ostrze dodaje też obrażenia fali, Rękawice skracają powrót, Kołczan wydłuża serię o kulę. Wygląd: rozchodzący się pierścień (`NOVA_VISUAL`, `CombatEffects.nova`).
+- **Promień mocniejszy:** 5 → 8 obrażeń na tick (40/s), zasięg 150 → 170 px, szerokość 8 → 10 px, do 3 s (było 2,5), blokada 1,5 → 1 s, spowolnienie łagodniejsze (0,5 → 0,6).
+- **Barbarzyńca bez zmian** — raport mówił, że jest OP, bo tylko on atakuje bez przerwy; teraz każdy bohater ma ciągły LPM. Osłabienie barbarzyńcy do decyzji po teście.
+- Modyfikator piętra wydłużający odnawianie działa też na powrót serii kul. Opisy ataków na ekranie wyboru zaktualizowane.
+- **Testy:** `tests/systems/archery.test.ts` (strzała zwykła i mocna, `BowRepeater`: od razu i co odstęp, co 3. mocna, reset serii, `strongEvery: 0`, przedmioty, DPS łucznika poniżej barbarzyńcy), `tests/systems/sorcery.test.ts` (`OrbSeries`: fala przy ostatniej kuli, powrót naraz, odnawianie po jednej, Kołczan i nowe czasy; fala rani i odpycha od środka; przedmioty i modyfikator piętra). Build zielony (1668 testów).
+- **Przeglądarka (Playwright, Chromium):** łucznik z trzymanym LPM przez 3 s — 9 strzał co ok. 0,37 s, co trzecia 14 obrażeń z przebiciem; Czarodziejka — 6 kul i 2 fale. Bez błędów.
+- **Czeka na ocenę właściciela i testera:** tempo ostrzału i siła mocnej strzały, promień i obrażenia fali, czas powrotu kul (0,6 s), czy barbarzyńca dalej odstaje. Pomysł z czwartą, wybuchową kulą — nie zrobiony, do rozważenia, jeśli fala się nie sprawdzi. Zarzut „gra powtarzalna” zapisany w backlogu — do osobnego kroku, właściciel przekaże więcej uwag testera.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -4285,6 +4299,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Bohaterowie po kroku 97:** `#balans` `#czarodziejka` `#lucznik` ciągły ostrzał łucznika (co 0,34 s, co 3. mocna), fala uderzeniowa i powrót kul Czarodziejki (0,6 s), mocniejszy promień; czy barbarzyńca dalej jest OP.
+- **Raport testera (24.10.2026): gra powtarzalna** `#ocena` — do osobnego kroku; właściciel przekaże więcej uwag.
 - **HUD z ikonami (krok 67):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).
 - **Ekran śmierci (kroki 63–65):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
 - **Ekran startowy (krok 60):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.

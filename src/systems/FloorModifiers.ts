@@ -95,7 +95,11 @@ export function applyFloorToLoadout(loadout: PlayerLoadout, effects: FloorModifi
         ? {
             kind: 'sorcery',
             sorcery: {
-              orbs: { ...kit.sorcery.orbs, rechargeMs: Math.round(kit.sorcery.orbs.rechargeMs * m) },
+              orbs: {
+                ...kit.sorcery.orbs,
+                rechargeMs: Math.round(kit.sorcery.orbs.rechargeMs * m),
+                reloadMs: Math.round(kit.sorcery.orbs.reloadMs * m),
+              },
               beam: { ...kit.sorcery.beam, lockoutMs: Math.round(kit.sorcery.beam.lockoutMs * m) },
             },
           }

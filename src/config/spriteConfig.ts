@@ -116,7 +116,7 @@ export const SPRITE_SHEETS = {
     animations: {
       walk: { frames: [0, 1, 2, 3], loop: true },
       idle: { frames: [0], loop: false },
-      // Etapy naciągania wybiera gra według siły (BowDraw); każdy to jedna klatka.
+      // Etapy naciągania (krok 82); od kroku 97 ostrzał ciągły ich nie używa — zostają w arkuszu. Każdy to jedna klatka.
       nock: { frames: [4], loop: false },
       half: { frames: [5], loop: false },
       full: { frames: [6], loop: false },
@@ -135,7 +135,7 @@ export const SPRITE_SHEETS = {
     directions: 8,
     fps: SPRITE_FPS,
     animations: {
-      // Kolumna 1: strzała z pełnego naciągnięcia (jaśniejszy grot i lotki).
+      // Kolumna 1: mocna strzała (dawniej z pełnego naciągnięcia) (jaśniejszy grot i lotki).
       fly: { frames: [0], loop: false },
       flyFull: { frames: [1], loop: false },
     },
@@ -1202,6 +1202,8 @@ export const SHIELD_ARC_VISUAL = { color: 0xe0701c, alpha: 0.45, width: 2, gap: 
 
 /** Rozprysk kuli Czarodziejki (krok 50): pierścień w kolorze kul. */
 export const ORB_SPLASH_VISUAL = { color: 0x6ee7ff, alpha: 0.7, fillAlpha: 0.18, durationMs: 220 } as const;
+/** Fala uderzeniowa Czarodziejki (krok 97): pierścień rośnie od środka do promienia fali i gaśnie. */
+export const NOVA_VISUAL = { color: 0x8ae6ef, core: 0xe4fbfb, alpha: 0.9, fillAlpha: 0.15, startScale: 0.25, durationMs: 260 } as const;
 
 /** Pułapki i rzeczy do rozbicia ruin (krok 48). */
 export const TRAP_VISUAL = {
