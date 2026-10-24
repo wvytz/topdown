@@ -73,7 +73,6 @@ import {
   BREAKABLE_LOOT,
   BOSS_REWARD,
   ENEMY_LOOT,
-  HIGHSCORE_BOARDS,
   HIGHSCORE_CONFIG,
   ITEM_DEFINITIONS,
   ITEM_EFFECTS,
@@ -118,11 +117,10 @@ import { HealBudget } from '@/systems/HealBudget';
 import { Timer } from '@/systems/Timer';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
-import { SharedHighscores } from '@/persistence/SharedHighscores';
-import { createRemoteScoreSource } from '@/persistence/remoteScores';
+import { createBoardHighscores } from '@/persistence/highscoreBoards';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
-import { compareArenaScores, isNameChar, sanitizePlayerName } from '@/systems/Highscores';
+import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
@@ -250,37 +248,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private healBudget = new HealBudget();
   /** Promień Czarodziejki (krok 37) — rysowany co klatkę, gdy świeci. */
   private beamGfx: Phaser.GameObjects.Graphics | null = null;
-  private readonly highscores = new SharedHighscores(
-    new HighscoreStorage(HighscoreStorage.browserStorage(), HIGHSCORE_CONFIG.maxEntries, HIGHSCORE_CONFIG.podiumSize),
-    createRemoteScoreSource(),
-    HighscoreStorage.browserStorage(),
-    {
-      maxEntries: HIGHSCORE_CONFIG.maxEntries,
-      podiumSize: HIGHSCORE_CONFIG.podiumSize,
-      timeoutMs: HIGHSCORE_CONFIG.remoteTimeoutMs,
-      maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
-    },
-  );
+  private readonly highscores = createBoardHighscores('tower');
   /** Tablica aren bossów (krok 91a): najpierw osiągnięta arena, potem złoto; własny klucz, kolejka i trasa workera. */
-  private readonly arenaHighscores = new SharedHighscores(
-    new HighscoreStorage(
-      HighscoreStorage.browserStorage(),
-      HIGHSCORE_CONFIG.maxEntries,
-      HIGHSCORE_CONFIG.podiumSize,
-      HIGHSCORE_BOARDS.arenas.storageKey,
-      compareArenaScores,
-    ),
-    createRemoteScoreSource(HIGHSCORE_BOARDS.arenas.path),
-    HighscoreStorage.browserStorage(),
-    {
-      maxEntries: HIGHSCORE_CONFIG.maxEntries,
-      podiumSize: HIGHSCORE_CONFIG.podiumSize,
-      timeoutMs: HIGHSCORE_CONFIG.remoteTimeoutMs,
-      maxOutbox: HIGHSCORE_CONFIG.maxOutbox,
-      outboxKey: HIGHSCORE_BOARDS.arenas.outboxKey,
-      compare: compareArenaScores,
-    },
-  );
+  private readonly arenaHighscores = createBoardHighscores('arenas');
   private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
   private runSeed = 0;
   /** Zapis gry (krok 91): autozapis przy wejściu na piętro i ręczne sloty z pauzy. */

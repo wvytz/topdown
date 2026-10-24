@@ -1,4 +1,5 @@
 import { SPLASH_PALETTE } from '@/config/splashConfig';
+import { DEATH_HERO_ICON } from '@/config/deathScreenConfig';
 import { MenuEntry } from '@/systems/mainMenu';
 
 /**
@@ -17,6 +18,10 @@ export const MENU_PALETTE = {
   text: '#d8ccb0',
   textDim: '#9c8f74',
   warn: '#ed4b40',
+  /** Cień tekstu wyników na środku menu (krok 94a, bez tła panelu). */
+  textShadow: '#07060b',
+  /** Własny wynik na tablicy ekranu startowego (krok 94). */
+  own: '#e7b140',
   /** Areny bossów — fiolet teleportu, jak zakładka na ekranie wyboru. */
   arenaMode: '#c8a8ff',
   fade: SPLASH_PALETTE.chitin0,
@@ -25,6 +30,24 @@ export const MENU_PALETTE = {
 export const MENU_LAYOUT = {
   /** Lewy panel z pozycjami menu (z dala od wieży na środku i napisów TOP / DOWN). */
   menu: { x: 40, y: 150, width: 300, height: 252, padX: 22, firstItemY: 22, step: 34, fontSize: 17, letterSpacing: 2 },
+  /**
+   * Środkowe najlepsze wyniki (krok 94): wspinaczka i areny, między panelami menu i opisu.
+   * Bez tła i ramki (krok 94a) — sam tekst z cieniem na tle wieży. Tytuły list na środku, wiersze wyników
+   * wyśrodkowane jako blok z kolumną miniaturek bohaterów po lewej (krok 94b).
+   */
+  scores: {
+    x: 354,
+    y: 150,
+    width: 252,
+    padX: 8,
+    padY: 12,
+    fontSize: 11,
+    lineStep: 18,
+    sectionGap: 10,
+    shadowBlur: 3,
+    /** Miniaturka jak na ekranie śmierci (ten sam kadr), mniejsza, by mieściła się w wierszu. */
+    icon: { facing: DEATH_HERO_ICON.facing, crop: DEATH_HERO_ICON.crop, sizePx: 16, gapPx: 4 },
+  },
   /** Prawy panel z opisem. */
   info: { x: 620, y: 150, width: 300, height: 252, padX: 18, padY: 18, titleFontSize: 15, fontSize: 12, lineSpacing: 5 },
   hint: { y: 524, fontSize: 12, letterSpacing: 2 },
@@ -76,4 +99,19 @@ export const MENU_TEXT = {
   mainHint: '↑ ↓  WYBÓR   ·   ENTER — OK',
   subHint: '↑ ↓  WYBÓR   ·   ENTER — OK   ·   ESC — WRÓĆ',
   floorHint: '← →  PIĘTRO   ·   ENTER — DALEJ   ·   ESC — WRÓĆ',
+} as const;
+
+/** Tablica wyników na ekranie startowym (krok 94): ile wpisów na sekcję i napisy. */
+export const MENU_SCORES = {
+  topCount: 3,
+  titles: {
+    tower: { local: 'WSPINACZKA', pending: 'WSPINACZKA · ŁĄCZENIE…', shared: 'WSPINACZKA' },
+    arenas: { local: 'ARENY BOSSÓW', pending: 'ARENY BOSSÓW · ŁĄCZENIE…', shared: 'ARENY BOSSÓW' },
+  },
+  text: {
+    empty: '  brak wyników',
+    ownPrefix: 'Ty: ',
+    overtaken: (from: number, to: number | null): string =>
+      to === null ? `▼ wyprzedzili cię: było ${from}. miejsce` : `▼ ktoś cię wyprzedził: ${from}. → ${to}.`,
+  },
 } as const;

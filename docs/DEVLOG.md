@@ -4121,8 +4121,6 @@ Co powstało:
 - **Testy:** `tests/systems/PageInputGuard.test.ts` (menu nad grą/płótnem/nakładką, klik poza płótnem, ukrycie karty, zdjęcie strażnika). Build zielony (1385 testów).
 - **Przeglądarka (Chromium, dev):** w grze `contextmenu` i `mousedown` na tle strony są anulowane, PPM obok płótna nie wciska przycisku wskaźnika; trzymany D po ukryciu karty jest puszczony. Natywnego menu Edge nie da się sprawdzić w automacie — czeka na test właściciela.
 
----
-
 ## Krok 93 — Balans Wampirzego kła i Ognistej pięści `#decyzja` `#ocena` `#balans`
 
 Zgłoszenie właściciela: tester po raz kolejny wbił najwyższe piętro i najwyższy wynik na combo kieł + podpalenie — oba efekty rosły liniowo z każdą kopią i bez sufitu (5 kłów: ok. 14 HP/s, 5 pięści: 22 DPS na każdego podpalonego, bossowie bez odporności). `#ocena`
@@ -4137,6 +4135,36 @@ Co powstało:
 - **Odłożone (w odwodzie, jeśli tester dalej wygrywa tym samym):** D — podpalenie pełne tylko na głównym celu, E — bez stałego odświeżania ognia, G — „gnilizna” od 2. kręgu (leczenie −25% na krąg).
 - **Testy:** `tests/systems/healBudget.test.ts` (sufit, zapas, jedna kopia pod sufitem), w `itemEffects.test.ts` malejące przyrosty i odporność bossa na ogień. Build zielony (1394 testy). `npm run smoke -- --floors 3 --seeds 1` (wszyscy bohaterowie) bez błędów.
 - **Czeka na test właściciela / testera:** czy combo dalej łamie późną grę; czy 4% to nie za mało (alternatywa 6%).
+
+---
+
+## Krok 94 — Najlepsze wyniki na ekranie startowym `#ekran-startowy` `#areny-bossow`
+
+Propozycja właściciela: na środku ekranu startowego mniejsza lista najlepszych wyników wspinaczki i aren, „tak by przy włączeniu można było zobaczyć, czy ktoś nie pobił twojego poprzedniego wyniku”.
+
+Co powstało:
+- **Środkowy panel menu (`effects/StartScoresPanel.ts`, `MENU_LAYOUT.scores`, `MENU_SCORES` w `config/menuConfig.ts`):** między panelem pozycji a panelem opisu, przezroczystszy od bocznych (wieża prześwituje). Dwie sekcje: **WSPINACZKA** i **ARENY BOSSÓW**, po 3 najlepsze wpisy (`topCount`); imiona wyrównane w kolumnie, wiersz aren: „arena N · X zł”. Za długi wiersz jest zwężany, nie wychodzi poza panel.
+- **Własne wyniki:** „własny” = wpis z lokalnej listy tej przeglądarki (rozpoznany po złocie, piętrze, czasie i imieniu). Na wspólnej liście własne wiersze świecą na złoto; najlepszy własny rekord spoza top 3 dochodzi wierszem „Ty: 7. Wicio  340 zł · piętro 3”.
+- **„Ktoś cię wyprzedził”:** menu pamięta miejsce najlepszego własnego rekordu z ostatniego wejścia (`persistence/SeenRankStorage.ts`, klucze `seenKey` w `HIGHSCORE_BOARDS`). Gdy ten sam rekord spadł — czerwony wiersz „▼ ktoś cię wyprzedził: 2. → 4.” (albo „wyprzedzili cię: było 2. miejsce”, gdy wypadł z listy 50). Nowy, lepszy rekord nie liczy się jako spadek. Zdarzenie `highscore-overtaken` trafia do diagnostyki.
+- **Ładowanie:** od razu lista lokalna (nagłówek „· ŁĄCZENIE…”), po odpowiedzi workera wspólna („· WSZYSCY GRACZE”). Przy okazji leci zaległa kolejka wyników (`SharedHighscores.fetchShared`). Bez sieci zostaje lista lokalna bez oznaczeń i bez ostrzeżeń. Spóźniona odpowiedź po wyjściu z menu nie rysuje się.
+- **Czysta logika:** `systems/startScoreboard.ts` (`buildStartBoard`, `startBoardLines`); `isSameEntry` przeniesione do `systems/Highscores.ts`. Tworzenie obu tablic w jednym miejscu: `persistence/highscoreBoards.ts` (`createBoardHighscores`, `BOARD_ORDER`) — używa go ekran śmierci i menu.
+- **Testy:** `tests/systems/startScoreboard.test.ts` (top, własne, wiersz „Ty”, spadek, nowy rekord, wypadnięcie z listy, porządek aren, format wierszy), `tests/persistence/startScores.test.ts` (`fetchShared` z kolejką i bez sieci, `localEntries`, pamięć miejsca). Build zielony (1400 testów).
+- **Przeglądarka (Playwright, Chromium, worker podstawiony):** intro → menu; najpierw „ŁĄCZENIE…” z wynikami lokalnymi, potem wspólna lista: Zbyszek / Ala / Ola, „Ty: 4. Wicio”, „▼ ktoś cię wyprzedził: 2. → 4.”; areny: Wicio na 1. miejscu na złoto. Po przeładowaniu ostrzeżenie znika (zapamiętane 4. miejsce). Smoke (`--floors 1 --seeds 1`, trzech bohaterów) OK.
+- **Czeka na ocenę właściciela:** położenie panelu (zasłania wieżę), liczba wpisów (3), ostrzeżenie pokazywane raz.
+
+### Krok 94a — Wyniki bez panelu `#ocena` `#ekran-startowy`
+
+Ocena właściciela: „nie pasuje mi ten widok” — usunąć obramowanie, wyniki przezroczyste, bez dopisku „wszyscy gracze” w tytule. `#ocena`
+- Środek menu bez tła i ramki: same wiersze tekstu z ciemnym cieniem (`MENU_PALETTE.textShadow`, `MENU_LAYOUT.scores.shadowBlur`), wieża widoczna w całości.
+- Nagłówki listy wspólnej to po prostu „WSPINACZKA” i „ARENY BOSSÓW”; „· ŁĄCZENIE…” zostaje na czas pobierania. Ekran śmierci bez zmian.
+- Build zielony (1409 testów); zrzut z Playwrighta: tekst czytelny na tle wieży.
+
+### Krok 94b — Wyśrodkowane tytuły i miniaturki bohaterów `#ocena` `#ekran-startowy`
+
+Prośba właściciela: tytuły list na środku i miniaturki postaci, którymi ustalono wyniki. `#ocena`
+- Tytuły „WSPINACZKA” i „ARENY BOSSÓW” (i wiersze bez wyniku: brak wyników, ostrzeżenie) wyśrodkowane; wiersze wyników to wyśrodkowany blok z kolumną miniaturek po lewej (16 px, ten sam kadr co na ekranie śmierci, `MENU_LAYOUT.scores.icon`). Wpis bez bohatera (sprzed kroku 89) albo z nieznanym bohaterem — bez miniaturki, wiersz w tej samej kolumnie.
+- Rysowanie miniaturki wydzielone do `effects/heroIcon.ts` (`heroIconTexture`) — korzystają z niego ekran śmierci i menu. `StartBoardLine.hero` niesie bohatera wiersza (`knownHero`).
+- **Numeracja:** równoległy wątek balansu też użył numeru 93, więc ten krok (dawniej 93/93a) to **94/94a/94b**.
 
 ---
 
@@ -4241,6 +4269,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`).
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).
+
+**Najlepsze wyniki na ekranie startowym (krok 94, propozycja właściciela)** `#ekran-startowy`: zrobione — top 3 wspinaczki i aren na środku menu, własny rekord i ostrzeżenie „ktoś cię wyprzedził”. Bez panelu, z miniaturkami (94a–94b). Czeka na ocenę: liczba wpisów.
 
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
