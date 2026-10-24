@@ -18,8 +18,12 @@ export interface OrbConfig {
   readonly radius: number;
   /** Kule na orbicie przy pełnej puli. */
   readonly maxOrbs: number;
-  /** Odnowienie jednej pustej orbity (kule wracają po jednej). */
+  /** Odnowienie jednej pustej orbity, gdy seria nie została wyczerpana (kule wracają po jednej). */
   readonly rechargeMs: number;
+  /** Krok 97: po rzucie ostatniej kuli wszystkie wracają naraz po tym czasie (przytrzymanie LPM = ciągła walka). */
+  readonly reloadMs: number;
+  /** Krok 97: fala uderzeniowa wokół Czarodziejki przy rzucie ostatniej kuli serii. */
+  readonly nova: NovaConfig;
   /** Rzut zaklęcia: od kliknięcia do wylotu kuli (klatka 7 animacji). */
   readonly castWindupMs: number;
   /** Odstęp między kolejnymi rzutami (przytrzymanie = seria). */
@@ -33,6 +37,13 @@ export interface OrbConfig {
   readonly orbitPeriodMs: number;
   /** Rozprysk (krok 50): wrogowie w promieniu od trafienia dostają ułamek obrażeń kuli (bez efektów przedmiotów). */
   readonly splash: { readonly radius: number; readonly damageFraction: number };
+}
+
+/** Fala uderzeniowa (krok 97): magia wokół Czarodziejki, odpycha wrogów; bez efektów przedmiotów. */
+export interface NovaConfig {
+  readonly radius: number;
+  readonly damage: number;
+  readonly knockback: number;
 }
 
 /** Promień (PPM): ciągły, póki gracz trzyma przycisk; puszczenie blokuje go na `lockoutMs`. */
@@ -61,26 +72,26 @@ export interface SorceryConfig {
 }
 
 /**
- * Łuk (LPM, krok 82): przytrzymanie naciąga cięciwę, puszczenie wypuszcza strzałę.
- * Siła strzały rośnie liniowo od „min” (szybkie kliknięcie) do „max” (pełne naciągnięcie po `drawMs`).
+ * Łuk (LPM, krok 97 — wcześniej naciąganie z kroku 82): przytrzymanie strzela w kółko co `intervalMs`.
+ * Co `strongEvery`-ta strzała ciągłej serii jest mocna: więcej obrażeń i odrzutu, szybsza, przebija.
  */
 export interface BowConfig {
-  readonly minDamage: number;
-  readonly maxDamage: number;
-  readonly minKnockback: number;
-  readonly maxKnockback: number;
-  readonly minSpeed: number;
-  readonly maxSpeed: number;
+  readonly damage: number;
+  readonly knockback: number;
+  readonly speed: number;
+  readonly strongDamage: number;
+  readonly strongKnockback: number;
+  readonly strongSpeed: number;
+  /** Dodatkowe przebicia mocnej strzały (sumują się z Szurikenem). */
+  readonly strongPierce: number;
+  /** Co która strzała serii jest mocna; 0 = żadna. Seria zaczyna się od nowa po puszczeniu LPM. */
+  readonly strongEvery: number;
   readonly lifetimeMs: number;
   /** Promień ciała strzały (px). */
   readonly radius: number;
-  /** Czas do pełnego naciągnięcia. */
-  readonly drawMs: number;
-  /** Przerwa po wypuszczeniu strzały, zanim można znów naciągać. */
-  readonly cooldownMs: number;
-  /** Dodatkowe przebicia strzały przy pełnym naciągnięciu (sumują się z Szurikenem). */
-  readonly fullDrawPierce: number;
-  /** Mnożnik prędkości ruchu w trakcie naciągania. */
+  /** Odstęp między strzałami przy przytrzymaniu LPM. */
+  readonly intervalMs: number;
+  /** Mnożnik prędkości ruchu w trakcie ostrzału (LPM przytrzymany). */
   readonly moveSpeedMultiplier: number;
   /** Strzała wylatuje z łuku: tyle px przed pivotem … */
   readonly forwardOffset: number;
