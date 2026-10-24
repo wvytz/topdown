@@ -60,7 +60,7 @@ export class StatusEffects {
   apply(status: StatusApplication | undefined, now: number): StatusApplyResult {
     if (!status) return { stunnedMs: 0 };
 
-    if (status.burn) this.burn.apply(status.burn, now);
+    if (status.burn) this.burn.apply(this.resistBurn(status.burn), now);
     if (status.poison) this.poison.apply(status.poison, now);
 
     if (status.slow && status.slow.pct > 0) {
@@ -82,6 +82,13 @@ export class StatusEffects {
       this.paralysisImmuneUntil = this.paralyzedUntil + (this.resistance.paralysisImmunityMs ?? 0);
     }
     return { stunnedMs };
+  }
+
+  /** Krok 93: odporność na ogień osłabia tyknięcie (zaokrąglone, ale co najmniej 1 HP). */
+  private resistBurn(burn: BurnEffect): BurnEffect {
+    const multiplier = this.resistance.burnMultiplier ?? 1;
+    if (multiplier === 1 || burn.tickDamage <= 0) return burn;
+    return { ...burn, tickDamage: Math.max(1, Math.round(burn.tickDamage * multiplier)) };
   }
 
   /** Obrażenia od podpalenia należne do chwili `now` (nadrabia tyknięcia, jeśli klatki były rzadkie). */

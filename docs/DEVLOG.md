@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4137,6 +4137,23 @@ Co powstało:
 
 ---
 
+## Krok 93 — Balans Wampirzego kła i Ognistej pięści `#decyzja` `#ocena` `#balans`
+
+Zgłoszenie właściciela: tester po raz kolejny wbił najwyższe piętro i najwyższy wynik na combo kieł + podpalenie — oba efekty rosły liniowo z każdą kopią i bez sufitu (5 kłów: ok. 14 HP/s, 5 pięści: 22 DPS na każdego podpalonego, bossowie bez odporności). `#ocena`
+
+Decyzja właściciela: zestaw A + B + C + F z propozycji (dokument „Balans: Wampirzy kieł + Ognista pięść”), jednym krokiem, ale w osobnych commitach (93a–93d), bez cięcia bazowych obrażeń gracza. `#decyzja`
+
+Co powstało:
+- **93a — malejące przyrosty** (`systems/WeaponEffects.ts`, `stackDecay: 0.5` w `ITEM_EFFECTS`): każda kolejna kopia dodaje połowę przyrostu poprzedniej. Kieł: 2 / 4 / 5 / 6 / 6 HP (było do 10), pięść: tyknięcie 3 / 5 / 6 / 7 / 7 (było do 11). Pierwsze dwie kopie bez zmian.
+- **93b — sufit leczenia kła** (`systems/HealBudget.ts`, `vampireFang.maxHpPctPerSec: 0.04`): wiadro żetonów, najwyżej 4% maks. HP na sekundę (zapas na 1 s). Barbarzyńca 100 HP: 4 HP/s, Czarodziejka 75 HP: 3 HP/s. Jedna kopia (2,9 HP/s) mieści się pod sufitem; Serce podnosi sufit.
+- **93c — kieł tylko za wrogów** (`GameScene`): cios i pocisk leczą tylko po trafieniu wroga lub bossa (pajączki, dog, pomocnicy też), nie kokonu (również spiżarni), purchawki, urny czy skrzyni.
+- **93d — odporność bossów na ogień** (`StatusResistance.burnMultiplier`, `BOSS_STATUS_RESISTANCE`: 0,5): tyknięcie na bossie ma połowę siły (co najmniej 1 HP), spójnie z odpornością na ogłuszenie i spowolnienie.
+- **Odłożone (w odwodzie, jeśli tester dalej wygrywa tym samym):** D — podpalenie pełne tylko na głównym celu, E — bez stałego odświeżania ognia, G — „gnilizna” od 2. kręgu (leczenie −25% na krąg).
+- **Testy:** `tests/systems/healBudget.test.ts` (sufit, zapas, jedna kopia pod sufitem), w `itemEffects.test.ts` malejące przyrosty i odporność bossa na ogień. Build zielony (1394 testy). `npm run smoke -- --floors 3 --seeds 1` (wszyscy bohaterowie) bez błędów.
+- **Czeka na test właściciela / testera:** czy combo dalej łamie późną grę; czy 4% to nie za mało (alternatywa 6%).
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4243,7 +4260,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
-**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**.
+**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
 

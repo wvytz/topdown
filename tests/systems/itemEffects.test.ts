@@ -73,6 +73,15 @@ describe('computeWeaponEffects', () => {
     expect(fx.shotStatus.stun?.durationMs).toBe(ITEM_EFFECTS.electricArrow.stunMs + ITEM_EFFECTS.electricArrow.stunMsPerStack);
   });
 
+  it('krok 93: kolejne kopie kła i pięści dają coraz mniej', () => {
+    const heal = (n: number) => computeWeaponEffects(many(ItemId.VampireFang, n), ITEM_EFFECTS).meleeHeal;
+    const tick = (n: number) => computeWeaponEffects(many(ItemId.FireFist, n), ITEM_EFFECTS).meleeStatus.burn?.tickDamage;
+    expect([1, 2, 3, 4, 5].map(heal)).toEqual([2, 4, 5, 6, 6]);
+    expect([1, 2, 3, 4, 5].map(tick)).toEqual([3, 5, 6, 7, 7]);
+    // Nawet dużo kopii nie przekroczy sumy szeregu geometrycznego (base + 2 × perStack).
+    expect(heal(30)).toBeLessThanOrEqual(ITEM_EFFECTS.vampireFang.heal + 2 * ITEM_EFFECTS.vampireFang.healPerStack);
+  });
+
   it('spowolnienie ma górny limit', () => {
     expect(computeWeaponEffects(many(ItemId.FrostShard, 20), ITEM_EFFECTS).shotStatus.slow?.pct).toBe(
       ITEM_EFFECTS.frostShard.maxSlowPct,
@@ -187,6 +196,22 @@ describe('StatusEffects', () => {
     const immuneAt = first.stunnedMs + BOSS_STATUS_RESISTANCE.stunImmunityMs;
     expect(status.apply({ stun: { durationMs: 1000 } }, immuneAt - 1).stunnedMs).toBe(0);
     expect(status.apply({ stun: { durationMs: 1000 } }, immuneAt).stunnedMs).toBeGreaterThan(0);
+  });
+
+  it('krok 93: boss dostaje połowę obrażeń podpalenia, zwykły wróg pełne', () => {
+    const burn = { tickDamage: 7, tickMs: 500, durationMs: 2000 };
+    const boss = new StatusEffects(BOSS_STATUS_RESISTANCE);
+    const enemy = new StatusEffects(ENEMY_STATUS_RESISTANCE);
+    boss.apply({ burn }, 0);
+    enemy.apply({ burn }, 0);
+    expect(enemy.takeBurnDamage(2000)).toBe(4 * 7);
+    expect(boss.takeBurnDamage(2000)).toBe(4 * Math.round(7 * BOSS_STATUS_RESISTANCE.burnMultiplier!));
+  });
+
+  it('krok 93: odporność na ogień zostawia co najmniej 1 HP na tyknięcie', () => {
+    const status = new StatusEffects({ ...BOSS_STATUS_RESISTANCE, burnMultiplier: 0.1 });
+    status.apply({ burn: { tickDamage: 3, tickMs: 500, durationMs: 500 } }, 0);
+    expect(status.takeBurnDamage(500)).toBe(1);
   });
 
   it('zwykły wróg stoi przez pełny czas ogłuszenia', () => {
