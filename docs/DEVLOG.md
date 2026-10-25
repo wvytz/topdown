@@ -4238,6 +4238,18 @@ Co powstało:
 
 ---
 
+### Krok 97a — Areny bossów bez minimapy `#decyzja` `#areny`
+
+**Właściciel (25.10.2026):** „Na arenie nie potrzebujemy widoku minimapy. Minimapa na arenie ma być wyłączona.” `#decyzja`
+
+Co powstało:
+- W trybie **Areny bossów** gra nie tworzy minimapy (`GameScene`: `minimap = null`, gdy `bossRush`), więc HUD jej nie rysuje — ani mgły, ani znaczników. Na zwykłych piętrach (wspinaczka, wybór piętra, sloty) minimapa bez zmian.
+- Na telefonie przycisk pauzy zostaje na swoim miejscu (pod pustym rogiem).
+- **Testy:** zmiana tylko w scenie Phasera, bez nowej logiki czystej. Build zielony (1668 testów). Przeglądarka (Playwright): `?mode=arenas` — HUD minimapy pusty, zwykłe piętro — minimapa rysowana, bez błędów.
+- **Czeka na test właściciela.**
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

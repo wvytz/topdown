@@ -370,7 +370,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       dressFloor(floor, tileset, biome.dressing, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT), { torches: torchSpots });
     const dressed = dress(shown);
     // Minimapa widzi piętro w przebraniu — ukryta komnata nie wyda się przed odsłonięciem.
-    this.minimap = new MinimapExplorer(shown, MINIMAP_CONFIG.revealRadius);
+    // Na arenach bossów jej nie ma (krok 97a): sama arena, nie ma czego szukać.
+    this.minimap = this.bossRush ? null : new MinimapExplorer(shown, MINIMAP_CONFIG.revealRadius);
     const secret = this.secretArea ? { dressed: dress(this.dungeon), tiles: this.secretArea.tiles } : null;
     this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset, secret);
     this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
