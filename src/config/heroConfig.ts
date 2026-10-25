@@ -20,18 +20,30 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
     attacks: [
       { input: 'LPM', text: 'cios mieczem łukiem przed sobą' },
       { input: 'PPM', text: 'strzał (3 ładunki)' },
+      { input: 'R', text: 'Szał: furia ciosów, nietykalny' },
     ],
     stats: PLAYER_BASE_STATS,
     combat: PLAYER_COMBAT,
     kit: { kind: 'melee' },
+    // Krok 98 (pomysł właściciela: szał, żeby szybko dobić bossa, z nietykalnością).
+    ultimate: {
+      kind: 'rage',
+      name: 'Szał',
+      durationMs: 5000,
+      attackCooldownMultiplier: 0.65,
+      damageMultiplier: 1.35,
+      moveSpeedMultiplier: 1.2,
+      invulnerable: true,
+    },
   },
   [HeroId.Sorceress]: {
     id: HeroId.Sorceress,
     name: 'Czarodziejka',
     tagline: 'Z dystansu, kruchsza i wolniejsza',
     attacks: [
-      { input: 'LPM', text: 'kule energii; po 3. fala uderzeniowa' },
+      { input: 'LPM', text: '3 kule energii, potem fala' },
       { input: 'PPM', text: 'promień (przytrzymaj)' },
+      { input: 'R', text: 'Supernowa i tarcza' },
     ],
     stats: { maxHp: 75, moveSpeed: 175 },
     combat: PLAYER_COMBAT,
@@ -75,14 +87,17 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
         },
       },
     },
+    // Krok 98 (pomysł właściciela: tarcza i „gigawybuch”): wielka fala wokół niej, potem 3 s tarczy.
+    ultimate: { kind: 'supernova', name: 'Supernowa', radius: 130, damage: 70, knockback: 420, shieldMs: 3000 },
   },
   [HeroId.Archer]: {
     id: HeroId.Archer,
     name: 'Łucznik',
     tagline: 'Szybki, celny, przebija na wylot',
     attacks: [
-      { input: 'LPM', text: 'ostrzał; co 3. strzała przebija' },
+      { input: 'LPM', text: 'ostrzał, co 3. strzała mocna' },
       { input: 'PPM', text: 'salwa 3 strzał' },
+      { input: 'R', text: 'Totem: wabik, który strzela' },
     ],
     // Krok 82: HP między barbarzyńcą a Czarodziejką, najszybszy chód.
     stats: { maxHp: 85, moveSpeed: 215 },
@@ -125,6 +140,18 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
         },
         volley: { arrows: 3, spreadDeg: 30 },
       },
+    },
+    // Krok 98 (pomysł właściciela: totem, który przejmuje aggro): wrogowie i bossowie celują w totem, a on strzela.
+    ultimate: {
+      kind: 'totem',
+      name: 'Totem',
+      durationMs: 7000,
+      shotIntervalMs: 400,
+      range: 240,
+      damage: 10,
+      knockback: 80,
+      speed: 520,
+      lifetimeMs: 600,
     },
   },
 };

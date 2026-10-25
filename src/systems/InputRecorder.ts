@@ -9,12 +9,14 @@ export interface InputSample {
   readonly dash: boolean;
   readonly shoot: boolean;
   readonly interact: boolean;
+  readonly ultimate: boolean;
 }
 
 const ATTACK = 1;
 const DASH = 2;
 const SHOOT = 4;
 const INTERACT = 8;
+const ULTIMATE = 16;
 const HELD = ATTACK | SHOOT;
 
 interface Entry {
@@ -26,7 +28,7 @@ interface Entry {
   readonly ay: number;
 }
 
-const flagsOf = (s: InputSample): number => (s.attack ? ATTACK : 0) | (s.dash ? DASH : 0) | (s.shoot ? SHOOT : 0) | (s.interact ? INTERACT : 0);
+const flagsOf = (s: InputSample): number => (s.attack ? ATTACK : 0) | (s.dash ? DASH : 0) | (s.shoot ? SHOOT : 0) | (s.interact ? INTERACT : 0) | (s.ultimate ? ULTIMATE : 0);
 
 /**
  * Nagrywa wejścia gracza od początku piętra (krok 56): zapisuje tylko zmiany (ruch, przyciski, jednorazowe dash/E
@@ -63,7 +65,7 @@ export class InputRecorder {
     const ax = Math.round(input.aim.x);
     const ay = Math.round(input.aim.y);
     const last = this.last;
-    const pulse = (flags & (DASH | INTERACT)) !== 0;
+    const pulse = (flags & (DASH | INTERACT | ULTIMATE)) !== 0;
     const changed =
       !last ||
       last.mx !== input.move.x ||
@@ -144,7 +146,7 @@ export class InputReplay {
     let pulses = 0;
     while (this.index < this.entries.length && this.entries[this.index]!.t <= elapsedMs) {
       this.current = this.entries[this.index]!;
-      pulses |= this.current.flags & (DASH | INTERACT);
+      pulses |= this.current.flags & (DASH | INTERACT | ULTIMATE);
       this.index++;
     }
     const { mx, my, flags, ax, ay } = this.current;
@@ -155,6 +157,7 @@ export class InputReplay {
       shoot: (flags & SHOOT) !== 0,
       dash: (pulses & DASH) !== 0,
       interact: (pulses & INTERACT) !== 0,
+      ultimate: (pulses & ULTIMATE) !== 0,
     };
   }
 }

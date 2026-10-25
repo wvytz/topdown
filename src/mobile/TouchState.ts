@@ -8,9 +8,11 @@ export interface TouchTaps {
   readonly shot: boolean;
   /** Stuknięcie przycisku ataku — jeden cios (u Czarodziejki kula, u łucznika krótki strzał). */
   readonly attack: boolean;
+  /** Przycisk ultimate (krok 98). */
+  readonly ultimate: boolean;
 }
 
-const NO_TAPS: TouchTaps = { dash: false, interact: false, shot: false, attack: false };
+const NO_TAPS: TouchTaps = { dash: false, interact: false, shot: false, attack: false, ultimate: false };
 
 /**
  * Stan sterowania dotykowego (krok 96): TouchScene go zapisuje, TouchInput czyta raz na klatkę.
@@ -36,6 +38,10 @@ export class TouchState {
 
   queueInteract(): void {
     this.queued = { ...this.queued, interact: true };
+  }
+
+  queueUltimate(): void {
+    this.queued = { ...this.queued, ultimate: true };
   }
 
   /** Stuknięcie przycisku strzału: jeden strzał w najbliższego wroga. */

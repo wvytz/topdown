@@ -65,6 +65,8 @@ export const TOUCH_BUTTONS = {
   shoot: { right: 52, bottom: 222, radius: 34 },
   dash: { right: 232, bottom: 66, radius: 34 },
   interact: { right: 232, bottom: 172, radius: 28 },
+  /** Ultimate (krok 98): nad dużym kółkiem, na lewo od PPM; widoczny zawsze, jasny, gdy pasek jest pełny. */
+  ultimate: { right: 150, bottom: 236, radius: 28 },
   pause: { right: 40, top: 160, radius: 20 },
   /** Strefa dotyku jest trochę większa od rysunku — kciuk nie musi trafić idealnie. */
   hitSlop: 1.2,
@@ -76,6 +78,7 @@ export const TOUCH_LABELS = {
   shoot: { melee: 'STRZAŁ', sorcery: 'PROMIEŃ', archery: 'SALWA' },
   dash: 'ZRYW',
   interact: 'E',
+  ultimate: { melee: 'SZAŁ', sorcery: 'NOVA', archery: 'TOTEM' },
   pause: 'II',
 } as const;
 

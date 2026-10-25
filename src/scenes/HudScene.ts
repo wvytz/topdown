@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
-import type { BeamHudData, BossHudData, HudItem, HudItemNotice, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
+import type { BeamHudData, BossHudData, UltimateHudData, HudItem, HudItemNotice, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
@@ -25,6 +25,10 @@ const CHARGE_GAP = 3;
 const BEAM_Y = CHARGES_Y + CHARGE_HEIGHT + 2;
 const BEAM_HEIGHT = 3;
 const TEXT_Y = BEAM_Y + BEAM_HEIGHT + 4;
+/** Ultimate (krok 98): kwadrat za liczbą HP, wypełnia się od dołu; pełny — złoty i pulsuje. */
+const ULT_X = BAR_X + BAR_WIDTH + 64;
+const ULT_Y = HP_BAR_Y - 5;
+const ULT_SIZE = 24;
 const BOSS_BAR_WIDTH = 420;
 const BOSS_BAR_HEIGHT = 12;
 const BOSS_BAR_Y = 470;
@@ -57,8 +61,9 @@ function helpLine(sorceress: boolean): string {
   // Wersja mobilna (krok 96): przyciski są podpisane na ekranie, a linia pomocy zasłaniałaby gałkę ruchu.
   if (currentPlatform() === 'mobile') return '';
   const attacks = sorceress ? 'LPM — kule energii · PPM — promień (przytrzymaj)' : 'LPM — atak · PPM — strzał';
+  // Krok 98: R — ultimate.
   const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
-  return `WASD — ruch · ${attacks} · Spacja — dash · E — kapliczka, schody${devHelp}`;
+  return `WASD — ruch · ${attacks} · R — ultimate · Spacja — dash · E — kapliczka, schody${devHelp}`;
 }
 
 /** „Naciśnij E” — na telefonie przycisk E pojawia się na ekranie dopiero na schodach. */
@@ -76,6 +81,7 @@ export class HudScene extends Phaser.Scene {
   private floorText!: Phaser.GameObjects.Text;
   private modifierText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
+  private ultimateText!: Phaser.GameObjects.Text;
   private helpText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private deathScreen!: DeathScreen;
@@ -115,6 +121,10 @@ export class HudScene extends Phaser.Scene {
     this.modifierText = this.add.text(BAR_X + BAR_WIDTH + 70, 16, '', { ...style, fontSize: '13px', color: '#ffb070' });
     this.bars = this.add.graphics();
     this.hpText = this.add.text(BAR_X + BAR_WIDTH + 8, HP_BAR_Y - 2, '', { ...style, fontSize: '13px' });
+    // Na telefonie ultimate ma własny przycisk — kwadrat bez litery klawisza.
+    this.ultimateText = this.add
+      .text(ULT_X + ULT_SIZE / 2, ULT_Y + ULT_SIZE / 2, currentPlatform() === 'mobile' ? '' : 'R', { ...style, fontSize: '13px' })
+      .setOrigin(0.5);
     this.hintText = this.add.text(BAR_X, TEXT_Y, '', { ...style, fontSize: '13px' });
 
     this.goldText = this.add.text(BAR_X, TEXT_Y + 18, '', { ...style, fontSize: '14px', color: '#f5c542' });
@@ -167,6 +177,7 @@ export class HudScene extends Phaser.Scene {
       .fillRect(BAR_X, DASH_BAR_Y, BAR_WIDTH * hud.dashReadiness, DASH_BAR_HEIGHT);
     this.drawCharges(hud.ranged);
     this.drawBeam(hud.beam);
+    this.drawUltimate(hud.ultimate, time);
     this.helpText.setText(helpLine(hud.beam !== null));
 
     if (hud.bossRush) {
@@ -320,6 +331,22 @@ export class HudScene extends Phaser.Scene {
   }
 
   /** Promień: w trakcie — pozostały czas (jasny), w blokadzie — odnowienie (ciemny), gotowy — pełny. */
+  private drawUltimate(ultimate: UltimateHudData | null, time: number): void {
+    this.ultimateText.setVisible(ultimate !== null);
+    if (!ultimate) return;
+    const ready = ultimate.charge >= 1;
+    const fill = Math.round(ULT_SIZE * ultimate.charge);
+    const color = ultimate.active ? 0xfff2b0 : ready ? 0xe7b140 : 0x7a6230;
+    this.bars.fillStyle(0x000000, 0.6).fillRect(ULT_X - 2, ULT_Y - 2, ULT_SIZE + 4, ULT_SIZE + 4);
+    this.bars.fillStyle(0x2a2418, 1).fillRect(ULT_X, ULT_Y, ULT_SIZE, ULT_SIZE);
+    this.bars.fillStyle(color, 1).fillRect(ULT_X, ULT_Y + ULT_SIZE - fill, ULT_SIZE, fill);
+    if (ready) {
+      const pulse = 0.5 + 0.5 * Math.sin(time / 150);
+      this.bars.lineStyle(2, 0xfff2b0, 0.4 + 0.6 * pulse).strokeRect(ULT_X - 1, ULT_Y - 1, ULT_SIZE + 2, ULT_SIZE + 2);
+    }
+    this.ultimateText.setColor(ready ? '#2a1a00' : '#c8b890');
+  }
+
   private drawBeam(beam: BeamHudData | null): void {
     if (!beam) return;
     this.bars.fillStyle(0x202030, 1).fillRect(BAR_X, BEAM_Y, BAR_WIDTH, BEAM_HEIGHT);

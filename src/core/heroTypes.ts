@@ -130,6 +130,57 @@ export function archeryOf(kit: HeroKit): ArcheryConfig | null {
   return kit.kind === 'archery' ? kit.archery : null;
 }
 
+/**
+ * Ultimate (R, krok 98 — pomysł właściciela): mocna umiejętność na pasku mocy.
+ * Barbarzyńca — Szał, Czarodziejka — Supernowa z tarczą, łucznik — Totem-wabik.
+ */
+export type UltimateConfig =
+  | {
+      readonly kind: 'rage';
+      readonly name: string;
+      readonly durationMs: number;
+      /** Mnożnik odnowienia ciosu i strzału (< 1 = szybciej). */
+      readonly attackCooldownMultiplier: number;
+      /** Mnożnik obrażeń ciosu i strzału. */
+      readonly damageMultiplier: number;
+      readonly moveSpeedMultiplier: number;
+      /** Przez cały szał bohater nie przyjmuje trafień. */
+      readonly invulnerable: boolean;
+    }
+  | {
+      readonly kind: 'supernova';
+      readonly name: string;
+      /** Wybuch wokół Czarodziejki: magia, odrzut od środka. */
+      readonly radius: number;
+      readonly damage: number;
+      readonly knockback: number;
+      /** Tarcza po wybuchu: tyle ms bez przyjmowania trafień. */
+      readonly shieldMs: number;
+    }
+  | {
+      readonly kind: 'totem';
+      readonly name: string;
+      /** Totem stoi tyle ms; wrogowie i bossowie celują w niego zamiast w łucznika. */
+      readonly durationMs: number;
+      /** Totem sam strzela w najbliższego wroga w zasięgu. */
+      readonly shotIntervalMs: number;
+      readonly range: number;
+      readonly damage: number;
+      readonly knockback: number;
+      readonly speed: number;
+      readonly lifetimeMs: number;
+    };
+
+/** Pasek mocy ultimate: rośnie z czasem i za zabicia; pełny = R gotowe. */
+export interface UltimateGaugeConfig {
+  /** Przyrost na sekundę (1 = pełny pasek). */
+  readonly passivePerSec: number;
+  /** Przyrost za zabitego wroga. */
+  readonly perKill: number;
+  /** Stan paska na początku piętra (i areny). */
+  readonly startCharge: number;
+}
+
 export interface HeroDefinition {
   readonly id: HeroId;
   readonly name: string;
@@ -141,4 +192,6 @@ export interface HeroDefinition {
   readonly combat: PlayerCombatConfig;
   /** Broń: wręcz i strzał (barbarzyńca), magia (Czarodziejka) albo łuk (łucznik). */
   readonly kit: HeroKit;
+  /** Ultimate pod R (krok 98). */
+  readonly ultimate: UltimateConfig;
 }

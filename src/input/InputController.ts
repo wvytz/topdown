@@ -33,6 +33,7 @@ export class InputController implements PlayerInput {
   private readonly arrows: MovementKeys;
   private readonly dashKey: Phaser.Input.Keyboard.Key;
   private readonly interactKey: Phaser.Input.Keyboard.Key;
+  private readonly ultimateKey: Phaser.Input.Keyboard.Key;
   /** Kliknięcie PPM zapamiętane do najbliższej klatki — krótki klik nie może zginąć. */
   private shootClickQueued = false;
   private readonly pad = new PadGameplayReader();
@@ -66,6 +67,7 @@ export class InputController implements PlayerInput {
     };
     this.dashKey = keyboard.addKey(K.SPACE);
     this.interactKey = keyboard.addKey(K.E);
+    this.ultimateKey = keyboard.addKey(K.R);
 
     // PPM = strzał; wyłączamy menu kontekstowe przeglądarki.
     scene.input.mouse?.disableContextMenu();
@@ -109,6 +111,7 @@ export class InputController implements PlayerInput {
       dash: Phaser.Input.Keyboard.JustDown(this.dashKey) || (pad?.dash ?? false),
       shoot: mouseShoot || (pad?.shoot ?? false),
       interact: Phaser.Input.Keyboard.JustDown(this.interactKey) || (pad?.interact ?? false),
+      ultimate: Phaser.Input.Keyboard.JustDown(this.ultimateKey) || (pad?.ultimate ?? false),
     };
   }
 
