@@ -1,4 +1,4 @@
-# Tower Crawler
+# TOP DOWN
 
 Przeglądarkowy top-down action RPG / dungeon crawler. Wspinasz się po piętrach wieży: każde piętro ma losowo generowane pokoje, wrogów, łupy, kapliczkę i komnatę bossa. Dopiero pokonanie bossa otwiera schody wyżej. Wynikiem runu jest złoto zebrane do chwili śmierci.
 

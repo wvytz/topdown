@@ -1,4 +1,4 @@
-# Tower Crawler — dziennik rozwoju
+# TOP DOWN — dziennik rozwoju
 
 Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 
@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4269,6 +4269,20 @@ Co powstało:
 - **Na później (zanotowane):** czytelniejsze animacje eksplozji (bomby kultystów, wybuch elity, kokony) — `#ocena`.
 
 ---
+
+## Krok 100 — Nowa nazwa gry: TOP DOWN `#decyzja` `#nazwa`
+
+**Decyzja właściciela (2026-10-25):** gra nie nazywa się już „Tower Crawler”, tylko **TOP DOWN**. Nazwa podkreśla cykl gry — najpierw w górę wieży, potem w dół — a „down” ma też drugie znaczenie (największy upadek).
+
+**Co się zmieniło:**
+- tytuł karty przeglądarki w `index.html` i `mobile.html` („TOP DOWN”, „TOP DOWN — telefon”);
+- nagłówek raportu F9 (`systems/Diagnostics.ts`) i przykładowy raport w `tests/worker/reports.test.ts`;
+- nagłówki `README.md`, `docs/GDD.md` (już bez „tytuł roboczy”), `docs/DEVLOG.md`, `CLAUDE.md`; nazwa pakietu `top-down` w `package.json`;
+- ekran startowy już wcześniej pokazywał napis TOP / DOWN (`config/splashConfig.ts`).
+
+**Celowo bez zmian:** klucze `localStorage` `tower-crawler.*` (zapisy, wyniki, imię, postęp bossów, diagnostyka), adres workera `tower-crawler-scores.wvytz.workers.dev` i baza D1 `tower-crawler-scores`. Zmiana tych nazw skasowałaby graczom zapisy i odcięła wspólną tablicę wyników.
+
+**Weryfikacja:** `npm run build` (typy + testy + build).
 
 ## Znane ograniczenia i backlog
 

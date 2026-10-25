@@ -8,7 +8,7 @@ export interface PixelCell {
 export const GLYPH_WIDTH = 5;
 export const GLYPH_HEIGHT = 7;
 
-/** Litery w stylu automatów, 5×7 pikseli; „#” = piksel. Tylko znaki potrzebne w napisach (TOP DOWN, CRAWLER, POLEGŁEŚ). */
+/** Litery w stylu automatów, 5×7 pikseli; „#” = piksel. Tylko znaki potrzebne w napisach (TOP DOWN, POLEGŁEŚ). */
 export const PIXEL_GLYPHS: Readonly<Record<string, readonly string[]>> = {
   A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
   C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
