@@ -201,7 +201,7 @@ const fmtData = (data: DiagData | undefined): string => (data ? ` ${JSON.stringi
 
 /** Raport tekstowy do wklejenia testerowi/autorowi: ostatnie sesje, od najstarszej. */
 export function formatReport(sessions: readonly DiagSession[]): string {
-  const lines: string[] = ['Tower Crawler — raport diagnostyczny'];
+  const lines: string[] = ['TOP DOWN — raport diagnostyczny'];
   for (const s of sessions) {
     lines.push('', `=== Sesja ${s.id} (start ${new Date(s.startedAt).toISOString()}) — ${s.endedCleanly ? 'zamknięta normalnie' : 'URWANA (bez zamknięcia)'} ===`);
     lines.push(`Środowisko:${fmtData(s.env)}`);

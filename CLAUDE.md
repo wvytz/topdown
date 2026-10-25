@@ -1,4 +1,4 @@
-# Tower Crawler — instrukcje dla Claude
+# TOP DOWN — instrukcje dla Claude
 
 Top-down action RPG / dungeon crawler w przeglądarce: TypeScript (strict), Phaser 3 (Arcade), Vite, Vitest.
 Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku.

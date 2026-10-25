@@ -1,4 +1,4 @@
-# Game Design Document: Tower Crawler (Tytuł roboczy)
+# Game Design Document: TOP DOWN
 
 ## 1. Koncepcja główna
 Top-down Action RPG 2D. Gracz przemierza kolejne piętra wieży/lochu. Każde piętro składa się z proceduralnie połączonych pokojów, hord wrogów, łupów oraz komnaty bossa ze schodami na kolejne piętro.

@@ -11,7 +11,7 @@ const valid = (over: Record<string, unknown> = {}) => ({
   app: { build: 'production' },
   client: { id: 'abc123def456', sessionId: 'k3j2h1' },
   summary: { errors: 2, warnings: 1, floor: 3, hero: 'sorceress', seed: 123456, abnormalPrev: false },
-  text: 'Tower Crawler — raport diagnostyczny\n+1.0s [ERR ] error:loop: Boom',
+  text: 'TOP DOWN — raport diagnostyczny\n+1.0s [ERR ] error:loop: Boom',
   ...over,
 });
 
