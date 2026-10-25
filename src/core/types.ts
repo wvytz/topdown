@@ -71,6 +71,15 @@ export interface BeamHudData {
   readonly readiness: number;
 }
 
+/** Pasek mocy ultimate (R, krok 98). */
+export interface UltimateHudData {
+  /** 0..1, 1 = gotowe. */
+  readonly charge: number;
+  /** Ultimate właśnie działa. */
+  readonly active: boolean;
+  readonly name: string;
+}
+
 export interface HudData {
   readonly floor: number;
   /** Areny bossów (krok 90): napis areny zamiast piętra; null we wspinaczce. */
@@ -85,6 +94,8 @@ export interface HudData {
   readonly ranged: RangedHudData;
   /** Promień Czarodziejki; null u barbarzyńcy. */
   readonly beam: BeamHudData | null;
+  /** Ultimate (krok 98); null, zanim powstanie gracz. */
+  readonly ultimate: UltimateHudData | null;
   readonly enemiesAlive: number;
   readonly stairsUnlocked: boolean;
   /** Gracz stoi na otwartych schodach — wejście wyżej klawiszem E (krok 47). */

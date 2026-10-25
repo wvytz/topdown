@@ -23,6 +23,8 @@ export interface PadGameplayInput {
   /** Jednorazowe: przycisk wciśnięty w tej klatce. */
   readonly dash: boolean;
   readonly interact: boolean;
+  /** Jednorazowe: ultimate (krok 98). */
+  readonly ultimate: boolean;
 }
 
 /** Komendy ekranów poza walką (menu, wybór bohatera, pauza, nagroda, śmierć) — wspólne dla klawiatury i pada. */
@@ -108,6 +110,7 @@ export class PadGameplayReader {
       shoot: anyPressed(snapshot, actions.shoot),
       dash: actions.dash.some((index) => fresh.has(index)),
       interact: actions.interact.some((index) => fresh.has(index)),
+      ultimate: actions.ultimate.some((index) => fresh.has(index)),
     };
   }
 }

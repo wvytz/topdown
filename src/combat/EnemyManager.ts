@@ -53,6 +53,8 @@ export interface EnemyManagerDeps {
   readonly decals: CombatDecals;
   readonly onPlayerHit: () => void;
   readonly onEnemyKilled: (enemy: Enemy) => void;
+  /** Wabik (totem łucznika, krok 98): wrogowie celują w niego zamiast w gracza; null — w gracza. */
+  readonly aggroTarget?: () => Vector2 | null;
   /** Elita pierwszy raz widzi gracza z bliska (krok 44: komunikat z podpowiedzią). */
   readonly onEliteSpotted?: (enemy: Enemy) => void;
 }
@@ -170,7 +172,7 @@ export class EnemyManager implements EnemyAttackHandler {
 
   update(now: number): void {
     const { player, floor } = this.deps;
-    const target: Vector2 = { x: player.x, y: player.y };
+    const target: Vector2 = this.deps.aggroTarget?.() ?? { x: player.x, y: player.y };
     for (const enemy of [...this.enemies]) {
       const burn = enemy.tickBurn(now);
       if (burn > 0) this.deps.effects.floatingText(enemy.x, enemy.y, `-${burn}`, '#ff8a3c');

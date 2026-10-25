@@ -63,6 +63,7 @@ export class TouchInput implements PlayerInput {
       dash: base.dash || taps.dash,
       shoot: base.shoot || touchState.shoot || taps.shot,
       interact: base.interact || taps.interact,
+      ultimate: base.ultimate || taps.ultimate,
     };
   }
 }

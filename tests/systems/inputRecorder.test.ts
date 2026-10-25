@@ -7,7 +7,7 @@ import type { InputSample } from '@/systems/InputRecorder';
 import { InputRecorder, InputReplay, canReplay } from '@/systems/InputRecorder';
 
 const META: RecordingMeta = { runSeed: 42, floor: 3, hero: 'barbarian', gold: 10, items: ['blade'], hp: 80, practice: false, startedAt: 1000 };
-const idle = (over: Partial<InputSample> = {}): InputSample => ({ move: { x: 0, y: 0 }, aim: { x: 100, y: 100 }, attack: false, dash: false, shoot: false, interact: false, ...over });
+const idle = (over: Partial<InputSample> = {}): InputSample => ({ move: { x: 0, y: 0 }, aim: { x: 100, y: 100 }, attack: false, dash: false, shoot: false, interact: false, ultimate: false, ...over });
 const CFG = { maxEntries: 50, aimStepPx: 24 };
 
 describe('nagrywanie wejść (krok 56)', () => {
@@ -62,6 +62,18 @@ describe('nagrywanie wejść (krok 56)', () => {
     const last = replay.actionsAt(800);
     expect(last).toMatchObject({ move: { x: 0, y: 0 }, aim: { x: 300, y: 50 }, shoot: true, interact: true, attack: false });
     expect(replay.finished).toBe(true);
+  });
+
+  it('ultimate (R, krok 98) jest jednorazowy w nagraniu i odtworzeniu', () => {
+    const r = new InputRecorder(CFG);
+    r.start(META, 0);
+    r.sample(idle(), 0);
+    r.sample(idle({ ultimate: true }), 100);
+    r.sample(idle(), 116);
+    const replay = new InputReplay(r.snapshot()!);
+    expect(replay.actionsAt(50).ultimate).toBe(false);
+    expect(replay.actionsAt(100).ultimate).toBe(true);
+    expect(replay.actionsAt(130).ultimate).toBe(false);
   });
 
   it('uszkodzone nagranie nie nadaje się do odtworzenia i nie wywala gry', () => {

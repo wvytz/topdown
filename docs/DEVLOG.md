@@ -4221,6 +4221,21 @@ Co powstało:
 - **Przeglądarka (Playwright, Chromium):** łucznik z trzymanym LPM przez 3 s — 9 strzał co ok. 0,37 s, co trzecia 14 obrażeń z przebiciem; Czarodziejka — 6 kul i 2 fale. Bez błędów.
 - **Czeka na ocenę właściciela i testera:** tempo ostrzału i siła mocnej strzały, promień i obrażenia fali, czas powrotu kul (0,6 s), czy barbarzyńca dalej odstaje. Pomysł z czwartą, wybuchową kulą — nie zrobiony, do rozważenia, jeśli fala się nie sprawdzi. Zarzut „gra powtarzalna” zapisany w backlogu — do osobnego kroku, właściciel przekaże więcej uwag testera.
 
+## Krok 98 — Ultimate pod R `#decyzja` `#balans` `#czarodziejka` `#lucznik`
+
+**Wrażenia właściciela po kroku 97 (25.10.2026):** test „spoko”, ale walka zrobiła się monotonna — potrzebna kolejna mechanika zabijania. Pomysł: klawisz R jako ultimate. Barbarzyńca — szał (seria ataków, żeby szybko wykończyć bossa, z jakąś niewrażliwością); Czarodziejka — tarcza albo „gigawybuch”; łucznik — totem, który pokazuje się zamiast niego i zawsze przejmuje aggro. `#decyzja`
+
+Co powstało:
+- **Pasek mocy** (`UltimateGauge` w `systems/Ultimate.ts`, liczby w `config/ultimateConfig.ts`): pełny na starcie piętra i areny, potem ładuje się sam w 50 s, a każdy zabity wróg dokłada 5%. W trakcie działania ultimate pasek stoi. HUD: kwadrat z literą R za liczbą HP — wypełnia się od dołu, pełny świeci złotem i pulsuje.
+- **Barbarzyńca — Szał** (5 s): ciosy co 0,65 dawnego czasu i ×1,35 obrażeń (strzał też), chód ×1,2, nietykalność, czerwona poświata. Loadout przelicza scena (`applyRage`), więc przedmioty zdobyte w szale też działają.
+- **Czarodziejka — Supernowa i tarcza:** wybuch wokół niej (130 px, 70 obrażeń, mocny odrzut, magia — trafia upiory), potem 3 s tarczy (nie przyjmuje trafień, błękitna poświata).
+- **Łucznik — Totem** (7 s): stawia totem w miejscu, w którym stoi. Zwykli wrogowie, boss i dog Barona celują w totem zamiast w łucznika (`aggroTarget` w `EnemyManager` i `BossFight`). Totem strzela co 0,4 s w najbliższego widocznego wroga w zasięgu 240 px (10 obrażeń, magia, bez statusów i leczenia z przedmiotów). Wygląd: geometryczny placeholder (słup z jarzącym się okiem, pasek czasu).
+- **Sterowanie:** klawiatura **R** (na ekranie śmierci R nadal restartuje — tam gracz nie żyje), pad **Y**, telefon: przycisk SZAŁ / NOVA / TOTEM nad dużym kółkiem (`TOUCH_BUTTONS.ultimate`), złoty, gdy pasek jest pełny. Nagrywanie wejść zapisuje R jako jednorazowe wciśnięcie. Opisy: linia R na kartach wyboru bohatera, pomoc w HUD, pauza (klawiatura, pad, dotyk).
+- **Diagnostyka:** `diag.note('ultimate', { kind })`.
+- **Testy:** `tests/systems/ultimate.test.ts` (pasek: czas, zabicia, użycie, stoi w trakcie działania, pełny na starcie; różne ultimate i opis R u każdego; nietykalność szału i tarczy, totem bez; szał mnoży loadout; cel totemu), nagrywanie R w `inputRecorder.test.ts` (test złapał błąd: rejestrator gubił samo wciśnięcie R), ekran wyboru: LPM, PPM i R. Build zielony (1682 testy).
+- **Przeglądarka (Playwright, arena 1):** R przy pełnym pasku — barbarzyńca: odnowienie ciosu 320 → 208 ms i nietykalność; Czarodziejka: boss 300 → 230 HP, tarcza; łucznik: totem przejmuje cel bossa i oddaje 9 strzał w ok. 3 s. Telefon (emulacja Pixel 7): przycisk TOTEM świeci. Bez błędów. Opisy na kartach wyboru skrócone, żeby mieściły się w karcie.
+- **Czeka na ocenę właściciela:** czas ładowania (50 s, 5% za wroga, pełny na starcie piętra), siła szału i nietykalność przez cały szał, obrażenia Supernowej, czas i siła totemu, wygląd totemu (placeholder — do generatora, jeśli się przyjmie), miejsce przycisku na telefonie. Pomocnicy bossa (pajączki, kokony spiżarni) nie ładują paska.
+
 ---
 
 ## Znane ograniczenia i backlog
@@ -4299,6 +4314,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału, Supernowej i totemu, wygląd totemu (placeholder).
 - **Bohaterowie po kroku 97:** `#balans` `#czarodziejka` `#lucznik` ciągły ostrzał łucznika (co 0,34 s, co 3. mocna), fala uderzeniowa i powrót kul Czarodziejki (0,6 s), mocniejszy promień; czy barbarzyńca dalej jest OP.
 - **Raport testera (24.10.2026): gra powtarzalna** `#ocena` — do osobnego kroku; właściciel przekaże więcej uwag.
 - **HUD z ikonami (krok 67):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).

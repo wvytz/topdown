@@ -131,6 +131,8 @@ import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
+import { UltimateManager } from '@/combat/UltimateManager';
+import { applyRage } from '@/systems/Ultimate';
 import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
 import { BossStallDetector, LimitWatch, StuckDetector, floorConnectivityIssues, reachable } from '@/systems/AnomalyDetectors';
@@ -203,6 +205,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private projectiles!: ProjectileManager;
   private playerShots!: PlayerShotManager;
   private bossFight!: BossFight;
+  /** Ultimate (krok 98); null przed zbudowaniem sceny — szał nie przechodzi na kolejne piętro. */
+  private ultimates: UltimateManager | null = null;
   private herald: BossHeraldEffects | null = null;
   /** Pająki z sufitu — tylko w biomie, który je ma (krok 23c). */
   private ceilingDrops: CeilingDropManager | null = null;
@@ -328,6 +332,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.minimap = null;
     this.gamePaused = false;
     this.herald = null;
+    this.ultimates = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
     this.traps = null;
@@ -547,10 +552,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, effects);
     }
     if (turn.orb) this.fireOrb(turn.orb);
+    if (turn.ultimate) this.ultimates?.use(turn.ultimate, time);
     if (turn.nova) this.castNova(time);
     if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.strong);
     if (turn.volley) this.fireVolley(turn.volley);
     this.updateBeam(turn.beam, turn.beamTicks, time);
+    this.ultimates?.update(time);
     this.resolveDashStrike(time);
     this.enemies.update(time);
     this.ceilingDrops?.update(time);
@@ -601,6 +608,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         ? this.player.rangedStatus(this.time.now)
         : { charges: this.heroCharges, maxCharges: this.heroCharges, rechargeProgress: 1 },
       beam: ready ? this.player.beamStatus(this.time.now) : null,
+      ultimate: ready ? { ...this.player.ultimateStatus(this.time.now), name: this.hero.ultimate.name } : null,
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
@@ -639,8 +647,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private currentLoadout(): PlayerLoadout {
-    const loadout = computeHeroLoadout(this.hero, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
-    return applyFloorToLoadout(loadout, this.floorEffects);
+    const loadout = applyFloorToLoadout(computeHeroLoadout(this.hero, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS), this.floorEffects);
+    // Szał barbarzyńcy (krok 98) mnoży loadout na czas trwania.
+    const { ultimate } = this.hero;
+    return ultimate.kind === 'rage' && this.ultimates?.isRaging(this.time.now) ? applyRage(loadout, ultimate) : loadout;
   }
 
   private get hero() {
@@ -884,10 +894,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onPlayerHit,
       onEnemyKilled: (enemy) => {
         // Upiory zasadzki rozwiewają się bez łupu — nagrodą jest przynęta.
+        this.player.addUltimateKill(this.time.now);
         if (this.ambushGhosts.has(enemy)) return;
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
       },
+      aggroTarget: () => this.ultimates?.aggroTarget ?? null,
       onEliteSpotted: (enemy) => this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs),
     });
 
@@ -1010,6 +1022,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Animacja śmierci bossa trwa chwilę — gracz mógł w tym czasie zginąć (np. od pocisku w locie).
         if (!this.player.isDead) this.offerBossReward();
       },
+      aggroTarget: () => this.ultimates?.aggroTarget ?? null,
+    });
+
+    // Ultimate (R, krok 98): szał, Supernowa, totem.
+    this.ultimates = new UltimateManager({
+      scene: this,
+      player: this.player,
+      effects: this.effects,
+      playerShots: this.playerShots,
+      blast: (strike) => {
+        this.enemies.resolveSplash(strike);
+        this.bossFight.resolveSplash(strike);
+      },
+      targets: () => this.aimTargets(),
+      onRageChanged: () => this.player.applyLoadout(this.currentLoadout()),
+      floorNumber: this.floorNumber,
     });
 
     // Zapowiedź bossa (krok 54): odcień światła, drżenie i iskry ku arenie; milknie w walce i po niej.

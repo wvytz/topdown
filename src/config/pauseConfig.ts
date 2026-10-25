@@ -21,10 +21,10 @@ export const PAUSE_CONFIG = {
   controls: [
     'WASD — ruch',
     'LPM / PPM — ataki bohatera',
-    'Spacja — dash',
+    'Spacja — dash · R — ultimate (gdy pasek mocy jest pełny)',
     'E — kapliczka, schody',
     'F9 — raport błędów',
-    'Pad: lewa gałka — ruch · prawa — cel · RT / LT — ataki · A — dash · X — E',
+    'Pad: lewa gałka — ruch · prawa — cel · RT / LT — ataki · A — dash · X — E · Y — ultimate',
     'Pad w pauzie: ↑ ↓ + A — zapis · Y — menu · Start / B — wznów',
   ],
   /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wiersze slotów i napis menu się stuka. */
@@ -34,6 +34,7 @@ export const PAUSE_CONFIG = {
       'Duże kółko — atak: przeciągnij w stronę celu; stuknij lub przytrzymaj — celuje sam',
       'STRZAŁ / PROMIEŃ / SALWA (nad kółkiem) — tak samo',
       'ZRYW — dash · E — kapliczka, schody (pojawia się na miejscu)',
+      'SZAŁ / NOVA / TOTEM — ultimate (świeci, gdy pasek mocy jest pełny)',
     ],
     saveTitle: 'ZAPIS GRY — stuknij slot (stan z wejścia na piętro)',
     quitHint: 'MENU GŁÓWNE — stuknij (autozapis zostaje: Kontynuuj)',

@@ -8,12 +8,12 @@ describe('ekran wyboru bohatera', () => {
     expect([...HERO_ORDER].sort()).toEqual([...Object.values(HeroId)].sort());
   });
 
-  it('każdy bohater ma imię, hasło i opis LPM oraz PPM', () => {
+  it('każdy bohater ma imię, hasło i opis LPM, PPM i R (krok 98)', () => {
     for (const id of HERO_ORDER) {
       const hero = HERO_DEFINITIONS[id];
       expect(hero.name.length).toBeGreaterThan(0);
       expect(hero.tagline.length).toBeGreaterThan(0);
-      expect(hero.attacks.map((a) => a.input)).toEqual(['LPM', 'PPM']);
+      expect(hero.attacks.map((a) => a.input)).toEqual(['LPM', 'PPM', 'R']);
     }
   });
 

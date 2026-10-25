@@ -41,6 +41,8 @@ export const GAMEPAD_CONFIG = {
     shoot: [PAD_BUTTON.LT, PAD_BUTTON.RB],
     dash: [PAD_BUTTON.A, PAD_BUTTON.LB],
     interact: [PAD_BUTTON.X],
+    // Krok 98: ultimate na Y (w grze wolny; na ekranie śmierci Y to „zmień bohatera” — po opóźnieniu).
+    ultimate: [PAD_BUTTON.Y],
   },
   /** Nawigacja w menu i na ekranach między grą (pauza, nagroda, śmierć). */
   menu: {

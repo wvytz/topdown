@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Hit, PlayerCombatConfig, StatusApplication, WeaponEffects } from '@/core/combatTypes';
-import type { ArcheryConfig, HeroId, HeroKit, SorceryConfig } from '@/core/heroTypes';
+import type { ArcheryConfig, HeroId, HeroKit, SorceryConfig, UltimateConfig } from '@/core/heroTypes';
 import { archeryOf, sorceryOf } from '@/core/heroTypes';
 import { AttackPhase } from '@/core/combatTypes';
 import type { BeamHudData, MovementIntent, PlayerStats, RangedHudData, Vector2 } from '@/core/types';
@@ -22,6 +22,9 @@ import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
 import { BeamChannel, OrbSeries, orbitOffsets } from '@/systems/Sorcery';
 import { BowRepeater } from '@/systems/Archery';
+import { UltimateGauge, ultimateActiveMs, ultimateGuardMs } from '@/systems/Ultimate';
+import { ULTIMATE_GAUGE } from '@/config/ultimateConfig';
+import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
@@ -37,6 +40,8 @@ export interface PlayerActions {
   readonly shoot: boolean;
   /** Interakcja z otoczeniem (np. kapliczka) — obsługuje scena, nie gracz. */
   readonly interact: boolean;
+  /** Ultimate (R, krok 98) — jednorazowe wciśnięcie. */
+  readonly ultimate: boolean;
 }
 
 /** Co gracz zrobił w tej klatce — do rozstrzygnięcia przez scenę. */
@@ -59,6 +64,8 @@ export interface PlayerTickResult {
   readonly arrow: { readonly direction: Vector2; readonly strong: boolean } | null;
   /** Łucznik: kierunek celowania salwy (wachlarz rozkłada scena); null = brak. */
   readonly volley: Vector2 | null;
+  /** Ultimate użyte w tej klatce (krok 98) — skutki (szał, wybuch, totem) rozstrzyga scena. */
+  readonly ultimate: UltimateConfig | null;
 }
 
 const IDLE: PlayerTickResult = {
@@ -71,7 +78,10 @@ const IDLE: PlayerTickResult = {
   beamTicks: 0,
   arrow: null,
   volley: null,
+  ultimate: null,
 };
+/** Barwa bohatera w trakcie nietykalności z ultimate: szał (czerwień) i tarcza Supernowej (błękit). */
+const ULTIMATE_GUARD_TINT: Readonly<Record<UltimateConfig['kind'], number>> = { rage: 0xff8a6a, supernova: 0x9ef2ff, totem: 0xffffff };
 /** Kolor znacznika celowania, gdy następna strzała serii będzie mocna. */
 const STRONG_ARROW_AIM_TINT = 0xffe08a;
 const KNOCKBACK_STUN_MS = 120;
@@ -107,6 +117,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private bow: BowRepeater | null = null;
   /** Chwila ostatniej strzały z łuku — animacja zwolnienia cięciwy trwa przez odstęp między strzałami. */
   private bowReleasedAt = -Infinity;
+  /** Ultimate (R, krok 98): pasek mocy i nietykalność z szału albo tarczy. */
+  private readonly ultimateConfig: UltimateConfig;
+  private readonly ultimateGauge = new UltimateGauge(ULTIMATE_GAUGE);
+  private readonly ultimateGuard = new Timer();
   /** Kule krążące wokół Czarodziejki (tyle, ile jest gotowych do rzutu). */
   private readonly orbitSprites: Phaser.GameObjects.Sprite[] = [];
 
@@ -117,6 +131,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene: Phaser.Scene, x: number, y: number, hero: HeroId, loadout: PlayerLoadout, startHp: number | null) {
     super(scene, x, y, SPRITE_SHEETS[HERO_VISUALS[hero].sheet].key);
     this.visual = HERO_VISUALS[hero];
+    this.ultimateConfig = HERO_DEFINITIONS[hero].ultimate;
     this.stats = loadout.stats;
     this.combat = loadout.combat;
     this.weaponEffects = loadout.effects;
@@ -264,7 +279,25 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   isInvulnerable(now: number): boolean {
-    return this.invulnerability.isActive(now) || this.dash.isDashing(now);
+    return this.invulnerability.isActive(now) || this.dash.isDashing(now) || this.ultimateGuard.isActive(now);
+  }
+
+  /** Pasek mocy do HUD: 0..1 (1 = R gotowe) i czy ultimate właśnie działa. */
+  ultimateStatus(now: number): { readonly charge: number; readonly active: boolean } {
+    return { charge: this.ultimateGauge.value(now), active: this.ultimateGauge.isActive(now) };
+  }
+
+  /** Zabity wróg ładuje pasek mocy. */
+  addUltimateKill(now: number): void {
+    if (!this.isDead) this.ultimateGauge.addKill(now);
+  }
+
+  /** R przy pełnym pasku: zużywa go i włącza nietykalność (szał, tarcza); resztę robi scena. */
+  private tryUltimate(wanted: boolean, now: number): UltimateConfig | null {
+    if (!wanted || !this.ultimateGauge.tryUse(now, ultimateActiveMs(this.ultimateConfig))) return null;
+    const guard = ultimateGuardMs(this.ultimateConfig);
+    if (guard > 0) this.ultimateGuard.start(now, guard);
+    return this.ultimateConfig;
   }
 
   /** Ruch, dash i ataki w tej klatce; trafienia rozstrzyga scena na podstawie wyniku. */
@@ -297,6 +330,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.animator.play(this.visual.idle);
       return { ...IDLE, poisonDamage };
     }
+
+    const ultimate = this.tryUltimate(actions.ultimate, now);
 
     if (actions.dash) {
       const moving = actions.move.x !== 0 || actions.move.y !== 0;
@@ -342,7 +377,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.updateVisuals(now);
       this.updateOrbit(now);
       this.updateSorceryAnimation(actions, now, castStarted, beam.active);
-      return { ...IDLE, poisonDamage, orb, nova: thrown?.last ?? false, beam: beam.active, beamTicks: beam.ticks };
+      return { ...IDLE, poisonDamage, ultimate, orb, nova: thrown?.last ?? false, beam: beam.active, beamTicks: beam.ticks };
     }
 
     if (bow) {
@@ -352,7 +387,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (bow.firing && bow.nextStrong) this.aimMarker.setTint(STRONG_ARROW_AIM_TINT);
       else this.aimMarker.clearTint();
       this.updateArcherAnimation(actions, now, arrow !== null);
-      return { ...IDLE, poisonDamage, arrow, volley };
+      return { ...IDLE, poisonDamage, ultimate, arrow, volley };
     }
 
     const swingStarted = actions.attack && this.attackCycle.tryStart(now);
@@ -362,7 +397,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.updateVisuals(now);
     this.updateAnimation(actions, now, swingStarted);
-    return { ...IDLE, struck, shot, poisonDamage };
+    return { ...IDLE, struck, shot, poisonDamage, ultimate };
   }
 
   /** Kule na orbicie: tyle, ile gotowych do rzutu, równo rozłożone i obracające się wokół postaci. */
@@ -493,6 +528,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Trucizna migocze na zielono, spowolnienie barwi na niebiesko (statusTint).
     const tint = statusTint(this.status, now);
     if (tint !== null) this.setTint(tint);
+    else if (this.ultimateGuard.isActive(now)) this.setTint(ULTIMATE_GUARD_TINT[this.ultimateConfig.kind]);
     else this.clearTint();
     if (this.dash.isDashing(now)) {
       this.setAlpha(0.5);

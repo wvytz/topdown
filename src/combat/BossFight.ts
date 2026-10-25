@@ -86,6 +86,8 @@ export interface BossFightDeps {
   readonly spawnRusher?: (at: Vector2) => void;
   /** Świta bossa (krok 80): zwykły wróg biomu wychodzący na arenę; zwraca go, by liczyć żywych. */
   readonly spawnHelper?: (type: EnemyType, at: Vector2) => { readonly isDead: boolean; readonly active: boolean };
+  /** Wabik (totem łucznika, krok 98): boss i jego dog celują w niego zamiast w gracza; null — w gracza. */
+  readonly aggroTarget?: () => Vector2 | null;
 }
 
 /** Znacznik świty: za `at` ms wyjdzie wróg. */
@@ -330,7 +332,7 @@ export class BossFight {
 
     const larders = this.larders.map((larder) => larder.position);
     const braziers = this.arenaBraziers.map((b) => b.at);
-    const plan = boss.tick({ x: player.x, y: player.y }, now, this.spiderlings.count + this.spawns.length, larders, braziers);
+    const plan = boss.tick(this.aggroPoint(), now, this.spiderlings.count + this.spawns.length, larders, braziers);
     this.updateFireRing(boss, now);
     if (plan) this.schedule(plan);
     this.updateLarders(boss, now);
@@ -402,6 +404,12 @@ export class BossFight {
 
   /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
   /** Rozprysk kuli Czarodziejki (krok 50): pajączki, kokony spiżarni i boss (tarcza działa jak przy ciosie). */
+  /** W co celuje boss: totem łucznika albo gracz. */
+  private aggroPoint(): Vector2 {
+    const { player } = this.deps;
+    return this.deps.aggroTarget?.() ?? { x: player.x, y: player.y };
+  }
+
   resolveSplash(splash: OrbSplash): void {
     if (this.playerOutsideArena()) return;
     const { killed } = resolveSplash(splash, this.targets());
@@ -934,7 +942,7 @@ export class BossFight {
       return;
     }
     const { player, effects } = this.deps;
-    const decision = dog.tick({ x: boss.x, y: boss.y }, { x: player.x, y: player.y }, now);
+    const decision = dog.tick({ x: boss.x, y: boss.y }, this.aggroPoint(), now);
     if (decision.newBite) {
       const { center, radius, telegraphStartAt, impactAt, damage, knockback } = decision.newBite;
       const strike: AreaStrike = { center, radius, telegraphStartAt, impactAt, damage, knockback };

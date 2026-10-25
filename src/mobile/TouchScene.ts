@@ -10,7 +10,7 @@ import { touchState } from '@/mobile/TouchState';
 
 export const TOUCH_SCENE_KEY = 'TouchScene';
 
-type ButtonId = 'attack' | 'shoot' | 'dash' | 'interact';
+type ButtonId = 'attack' | 'shoot' | 'dash' | 'interact' | 'ultimate';
 /** Przyciski ataku działają jak gałki zakotwiczone w środku przycisku. */
 type StickButton = 'attack' | 'shoot';
 
@@ -75,6 +75,8 @@ export class TouchScene extends Phaser.Scene {
   private kit: keyof typeof TOUCH_LABELS.attack = 'melee';
   /** E coś teraz zrobi (schody, kapliczka) — tylko wtedy przycisk E jest widoczny i działa. */
   private canInteract = false;
+  /** Pasek mocy ultimate pełny (krok 98) — przycisk świeci. */
+  private ultimateReady = false;
   private deathButtons: DeathButton[] = [];
   /** Od kiedy ekran śmierci czeka na gracza — przyciski wchodzą razem z napisem, nie pod kciukiem z walki. */
   private deathSince: number | null = null;
@@ -86,7 +88,7 @@ export class TouchScene extends Phaser.Scene {
 
   create(): void {
     this.gfx = this.add.graphics();
-    const ids: readonly (ButtonId | 'pause')[] = ['attack', 'shoot', 'dash', 'interact', 'pause'];
+    const ids: readonly (ButtonId | 'pause')[] = ['attack', 'shoot', 'dash', 'interact', 'ultimate', 'pause'];
     for (const id of ids) {
       const size = id === 'attack' ? '16px' : '13px';
       this.labels.set(id, this.add.text(0, 0, '', { ...STYLE, fontSize: size }).setOrigin(0.5).setVisible(false));
@@ -143,6 +145,7 @@ export class TouchScene extends Phaser.Scene {
     if (hud.isPlayerDead || hud.death) return null;
     this.kit = game.heroKit;
     this.canInteract = hud.canInteract;
+    this.ultimateReady = (hud.ultimate?.charge ?? 0) >= 1;
     return game;
   }
 
@@ -165,6 +168,8 @@ export class TouchScene extends Phaser.Scene {
       touchState.queueDash();
     } else if (button === 'interact') {
       touchState.queueInteract();
+    } else if (button === 'ultimate') {
+      touchState.queueUltimate();
     } else if (button === 'attack' || button === 'shoot') {
       if (this.sticks[button]) return;
       // Środek gałki w środku przycisku: kierunek to strona, w którą kciuk zjedzie z przycisku.
@@ -257,7 +262,7 @@ export class TouchScene extends Phaser.Scene {
   private buttonAt(x: number, y: number): ButtonId | null {
     let best: ButtonId | null = null;
     let bestDistance = Infinity;
-    for (const id of ['attack', 'shoot', 'dash', 'interact'] as const) {
+    for (const id of ['attack', 'shoot', 'dash', 'interact', 'ultimate'] as const) {
       if (id === 'interact' && !this.canInteract) continue;
       const c = this.buttonCenter(id);
       const distance = Math.hypot(x - c.x, y - c.y);
@@ -343,9 +348,10 @@ export class TouchScene extends Phaser.Scene {
       const c = this.buttonCenter(id);
       const { radius } = this.spec(id);
       const active = (id === 'attack' && touchState.attack) || (id === 'shoot' && touchState.shoot);
-      g.fillStyle(active ? 0x39c0d8 : 0x202030, active ? BUTTON_ACTIVE_ALPHA : BUTTON_ALPHA).fillCircle(c.x, c.y, radius);
+      const ready = id === 'ultimate' && this.ultimateReady;
+      g.fillStyle(active ? 0x39c0d8 : ready ? 0xe7b140 : 0x202030, active || ready ? BUTTON_ACTIVE_ALPHA : BUTTON_ALPHA).fillCircle(c.x, c.y, radius);
       g.lineStyle(id === 'attack' ? 3 : 2, 0xe8e8f0, id === 'attack' ? 0.7 : 0.5).strokeCircle(c.x, c.y, radius);
-      const text = id === 'attack' || id === 'shoot' ? TOUCH_LABELS[id][this.kit] : TOUCH_LABELS[id];
+      const text = id === 'attack' || id === 'shoot' || id === 'ultimate' ? TOUCH_LABELS[id][this.kit] : TOUCH_LABELS[id];
       label.setText(text).setPosition(c.x, c.y);
     }
     if (!playing) return;
