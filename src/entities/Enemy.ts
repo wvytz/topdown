@@ -27,6 +27,8 @@ import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { GHOST_VISUAL } from '@/config/spriteConfig';
 import { isPhased } from '@/systems/Ambush';
 import { isShielded, turnToward } from '@/systems/Shield';
+import type { ShieldChargeConfig } from '@/systems/ShieldCharge';
+import { ChargeOutcome, ChargePhase, ShieldCharge } from '@/systems/ShieldCharge';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -38,6 +40,10 @@ export interface EnemyAttackHandler {
   pounceTrail(enemy: Enemy, attack: PounceAttackDefinition, from: Vector2, to: Vector2): void;
   /** Rzut łukiem kultysty (krok 41d) w miejsce gracza z chwili rzutu. */
   lobBomb(enemy: Enemy, attack: LobAttackDefinition, target: Vector2): void;
+  /** Szarża Tarczownika (krok 99): czy w tej klatce trafiła gracza (raz na szarżę). */
+  chargeHit(enemy: Enemy, charge: ShieldChargeConfig): boolean;
+  /** Tarczownik wbił się w ścianę — efekt uderzenia. */
+  chargeWall(enemy: Enemy): void;
 }
 
 /** Skok w toku: tor, czas i to, czy już trafił. */
@@ -59,6 +65,8 @@ const HIT_STUN_MS = 150;
 const HIT_FLASH_MS = 80;
 const WINDUP_TINT = 0xffb347;
 const BLOCKED_FLASH_TINT = 0x8a90a0;
+/** Tarczownik ogłuszony po wbiciu w ścianę (krok 99) — chłodny, „przygaszony” odcień. */
+const CHARGE_STUN_TINT = 0x8fa8ff;
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly definition: EnemyDefinition;
@@ -78,6 +86,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly pounceRecovery = new Timer();
   /** Tarczownik (elita, krok 42): kąt tarczy, obracanej powoli w stronę gracza. */
   private shieldFacing = Math.PI / 2;
+  /** Szarża Tarczownika (krok 99) zamiast skoku; null bez tarczy. */
+  private readonly charge: ShieldCharge | null;
   private lastTickAt: number | null = null;
   /** Ostatnie trafienie przyjęte na tarczę — błysk w kolorze stali zamiast bieli. */
   private lastHitBlocked = false;
@@ -99,6 +109,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.health = new Health(definition.maxHp);
     this.brain = new EnemyBrain(definition.behaviour, definition.attack.range, ENEMY_VIEW_RULE);
     this.attackCycle = new AttackCycle(definition.attack.windupMs, definition.attack.cooldownMs);
+    this.charge = definition.affixes?.includes(EliteAffix.Shielded) ? new ShieldCharge(ELITE_CONFIG.shield.charge) : null;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -162,6 +173,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return damage;
   }
 
+  /** Tor szarży Tarczownika w trakcie zamachu (telegraf); null poza nim. */
+  get chargeTelegraph(): { readonly from: Vector2; readonly to: Vector2 } | null {
+    if (!this.charge || this.charge.phase(this.scene.time.now) !== ChargePhase.Windup) return null;
+    return this.charge.lane({ x: this.x, y: this.y });
+  }
+
   /** Cel skoku w trakcie zamachu (do rysowania telegrafu); null poza zamachem skoku. */
   get pounceTelegraph(): Vector2 | null {
     return this.attackCycle.phase(this.scene.time.now) === AttackPhase.Windup ? this.pounceAim : null;
@@ -192,6 +209,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.updatePounce(now, handler);
       return;
     }
+    if (this.charge && this.updateCharge(this.charge, perception, now, handler)) return;
     if (this.pounceRecovery.isActive(now)) {
       this.setVelocity(0, 0);
       if (this.visual.land) this.animator.play(this.visual.land);
@@ -236,15 +254,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   takeHit(hit: Hit, now: number, source: Vector2): DamageResult {
     // Bezcielesny upiór: ciosy i strzały przenikają przez niego; magia Czarodziejki trafia zawsze (krok 49b).
     if (this.isIntangible(now) && !hit.magic) return { dealt: 0, died: false };
-    // Tarczownik: cios od frontu przyjmuje tylko część obrażeń.
+    // Tarczownik: cios od frontu przyjmuje tylko część obrażeń (wybuch z góry — całość).
     const shield = ELITE_CONFIG.shield;
-    const blocked = this.hasAffix(EliteAffix.Shielded) && isShielded(this, this.shieldFacing, shield.arcDeg, source);
+    const blocked =
+      this.hasAffix(EliteAffix.Shielded) && !hit.unblockable && isShielded(this, this.shieldFacing, shield.arcDeg, source);
     const damage = blocked ? Math.max(1, Math.round(hit.damage * shield.frontMultiplier)) : hit.damage;
     const result = this.health.takeDamage(damage);
     this.hitFlash.start(now, HIT_FLASH_MS);
     this.lastHitBlocked = blocked;
-    // Skoku nie da się zatrzymać trafieniem (rozpędzony ogar) — bez odrzutu i ogłuszenia w locie.
-    if (!this.pounce) {
+    // Skoku i szarży nie da się zatrzymać trafieniem — bez odrzutu i ogłuszenia w biegu.
+    if (!this.pounce && this.charge?.phase(now) !== ChargePhase.Charging) {
       this.hitStun.start(now, HIT_STUN_MS);
       this.setVelocity(hit.knockback.x, hit.knockback.y);
     }
@@ -258,6 +277,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const dt = this.lastTickAt === null ? 0 : now - this.lastTickAt;
     this.lastTickAt = now;
     if (!this.hasAffix(EliteAffix.Shielded) || this.pounce || !perception.canSeeTarget) return;
+    // W trakcie szarży (zamach, bieg, ogłuszenie, postój) tarcza stoi — okno na obejście.
+    if (this.charge?.isBusy(now)) return;
     const target = Math.atan2(perception.target.y - this.y, perception.target.x - this.x);
     const step = ((ELITE_CONFIG.shield.turnRateDegPerSec * Math.PI) / 180) * (dt / 1000);
     this.shieldFacing = turnToward(this.shieldFacing, target, step);
@@ -330,13 +351,57 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.updateTint(now);
   }
 
+  /**
+   * Szarża Tarczownika (krok 99): rusza tylko w gotowości (nie w zamachu ciosu ani ogłuszony), gdy gracz jest
+   * przed tarczą w zasięgu szarży. Zwraca true, gdy szarża zajmuje wroga w tej klatce.
+   */
+  private updateCharge(charge: ShieldCharge, perception: EnemyPerception, now: number, handler: EnemyAttackHandler): boolean {
+    if (charge.phase(now) === ChargePhase.Ready) {
+      const busy = this.status.isStunned(now) || this.hitStun.isActive(now) || this.attackCycle.phase(now) === AttackPhase.Windup;
+      if (busy || !charge.canStart(now, this, perception.target, perception.canSeeTarget, this.shieldFacing)) return false;
+      charge.start(now, this, perception.target);
+      this.shieldFacing = Math.atan2(charge.direction.y, charge.direction.x);
+    }
+    const config = ELITE_CONFIG.shield.charge;
+    const dir = charge.direction;
+    switch (charge.phase(now)) {
+      case ChargePhase.Windup:
+        this.setVelocity(0, 0);
+        this.animator.face(dir);
+        this.animator.play(this.visual.attack ?? this.visual.idle ?? this.visual.move, config.windupMs);
+        break;
+      case ChargePhase.Charging: {
+        const blocked = this.body instanceof Phaser.Physics.Arcade.Body && !this.body.blocked.none;
+        const outcome = charge.advance(now, this, blocked);
+        if (outcome === ChargeOutcome.Continue && handler.chargeHit(this, config)) charge.registerHit(now);
+        if (charge.phase(now) === ChargePhase.Charging) {
+          this.setVelocity(dir.x * config.speed, dir.y * config.speed);
+          this.animator.face(dir);
+          this.animator.play(this.visual.move);
+        } else {
+          this.setVelocity(0, 0);
+          if (outcome === ChargeOutcome.Wall) handler.chargeWall(this);
+        }
+        break;
+      }
+      default:
+        this.setVelocity(0, 0);
+        this.animator.play(this.visual.idle ?? this.visual.move);
+    }
+    this.updateTint(now);
+    return true;
+  }
+
   private updateTint(now: number): void {
     const tint = statusTint(this.status, now);
+    const chargePhase = this.charge?.phase(now);
     if (this.hitFlash.isActive(now)) {
       this.setTintFill(this.lastHitBlocked ? BLOCKED_FLASH_TINT : 0xffffff);
     } else if (tint !== null) {
       this.setTint(tint);
-    } else if (this.attackCycle.phase(now) === AttackPhase.Windup) {
+    } else if (chargePhase === ChargePhase.Stunned) {
+      this.setTint(CHARGE_STUN_TINT);
+    } else if (this.attackCycle.phase(now) === AttackPhase.Windup || chargePhase === ChargePhase.Windup) {
       this.setTint(WINDUP_TINT);
     } else {
       this.clearTint();

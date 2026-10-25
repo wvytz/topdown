@@ -1199,6 +1199,19 @@ export const FIRE_RING_VISUAL = { fill: 0xa82010, fillAlpha: 0.4, edge: 0xe0701c
 export const RETINUE_MARKER_VISUAL = { color: 0xd8c8a0, alpha: 0.7, fillAlpha: 0.15, radius: 12, pulseMs: 250, riseMs: 500 } as const;
 
 export const SHIELD_ARC_VISUAL = { color: 0xe0701c, alpha: 0.45, width: 2, gap: 6 } as const;
+/** Szarża Tarczownika (krok 99): pas toru w telegrafie i uderzenie w ścianę (wstrząs, napis). */
+export const SHIELD_CHARGE_VISUAL = {
+  color: 0xff3b30,
+  laneAlpha: 0.16,
+  lineAlpha: 0.7,
+  /** Co tyle px sprawdzamy, gdzie tor trafia w ścianę (pas kończy się na niej). */
+  clipStep: 8,
+  impactRadius: 18,
+  shakeMs: 120,
+  shakeIntensity: 0.005,
+  text: 'Ogłuszony!',
+  textColor: '#9fb4ff',
+} as const;
 
 /** Rozprysk kuli Czarodziejki (krok 50): pierścień w kolorze kul. */
 export const ORB_SPLASH_VISUAL = { color: 0x6ee7ff, alpha: 0.7, fillAlpha: 0.18, durationMs: 220 } as const;
