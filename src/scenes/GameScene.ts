@@ -161,6 +161,8 @@ import {
   limitsVision,
 } from '@/systems/FloorModifiers';
 import { ArenaGates } from '@/world/ArenaGates';
+import { PlayerContainment } from '@/systems/PlayerContainment';
+import { roomContainsTile } from '@/dungeon/rooms';
 import { ShrineSite } from '@/world/ShrineSite';
 import { StickyWebField } from '@/world/StickyWebField';
 import { BOSS_RUSH_CONFIG, BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
@@ -258,6 +260,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Kapliczka piętra; null w arenach bossów (krok 90). */
   private shrine: ShrineSite | null = null;
   private arenaGates!: ArenaGates;
+  /** Krok 99: cofa gracza przepchniętego przez mur lub kratę (i poza zamkniętą arenę). */
+  private containment!: PlayerContainment;
   /** Wnęki galerii areny (krok 44); pusto, gdy boss piętra ich nie ma. */
   private galleryPosts: readonly TilePoint[] = [];
   /** Wrogowie galerii — zawsze widoczni (za kratą w półmroku byliby niewidzialnym działem). */
@@ -574,6 +578,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.bossFight.update(time);
     this.herald?.update(time);
     this.arenaGates.update();
+    this.keepPlayerContained();
     this.projectiles.update(time);
     this.playerShots.update(
       time,
@@ -1066,6 +1071,21 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.manGalleries();
       },
     });
+
+    const arena = this.dungeon.rooms[this.dungeon.bossRoomId]!;
+    this.containment = new PlayerContainment(
+      TILE_SIZE,
+      (tile) => !this.dungeonView.collisionLayer.hasTileAt(tile.x, tile.y) && (!this.arenaGates.sealed || roomContainsTile(arena, tile)),
+    );
+  }
+
+  /** Bezpiecznik kroku 99: gracz przepchnięty przez kolizję wraca na ostatnie dozwolone miejsce. */
+  private keepPlayerContained(): void {
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    const back = this.containment.update(body.center);
+    if (!back) return;
+    diag.note('player-unstuck', { floor: this.floorNumber, sealed: this.arenaGates.sealed }, 'warn', 'Gracz przepchnięty przez kolizję — cofnięty');
+    body.reset(back.x, back.y);
   }
 
   /** Kraty opadły: w galeriach areny stają wrogowie (krok 44); wyjdą, gdy kraty się podniosą. */

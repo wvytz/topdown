@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
 import { ARENA_GATES } from '@/config/bossConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { ArenaGateLock, findRoomEntrances } from '@/dungeon/arenaGates';
+import { ArenaGateLock, ArenaGateState, findRoomEntrances } from '@/dungeon/arenaGates';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Player } from '@/entities/Player';
@@ -29,6 +29,11 @@ export class ArenaGates {
     if (!arena) throw new Error('ArenaGates: brak komnaty bossa w danych piętra.');
     this.lock = new ArenaGateLock(arena, ARENA_GATES.sealMarginTiles);
     this.gates = findRoomEntrances(deps.floor, arena);
+  }
+
+  /** Kraty opuszczone: walka trwa, a gracz jest w środku. */
+  get sealed(): boolean {
+    return this.lock.state === ArenaGateState.Sealed;
   }
 
   update(): void {

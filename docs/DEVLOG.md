@@ -4238,6 +4238,24 @@ Co powstało:
 
 ---
 
+### Krok 98a — Gracz nie wypada poza zamkniętą arenę `#ocena` `#straznik-bram`
+
+**Zgłoszenie właściciela (25.10.2026, Arena 5, Czarodziejka):** dash w trakcie, gdy Strażnik Bram na niego szarżował (chyba razem z pomocnikiem) — gracza przerzuciło za kratę, do korytarza. Stamtąd jego kule nie trafiały (boss jest nietykalny spoza areny, krok 86), a ciosy bossa tak — zginął. Zrzuty: gracz w korytarzu pod opuszczoną kratą. `#ocena`
+
+Przyczyna: krata to jeden kafel kolizji, a Arcade rozdziela ciało z kaflem tylko z ograniczonym zapasem (`TILE_BIAS`). Gdy w jednej klatce zsumują się dash, odrzut i napór ciała bossa (kolizja gracz–boss rozpycha oba ciała), środek gracza przechodzi przez kafel i fizyka wypycha go już po drugiej stronie.
+
+Co powstało:
+- **Bezpiecznik położenia gracza** (`systems/PlayerContainment.ts`, czysty): co klatkę sprawdza kafel pod środkiem ciała gracza. Dozwolony zapamiętuje; z niedozwolonego cofa gracza na ostatnie dozwolone miejsce (`body.reset`). Niedozwolone są kafle kolizji (mur, opuszczona krata), a przy opuszczonych kratach areny — wszystko poza areną.
+- `ArenaGates.sealed` mówi scenie, czy kraty są opuszczone; `GameScene.keepPlayerContained` woła bezpiecznik po kratach, przed pociskami.
+- Bezpiecznik działa na całym piętrze, więc łapie też przepchnięcie przez zwykły mur.
+- **Diagnostyka:** każde cofnięcie to `diag.note('player-unstuck', { floor, sealed }, 'warn')` — w raporcie F9 widać, jak często fizyka przepuszcza gracza.
+- Pociski i ataki bossa nie zmieniły się: Strażnik bije strefami na arenie, a bomby kultystów celowo lecą zza krat galerii. Problem „jego ataki przechodzą, moje nie” znika, bo gracz nie może już znaleźć się za kratą.
+- **Testy:** `tests/systems/PlayerContainment.test.ts` (dozwolony kafel, cofnięcie po przerzuceniu za kratę, brak punktu odniesienia, zmiana reguły przy opadnięciu krat). Build zielony (1688 testów).
+- **Przeglądarka (Playwright, piętro 5, `?seed=7&floor=5&boss=1&hero=sorceress`):** kraty opadają, gracz przerzucony na kafel korytarza za kratą wraca na kafel areny tuż przy kracie; w dzienniku jedno `player-unstuck`. Bez błędów.
+- **Czeka na test właściciela:** czy sytuacja z Areny 5 się nie powtarza.
+
+---
+
 ### Krok 97a — Areny bossów bez minimapy `#decyzja` `#areny`
 
 **Właściciel (25.10.2026):** „Na arenie nie potrzebujemy widoku minimapy. Minimapa na arenie ma być wyłączona.” `#decyzja`
@@ -4326,6 +4344,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Wypadanie za kratę areny (krok 98a):** `#ocena` bezpiecznik cofa gracza przepchniętego przez mur lub kratę; czy w teście właściciela sytuacja z Areny 5 się nie powtarza (F9: `player-unstuck`).
 - **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału, Supernowej i totemu, wygląd totemu (placeholder).
 - **Bohaterowie po kroku 97:** `#balans` `#czarodziejka` `#lucznik` ciągły ostrzał łucznika (co 0,34 s, co 3. mocna), fala uderzeniowa i powrót kul Czarodziejki (0,6 s), mocniejszy promień; czy barbarzyńca dalej jest OP.
 - **Raport testera (24.10.2026): gra powtarzalna** `#ocena` — do osobnego kroku; właściciel przekaże więcej uwag.
