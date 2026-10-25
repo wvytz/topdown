@@ -10,8 +10,9 @@ import { FirePatchField, lobPosition, trailPoints } from '@/systems/HellAttacks'
 import type { EnemyScalingConfig, EnemyType, EnemyVariant } from '@/core/combatTypes';
 import { EliteAffix } from '@/core/combatTypes';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
-import { ELITE_VISUAL } from '@/config/spriteConfig';
-import { applyElite, isElite, lifestealHeal } from '@/systems/Elites';
+import { ELITE_VISUAL, SHIELD_CHARGE_VISUAL } from '@/config/spriteConfig';
+import { applyElite, bombDamageToShielded, isElite, lifestealHeal } from '@/systems/Elites';
+import type { ShieldChargeConfig } from '@/systems/ShieldCharge';
 import { attachEliteMarker } from '@/effects/EliteMarker';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
 import { facingDirection } from '@/systems/Facing';
@@ -198,6 +199,8 @@ export class EnemyManager implements EnemyAttackHandler {
     for (const enemy of this.enemies) {
       const aim = enemy.pounceTelegraph;
       if (aim) this.telegraphs.lineStyle(2, 0xff3b30, 0.7).lineBetween(enemy.x, enemy.y, aim.x, aim.y);
+      const lane = enemy.chargeTelegraph;
+      if (lane) this.drawChargeLane(enemy, lane.from, lane.to);
     }
     this.bombs = this.bombs.filter((bomb) => {
       const progress = (now - bomb.launchAt) / (bomb.landAt - bomb.launchAt);
@@ -216,6 +219,35 @@ export class EnemyManager implements EnemyAttackHandler {
     const damage = this.firePatches.update(player.isDead ? null : player, now);
     if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit();
     this.drawFirePatches(now);
+  }
+
+  /** Tor szarży Tarczownika: pas szerokości wroga i linia środka (ten sam czerwony co inne telegrafy), ucięty na ścianie. */
+  private drawChargeLane(enemy: Enemy, from: Vector2, end: Vector2): void {
+    const { laneAlpha, lineAlpha, color, clipStep } = SHIELD_CHARGE_VISUAL;
+    const length = distance(from, end);
+    let to = from;
+    for (let d = clipStep; d <= length; d += clipStep) {
+      const t = d / length;
+      const point = { x: from.x + (end.x - from.x) * t, y: from.y + (end.y - from.y) * t };
+      if (!hasLineOfSight(this.deps.floor, from, point, TILE_SIZE)) break;
+      to = point;
+    }
+    this.telegraphs.lineStyle(enemy.radius * 2, color, laneAlpha).lineBetween(from.x, from.y, to.x, to.y);
+    this.telegraphs.lineStyle(2, color, lineAlpha).lineBetween(from.x, from.y, to.x, to.y);
+  }
+
+  /**
+   * Bomby wrogów ranią Tarczownika (krok 99, pomysł właściciela): wciągnięcie go pod bombę kultysty albo wybuch elity
+   * się opłaca. Tarcza nie chroni przed wybuchem z góry.
+   */
+  private blastShielded(at: Vector2, radius: number, damage: number, knockback: number, now: number): void {
+    for (const enemy of [...this.enemies]) {
+      if (!enemy.hasAffix(EliteAffix.Shielded) || enemy.isDead || distance(at, enemy) > radius + enemy.radius) continue;
+      const dealt = bombDamageToShielded(damage, ELITE_CONFIG);
+      const result = enemy.takeHit({ damage: dealt, knockback: knockbackFrom(at, enemy, knockback), unblockable: true }, now, at);
+      this.deps.effects.floatingText(enemy.x, enemy.y, `-${result.dealt}`, '#ffd23c');
+      if (result.died) this.kill(enemy);
+    }
   }
 
   private drawLandingZone(bomb: LobbedBomb, now: number): void {
@@ -244,6 +276,7 @@ export class EnemyManager implements EnemyAttackHandler {
         const hit: Hit = { damage: blast.damage, knockback: knockbackFrom(blast.at, player, knockback) };
         if (player.takeHit(hit, now)) this.deps.onPlayerHit();
       }
+      this.blastShielded(blast.at, radius, blast.damage, knockback, now);
       return false;
     });
   }
@@ -268,7 +301,28 @@ export class EnemyManager implements EnemyAttackHandler {
       const hit: Hit = { damage: bomb.attack.damage, knockback: knockbackFrom(bomb.to, player, bomb.attack.knockback) };
       if (player.takeHit(hit, now)) this.deps.onPlayerHit();
     }
+    this.blastShielded(bomb.to, bomb.attack.blastRadius, bomb.attack.damage, bomb.attack.knockback, now);
     this.firePatches.add(bomb.to, bomb.attack.patch, now);
+  }
+
+  chargeHit(enemy: Enemy, charge: ShieldChargeConfig): boolean {
+    const { player, scene } = this.deps;
+    if (player.isDead || distance(enemy, player) > charge.hitRadius + enemy.radius + player.radius) return false;
+    const damage = Math.round(enemy.definition.attack.damage * charge.damageMultiplier);
+    const hit: Hit = { damage, knockback: knockbackFrom(enemy, player, charge.knockback) };
+    // Dash i nietykalność chronią: tarczownik biegnie dalej (i może wbić się w ścianę).
+    if (!player.takeHit(hit, scene.time.now)) return false;
+    this.deps.onPlayerHit();
+    this.lifesteal(enemy, damage);
+    return true;
+  }
+
+  chargeWall(enemy: Enemy): void {
+    const { scene, effects } = this.deps;
+    const { shakeMs, shakeIntensity, impactRadius, text, textColor } = SHIELD_CHARGE_VISUAL;
+    effects.impact(enemy.x, enemy.y, impactRadius);
+    scene.cameras.main.shake(shakeMs, shakeIntensity);
+    effects.floatingText(enemy.x, enemy.y, text, textColor);
   }
 
   pounceHit(enemy: Enemy, attack: PounceAttackDefinition): boolean {

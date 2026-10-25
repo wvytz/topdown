@@ -4250,6 +4250,26 @@ Co powstało:
 
 ---
 
+## Krok 99 — Tarczownik szarżuje zamiast skakać `#ocena` `#balans` `#elity`
+
+**Ocena właściciela (25.10.2026):** Tarczownik to najtrudniejszy i „antyludzki” wróg, psuje przyjemność z gry („byle nie on”) — nie challenge, tylko irytacja. Nie da się go zajść od boku: skacze i od razu obraca się w stronę gracza. Pomysł `#decyzja`: zamiast skakać niech szarżuje z cooldownem; po uniku wbija się w ścianę. Bomby rzucane przez innych wrogów mają go ranić. Na później: czytelniejsze animacje eksplozji (rozmyły się).
+
+Co powstało:
+- **Szarża** (`systems/ShieldCharge.ts`, czysta logika; liczby w `ELITE_CONFIG.shield.charge`): gdy gracz jest 70–220 px przed tarczą (w stożku ±30°), Tarczownik staje na 0,75 s i pokazuje tor (czerwony pas szerokości wroga, ucięty na ścianie, `SHIELD_CHARGE_VISUAL`), potem pędzi po prostej (400 px/s, do 300 px) w kierunku zapamiętanym na początku zamachu.
+  - Trafienie: obrażenia ciosu ×1,2 i mocny odrzut (320), potem 0,5 s postoju. Dash i nietykalność chronią — wtedy biegnie dalej.
+  - Unik i ściana: **ogłuszenie 1,8 s** (wstrząs, napis „Ogłuszony!”, chłodny odcień), tarcza zostaje skierowana w ścianę — plecy odsłonięte. Wybieg bez ściany: 0,9 s postoju. Kolejna szarża po 2,6 s od końca postoju.
+  - W biegu trafienia go nie zatrzymują (jak skok ogara); bliżej niż 70 px zostaje zwykły cios.
+- **Wolniejszy obrót:** 100 → 55°/s, a w trakcie szarży (zamach, bieg, ogłuszenie, postój) tarcza stoi w miejscu. Gracz za plecami nie dostaje szarży od razu — Tarczownik musi się najpierw powoli obrócić.
+- **Koniec skakania:** ogar z Piekła z cechą Tarczownika traci skok — dostaje zwykły cios (`applyElite`, `ELITE_CONFIG.shield.bash`); jedyny „doskok” to szarża z telegrafem.
+- **Bomby ranią Tarczownika:** bomba smolna kultysty i wybuch Wybuchowej elity zadają mu podwójne obrażenia (`bombDamageMultiplier: 2`), tarcza ich nie zatrzymuje (`Hit.unblockable` — wybuch z góry). Wciągnięcie go pod bombę się opłaca. Innym wrogom bomby nadal nie szkodzą.
+- Podpowiedź przy pierwszym spotkaniu: „szarżuje — uskocz, wbije się w ścianę”.
+- **Testy:** `tests/systems/shieldCharge.test.ts` (start tylko w zasięgu i przed tarczą, telegraf, ściana → ogłuszenie i odnowienie od jego końca, wybieg, blokada przez innego wroga, trafienie, balans obrotu; ogar z tarczą bez skoku; obrażenia bomby). Build zielony (1693 testy).
+- **Przeglądarka (Playwright, `?seed=7&floor=5&hero=archer`, Tarczownik postawiony w pokoju):** gracz stoi — szarża trafia; gracz uskakuje w trakcie zamachu — Tarczownik wbija się w ścianę, ogłuszony 1,8 s, cios od tyłu wchodzi w całości (20 z 20); wybuch obok — 2× obrażeń. Bez błędów w konsoli.
+- **Czeka na ocenę właściciela:** czas telegrafu (0,75 s), długość ogłuszenia (1,8 s), siła szarży, obrót 55°/s.
+- **Na później (zanotowane):** czytelniejsze animacje eksplozji (bomby kultystów, wybuch elity, kokony) — `#ocena`.
+
+---
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4326,6 +4346,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Tarczownik (krok 99):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę, obrót 55°/s, bomby go ranią — czeka na test właściciela.
+- **Animacje eksplozji** `#ocena`: bardzo nieczytelne, rozmyte (bomby kultystów, wybuch elity) — przerobić w osobnym kroku.
 - **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału, Supernowej i totemu, wygląd totemu (placeholder).
 - **Bohaterowie po kroku 97:** `#balans` `#czarodziejka` `#lucznik` ciągły ostrzał łucznika (co 0,34 s, co 3. mocna), fala uderzeniowa i powrót kul Czarodziejki (0,6 s), mocniejszy promień; czy barbarzyńca dalej jest OP.
 - **Raport testera (24.10.2026): gra powtarzalna** `#ocena` — do osobnego kroku; właściciel przekaże więcej uwag.

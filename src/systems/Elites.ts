@@ -1,5 +1,6 @@
-import type { EnemyDefinition, EnemyType, FirePatchDefinition } from '@/core/combatTypes';
-import { EliteAffix } from '@/core/combatTypes';
+import type { EnemyAttackDefinition, EnemyDefinition, EnemyType, FirePatchDefinition } from '@/core/combatTypes';
+import { EliteAffix, EnemyAttackKind } from '@/core/combatTypes';
+import type { ShieldChargeConfig } from '@/systems/ShieldCharge';
 import type { LootTable } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 
@@ -36,6 +37,12 @@ export interface EliteConfig {
     /** Mnożnik obrażeń przyjętych od frontu. */
     readonly frontMultiplier: number;
     readonly turnRateDegPerSec: number;
+    /** Szarża zamiast skoku (krok 99). */
+    readonly charge: ShieldChargeConfig;
+    /** Wróg ze skokiem (ogar) dostaje z tarczą zwykły cios z tym zasięgiem — skacze tylko szarżą. */
+    readonly bash: { readonly range: number; readonly hitRange: number };
+    /** Mnożnik obrażeń od bomb wrogów (kultysta, wybuch elity) — tarcza nie chroni przed wybuchem z góry. */
+    readonly bombDamageMultiplier: number;
   };
   readonly fiery: {
     readonly trail: FirePatchDefinition & { readonly spacing: number };
@@ -107,20 +114,33 @@ export function rollElites(
 export function applyElite(definition: EnemyDefinition, affixes: readonly EliteAffix[], config: EliteConfig): EnemyDefinition {
   if (affixes.length === 0) return definition;
   const swift = affixes.includes(EliteAffix.Swift);
+  const attack = affixes.includes(EliteAffix.Shielded) ? shieldBash(definition.attack, config) : definition.attack;
   return {
     ...definition,
     affixes: [...affixes],
     maxHp: Math.round(definition.maxHp * config.hpMultiplier),
     moveSpeed: Math.round(definition.moveSpeed * (swift ? config.swift.moveSpeed : 1)),
     attack: {
-      ...definition.attack,
-      damage: Math.round(definition.attack.damage * config.damageMultiplier),
+      ...attack,
+      damage: Math.round(attack.damage * config.damageMultiplier),
       ...(swift && {
-        windupMs: Math.round(definition.attack.windupMs * config.swift.windup),
-        cooldownMs: Math.round(definition.attack.cooldownMs * config.swift.cooldown),
+        windupMs: Math.round(attack.windupMs * config.swift.windup),
+        cooldownMs: Math.round(attack.cooldownMs * config.swift.cooldown),
       }),
     },
   };
+}
+
+/** Tarczownik (krok 99) nie skacze — skok ogara zamienia się w zwykły cios z bliska (dystans skraca szarża). */
+function shieldBash(attack: EnemyAttackDefinition, config: EliteConfig): EnemyAttackDefinition {
+  if (attack.kind !== EnemyAttackKind.Pounce) return attack;
+  const { damage, windupMs, cooldownMs, knockback, status } = attack;
+  return { kind: EnemyAttackKind.Melee, damage, windupMs, cooldownMs, knockback, ...config.shield.bash, ...(status && { status }) };
+}
+
+/** Obrażenia bomby wroga zadane Tarczownikowi (krok 99: bomby kultystów ranią też jego). */
+export function bombDamageToShielded(damage: number, config: EliteConfig): number {
+  return Math.max(1, Math.round(damage * config.shield.bombDamageMultiplier));
 }
 
 export function isElite(definition: EnemyDefinition): boolean {

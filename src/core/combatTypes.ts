@@ -132,6 +132,8 @@ export interface Hit {
   readonly status?: StatusApplication;
   /** Magia Czarodziejki (krok 49b): trafia zawsze — także bezcielesnego albo wynurzającego się upiora. */
   readonly magic?: boolean;
+  /** Wybuch spadający z góry (bomba, krok 99): tarcza Tarczownika go nie zatrzymuje. */
+  readonly unblockable?: boolean;
 }
 
 /** Efekty broni gracza wynikające z przedmiotów (zero/puste = brak przedmiotu). */
