@@ -4531,7 +4531,7 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 - `world/SmoothPhysics.ts`: przed aktualizacją świata (PRE_UPDATE sceny, ta sama delta) ustawia długość kroku i akumulator Arcade tak, by klatka zrobiła dokładnie tyle kroków. Przy 60 Hz — jak dotąd jeden krok 1/60 s; przy 144 Hz — jeden krok 1/144 s w każdej klatce. Krok nigdy nie jest dłuższy niż dotąd (szybkie ciała nie przenikają ścian). Po długim zacięciu najwyżej 8 kroków na klatkę (gra na chwilę zwalnia zamiast nadrabiać).
 - `PHYSICS_STEP_CONFIG` w `config/gameConfig.ts`. Włączone w `GameScene` (też w wersji mobilnej i aren).
 - **Testy:** `tests/systems/physicsStep.test.ts` (60 Hz bez zmian, 75–240 Hz — ruch w każdej klatce, wolne klatki, limit, klatka zerowa). Build zielony (1819 testów).
-- **Weryfikacja:** ta sama symulacja po zmianie — 75, 120, 144 i 165 Hz: 0 klatek bez ruchu, równe przesunięcie co klatkę (np. 1,39 px przy 144 Hz). Smoke wszystkimi bohaterami, solo i co-op.
+- **Weryfikacja:** ta sama symulacja po zmianie — 75, 120, 144 i 165 Hz: 0 klatek bez ruchu, równe przesunięcie co klatkę (np. 1,39 px przy 144 Hz). `npm run smoke -- --floors 4 --seeds 1` wszystkimi bohaterami bez błędów. Smoke co-op przechodzi piętra, ale sprawdzenie wskrzeszania („P2 nie wstał”) w tym środowisku (Chromium bez karty graficznej, ok. 20 FPS) zawodzi dla części par **także bez tej zmiany** (sprawdzone z wyłączonym krokiem 115) — do osobnego zbadania.
 
 **Czeka na ocenę właściciela:** czy gra jest płynna na jego monitorze (warto podać częstotliwość monitora i przeglądarkę). Jeśli dalej zacina — raport z F9 (puls zapisuje FPS) i opis, kiedy: cały czas czy tylko w walce/przy efektach.
 
