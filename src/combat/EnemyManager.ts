@@ -27,6 +27,7 @@ import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { directionTo, distance, knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
+import { withHpMultiplier } from '@/systems/CoopBalance';
 import { scaleEnemyForFloor } from '@/systems/EnemyScaling';
 import type { FloorModifierEffects } from '@/core/floorModifierTypes';
 import { applyFloorToEnemy } from '@/systems/FloorModifiers';
@@ -45,6 +46,8 @@ export interface EnemyManagerDeps {
   readonly floorNumber: number;
   /** Modyfikator piętra (prędkość, HP, obrażenia zwykłych wrogów). */
   readonly floorEffects: FloorModifierEffects;
+  /** Co-op (etap C6): mnożnik HP wrogów; solo — brak (1). */
+  readonly hpMultiplier?: number;
   /** Warianty archetypów w biomie piętra (wygląd i ewentualnie atak). */
   readonly enemyVariants: Readonly<Record<EnemyType, EnemyVariant>>;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
@@ -134,7 +137,7 @@ export class EnemyManager implements EnemyAttackHandler {
     const base = enemyDefinitionFor(ENEMY_DEFINITIONS[type], options.variant ?? this.deps.enemyVariants[type], ENEMY_VARIANTS);
     const scaled = scaleEnemyForFloor(base, this.deps.floorNumber, options.scaling ?? ENEMY_SCALING);
     const modified = options.scaling ? scaled : applyFloorToEnemy(scaled, this.deps.floorEffects);
-    const definition = applyElite(modified, affixes, ELITE_CONFIG);
+    const definition = withHpMultiplier(applyElite(modified, affixes, ELITE_CONFIG), this.deps.hpMultiplier ?? 1);
     const enemy = new Enemy(this.deps.scene, position.x, position.y, definition, options);
     this.group.add(enemy);
     this.enemies.push(enemy);

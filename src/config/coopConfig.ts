@@ -1,5 +1,6 @@
 import { PAD_BUTTON } from '@/config/gamepadConfig';
 import type { ReviveConfig } from '@/systems/Revive';
+import type { CoopBalanceConfig } from '@/systems/CoopBalance';
 
 /**
  * Lokalny co-op (krok 101, decyzja właściciela): dwóch graczy na jednym ekranie. Liczby balansu co-opu
@@ -28,6 +29,12 @@ export const COOP_CONFIG = {
   revive: { radiusPx: 30, durationMs: 3000, decaySlowdown: 3, hpFraction: 0.4 } satisfies ReviveConfig,
   /** Nietykalność po wstaniu (ms). */
   reviveInvulnerabilityMs: 1500,
+  /**
+   * Balans co-opu (etap C6, decyzja właściciela: więcej HP wrogów i bossów oraz 1 wróg więcej na pokój).
+   * Dwóch bohaterów zadaje mniej więcej dwa razy więcej obrażeń, a wrogów jest o połowę więcej — HP rośnie mniej
+   * niż dwukrotnie, żeby walka trwała podobnie długo jak solo. Do strojenia po testach właściciela.
+   */
+  balance: { enemyHpMultiplier: 1.4, bossHpMultiplier: 1.7, extraEnemiesPerRoom: 1 } satisfies CoopBalanceConfig,
 } as const;
 
 /** Napisy ekranu co-opu (etap C5). */

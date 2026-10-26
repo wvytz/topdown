@@ -19,6 +19,7 @@ import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { withHpMultiplier } from '@/systems/CoopBalance';
 import {
   BOSS_LEAP_VISUAL,
   BOSS_PRESENCE_VISUAL,
@@ -77,6 +78,8 @@ export interface BossFightDeps {
   readonly walls: Phaser.Tilemaps.TilemapLayer;
   /** Bohaterowie (co-op, etap C0): boss celuje w najbliższego żywego, ataki obszarowe ranią każdego. */
   readonly party: Party;
+  /** Co-op (etap C6): mnożnik HP bossa; solo — brak (1). */
+  readonly bossHpMultiplier?: number;
   readonly projectiles: ProjectileManager;
   readonly effects: CombatEffects;
   /** Trwałe ślady walki: przypalenie po uderzeniu obszarowym, szlam po śmierci bossa. */
@@ -219,7 +222,7 @@ export class BossFight {
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
     this.arena = arena;
 
-    const definition = scaleBossForFloor(bossForFloor(deps.floorNumber), deps.floorNumber, ENEMY_SCALING);
+    const definition = withHpMultiplier(scaleBossForFloor(bossForFloor(deps.floorNumber), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
     this.spiderlingDefinition = definition.spiderling ?? null;
     const center = arenaCenter(arena);
     const spawn = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };

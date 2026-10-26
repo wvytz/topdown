@@ -104,6 +104,8 @@ import { LarderCocoon } from '@/entities/LarderCocoon';
 import { Party } from '@/entities/Party';
 import { spotBeside, straysOutside } from '@/systems/Party';
 import { ReviveProgress, reviveHp } from '@/systems/Revive';
+import { SOLO_BALANCE, withExtraEnemies } from '@/systems/CoopBalance';
+import type { CoopBalanceConfig } from '@/systems/CoopBalance';
 import { isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
@@ -771,6 +773,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       floor: this.dungeon,
       floorNumber: this.floorNumber,
       floorEffects: this.floorEffects,
+      hpMultiplier: this.balance.enemyHpMultiplier,
       enemyVariants: this.biome.enemyVariants,
       walls: this.dungeonView.collisionLayer,
       party: this.party,
@@ -792,7 +795,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Areny bossów (krok 90): bez wrogów w pokojach i bez zagrożeń biomu poza areną — tylko boss i jego pomocnicy.
     if (!this.bossRush) {
       const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
-      const spawns = planEncounters(this.dungeon, getEncounterConfigForFloor(this.floorNumber), rng);
+      const spawns = planEncounters(this.dungeon, withExtraEnemies(getEncounterConfigForFloor(this.floorNumber), this.balance.extraEnemiesPerRoom), rng);
       // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
       const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
       this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
@@ -891,6 +894,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       floorNumber: this.floorNumber,
       walls: this.dungeonView.collisionLayer,
       party: this.party,
+      bossHpMultiplier: this.balance.bossHpMultiplier,
       projectiles: this.projectiles,
       effects: this.effects,
       decals: this.combatDecals,
@@ -1123,6 +1127,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const combat = this.heroes.find((h) => h.player === hero);
     hero.applyLoadout(combat ? combat.loadout() : this.currentLoadout());
     this.showItemNotice(itemId, hero);
+  }
+
+  /** Balans co-opu (etap C6); solo — bez zmian. */
+  private get balance(): CoopBalanceConfig {
+    return this.coop ? COOP_CONFIG.balance : SOLO_BALANCE;
   }
 
   private heroIdOf(hero: Player): HeroId {
