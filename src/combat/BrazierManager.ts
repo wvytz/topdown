@@ -4,7 +4,7 @@ import type { Rng } from '@/core/random';
 import type { Vector2 } from '@/core/types';
 import { BRAZIER_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
+import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
 import { planBraziers } from '@/dungeon/BrazierPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { PointLight } from '@/effects/LightingOverlay';
@@ -117,7 +117,7 @@ export class BrazierManager {
       const telegraphStartAt = now - (t - this.timing.idleMs);
       drawAreaTelegraph(
         brazier.telegraph,
-        { center: brazier.at, radius: burst.radius, telegraphStartAt, impactAt: telegraphStartAt + this.timing.warnMs, damage: 0, knockback: 0 },
+        { center: brazier.at, radius: burst.radius, telegraphStartAt, impactAt: telegraphStartAt + this.timing.warnMs },
         now,
       );
     } else {

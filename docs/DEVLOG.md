@@ -4426,6 +4426,29 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Weryfikacja:** `npm run smoke -- --floors 8 --seeds 1 --coop` (trzy pary, 8 pięter, wskrzeszanie na każdym piętrze) i solo `npm run smoke -- --floors 8 --seeds 1`.
 
+## Krok 110 — Hitboxy ataków bossów zgodne z grafiką, nowe telegrafy i wybuchy `#ocena` `#balans`
+
+**Ocena właściciela i testerów (26.10.2026):** dwie osoby dostały obrażenia od bossa, stojąc poza czerwonym kołem; właściciel też miał takie wrażenie. Prośba: skorygować hitboxy i poprawić wygląd ataków bossów. Połączone z zanotowaną w kroku 99 oceną „eksplozje nieczytelne, rozmyte”.
+
+**Przyczyny (zbadane w kodzie):**
+- **Strefa łapała 12 px za czerwonym obrysem.** Trafienie liczyło przecięcie koła strefy z kołem o promieniu połowy ciała fizycznego gracza (`PLAYER_SIZE / 2` = 12 px), mierzonym od środka sprite'a. Gracz, którego postać i cień stały wyraźnie za kreską, nadal był trafiony. Przy małych strefach (hak Kata ma promień 14, grad sztyletów — 18) faktyczny zasięg był prawie dwa razy szerszy niż rysunek.
+- **Mierzone od środka postaci, nie od stóp.** Strefy leżą na ziemi, a gracz ocenia swoje położenie po cieniu. Głowa postaci stojącej pod kołem „wchodzi” w czerwień w rzucie z góry, choć stopy są poza nią — i odwrotnie.
+- **Pociski trafiały róg prostokąta 24×24.** Ciało fizyczne gracza to kwadrat, a postać ma ok. 16 px szerokości; kula przelatująca obok ramienia (po skosie) trafiała.
+- Czas trafienia i środki stref były zgodne z telegrafem (sprawdzone: skok, hak, smuga, kokony) — problem był wyłącznie w kształcie strefy trafienia gracza.
+
+**Co powstało:**
+- **Strefa trafienia bohatera** (`HERO_HURTBOX` w `config/combatConfig.ts`, czysta logika `systems/Hurtbox.ts`): strefy na ziemi (ataki bossów, wybuchy pajączków, bomby kultystów, wybuch Wybuchowej elity, pająki z sufitu) łapią **ślad stóp** — środek cienia (4 px pod środkiem) z promieniem 5 px; czerwień musi przykryć cień. Pociski i skok doga trafiają **tułów** (koło 8 px); prostokąt fizyki zostaje tylko do ruchu i ścian. Teren i pułapki (paleniska, plamy ognia, chmury purchawek, kolce) oraz spowolnienie z kokonów leża bez zmian.
+- **Telegraf** (`effects/AreaTelegraph.ts`, wspólny dla bossów, pajączków, kokonów, palenisk, purchawek, bomb i wybuchów elit; wygląd w `AREA_TELEGRAPH_VISUAL`): czerwony brzeg w całości wewnątrz strefy, tuż za nim ciemna obwódka w kolorze obrysu postaci — styk to dokładny zasięg, czytelny także na czerwonym bazalcie Piekła; przez ostatnie 180 ms brzeg miga jasno (zaraz uderzy).
+- **Obrys sumy kół** (`systems/AreaOutline.ts`): hak Kata i smuga Barona to łańcuchy nachodzących kół — telegraf i wybuch rysują jeden zewnętrzny obrys zamiast plątaniny okręgów.
+- **Wybuch zamiast rozmytego błysku** (`CombatEffects.blast`, `BLAST_VISUAL`): 4 klatki skokowo co 60 ms — jasny błysk do samego brzegu, ogień, pierścień fali, iskry; nic nie wychodzi poza promień obrażeń. Używają go ataki bossów, wybuchy pajączków, bomby kultystów i wybuch Wybuchowej elity (kokony, kraty, łupy zostają przy starym błysku).
+- `isHitByAreaStrike` (stara reguła) usunięty.
+- **Testy:** `tests/systems/hurtbox.test.ts` (ślad stóp pod cieniem każdego bohatera, brzeg strefy, stopy vs głowa, róg prostokąta), `tests/systems/areaOutline.test.ts` (łańcuch kół, łuk przez kąt 0, koło w kole); balans tasaka Pożeracza liczony ze śladem stóp. Build zielony (1772 testy).
+- **Przeglądarka (Playwright, `?seed=3&floor=1|6|7`, gracz nieśmiertelny na arenie):** zrzuty telegrafów i wybuchów Strażnika, Kata Otchłani (hak, oddech palenisk, żar) i Barona Dymu (puszki, smuga) — obrys łańcucha haka jest jeden, wybuch kończy się na kresce. Smoke wszystkimi bohaterami bez błędów.
+
+**Uwaga o trudności:** ataki nie są słabsze (obrażenia, czasy i promienie stref bez zmian), ale uniki są teraz uczciwe: przy stałym promieniu strefy skuteczny zasięg spadł o ok. 7 px. Gdyby po testach bossowie wydali się łatwiejsi, można powiększyć same strefy — wtedy rysunek urośnie razem z nimi.
+
+**Czeka na ocenę właściciela:** wielkość śladu stóp (5 px) i tułowia (8 px), siła błysku wybuchu (60% alfy w pierwszej klatce), czas migania brzegu (180 ms).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4503,7 +4526,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **2. Do oceny przy okazji**
 - **Tarczownik (krok 99):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę, obrót 55°/s, bomby go ranią — czeka na test właściciela.
-- **Animacje eksplozji** `#ocena`: bardzo nieczytelne, rozmyte (bomby kultystów, wybuch elity) — przerobić w osobnym kroku.
+- **Hitboxy i wybuchy (krok 110):** `#ocena` `#balans` strefy łapią ślad stóp (5 px), pociski tułów (8 px); nowy telegraf i wybuch w promieniu strefy (bomby kultystów, wybuch elity, ataki bossów) — czeka na test właściciela.
 - **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału, Supernowej i totemu, wygląd totemu (placeholder).
 - **Bohaterowie po kroku 97:** `#balans` `#czarodziejka` `#lucznik` ciągły ostrzał łucznika (co 0,34 s, co 3. mocna), fala uderzeniowa i powrót kul Czarodziejki (0,6 s), mocniejszy promień; czy barbarzyńca dalej jest OP.
 - **Raport testera (24.10.2026): gra powtarzalna** `#ocena` — do osobnego kroku; właściciel przekaże więcej uwag.

@@ -4,7 +4,7 @@ import type { Rng } from '@/core/random';
 import type { Vector2 } from '@/core/types';
 import { PUFFBALL_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
+import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
 import { planCocoons } from '@/dungeon/CocoonPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { Party } from '@/entities/Party';
@@ -103,8 +103,6 @@ export class PuffballManager {
       radius: cloud.maxRadius,
       telegraphStartAt: puffball.burstAt - fuseMs,
       impactAt: puffball.burstAt,
-      damage: 0,
-      knockback: 0,
     }, now);
   }
 

@@ -1,15 +1,16 @@
 import Phaser from 'phaser';
 import type { AreaStrike, SpiderlingDefinition } from '@/core/bossTypes';
 import type { Vector2 } from '@/core/types';
-import { SMOKE_VISUAL, SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { isHitByAreaStrike } from '@/ai/bossAttacks';
+import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
+import { isCaughtByGroundArea } from '@/systems/Hurtbox';
 
 export interface SpiderlingSwarmDeps {
   readonly scene: Phaser.Scene;
@@ -21,7 +22,6 @@ export interface SpiderlingSwarmDeps {
   readonly onPlayerHit: (player: Player) => void;
 }
 
-const TELEGRAPH_COLOR = 0xff4040;
 /** Plama po zabitym pajączku (kolor chityny Matki Pająków). */
 const SPIDERLING_DEATH_COLOR = 0x7a3a4a;
 
@@ -71,11 +71,11 @@ export class SpiderlingSwarm {
         if (Number.isFinite(spiderling.explosionAt)) drawAreaTelegraph(gfx, blast, now);
         continue;
       }
-      this.deps.effects.impact(blast.center.x, blast.center.y, blast.radius);
+      this.deps.effects.blast(blast.center.x, blast.center.y, blast.radius);
       this.deps.decals.add('scorch', blast.center.x, blast.center.y);
       this.playBurst(blast.center);
       for (const player of party.living) {
-        if (!isHitByAreaStrike(blast, player, player.radius)) continue;
+        if (!isCaughtByGroundArea(blast.center, blast.radius, player)) continue;
         const hit = { damage: blast.damage, knockback: knockbackFrom(blast.center, player, blast.knockback) };
         if (player.takeHit(hit, now)) onPlayerHit(player);
       }
@@ -113,21 +113,4 @@ export class SpiderlingSwarm {
     }
     spiderling.destroy();
   }
-}
-
-/** Obrys strefy + wypełnienie rosnące do chwili uderzenia. */
-export function drawAreaTelegraph(gfx: Phaser.GameObjects.Graphics, strike: AreaStrike, now: number): void {
-  gfx.clear();
-  if (now < strike.telegraphStartAt) return;
-  const progress = Phaser.Math.Clamp(
-    (now - strike.telegraphStartAt) / (strike.impactAt - strike.telegraphStartAt),
-    0,
-    1,
-  );
-  // Smuga dymu Barona (krok 83) ma szary telegraf; reszta — czerwony.
-  const smoke = strike.look === 'smoke';
-  const color = smoke ? SMOKE_VISUAL.telegraph.color : TELEGRAPH_COLOR;
-  gfx.lineStyle(2, smoke ? SMOKE_VISUAL.telegraph.edge : TELEGRAPH_COLOR, smoke ? SMOKE_VISUAL.telegraph.edgeAlpha : 0.8).strokeCircle(strike.center.x, strike.center.y, strike.radius);
-  gfx.fillStyle(color, smoke ? 0.14 : 0.12).fillCircle(strike.center.x, strike.center.y, strike.radius);
-  gfx.fillStyle(color, smoke ? SMOKE_VISUAL.telegraph.fillAlpha : 0.3).fillCircle(strike.center.x, strike.center.y, strike.radius * progress);
 }

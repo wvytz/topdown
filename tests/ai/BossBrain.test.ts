@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BossBrain } from '@/ai/BossBrain';
-import { attackLeadTimeMs, isHitByAreaStrike, planBossAttack } from '@/ai/bossAttacks';
+import { attackLeadTimeMs, planBossAttack } from '@/ai/bossAttacks';
 import type { BossAttackPlan } from '@/core/bossTypes';
 import { BossAttackKind, BossPhase } from '@/core/bossTypes';
 import { createRng } from '@/core/random';
@@ -156,15 +156,6 @@ describe('planBossAttack', () => {
         expect(p.endsAt).toBeGreaterThan(lastImpact);
       }
     }
-  });
-});
-
-describe('isHitByAreaStrike', () => {
-  const strike = { center: SELF, radius: 100, telegraphStartAt: 0, impactAt: 900, damage: 10, knockback: 0 };
-
-  it('trafia, gdy obrys celu przecina strefę', () => {
-    expect(isHitByAreaStrike(strike, { x: 105, y: 0 }, 12)).toBe(true);
-    expect(isHitByAreaStrike(strike, { x: 115, y: 0 }, 12)).toBe(false);
   });
 });
 
