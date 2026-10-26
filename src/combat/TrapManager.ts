@@ -1,3 +1,5 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
+import { TRAP_HEARING_PX } from '@/config/audioConfig';
 import Phaser from 'phaser';
 import type { Vector2 } from '@/core/types';
 import { ENEMY_SCALING } from '@/config/combatConfig';
@@ -112,6 +114,10 @@ export class TrapManager {
       if (state.phase !== live.phase) {
         live.phase = state.phase;
         play(live.sprite, state.phase === SpikePhase.Down ? 'spikeDown' : state.phase === SpikePhase.Warn ? 'spikeWarn' : 'spikeUp');
+        // Kolce słychać tylko z bliska — pasy na całym piętrze cyklują bez przerwy.
+        if (state.phase === SpikePhase.Up && party.living.some((p) => Math.hypot(p.x - live.at.x, p.y - live.at.y) <= TRAP_HEARING_PX)) {
+          sound.play(SoundCue.Spikes, live.at);
+        }
       }
       if (state.phase === SpikePhase.Warn) {
         const half = TILE_SIZE / 2 - 3;
@@ -173,6 +179,7 @@ export class TrapManager {
           lifetimeMs: (length / config.speed) * 1000 + 100,
           visual: { texture: SPRITE_SHEETS[TRAP_VISUAL.dart].key, animation: animationKey(TRAP_VISUAL.dart, 'fly') },
           rotation: Math.atan2(live.trap.direction.y, live.trap.direction.x),
+          sound: SoundCue.Dart,
         });
       }
     }

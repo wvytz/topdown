@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
@@ -102,6 +103,8 @@ export class AmbushManager {
       effects.impact(at.x, at.y, TILE_SIZE * 0.6);
     }
     scene.cameras.main.shake(160, 0.004);
+    sound.play(SoundCue.GatesSlam);
+    sound.play(SoundCue.Ambush);
     this.dreadTarget = 1;
     this.deps.toast('Zasadzka! Światło gaśnie…');
   }

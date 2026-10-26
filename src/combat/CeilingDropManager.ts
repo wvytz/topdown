@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import type Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
@@ -113,6 +114,7 @@ export class CeilingDropManager {
     view.destroy();
     const { party, effects, onPlayerHit, enemies } = this.deps;
     effects.impact(drop.position.x, drop.position.y, drop.radius);
+    sound.play(SoundCue.Impact, drop.position);
     for (const player of party.living) {
       if (!isCaughtByGroundArea(drop.position, drop.radius, player)) continue;
       const hit = { damage: drop.damage, knockback: knockbackFrom(drop.position, player, drop.knockback) };

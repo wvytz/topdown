@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { Hit, DamageResult } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
@@ -79,6 +80,7 @@ export class BreakableManager {
       .setDepth(RENDER_DEPTH.combatDecal)
       .play(animationKey(TRAP_VISUAL.breakables, animationName(item.spot, true)));
     this.deps.effects.impact(at.x, at.y, item.radius * 1.6);
+    sound.play(SoundCue.Break, at);
     this.deps.onBroken(at);
   }
 

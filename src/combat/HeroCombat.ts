@@ -9,6 +9,7 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ARCHER_ARROW_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { PlayerShotManager, ShotLook } from '@/combat/PlayerShotManager';
 import { UltimateManager } from '@/combat/UltimateManager';
+import { LoopCue, SoundCue, sound } from '@/audio/SoundBoard';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Player, PlayerActions } from '@/entities/Player';
 import { arrowSpec, volleyDirections } from '@/systems/Archery';
@@ -71,6 +72,8 @@ export class HeroCombat {
   /** Wampirzy kieł: sufit leczenia na sekundę (krok 93). */
   private readonly healBudget = new HealBudget();
   private beamGfx: Phaser.GameObjects.Graphics | null = null;
+  /** Ostatni dash, który już zabrzmiał (krok 116). */
+  private dashSoundFor = -1;
 
   constructor(private readonly deps: HeroCombatDeps) {
     this.ultimates = new UltimateManager({
@@ -109,6 +112,7 @@ export class HeroCombat {
     if (turn.shot) {
       const { x, y, combatConfig } = player;
       playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, player.effects, undefined, player);
+      sound.play(SoundCue.ArrowShot, player);
     }
     if (turn.orb) this.fireOrb(turn.orb);
     if (turn.ultimate) this.ultimates.use(turn.ultimate, time);
@@ -116,6 +120,11 @@ export class HeroCombat {
     if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.strong);
     if (turn.volley) this.fireVolley(turn.volley);
     this.updateBeam(turn.beam, turn.beamTicks, time);
+    sound.hold(LoopCue.Beam, player, turn.beam && !player.isDead);
+    if (player.dashId !== this.dashSoundFor && player.isDashing(time)) {
+      this.dashSoundFor = player.dashId;
+      sound.play(SoundCue.Dash, player);
+    }
     this.ultimates.update(time);
     this.resolveDashStrike(time);
   }
@@ -133,6 +142,7 @@ export class HeroCombat {
     if (!orbs) return;
     const { effects } = player;
     const origin = crystalPoint(player, Math.atan2(direction.y, direction.x), orbs.forwardOffset, orbs.sideOffset);
+    sound.play(SoundCue.OrbThrow, player);
     this.deps.playerShots.fire(
       origin,
       direction,
@@ -166,6 +176,7 @@ export class HeroCombat {
     if (!archery) return;
     const { bow } = archery;
     const spec = arrowSpec(bow, strong);
+    sound.play(spec.strong ? SoundCue.ArrowStrong : SoundCue.ArrowShot, player);
     const origin = crystalPoint(player, Math.atan2(direction.y, direction.x), bow.forwardOffset, bow.sideOffset);
     this.deps.playerShots.fire(
       origin,
@@ -191,6 +202,7 @@ export class HeroCombat {
     const { bow, volley } = archery;
     const angle = Math.atan2(aim.y, aim.x);
     const origin = crystalPoint(player, angle, bow.forwardOffset, bow.sideOffset);
+    sound.play(SoundCue.Volley, player);
     for (const direction of volleyDirections(angle, volley.arrows, volley.spreadDeg)) {
       this.deps.playerShots.fire(origin, direction, player.combatConfig.ranged, player.effects, this.arrowLook(direction, false, 0), player);
     }
@@ -224,6 +236,7 @@ export class HeroCombat {
     };
     this.deps.strikes.splash(strike, player);
     this.deps.effects.splash(at.x, at.y, splash.radius);
+    sound.play(SoundCue.OrbSplash, at);
   }
 
   /**
@@ -238,6 +251,7 @@ export class HeroCombat {
     const strike: OrbSplash = { center, radius: nova.radius, damage: nova.damage, knockback: nova.knockback, now, source: center, exclude: null };
     this.deps.strikes.splash(strike, player);
     this.deps.effects.nova(center.x, center.y, nova.radius);
+    sound.play(SoundCue.Nova, center);
   }
 
   /** Promień Czarodziejki: rysunek co klatkę, obrażenia w klatkach z tickiem; zatrzymuje się na ścianie. */
@@ -306,6 +320,7 @@ export class HeroCombat {
     };
     const arc = Phaser.Math.DegToRad(combat.meleeArcDeg);
     effects.slash(swing.origin.x, swing.origin.y, swing.angle, combat.meleeRange, arc);
+    sound.play(SoundCue.SwordSwing, swing.origin);
     // Wampirzy kieł: leczenie za cios, który trafił wroga lub bossa (raz na cios, niezależnie od liczby celów).
     // Krok 93: kokony, purchawki i urny już nie leczą.
     if (this.deps.strikes.melee(swing, player) > 0) this.tryVampireHeal(now);

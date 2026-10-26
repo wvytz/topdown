@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { AreaStrike, SpiderlingDefinition } from '@/core/bossTypes';
 import type { Vector2 } from '@/core/types';
@@ -109,6 +110,7 @@ export class SpiderlingSwarm {
     entry?.gfx.destroy();
     if (!exploded) {
       this.deps.effects.deathBurst(spiderling.x, spiderling.y, SPIDERLING_DEATH_COLOR, spiderling.radius * 1.5);
+      sound.play(SoundCue.EnemyDeath, spiderling);
       this.deps.decals.add('splat', spiderling.x, spiderling.y);
     }
     spiderling.destroy();

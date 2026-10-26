@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { UltimateConfig } from '@/core/heroTypes';
 import type { Vector2 } from '@/core/types';
@@ -66,6 +67,7 @@ export class UltimateManager {
     diag.note('ultimate', { floor: this.deps.floorNumber, kind: ultimate.kind });
     effects.floatingText(player.x, player.y - player.radius - 10, `${ultimate.name}!`, ULTIMATE_VISUAL.text[ultimate.kind]);
     scene.cameras.main.shake(ULTIMATE_VISUAL.shakeMs, ULTIMATE_VISUAL.shakeIntensity);
+    sound.play(SoundCue.Ultimate, player);
     switch (ultimate.kind) {
       case 'rage':
         this.rageUntil = now + ultimate.durationMs;
@@ -75,6 +77,7 @@ export class UltimateManager {
         const center = { x: player.x, y: player.y };
         this.deps.blast({ center, radius: ultimate.radius, damage: ultimate.damage, knockback: ultimate.knockback, now, source: center, exclude: null });
         effects.nova(center.x, center.y, ultimate.radius);
+        sound.play(SoundCue.Nova, center);
         this.shieldUntil = now + ultimate.shieldMs;
         return;
       }

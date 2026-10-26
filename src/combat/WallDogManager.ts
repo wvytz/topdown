@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
@@ -79,6 +80,8 @@ export class WallDogManager {
         sprite.setPosition(at.x, at.y).setFrame(WALL_DOG_VISUAL.holeFrame);
         effects.impact(at.x, at.y, 28);
         effects.deathBurst(at.x, at.y, WALL_DOG_VISUAL.rubbleColor, 18);
+        sound.play(SoundCue.Break, at);
+        sound.play(SoundCue.Impact, at);
         scene.cameras.main.shake(WALL_DOG_VISUAL.burstShake.durationMs, WALL_DOG_VISUAL.burstShake.intensity);
         this.deps.spawnDog(DungeonView.tileToWorldCenter(entry.spot.floorTile));
       }

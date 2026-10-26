@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { ItemId } from '@/core/lootTypes';
 import { ItemKind } from '@/core/lootTypes';
@@ -189,6 +190,7 @@ export class RewardScene extends Phaser.Scene {
       if (this.padCard !== null) this.highlight(this.padCard, false);
       this.padCard = next;
       this.highlight(next, true);
+      sound.play(SoundCue.UiMove);
       return;
     }
     if (command === MenuCommand.Confirm && this.padCard !== null) {
@@ -200,6 +202,7 @@ export class RewardScene extends Phaser.Scene {
   private pick(itemId: ItemId, data: RewardSceneData): void {
     if (this.picked || !this.armed) return;
     this.picked = true;
+    sound.play(SoundCue.ItemPickup);
     this.scene.stop();
     data.onPick(itemId);
   }

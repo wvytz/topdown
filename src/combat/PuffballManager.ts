@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
@@ -111,6 +112,7 @@ export class PuffballManager {
     const center = { x: puffball.x, y: puffball.y };
     puffball.destroy();
     this.playHusk(center);
+    sound.play(SoundCue.OrbSplash, center);
 
     const { cloud: look } = PUFFBALL_VISUALS[config.look ?? 'puffball'];
     const sprite = scene.add

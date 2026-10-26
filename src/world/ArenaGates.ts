@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import type Phaser from 'phaser';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { ARENA_GATES } from '@/config/bossConfig';
@@ -61,6 +62,7 @@ export class ArenaGates {
       effects.impact(center.x, center.y, TILE_SIZE * 0.6);
     }
     scene.cameras.main.shake(ARENA_GATES.shakeDurationMs, ARENA_GATES.shakeIntensity);
+    sound.play(SoundCue.GatesSlam);
     onSealed();
   }
 

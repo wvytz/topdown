@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { BossAttackPlan, BossDefinition } from '@/core/bossTypes';
 import { BossPhase } from '@/core/bossTypes';
@@ -179,6 +180,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     const damage = shield && blocked ? Math.max(1, Math.round(hit.damage * shield.frontMeleeMultiplier)) : hit.damage;
     if (blocked && this.guard?.absorb(hit.damage, now)) this.shieldBreakPending = true;
     const result = this.health.takeDamage(damage);
+    sound.play(blocked ? SoundCue.ShieldBlock : SoundCue.BossHit, this);
     if (!result.died) {
       // Ogłuszenie odsuwa też kolejny atak — boss „traci” ten czas, a nie tylko stoi.
       const { stunnedMs } = this.status.apply(hit.status, now);

@@ -3,6 +3,7 @@ import { PAUSE_CLOCK_KEY } from '@/config/pauseConfig';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import type { PlatformId } from '@/core/platform';
 import { setPlatform } from '@/core/platform';
+import { sound } from '@/audio/SoundBoard';
 import { diag } from '@/diagnostics/DiagnosticsHub';
 import { installDevTools } from '@/diagnostics/devTools';
 import { installDiagnostics } from '@/diagnostics/installDiagnostics';
@@ -92,6 +93,8 @@ export function startGame(options: GameStartOptions): Phaser.Game {
   // Dziennik błędów i niespotykanych zdarzeń (krok 55): raport pod F9; pętla gry nie zamiera po wyjątku.
   installDiagnostics(game);
   diag.note('platform', { platform: options.platform });
+  // Dźwięk (krok 116): przeglądarka odblokowuje go dopiero po pierwszym geście gracza.
+  sound.install(window);
 
   // Kliknięcia poza planszą nie psują sterowania (krok 92): bez menu kontekstowego i bez „zawieszonych” klawiszy.
   const gameParent = document.getElementById('game');
@@ -126,6 +129,8 @@ export function startGame(options: GameStartOptions): Phaser.Game {
   // Dostęp z konsoli przeglądarki do debugowania (tylko w trybie dev).
   if (import.meta.env.DEV) {
     (window as unknown as { __game: Phaser.Game }).__game = game;
+    // Odsłuch efektu z konsoli: __sound.play('explosion').
+    (window as unknown as { __sound: typeof sound }).__sound = sound;
     installDevTools(game);
   }
   return game;
