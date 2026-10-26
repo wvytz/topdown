@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4515,6 +4515,25 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 **Testy:** `tests/systems/shield.test.ts` (rozrzut odbicia: długość wektora, kąt 30–80°, obie strony; okno opuszczonej tarczy), `tests/systems/elites.test.ts` (HP Tarczownika niższe niż innych elit, obrót i okno), `tests/ai/GateWarden.test.ts` (okno krótsze niż odpoczynek, rozrzut). Build zielony (1777 testów; po scaleniu z krokami 111–112 — 1806).
 
 **Czeka na ocenę właściciela:** długość okien (1,6 s elita, 1,2/1 s bossowie), rozrzut odbicia, nowe HP. Gdyby było za łatwo — najpierw skrócić okna, potem HP.
+
+## Krok 115 — Płynność: fizyka krokiem klatki obrazu (zacinanie na monitorach 120/144 Hz) `#ocena` `#wydajnosc`
+
+**Ocena właściciela (26.10.2026, co-op na padzie po krokach 110–113):** „Gra strasznie zacina.”
+
+**Pomiary (Playwright, Chromium, `?seed=3`, piętra 1, 4 i 6, solo i co-op, gracz nieśmiertelny, atak i ruch w kółko):**
+- **Procesor nie jest wąskim gardłem:** logika ok. 2 ms na klatkę (p95 ok. 5 ms), rysowanie ok. 1 ms; co-op dokłada ok. 0,3 ms. Liczba obiektów sceny stała (ok. 150 w walce z Pożeraczem), bez przecieku grafik telegrafów i wybuchów z kroków 110–111.
+- **Karta graficzna — lekko:** 13–26 wywołań rysowania na klatkę (najwięcej w Piekle), 2–4 małe aktualizacje tekstur (napisy HUD), oświetlenie w rozdzielczości świata.
+- **Dziennik diagnostyczny:** zapis co 5 s z pełnym nagraniem wejść (pad zmienia ruch co klatkę) ok. 2–4 ms — bez znaczenia.
+- **Przyczyna zacinania:** Arcade liczył fizykę stałym krokiem 60 razy na sekundę (domyślne `fixedStep` Phasera), a obraz rysuje się z częstotliwością monitora. Symulacja (ręczne `game.step` z deltą monitora, bohater idzie w prawo): przy 120 Hz co druga klatka bez ruchu (3,33 / 0 px), przy 144 i 165 Hz ponad połowa klatek bez ruchu, przy 75 Hz co piąta. Kamera idzie za bohaterem, więc szarpał cały obraz — w co-opie jeszcze bardziej (kamera między dwoma bohaterami).
+
+**Co powstało:**
+- `systems/PhysicsStep.ts` (czyste): `physicsSteps(delta, maxStepMs, maxSteps)` dzieli czas klatki na równe kroki nie dłuższe niż 1/60 s.
+- `world/SmoothPhysics.ts`: przed aktualizacją świata (PRE_UPDATE sceny, ta sama delta) ustawia długość kroku i akumulator Arcade tak, by klatka zrobiła dokładnie tyle kroków. Przy 60 Hz — jak dotąd jeden krok 1/60 s; przy 144 Hz — jeden krok 1/144 s w każdej klatce. Krok nigdy nie jest dłuższy niż dotąd (szybkie ciała nie przenikają ścian). Po długim zacięciu najwyżej 8 kroków na klatkę (gra na chwilę zwalnia zamiast nadrabiać).
+- `PHYSICS_STEP_CONFIG` w `config/gameConfig.ts`. Włączone w `GameScene` (też w wersji mobilnej i aren).
+- **Testy:** `tests/systems/physicsStep.test.ts` (60 Hz bez zmian, 75–240 Hz — ruch w każdej klatce, wolne klatki, limit, klatka zerowa). Build zielony (1819 testów).
+- **Weryfikacja:** ta sama symulacja po zmianie — 75, 120, 144 i 165 Hz: 0 klatek bez ruchu, równe przesunięcie co klatkę (np. 1,39 px przy 144 Hz). `npm run smoke -- --floors 4 --seeds 1` wszystkimi bohaterami bez błędów. Smoke co-op przechodzi piętra, ale sprawdzenie wskrzeszania („P2 nie wstał”) w tym środowisku (Chromium bez karty graficznej, ok. 20 FPS) zawodzi dla części par **także bez tej zmiany** (sprawdzone z wyłączonym krokiem 115) — do osobnego zbadania.
+
+**Czeka na ocenę właściciela:** czy gra jest płynna na jego monitorze (warto podać częstotliwość monitora i przeglądarkę). Jeśli dalej zacina — raport z F9 (puls zapisuje FPS) i opis, kiedy: cały czas czy tylko w walce/przy efektach.
 
 ## Znane ograniczenia i backlog
 
