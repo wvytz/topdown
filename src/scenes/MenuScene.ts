@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import type { FloorSceneData, HeroSelectData } from '@/core/types';
+import type { CoopSelectData, FloorSceneData, HeroSelectData } from '@/core/types';
+import { currentPlatform } from '@/core/platform';
 import { SceneKey } from '@/core/types';
 import { RunMode } from '@/core/runMode';
 import { GAME_WIDTH, GAME_HEIGHT } from '@/config/gameConfig';
@@ -131,6 +132,7 @@ export class MenuScene extends Phaser.Scene {
       hasAutosave: this.saves.load('auto') !== null,
       hasSlots: this.saves.slots.some((slot) => this.saves.load(slot) !== null),
       bestBossFloor: this.bossProgress.load(),
+      coop: currentPlatform() !== 'mobile',
     };
   }
 
@@ -246,6 +248,11 @@ export class MenuScene extends Phaser.Scene {
       case MenuEntry.NewTower:
         this.newRun(RunMode.Tower);
         break;
+      case MenuEntry.Coop: {
+        const coop: CoopSelectData = { runSeed: this.startData.runSeed, practice: this.startData.run.practice ?? false };
+        this.leave(() => this.scene.start(SceneKey.CoopSelect, coop));
+        break;
+      }
       case MenuEntry.BossRush:
         this.newRun(RunMode.BossRush);
         break;
@@ -364,6 +371,9 @@ export class MenuScene extends Phaser.Scene {
       }
       case MenuEntry.NewTower:
         this.setInfo(T.newTowerTitle, T.newTower);
+        break;
+      case MenuEntry.Coop:
+        this.setInfo(T.coopTitle, this.availability().coop === false ? T.coopMobile : T.coop);
         break;
       case MenuEntry.BossRush:
         this.setInfo(T.bossRushTitle, T.bossRush);

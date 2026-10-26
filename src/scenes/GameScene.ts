@@ -2,9 +2,12 @@ import Phaser from 'phaser';
 import type {
   DeathSummary,
   CoopSceneData,
+  CoopSelectData,
   FloorSceneData,
   HeroSelectData,
   HudData,
+  HudItem,
+  HudPartnerData,
   MinimapHudData,
   HudSceneData,
   HudSource,
@@ -170,6 +173,17 @@ const WALL_DOG_SEED_SALT = 0x4d09;
 const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
+/** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
+function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
+  return counts.map(({ id, count }) => ({
+    name: ITEM_DEFINITIONS[id].name,
+    count,
+    color: ITEM_DEFINITIONS[id].color,
+    frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
+    rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
+  }));
+}
+
 /** Co-op: schody czekają, aż drużyna stanie na nogi. */
 const STAIRS_PROMPT_REVIVE = 'Najpierw podnieś partnera';
 const SECRET_ROOM_SEED_SALT = 0x5ec7;
@@ -621,16 +635,32 @@ export class GameScene extends Phaser.Scene implements HudSource {
       gold: this.run.gold,
       practice: this.run.practice,
       bossRush: this.bossRush,
-      items: this.run.itemCounts().map(({ id, count }) => ({
-        name: ITEM_DEFINITIONS[id].name,
-        count,
-        color: ITEM_DEFINITIONS[id].color,
-        frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
-        rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
-      })),
+      items: hudItems(this.run.itemCounts()),
       toast: this.currentToast(),
       itemNotice: this.currentItemNotice(),
       death: this.death,
+      playerLabel: ready && this.partner ? `P1 · ${this.hero.name}` : '',
+      partner: ready ? this.partnerHud() : null,
+    };
+  }
+
+  /** Panel P2 w HUD (co-op, etap C5). */
+  private partnerHud(): HudPartnerData | null {
+    const partner = this.partner;
+    if (!partner) return null;
+    const now = this.time.now;
+    const counts = new Map<ItemId, number>();
+    for (const id of this.partnerItems) counts.set(id, (counts.get(id) ?? 0) + 1);
+    const hero = HERO_DEFINITIONS[this.heroIdOf(partner)];
+    return {
+      label: `P2 · ${hero.name}`,
+      hp: Math.round(partner.health.value),
+      maxHp: Math.round(partner.health.max),
+      dashReadiness: partner.dashReadiness(now),
+      ultimate: { ...partner.ultimateStatus(now), name: hero.ultimate.name },
+      downed: partner.isDead && !this.party.isDown,
+      reviveProgress: this.revives.get(partner)?.progress ?? 0,
+      items: hudItems([...counts].map(([id, count]) => ({ id, count }))),
     };
   }
 
@@ -645,6 +675,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return {
       explorer: this.minimap,
       player,
+      partner: this.partner ? DungeonView.worldToTile(this.partner.x, this.partner.y) : null,
       stairs: this.dungeon.stairs,
       boss: arena && !this.bossFight.isDefeated ? { x: arena.x + Math.floor(arena.width / 2), y: arena.y + Math.floor(arena.height / 2) } : null,
     };
@@ -1405,8 +1436,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
     const changeHero = once(() => {
       const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
-      const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode };
       this.scene.stop(SceneKey.Hud);
+      // Co-op (etap C5): zmiana bohaterów na ekranie co-opu — obaj dołączają i wybierają od nowa.
+      if (this.coop) {
+        const coop: CoopSelectData = { runSeed: freshSeed, practice: this.run.practice };
+        this.scene.start(SceneKey.CoopSelect, coop);
+        return;
+      }
+      const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode };
       this.scene.start(SceneKey.Select, select);
     });
     // M — menu główne (krok 91).

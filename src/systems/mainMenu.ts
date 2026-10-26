@@ -4,6 +4,8 @@
 export enum MenuEntry {
   Continue = 'continue',
   NewTower = 'new-tower',
+  /** Lokalny co-op dla dwóch (etap C5): ekran dołączania, potem wspinaczka. */
+  Coop = 'coop',
   BossRush = 'boss-rush',
   /** Wybór piętra: nowy run od piętra, którego bossa gracz już pokonał. */
   FloorSelect = 'floor-select',
@@ -14,6 +16,7 @@ export enum MenuEntry {
 export const MENU_ORDER: readonly MenuEntry[] = [
   MenuEntry.Continue,
   MenuEntry.NewTower,
+  MenuEntry.Coop,
   MenuEntry.BossRush,
   MenuEntry.FloorSelect,
   MenuEntry.Load,
@@ -25,6 +28,8 @@ export interface MenuAvailability {
   readonly hasSlots: boolean;
   /** Najwyższe piętro z pokonanym bossem (0 = żadne). */
   readonly bestBossFloor: number;
+  /** Co-op tylko na komputerze (decyzja właściciela: bez wersji mobilnej); brak = dostępny. */
+  readonly coop?: boolean;
 }
 
 /** Czy pozycję da się wybrać: „Kontynuuj” tylko z autozapisem, „Wczytaj” — z co najmniej jednym slotem, wybór piętra — po pierwszym bossie. */
@@ -36,6 +41,8 @@ export function isEntryEnabled(entry: MenuEntry, availability: MenuAvailability)
       return availability.hasSlots;
     case MenuEntry.FloorSelect:
       return availability.bestBossFloor >= 1;
+    case MenuEntry.Coop:
+      return availability.coop !== false;
     default:
       return true;
   }

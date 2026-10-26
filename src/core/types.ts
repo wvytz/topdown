@@ -36,6 +36,8 @@ export enum SceneKey {
   Hud = 'HudScene',
   Reward = 'RewardScene',
   Pause = 'PauseScene',
+  /** Ekran co-opu (etap C5): dołączanie i wybór bohaterów. */
+  CoopSelect = 'CoopSelectScene',
 }
 
 export enum TextureKey {
@@ -53,6 +55,12 @@ export interface HeroSelectData {
   readonly practice?: boolean;
   /** Tryb zaznaczony na starcie (krok 90); brak = wspinaczka. */
   readonly mode?: RunMode;
+}
+
+/** Ekran co-opu (etap C5): tylko wspinaczka od piętra 1. */
+export interface CoopSelectData {
+  readonly runSeed: number;
+  readonly practice?: boolean;
 }
 
 export interface FloorSceneData {
@@ -138,12 +146,31 @@ export interface HudData {
   readonly itemNotice: HudItemNotice | null;
   /** Podsumowanie runu po śmierci; null, dopóki gracz żyje. */
   readonly death: DeathSummary | null;
+  /** Co-op (etap C5): napis przy pasku P1 („P1 · Barbarzyńca”); pusto w grze solo. */
+  readonly playerLabel: string;
+  /** Co-op (etap C5): panel drugiego gracza; null w grze solo. */
+  readonly partner: HudPartnerData | null;
+}
+
+/** Panel drugiego gracza w HUD (co-op, etap C5). */
+export interface HudPartnerData {
+  readonly label: string;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly dashReadiness: number;
+  readonly ultimate: UltimateHudData | null;
+  /** Powalony — czeka na wskrzeszenie; `reviveProgress` 0..1. */
+  readonly downed: boolean;
+  readonly reviveProgress: number;
+  readonly items: readonly HudItem[];
 }
 
 /** Dane minimapy: mgła wojny (współdzielona, mutowana przez scenę gry) i pozycje znaczników w kaflach. */
 export interface MinimapHudData {
   readonly explorer: import('@/systems/Minimap').MinimapExplorer;
   readonly player: { readonly x: number; readonly y: number };
+  /** Co-op: kafel drugiego gracza; null w grze solo. */
+  readonly partner: { readonly x: number; readonly y: number } | null;
   readonly stairs: { readonly x: number; readonly y: number };
   /** Środek areny bossa; null po jego pokonaniu (znacznik znika). */
   readonly boss: { readonly x: number; readonly y: number } | null;

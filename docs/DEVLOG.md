@@ -4378,6 +4378,20 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Weryfikacja:** w przeglądarce (`?seed=7&hero=barbarian&coop=archer`): powalony P2 nie kończy runu, P1 obok podnosi go po 3 s z 34/85 HP; buty podniesione przez P2 trafiają do jego przedmiotów; dwie karty bossa po kolei — Serce dla P1, Ostrze dla P2, gra rusza dalej.
 
+## Krok 106 — Co-op, etap C5: menu co-op, ekran dołączania i HUD dla dwóch `#coop`
+
+**Co powstało:**
+- **menu główne:** nowa pozycja „CO-OP · 2 GRACZY” pod nową wspinaczką (`MenuEntry.Coop`; na telefonie wygaszona — decyzja właściciela: bez wersji mobilnej); odstęp wierszy menu 31 px, żeby siedem pozycji zmieściło się w panelu;
+- **ekran co-opu** (`scenes/CoopSelectScene.ts`, czyste `systems/coopLobby.ts`): gracz dołącza swoim urządzeniem — Enter na klawiaturze albo A na padzie (każdy pad osobno), wybiera bohatera ← → i potwierdza gotowość; bohaterowie są zawsze różni (wybór przeskakuje bohatera partnera — decyzja właściciela); Esc / B cofa gotowość, potem zwalnia miejsce, bez graczy — powrót do menu; gdy obaj są gotowi, zaczyna się wspinaczka od piętra 1 (tylko domyślny tryb); karty w kolorach graczy (P1 zielony, P2 niebieski), pod kartami urządzenie i stan każdego gracza;
+- **HUD dla dwóch:** przy pasku P1 napis „P1 · Barbarzyńca”, w prawym dolnym rogu panel P2 — imię, HP, dash, ultimate, przedmioty; powalony P2 — czerwony napis „POWALONY” i zielony pasek wskrzeszania; na minimapie niebieska kropka P2;
+- na ekranie śmierci C (zmiana bohatera) w co-opie wraca na ekran co-opu.
+
+**Gra solo bez zmian:** HUD bez napisu P1 i bez panelu P2; ekran wyboru bohatera jak dotąd.
+
+**Testy:** 4 nowe (`coopLobby.test.ts`) i poprawiony `mainMenu.test.ts`.
+
+**Weryfikacja:** w przeglądarce z podstawionym padem: menu z pozycją co-op; na ekranie co-opu Enter (P1, klawiatura) i A (P2, pad 1), P2 przechodzi na łucznika, obaj gotowi — gra startuje z barbarzyńcą (klawiatura z myszą) i łucznikiem (pad 0); panel P2 z przedmiotami i stanem powalenia.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4481,7 +4495,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105). Dalej: C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106). Dalej: C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

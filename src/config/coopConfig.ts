@@ -29,3 +29,14 @@ export const COOP_CONFIG = {
   /** Nietykalność po wstaniu (ms). */
   reviveInvulnerabilityMs: 1500,
 } as const;
+
+/** Napisy ekranu co-opu (etap C5). */
+export const COOP_SELECT_TEXT = {
+  title: 'CO-OP · DWÓCH GRACZY',
+  join: 'Enter (klawiatura) albo A (pad) — dołącz',
+  keyboard: 'klawiatura + mysz',
+  pad: (n: number): string => `pad ${n}`,
+  choosing: 'wybiera',
+  ready: 'GOTOWY',
+  hint: '← →  BOHATER   ·   ENTER / A — GOTOWY   ·   ESC / B — WSTECZ',
+} as const;

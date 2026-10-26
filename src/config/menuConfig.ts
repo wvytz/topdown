@@ -29,7 +29,7 @@ export const MENU_PALETTE = {
 
 export const MENU_LAYOUT = {
   /** Lewy panel z pozycjami menu (z dala od wieży na środku i napisów TOP / DOWN). */
-  menu: { x: 40, y: 150, width: 300, height: 252, padX: 22, firstItemY: 22, step: 34, fontSize: 17, letterSpacing: 2 },
+  menu: { x: 40, y: 150, width: 300, height: 252, padX: 22, firstItemY: 20, step: 31, fontSize: 17, letterSpacing: 2 },
   /**
    * Środkowe najlepsze wyniki (krok 94): wspinaczka i areny, między panelami menu i opisu.
    * Bez tła i ramki (krok 94a) — sam tekst z cieniem na tle wieży. Tytuły list na środku, wiersze wyników
@@ -61,6 +61,7 @@ export const MENU_LAYOUT = {
 export const MENU_LABELS: Readonly<Record<MenuEntry, string>> = {
   [MenuEntry.Continue]: 'KONTYNUUJ',
   [MenuEntry.NewTower]: 'NOWA WSPINACZKA',
+  [MenuEntry.Coop]: 'CO-OP · 2 GRACZY',
   [MenuEntry.BossRush]: 'ARENY BOSSÓW · TEST',
   [MenuEntry.FloorSelect]: 'WYBÓR PIĘTRA',
   [MenuEntry.Load]: 'WCZYTAJ GRĘ',
@@ -74,6 +75,9 @@ export const MENU_TEXT = {
   continueNote: 'wracasz na początek piętra\nautozapis znika po śmierci',
   newTowerTitle: 'Wspinaczka',
   newTower: 'Piętra wieży, boss na końcu każdego.\nWynik = złoto w chwili śmierci.',
+  coopTitle: 'Co-op · dwóch graczy',
+  coop: 'Wspinaczka we dwóch na jednym ekranie.\nKażdy gra swoim urządzeniem: klawiatura z myszą albo pad.\nPowalonego partnera podnosisz, stając przy nim.\nWynik drużyny na osobnej tablicy.',
+  coopMobile: 'Co-op działa tylko na komputerze.',
   bossRushTitle: 'Areny bossów',
   bossRush: 'Same areny bossów, nagroda co arenę.\nOsobna tablica wyników: najpierw arena, potem złoto.',
   floorSelectTitle: 'Wybór piętra',
