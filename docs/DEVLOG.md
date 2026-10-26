@@ -4426,6 +4426,27 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Weryfikacja:** `npm run smoke -- --floors 8 --seeds 1 --coop` (trzy pary, 8 pięter, wskrzeszanie na każdym piętrze) i solo `npm run smoke -- --floors 8 --seeds 1`.
 
+## Krok 110 — Strażnik „Sludge King”: brakujące animacje ataków i rewizja sprite'a `#sludge` `#ocena`
+
+**Prośba właściciela:** Strażnik ma w walce za mało animacji ataków, a jego telegrafy to same czerwone pierścienie. Ma być gęsto i toksycznie; sprite do odświeżenia.
+
+**Co powstało:**
+- **Brakujące animacje:** uderzenie w ziemię (Slam) i skok (Leap) nie miały klatek — boss stał, a atak pojawiał się sam. Teraz `BOSS_VISUALS` mapuje je na `slam` (kolumny 8–11: uniesienie, wzniesienie, uderzenie, rozprysk; klatka 11 trzymana do końca telegrafu) i `leap` (12–15: napinanie, zwój, wyrzut). Silnik nadal dokłada przysiad i łuk lotu.
+- **Rewizja sprite'a:** `tools/sludge_king_sprites.py` → `public/assets/sprites/sludge-king_revamp.png` (1536×768, 16 kolumn × 8 kierunków). Wszystkie klatki powstają z północnego wiersza paczki i obrotu co 45° (jak u Strażnika w `sludge_death.py`), z obrysem po obrocie. Chód i plucie dostają gęstsze, toksyczne detale: bąble i krople, które zmieniają miejsca z klatki na klatkę, oraz fioletowa kałuża pod ciałem. Oryginalna paczka `sludge-king_move-spit.png` zostaje bez zmian (źródło dla generatora i klatek śmierci).
+- **Telegrafy bez czerwieni:** `telegraphLook: 'sludge'` w definicji Strażnika (`bossConfig.ts`) przełącza strefy (Slam, Barrage, Leap) i fale Novy na szlam: bulgocząca kałuża z falującym brzegiem i bąblami wypływającymi ku krawędzi (`drawSludgePool`, `drawSludgeBubbles`). Uderzenie daje rozprysk kropli i ciemną plamę (`CombatEffects.sludgeSplash`) oraz plamę `slime`. Telegrafy innych bossów bez zmian.
+- Kolor szlamu z rampy §4.5 (fiolet → brąz); zielona magia i czerwona telegrafu zostają zarezerwowane, nie są używane.
+
+**Decyzje:**
+- Stała konfiguracji w `config/spriteConfig.ts` (`SLUDGE_TELEGRAPH_VISUAL`), zasięgi i czasy bez zmian — balans nietknięty.
+- Telegraf szlamu jest wyłącznie wizualny; `Math.random` tylko w rozpryskach (efekt czysto graficzny).
+- Klatki skoku nie znoszą przysiadu silnika — dokładają tylko pozę ciała (drobne podwójne spłaszczenie w telegrafie, do oceny).
+
+**Testy:** `tests/assets/sludgeKing.test.ts` (wymiary PNG, kolumny animacji, brak barw zarezerwowanych i półprzezroczystości, Slam/Leap podpięte). `npm run build` zielony (typy, 1762 testy, bundle).
+
+**Weryfikacja:** podgląd arkusza z generatora (`tools/out/sludge-king_revamp_preview.png`, 4×) — wszystkie 128 klatek w marginesie, bez pustych. **Do zrobienia:** `npm run smoke` przed wdrożeniem na Pages i ocena w grze (czy szlam gęsty dość, czy telegraf czytelny na podłodze).
+
+**Otwarte:** kula szlamu (`sludge-king_glob.png`) nie ma rewizji; grzybowe bossy bez zmian.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

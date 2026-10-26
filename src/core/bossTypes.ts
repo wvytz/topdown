@@ -480,6 +480,8 @@ export interface BossDefinition {
   /** Świta (krok 80): zwykli wrogowie biomu przywoływani w trakcie walki. */
   readonly retinue?: RetinueDefinition;
   readonly fireRing?: FireRingDefinition;
+  /** Wygląd telegrafów stref i fal (krok 110): szlam zamiast czerwieni — Strażnik Piętra. */
+  readonly telegraphLook?: 'sludge';
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -501,8 +503,8 @@ export interface AreaStrike {
   readonly pullTo?: Vector2;
   /** Trafienie smugi dymu przywołuje doga (Baron Dymu). */
   readonly summonsDog?: boolean;
-  /** Wygląd strefy: dym zamiast czerwonego telegrafu. */
-  readonly look?: 'smoke';
+  /** Wygląd strefy: dym zamiast czerwonego telegrafu, szlam Strażnika (krok 110). */
+  readonly look?: 'smoke' | 'sludge';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -515,6 +517,8 @@ export interface ProjectileBurst {
   readonly damage: number;
   readonly knockback: number;
   readonly lifetimeMs: number;
+  /** Wygląd telegrafu fali: szlam zamiast pomarańczowego pierścienia (Strażnik Piętra, krok 110). */
+  readonly look?: 'sludge';
   readonly telegraphStartAt: number;
   readonly fireAt: number;
 }

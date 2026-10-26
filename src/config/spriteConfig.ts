@@ -167,14 +167,15 @@ export const SPRITE_SHEETS = {
       fly: { frames: [0, 1, 2, 3], loop: true },
     },
   },
-  // Boss „Sludge King” (bez sprites.json — układ odczytany z obrazu): komórka 96×96, wiersze = 8 kierunków
-  // jak wyżej; kolumny 0–3 ruch (kołysanie), 4–7 plucie (w kolumnie 7 wylatuje kula).
+  // Boss „Sludge King” — rewizja (krok 110, tools/sludge_king_sprites.py): komórka 96×96, wiersze = 8 kierunków;
+  // kolumny 0–3 ruch (bąble, krople), 4–7 plucie (w kolumnie 7 wylatuje kula), 8–11 uderzenie w ziemię (w kolumnie 11
+  // rozprysk), 12–15 skok (napinanie i wyrzut).
   sludgeKing: {
     key: 'sheet-sludge-king',
-    url: 'assets/sprites/sludge-king_move-spit.png',
+    url: 'assets/sprites/sludge-king_revamp.png',
     frameWidth: 96,
     frameHeight: 96,
-    sheetWidth: 768,
+    sheetWidth: 1536,
     sheetHeight: 768,
     directions: 8,
     fps: SPRITE_FPS,
@@ -182,6 +183,10 @@ export const SPRITE_SHEETS = {
       move: { frames: [0, 1, 2, 3], loop: true },
       // Czas plucia dopasowujemy do telegrafu ataku — kula wylatuje w chwili wystrzału.
       spit: { frames: [4, 5, 6, 7], loop: false },
+      // Telegraf uderzenia trwa, a klatki idą do rozprysku w ostatniej kolumnie (trzymanej do końca ataku).
+      slam: { frames: [8, 9, 10, 11], loop: false },
+      // Telegraf skoku: napinanie; ostatnia klatka to wyrzut w powietrze.
+      leap: { frames: [12, 13, 14, 15], loop: false },
     },
   },
   sludgeGlob: {
@@ -1084,7 +1089,12 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
   [BossId.FloorGuardian]: {
     sheet: 'sludgeKing',
     move: 'move',
-    attacks: { [BossAttackKind.Nova]: 'spit', [BossAttackKind.Barrage]: 'spit' },
+    attacks: {
+      [BossAttackKind.Nova]: 'spit',
+      [BossAttackKind.Barrage]: 'spit',
+      [BossAttackKind.Slam]: 'slam',
+      [BossAttackKind.Leap]: 'leap',
+    },
     deathDecal: 'slime',
     death: { sheet: 'sludgeKingDeath', animation: 'die' },
   },
@@ -1431,6 +1441,28 @@ export const SPIDERLING_DROP_VISUAL = {
 export const BOSS_PRESENCE_VISUAL = {
   introShake: { durationMs: 450, intensity: 0.006 },
   enrageShake: { durationMs: 600, intensity: 0.01 },
+} as const;
+
+/**
+ * Szlam Strażnika zamiast czerwonych pierścieni (krok 110, STYLEGUIDE §4.5): telegraf to bulgocząca kałuża
+ * (fiolet, jasny brzeg z falowaniem, bąble wypływające ku krawędzi), a rozprysk to krople i ciemna plama.
+ */
+export const SLUDGE_TELEGRAPH_VISUAL = {
+  fill: 0x3b2140,
+  fillAlpha: 0.35,
+  grow: 0x5c3560,
+  growAlpha: 0.5,
+  edge: 0xb88ab8,
+  edgeAlpha: 0.85,
+  /** Falowanie krawędzi: amplituda (ułamek promienia) i prędkość (rad/ms). */
+  wobble: 0.05,
+  wobbleSpeed: 0.004,
+  bubbles: 6,
+  bubbleRadius: 2,
+  bubbleColor: 0x83558a,
+  bubblePeriodMs: 700,
+  /** Rozprysk w chwili uderzenia: kropli, czas lotu, ciemna plama pod nimi i czas jej gaśnięcia. */
+  splash: { drops: 9, flightMs: 320, dropColor: 0x83558a, dropHighlight: 0xb88ab8, puddleColor: 0x3b2140, puddleAlpha: 0.6, puddleFadeMs: 900 },
 } as const;
 
 /** Pocisk bossa (fale Novy). */

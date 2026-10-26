@@ -37,7 +37,7 @@ import {
 import { isHitByAreaStrike, isInWebPatch, leapProgress, webFlightProgress } from '@/ai/bossAttacks';
 import { CeilingFallView } from '@/combat/CeilingFallView';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
-import { SpiderlingSwarm, drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
+import { SpiderlingSwarm, drawAreaTelegraph, drawSludgeBubbles } from '@/combat/SpiderlingSwarm';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { arenaCenter } from '@/dungeon/stairs';
@@ -62,7 +62,7 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot, shotTouches } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
+import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SLUDGE_TELEGRAPH_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
 import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
 import type { EnemyType } from '@/core/combatTypes';
 import { fireRingRadius, reflectDirection } from '@/systems/Shield';
@@ -904,7 +904,10 @@ export class BossFight {
       }
       gfx.destroy();
       if (strike.look === 'smoke') this.playSmokeBurst(strike);
-      else {
+      else if (strike.look === 'sludge') {
+        effects.sludgeSplash(strike.center.x, strike.center.y, strike.radius);
+        this.deps.decals.add('slime', strike.center.x, strike.center.y);
+      } else {
         effects.impact(strike.center.x, strike.center.y, strike.radius);
         this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       }
@@ -1274,5 +1277,11 @@ function drawBurstTelegraph(gfx: Phaser.GameObjects.Graphics, burst: ProjectileB
     0,
     1,
   );
+  if (burst.look === 'sludge') {
+    const radius = 30 + 20 * progress;
+    gfx.lineStyle(3, SLUDGE_TELEGRAPH_VISUAL.edge, 0.3 + 0.6 * progress).strokeCircle(burst.origin.x, burst.origin.y, radius);
+    drawSludgeBubbles(gfx, burst.origin, radius, now);
+    return;
+  }
   gfx.lineStyle(3, 0xffa040, 0.3 + 0.6 * progress).strokeCircle(burst.origin.x, burst.origin.y, 30 + 20 * progress);
 }

@@ -45,6 +45,8 @@ export const FLOOR_GUARDIAN = {
   openingDelayMs: 1200,
   restBetweenAttacksMs: 1100,
   pattern: [BossAttackKind.Slam, BossAttackKind.Nova, BossAttackKind.Barrage, BossAttackKind.Leap],
+  // Szlam zamiast czerwonych pierścieni (krok 110): telegrafy i rozpryski bulgoczą fioletem.
+  telegraphLook: 'sludge',
   // Lekka losowość (krok 31, prośba właściciela): każdy atak raz na rundę, w losowej kolejności.
   patternOrder: PatternOrder.Shuffled,
   // Świta (krok 80): szkielet-Rusher ruin; pierwszy boss — najrzadsze wezwania.

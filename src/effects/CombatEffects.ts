@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
+import { NOVA_VISUAL, ORB_SPLASH_VISUAL, SLUDGE_TELEGRAPH_VISUAL } from '@/config/spriteConfig';
 
 /** Krótkie, czysto wizualne efekty walki (bez wpływu na logikę). */
 export class CombatEffects {
@@ -30,6 +30,28 @@ export class CombatEffects {
   impact(x: number, y: number, radius: number): void {
     const circle = this.scene.add.circle(x, y, radius, 0xffd0a0, 0.45).setDepth(RENDER_DEPTH.groundFlash);
     this.scene.tweens.add({ targets: circle, alpha: 0, duration: 180, onComplete: () => circle.destroy() });
+  }
+
+  /** Rozprysk szlamu Strażnika (krok 110): ciemna plama gaśnie, a krople wylatują po okręgu. */
+  sludgeSplash(x: number, y: number, radius: number): void {
+    const s = SLUDGE_TELEGRAPH_VISUAL.splash;
+    const puddle = this.scene.add.circle(x, y, radius * 0.9, s.puddleColor, s.puddleAlpha).setDepth(RENDER_DEPTH.groundFlash);
+    this.scene.tweens.add({ targets: puddle, alpha: 0, duration: s.puddleFadeMs, onComplete: () => puddle.destroy() });
+    const offset = Math.random() * Math.PI * 2;
+    for (let i = 0; i < s.drops; i++) {
+      const a = offset + (i / s.drops) * Math.PI * 2;
+      const drop = this.scene.add
+        .circle(x, y, 2 + (i % 2), i % 3 === 0 ? s.dropHighlight : s.dropColor)
+        .setDepth(RENDER_DEPTH.slash);
+      this.scene.tweens.add({
+        targets: drop,
+        x: x + Math.cos(a) * radius * 1.15,
+        y: y + Math.sin(a) * radius * 1.15,
+        alpha: 0,
+        duration: s.flightMs,
+        onComplete: () => drop.destroy(),
+      });
+    }
   }
 
   /** Rozprysk kuli Czarodziejki (krok 50): pierścień energii w promieniu rozprysku, szybko gaśnie. */

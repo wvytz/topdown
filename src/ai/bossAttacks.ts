@@ -180,6 +180,11 @@ export function planFeast(definition: BossDefinition, larder: Vector2, now: numb
   return { kind: BossAttackKind.Feast, ...EMPTY, feast: { target: larder, at }, endsAt: at };
 }
 
+/** Wygląd telegrafu bossa z definicji (np. szlam Strażnika, krok 110); bez niego — domyślny czerwony. */
+function telegraphLookOf(ctx: AttackPlanContext): { look?: 'sludge' } {
+  return ctx.definition.telegraphLook ? { look: ctx.definition.telegraphLook } : {};
+}
+
 /** Atak z `pattern` bez definicji to błąd konfiguracji bossa. */
 function required<T>(value: T | undefined, kind: BossAttackKind, ctx: AttackPlanContext): T {
   if (value === undefined) throw new Error(`Boss „${ctx.definition.name}”: atak ${kind} bez definicji.`);
@@ -209,6 +214,7 @@ function planSlam(ctx: AttackPlanContext): BossAttackPlan {
     impactAt,
     damage: slam.damage,
     knockback: slam.knockback,
+    ...telegraphLookOf(ctx),
   };
   return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: impactAt + slam.recoveryMs };
 }
@@ -231,6 +237,7 @@ function planNova(ctx: AttackPlanContext): BossAttackPlan {
       lifetimeMs: nova.projectileLifetimeMs,
       telegraphStartAt: ctx.now,
       fireAt: firstFireAt + wave * nova.waveIntervalMs,
+      ...telegraphLookOf(ctx),
     });
   }
   const lastFireAt = firstFireAt + (waves - 1) * nova.waveIntervalMs;
@@ -254,6 +261,7 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
       impactAt: firstImpactAt + i * barrage.intervalMs,
       damage: barrage.damage,
       knockback: barrage.knockback,
+      ...telegraphLookOf(ctx),
     });
   }
   const lastImpactAt = firstImpactAt + (zoneCount - 1) * barrage.intervalMs;
@@ -310,6 +318,7 @@ function planLeap(ctx: AttackPlanContext): BossAttackPlan {
     impactAt: landAt,
     damage: leapDef.damage,
     knockback: leapDef.knockback,
+    ...telegraphLookOf(ctx),
   };
   return { kind: BossAttackKind.Leap, strikes: [strike], bursts: [], spawns: [], webs: [], leap, throws: [], endsAt: landAt + leapDef.recoveryMs };
 }
