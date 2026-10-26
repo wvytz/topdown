@@ -401,45 +401,22 @@ def aim_frames():
 
 
 def shrine_frames():
-    """Kapliczka 32x32: kamienny postument w palecie C i kula — aktywna (puls 4 klatki) albo zgasła."""
-    W = PALETTE.wall_top
+    """Kapliczka 32x32 (krok 111): łukowaty dach z góry i złota kula — aktywna (pierścień 4 klatki) albo zgasła.
 
-    def pedestal():
-        img = Img(SHRINE, SHRINE)
-        for y in range(20, 29):
-            for x in range(7, 25):
-                img.put(x, y, W[3] if y == 20 else (W[1] if y >= 27 else W[2]))
-        for y in range(14, 20):
-            for x in range(11, 21):
-                img.put(x, y, W[4] if y == 14 else (W[1] if x == 20 else W[2]))
-        for x in range(9, 23, 4):
-            img.put(x, 24, W[1])
-        return img
+    Ten sam kształt co kapliczka-pająk (shrine_mimic_sprites.shrine_body), tylko w skali 0,6.
+    Import leniwy: shrine_mimic_sprites importuje rotate45 z tego pliku.
+    """
+    from shrine_mimic_sprites import shrine_body
 
-    def orb(img, ramp):
-        for y in range(SHRINE):
-            for x in range(SHRINE):
-                d = math.hypot(x + .5 - 16, y + .5 - 9)
-                if d <= 4.6:
-                    c = ramp[2] if d < 2.5 else ramp[1]
-                    if d < 1.6 and x < 16 and y < 9:
-                        c = ramp[3]
-                    img.put(x, y, c)
-
+    rings = (GOLD[1], GOLD[2], GOLD[3], GOLD[2])
     frames = []
     for f in range(4):
-        img = pedestal()
-        orb(img, (GOLD[0], GOLD[1], GOLD[2], GOLD[3]))
+        img = Img(SHRINE, SHRINE)
+        shrine_body(img, 16, 16, 0.6, GOLD, rings[f])
         outline(img, OUT)
-        rad = (6, 7, 8, 7)[f]
-        for a in range(0, 360, 30):  # przerywany pierścień blasku po obrysie: blask nie ma konturu
-            ang = math.radians(a + 15 * f)
-            x, y = round(16 + rad * math.cos(ang) - .5), round(9 + rad * math.sin(ang) - .5)
-            if not img.get(x, y)[3]:
-                img.put(x, y, GOLD[3] if f == 2 else GOLD[2])
         frames.append(('shrine_active_%d' % f, img))
-    used = pedestal()
-    orb(used, (IRON[0], IRON[0], IRON[1], IRON[2]))
+    used = Img(SHRINE, SHRINE)
+    shrine_body(used, 16, 16, 0.6, (IRON[0], IRON[0], IRON[1], IRON[2]), None)
     outline(used, OUT)
     frames.append(('shrine_used_0', used))
     return frames

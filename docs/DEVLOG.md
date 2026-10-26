@@ -4449,6 +4449,25 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** wielkość śladu stóp (5 px) i tułowia (8 px), siła błysku wybuchu (60% alfy w pierwszej klatce), czas migania brzegu (180 ms).
 
+## Krok 111 — Kapliczka: nowy wygląd i szkic kapliczki-pająka (mini boss, grafika) `#kapliczka` `#decyzja`
+
+**Co powstało:**
+- `tools/shrine_mimic_sprites.py` → `public/assets/sprites/shrine-mimic_walk-unfold-attack.png` (960×640, komórka 80×80, 8 kierunków):
+  - kolumny 0–3: chód na nogach (pętla, 6 nóg w dwóch grupach kroku);
+  - kolumny 4–7: rozkładanie się z kapliczki (4 złożona, 7 rozłożona, kula rozbłyskuje);
+  - kolumny 8–11: atak przednimi nogami, w klatce 10 rzut monetami.
+- Kapliczka w atlasie łupów (`tools/loot_sprites.py` → `loot.png`) przerysowana na ten sam kształt: łukowy dach z góry, kamienne ciało i złota kula; pierścień kuli pulsuje w 4 klatkach zamiast skalą.
+
+**Decyzje:**
+- Na razie tylko grafika. Logika (losowe wyrastanie nóg przy wykupie, atak, łupy z wzmocnionych przedmiotów) nie jest podpięta: arkusz nie ma wpisu w `spriteConfig.ts`, do czasu pierwszego kroku z logiką.
+- Ciało kapliczki ciemniejsze od rampy kamienia, bo test czytelności (§6a) na jasnej podłodze palety C nie przechodził (kontrast ciała 1,22 : 1 przy progu 1,5).
+
+**Testy i weryfikacja:**
+- `npx vitest run`: 1772 testy przechodzą (w tym czytelność łupów na płytach i bruku).
+- Podgląd arkusza: nogi rozkładają się płynnie, atak czytelny; kształt nadal przypomina raczej tarczę niż kapliczkę — do oceny właściciela.
+
+**Do oceny właściciela** `#kapliczka`: czy kształt (łuk, kula, nogi) i rozmiar nóg są w porządku; czy kapliczka ma mieć napis „SHRINE” i monety na ciele (z rysunku), czy zostaje sama sylwetka.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
