@@ -3,6 +3,7 @@ import type { Vector2 } from '@/core/types';
 import type { PlayerActions } from '@/entities/Player';
 import type { AimTarget } from '@/systems/touchAim';
 import { InputController } from '@/input/InputController';
+import type { PlayerDevices } from '@/systems/coopDevices';
 
 /** Co scena gry podaje źródłu sterowania w każdej klatce (krok 96). */
 export interface PlayerInputContext {
@@ -21,15 +22,16 @@ export interface PlayerInput {
   getActions(context: PlayerInputContext): PlayerActions;
 }
 
-export type PlayerInputFactory = (scene: Phaser.Scene) => PlayerInput;
+/** `devices` — urządzenia bohatera w co-opie (etap C1); brak = solo (wszystkie urządzenia naraz). */
+export type PlayerInputFactory = (scene: Phaser.Scene, devices?: PlayerDevices) => PlayerInput;
 
-let factory: PlayerInputFactory = (scene) => new InputController(scene);
+let factory: PlayerInputFactory = (scene, devices) => new InputController(scene, devices ? { devices } : {});
 
 /** Wersja mobilna podmienia źródło sterowania przy starcie, zanim powstanie scena gry. */
 export function setPlayerInputFactory(next: PlayerInputFactory): void {
   factory = next;
 }
 
-export function createPlayerInput(scene: Phaser.Scene): PlayerInput {
-  return factory(scene);
+export function createPlayerInput(scene: Phaser.Scene, devices?: PlayerDevices): PlayerInput {
+  return factory(scene, devices);
 }
