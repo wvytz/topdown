@@ -16,7 +16,7 @@ import { StatusEffects } from '@/systems/StatusEffects';
 import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
 import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { ShieldGuard, isShielded, turnToward } from '@/systems/Shield';
+import { ShieldGuard, isGuardLowered, isShielded, turnToward } from '@/systems/Shield';
 
 const HIT_FLASH_MS = 70;
 const ENRAGE_TINT = 0xff7050;
@@ -41,6 +41,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   private readonly guard: ShieldGuard | null;
   private guardNow = 0;
   private shieldBreakPending = false;
+  /** Koniec ostatniego ataku — od niego liczy się okno z opuszczoną tarczą (krok 111). */
+  private lastAttackEndsAt = -Infinity;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: BossDefinition, rng: Rng) {
     super(scene, x, y, SPRITE_SHEETS[BOSS_VISUALS[definition.id].sheet].key);
@@ -82,13 +84,13 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
 
   /** Kierunek tarczy (radiany) albo null, gdy boss nie ma tarczy. */
   get shieldAngle(): number | null {
-    return this.definition.shield ? this.shieldFacing : null;
+    return this.definition.shield && !this.isGuardLowered(this.guardNow) ? this.shieldFacing : null;
   }
 
   /** Czy atak z punktu `from` trafia w tarczę (przód bossa). */
   isShieldedFrom(from: Vector2): boolean {
     const shield = this.definition.shield;
-    if (!shield || !this.isFighting || this.isShieldBroken) return false;
+    if (!shield || !this.isFighting || this.isShieldBroken || this.isGuardLowered(this.guardNow)) return false;
     return isShielded(this, this.shieldFacing, shield.arcDeg, from);
   }
 
@@ -157,7 +159,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       braziers,
     });
     this.enraged = decision.enraged;
-    const speed = decision.speed * this.status.speedMultiplier(now);
+    if (decision.newAttack) this.lastAttackEndsAt = decision.newAttack.endsAt;
+    // Opuszczona tarcza po ataku (krok 111): boss stoi — okno na combo.
+    const speed = this.isGuardLowered(now) ? 0 : decision.speed * this.status.speedMultiplier(now);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
     this.updateAnimation(target, decision.newAttack, now);
     this.updateTint(now);
@@ -206,7 +210,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     if (this.definition.shield) {
       // Tarcza: na początku ataku boss zwraca się do gracza, w trakcie ataku stoi; poza atakiem obraca się wolno.
       if (newAttack) this.shieldFacing = toTarget;
-      else if (this.isFighting && now >= this.attackPoseUntil) {
+      else if (this.isFighting && now >= this.attackPoseUntil && !this.isGuardLowered(now)) {
         const step = ((this.definition.shield.turnRateDegPerSec * Math.PI) / 180) * (dt / 1000);
         this.shieldFacing = turnToward(this.shieldFacing, toTarget, step);
       }
@@ -226,6 +230,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     }
     if (now < this.attackPoseUntil) return;
     this.animator.play(this.visual.move);
+  }
+
+  /** Tarcza opuszczona po ataku (krok 111); bossowie bez tarczy — nigdy. */
+  private isGuardLowered(now: number): boolean {
+    const shield = this.definition.shield;
+    return shield ? isGuardLowered(this.lastAttackEndsAt, shield.loweredAfterAttackMs, now) : false;
   }
 
   private updateTint(now: number): void {

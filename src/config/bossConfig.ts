@@ -8,6 +8,12 @@ import { scaleForFloor } from '@/systems/CombatMath';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
 
 /**
+ * Odbicie pocisku od tarczy (krok 111, ocena właściciela: odbite podstawowe ataki zawsze wracały w strzelca):
+ * odbity pocisk odchyla się losowo w lewo albo w prawo o 30–80° od kierunku „z powrotem”.
+ */
+const REFLECT_SPREAD = { minDeg: 30, maxDeg: 80 } as const;
+
+/**
  * Świta bossów (krok 80, prośba właściciela: pomocnicy w walce). Wspólny rytm; boss wybiera archetyp
  * (wariant biomu dobiera gra) i może go podkręcić.
  */
@@ -400,7 +406,8 @@ export const GATE_WARDEN = {
   enragedLabel: 'Żar w żyłach!',
   radius: 30,
   color: 0x8a2a1a,
-  maxHp: 420,
+  // Krok 111 (ocena właściciela: tarczownik „broken”, za dużo życia): 420 → 340.
+  maxHp: 340,
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i trzeci cios — skok.
   moveSpeed: 72,
   sprint: { speed: 140, distance: 150 },
@@ -415,9 +422,13 @@ export const GATE_WARDEN = {
   retinue: { ...RETINUE_BASE, type: EnemyType.Rusher },
   shield: {
     arcDeg: 120,
-    turnRateDegPerSec: 110,
+    // Krok 111 (ocena właściciela: za często się obraca, nie ma kiedy wyładować combo): obrót 110 → 70°/s,
+    // a po każdym ataku stoi 1,2 s z opuszczoną tarczą.
+    turnRateDegPerSec: 70,
+    loweredAfterAttackMs: 1200,
     frontMeleeMultiplier: 0.5,
     reflectSpeed: 0.8,
+    reflectSpread: REFLECT_SPREAD,
     // Krok 74 (feedback właściciela: walka to krążenie i szukanie luki): ciosy w tarczę ją zbijają, pęknięta
     // odsłania bossa na kilka sekund — da się go bić z przodu, a obejście go jest opcją, nie koniecznością.
     guard: { hp: 90, breakMs: 3500 },
@@ -473,7 +484,8 @@ export const ABYSS_EXECUTIONER = {
   enragedLabel: 'Otchłań płonie!',
   radius: 32,
   color: 0x6a1010,
-  maxHp: 520,
+  // Krok 111 (jak Strażnik Bram): 520 → 430.
+  maxHp: 430,
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i czwarty cios — skok.
   moveSpeed: 76,
   sprint: { speed: 145, distance: 150 },
@@ -486,9 +498,12 @@ export const ABYSS_EXECUTIONER = {
   retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 14000, enragedEveryMs: 9000 },
   shield: {
     arcDeg: 120,
-    turnRateDegPerSec: 120,
+    // Krok 111 (jak Strażnik Bram): obrót 120 → 80°/s, po ataku 1 s bez tarczy.
+    turnRateDegPerSec: 80,
+    loweredAfterAttackMs: 1000,
     frontMeleeMultiplier: 0.5,
     reflectSpeed: 0.9,
+    reflectSpread: REFLECT_SPREAD,
     heat: { ticks: 6, radius: 96, telegraphMs: 600, damage: 16, knockback: 320 },
     // Krok 79 (jak Strażnik Bram w kroku 74): ciosy w tarczę ją zbijają, pęknięta odsłania Kata na kilka sekund.
     guard: { hp: 110, breakMs: 3500 },

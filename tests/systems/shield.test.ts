@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { angleDelta, isShielded, reflectDirection, turnToward } from '@/systems/Shield';
+import { createRng } from '@/core/random';
+import { angleDelta, isGuardLowered, isShielded, reflectDirection, turnToward } from '@/systems/Shield';
 
 const C = { x: 0, y: 0 };
 const NORTH = -Math.PI / 2;
@@ -27,5 +28,29 @@ describe('tarcza bossa (krok 41e)', () => {
 
   it('odbity pocisk leci z powrotem', () => {
     expect(reflectDirection({ x: 3, y: -4 })).toEqual({ x: -3, y: 4 });
+  });
+
+  it('z rozrzutem odbity pocisk nie leci prosto w strzelca (krok 111)', () => {
+    const spread = { minDeg: 30, maxDeg: 80 };
+    const rng = createRng(7);
+    const sides = new Set<number>();
+    for (let i = 0; i < 200; i++) {
+      const v = { x: 0, y: -100 }; // leci na północ, strzelec jest na południu
+      const out = reflectDirection(v, spread, rng.next);
+      expect(Math.hypot(out.x, out.y)).toBeCloseTo(100, 6);
+      const off = Math.abs(angleDelta(Math.PI / 2, Math.atan2(out.y, out.x))) * (180 / Math.PI);
+      expect(off).toBeGreaterThanOrEqual(30 - 1e-6);
+      expect(off).toBeLessThanOrEqual(80 + 1e-6);
+      sides.add(Math.sign(out.x));
+    }
+    expect(sides).toEqual(new Set([-1, 1]));
+  });
+
+  it('po ataku boss opuszcza tarczę na chwilę (krok 111)', () => {
+    expect(isGuardLowered(1000, 1200, 999)).toBe(false);
+    expect(isGuardLowered(1000, 1200, 1000)).toBe(true);
+    expect(isGuardLowered(1000, 1200, 2199)).toBe(true);
+    expect(isGuardLowered(1000, 1200, 2200)).toBe(false);
+    expect(isGuardLowered(-Infinity, 1200, 0)).toBe(false);
   });
 });
