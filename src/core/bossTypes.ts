@@ -88,6 +88,10 @@ export interface NovaAttackDefinition extends BaseBossAttackDefinition {
   readonly projectileCount: number;
   readonly projectileSpeed: number;
   readonly projectileLifetimeMs: number;
+  /** Najkrótszy czas lotu pocisku (krok 111): każdy pocisk dostaje losowy czas z przedziału, więc część spada wcześniej niż przy ścianie. Brak = wszystkie `projectileLifetimeMs`. */
+  readonly projectileMinLifetimeMs?: number;
+  /** Status nakładany trafieniem pluciem (krok 111: lekkie spowolnienie od szlamu). */
+  readonly status?: StatusApplication;
   /** Liczba fal; po wściekłości dochodzi jedna więcej. */
   readonly waves: number;
   readonly waveIntervalMs: number;
@@ -516,7 +520,10 @@ export interface ProjectileBurst {
   readonly speed: number;
   readonly damage: number;
   readonly knockback: number;
-  readonly lifetimeMs: number;
+  /** Czas lotu każdego pocisku osobno (krok 111: losowy w przedziale z definicji ataku). */
+  readonly lifetimesMs: readonly number[];
+  /** Status nakładany trafieniem pociskiem fali (np. lekkie spowolnienie szlamem). */
+  readonly status?: StatusApplication;
   /** Wygląd telegrafu fali: szlam zamiast pomarańczowego pierścienia (Strażnik Piętra, krok 110). */
   readonly look?: 'sludge';
   readonly telegraphStartAt: number;

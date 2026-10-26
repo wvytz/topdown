@@ -4,6 +4,7 @@ import type {
   BossLeap,
   ThrownObject,
   BossDefinition,
+  NovaAttackDefinition,
   ProjectileBurst,
   WebShot,
 } from '@/core/bossTypes';
@@ -219,6 +220,12 @@ function planSlam(ctx: AttackPlanContext): BossAttackPlan {
   return { kind: BossAttackKind.Slam, strikes: [strike], bursts: [], spawns: [], webs: [], leap: null, throws: [], endsAt: impactAt + slam.recoveryMs };
 }
 
+/** Czas lotu pocisku Novy: losowy między `projectileMinLifetimeMs` a `projectileLifetimeMs` (krok 111). */
+function novaLifetimeMs(nova: NovaAttackDefinition, ctx: AttackPlanContext): number {
+  const min = nova.projectileMinLifetimeMs ?? nova.projectileLifetimeMs;
+  return min + (nova.projectileLifetimeMs - min) * ctx.rng.next();
+}
+
 function planNova(ctx: AttackPlanContext): BossAttackPlan {
   const nova = required(ctx.definition.nova, BossAttackKind.Nova, ctx);
   const waves = nova.waves + (ctx.enraged ? 1 : 0);
@@ -234,7 +241,8 @@ function planNova(ctx: AttackPlanContext): BossAttackPlan {
       speed: nova.projectileSpeed,
       damage: nova.damage,
       knockback: nova.knockback,
-      lifetimeMs: nova.projectileLifetimeMs,
+      lifetimesMs: Array.from({ length: nova.projectileCount }, () => novaLifetimeMs(nova, ctx)),
+      ...(nova.status && { status: nova.status }),
       telegraphStartAt: ctx.now,
       fireAt: firstFireAt + wave * nova.waveIntervalMs,
       ...telegraphLookOf(ctx),

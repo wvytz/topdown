@@ -62,6 +62,10 @@ export const FLOOR_GUARDIAN = {
     projectileCount: 12,
     projectileSpeed: 190,
     projectileLifetimeMs: 2500,
+    // Szlam spada wcześniej, nie zawsze przy ścianie (krok 111): czas lotu losowy od 700 do 2500 ms.
+    projectileMinLifetimeMs: 700,
+    // Lekkie spowolnienie od trafienia szlamem (krok 111).
+    status: { slow: { pct: 0.1, durationMs: 700 } },
     waves: 1,
     waveIntervalMs: 450,
     telegraphMs: 700,

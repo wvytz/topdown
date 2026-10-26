@@ -4447,6 +4447,19 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Otwarte:** kula szlamu (`sludge-king_glob.png`) nie ma rewizji; grzybowe bossy bez zmian.
 
+## Krok 111 — Strażnik: szlam z plucia spowalnia i spada wcześniej `#sludge` `#ocena`
+
+**Prośba właściciela:** wyplute szlamy mają lekko spowalniać, a nie zawsze lecieć do ściany. Część ma spadać wcześniej.
+
+**Co powstało:**
+- **Spowolnienie:** pociski Novy niosą `status.slow` (10% na 700 ms, `bossConfig.ts` → `nova.status`). Mechanika statusów gracza bez zmian; tylko pociski bossa dostają nowe pole.
+- **Krótszy lot:** `nova.projectileMinLifetimeMs: 700`, maksimum nadal `projectileLifetimeMs` (2500 ms). Każdy pocisk dostaje losowy czas z tego przedziału (`novaLifetimeMs` w `ai/bossAttacks.ts`, rng walki, więc deterministycznie). Pocisk, który wygaśnie w locie, zostawia plamę szlamu jak przy ścianie.
+- Typy: `ProjectileBurst.lifetimeMs` zamienione na `lifetimesMs` (jeden czas na pocisk) i `status`.
+
+**Testy:** `tests/ai/sludgeSpit.test.ts` (zakres czasów, różnorodność, deterministyczność, spowolnienie). `npm run build` zielony (1766 testów).
+
+**Do oceny:** czy 10% / 700 ms jest „minimalne”, oraz czy spadanie przed ścianą czyta się jako zamierzone.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

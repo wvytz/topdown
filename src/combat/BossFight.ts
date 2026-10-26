@@ -1078,7 +1078,8 @@ export class BossFight {
           speed: burst.speed,
           damage: burst.damage,
           knockback: burst.knockback,
-          lifetimeMs: burst.lifetimeMs,
+          lifetimeMs: burst.lifetimesMs[i]!,
+          ...(burst.status && { status: burst.status }),
           visual: BOSS_GLOB,
           impactDecal: 'slime',
         });
