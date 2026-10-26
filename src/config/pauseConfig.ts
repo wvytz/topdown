@@ -24,7 +24,7 @@ export const PAUSE_CONFIG = {
     'Spacja — dash · R — ultimate (gdy pasek mocy jest pełny)',
     'E — kapliczka, schody',
     'F9 — raport błędów',
-    'Pad: lewa gałka — ruch · prawa — cel · RT / LT — ataki · A — dash · X — E · Y — ultimate',
+    'Pad: lewa gałka — ruch · prawa — cel · X / B — ataki (też RT / LT) · A — dash · Y — E · RB — ultimate',
     'Pad w pauzie: ↑ ↓ + A — zapis · Y — menu · Start / B — wznów',
   ],
   /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wiersze slotów i napis menu się stuka. */

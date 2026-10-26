@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { MovementIntent, Vector2 } from '@/core/types';
 import type { PlayerActions } from '@/entities/Player';
 import { GAMEPAD_CONFIG } from '@/config/gamepadConfig';
-import { PadGameplayReader, combineMovement, padAimDirection } from '@/systems/gamepadInput';
+import { PadAimTracker, PadGameplayReader, combineMovement } from '@/systems/gamepadInput';
 import { readPadSnapshot, readPadSnapshotAt } from '@/input/padSnapshot';
 import type { PlayerDevices } from '@/systems/coopDevices';
 import { SOLO_DEVICES } from '@/systems/coopDevices';
@@ -52,8 +52,8 @@ export class InputController implements PlayerInput {
   private readonly pad = new PadGameplayReader();
   /** Celuje pad (do ruchu myszy). */
   private padAiming = false;
-  /** Ostatni kierunek celowania z pada — zostaje, gdy bohater stoi, a prawa gałka jest puszczona. */
-  private padAim: Vector2 = { x: 1, y: 0 };
+  /** Kierunek celowania z pada: gałka, samo celowanie przy ataku albo kierunek ruchu (krok 114). */
+  private readonly padAim = new PadAimTracker();
   private lastPointer: Vector2 | null = null;
   private readonly mouse: boolean;
 
@@ -97,7 +97,7 @@ export class InputController implements PlayerInput {
    * Wywoływać raz na klatkę — „zjada” jednorazowe wciśnięcia (dash, klik PPM).
    * `origin` to pozycja bohatera: pad podaje kierunek, a akcje — punkt celowania w świecie.
    */
-  getActions({ origin }: PlayerInputContext): PlayerActions {
+  getActions({ origin, targets }: PlayerInputContext): PlayerActions {
     const pointer = this.scene.input.activePointer;
     // Przeliczamy co klatkę: kamera się przesuwa, nawet gdy mysz stoi w miejscu.
     const mouseAim = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
@@ -115,9 +115,11 @@ export class InputController implements PlayerInput {
     if (pad && (pad.aim || pad.move.x !== 0 || pad.move.y !== 0 || pad.attack || pad.shoot || pad.dash)) this.padAiming = true;
     let aim: Vector2 = { x: mouseAim.x, y: mouseAim.y };
     if (!this.mouse || (pad && this.padAiming)) {
-      if (pad) this.padAim = padAimDirection(pad.aim, pad.move, this.padAim);
+      const direction = pad
+        ? this.padAim.update({ stick: pad.aim, move: pad.move, attacking: pad.attack || pad.shoot, origin, targets: targets(), now: this.scene.time.now })
+        : this.padAim.current;
       const distance = GAMEPAD_CONFIG.aimDistancePx;
-      aim = { x: origin.x + this.padAim.x * distance, y: origin.y + this.padAim.y * distance };
+      aim = { x: origin.x + direction.x * distance, y: origin.y + direction.y * distance };
     }
 
     return {

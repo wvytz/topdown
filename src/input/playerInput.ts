@@ -9,7 +9,7 @@ import type { PlayerDevices } from '@/systems/coopDevices';
 export interface PlayerInputContext {
   /** Pozycja bohatera — pad i dotyk podają kierunek, a akcje punkt celowania. */
   readonly origin: Vector2;
-  /** Widoczni wrogowie i walczący boss — dla automatycznego celowania na dotyku; PC z nich nie korzysta. */
+  /** Widoczni wrogowie i walczący boss — dla automatycznego celowania na dotyku i padzie (krok 114); mysz z nich nie korzysta. */
   readonly targets: () => Iterable<AimTarget>;
 }
 
