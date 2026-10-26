@@ -16,7 +16,7 @@ const member = (over: Partial<DuetMember> = {}): DuetMember => ({
 });
 const TEXT = { name: 'Duet', title: 'Tytuł' };
 
-describe('duet bossów (krok 112)', () => {
+describe('duet bossów (krok 114)', () => {
   it('arena Króla Pająków dostaje Matkę Pająków — w każdym kręgu', () => {
     const loop = TOWER_CONFIG.floorsPerLoop;
     for (const floor of [3, 3 + loop, 3 + 2 * loop]) {
@@ -54,7 +54,7 @@ describe('duet bossów (krok 112)', () => {
   });
 });
 
-describe('duet bossów — rozpychanie (krok 112)', () => {
+describe('duet bossów — rozpychanie (krok 114)', () => {
   it('nachodzący bossowie rozsuwają się po połowie wzdłuż linii środków', () => {
     const push = pushApart({ x: 0, y: 0 }, { x: 30, y: 0 }, 50);
     expect(push).toEqual({ a: { x: -10, y: -0 }, b: { x: 10, y: 0 } });

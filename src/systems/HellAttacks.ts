@@ -1,5 +1,6 @@
 import type { FirePatchDefinition } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
+import { isStandingInGroundArea } from '@/systems/Hurtbox';
 
 /**
  * Ataki wrogów Piekła (krok 41d): skok ogara, rzut łukiem kultysty i płonące ślady na podłodze.
@@ -44,31 +45,51 @@ export interface FirePatch {
   readonly center: Vector2;
   readonly radius: number;
   readonly damage: number;
+  readonly startedAt: number;
   readonly expiresAt: number;
 }
 
+/** Etap życia plamy do rysowania (krok 114): rozbłysk, płonięcie, dogasanie (parzy aż do końca). */
+export type FirePatchStage = 'ignite' | 'burn' | 'dying';
+
+export function firePatchStage(patch: FirePatch, now: number, igniteMs: number, dyingMs: number): FirePatchStage {
+  if (now - patch.startedAt < igniteMs) return 'ignite';
+  if (patch.expiresAt - now <= dyingMs) return 'dying';
+  return 'burn';
+}
+
 /**
- * Płonące ślady na podłodze (smuga ogara, kałuża smoły). Teren, nie atak: parzy gracza, którego środek
- * jest w środku (obrażenia przez trafienie z nietykalnością, więc najwyżej raz na jej czas); wrogów nie.
+ * Płonące ślady na podłodze (smuga ogara, kałuża smoły, żar Ognistej elity). Teren, nie atak: parzy gracza,
+ * którego stopy (środek cienia, krok 114) stoją w plamie — tam, gdzie widać ogień; obrażenia przez trafienie
+ * z nietykalnością, więc najwyżej raz na jej czas; wrogów nie.
  */
 export class FirePatchField {
   private list: FirePatch[] = [];
+  private changes = 0;
 
   get patches(): readonly FirePatch[] {
     return this.list;
   }
 
-  add(center: Vector2, def: FirePatchDefinition, now: number): void {
-    this.list.push({ center: { x: center.x, y: center.y }, radius: def.radius, damage: def.damage, expiresAt: now + def.durationMs });
+  /** Rośnie przy każdej zmianie listy plam (rysowanie liczy obrys sumy kół tylko wtedy). */
+  get version(): number {
+    return this.changes;
   }
 
-  /** Usuwa wygasłe; zwraca najwyższe obrażenia z plam pod graczem albo 0. */
+  add(center: Vector2, def: FirePatchDefinition, now: number): void {
+    this.list.push({ center: { x: center.x, y: center.y }, radius: def.radius, damage: def.damage, startedAt: now, expiresAt: now + def.durationMs });
+    this.changes++;
+  }
+
+  /** Usuwa wygasłe; zwraca najwyższe obrażenia z plam pod stopami gracza albo 0. */
   update(player: Vector2 | null, now: number): number {
+    const before = this.list.length;
     this.list = this.list.filter((p) => p.expiresAt > now);
+    if (this.list.length !== before) this.changes++;
     if (!player) return 0;
     let damage = 0;
     for (const p of this.list) {
-      if (Math.hypot(player.x - p.center.x, player.y - p.center.y) <= p.radius) damage = Math.max(damage, p.damage);
+      if (isStandingInGroundArea(p.center, p.radius, player)) damage = Math.max(damage, p.damage);
     }
     return damage;
   }

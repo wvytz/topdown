@@ -4516,6 +4516,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** długość okien (1,6 s elita, 1,2/1 s bossowie), rozrzut odbicia, nowe HP. Gdyby było za łatwo — najpierw skrócić okna, potem HP.
 
+## Krok 114 — Animacja płonących śladów na podłodze `#ocena` `#pieklo`
+
+**Prośba właściciela (26.10.2026):** poprawić animację ognistych śladów zostawianych przez przeciwników na piętrach z Tarczownikiem (Piekło, 5–6: smuga skoku ogara, kałuża smoły po bombie kultysty, żar Ognistej elity i plama po jej śmierci). Hitbox ma się zgadzać z rysunkiem (jak strefy w kroku 110).
+
+**Było:** dwa półprzezroczyste koła ADD (czerwone i pomarańczowe) z migotaniem o 1 px. Nachodzące plamy smugi rozjaśniały się na stykach, brzeg był rozmyty, a plama parzyła, gdy w kole był **środek postaci** — przy stopach poza ogniem głowa „wchodziła” w plamę i parzyło.
+
+**Co powstało:**
+- **Parzenie przy stopach** (`isStandingInGroundArea` w `systems/Hurtbox.ts`, `FirePatchField.update`): plama parzy, gdy środek śladu stóp (cień, 4 px pod środkiem) leży w kole. Bez promienia stóp, więc zasięg plamy jest taki sam jak wcześniej, tylko liczony tam, gdzie gracz widzi swoją postać na ziemi. Obrażenia, promienie i czasy plam bez zmian.
+- **Nowy wygląd** (`effects/FirePatchRenderer.ts`, liczby w `FIRE_PATCH_VISUAL`):
+  - wypalona podłoga i czerwona poświata jako dwie warstwy kadru (koła kryjące przeniesione na `RenderTexture` ze stałą alfą) — cała smuga to jedna równa plama, bez soczewek na stykach;
+  - **brzeg = zasięg:** 2 px najciemniejszego tonu rampy ognia w całości wewnątrz koła (§6b — płomienie bez czarnego obrysu); smuga ma jeden obrys sumy kół (`exposedArcs` z kroku 110, liczony tylko po zmianie listy plam — `FirePatchField.version`);
+  - w środku żar: mała plama ma jedną kulę, duża (kałuża smoły, plama po elicie) kilka nieregularnych, drgających o piksel; między plamami smugi pulsująca żyła żaru;
+  - języki ognia (słupki pikseli, wysokość skacze co klatkę, czubek nigdy nie wychodzi za brzeg) i iskry wznoszące się z żaru;
+  - etapy (`firePatchStage`): **rozbłysk** przy zapłonie (120 ms, całe koło jasne — od razu widać pełny zasięg), **płonięcie**, **dogasanie** (ostatnie 500 ms: bez języków, żar przygasa, brzeg miga skokowo — plama nadal parzy aż do końca);
+  - wszystko skokowo w rytmie 6 kl./s, w pełnych pikselach świata; wygląd plamy stały (hash z pozycji, bez losowania co klatkę).
+- **Testy:** `tests/systems/hellAttacks.test.ts` — parzenie przy stopach (postać nad plamą, stopy za brzegiem, brzeg ±1 px), etapy plamy, wersja listy. Build zielony (1810 testów po scaleniu z krokami 111–113).
+- **Przeglądarka (Playwright, `?seed=3&floor=5`):** smuga ogara, smuga elity, kałuża smoły i plama po elicie obok siebie; klatki zapłonu, płonięcia, dogasania i zgaśnięcia (ręczne `game.step()`). Zrzut: `screens/krok114-slady-ognia.png` w plikach projektu. `npm run smoke` wszystkimi bohaterami, piętra 1–7 — bez błędów.
+
+**Czeka na ocenę właściciela:** siła rozbłysku przy zapłonie, liczba języków ognia, czas migania przed zgaśnięciem (500 ms).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

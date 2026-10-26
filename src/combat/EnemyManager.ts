@@ -4,7 +4,7 @@ import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 import { ENEMY_DEFINITIONS, ENEMY_SCALING, ENEMY_VARIANTS } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { ENEMY_PROJECTILE_VISUALS, FIRE_PATCH_VISUAL, LOB_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { ENEMY_PROJECTILE_VISUALS, LOB_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { FirePatchField, lobPosition, trailPoints } from '@/systems/HellAttacks';
 import type { EnemyScalingConfig, EnemyType, EnemyVariant } from '@/core/combatTypes';
@@ -30,6 +30,7 @@ import { directionTo, distance, knockbackFrom, scaleForFloor } from '@/systems/C
 import { withHpMultiplier } from '@/systems/CoopBalance';
 import { isCaughtByGroundArea } from '@/systems/Hurtbox';
 import { drawZoneTelegraph } from '@/effects/AreaTelegraph';
+import { FirePatchRenderer } from '@/effects/FirePatchRenderer';
 import { scaleEnemyForFloor } from '@/systems/EnemyScaling';
 import type { FloorModifierEffects } from '@/core/floorModifierTypes';
 import { applyFloorToEnemy } from '@/systems/FloorModifiers';
@@ -99,14 +100,14 @@ export class EnemyManager implements EnemyAttackHandler {
   private readonly trailFrom = new WeakMap<Enemy, Vector2>();
   private readonly spotted = new WeakSet<Enemy>();
   private readonly telegraphs: Phaser.GameObjects.Graphics;
-  private readonly fire: Phaser.GameObjects.Graphics;
+  private readonly fire: FirePatchRenderer;
 
   constructor(private readonly deps: EnemyManagerDeps) {
     this.group = deps.scene.physics.add.group();
     deps.scene.physics.add.collider(this.group, deps.walls);
     deps.scene.physics.add.collider(this.group, this.group);
     this.telegraphs = deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph);
-    this.fire = deps.scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash).setBlendMode(Phaser.BlendModes.ADD);
+    this.fire = new FirePatchRenderer(deps.scene);
   }
 
   get aliveCount(): number {
@@ -231,7 +232,7 @@ export class EnemyManager implements EnemyAttackHandler {
       const damage = this.firePatches.update(player, now);
       if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit(player);
     }
-    this.drawFirePatches(now);
+    this.fire.draw(this.firePatches, now);
   }
 
   /** Tor szarży Tarczownika: pas szerokości wroga i linia środka (ten sam czerwony co inne telegrafy), ucięty na ścianie. */
@@ -289,17 +290,6 @@ export class EnemyManager implements EnemyAttackHandler {
       this.blastShielded(blast.at, radius, blast.damage, knockback, now);
       return false;
     });
-  }
-
-  private drawFirePatches(now: number): void {
-    const { outer, inner, alpha, innerScale } = FIRE_PATCH_VISUAL;
-    this.fire.clear();
-    // Migotanie skokowe w rytmie animacji (efekt czysto wizualny).
-    const flicker = Math.floor(now / 160) % 2 === 0 ? 0 : -1;
-    for (const patch of this.firePatches.patches) {
-      this.fire.fillStyle(outer, alpha).fillCircle(patch.center.x, patch.center.y, patch.radius + flicker);
-      this.fire.fillStyle(inner, alpha).fillCircle(patch.center.x, patch.center.y, patch.radius * innerScale + flicker);
-    }
   }
 
   private landBomb(bomb: LobbedBomb, now: number): void {

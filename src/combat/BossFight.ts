@@ -99,7 +99,7 @@ export interface BossFightDeps {
   readonly spawnHelper?: (type: EnemyType, at: Vector2) => { readonly isDead: boolean; readonly active: boolean };
   /** Wabik (totem łucznika, krok 98): boss i jego dog celują w niego zamiast w gracza; null — w gracza. */
   readonly aggroTarget?: () => Vector2 | null;
-  /** Duet (krok 112): piętro, którego boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
+  /** Duet (krok 114): piętro, którego boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
   readonly bossFloor?: number;
   /** Duet: przesunięcie miejsca startu od środka areny (px). */
   readonly spawnOffset?: Vector2;
