@@ -29,20 +29,38 @@ export const PAD_AXIS = { leftX: 0, leftY: 1, rightX: 2, rightY: 3 } as const;
 export const GAMEPAD_CONFIG = {
   /** Martwa strefa gałki ruchu (0..1): drobne wychylenie z luzu gałki nie rusza bohatera. */
   moveDeadzone: 0.2,
-  /** Martwa strefa gałki celowania — większa, żeby puszczona gałka nie szarpała celownikiem. */
-  aimDeadzone: 0.35,
+  /** Martwa strefa gałki celowania — większa, żeby puszczona gałka nie szarpała celownikiem (krok 114: 0,35 → 0,25). */
+  aimDeadzone: 0.25,
   /** Od jakiego wciśnięcia (0..1) analogowy przycisk (spust) liczy się jako wciśnięty. */
   pressThreshold: 0.35,
   /** Punkt celowania leży tyle pikseli świata przed bohaterem (liczy się tylko kierunek). */
   aimDistancePx: 64,
-  /** Przyciski akcji w grze; każda akcja może mieć kilka przycisków. */
+  /**
+   * Celowanie padem (krok 114, „mało precyzyjne” w teście właściciela).
+   * Prawa gałka celuje ręcznie z lekkim dociąganiem do wroga. Bez niej (gra przyciskami X/B, kciuk zdjęty z gałki)
+   * atak sam celuje we wroga — najpierw w szerokim stożku przed bohaterem, potem w najbliższego w zasięgu.
+   */
+  aim: {
+    /** Dociąganie prawej gałki: wąski stożek, gracz wybiera cel, gałka tylko poprawia niedokładność. */
+    stickAssist: { coneHalfDeg: 10, range: 320 },
+    /** Samo celowanie przy ataku bez prawej gałki: stożek wokół kierunku bohatera… */
+    autoAimCone: { coneHalfDeg: 50, range: 300 },
+    /** …a gdy w nim nikogo nie ma — najbliższy wróg w tym zasięgu (px świata). */
+    autoAimRange: 260,
+    /** Po puszczeniu prawej gałki jej kierunek trzyma się tyle ms — szybkie „pstryknięcie” gałką nie ucieka. */
+    stickHoldMs: 300,
+  },
+  /**
+   * Przyciski akcji w grze (krok 114, decyzja po teście właściciela): jeden układ dla wszystkich bohaterów.
+   * Przyciski twarzy: X — atak (LPM), B — drugi atak (PPM), A — dash, Y — E (kapliczka, schody).
+   * RB — ultimate. Spusty powtarzają ataki (RT = X, LT = B) dla grających prawą gałką, LB powtarza dash.
+   */
   actions: {
-    attack: [PAD_BUTTON.RT],
-    shoot: [PAD_BUTTON.LT, PAD_BUTTON.RB],
+    attack: [PAD_BUTTON.X, PAD_BUTTON.RT],
+    shoot: [PAD_BUTTON.B, PAD_BUTTON.LT],
     dash: [PAD_BUTTON.A, PAD_BUTTON.LB],
-    interact: [PAD_BUTTON.X],
-    // Krok 98: ultimate na Y (w grze wolny; na ekranie śmierci Y to „zmień bohatera” — po opóźnieniu).
-    ultimate: [PAD_BUTTON.Y],
+    interact: [PAD_BUTTON.Y],
+    ultimate: [PAD_BUTTON.RB],
   },
   /** Nawigacja w menu i na ekranach między grą (pauza, nagroda, śmierć). */
   menu: {

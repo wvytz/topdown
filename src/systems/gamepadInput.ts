@@ -1,5 +1,6 @@
 import type { Vector2 } from '@/core/types';
 import { GAMEPAD_CONFIG, PAD_AXIS, PAD_BUTTON } from '@/config/gamepadConfig';
+import { assistAimDirection, autoAimDirection, type AimTarget } from '@/systems/touchAim';
 
 /**
  * Pad (krok 95) — czysta logika: martwe strefy, zbocza przycisków, kierunek celowania i komendy menu.
@@ -115,14 +116,52 @@ export class PadGameplayReader {
   }
 }
 
+/** Co tracker celowania pada dostaje w każdej klatce. */
+export interface PadAimInput {
+  /** Kierunek prawej gałki (jednostkowy) albo null. */
+  readonly stick: Vector2 | null;
+  readonly move: Vector2;
+  /** Trzymany atak (LPM lub PPM) — wtedy bez prawej gałki celowanie samo szuka wroga. */
+  readonly attacking: boolean;
+  readonly origin: Vector2;
+  readonly targets: Iterable<AimTarget>;
+  readonly now: number;
+}
+
 /**
- * Kierunek celowania z pada: prawa gałka; gdy puszczona — kierunek ruchu (gra samą lewą gałką);
- * gdy bohater stoi — ostatni kierunek.
+ * Kierunek celowania z pada (krok 114):
+ * - prawa gałka — ręcznie, z lekkim dociąganiem do wroga w wąskim stożku;
+ * - chwilę po puszczeniu gałki — dalej jej kierunek (szybkie pstryknięcie nie ucieka w stronę ruchu);
+ * - atak bez gałki — sam celuje: wróg w szerokim stożku przed bohaterem, a gdy tam pusto — najbliższy w zasięgu;
+ * - poza tym — kierunek ruchu, a gdy bohater stoi — ostatni kierunek.
  */
-export function padAimDirection(stick: Vector2 | null, move: Vector2, last: Vector2): Vector2 {
-  if (stick) return stick;
-  const length = Math.hypot(move.x, move.y);
-  return length > 0 ? { x: move.x / length, y: move.y / length } : last;
+export class PadAimTracker {
+  private direction: Vector2 = { x: 1, y: 0 };
+  private stickAt = Number.NEGATIVE_INFINITY;
+
+  get current(): Vector2 {
+    return this.direction;
+  }
+
+  update({ stick, move, attacking, origin, targets, now }: PadAimInput): Vector2 {
+    const { stickAssist, autoAimCone, autoAimRange, stickHoldMs } = GAMEPAD_CONFIG.aim;
+    if (stick) {
+      this.stickAt = now;
+      this.direction = assistAimDirection(origin, stick, targets, stickAssist);
+      return this.direction;
+    }
+    if (now - this.stickAt < stickHoldMs) return this.direction;
+    const length = Math.hypot(move.x, move.y);
+    const facing = length > 0 ? { x: move.x / length, y: move.y / length } : this.direction;
+    if (attacking) {
+      const list = [...targets];
+      const cone = assistAimDirection(origin, facing, list, autoAimCone);
+      this.direction = cone !== facing ? cone : (autoAimDirection(origin, list, autoAimRange) ?? facing);
+      return this.direction;
+    }
+    this.direction = facing;
+    return this.direction;
+  }
 }
 
 /** Wspólny ruch z klawiatury i pada: suma, każda oś ograniczona do -1..1. */

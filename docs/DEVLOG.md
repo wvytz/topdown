@@ -4516,6 +4516,27 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** długość okien (1,6 s elita, 1,2/1 s bossowie), rozrzut odbicia, nowe HP. Gdyby było za łatwo — najpierw skrócić okna, potem HP.
 
+## Krok 114 — Pad: jeden układ przycisków i celniejsze celowanie `#ocena` `#decyzja` `#sterowanie`
+
+**Ocena właściciela (26.10.2026, pad Xbox):** sterowanie padem „mało precyzyjne”, ataki na spustach zamiast na X/Y/B, a drugi atak raz na górnym, raz na dolnym przycisku zależnie od bohatera (RB i LT robiły to samo, co wyglądało na różny układ). Zacinanie gry bada osobny wątek.
+
+**Układ przycisków (`GAMEPAD_CONFIG.actions`), jeden dla wszystkich bohaterów:**
+- **X** — atak podstawowy (LPM), **B** — drugi atak (PPM: strzał, promień, salwa), **A** — dash, **Y** — E (kapliczka, schody), **RB** — ultimate.
+- Spusty powtarzają ataki (**RT** = X, **LT** = B) dla grających prawą gałką; **LB** powtarza dash. RB nie strzela już drugim atakiem.
+- Menu bez zmian (A — potwierdź, B — wstecz, Y — akcja dodatkowa, Start — pauza). Na ekranie śmierci przyciski działają dopiero po 1,5 s, a wciśnięty w walce B nie liczy się bez puszczenia (zbocza).
+
+**Celowanie (`PadAimTracker` w `systems/gamepadInput.ts`, liczby w `GAMEPAD_CONFIG.aim`):**
+- **Prawa gałka** celuje ręcznie z lekkim dociąganiem do wroga w stożku ±10° (jak gałka na telefonie); martwa strefa 0,35 → 0,25.
+- **Po puszczeniu gałki** jej kierunek trzyma się 0,3 s — szybkie pstryknięcie nie ucieka już w stronę ruchu.
+- **Atak bez prawej gałki** (kciuk na X/B) celuje sam: wróg w stożku ±50° przed bohaterem (do 300 px), a gdy tam pusto — najbliższy wróg do 260 px. Bez wrogów — kierunek ruchu. Cele jak na telefonie: tylko wrogowie widoczni w świetle i boss.
+- Wcześniej bez prawej gałki cios zawsze leciał w stronę ruchu, więc odchodząc od wroga nie dało się go trafić.
+
+**Testy:** `tests/systems/gamepadInput.test.ts` — nowy układ (X/B/Y/RB, RB nie strzela, LB = dash), `PadAimTracker` (gałka wygrywa, dociąganie tylko w wąskim stożku, trzymanie kierunku po puszczeniu, samo celowanie: najpierw stożek przed bohaterem, potem najbliższy w zasięgu). Build zielony (1810 testów), smoke OK (1 piętro, wszyscy bohaterowie).
+
+**Weryfikacja w przeglądarce (wirtualny pad, Playwright):** każdy bohater — X przy ruchu w lewo od wroga po prawej celuje we wroga (0°); B z prawą gałką w górę celuje w górę (−90°).
+
+**Do decyzji właściciela:** samo celowanie ułatwia grę padem względem myszy (na telefonie dlatego jest osobna tablica). Na razie pad zostaje na wspólnej tablicy. **Czeka na test właściciela:** układ przycisków, siła samego celowania (stożek, zasięg), czas trzymania kierunku gałki.
+
 ## Krok 115 — Płynność: fizyka krokiem klatki obrazu (zacinanie na monitorach 120/144 Hz) `#ocena` `#wydajnosc`
 
 **Ocena właściciela (26.10.2026, co-op na padzie po krokach 110–113):** „Gra strasznie zacina.”
@@ -4641,6 +4662,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
+- **Pad (krok 114):** `#sterowanie` nowy układ (X/B ataki, A dash, Y — E, RB ultimate) i samo celowanie przy ataku bez prawej gałki — czeka na test właściciela; otwarte: czy pad z samym celowaniem zostaje na wspólnej tablicy.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

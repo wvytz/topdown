@@ -7,7 +7,7 @@ import {
   PadMenuReader,
   combineMovement,
   menuCommandFromKey,
-  padAimDirection,
+  PadAimTracker,
   stickVector,
   type PadSnapshot,
 } from '@/systems/gamepadInput';
@@ -82,30 +82,83 @@ describe('PadGameplayReader', () => {
     expect(reader.read(pad({ [PAD_BUTTON.RT]: 0.5, [PAD_BUTTON.LT]: 0.5 }))).toMatchObject({ attack: true, shoot: true });
   });
 
+  it('krok 114: X — atak, B — drugi atak, Y — E, RB — ultimate; górne przyciski nie strzelają', () => {
+    const reader = new PadGameplayReader();
+    reader.read(pad());
+    expect(reader.read(pad({ [PAD_BUTTON.X]: 1, [PAD_BUTTON.B]: 1 }))).toMatchObject({ attack: true, shoot: true, interact: false });
+    reader.read(pad());
+    expect(reader.read(pad({ [PAD_BUTTON.Y]: 1, [PAD_BUTTON.RB]: 1 }))).toMatchObject({ attack: false, shoot: false, interact: true, ultimate: true });
+    expect(reader.read(pad({ [PAD_BUTTON.LB]: 1 }))).toMatchObject({ shoot: false, dash: true });
+  });
+
   it('dash i interakcja są jednorazowe, a A trzymane przy starcie piętra nie robi dasha', () => {
     const reader = new PadGameplayReader();
     expect(reader.read(pad({ [PAD_BUTTON.A]: 1 }))!.dash).toBe(false);
     expect(reader.read(pad({ [PAD_BUTTON.A]: 1 }))!.dash).toBe(false);
     reader.read(pad());
-    expect(reader.read(pad({ [PAD_BUTTON.A]: 1, [PAD_BUTTON.X]: 1 }))).toMatchObject({ dash: true, interact: true });
-    expect(reader.read(pad({ [PAD_BUTTON.A]: 1, [PAD_BUTTON.X]: 1 }))).toMatchObject({ dash: false, interact: false });
+    expect(reader.read(pad({ [PAD_BUTTON.A]: 1, [PAD_BUTTON.Y]: 1 }))).toMatchObject({ dash: true, interact: true });
+    expect(reader.read(pad({ [PAD_BUTTON.A]: 1, [PAD_BUTTON.Y]: 1 }))).toMatchObject({ dash: false, interact: false });
   });
 });
 
-describe('padAimDirection', () => {
-  const last = { x: 0, y: 1 };
-
-  it('prawa gałka wygrywa', () => {
-    expect(padAimDirection({ x: 1, y: 0 }, { x: -1, y: 0 }, last)).toEqual({ x: 1, y: 0 });
+describe('PadAimTracker', () => {
+  const origin = { x: 0, y: 0 };
+  const { stickHoldMs, autoAimRange } = GAMEPAD_CONFIG.aim;
+  const input = (over: Partial<Parameters<PadAimTracker['update']>[0]>) => ({
+    stick: null,
+    move: { x: 0, y: 0 },
+    attacking: false,
+    origin,
+    targets: [],
+    now: 0,
+    ...over,
   });
 
-  it('bez prawej gałki cel idzie za ruchem', () => {
-    const dir = padAimDirection(null, { x: -0.5, y: 0 }, last);
+  it('prawa gałka wygrywa z ruchem', () => {
+    const aim = new PadAimTracker();
+    expect(aim.update(input({ stick: { x: 1, y: 0 }, move: { x: -1, y: 0 } }))).toEqual({ x: 1, y: 0 });
+  });
+
+  it('gałka lekko dociąga do wroga w wąskim stożku, ale nie do wroga z boku', () => {
+    const aim = new PadAimTracker();
+    const near = aim.update(input({ stick: { x: 1, y: 0 }, targets: [{ x: 100, y: 10, radius: 6 }] }));
+    expect(near.y).toBeGreaterThan(0);
+    const side = aim.update(input({ stick: { x: 1, y: 0 }, targets: [{ x: 0, y: 100, radius: 6 }] }));
+    expect(side).toEqual({ x: 1, y: 0 });
+  });
+
+  it('po puszczeniu gałki jej kierunek chwilę zostaje, potem cel idzie za ruchem', () => {
+    const aim = new PadAimTracker();
+    aim.update(input({ stick: { x: 0, y: -1 }, now: 1000 }));
+    expect(aim.update(input({ move: { x: 1, y: 0 }, now: 1000 + stickHoldMs - 1 }))).toEqual({ x: 0, y: -1 });
+    expect(aim.update(input({ move: { x: 1, y: 0 }, now: 1000 + stickHoldMs }))).toEqual({ x: 1, y: 0 });
+  });
+
+  it('bohater stoi bez gałki — zostaje ostatni kierunek', () => {
+    const aim = new PadAimTracker();
+    aim.update(input({ move: { x: 0, y: 1 } }));
+    expect(aim.update(input({}))).toEqual({ x: 0, y: 1 });
+  });
+
+  it('atak bez gałki celuje sam: najpierw wróg przed bohaterem, nie najbliższy za plecami', () => {
+    const aim = new PadAimTracker();
+    const targets = [
+      { x: -40, y: 0, radius: 6 },
+      { x: 150, y: 60, radius: 6 },
+    ];
+    const dir = aim.update(input({ move: { x: 1, y: 0 }, attacking: true, targets }));
+    expect(dir.x).toBeGreaterThan(0);
+    expect(dir.y).toBeGreaterThan(0);
+  });
+
+  it('przed bohaterem pusto — atak celuje w najbliższego wroga w zasięgu', () => {
+    const aim = new PadAimTracker();
+    const dir = aim.update(input({ move: { x: 1, y: 0 }, attacking: true, targets: [{ x: -50, y: 0, radius: 6 }] }));
     expect(dir).toEqual({ x: -1, y: 0 });
-  });
-
-  it('bohater stoi — zostaje ostatni kierunek', () => {
-    expect(padAimDirection(null, { x: 0, y: 0 }, last)).toBe(last);
+    const far = new PadAimTracker().update(
+      input({ move: { x: 1, y: 0 }, attacking: true, targets: [{ x: -(autoAimRange + 50), y: 0, radius: 6 }] }),
+    );
+    expect(far).toEqual({ x: 1, y: 0 });
   });
 });
 
