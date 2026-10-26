@@ -13,6 +13,8 @@ export interface RewardSceneData {
   /** Ile kopii każdego przedmiotu gracz już ma (do opisu karty). */
   readonly owned: Readonly<Partial<Record<ItemId, number>>>;
   readonly onPick: (itemId: ItemId) => void;
+  /** Co-op (etap C4): kto teraz wybiera, np. „P2 — Łucznik wybiera”. */
+  readonly picker?: string;
 }
 
 const CARD_WIDTH = 210;
@@ -70,6 +72,7 @@ export class RewardScene extends Phaser.Scene {
     this.hintText = this.add
       .text(width / 2, 108, '…', { ...style, fontSize: '14px', color: '#8080a0' })
       .setOrigin(0.5);
+    if (data.picker) this.add.text(width / 2, 136, data.picker, { ...style, fontSize: '16px', color: '#8affa0' }).setOrigin(0.5);
 
     const total = data.choices.length * CARD_WIDTH + (data.choices.length - 1) * CARD_GAP;
     const left = (width - total) / 2 + CARD_WIDTH / 2;

@@ -57,7 +57,7 @@ import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL } from '@/config/spriteConfig';
 import { sorceryOf } from '@/core/heroTypes';
-import type { HeroKit } from '@/core/heroTypes';
+import type { HeroId, HeroKit } from '@/core/heroTypes';
 import {
   BOSS_LOOT,
   BREAKABLE_LOOT,
@@ -100,6 +100,7 @@ import type { AimTarget } from '@/systems/touchAim';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { Party } from '@/entities/Party';
 import { spotBeside, straysOutside } from '@/systems/Party';
+import { ReviveProgress, reviveHp } from '@/systems/Revive';
 import { isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
@@ -169,6 +170,8 @@ const WALL_DOG_SEED_SALT = 0x4d09;
 const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
+/** Co-op: schody czekają, aż drużyna stanie na nogi. */
+const STAIRS_PROMPT_REVIVE = 'Najpierw podnieś partnera';
 const SECRET_ROOM_SEED_SALT = 0x5ec7;
 const SPIKE_SEED_SALT = 0x5b1e;
 const AMBUSH_ROOM_SEED_SALT = 0xa3b0;
@@ -202,6 +205,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Drugi bohater (co-op); null w grze solo. */
   private partner: Player | null = null;
   private partnerInput: PlayerInput | null = null;
+  /** Przedmioty partnera na tym piętrze (decyzja właściciela: każdy zbiera dla siebie; P1 — w `run`). */
+  private partnerItems: ItemId[] = [];
+  /** Wejście partnera z bieżącej klatki — E przy kapliczce i schodach. */
+  private partnerActions: PlayerActions | null = null;
+  /** Wskrzeszanie powalonych bohaterów (co-op, etap C4). */
+  private readonly revives = new Map<Player, ReviveProgress>();
+  private reviveGfx: Phaser.GameObjects.Graphics | null = null;
+  private lastReviveAt = 0;
   /** Pozycje bohaterów z poprzedniej klatki — smycz cofa tego, kto się oddala. */
   private leashFrom: [Vector2, Vector2] | null = null;
   private herald: BossHeraldEffects | null = null;
@@ -231,7 +242,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private run = new RunState(NEW_RUN);
   private startHp: number | null = null;
   private toast: { text: string; at: number; durationMs: number } | null = null;
-  private itemNotice: { itemId: ItemId; at: number } | null = null;
+  private itemNotice: { itemId: ItemId; at: number; tag: string } | null = null;
   private floorModifier: FloorModifierDefinition | null = null;
   private floorEffects: FloorModifierEffects = NO_FLOOR_EFFECTS;
   private lighting!: LightingOverlay;
@@ -320,6 +331,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.coop = data.coop ?? null;
     this.partner = null;
     this.partnerInput = null;
+    this.partnerItems = [...(this.coop?.partner.items ?? [])];
+    this.partnerActions = null;
+    this.revives.clear();
+    this.reviveGfx = null;
+    this.lastReviveAt = 0;
     this.leashFrom = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
@@ -533,12 +549,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const actions = this.nextActions(time);
     this.moveHeld = actions.move.x !== 0 || actions.move.y !== 0;
     this.heroes[0]?.tick(actions, time);
-    // Co-op (etap C2): partner ze swojego urządzenia; schody i kapliczka zostają przy P1 do etapu C4.
+    // Co-op (etap C2): partner ze swojego urządzenia.
     const partnerHero = this.heroes[1];
     if (partnerHero && this.partnerInput) {
       const partner = partnerHero.player;
-      partnerHero.tick(this.partnerInput.getActions({ origin: { x: partner.x, y: partner.y }, targets: () => this.aimTargets() }), time);
+      this.partnerActions = this.partnerInput.getActions({ origin: { x: partner.x, y: partner.y }, targets: () => this.aimTargets() });
+      partnerHero.tick(this.partnerActions, time);
     }
+    const interactOf = (hero: Player) => (hero === this.player ? actions.interact : (this.partnerActions?.interact ?? false));
     this.enemies.update(time);
     this.ceilingDrops?.update(time);
     this.cocoons?.update(time);
@@ -569,11 +587,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
       },
     );
     this.loot.update(time);
-    this.shrine?.update(actions.interact);
+    this.shrine?.update(interactOf);
+    this.updateRevives(time);
 
-    // Co-op: run trwa, dopóki stoi choć jeden bohater (wskrzeszanie — etap C4).
+    // Co-op: run trwa, dopóki stoi choć jeden bohater (powalonego wskrzesza partner).
     if (this.party.isDown) this.handlePlayerDeath();
-    else if (!this.player.isDead) this.checkStairs(actions.interact);
+    else this.checkStairs(interactOf);
     this.updateBossRush(time);
   }
 
@@ -596,7 +615,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
       canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false)),
-      isPlayerDead: ready && this.player.isDead,
+      isPlayerDead: ready && this.party.isDown,
       minimap: ready ? this.minimapData() : null,
       boss: ready ? this.bossFight.getStatus() : null,
       gold: this.run.gold,
@@ -856,7 +875,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (this.bossRush) return;
         this.unlockStairs();
         // Animacja śmierci bossa trwa chwilę — gracz mógł w tym czasie zginąć (np. od pocisku w locie).
-        if (!this.player.isDead) this.offerBossReward();
+        if (!this.party.isDown) this.offerBossReward();
       },
       aggroTarget: () => this.aggroTarget(),
     });
@@ -867,9 +886,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
         new HeroCombat({
           scene: this,
           player,
-          hero: player === this.player ? this.run.hero : (this.coop?.partner.hero ?? this.run.hero),
-          // Etap C2: przedmioty partnera jadą z poprzedniego piętra; zbieranie dla siebie — etap C4.
-          items: player === this.player ? () => this.run.items : () => this.coop?.partner.items ?? [],
+          hero: this.heroIdOf(player),
+          // Każdy zbiera dla siebie (decyzja właściciela): P1 — przedmioty runu, partner — własne.
+          items: player === this.player ? () => this.run.items : () => this.partnerItems,
           floorEffects: this.floorEffects,
           floorNumber: this.floorNumber,
           effects: this.effects,
@@ -1024,8 +1043,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       // Mikstury zostają na ziemi, dopóki gracz ma pełne HP — można po nie wrócić.
       canCollect: (drop, collector) =>
         (drop.kind !== PickupKind.Health || !collector.health.isFull) && (this.ambush?.canCollect(drop) ?? true),
-      // Etap C0 co-opu: łup trafia do runu jak dotąd; podział między bohaterów — etap C4.
-      onCollect: (drop, position) => this.collect(drop, position),
+      // Co-op (etap C4): złoto do wspólnej sakiewki runu, mikstura i przedmiot dla tego, kto podniósł.
+      onCollect: (drop, position, collector) => this.collect(drop, position, collector),
     });
   }
 
@@ -1034,15 +1053,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
       scene: this,
       floor: this.dungeon,
       floorNumber: this.floorNumber,
-      player: this.player,
+      party: this.party,
       run: this.run,
       rng: createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)),
       config: applyFloorToShrine(SHRINE_CONFIG, this.floorEffects),
-      onBlessing: (itemId, cost) => {
+      onBlessing: (itemId, cost, hero) => {
         diag.note('shrine-offering', { floor: this.floorNumber, item: itemId, cost });
-        this.player.applyLoadout(this.currentLoadout());
-        this.effects.floatingText(this.player.x, this.player.y, `-${cost}`, '#f5c542');
-        this.showItemNotice(itemId);
+        this.effects.floatingText(hero.x, hero.y, `-${cost}`, '#f5c542');
+        this.grantItem(itemId, hero);
       },
     });
   }
@@ -1051,26 +1069,80 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.loot.spawn(position, rollLoot(table, this.floorNumber, LOOT_SCALING, ITEM_POOL, this.lootRng));
   }
 
-  private collect(drop: LootDrop, position: Vector2): void {
+  private collect(drop: LootDrop, position: Vector2, collector: Player = this.player): void {
     switch (drop.kind) {
       case PickupKind.Gold:
         this.run.addGold(drop.amount);
         this.effects.floatingText(position.x, position.y, `+${drop.amount}`, '#f5c542');
         break;
       case PickupKind.Health:
-        this.player.heal(drop.amount);
+        collector.heal(drop.amount);
         this.effects.floatingText(position.x, position.y, `+${drop.amount} HP`, '#ff6b8a');
         break;
       case PickupKind.Item:
-        this.grantItem(drop.itemId);
+        this.grantItem(drop.itemId, collector);
         break;
     }
   }
 
-  private grantItem(itemId: ItemId): void {
-    this.run.addItem(itemId);
-    this.player.applyLoadout(this.currentLoadout());
-    this.showItemNotice(itemId);
+  /** Przedmiot dla bohatera (co-op: dla tego, kto go podniósł albo wybrał). */
+  private grantItem(itemId: ItemId, hero: Player = this.player): void {
+    if (hero === this.player) this.run.addItem(itemId);
+    else this.partnerItems.push(itemId);
+    const combat = this.heroes.find((h) => h.player === hero);
+    hero.applyLoadout(combat ? combat.loadout() : this.currentLoadout());
+    this.showItemNotice(itemId, hero);
+  }
+
+  private heroIdOf(hero: Player): HeroId {
+    return hero === this.player ? this.run.hero : (this.coop?.partner.hero ?? this.run.hero);
+  }
+
+  /** Numer gracza do napisów w co-opie („P2”); solo — pusto. */
+  private playerTag(hero: Player): string {
+    if (!this.partner) return '';
+    return hero === this.player ? 'P1' : 'P2';
+  }
+
+  /**
+   * Powaleni bohaterowie (co-op, etap C4): partner stoi obok — pasek rośnie, po pełnym bohater wstaje
+   * (`COOP_CONFIG.revive`). Nad powalonym krąg zasięgu i pasek postępu.
+   */
+  private updateRevives(now: number): void {
+    if (!this.partner) return;
+    const dtMs = this.lastReviveAt === 0 ? 0 : now - this.lastReviveAt;
+    this.lastReviveAt = now;
+    const gfx = (this.reviveGfx ??= this.add.graphics().setDepth(RENDER_DEPTH.worldText));
+    gfx.clear();
+    if (this.party.isDown) return;
+    const config = COOP_CONFIG.revive;
+    const helpers = this.party.living;
+    for (const hero of this.party.members) {
+      if (!hero.isDead) continue;
+      let progress = this.revives.get(hero);
+      if (!progress) {
+        progress = new ReviveProgress(config);
+        this.revives.set(hero, progress);
+        diag.note('coop-downed', { floor: this.floorNumber, player: this.playerTag(hero) });
+        this.showToast(`${this.playerTag(hero)} powalony — stań przy nim, by go podnieść!`);
+      }
+      if (progress.update({ downed: hero, helpers, dtMs })) {
+        hero.revive(reviveHp(hero.health.max, config), COOP_CONFIG.reviveInvulnerabilityMs, now);
+        this.revives.delete(hero);
+        this.effects.impact(hero.x, hero.y, TILE_SIZE);
+        this.effects.floatingText(hero.x, hero.y - 12, 'Wstaje!', '#8affa0');
+        diag.note('coop-revived', { floor: this.floorNumber, player: this.playerTag(hero) });
+        continue;
+      }
+      const helped = progress.isHelped({ downed: hero, helpers });
+      gfx.lineStyle(1, helped ? 0x8affa0 : 0xffffff, helped ? 0.9 : 0.35 + 0.25 * Math.sin(now / 200));
+      gfx.strokeCircle(hero.x, hero.y, config.radiusPx);
+      if (progress.progress > 0) {
+        const w = 24;
+        gfx.fillStyle(0x000000, 0.7).fillRect(hero.x - w / 2 - 1, hero.y - 21, w + 2, 5);
+        gfx.fillStyle(0x8affa0, 1).fillRect(hero.x - w / 2, hero.y - 20, w * progress.progress, 3);
+      }
+    }
   }
 
   /** Nagroda za bossa: gra staje, gracz wybiera 1 z kart. Po wyborze gra rusza dalej. */
@@ -1104,7 +1176,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Wstrzymuje grę i pokazuje nakładkę; nic nie robi na ekranie śmierci, przy przejściu między piętrami i podczas wyboru nagrody. */
   private pauseGame(reason: PauseReason): void {
-    if (this.gamePaused || this.isTransitioning || this.death || !this.player?.active || this.player.isDead) return;
+    if (this.gamePaused || this.isTransitioning || this.death || !this.player?.active || this.party.isDown) return;
     if (this.scene.isPaused() || this.scene.isActive(SceneKey.Pause)) return;
     this.gamePaused = true;
     (this.registry.get(PAUSE_CLOCK_KEY) as PauseClock | undefined)?.begin();
@@ -1161,22 +1233,38 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private offerBossReward(onPicked?: () => void): void {
     const rng = createRng(deriveSeed(this.dungeon.seed, REWARD_SEED_SALT));
-    const choices = rollItemChoices(ITEM_POOL, BOSS_REWARD.choices, rng);
+    // Co-op (etap C4): każdy bohater wybiera swoją kartę, po kolei P1, potem P2 (także powalony — wstaje z nagrodą później).
+    const pickers = [...this.party.members];
+    const offerNext = (): void => {
+      const hero = pickers.shift();
+      if (!hero) {
+        onPicked?.();
+        return;
+      }
+      this.offerRewardTo(hero, rollItemChoices(ITEM_POOL, BOSS_REWARD.choices, rng), offerNext);
+    };
+    offerNext();
+  }
+
+  private offerRewardTo(hero: Player, choices: readonly ItemId[], onPicked: () => void): void {
     if (choices.length === 0) {
-      onPicked?.();
+      onPicked();
       return;
     }
 
     const owned: Partial<Record<ItemId, number>> = {};
-    for (const { id, count } of this.run.itemCounts()) owned[id] = count;
+    const items = hero === this.player ? this.run.items : this.partnerItems;
+    for (const id of items) owned[id] = (owned[id] ?? 0) + 1;
 
+    const tag = this.playerTag(hero);
     const data: RewardSceneData = {
       choices,
       owned,
+      ...(tag && { picker: `${tag} — ${HERO_DEFINITIONS[this.heroIdOf(hero)].name} wybiera` }),
       onPick: (itemId) => {
         this.scene.resume(SceneKey.Game);
-        this.grantItem(itemId);
-        onPicked?.();
+        this.grantItem(itemId, hero);
+        onPicked();
       },
     };
     diag.note('boss-reward-offered', { floor: this.floorNumber, choices: choices.length });
@@ -1188,15 +1276,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.toast = { text, at: this.time.now, durationMs };
   }
 
-  private showItemNotice(itemId: ItemId): void {
-    this.itemNotice = { itemId, at: this.time.now };
+  private showItemNotice(itemId: ItemId, hero: Player = this.player): void {
+    this.itemNotice = { itemId, at: this.time.now, tag: this.playerTag(hero) };
   }
 
   private currentItemNotice(): HudItemNotice | null {
     if (!this.itemNotice) return null;
     const remainingMs = ITEM_NOTICE_MS - (this.time.now - this.itemNotice.at);
     const item = ITEM_DEFINITIONS[this.itemNotice.itemId];
-    return remainingMs > 0 ? { name: item.name, effect: item.effect, remainingMs } : null;
+    const name = this.itemNotice.tag ? `${this.itemNotice.tag}: ${item.name}` : item.name;
+    return remainingMs > 0 ? { name, effect: item.effect, remainingMs } : null;
   }
 
   private currentToast(): HudToast | null {
@@ -1372,11 +1461,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
    * Schody (krok 47, zgłoszenie właściciela): samo wejście na nie nie przenosi wyżej — gracz zbyt często wpadał
    * na nie przypadkiem i tracił łupy i ukrytą komnatę. Trzeba stanąć na schodach i nacisnąć E (jak przy kapliczce).
    */
-  private checkStairs(interactPressed: boolean): void {
-    const tile = DungeonView.worldToTile(this.player.x, this.player.y);
-    this.onStairs = this.stairsUnlocked && isStairsTile(this.dungeon, tile);
-    this.stairsPrompt?.setVisible(this.onStairs);
-    if (this.onStairs && interactPressed) {
+  /** Schody: wchodzi żywy bohater, który na nich stoi; w co-opie najpierw trzeba podnieść powalonego partnera. */
+  private checkStairs(interactPressed: (hero: Player) => boolean): void {
+    const climber = this.party.living.find((hero) => isStairsTile(this.dungeon, DungeonView.worldToTile(hero.x, hero.y)));
+    this.onStairs = this.stairsUnlocked && climber !== undefined;
+    const waiting = this.party.members.some((hero) => hero.isDead);
+    this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : STAIRS_PROMPT).setVisible(this.onStairs);
+    if (this.onStairs && climber && !waiting && interactPressed(climber)) {
       this.stairsPrompt?.setVisible(false);
       this.goToNextFloor();
     }
@@ -1419,7 +1510,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private coopForNextFloor(): { coop?: CoopSceneData } {
     const { coop, partner } = this;
     if (!coop || !partner) return {};
-    return { coop: { ...coop, partner: { ...coop.partner, hp: partner.isDead ? 1 : partner.health.value } } };
+    return { coop: { ...coop, partner: { ...coop.partner, items: [...this.partnerItems], hp: partner.isDead ? 1 : partner.health.value } } };
   }
 
   private get bossRush(): boolean {
@@ -1509,10 +1600,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, render));
   }
 
-  /** Bohaterowie z własnym kręgiem światła: żywi; gdy nikt nie żyje — pierwszy gracz (jak solo). */
+  /**
+   * Bohaterowie z własnym kręgiem światła i w kadrze kamery: wszyscy, także powaleni (co-op, etap C4 — partner
+   * musi widzieć, kogo podnieść); gdy padną obaj — pierwszy gracz (jak solo).
+   */
   private lightBearers(): readonly Player[] {
-    const living = this.party.living;
-    return living.length > 0 ? living : [this.player];
+    return this.party.isDown ? [this.player] : this.party.members;
   }
 
   /** Światła piętra: pochodnie i paleniska (krok 41b). */
@@ -1562,7 +1655,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Smycz (decyzja właściciela): żywi bohaterowie nie rozejdą się poza kadr — cofa się ten, kto się oddala. */
   private applyLeash(span: Vector2): void {
     const [a, b] = this.party.members;
-    if (!a || !b || a.isDead || b.isDead) {
+    // Powalony stoi w miejscu, więc smycz trzyma żywego przy nim (etap C4); po śmierci obu — bez smyczy.
+    if (!a || !b || this.party.isDown) {
       this.leashFrom = null;
       return;
     }

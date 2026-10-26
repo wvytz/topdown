@@ -1,4 +1,5 @@
 import { PAD_BUTTON } from '@/config/gamepadConfig';
+import type { ReviveConfig } from '@/systems/Revive';
 
 /**
  * Lokalny co-op (krok 101, decyzja właściciela): dwóch graczy na jednym ekranie. Liczby balansu co-opu
@@ -20,4 +21,11 @@ export const COOP_CONFIG = {
   partnerSpawnOffsetPx: 24,
   /** Partner bliżej krawędzi pokoju niż tyle kafli przy opadnięciu krat zostaje ściągnięty do środka (etap C3). */
   gatherMarginTiles: 1,
+  /**
+   * Wskrzeszanie (etap C4, decyzja właściciela: powalenie zamiast śmierci): partner stoi przy powalonym 3 s,
+   * ten wstaje z 40% HP i 1,5 s nietykalności. Run kończy się, gdy padną obaj.
+   */
+  revive: { radiusPx: 30, durationMs: 3000, decaySlowdown: 3, hpFraction: 0.4 } satisfies ReviveConfig,
+  /** Nietykalność po wstaniu (ms). */
+  reviveInvulnerabilityMs: 1500,
 } as const;

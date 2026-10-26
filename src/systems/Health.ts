@@ -41,6 +41,12 @@ export class Health {
     return { dealt, died: this.isDead };
   }
 
+  /** Wskrzeszenie w co-opie (etap C4): tylko z zera, do `amount` HP (najwyżej maksimum). */
+  revive(amount: number): void {
+    if (!this.isDead) return;
+    this.current = Math.min(this.maximum, Math.max(1, amount));
+  }
+
   heal(amount: number): void {
     if (this.isDead) return;
     this.current = Math.min(this.max, this.current + Math.max(0, amount));

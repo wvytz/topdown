@@ -4360,6 +4360,24 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Testy:** 2 nowe w `party.test.ts`.
 
+## Krok 105 — Co-op, etap C4: powalenie i wskrzeszanie, łupy dla każdego `#coop`
+
+**Co powstało:**
+- **powalenie i wskrzeszanie** (decyzja właściciela): bohater z zerowym HP leży (wrogowie go ignorują), nad nim pulsuje krąg zasięgu; partner stojący w kręgu (30 px) przez 3 s podnosi go z 40% HP i 1,5 s nietykalności, bez statusów; odejście cofa postęp trzy razy wolniej (`systems/Revive.ts`, `COOP_CONFIG.revive`, `Player.revive`, `Health.revive`); run kończy się, gdy padną obaj; kamera i smycz trzymają żywego przy powalonym, powalony ma swój krąg światła;
+- **łupy dla każdego** (decyzja właściciela): mikstura leczy i przedmiot trafia do tego, kto go podniósł; złoto idzie do wspólnej sakiewki runu (wynik drużyny); przedmioty partnera jadą z nim na kolejne piętro (`partnerItems`, `CoopPartnerSnapshot.items`);
+- **kapliczka:** ofiarę składa najbliższy żywy bohater przy kapliczce swoim E, ze wspólnego złota, i to on dostaje przedmiot (`ShrineSite` na drużynie);
+- **nagroda za bossa:** każdy bohater wybiera swoją kartę — najpierw P1, potem P2 (napis „P2 — Łucznik wybiera”, `RewardSceneData.picker`), każdy z osobnego losowania;
+- **schody:** wchodzi żywy bohater, który na nich stoi, swoim E; gdy partner leży, napis „Najpierw podnieś partnera” i schody czekają;
+- komunikat przedmiotu w co-opie z numerem gracza („P2: Buty”).
+
+**Decyzje w trakcie (do oceny właściciela):** mikstura leczy tego, kto ją podniósł; 40% HP po wskrzeszeniu; karty bossa po kolei.
+
+**Gra solo bez zmian:** jedyny bohater zbiera wszystko do runu, kapliczka i schody reagują na niego, jedna karta nagrody.
+
+**Testy:** 4 nowe (`revive.test.ts`), razem 1744.
+
+**Weryfikacja:** w przeglądarce (`?seed=7&hero=barbarian&coop=archer`): powalony P2 nie kończy runu, P1 obok podnosi go po 3 s z 34/85 HP; buty podniesione przez P2 trafiają do jego przedmiotów; dwie karty bossa po kolei — Serce dla P1, Ostrze dla P2, gra rusza dalej.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4463,7 +4481,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104). Dalej: C4 powalenie i wskrzeszanie, łupy dla każdego, C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105). Dalej: C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

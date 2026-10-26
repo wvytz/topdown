@@ -5,6 +5,7 @@ import type { Rng } from '@/core/random';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { planShrineLocation } from '@/dungeon/ShrinePlanner';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { Shrine } from '@/entities/Shrine';
 import { distance } from '@/systems/CombatMath';
@@ -16,13 +17,14 @@ export interface ShrineSiteDeps {
   readonly scene: Phaser.Scene;
   readonly floor: DungeonFloor;
   readonly floorNumber: number;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C4): ofiarę składa ten, kto stoi przy kapliczce, i to on dostaje przedmiot. */
+  readonly party: Party;
   readonly run: RunState;
   readonly rng: Rng;
   /** Konfiguracja kapliczki na tym piętrze (z uwzględnieniem modyfikatora piętra). */
   readonly config: ShrineConfig;
-  /** Wywoływane po udanej ofierze — złoto jest już odjęte, przedmiot dodany do runu. */
-  readonly onBlessing: (itemId: ItemId, cost: number) => void;
+  /** Wywoływane po udanej ofierze — złoto (wspólne) jest już odjęte; przedmiot daje scena temu bohaterowi. */
+  readonly onBlessing: (itemId: ItemId, cost: number, hero: Player) => void;
 }
 
 /** Kapliczka na piętrze: podpowiedź w pobliżu i ofiara złota pod klawiszem E. */
@@ -45,13 +47,15 @@ export class ShrineSite {
     return this.offerable;
   }
 
-  update(interactPressed: boolean): void {
+  /** `interactPressed(bohater)` — czy ten bohater wcisnął E w tej klatce. */
+  update(interactPressed: (hero: Player) => boolean): void {
     this.offerable = false;
     const shrine = this.shrine;
     if (!shrine || shrine.isUsed) return;
-    const { player, run, floorNumber } = this.deps;
+    const { party, run, floorNumber } = this.deps;
+    const player = party.nearestLiving(shrine);
 
-    if (player.isDead || distance(player, shrine) > this.deps.config.interactRadius) {
+    if (!player || distance(player, shrine) > this.deps.config.interactRadius) {
       shrine.hidePrompt();
       return;
     }
@@ -64,10 +68,10 @@ export class ShrineSite {
       affordable ? '#ffe08a' : '#ff8080',
     );
 
-    if (interactPressed) this.offer();
+    if (interactPressed(player)) this.offer(player);
   }
 
-  private offer(): void {
+  private offer(hero: Player): void {
     const { run, floorNumber, rng, onBlessing } = this.deps;
     const shrine = this.shrine;
     if (!shrine) return;
@@ -82,8 +86,7 @@ export class ShrineSite {
     });
     if (!outcome.ok || !run.spendGold(outcome.cost)) return;
 
-    run.addItem(outcome.itemId);
     shrine.markUsed();
-    onBlessing(outcome.itemId, outcome.cost);
+    onBlessing(outcome.itemId, outcome.cost, hero);
   }
 }
