@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
@@ -136,6 +137,7 @@ export class CocoonManager {
     cocoon.destroy();
     this.playTear(at);
     effects.impact(at.x, at.y, config.blastRadius);
+    sound.play(SoundCue.Break, at);
     for (const player of party.living) {
       if (cocoonBlastCatches(at, config.blastRadius, player, player.radius) && player.applySlow(config.slow, now)) {
         effects.floatingText(player.x, player.y - 14, 'Spowolnienie', SLOW_TEXT_COLOR);

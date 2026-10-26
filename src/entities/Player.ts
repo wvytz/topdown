@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { Hit, PlayerCombatConfig, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import type { ArcheryConfig, HeroId, HeroKit, SorceryConfig, UltimateConfig } from '@/core/heroTypes';
@@ -477,6 +478,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(hit.knockback.x, hit.knockback.y);
     // Status z trafienia (trucizna smagnięcia Matki Pająków).
     this.status.apply(hit.status, now);
+    if (!this.isDead) sound.play(SoundCue.HeroHurt, this);
 
     if (this.isDead) this.die();
     return true;
@@ -501,6 +503,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private die(): void {
+    sound.play(SoundCue.HeroDeath, this);
     this.setVelocity(0, 0);
     this.setTint(0x555555).setAlpha(1);
     this.animator.stop();

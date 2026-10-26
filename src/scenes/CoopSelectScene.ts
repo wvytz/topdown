@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { HeroId } from '@/core/heroTypes';
 import type { CoopSelectData, FloorSceneData } from '@/core/types';
@@ -116,6 +117,7 @@ export class CoopSelectScene extends Phaser.Scene {
 
   private onCommand(device: InputDevice, command: MenuCommand): void {
     if (this.starting) return;
+    sound.play(command === MenuCommand.Confirm ? SoundCue.UiConfirm : command === MenuCommand.Back ? SoundCue.UiBack : SoundCue.UiMove);
     const slot = this.lobby.slotOf(device);
     if (slot < 0) {
       if (command === MenuCommand.Confirm) {

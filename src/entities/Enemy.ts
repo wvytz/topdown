@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type {
   DamageResult,
@@ -274,6 +275,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const result = this.health.takeDamage(damage);
     this.hitFlash.start(now, HIT_FLASH_MS);
     this.lastHitBlocked = blocked;
+    if (!result.died) sound.play(blocked ? SoundCue.ShieldBlock : SoundCue.EnemyHit, this);
     // Skoku i szarży nie da się zatrzymać trafieniem — bez odrzutu i ogłuszenia w biegu.
     if (!this.pounce && this.charge?.phase(now) !== ChargePhase.Charging) {
       this.hitStun.start(now, HIT_STUN_MS);

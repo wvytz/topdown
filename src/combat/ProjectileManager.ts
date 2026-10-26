@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { Vector2 } from '@/core/types';
 import type { StatusApplication, WaveShape } from '@/core/combatTypes';
@@ -32,6 +33,8 @@ export interface ProjectileSpec {
   readonly onHit?: (damage: number) => void;
   /** Obrót sprite'a (radiany) — strzałka pułapki leci grotem do przodu (krok 48). */
   readonly rotation?: number;
+  /** Dźwięk wystrzału (krok 116); domyślnie cichy pocisk wroga. */
+  readonly sound?: SoundCue;
 }
 
 /** Pociski przeciwników: lot, kolizja ze ścianami, trafienie gracza, wygasanie. */
@@ -65,6 +68,7 @@ export class ProjectileManager {
   }
 
   fire(spec: ProjectileSpec): void {
+    sound.play(spec.sound ?? SoundCue.EnemyShot, spec.origin);
     const projectile = new Projectile(this.scene, spec.origin.x, spec.origin.y, spec.visual?.texture);
     projectile.damage = spec.damage;
     projectile.knockback = spec.knockback;

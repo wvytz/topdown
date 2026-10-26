@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { HeroId } from '@/core/heroTypes';
 import type { FloorSceneData, HeroSelectData } from '@/core/types';
@@ -210,6 +211,7 @@ export class HeroSelectScene extends Phaser.Scene {
 
   private select(index: number): void {
     if (this.starting || index === this.selected) return;
+    sound.play(SoundCue.UiMove);
     this.selected = index;
     this.refresh();
   }
@@ -251,6 +253,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private backToMenu(): void {
     if (this.starting) return;
     this.starting = true;
+    sound.play(SoundCue.UiBack);
     const hero = this.cards[this.selected]!.hero;
     const start: FloorSceneData = {
       runSeed: this.selectData.runSeed,
@@ -264,6 +267,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private confirm(): void {
     if (this.starting) return;
     this.starting = true;
+    sound.play(SoundCue.UiConfirm);
     const hero = this.cards[this.selected]!.hero;
     this.lastHero.save(hero);
     const start: FloorSceneData = {

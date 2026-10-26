@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { SoundCue, sound } from '@/audio/SoundBoard';
+import { MUSIC_BY_BIOME, MUSIC_DUCK, MUTE_KEY } from '@/config/audioConfig';
 import type {
   DeathSummary,
   CoopSceneData,
@@ -454,6 +456,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     }
     this.cameras.main.fadeIn(250, 0, 0, 0);
     this.setupDiagnostics();
+    this.setupAudio();
     // Autozapis „Kontynuuj” (krok 91): stan z wejścia na piętro; po śmierci znika.
     if (this.checkpoint) this.saves.save('auto', this.checkpoint, Date.now());
   }
@@ -505,6 +508,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private replay: InputReplay | null = null;
   private replayStart = -1;
   private lastBossFighting = false;
+  /** Muzyka gra w trybie walki z bossem (krok 116). */
+  private musicIntense = false;
   private nextSanityAt = 0;
   private nextProbeAt = 0;
   private lastStairsUnlocked = false;
@@ -566,6 +571,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   override update(time: number): void {
     if (this.isTransitioning) return;
     this.diagnosticsTick(time);
+    this.updateMusic();
     this.trackBossProgress();
 
     const actions = this.nextActions(time);
@@ -1103,6 +1109,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onBlessing: (itemId, cost, hero) => {
         diag.note('shrine-offering', { floor: this.floorNumber, item: itemId, cost });
         this.effects.floatingText(hero.x, hero.y, `-${cost}`, '#f5c542');
+        sound.play(SoundCue.Shrine, hero);
         this.grantItem(itemId, hero);
       },
     });
@@ -1117,12 +1124,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
       case PickupKind.Gold:
         this.run.addGold(drop.amount);
         this.effects.floatingText(position.x, position.y, `+${drop.amount}`, '#f5c542');
+        sound.play(SoundCue.Coin, position);
         break;
       case PickupKind.Health:
         collector.heal(drop.amount);
         this.effects.floatingText(position.x, position.y, `+${drop.amount} HP`, '#ff6b8a');
+        sound.play(SoundCue.Heal, position);
         break;
       case PickupKind.Item:
+        sound.play(SoundCue.ItemPickup, position);
         this.grantItem(drop.itemId, collector);
         break;
     }
@@ -1179,6 +1189,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.revives.delete(hero);
         this.effects.impact(hero.x, hero.y, TILE_SIZE);
         this.effects.floatingText(hero.x, hero.y - 12, 'Wstaje!', '#8affa0');
+        sound.play(SoundCue.HeroRevive, hero);
         diag.note('coop-revived', { floor: this.floorNumber, player: this.playerTag(hero) });
         continue;
       }
@@ -1195,6 +1206,32 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Nagroda za bossa: gra staje, gracz wybiera 1 z kart. Po wyborze gra rusza dalej. */
   /** Pauza (krok 70): Esc / P zawsze; auto-pauza po utracie fokusu albo ukryciu karty. */
+  /**
+   * Dźwięk piętra (krok 116): klimat muzyki z biomu, słuch w środku kamery (w co-opie — między bohaterami),
+   * N — wyciszenie. Bez ekranu śmierci: tam klawiatura wpisuje imię.
+   */
+  private setupAudio(): void {
+    const camera = this.cameras.main;
+    sound.setListener(() => ({ x: camera.midPoint.x, y: camera.midPoint.y }));
+    sound.setMusic(MUSIC_BY_BIOME[this.biome.id]);
+    this.musicIntense = false;
+    sound.setMusicIntense(false);
+    sound.setMusicDuck(1);
+    this.input.keyboard?.on(`keydown-${MUTE_KEY}`, (event: KeyboardEvent) => {
+      if (!event.repeat && !this.death) sound.toggleMute();
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => sound.setListener(null));
+  }
+
+  /** Walka z bossem — muzyka z bębnem; po walce wraca spokój. */
+  private updateMusic(): void {
+    const intense = this.bossFight.isFighting;
+    if (intense === this.musicIntense) return;
+    this.musicIntense = intense;
+    sound.setMusicIntense(intense);
+    if (intense) sound.play(SoundCue.BossRoar);
+  }
+
   private setupPause(): void {
     for (const key of PAUSE_CONFIG.keys) {
       this.input.keyboard?.on(`keydown-${key}`, (event: KeyboardEvent) => {
@@ -1237,6 +1274,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
     this.scene.pause();
     this.scene.launch(SceneKey.Pause, data);
+    sound.setMusicDuck(MUSIC_DUCK.pause);
   }
 
   /** Pokonany boss odblokowuje start od tego piętra w trybie wyboru piętra (krok 91). Nie przy nagraniu i runie testowym. */
@@ -1275,6 +1313,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.gamePaused = false;
     (this.registry.get(PAUSE_CLOCK_KEY) as PauseClock | undefined)?.end();
     this.scene.resume();
+    sound.setMusicDuck(1);
     // Klawisze puszczone w czasie pauzy nie dotarły do wstrzymanej sceny — bez resetu bohater szedłby sam.
     this.input.keyboard?.resetKeys();
   }
@@ -1345,6 +1384,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private handlePlayerDeath(): void {
     if (this.deathHandled) return;
     this.deathHandled = true;
+    // Śmierć drużyny: muzyka cichnie (zabrzmiał już krzyk bohatera).
+    sound.setMusic(null);
     diag.note('player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
     // Śmierć kończy run — „Kontynuuj” znika (ręczne sloty zostają).
     if (this.checkpoint) this.saves.remove('auto');
@@ -1552,6 +1593,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private goToNextFloor(): void {
     diag.note('stairs-up', { from: this.floorNumber });
+    sound.play(SoundCue.Stairs);
     this.isTransitioning = true;
     this.player.setVelocity(0, 0);
     this.cameras.main.fadeOut(250, 0, 0, 0);

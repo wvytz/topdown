@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { Hit, LobAttackDefinition, MeleeAttackDefinition, PounceAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
 import type { DungeonFloor } from '@/core/dungeonTypes';
@@ -336,6 +337,7 @@ export class EnemyManager implements EnemyAttackHandler {
     const { scene, effects } = this.deps;
     const { shakeMs, shakeIntensity, impactRadius, text, textColor } = SHIELD_CHARGE_VISUAL;
     effects.impact(enemy.x, enemy.y, impactRadius);
+    sound.play(SoundCue.Impact, enemy);
     scene.cameras.main.shake(shakeMs, shakeIntensity);
     effects.floatingText(enemy.x, enemy.y, text, textColor);
   }
@@ -470,6 +472,7 @@ export class EnemyManager implements EnemyAttackHandler {
       this.blasts.push({ at, startAt: now, detonateAt: now + delayMs, damage: this.hazardDamage(damage) });
     }
     this.deps.effects.deathBurst(enemy.x, enemy.y, enemy.definition.color, enemy.radius);
+    sound.play(SoundCue.EnemyDeath, at);
     this.deps.decals.add('splat', enemy.x, enemy.y);
     this.enemies = this.enemies.filter((e) => e !== enemy);
     this.deps.onEnemyKilled(enemy);

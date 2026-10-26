@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type {
   AreaStrike,
@@ -380,6 +381,7 @@ export class BossFight {
     if (boss?.consumeShieldBreak()) {
       this.deps.effects.impact(boss.x, boss.y, boss.radius * 1.4);
       this.deps.effects.deathBurst(boss.x, boss.y, SHIELD_ARC_VISUAL.color, boss.radius);
+      sound.play(SoundCue.Break, boss);
     }
     if (!boss) {
       this.fireRingGfx?.clear();
@@ -536,6 +538,7 @@ export class BossFight {
         lifetimeMs: 1500,
       });
       this.deps.effects.impact(shot.position.x, shot.position.y, 10);
+      sound.play(SoundCue.ShieldBlock, shot.position);
       boss.activate(shot.now);
       return boss;
     }
@@ -571,6 +574,7 @@ export class BossFight {
     if (plan.kind === BossAttackKind.Kindle) this.kindleBraziers(plan);
     if (plan.kind === BossAttackKind.Roar && this.boss) {
       this.deps.effects.floatingText(this.boss.x, this.boss.y - this.boss.radius - 8, 'Ryk!', '#ff5a3c');
+      sound.play(SoundCue.BossRoar, this.boss);
     }
     // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
     const planned = plan.leap;
@@ -646,6 +650,7 @@ export class BossFight {
         pending.gfx.destroy();
         this.helpers.push(spawnHelper(def.type, pending.position));
         this.deps.effects.impact(pending.position.x, pending.position.y, radius);
+        sound.play(SoundCue.Impact, pending.position);
         return false;
       }
       const pulse = 0.75 + 0.25 * Math.sin((now / pulseMs) * Math.PI);
@@ -1122,6 +1127,7 @@ export class BossFight {
         effects.floatingText(bitten.x, bitten.y - bitten.radius - 8, 'Pogryziony!', SMOKE_VISUAL.text);
       }
       effects.impact(dog.x, dog.y, dog.radius);
+      sound.play(SoundCue.Impact, dog);
     }
     if (gfx) this.drawDog(gfx, dog);
   }
@@ -1316,6 +1322,7 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
+    sound.play(SoundCue.BossDeath, boss);
     for (const pending of [...this.strikes, ...this.bursts, ...this.pendingHelpers]) pending.gfx.destroy();
     // Dog ginie razem z Baronem (nie ma już kogo pilnować); nowy już nie wróci.
     this.dogRespawnAt = null;

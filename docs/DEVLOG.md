@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4556,6 +4556,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** czy gra jest płynna na jego monitorze (warto podać częstotliwość monitora i przeglądarkę). Jeśli dalej zacina — raport z F9 (puls zapisuje FPS) i opis, kiedy: cały czas czy tylko w walce/przy efektach.
 
+## Krok 116 — Dźwięk: efekty i muzyka z syntezy, głośność i wyciszenie `#decyzja` `#dzwiek` `#coop`
+
+**Decyzja właściciela (26.10.2026):** „skąd weźmiemy dźwięki?” → propozycja: darmowe paczki CC0 (Kenney, OpenGameArt, Freesound), efekty generowane (jsfxr / Web Audio) i po jednym klimatycznym utworze na wieżę i zaświaty; właściciel: „dawaj”.
+
+**Wybór źródła:** z kontenera, w którym powstał ten krok, strony z paczkami (kenney.nl, opengameart.org) są zablokowane, więc wszystko powstaje **w kodzie** — efekty z syntezy w stylu jsfxr, muzyka składana z akordów. Zalety: zero plików i zero licencji z zewnątrz (dźwięki należą do projektu), mały build, liczby do strojenia w configu jak reszta balansu. Paczki CC0/CC-BY można dołożyć później — zasady i tabela przypisów w `docs/AUDIO.md`.
+
+**Co powstało:**
+- **Warstwa czysta (testy):** `core/audioTypes.ts` (`SoundCue` — 35 dźwięków, pętla promienia, przepisy, ustawienia, nuty); `systems/SfxSynth.ts` (przepis → próbki, deterministycznie, bez przesterowania); `systems/SoundGate.ts` (ten sam dźwięk w odstępie < `minGapMs` gra raz + limit 14 efektów / 100 ms — co-op i fale upiorów bez ściany hałasu); `systems/SoundSpace.ts` (stereo i ściszanie dalekich zdarzeń względem środka kamery); `systems/AudioSettings.ts` (głośność muzyki i efektów 0–100% co 10%, wyciszenie, kwadratowa krzywa głośności); `systems/MusicComposer.ts` (takt utworu: pad, bas, dzwonki z seeda, bęben-serce).
+- **Config:** `config/audioConfig.ts` — przepisy wszystkich efektów, limity powtórzeń, przestrzeń, dwa utwory (wieża: d-moll dorycki 72 BPM; zaświaty: e frygijski 60 BPM z pulsem serca), klimat biomu (`MUSIC_BY_BIOME`: piętra 1–3 wieża, 4–7 zaświaty), miks muzyki, teksty.
+- **Odtwarzanie:** `audio/SoundBoard.ts` — jeden obiekt `sound` na grę (jak `diag`): kontekst Web Audio po pierwszym geście (klawisz, klik, dotyk, przycisk pada w menu), bufory liczone raz, pętle z licznikiem właścicieli (dwie Czarodziejki = jeden promień), samo-wygasanie pętli bez odświeżenia (pauza); `audio/MusicPlayer.ts` — planowanie nut z wyprzedzeniem na zegarze Web Audio, przenikanie utworów, tryb walki z bossem. Błędy dźwięku trafiają do dziennika F9 (`audio-unavailable`, `audio-error`), nigdy nie psują gry. `persistence/AudioSettingsStorage.ts` — ustawienia w `localStorage`.
+- **Podpięte:** cios, strzały, salwa, kule, rozprysk, fala, promień (pętla), dash, ultimate; bohater trafiony / pada / wstaje; trafienie i śmierć wroga, pocisk wroga, tarcza; wybuchy (w `CombatEffects.blast` — wszystkie naraz), tąpnięcia; boss: trafienie, ryk na start walki i „Ryk!”, śmierć; złoto, mikstura, przedmiot, karta, kapliczka, schody; kraty, zasadzka, ukryta komnata, urny/kokony, kolce (tylko z bliska), strzałki. Menu, wybór bohatera, co-op, pauza, karty — dźwięki interfejsu. Pełna lista: `docs/AUDIO.md`.
+- **Muzyka w grze:** menu — wieża; piętro — klimat biomu; walka z bossem — bęben i gęstsza melodia; pauza — ciszej (40%); śmierć drużyny — muzyka milknie.
+- **Ustawienia (wszystkie wejścia):** pauza ma wiersze „Muzyka − 60% +” i „Efekty − 70% +” — klik/stuknięcie w − i +, strzałki albo pad (↑ ↓ wybór — także sloty zapisu, ← → głośność, A — wycisz); **N** wycisza w grze, w menu i na pauzie (nie przy wpisywaniu imienia); stuknięcie napisu pod suwakami wycisza na telefonie. Układ pauzy przesunięty (sloty wyżej, suwaki pod nimi).
+
+**Testy:** `tests/systems/sfxSynth.test.ts` (każdy przepis słyszalny, ≤ 2 s, w zakresie; pętla bez dziury), `soundGate`, `soundSpace`, `audioSettings`, `musicComposer`, `tests/persistence/audioSettingsStorage.test.ts`. Build zielony (1892 testy).
+
+**Weryfikacja (Playwright, Chromium, `?seed=3&floor=5&hero=sorceress`):** po kliknięciu kontekst `running`, utwór zaświatów gra (RMS ok. 0,02), ataki i wybuch słychać na wyjściu (RMS do 0,11–0,13), pauza: strzałki zmieniają głośność muzyki, N wycisza (zrzut ekranu pauzy sprawdzony), bez błędów w konsoli; to samo w co-opie (`?hero=barbarian&coop=sorceress`). `npm run smoke -- --floors 3 --seeds 1` — wszyscy bohaterowie bez błędów.
+
+**Czeka na ocenę właściciela (na słuchawkach / głośnikach):** brzmienie efektów (zwłaszcza cios, trafienie, wybuch, złoto), czy muzyka pasuje i nie męczy (pętla ok. 27 s wieży, ok. 48 s zaświatów), proporcje muzyka/efekty (domyślnie 60% / 70%), czy czegoś brakuje albo coś jest za głośne. Strojenie — liczby w `config/audioConfig.ts`. Do rozważenia później: utwory z plików (CC0/CC-BY) zamiast syntezy, osobny utwór bossa, kroki bohatera, dźwięki otoczenia biomów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4632,6 +4652,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Dźwięk (krok 116):** `#dzwiek` brzmienie efektów, muzyka wieży i zaświatów, proporcje głośności (60% / 70%), czy coś przeszkadza w co-opie — czeka na test właściciela; lista i licencje w `docs/AUDIO.md`.
 - **Tarczownik (kroki 99, 113):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę (bez tarczy), bomby go ranią; od kroku 113 obrót 35°/s, 1,6 s bez tarczy po każdym ciosie, HP ×1,8 — czeka na test właściciela.
 - **Bossowie z tarczą (krok 113):** `#boss` `#balans` odbicia w losową stronę (30–80°), wolniejszy obrót, okno bez tarczy po ataku, mniej HP — czeka na test właściciela.
 - **Pajęczy duet (krok 112):** `#areny-bossow` Król i Matka Pająków naraz na arenie 3 — trudność, świta tylko Króla; potem decyzja o wspinaczce — czeka na test właściciela.

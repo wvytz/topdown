@@ -1,3 +1,6 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
+import { MUTE_KEY } from '@/config/audioConfig';
+import { MusicTheme } from '@/core/audioTypes';
 import Phaser from 'phaser';
 import type { CoopSelectData, FloorSceneData, HeroSelectData } from '@/core/types';
 import { currentPlatform } from '@/core/platform';
@@ -124,7 +127,14 @@ export class MenuScene extends Phaser.Scene {
       const command = menuCommandFromKey(event.key);
       if (command) this.onCommand(command);
     });
+    this.input.keyboard?.on(`keydown-${MUTE_KEY}`, (event: KeyboardEvent) => {
+      if (!event.repeat) sound.toggleMute();
+    });
     bindPadMenu(this, (command) => this.onCommand(command));
+    // Menu gra muzykę wieży (krok 116); ruszy po pierwszym klawiszu lub kliknięciu (blokada przeglądarki).
+    sound.setMusic(MusicTheme.Tower);
+    sound.setMusicIntense(false);
+    sound.setMusicDuck(1);
     this.refresh();
   }
 
@@ -188,7 +198,10 @@ export class MenuScene extends Phaser.Scene {
         if (this.view === 'floors') this.stepFloor(1);
         break;
       case MenuCommand.Back:
-        if (this.view !== 'main') this.openMain();
+        if (this.view !== 'main') {
+          sound.play(SoundCue.UiBack);
+          this.openMain();
+        }
         break;
       case MenuCommand.Alt:
         if (this.view === 'slots') this.deleteSlot();
@@ -208,6 +221,7 @@ export class MenuScene extends Phaser.Scene {
       const count = SAVE_CONFIG.slotCount + 1;
       this.slotCursor = (((this.slotCursor + delta) % count) + count) % count;
     }
+    sound.play(SoundCue.UiMove);
     this.refresh();
   }
 
@@ -225,11 +239,13 @@ export class MenuScene extends Phaser.Scene {
       this.slotCursor = row;
       this.pendingDelete = null;
     }
+    sound.play(SoundCue.UiMove);
     this.refresh();
   }
 
   private confirm(): void {
     if (this.leaving) return;
+    sound.play(SoundCue.UiConfirm);
     if (this.view === 'floors') {
       if (this.floorCursor === 1) this.openMain();
       else this.newRun(RunMode.FloorSelect, this.startFloor);
@@ -285,6 +301,7 @@ export class MenuScene extends Phaser.Scene {
   private stepFloor(delta: number): void {
     this.startFloor = stepStartFloor(this.startFloor, delta, this.bossProgress.load());
     this.floorCursor = 0;
+    sound.play(SoundCue.UiMove);
     this.refresh();
   }
 

@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { AREA_TELEGRAPH_VISUAL, BLAST_VISUAL, NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
@@ -50,6 +51,8 @@ export class CombatEffects {
    * `v` — paleta wybuchu (krok 111: strąki zarodników Pożeracza wybuchają sokiem).
    */
   blast(x: number, y: number, radius: number, group: readonly OutlineCircle[] = [], v: BlastVisual = BLAST_VISUAL): void {
+    // Wybuch zawsze rani — dźwięk razem z obrazem (krok 116).
+    sound.play(SoundCue.Explosion, { x, y });
     const g = this.scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash);
     const cx = Math.round(x);
     const cy = Math.round(y);

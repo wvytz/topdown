@@ -1,3 +1,4 @@
+import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import { PickupKind } from '@/core/lootTypes';
@@ -78,6 +79,7 @@ export class SecretRoomManager {
     const center = DungeonView.tileToWorldCenter({ x: area.room.x + Math.floor(area.room.width / 2), y: area.room.y + Math.floor(area.room.height / 2) });
     this.deps.effects.impact(center.x, center.y, SECRET_ROOM_VISUAL.revealFlashRadius);
     scene.cameras.main.shake(SECRET_ROOM_VISUAL.shakeMs, SECRET_ROOM_VISUAL.shakeIntensity);
+    sound.play(SoundCue.Secret);
     this.deps.onRevealed();
   }
 
@@ -88,6 +90,7 @@ export class SecretRoomManager {
     const tear = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
     tear.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => tear.setDepth(RENDER_DEPTH.combatDecal));
     tear.play(animationKey(sheet, burst));
+    sound.play(SoundCue.Break, at);
     if (!cocoon.hasPrize) {
       this.deps.effects.floatingText(at.x, at.y, 'pusto', SECRET_ROOM_VISUAL.emptyText);
       return;
