@@ -40,3 +40,13 @@ describe('MusicComposer (krok 116)', () => {
     for (const biome of Object.values(BiomeId)) expect(MUSIC_BY_BIOME[biome]).toBeDefined();
   });
 });
+
+describe('oddech melodii (krok 116a)', () => {
+  it('w ostatnich taktach każdej frazy nie ma dzwonków', () => {
+    const { every, rest } = tower.bellRest;
+    for (let bar = 0; bar < 64; bar++) {
+      const bells = composeBar(tower, bar, true).filter((n) => n.voice === 'bell').length;
+      if (bar % every >= every - rest) expect(bells).toBe(0);
+    }
+  });
+});

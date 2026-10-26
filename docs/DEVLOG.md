@@ -4576,6 +4576,18 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela (na słuchawkach / głośnikach):** brzmienie efektów (zwłaszcza cios, trafienie, wybuch, złoto), czy muzyka pasuje i nie męczy (pętla ok. 27 s wieży, ok. 48 s zaświatów), proporcje muzyka/efekty (domyślnie 60% / 70%), czy czegoś brakuje albo coś jest za głośne. Strojenie — liczby w `config/audioConfig.ts`. Do rozważenia później: utwory z plików (CC0/CC-BY) zamiast syntezy, osobny utwór bossa, kroki bohatera, dźwięki otoczenia biomów.
 
+## Krok 116a — Dźwięk niżej i łagodniej, muzyka mniej męcząca `#ocena` `#dzwiek`
+
+**Ocena właściciela (26.10.2026, po wdrożeniu kroku 116):** „dźwięki są zbyt wysokie i ogółem zbyt ostre. muzyka lekko psychodeliczna jak najbardziej na plus, ale po 20 minutach grania czułem lekki dyskomfort”.
+
+**Co się zmieniło:**
+- **Efekty:** wspólna barwa `SFX_TONE` (`config/audioConfig.ts`, czyste `systems/SfxTone.ts`): wszystkie przepisy grają o ok. 30% niżej (`pitchScale` 0,7), filtr każdej warstwy najwyżej 3 kHz, a cała szyna efektów ma łagodny filtr 4,2 kHz. Przepisy bez zmian — barwę stroi się jednym miejscem.
+- **Muzyka (klimat zostaje):** dzwonki oktawę niżej (`bellTranspose` 12 zamiast 24), z harmonicznym alikwotem 2× zamiast metalicznego 2,76× i za filtrem 2,5 kHz; rzadsze (wieża 0,22 → 0,16, zaświaty 0,14 → 0,10); **oddech** — w każdych 8 taktach ostatnie 2 (zaświaty: 3) bez dzwonków; pad ciemniejszy (filtr 900 → 700 Hz) i słabiej rozstrojony (8 → 5 centów — mniej „pływania”, które męczy przy długim słuchaniu). Domyślna głośność muzyki 60% → 50% (zapisane ustawienia gracza zostają).
+
+**Testy:** `tests/systems/sfxTone.test.ts` (niżej, filtr, długość bez zmian, każdy efekt dalej słyszalny), oddech melodii w `musicComposer.test.ts`. Build zielony (1935 testów). Przeglądarka: dźwięk i muzyka grają, bez błędów.
+
+**Czeka na ocenę właściciela:** czy efekty są już dość niskie i miękkie (jeśli nie — `pitchScale` 0,6, filtr 2,5 kHz), czy muzyka da się słuchać dłużej.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
