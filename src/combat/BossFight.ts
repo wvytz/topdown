@@ -34,10 +34,11 @@ import {
   SPRITE_SHEETS,
   animationKey,
 } from '@/config/spriteConfig';
-import { isHitByAreaStrike, isInWebPatch, leapProgress, webFlightProgress } from '@/ai/bossAttacks';
+import { isInWebPatch, leapProgress, webFlightProgress } from '@/ai/bossAttacks';
 import { CeilingFallView } from '@/combat/CeilingFallView';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
-import { SpiderlingSwarm, drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
+import { SpiderlingSwarm } from '@/combat/SpiderlingSwarm';
+import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { arenaCenter } from '@/dungeon/stairs';
@@ -53,6 +54,7 @@ import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
+import { isCaughtByGroundArea, isTouchingHeroBody } from '@/systems/Hurtbox';
 import type { MeleeSwing, MeleeTarget } from '@/systems/MeleeResolver';
 import { resolveMeleeSwing, swingReaches } from '@/systems/MeleeResolver';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
@@ -110,6 +112,8 @@ export type BossStatus = BossHudData;
 interface PendingStrike {
   readonly strike: AreaStrike;
   readonly gfx: Phaser.GameObjects.Graphics;
+  /** Strefy tego samego ataku uderzające razem (hak, smuga) — telegraf obrysowuje ich sumę (krok 110). */
+  readonly group: readonly AreaStrike[];
 }
 
 /** Rzucona sieć: znacznik lądowania, kłąb w locie, potem plama (krok 25). */
@@ -511,9 +515,10 @@ export class BossFight {
     // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
     const planned = plan.leap;
     const landing = planned ? this.startLeap(planned) : null;
-    for (const planStrike of plan.strikes) {
-      const strike = landing && planStrike.center === planned?.to ? { ...planStrike, center: landing } : planStrike;
-      this.strikes.push({ strike, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+    const strikes = plan.strikes.map((strike) => (landing && strike.center === planned?.to ? { ...strike, center: landing } : strike));
+    for (const strike of strikes) {
+      const group = strikes.filter((other) => other.impactAt === strike.impactAt && other.telegraphStartAt === strike.telegraphStartAt);
+      this.strikes.push({ strike, group, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     for (const burst of plan.bursts) {
       this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
@@ -897,15 +902,15 @@ export class BossFight {
 
   private updateStrikes(now: number): void {
     const { party, effects } = this.deps;
-    this.strikes = this.strikes.filter(({ strike, gfx }) => {
+    this.strikes = this.strikes.filter(({ strike, gfx, group }) => {
       if (now < strike.impactAt) {
-        drawAreaTelegraph(gfx, strike, now);
+        drawAreaTelegraph(gfx, strike, now, group);
         return true;
       }
       gfx.destroy();
       if (strike.look === 'smoke') this.playSmokeBurst(strike);
       else {
-        effects.impact(strike.center.x, strike.center.y, strike.radius);
+        effects.blast(strike.center.x, strike.center.y, strike.radius, group);
         this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       }
       for (const player of party.members) this.strikePlayer(player, strike, now);
@@ -916,7 +921,7 @@ export class BossFight {
   /** Uderzenie obszarowe w jednego bohatera: obrażenia, hak Kata, wezwanie doga, leczenie bossa, paraliż. */
   private strikePlayer(player: Player, strike: AreaStrike, now: number): void {
     const { effects, onPlayerHit } = this.deps;
-    if (!isHitByAreaStrike(strike, player, player.radius)) return;
+    if (!isCaughtByGroundArea(strike.center, strike.radius, player)) return;
     const hit = {
       damage: strike.damage,
       knockback: knockbackFrom(strike.center, player, strike.knockback),
@@ -973,11 +978,11 @@ export class BossFight {
     if (decision.newBite) {
       const { center, radius, telegraphStartAt, impactAt, damage, knockback } = decision.newBite;
       const strike: AreaStrike = { center, radius, telegraphStartAt, impactAt, damage, knockback };
-      this.strikes.push({ strike, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+      this.strikes.push({ strike, group: [strike], gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     // Skok z rogu: jedno trafienie na szarżę (dash gracza daje nietykalność, więc unik działa).
     const bitten = dog.phase === DogPhase.Lunge && !dog.lungeHit
-      ? party.living.find((player) => Math.hypot(player.x - dog.x, player.y - dog.y) <= dog.radius + player.radius)
+      ? party.living.find((player) => isTouchingHeroBody(dog, dog.radius, player))
       : undefined;
     if (bitten) {
       dog.lungeHit = true;
@@ -1099,7 +1104,7 @@ export class BossFight {
       damage: heat.damage,
       knockback: heat.knockback,
     };
-    this.strikes.push({ strike, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+    this.strikes.push({ strike, group: [strike], gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 10, 'Żar!', '#ff8a3c');
   }
 

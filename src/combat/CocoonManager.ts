@@ -4,7 +4,8 @@ import type { Rng } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { COCOON_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { SpiderlingSwarm, drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
+import { SpiderlingSwarm } from '@/combat/SpiderlingSwarm';
+import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
 import { planCocoons } from '@/dungeon/CocoonPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { CombatDecals } from '@/effects/CombatDecals';
@@ -126,8 +127,6 @@ export class CocoonManager {
       radius: blastRadius,
       telegraphStartAt: cocoon.burstAt - fuseMs,
       impactAt: cocoon.burstAt,
-      damage: 0,
-      knockback: 0,
     }, now);
   }
 

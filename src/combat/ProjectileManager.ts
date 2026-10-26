@@ -5,7 +5,8 @@ import { isHitByWave } from '@/systems/EnemyVariants';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { Projectile } from '@/entities/Projectile';
-import { PROJECTILE_RADIUS } from '@/config/combatConfig';
+import { HERO_HURTBOX, PROJECTILE_RADIUS } from '@/config/combatConfig';
+import { isTouchingHeroBody } from '@/systems/Hurtbox';
 import { knockbackFrom, normalize } from '@/systems/CombatMath';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import type { CombatDecalKind } from '@/config/dressingConfig';
@@ -56,7 +57,9 @@ export class ProjectileManager {
     });
     for (const member of party.members) {
       scene.physics.add.overlap(member, this.group, (_player, projectile) => {
-        if (projectile instanceof Projectile && !this.waves.has(projectile)) this.handlePlayerOverlap(projectile, member);
+        // Prostokąt fizyki 24×24 to tylko zgrubny test — trafia dopiero dotknięcie tułowia (krok 110).
+        if (!(projectile instanceof Projectile) || this.waves.has(projectile)) return;
+        if (isTouchingHeroBody(projectile, PROJECTILE_RADIUS, member)) this.handlePlayerOverlap(projectile, member);
       });
     }
   }
@@ -93,7 +96,7 @@ export class ProjectileManager {
       if (!wave || !velocity) continue;
       // Fala znika na pierwszym trafionym bohaterze (co-op: drugi stoi za nim bezpiecznie).
       for (const member of this.party.living) {
-        if (child.active && isHitByWave(child, velocity, wave, member, member.radius)) this.handlePlayerOverlap(child, member);
+        if (child.active && isHitByWave(child, velocity, wave, member, HERO_HURTBOX.body.radius)) this.handlePlayerOverlap(child, member);
       }
     }
   }

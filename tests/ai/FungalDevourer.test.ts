@@ -7,7 +7,8 @@ import { RoomKind, TileType } from '@/core/dungeonTypes';
 import { createRng } from '@/core/random';
 import { FUNGAL_DEVOURER as DEVOURER, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { ENEMY_SCALING } from '@/config/combatConfig';
-import { PLAYER_BASE_STATS, PLAYER_SIZE } from '@/config/gameConfig';
+import { PLAYER_BASE_STATS } from '@/config/gameConfig';
+import { HERO_HURTBOX } from '@/config/combatConfig';
 import { planLarders } from '@/dungeon/LarderPlanner';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { sampleFloors } from '../helpers/floors';
@@ -164,7 +165,8 @@ describe('ciosy Pożeracza', () => {
   });
 
   it('balans: uważny gracz przy Pożeraczu zdąży wyjść ze strefy tasaka (także po wściekłości)', () => {
-    const r = PLAYER_SIZE / 2;
+    // Strefa łapie ślad stóp (krok 110), nie połowę ciała fizycznego.
+    const r = HERO_HURTBOX.ground.radius;
     const fromCenter = DEVOURER.engageDistance - DEVOURER.cleave.reach;
     const escape = DEVOURER.cleave.radius + r - fromCenter;
     const time = DEVOURER.cleave.telegraphMs * DEVOURER.enrage.telegraphMultiplier - 200;

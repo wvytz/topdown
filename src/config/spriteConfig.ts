@@ -1213,6 +1213,46 @@ export const SHIELD_CHARGE_VISUAL = {
   textColor: '#9fb4ff',
 } as const;
 
+/**
+ * Telegraf strefy obrażeń (krok 110): czerwony brzeg leży w całości wewnątrz strefy, a tuż za nim ciemny obrys
+ * w kolorze obrysu postaci — granica czerwień/ciemność to dokładny zasięg, czytelny też na czerwonym bazalcie
+ * Piekła. Wypełnienie rośnie od środka do brzegu; przez ostatnie `warnMs` brzeg miga jasno (zaraz uderzy).
+ */
+export const AREA_TELEGRAPH_VISUAL = {
+  color: 0xff4040,
+  outline: 0x1b1a22,
+  outlineAlpha: 0.7,
+  edgeAlpha: 0.9,
+  fillAlpha: 0.14,
+  progressAlpha: 0.32,
+  warnMs: 180,
+  /** Takt migania brzegu przed uderzeniem (skokowo, jak animacje). */
+  warnBlinkMs: 60,
+  warnColor: 0xfff2c0,
+  /** Na ile kawałków dzielimy brzeg, szukając części zasłoniętych przez sąsiednie koła ataku. */
+  outlineSegments: 48,
+} as const;
+
+/**
+ * Wybuch strefy obrażeń (krok 110, zamiast rozmytego błysku): kilka klatek skokowo, wszystko w promieniu
+ * strefy — błysk do samego brzegu, potem ogień, pierścień fali i iskry. Rysunek nigdy nie wychodzi poza
+ * zasięg obrażeń, więc wybuch pokazuje, kogo trafił.
+ */
+export const BLAST_VISUAL = {
+  frameMs: 60,
+  /** Kolejne klatki: wypełnienie (kolor, alfa), pierścień brzegu (kolor, grubość, alfa), iskry (ile, alfa). */
+  frames: [
+    { fill: 0xfff2c0, fillAlpha: 0.6, ring: 0xffffff, ringWidth: 3, ringAlpha: 1, sparks: 0 },
+    { fill: 0xffa040, fillAlpha: 0.55, ring: 0xfff2c0, ringWidth: 3, ringAlpha: 0.95, sparks: 10 },
+    { fill: 0xd8402a, fillAlpha: 0.3, ring: 0xffa040, ringWidth: 2, ringAlpha: 0.8, sparks: 8 },
+    { fill: 0x5a1a14, fillAlpha: 0.18, ring: 0xd8402a, ringWidth: 1, ringAlpha: 0.55, sparks: 4 },
+  ],
+  sparkColor: 0xfff2c0,
+  /** Iskry (kwadraty `sparkSize` px) lecą od środka do `sparkReach` promienia. */
+  sparkSize: 2,
+  sparkReach: 0.92,
+} as const;
+
 /** Rozprysk kuli Czarodziejki (krok 50): pierścień w kolorze kul. */
 export const ORB_SPLASH_VISUAL = { color: 0x6ee7ff, alpha: 0.7, fillAlpha: 0.18, durationMs: 220 } as const;
 /** Ultimate (krok 98): napisy, poświata szału i tarczy, totem łucznika (placeholder geometryczny), wstrząs. */

@@ -17,6 +17,7 @@ import type { Player } from '@/entities/Player';
 import type { CeilingDrop, CeilingDropConfig } from '@/systems/CeilingDrops';
 import { CeilingDropPlanner, dropShadowRadius } from '@/systems/CeilingDrops';
 import { knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
+import { isCaughtByGroundArea } from '@/systems/Hurtbox';
 
 export interface CeilingDropDeps {
   readonly scene: Phaser.Scene;
@@ -113,7 +114,7 @@ export class CeilingDropManager {
     const { party, effects, onPlayerHit, enemies } = this.deps;
     effects.impact(drop.position.x, drop.position.y, drop.radius);
     for (const player of party.living) {
-      if (Math.hypot(player.x - drop.position.x, player.y - drop.position.y) > drop.radius + player.radius) continue;
+      if (!isCaughtByGroundArea(drop.position, drop.radius, player)) continue;
       const hit = { damage: drop.damage, knockback: knockbackFrom(drop.position, player, drop.knockback) };
       if (player.takeHit(hit, now)) onPlayerHit(player);
     }

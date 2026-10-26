@@ -273,6 +273,18 @@ export const ENEMY_SCALING: EnemyScalingConfig = {
 
 export const PROJECTILE_RADIUS = 4;
 
+/**
+ * Strefa trafienia bohatera (krok 110). Ciało fizyczne 24×24 zostaje do ruchu i ścian, a trafienia liczymy
+ * z tym, co gracz widzi:
+ * - `ground` — ślad stóp dla stref na ziemi (telegrafowane koła bossów, bomby, wybuchy): środek cienia pod
+ *   postacią (`offsetY` jak `groundShadow` bohaterów) i mały promień — trafia, gdy czerwień przykryje cień;
+ * - `body` — tułów dla pocisków w locie (postać ma ok. 16 px szerokości bez broni).
+ */
+export const HERO_HURTBOX = {
+  ground: { offsetY: 4, radius: 5 },
+  body: { radius: 8 },
+} as const;
+
 /** Zwykli wrogowie: pełne efekty, krótka odporność na ponowne ogłuszenie. */
 export const ENEMY_STATUS_RESISTANCE: StatusResistance = {
   stunMultiplier: 1,

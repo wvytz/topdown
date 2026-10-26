@@ -28,6 +28,8 @@ import type { Player } from '@/entities/Player';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { directionTo, distance, knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
 import { withHpMultiplier } from '@/systems/CoopBalance';
+import { isCaughtByGroundArea } from '@/systems/Hurtbox';
+import { drawZoneTelegraph } from '@/effects/AreaTelegraph';
 import { scaleEnemyForFloor } from '@/systems/EnemyScaling';
 import type { FloorModifierEffects } from '@/core/floorModifierTypes';
 import { applyFloorToEnemy } from '@/systems/FloorModifiers';
@@ -261,30 +263,26 @@ export class EnemyManager implements EnemyAttackHandler {
     }
   }
 
+  /** Strefa wybuchu bomby: ten sam telegraf co ataki bossów (krok 110), wypełnia się do lądowania. */
   private drawLandingZone(bomb: LobbedBomb, now: number): void {
-    const progress = Phaser.Math.Clamp((now - bomb.launchAt) / (bomb.landAt - bomb.launchAt), 0, 1);
-    this.drawZone(bomb.to, bomb.attack.blastRadius, progress, 0xff3b30);
-  }
-
-  private drawZone(at: Vector2, radius: number, progress: number, color: number): void {
-    this.telegraphs.lineStyle(2, color, 0.8).strokeCircle(at.x, at.y, radius);
-    this.telegraphs.fillStyle(color, 0.12).fillCircle(at.x, at.y, radius);
-    this.telegraphs.fillStyle(color, 0.3).fillCircle(at.x, at.y, radius * progress);
+    const zone = { center: bomb.to, radius: bomb.attack.blastRadius, telegraphStartAt: bomb.launchAt, impactAt: bomb.landAt };
+    drawZoneTelegraph(this.telegraphs, zone, now);
   }
 
   /** Wybuchy Wybuchowych elit: strefa wypełnia się, potem trafia bohaterów w promieniu. */
   private updateBlasts(now: number): void {
     const { party, effects } = this.deps;
-    const { radius, delayMs, knockback } = ELITE_CONFIG.volatile;
+    const { radius, knockback } = ELITE_CONFIG.volatile;
     this.blasts = this.blasts.filter((blast) => {
       if (now < blast.detonateAt) {
-        this.drawZone(blast.at, radius, (now - blast.startAt) / delayMs, ELITE_VISUAL.volatileZone);
+        const zone = { center: blast.at, radius, telegraphStartAt: blast.startAt, impactAt: blast.detonateAt, tint: ELITE_VISUAL.volatileZone };
+        drawZoneTelegraph(this.telegraphs, zone, now);
         return true;
       }
-      effects.impact(blast.at.x, blast.at.y, radius);
+      effects.blast(blast.at.x, blast.at.y, radius);
       this.deps.decals.add('splat', blast.at.x, blast.at.y);
       for (const player of party.living) {
-        if (distance(blast.at, player) > radius + player.radius) continue;
+        if (!isCaughtByGroundArea(blast.at, radius, player)) continue;
         const hit: Hit = { damage: blast.damage, knockback: knockbackFrom(blast.at, player, knockback) };
         if (player.takeHit(hit, now)) this.deps.onPlayerHit(player);
       }
@@ -308,9 +306,9 @@ export class EnemyManager implements EnemyAttackHandler {
     const { party, effects } = this.deps;
     bomb.sprite.destroy();
     bomb.shadow.destroy();
-    effects.impact(bomb.to.x, bomb.to.y, bomb.attack.blastRadius);
+    effects.blast(bomb.to.x, bomb.to.y, bomb.attack.blastRadius);
     for (const player of party.living) {
-      if (distance(bomb.to, player) > bomb.attack.blastRadius + player.radius) continue;
+      if (!isCaughtByGroundArea(bomb.to, bomb.attack.blastRadius, player)) continue;
       const hit: Hit = { damage: bomb.attack.damage, knockback: knockbackFrom(bomb.to, player, bomb.attack.knockback) };
       if (player.takeHit(hit, now)) this.deps.onPlayerHit(player);
     }

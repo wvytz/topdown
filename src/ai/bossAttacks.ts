@@ -485,11 +485,6 @@ export function webFlightProgress(web: WebShot, now: number): number | null {
   return (now - web.launchAt) / (web.landAt - web.launchAt);
 }
 
-/** Czy okrągły cel zostaje trafiony przez strefę (okręgi się przecinają). */
-export function isHitByAreaStrike(strike: AreaStrike, target: Vector2, targetRadius: number): boolean {
-  return Math.hypot(target.x - strike.center.x, target.y - strike.center.y) <= strike.radius + targetRadius;
-}
-
 /**
  * Czas od `now` do pierwszego „wybuchu” ataku: wystrzału fali, uderzenia strefy, pierwszego cienia
  * wylęgu, rzutu sieci albo wybicia do skoku.
