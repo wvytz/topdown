@@ -30,6 +30,10 @@ export interface BossDecision {
 }
 
 const STOP: MovementIntent = { x: 0, y: 0 };
+/** Wygładzanie prędkości celu (krok 111): udział nowej próbki. */
+const VELOCITY_SMOOTHING = 0.35;
+/** Skok celu szybszy niż to (px/s) to nie bieg, tylko zmiana celu (co-op, totem) albo teleport — zerujemy. */
+const VELOCITY_JUMP_PX_PER_S = 900;
 
 /**
  * Boss: uśpiony do wejścia gracza na arenę, potem cyklicznie wykonuje ataki ze wzoru (po kolei albo
@@ -52,6 +56,9 @@ export class BossBrain {
   private roared = false;
   /** Ataki ze wzoru wykonane we wściekłości — liczy serie kombinacji (krok 81). */
   private enragedAttacks = 0;
+  /** Śledzenie celu (krok 111): ostatnia pozycja i wygładzona prędkość — wyprzedzenie skoku i wyrzutu. */
+  private lastTarget: { readonly at: Vector2; readonly now: number } | null = null;
+  private targetVelocity: Vector2 = { x: 0, y: 0 };
 
   constructor(
     private readonly definition: BossDefinition,
@@ -92,7 +99,13 @@ export class BossBrain {
     if (this.phase === BossPhase.Fighting && Number.isFinite(this.nextAttackAt)) this.nextAttackAt += ms;
   }
 
+  /** Wygładzona prędkość celu (px/s). */
+  get trackedTargetVelocity(): Vector2 {
+    return this.targetVelocity;
+  }
+
   think(input: BossBrainInput): BossDecision {
+    this.trackTarget(input.target, input.now);
     const enraged = input.hpRatio <= this.definition.enrage.hpThreshold;
     const stand = (newAttack: BossAttackPlan | null): BossDecision => ({ move: STOP, speed: 0, newAttack, enraged });
     if (this.phase === BossPhase.Dormant) return stand(null);
@@ -161,6 +174,21 @@ export class BossBrain {
     return { move: directionTo(input.self, input.target), speed: this.speedFor(gap), newAttack: null, enraged };
   }
 
+  private trackTarget(target: Vector2, now: number): void {
+    const last = this.lastTarget;
+    this.lastTarget = { at: { x: target.x, y: target.y }, now };
+    if (!last || now <= last.now) return;
+    const dt = (now - last.now) / 1000;
+    const vx = (target.x - last.at.x) / dt;
+    const vy = (target.y - last.at.y) / dt;
+    if (Math.hypot(vx, vy) > VELOCITY_JUMP_PX_PER_S) {
+      this.targetVelocity = { x: 0, y: 0 };
+      return;
+    }
+    const k = VELOCITY_SMOOTHING;
+    this.targetVelocity = { x: this.targetVelocity.x + (vx - this.targetVelocity.x) * k, y: this.targetVelocity.y + (vy - this.targetVelocity.y) * k };
+  }
+
   /** Przerwa po ataku ze wzoru; we wściekłości w środku serii kombinacji tylko krótka luka (krok 81). */
   private restAfterAttack(enraged: boolean): number {
     const { restBetweenAttacksMs, enrage } = this.definition;
@@ -196,6 +224,7 @@ export class BossBrain {
       enraged,
       rng: this.rng,
       summonsAlive: input.summonsAlive ?? 0,
+      targetVelocity: this.targetVelocity,
       ...(input.braziers && { braziers: input.braziers }),
     });
   }

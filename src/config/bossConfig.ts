@@ -303,7 +303,7 @@ export const SPIDER_KING = {
  * z paczki właściciela): ciało dawnego władcy wieży przerośnięte grzybnią, głowa pęka w paszczę; hoduje
  * zarażonych w kokonach (spiżarnia) i je zjada — uczta leczy go i wzmacnia.
  * Ciosy (moje, do strojenia w teście): kąsanie z bliska (leczy go), szarża z kłapnięciem (skok),
- * zamach łapami (`cleave`, dawny tasak), zew spiżarni.
+ * zamach łapami (`cleave`, dawny tasak), zew spiżarni; od kroku 111 wyrzut zarodników i ślad grzybów za nim.
  */
 export const FUNGAL_DEVOURER = {
   id: BossId.FungalDevourer,
@@ -313,53 +313,88 @@ export const FUNGAL_DEVOURER = {
   radius: 28,
   color: 0x6a1e24,
   maxHp: 460,
-  // Wzmocnienie bossów (prośba właściciela): szybszy chód i sprint (gracz ma 200), czwarty cios — zgniecenie.
-  moveSpeed: 70,
-  sprint: { speed: 150, distance: 150 },
+  // Krok 111 (ocena właściciela: „zero wyzwania, za wolny, nie trafia”): szybszy chód i sprint (gracz ma 200),
+  // krótsze przerwy i telegrafy; skok, zamach i wyrzut celują tam, dokąd gracz biegnie (`lead`).
+  moveSpeed: 88,
+  sprint: { speed: 178, distance: 110 },
   engageDistance: 50,
-  openingDelayMs: 1200,
-  restBetweenAttacksMs: 1500,
-  pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Call, BossAttackKind.Slam],
+  openingDelayMs: 900,
+  restBetweenAttacksMs: 1050,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.SporeVolley, BossAttackKind.Call, BossAttackKind.Slam],
   patternOrder: PatternOrder.Shuffled,
   // Świta (krok 80): siewca (Kiter) — zarażonych z kokonów Pożeracz ma już ze spiżarni.
   retinue: { ...RETINUE_BASE, type: EnemyType.Kiter },
   // Kąsanie paszczą: szybkie, z bliska; trafienie leczy Pożeracza.
   lash: {
-    triggerRange: 62,
+    triggerRange: 66,
     reach: 34,
     radius: 30,
-    telegraphMs: 450,
-    recoveryMs: 400,
-    cooldownMs: 1300,
+    telegraphMs: 400,
+    recoveryMs: 350,
+    cooldownMs: 1000,
     damage: 12,
     knockback: 200,
     healOnHit: 12,
   },
-  // Szarża z kłapnięciem: doskok na miejsce gracza (mechanika królewskiego skoku).
+  // Szarża z kłapnięciem: doskok tam, dokąd gracz biegnie; lądowanie zostawia płat grzybów.
   leap: {
-    telegraphMs: 600,
-    flightMs: 400,
-    radius: 46,
+    telegraphMs: 520,
+    flightMs: 380,
+    radius: 50,
     damage: 15,
     knockback: 280,
-    recoveryMs: 500,
+    recoveryMs: 450,
+    lead: { ms: 420, maxPx: 90 },
+    leavesPatch: true,
   },
-  // Zamach łapami (do kroku 33 tasak): wolny, szeroki — uważny gracz zdąży uciec, a trafienie boli.
+  // Zamach łapami (do kroku 33 tasak): szeroki; krok 111 — drugi zamach krok dalej łapie cofającego się gracza.
   cleave: {
     reach: 42,
     radius: 46,
-    telegraphMs: 800,
-    recoveryMs: 600,
+    telegraphMs: 680,
+    recoveryMs: 500,
     damage: 22,
     knockback: 340,
+    lead: { ms: 250, maxPx: 50 },
+    followUp: { delayMs: 300, reach: 92, radius: 40 },
   },
   // Zgniecenie: Pożeracz wali łapami w ziemię — fala dookoła niego; karze stanie przy nim.
   slam: {
-    radius: 88,
-    telegraphMs: 850,
-    recoveryMs: 550,
+    radius: 92,
+    telegraphMs: 720,
+    recoveryMs: 450,
     damage: 18,
     knockback: 320,
+  },
+  // Wyrzut zarodników (krok 111): kara za trzymanie dystansu; każdy strąk zostawia płat grzybów.
+  sporeVolley: {
+    count: 3,
+    radius: 34,
+    flightMs: 520,
+    intervalMs: 160,
+    behindDistance: 64,
+    fanDeg: 80,
+    lead: { ms: 600, maxPx: 120 },
+    telegraphMs: 520,
+    recoveryMs: 400,
+    damage: 12,
+    knockback: 160,
+  },
+  // Ślad grzybów (krok 111, prośba właściciela): za Pożeraczem wyrastają trujące grzyby — odcinają drogi ucieczki.
+  trail: {
+    spacing: 30,
+    offsetY: 14,
+    maxPatches: 14,
+    enragedMaxPatches: 20,
+    enragedDurationMs: 9000,
+    patch: {
+      startRadius: 6,
+      maxRadius: 18,
+      spreadMs: 500,
+      durationMs: 6500,
+      poison: { tickDamage: 3, tickMs: 500, durationMs: 1200 },
+      slow: { pct: 0.35, durationMs: 350 },
+    },
   },
   call: {
     telegraphMs: 700,
@@ -638,6 +673,7 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.hook && { hook: { ...dmg(boss.hook)!, followUp: dmg(boss.hook.followUp)! } }),
     ...(boss.kindle && { kindle: dmg(boss.kindle) }),
     ...(boss.smoke && { smoke: dmg(boss.smoke) }),
+    ...(boss.sporeVolley && { sporeVolley: dmg(boss.sporeVolley) }),
     ...(boss.dog && {
       dog: {
         ...boss.dog,

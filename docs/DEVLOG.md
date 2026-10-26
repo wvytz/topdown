@@ -4449,6 +4449,33 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** wielkość śladu stóp (5 px) i tułowia (8 px), siła błysku wybuchu (60% alfy w pierwszej klatce), czas migania brzegu (180 ms).
 
+## Krok 111 — Grzybowy Pożeracz: szybszy, celny, wyrzut zarodników i ślad grzybów `#ocena` `#grzybowy-pozeracz` `#cmentarzysko` `#balans`
+
+**Ocena właściciela (26.10.2026):** „Grzybowy Pożeracz jest tragicznym bossem. Zero wyzwania. Jest za wolny. Nie trafia. Dołóż mu nowe umiejętności. Niech zostawia za sobą ślad grzybów.” Chwilę później: „Musimy tutaj też dodać jakieś dodatkowe animacje, ponieważ wygląda tragicznie. Ta scena.”
+
+**Przyczyny „nie trafia” (zbadane w kodzie):** skok i zamach celowały w miejsce gracza z chwili planu; gracz w ruchu był już daleko, zanim telegraf się skończył. Do tego wolny chód (70, sprint 150) i długie przerwy (1,5 s) — boss rzadko w ogóle stał przy graczu.
+
+**Co powstało (liczby w `config/bossConfig.ts` `FUNGAL_DEVOURER`):**
+- **Tempo:** chód 70 → 88, sprint 150 → 178 od 110 px (gracz ma 200), przerwa 1500 → 1050 ms, otwarcie 1200 → 900 ms; krótsze telegrafy: zamach 800 → 680, zgniecenie 850 → 720, skok 600 → 520, kąsanie 450 → 400 ms (odstęp 1300 → 1000).
+- **Wyprzedzenie celu** (`AimLead`, `aimPoint` w `ai/bossAttacks.ts`): mózg bossa śledzi prędkość celu (wygładzona, skok celu — zmiana bohatera w co-opie, totem — zeruje ją). Skok ląduje tam, gdzie gracz będzie za 420 ms (najwyżej 90 px dalej), zamach celuje 250 ms naprzód. Innych bossów to nie dotyczy (pole opcjonalne).
+- **Podwójny zamach:** drugi cios łapami 300 ms po pierwszym, krok dalej (środek 92 px, promień 40); jego telegraf pojawia się w połowie pierwszego. Kto cofa się prosto, ucieka (test balansu), kto cofnął się o krok — dostaje.
+- **Wyrzut zarodników** (`BossAttackKind.SporeVolley`, nowy cios ze wzoru): 3 strąki (we wściekłości 4) lecą łukiem — pierwszy tam, dokąd biegnie gracz (600 ms naprzód), reszta w wachlarzu dalej za nim, co 160 ms. Lądowanie rani (strefa 34 px) i zostawia płat grzybów. Kara za trzymanie dystansu. Strąk poza podłogą areny dosuwany w stronę gracza.
+- **Ślad grzybów** (`systems/FungalTrail.ts`, `trail`): co 30 px drogi pod stopami Pożeracza wyrasta płat grzybów (promień 6 → 18 px w 0,5 s, leży 6,5 s; we wściekłości 9 s). Najwyżej 14 płatów (we wściekłości 20), najstarszy znika. W płacie trucizna (3 co 0,5 s) i spowolnienie 35% — teren, więc chroni tylko dash. Skok też zostawia płat w miejscu lądowania.
+- **Hitbox zgodny z rysunkiem (krok 110):** płat grzybów łapie ślad stóp bohatera (`isCaughtByGroundArea`), a rysunek maty kończy się dokładnie na promieniu płatu (brzeg świeci sokiem). Sieć Matki Pająków i grzybnia Króla bez zmian (środek postaci).
+
+**Animacje i wygląd sceny** (`tools/devourer_sprites.py`, bez ręcznych poprawek):
+- arkusz Pożeracza: nowe klatki 16–19 **wyrzut** (odchylenie, nabrzmienie soku, strąk w paszczy, chmura zarodników) i 20–23 **skok** (przysiad, głęboki przysiad, wybicie, lot z rozłożonymi łapami — trzyma się do lądowania); dotąd skok był bez animacji;
+- `mushroom-trail.png`: płat grzybów — rozrost, puls soku, **więdnięcie** przez ostatnie 0,6 s (gracz widzi, że płat zaraz zniknie);
+- `spore-pod.png`: strąk w locie (puls);
+- wybuch strąka w barwach soku (`SPORE_BLAST_VISUAL`, ten sam układ klatek co wybuch z kroku 110) i rozprysk soku;
+- zarodniki unoszą się z grzbietu Pożeracza (we wściekłości dwa razy gęściej; czysto wizualnie).
+
+**Testy:** `tests/ai/FungalDevourer.test.ts` (wzór, wyprzedzenie skoku z limitem, mózg śledzący bieg gracza, zerowanie przy skoku celu, podwójny zamach i jego balans, wyrzut zarodników, skalowanie), `tests/systems/fungalTrail.test.ts` (odstęp, stojący boss, wściekłość, skok bez śladu, brzeg płatu vs ślad stóp). Build zielony.
+
+**Przeglądarka (Playwright, `?hero=archer&seed=3&floor=4&boss=1`, gracz nieśmiertelny, chodzi w kółko):** wszystkie ciosy w użyciu, ślad za bossem widoczny (turkusowy brzeg na posadzce), trucizna z płatu działa, strąki lądują w arenie, wściekłość z 4 strąkami; bez błędów w konsoli. Smoke wszystkimi bohaterami.
+
+**Czeka na ocenę właściciela:** czy teraz jest wyzwanie (tempo, wyprzedzenie, gęstość śladu), wygląd grzybów i nowych animacji. Gdyby było za ciężko: najpierw krótszy czas płatów albo mniejsze wyprzedzenie skoku.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4545,7 +4572,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Domyślny pocisk wroga** (pomarańczowe kółko z `BootScene`): obecnie nieużywany — mag i boss mają własne sprite'y. Zostaje jako zabezpieczenie.
 - Łupy, kapliczka, pocisk gracza i znacznik celowania: zrobione w kroku 20.
 - **Boss „Matka Pająków”:** wdrożony w kroku 22, klatki śmierci w kroku 24.
-- **Strażnik (Sludge King) i Król Pająków:** animacje śmierci zrobione w kroku 40. Grzybowy Pożeracz nadal ginie bez animacji.
+- **Strażnik (Sludge King) i Król Pająków:** animacje śmierci zrobione w kroku 40. Grzybowy Pożeracz nadal ginie bez animacji (krok 111 dodał mu animacje skoku i wyrzutu zarodników).
 
 **4. Odłożone — tylko za zgodą właściciela**
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.

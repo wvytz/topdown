@@ -1,5 +1,7 @@
 import type {
+  AimLead,
   AreaStrike,
+  FungalPatchDefinition,
   BossAttackPlan,
   BossLeap,
   ThrownObject,
@@ -10,6 +12,7 @@ import type {
 import { BossAttackKind } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import type { Vector2 } from '@/core/types';
+import { isCaughtByGroundArea } from '@/systems/Hurtbox';
 
 export interface AttackPlanContext {
   readonly kind: BossAttackKind;
@@ -23,6 +26,8 @@ export interface AttackPlanContext {
   readonly summonsAlive?: number;
   /** Paleniska areny (Kat Otchłani) — oddech zapala je wszystkie. */
   readonly braziers?: readonly Vector2[];
+  /** Prędkość celu (px/s) z ostatnich klatek — wyprzedzenie ataków z `lead` (krok 111); brak = cel stoi. */
+  readonly targetVelocity?: Vector2;
 }
 
 /** Buduje plan ataku (strefy, fale pocisków, czasy). Czysta funkcja — poza RNG nie ma stanu. */
@@ -60,6 +65,8 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planKindle(ctx);
     case BossAttackKind.Smoke:
       return planSmoke(ctx);
+    case BossAttackKind.SporeVolley:
+      return planSporeVolley(ctx);
     case BossAttackKind.Feast:
       throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }
@@ -67,9 +74,16 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
 
 const EMPTY = { strikes: [], bursts: [], spawns: [], webs: [], leap: null, throws: [] } as const;
 
-/** Strefa przed bossem: środek `reach` px w stronę gracza. */
-function frontStrike(ctx: AttackPlanContext, reach: number, radius: number, impactAt: number, damage: number, knockback: number): AreaStrike {
-  const dir = towardTarget(ctx);
+/** Strefa przed bossem: środek `reach` px w kierunku `dir` (domyślnie w stronę gracza). */
+function frontStrike(
+  ctx: AttackPlanContext,
+  reach: number,
+  radius: number,
+  impactAt: number,
+  damage: number,
+  knockback: number,
+  dir: Vector2 = towardTarget(ctx),
+): AreaStrike {
   return {
     center: { x: ctx.self.x + dir.x * reach, y: ctx.self.y + dir.y * reach },
     radius,
@@ -84,8 +98,90 @@ function frontStrike(ctx: AttackPlanContext, reach: number, radius: number, impa
 function planCleave(ctx: AttackPlanContext): BossAttackPlan {
   const cleave = required(ctx.definition.cleave, BossAttackKind.Cleave, ctx);
   const impactAt = ctx.now + telegraph(ctx, cleave.telegraphMs);
-  const strike = frontStrike(ctx, cleave.reach, cleave.radius, impactAt, cleave.damage, cleave.knockback);
-  return { kind: BossAttackKind.Cleave, ...EMPTY, strikes: [strike], endsAt: impactAt + cleave.recoveryMs };
+  // Krok 111: zamach w stronę, w którą gracz ucieka (wyprzedzenie), a nie tam, gdzie stał.
+  const dir = cleave.lead ? towardPoint(ctx.self, aimPoint(ctx, cleave.lead)) : towardTarget(ctx);
+  const strikes = [frontStrike(ctx, cleave.reach, cleave.radius, impactAt, cleave.damage, cleave.knockback, dir)];
+  const { followUp } = cleave;
+  if (followUp) {
+    // Drugi zamach: telegraf od połowy pierwszego, uderza `delayMs` po nim, krok dalej w tym samym kierunku.
+    const second = frontStrike(ctx, followUp.reach, followUp.radius, impactAt + followUp.delayMs, cleave.damage, cleave.knockback, dir);
+    strikes.push({ ...second, telegraphStartAt: impactAt - telegraph(ctx, cleave.telegraphMs) / 2 });
+  }
+  const lastImpactAt = strikes.at(-1)!.impactAt;
+  return { kind: BossAttackKind.Cleave, ...EMPTY, strikes, endsAt: lastImpactAt + cleave.recoveryMs };
+}
+
+/**
+ * Wyprzedzenie celu (krok 111): miejsce gracza za `lead.ms` przy obecnej prędkości, najwyżej `lead.maxPx` dalej.
+ * Bez prędkości (cel stoi, totem) — sam cel.
+ */
+export function aimPoint(ctx: Pick<AttackPlanContext, 'target' | 'targetVelocity'>, lead: AimLead): Vector2 {
+  const v = ctx.targetVelocity;
+  if (!v) return ctx.target;
+  let dx = (v.x * lead.ms) / 1000;
+  let dy = (v.y * lead.ms) / 1000;
+  const len = Math.hypot(dx, dy);
+  if (len > lead.maxPx) {
+    dx = (dx / len) * lead.maxPx;
+    dy = (dy / len) * lead.maxPx;
+  }
+  return { x: ctx.target.x + dx, y: ctx.target.y + dy };
+}
+
+/** Płat grzybów (krok 111) w punkcie `at`, wyrasta w `landAt` (bez lotu — telegrafem jest strąk albo sam boss). */
+export function fungalPatch(at: Vector2, patch: FungalPatchDefinition, landAt: number, durationMs = patch.durationMs): WebShot {
+  return {
+    from: at,
+    to: at,
+    telegraphStartAt: landAt,
+    launchAt: landAt,
+    landAt,
+    startRadius: patch.startRadius,
+    maxRadius: patch.maxRadius,
+    spreadMs: patch.spreadMs,
+    expiresAt: landAt + durationMs,
+    slow: patch.slow,
+    look: 'mushrooms',
+    status: { poison: patch.poison },
+  };
+}
+
+/**
+ * Wyrzut zarodników (Pożeracz, krok 111): pierwszy strąk tam, dokąd biegnie gracz, kolejne w wachlarzu
+ * `behindDistance` za tym miejscem (droga ucieczki), co `intervalMs`. Każdy rani przy lądowaniu
+ * i zostawia płat grzybów ze śladu.
+ */
+function planSporeVolley(ctx: AttackPlanContext): BossAttackPlan {
+  const volley = required(ctx.definition.sporeVolley, BossAttackKind.SporeVolley, ctx);
+  const patch = ctx.definition.trail?.patch;
+  const firstLandAt = ctx.now + telegraph(ctx, volley.telegraphMs) + volley.flightMs;
+  const count = volley.count + (ctx.enraged ? 1 : 0);
+  const aim = aimPoint(ctx, volley.lead);
+  const away = Math.atan2(aim.y - ctx.self.y, aim.x - ctx.self.x);
+  const fan = (volley.fanDeg * Math.PI) / 180;
+  const others = count - 1;
+  const strikes: AreaStrike[] = [];
+  const throws: ThrownObject[] = [];
+  const webs: WebShot[] = [];
+  for (let i = 0; i < count; i++) {
+    const angle = others <= 1 ? away : away - fan / 2 + (fan * (i - 1)) / (others - 1);
+    const center =
+      i === 0 ? aim : { x: aim.x + Math.cos(angle) * volley.behindDistance, y: aim.y + Math.sin(angle) * volley.behindDistance };
+    const landAt = firstLandAt + i * volley.intervalMs;
+    strikes.push({
+      center,
+      radius: volley.radius,
+      telegraphStartAt: ctx.now,
+      impactAt: landAt,
+      damage: volley.damage,
+      knockback: volley.knockback,
+      look: 'spores',
+    });
+    throws.push({ look: 'spore', from: ctx.self, to: center, launchAt: landAt - volley.flightMs, landAt });
+    if (patch) webs.push(fungalPatch(center, patch, landAt));
+  }
+  const lastLandAt = strikes.at(-1)!.impactAt;
+  return { kind: BossAttackKind.SporeVolley, ...EMPTY, strikes, throws, webs, endsAt: lastLandAt + volley.recoveryMs };
 }
 
 /**
@@ -302,16 +398,19 @@ function planLeap(ctx: AttackPlanContext): BossAttackPlan {
   const leapDef = required(ctx.definition.leap, BossAttackKind.Leap, ctx);
   const launchAt = ctx.now + telegraph(ctx, leapDef.telegraphMs);
   const landAt = launchAt + leapDef.flightMs;
-  const leap: BossLeap = { from: ctx.self, to: ctx.target, telegraphStartAt: ctx.now, launchAt, landAt };
+  const to = leapDef.lead ? aimPoint(ctx, leapDef.lead) : ctx.target;
+  const leap: BossLeap = { from: ctx.self, to, telegraphStartAt: ctx.now, launchAt, landAt };
+  const patch = leapDef.leavesPatch ? ctx.definition.trail?.patch : undefined;
   const strike: AreaStrike = {
-    center: ctx.target,
+    center: to,
     radius: leapDef.radius,
     telegraphStartAt: ctx.now,
     impactAt: landAt,
     damage: leapDef.damage,
     knockback: leapDef.knockback,
   };
-  return { kind: BossAttackKind.Leap, strikes: [strike], bursts: [], spawns: [], webs: [], leap, throws: [], endsAt: landAt + leapDef.recoveryMs };
+  const webs = patch ? [fungalPatch(to, patch, landAt)] : [];
+  return { kind: BossAttackKind.Leap, strikes: [strike], bursts: [], spawns: [], webs, leap, throws: [], endsAt: landAt + leapDef.recoveryMs };
 }
 
 /**
@@ -340,8 +439,12 @@ function planLash(ctx: AttackPlanContext): BossAttackPlan {
 
 /** Kierunek boss → gracz (jednostkowy); gracz w miejscu bossa: w dół. */
 function towardTarget(ctx: AttackPlanContext): { x: number; y: number } {
-  const dx = ctx.target.x - ctx.self.x;
-  const dy = ctx.target.y - ctx.self.y;
+  return towardPoint(ctx.self, ctx.target);
+}
+
+function towardPoint(from: Vector2, to: Vector2): { x: number; y: number } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
   const len = Math.hypot(dx, dy);
   return len === 0 ? { x: 0, y: 1 } : { x: dx / len, y: dy / len };
 }
@@ -473,10 +576,15 @@ export function webPatchRadius(web: WebShot, now: number): number {
   return web.startRadius + (web.maxRadius - web.startRadius) * t;
 }
 
-/** Czy punkt (środek gracza) jest w plamie sieci. */
+/**
+ * Czy bohater (środek postaci) stoi w plamie. Sieć i grzybnia liczą środek postaci; grzyby Pożeracza (krok 111)
+ * łapią ślad stóp, jak strefy z kroku 110 — rysunek płatu kończy się na granicy zasięgu.
+ */
 export function isInWebPatch(web: WebShot, point: Vector2, now: number): boolean {
   const r = webPatchRadius(web, now);
-  return r > 0 && Math.hypot(point.x - web.to.x, point.y - web.to.y) <= r;
+  if (r <= 0) return false;
+  if (web.look === 'mushrooms') return isCaughtByGroundArea(web.to, r, point);
+  return Math.hypot(point.x - web.to.x, point.y - web.to.y) <= r;
 }
 
 /** Postęp lotu kłębu sieci (0..1); poza lotem null. */

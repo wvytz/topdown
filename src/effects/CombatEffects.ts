@@ -4,6 +4,15 @@ import { AREA_TELEGRAPH_VISUAL, BLAST_VISUAL, NOVA_VISUAL, ORB_SPLASH_VISUAL } f
 import { exposedArcs } from '@/systems/AreaOutline';
 import type { OutlineCircle } from '@/systems/AreaOutline';
 
+/** Wygląd wybuchu: domyślny ogień (`BLAST_VISUAL`) albo inna paleta o tym samym układzie (zarodniki, krok 111). */
+type BlastVisual = {
+  readonly frameMs: number;
+  readonly frames: readonly { readonly fill: number; readonly fillAlpha: number; readonly ring: number; readonly ringWidth: number; readonly ringAlpha: number; readonly sparks: number }[];
+  readonly sparkColor: number;
+  readonly sparkSize: number;
+  readonly sparkReach: number;
+};
+
 /** Krótkie, czysto wizualne efekty walki (bez wpływu na logikę). */
 export class CombatEffects {
   constructor(private readonly scene: Phaser.Scene) {}
@@ -38,9 +47,9 @@ export class CombatEffects {
    * Wybuch strefy obrażeń (krok 110): klatki skokowo co `frameMs` — biały błysk do samego brzegu, ogień,
    * pierścień fali i iskry. Wszystko w promieniu `radius`, czyli dokładnie tam, gdzie wybuch rani.
    * `group` — strefy tego samego ataku (hak, smuga): pierścień tylko na zewnętrznym brzegu ich sumy.
+   * `v` — paleta wybuchu (krok 111: strąki zarodników Pożeracza wybuchają sokiem).
    */
-  blast(x: number, y: number, radius: number, group: readonly OutlineCircle[] = []): void {
-    const v = BLAST_VISUAL;
+  blast(x: number, y: number, radius: number, group: readonly OutlineCircle[] = [], v: BlastVisual = BLAST_VISUAL): void {
     const g = this.scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash);
     const cx = Math.round(x);
     const cy = Math.round(y);

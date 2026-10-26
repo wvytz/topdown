@@ -26,7 +26,9 @@ import {
   BOSS_PROJECTILE_VISUAL,
   BOSS_PATCH_VISUALS,
   BOSS_WEB_VISUAL,
+  DEVOURER_FX_VISUAL,
   KING_COCOON_VISUAL,
+  SPORE_BLAST_VISUAL,
   LARDER_VISUAL,
   SPIDERLING_DROP_VISUAL,
   THRONE_ROOM_VISUAL,
@@ -34,6 +36,7 @@ import {
   SPRITE_SHEETS,
   animationKey,
 } from '@/config/spriteConfig';
+import type { SpriteSheetId } from '@/config/spriteConfig';
 import { isInWebPatch, leapProgress, webFlightProgress } from '@/ai/bossAttacks';
 import { CeilingFallView } from '@/combat/CeilingFallView';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
@@ -66,6 +69,7 @@ import { resolvePlayerShot, shotTouches } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
 import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
+import { FungalTrail } from '@/systems/FungalTrail';
 import type { EnemyType } from '@/core/combatTypes';
 import { fireRingRadius, reflectDirection } from '@/systems/Shield';
 import { arenaBrazierSpots } from '@/dungeon/BrazierPlanner';
@@ -122,6 +126,10 @@ interface ThrownWeb {
   readonly marker: Phaser.GameObjects.Graphics;
   readonly ball: Phaser.GameObjects.Sprite;
   patch: Phaser.GameObjects.Sprite | null;
+  /** Płat ze śladu grzybów (krok 111) — liczy się do limitu śladu. */
+  readonly trail?: boolean;
+  /** Grzyby już więdną (klatki końcowe). */
+  withering?: boolean;
 }
 
 /** Pajączek z wylęgu (krok 26): cień pojawia się w `telegraphStartAt` — dopiero wtedy znamy miejsce. */
@@ -220,6 +228,9 @@ export class BossFight {
   /** Ostatnia chwila `update` — zabójstwa psa liczą od niej czas powrotu. */
   private lastNow = 0;
   private lastUntouchableTextAt = -Infinity;
+  /** Ślad grzybów za Pożeraczem (krok 111). */
+  private readonly trail: FungalTrail | null;
+  private nextMoteAt = 0;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -235,6 +246,7 @@ export class BossFight {
     this.boss = boss;
     this.retinue = definition.retinue && deps.spawnHelper ? new RetinueSchedule(definition.retinue) : null;
     this.retinueRng = createRng(deriveSeed(deps.floor.seed, RETINUE_SEED_SALT));
+    this.trail = definition.trail ? new FungalTrail(definition.trail) : null;
 
     deps.scene.physics.add.collider(boss, deps.walls);
     for (const member of deps.party.members) deps.scene.physics.add.collider(member, boss);
@@ -347,6 +359,7 @@ export class BossFight {
     this.updateRetinue(boss, now);
     this.updatePresence(boss);
     this.updateLeap(boss, now);
+    this.updateTrail(boss, now);
     this.updateDog(boss, now);
 
     this.updateStrikes(now);
@@ -515,7 +528,21 @@ export class BossFight {
     // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
     const planned = plan.leap;
     const landing = planned ? this.startLeap(planned) : null;
-    const strikes = plan.strikes.map((strike) => (landing && strike.center === planned?.to ? { ...strike, center: landing } : strike));
+    // Strąki zarodników (krok 111) poza podłogą areny dosuwamy w stronę gracza — strefa, strąk i grzyby razem.
+    const moved = new Map<Vector2, Vector2>();
+    if (landing && planned) moved.set(planned.to, landing);
+    const player = this.focus();
+    for (const strike of plan.strikes) {
+      if (strike.look !== 'spores') continue;
+      moved.set(strike.center, this.clampToward(strike.center, { x: player.x, y: player.y }, (p) => this.isArenaFloor(p)));
+    }
+    const strikes = plan.strikes.map((strike) => ({ ...strike, center: moved.get(strike.center) ?? strike.center }));
+    // Płat grzybów ze skoku i strąków wyrasta w faktycznym miejscu lądowania.
+    const webs = plan.webs.map((web) => {
+      const to = moved.get(web.to);
+      return to ? { ...web, from: to, to } : web;
+    });
+    const throws = plan.throws.map((thrown) => ({ ...thrown, to: moved.get(thrown.to) ?? thrown.to }));
     for (const strike of strikes) {
       const group = strikes.filter((other) => other.impactAt === strike.impactAt && other.telegraphStartAt === strike.telegraphStartAt);
       this.strikes.push({ strike, group, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
@@ -524,8 +551,8 @@ export class BossFight {
       this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     for (const spawn of plan.spawns) this.spawns.push({ spawn, position: null, view: null });
-    for (const thrown of plan.throws) {
-      const { sheet, animation } = thrown.look === 'can' ? SMOKE_VISUAL.can : KING_COCOON_VISUAL;
+    for (const thrown of throws) {
+      const { sheet, animation } = thrownVisual(thrown);
       const sprite = scene.add
         .sprite(thrown.from.x, thrown.from.y, SPRITE_SHEETS[sheet].key)
         .setDepth(RENDER_DEPTH.projectile)
@@ -533,7 +560,7 @@ export class BossFight {
         .play(animationKey(sheet, animation));
       this.throws.push({ thrown, sprite });
     }
-    for (const shot of plan.webs) this.throwWeb(shot);
+    for (const shot of webs) this.throwWeb(shot);
     if (plan.feast) this.pendingFeast = plan.feast;
     if (plan.release) {
       // Zew: drżą kokony wybrane już teraz (gracz widzi, które pękną).
@@ -746,8 +773,49 @@ export class BossFight {
     return p;
   }
 
+  /**
+   * Ślad grzybów (krok 111): co kilkadziesiąt px drogi Pożeracza pod jego stopami wyrasta płat; najstarsze
+   * znikają ponad limit. W locie skoku i poza walką droga się nie liczy. Do tego zarodniki unoszące się z grzbietu.
+   */
+  private updateTrail(boss: Boss, now: number): void {
+    const trail = this.trail;
+    if (!trail) return;
+    if (!boss.isFighting || this.leap) {
+      trail.reset();
+      return;
+    }
+    this.emitMotes(boss, now);
+    const shot = trail.step({ x: boss.x, y: boss.y }, now, boss.isEnraged);
+    if (!shot || !this.isArenaFloor(shot.to)) return;
+    this.throwWeb(shot, true);
+    const trailWebs = this.webs.filter((web) => web.trail);
+    for (const web of trailWebs.slice(0, Math.max(0, trailWebs.length - trail.maxPatches(boss.isEnraged)))) {
+      this.removeWeb(web);
+      this.webs.splice(this.webs.indexOf(web), 1);
+    }
+  }
+
+  /** Zarodniki z grzbietu Pożeracza: kropki soku unoszą się i gasną (czysto wizualnie). */
+  private emitMotes(boss: Boss, now: number): void {
+    if (now < this.nextMoteAt) return;
+    const { motes } = DEVOURER_FX_VISUAL;
+    this.nextMoteAt = now + (boss.isEnraged ? motes.enragedEveryMs : motes.everyMs);
+    const x = Math.round(boss.x + Phaser.Math.Between(-motes.spread, motes.spread));
+    const y = Math.round(boss.y + Phaser.Math.Between(-motes.spread / 2, motes.spread / 2));
+    const color = motes.colors[Phaser.Math.Between(0, motes.colors.length - 1)] ?? motes.colors[0];
+    const mote = this.deps.scene.add.rectangle(x, y, 2, 2, color).setDepth(RENDER_DEPTH.slash);
+    this.deps.scene.tweens.add({
+      targets: mote,
+      y: y - motes.rise,
+      x: x + Phaser.Math.Between(-4, 4),
+      alpha: 0,
+      duration: motes.lifeMs,
+      onComplete: () => mote.destroy(),
+    });
+  }
+
   /** Miejsce lądowania poza areną (gracz przy ścianie) dosuwamy w stronę gracza, aż trafi na podłogę areny. */
-  private throwWeb(planned: WebShot): void {
+  private throwWeb(planned: WebShot, trail = false): void {
     const { scene } = this.deps;
     const player = this.focus();
     const to = this.clampToward(planned.to, { x: player.x, y: player.y }, (p) => this.isArenaFloor(p));
@@ -762,6 +830,7 @@ export class BossFight {
         .setVisible(false)
         .play(animationKey(ball.sheet, ball.animation)),
       patch: null,
+      ...(trail && { trail }),
     });
   }
 
@@ -804,6 +873,7 @@ export class BossFight {
         return true;
       }
       if (!web.patch) this.landWeb(web);
+      this.witherPatch(web, now);
       for (const player of party.members) {
         if (!isInWebPatch(shot, player, now)) continue;
         player.applyTerrainSlow(shot.slow, now);
@@ -820,14 +890,14 @@ export class BossFight {
       if (now < thrown.launchAt) return true;
       if (now < thrown.landAt) {
         const t = (now - thrown.launchAt) / (thrown.landAt - thrown.launchAt);
-        const lift = Math.sin(Math.PI * t) * (thrown.look === 'can' ? SMOKE_VISUAL.can.arcHeight : KING_COCOON_VISUAL.arcHeight);
+        const lift = Math.sin(Math.PI * t) * thrownVisual(thrown).arcHeight;
         sprite
           .setVisible(true)
           .setPosition(Math.round(thrown.from.x + (thrown.to.x - thrown.from.x) * t), Math.round(thrown.from.y + (thrown.to.y - thrown.from.y) * t - lift));
         return true;
       }
-      if (thrown.look === 'can') {
-        // Puszka znika w chwili uderzenia strefy (`strikes` rani w tej samej klatce).
+      if (thrown.look === 'can' || thrown.look === 'spore') {
+        // Puszka i strąk znikają w chwili uderzenia strefy (`strikes` rani w tej samej klatce).
         sprite.destroy();
         return false;
       }
@@ -852,6 +922,14 @@ export class BossFight {
     sprite.play({ key: growKey, frameRate: (growFrames * 1000) / shot.spreadMs });
     sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.play(animationKey(patch.sheet, patch.shimmer)));
     web.patch = sprite;
+  }
+
+  /** Grzyby więdną przez ostatnie `witherMs` przed zniknięciem płatu (krok 111). */
+  private witherPatch(web: ThrownWeb, now: number): void {
+    const visual = BOSS_PATCH_VISUALS[web.shot.look ?? 'web'];
+    if (web.withering || !web.patch || !('wither' in visual) || now < web.shot.expiresAt - visual.witherMs) return;
+    web.withering = true;
+    web.patch.play(animationKey(visual.sheet, visual.wither));
   }
 
   private removeWeb(web: ThrownWeb): void {
@@ -909,7 +987,11 @@ export class BossFight {
       }
       gfx.destroy();
       if (strike.look === 'smoke') this.playSmokeBurst(strike);
-      else {
+      else if (strike.look === 'spores') {
+        // Strąk zarodników (krok 111): wybuch w kolorach soku, rozprysk soku; płat grzybów wyrasta w tej chwili.
+        effects.blast(strike.center.x, strike.center.y, strike.radius, [], SPORE_BLAST_VISUAL);
+        this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, strike.center.x, strike.center.y);
+      } else {
         effects.blast(strike.center.x, strike.center.y, strike.radius, group);
         this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       }
@@ -1262,6 +1344,13 @@ export class BossFight {
     this.deps.decals.add(decal, position.x, position.y);
     this.deps.onDefeated(position);
   }
+}
+
+/** Sprite i wysokość łuku rzucanego przedmiotu: kokon Króla, puszka Barona, strąk Pożeracza. */
+function thrownVisual(thrown: ThrownObject): { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number } {
+  if (thrown.look === 'can') return SMOKE_VISUAL.can;
+  if (thrown.look === 'spore') return DEVOURER_FX_VISUAL.pod;
+  return KING_COCOON_VISUAL;
 }
 
 /** Miejsce lądowania sieci: cienki czerwony obrys pełnego zasięgu i znacznik środka. */
