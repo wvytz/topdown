@@ -72,3 +72,14 @@ export const GUARANTEED_VIEW_HALF = {
   x: GAME_WIDTH / (2 * CAMERA_CONFIG.zoom) - CAMERA_CONFIG.deadzoneWidth / 2,
   y: GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom) - CAMERA_CONFIG.deadzoneHeight / 2,
 } as const;
+
+/**
+ * Krok fizyki (krok 114): klatkę dzielimy na równe kroki nie dłuższe niż `maxStepMs`, zamiast stałych 60 kroków/s Phasera.
+ * Przy stałym kroku monitor 120/144 Hz pokazywał co drugą klatkę bez ruchu (zacinanie); 60 Hz — bez zmian (1 krok na klatkę).
+ */
+export const PHYSICS_STEP_CONFIG = {
+  /** Najdłuższy krok fizyki (ms) — jak dotąd 1/60 s, więc szybkie ciała nie przenikają ścian. */
+  maxStepMs: 1000 / 60,
+  /** Limit kroków w jednej klatce (po długim zacięciu gra zwalnia, zamiast liczyć setki kroków naraz). */
+  maxStepsPerFrame: 8,
+} as const;

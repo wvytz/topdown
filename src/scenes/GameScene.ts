@@ -137,6 +137,7 @@ import { InputReplay, canReplay } from '@/systems/InputRecorder';
 import { BOSS_HERALD, HERALD_RUMBLE } from '@/config/bossHeraldConfig';
 import { FogWisps } from '@/effects/FogWisps';
 import { LightingOverlay } from '@/effects/LightingOverlay';
+import { installSmoothPhysics } from '@/world/SmoothPhysics';
 import type { PointLight } from '@/effects/LightingOverlay';
 import { hexColor } from '@/effects/lightTextures';
 import { LIGHTING, TORCH_PLACEMENT } from '@/config/lightingConfig';
@@ -409,6 +410,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.floorEffects = floorEffectsOf(this.floorModifier);
 
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
+    // Krok 114: fizyka krokiem klatki obrazu — bez szarpania na monitorach 120/144 Hz.
+    installSmoothPhysics(this);
 
     const spawn = DungeonView.tileToWorldCenter(this.atBoss || this.bossRush ? this.bossStartTile() : this.dungeon.playerSpawn);
     this.player = new Player(this, spawn.x, spawn.y, this.run.hero, this.currentLoadout(), this.startHp);
