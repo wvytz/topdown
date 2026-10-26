@@ -352,10 +352,14 @@ export interface ShieldDefinition {
   readonly heat?: { readonly ticks: number; readonly radius: number; readonly telegraphMs: number; readonly damage: number; readonly knockback: number };
   /** Prędkość obrotu tarczy do gracza (stopnie na sekundę). */
   readonly turnRateDegPerSec: number;
+  /** Po końcu każdego ataku boss stoi z opuszczoną tarczą przez tyle ms — okno na pełne combo (krok 113). */
+  readonly loweredAfterAttackMs: number;
   /** Cios wręcz (i dash) w tarczę zadaje tyle obrażeń (0–1). */
   readonly frontMeleeMultiplier: number;
   /** Odbity pocisk leci z prędkością pocisku ×tyle i zadaje tyle obrażeń co oryginał. */
   readonly reflectSpeed: number;
+  /** Odbity pocisk leci z odchyleniem z tego zakresu (stopnie) w losową stronę, nie prosto w strzelca (krok 113). */
+  readonly reflectSpread: { readonly minDeg: number; readonly maxDeg: number };
   /**
    * Wytrzymałość tarczy (krok 74, Strażnik Bram): ciosy wręcz w tarczę z przodu zbijają ją (pełnymi obrażeniami),
    * a gdy spadnie do zera, tarcza pęka na `breakMs` — boss przyjmuje wtedy pełne obrażenia z każdej strony,

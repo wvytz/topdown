@@ -88,6 +88,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private shieldFacing = Math.PI / 2;
   /** Szarża Tarczownika (krok 99) zamiast skoku; null bez tarczy. */
   private readonly charge: ShieldCharge | null;
+  /** Tarczownik po ciosie tarczą (krok 113): opuszczona tarcza — okno na pełne combo. */
+  private readonly guardDown = new Timer();
   private lastTickAt: number | null = null;
   /** Ostatnie trafienie przyjęte na tarczę — błysk w kolorze stali zamiast bieli. */
   private lastHitBlocked = false;
@@ -159,7 +161,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   /** Kąt tarczy Tarczownika (radiany) albo null bez tarczy. */
   get shieldAngle(): number | null {
-    return this.hasAffix(EliteAffix.Shielded) ? this.shieldFacing : null;
+    return this.hasAffix(EliteAffix.Shielded) && !this.isShieldLowered(this.scene.time.now) ? this.shieldFacing : null;
   }
 
   /** Obrażenia od podpalenia należne do `now`; śmierć od ognia wykrywa menedżer po `isDead`. */
@@ -210,6 +212,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       return;
     }
     if (this.charge && this.updateCharge(this.charge, perception, now, handler)) return;
+    if (this.guardDown.isActive(now)) {
+      // Opuszczona tarcza: stoi (odrzut z trafienia działa) i nie zaczyna ataku.
+      if (!this.hitStun.isActive(now)) this.setVelocity(0, 0);
+      this.animator.play(this.visual.idle ?? this.visual.move);
+      this.updateTint(now);
+      return;
+    }
     if (this.pounceRecovery.isActive(now)) {
       this.setVelocity(0, 0);
       if (this.visual.land) this.animator.play(this.visual.land);
@@ -257,7 +266,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // Tarczownik: cios od frontu przyjmuje tylko część obrażeń (wybuch z góry — całość).
     const shield = ELITE_CONFIG.shield;
     const blocked =
-      this.hasAffix(EliteAffix.Shielded) && !hit.unblockable && isShielded(this, this.shieldFacing, shield.arcDeg, source);
+      this.hasAffix(EliteAffix.Shielded) &&
+      !hit.unblockable &&
+      !this.isShieldLowered(now) &&
+      isShielded(this, this.shieldFacing, shield.arcDeg, source);
     const damage = blocked ? Math.max(1, Math.round(hit.damage * shield.frontMultiplier)) : hit.damage;
     const result = this.health.takeDamage(damage);
     this.hitFlash.start(now, HIT_FLASH_MS);
@@ -277,8 +289,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const dt = this.lastTickAt === null ? 0 : now - this.lastTickAt;
     this.lastTickAt = now;
     if (!this.hasAffix(EliteAffix.Shielded) || this.pounce || !perception.canSeeTarget) return;
-    // W trakcie szarży (zamach, bieg, ogłuszenie, postój) tarcza stoi — okno na obejście.
-    if (this.charge?.isBusy(now)) return;
+    // W trakcie szarży (zamach, bieg, ogłuszenie, postój) i z opuszczoną tarczą stoi — okno na obejście i combo.
+    if (this.charge?.isBusy(now) || this.guardDown.isActive(now)) return;
     const target = Math.atan2(perception.target.y - this.y, perception.target.x - this.x);
     const step = ((ELITE_CONFIG.shield.turnRateDegPerSec * Math.PI) / 180) * (dt / 1000);
     this.shieldFacing = turnToward(this.shieldFacing, target, step);
@@ -307,6 +319,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     switch (attack.kind) {
       case EnemyAttackKind.Melee:
         handler.meleeStrike(this, attack);
+        if (this.hasAffix(EliteAffix.Shielded)) this.guardDown.start(now, ELITE_CONFIG.shield.guardDownMs);
         break;
       case EnemyAttackKind.Projectile:
         handler.fireProjectile(this, attack, target);
@@ -357,7 +370,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
    */
   private updateCharge(charge: ShieldCharge, perception: EnemyPerception, now: number, handler: EnemyAttackHandler): boolean {
     if (charge.phase(now) === ChargePhase.Ready) {
-      const busy = this.status.isStunned(now) || this.hitStun.isActive(now) || this.attackCycle.phase(now) === AttackPhase.Windup;
+      const busy =
+        this.status.isStunned(now) ||
+        this.hitStun.isActive(now) ||
+        this.guardDown.isActive(now) ||
+        this.attackCycle.phase(now) === AttackPhase.Windup;
       if (busy || !charge.canStart(now, this, perception.target, perception.canSeeTarget, this.shieldFacing)) return false;
       charge.start(now, this, perception.target);
       this.shieldFacing = Math.atan2(charge.direction.y, charge.direction.x);
@@ -390,6 +407,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     this.updateTint(now);
     return true;
+  }
+
+  /** Tarczownik bez tarczy: po ciosie tarczą (krok 113) i ogłuszony po wbiciu w ścianę. */
+  private isShieldLowered(now: number): boolean {
+    return this.guardDown.isActive(now) || this.charge?.phase(now) === ChargePhase.Stunned;
   }
 
   private updateTint(now: number): void {

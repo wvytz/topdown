@@ -63,9 +63,34 @@ export class ShieldGuard {
   }
 }
 
-/** Kierunek odbitego pocisku: z powrotem w stronę, z której przyleciał. */
-export function reflectDirection(velocity: Vector2): Vector2 {
-  return { x: -velocity.x, y: -velocity.y };
+/**
+ * Opuszczona tarcza bossa (krok 113): przez `loweredMs` od końca ostatniego ataku (`attackEndsAt`) boss stoi
+ * bez tarczy — okno na pełne combo. Nowy atak zaczyna nowe okno (i kończy stare).
+ */
+export function isGuardLowered(attackEndsAt: number, loweredMs: number, now: number): boolean {
+  return now >= attackEndsAt && now < attackEndsAt + loweredMs;
+}
+
+/** Odchylenie odbitego pocisku od kierunku „z powrotem” (stopnie, krok 113). */
+export interface ReflectSpread {
+  readonly minDeg: number;
+  readonly maxDeg: number;
+}
+
+/**
+ * Kierunek odbitego pocisku: z powrotem w stronę, z której przyleciał. Z `spread` (krok 113, ocena właściciela:
+ * odbite strzały zawsze trafiały strzelca) odchylony losowo w lewo albo w prawo o kąt z [minDeg, maxDeg] —
+ * nigdy prosto w strzelca. `roll` to liczby z [0, 1) (pierwsza: strona, druga: kąt).
+ */
+export function reflectDirection(velocity: Vector2, spread?: ReflectSpread, roll?: () => number): Vector2 {
+  const back = { x: -velocity.x, y: -velocity.y };
+  if (!spread || !roll) return back;
+  const side = roll() < 0.5 ? -1 : 1;
+  const deg = spread.minDeg + (spread.maxDeg - spread.minDeg) * roll();
+  const a = side * ((deg * Math.PI) / 180);
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  return { x: back.x * cos - back.y * sin, y: back.x * sin + back.y * cos };
 }
 
 /**

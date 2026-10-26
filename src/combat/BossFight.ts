@@ -174,6 +174,7 @@ const BOSS_SEED_SALT = 0xb055;
 const RETINUE_SEED_SALT = 0x5717;
 const LARDER_SEED_SALT = 0x1a4d;
 const THRONE_SEED_SALT = 0x7407;
+const REFLECT_SEED_SALT = 0x2ef1;
 /** Napisy uczty i leczenia Pożeracza. */
 const FEAST_TEXT_COLOR = '#ff5a6e';
 const BOSS_DEFAULT_ENRAGED_LABEL = 'wściekły!';
@@ -214,6 +215,8 @@ export class BossFight {
   private pendingFeast: FeastBite | null = null;
   private readonly retinue: RetinueSchedule | null;
   private readonly retinueRng: Rng;
+  /** Kierunki odbitych pocisków (krok 113). */
+  private readonly reflectRng: Rng;
   private pendingHelpers: PendingHelper[] = [];
   private helpers: Array<{ readonly isDead: boolean; readonly active: boolean }> = [];
   private pendingRelease: { readonly at: number; readonly larders: LarderCocoon[] } | null = null;
@@ -258,6 +261,7 @@ export class BossFight {
     this.boss = boss;
     this.retinue = definition.retinue && deps.spawnHelper ? new RetinueSchedule(definition.retinue) : null;
     this.retinueRng = createRng(deriveSeed(seed, RETINUE_SEED_SALT));
+    this.reflectRng = createRng(deriveSeed(seed, REFLECT_SEED_SALT));
     this.trail = definition.trail ? new FungalTrail(definition.trail) : null;
 
     deps.scene.physics.add.collider(boss, deps.walls);
@@ -517,14 +521,15 @@ export class BossFight {
       this.warnUntouchable((t) => shotTouches(shot, t), attacker);
       return null;
     }
-    // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, wraca do strzelca (już jako pocisk wroga).
+    // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, odbija się (już jako pocisk wroga) — od kroku 111
+    // w losową stronę, odchylony od strzelca.
     const shield = boss.definition.shield;
     const touches = Math.hypot(shot.position.x - boss.x, shot.position.y - boss.y) <= shot.radius + boss.radius;
     if (shield && touches && !shot.ignore?.has(boss) && boss.isShieldedFrom(shot.position)) {
       const speed = Math.hypot(shot.velocity.x, shot.velocity.y) * shield.reflectSpeed;
       this.deps.projectiles.fire({
         origin: shot.position,
-        direction: reflectDirection(shot.velocity),
+        direction: reflectDirection(shot.velocity, shield.reflectSpread, this.reflectRng.next),
         speed,
         damage: shot.damage,
         knockback: shot.knockback,

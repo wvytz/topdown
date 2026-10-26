@@ -26,6 +26,14 @@ describe('Strażnik Bram (krok 41e)', () => {
     expect(shield.frontMeleeMultiplier).toBeLessThan(1);
   });
 
+  it('po ataku Strażnik i Kat opuszczają tarczę krócej niż trwa odpoczynek — okno na combo przed kolejnym atakiem (krok 113)', () => {
+    for (const boss of [GATE_WARDEN, ABYSS_EXECUTIONER]) {
+      expect(boss.shield.loweredAfterAttackMs).toBeGreaterThanOrEqual(1000);
+      expect(boss.shield.loweredAfterAttackMs).toBeLessThanOrEqual(boss.restBetweenAttacksMs);
+      expect(boss.shield.reflectSpread.minDeg).toBeGreaterThan(0);
+    }
+  });
+
   it('wzór: wirujący łańcuch dookoła (karze stanie za plecami) i uderzenie tarczą przed sobą', () => {
     expect(GATE_WARDEN.pattern).toEqual(expect.arrayContaining([BossAttackKind.Slam, BossAttackKind.Cleave]));
     expect(GATE_WARDEN.slam.radius).toBeGreaterThan(GATE_WARDEN.radius * 2);

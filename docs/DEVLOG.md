@@ -4496,6 +4496,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** trudność duetu (HP obu, czy dwie świty), rozstawienie, czy duet przenieść do wspinaczki.
 
+## Krok 113 — Osłabienie Tarczownika i bossów z tarczą `#ocena` `#balans` `#elity` `#boss` `#pieklo`
+
+**Ocena właściciela (26.10.2026):** Tarczownik „dalej jest broken”: odbite podstawowe ataki zawsze wracają w gracza, za często się obraca, nie ma momentu, w którym staje i można wyładować pełne combo, ma za dużo życia (był wzmacniany). Pociski odbijają tylko bossowie z tarczą, więc na pytanie „elita czy Strażnik Bram?” właściciel wybrał `#decyzja`: **osłabić oba**.
+
+**Elita Tarczownik** (`ELITE_CONFIG.shield`):
+- **Obrót** 55 → 35°/s.
+- **Opuszczona tarcza po ciosie** (`guardDownMs: 1600`): po każdym ciosie tarczą stoi 1,6 s, nie obraca się, nie szarżuje i przyjmuje pełne obrażenia z każdej strony (ok. 5 ciosów barbarzyńcy). Łuk tarczy znika na ten czas (czytelny sygnał „teraz”).
+- **Ogłuszony po wbiciu w ścianę** (krok 99) też jest bez tarczy — wcześniej odsłaniał tylko plecy.
+- **HP** ×2,5 → ×1,8 podstawowego wroga (`shield.hpMultiplier`, zastępuje ogólny mnożnik elit; tarcza i tak mnoży jego wytrzymałość).
+
+**Strażnik Bram i Kat Otchłani** (`config/bossConfig.ts`):
+- **Odbicia w losowych kierunkach** (`shield.reflectSpread`, `reflectDirection` w `systems/Shield.ts`): odbity pocisk odchyla się w lewo albo w prawo o 30–80° od kierunku „z powrotem” — nigdy prosto w strzelca. Losowanie z własnego strumienia RNG walki (`REFLECT_SEED_SALT`).
+- **Obrót** Strażnik 110 → 70°/s, Kat 120 → 80°/s.
+- **Okno na combo** (`shield.loweredAfterAttackMs`, `isGuardLowered`): po końcu każdego ataku boss stoi z opuszczoną tarczą (Strażnik 1,2 s, Kat 1 s) — pełne obrażenia z każdej strony, pociski i promień przechodzą, łuk tarczy znika. Okno jest krótsze niż odpoczynek między atakami; we wściekłości kolejny atak może je skrócić.
+- **HP** Strażnik 420 → 340, Kat 520 → 430.
+
+**Testy:** `tests/systems/shield.test.ts` (rozrzut odbicia: długość wektora, kąt 30–80°, obie strony; okno opuszczonej tarczy), `tests/systems/elites.test.ts` (HP Tarczownika niższe niż innych elit, obrót i okno), `tests/ai/GateWarden.test.ts` (okno krótsze niż odpoczynek, rozrzut). Build zielony (1777 testów; po scaleniu z krokami 111–112 — 1806).
+
+**Czeka na ocenę właściciela:** długość okien (1,6 s elita, 1,2/1 s bossowie), rozrzut odbicia, nowe HP. Gdyby było za łatwo — najpierw skrócić okna, potem HP.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4572,7 +4592,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Tarczownik (krok 99):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę, obrót 55°/s, bomby go ranią — czeka na test właściciela.
+- **Tarczownik (kroki 99, 113):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę (bez tarczy), bomby go ranią; od kroku 113 obrót 35°/s, 1,6 s bez tarczy po każdym ciosie, HP ×1,8 — czeka na test właściciela.
+- **Bossowie z tarczą (krok 113):** `#boss` `#balans` odbicia w losową stronę (30–80°), wolniejszy obrót, okno bez tarczy po ataku, mniej HP — czeka na test właściciela.
 - **Pajęczy duet (krok 112):** `#areny-bossow` Król i Matka Pająków naraz na arenie 3 — trudność, świta tylko Króla; potem decyzja o wspinaczce — czeka na test właściciela.
 - **Hitboxy i wybuchy (krok 110):** `#ocena` `#balans` strefy łapią ślad stóp (5 px), pociski tułów (8 px); nowy telegraf i wybuch w promieniu strefy (bomby kultystów, wybuch elity, ataki bossów) — czeka na test właściciela.
 - **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału, Supernowej i totemu, wygląd totemu (placeholder).

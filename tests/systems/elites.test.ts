@@ -105,7 +105,7 @@ describe('elity — statystyki i łupy', () => {
   });
 
   it('elita: więcej HP i obrażeń; Szybki szybciej chodzi i atakuje', () => {
-    const tank = applyElite(RUSHER, [EliteAffix.Shielded], ELITE_CONFIG);
+    const tank = applyElite(RUSHER, [EliteAffix.Vampiric], ELITE_CONFIG);
     expect(isElite(tank)).toBe(true);
     expect(tank.maxHp).toBeGreaterThan(RUSHER.maxHp * 2);
     expect(tank.attack.damage).toBeGreaterThan(RUSHER.attack.damage);
@@ -114,6 +114,19 @@ describe('elity — statystyki i łupy', () => {
     expect(swift.moveSpeed).toBeGreaterThan(RUSHER.moveSpeed);
     expect(swift.attack.cooldownMs).toBeLessThan(RUSHER.attack.cooldownMs);
     expect(swift.attack.windupMs).toBeLessThan(RUSHER.attack.windupMs);
+  });
+
+  it('Tarczownik ma mniej HP niż inne elity — tarcza i tak mnoży jego wytrzymałość (krok 113)', () => {
+    const shielded = applyElite(RUSHER, [EliteAffix.Shielded], ELITE_CONFIG);
+    const vampiric = applyElite(RUSHER, [EliteAffix.Vampiric], ELITE_CONFIG);
+    expect(shielded.maxHp).toBe(Math.round(RUSHER.maxHp * ELITE_CONFIG.shield.hpMultiplier));
+    expect(shielded.maxHp).toBeLessThan(vampiric.maxHp);
+    expect(shielded.maxHp).toBeGreaterThan(RUSHER.maxHp);
+  });
+
+  it('Tarczownik: wolny obrót i okno z opuszczoną tarczą na kilka ciosów (krok 113)', () => {
+    expect(ELITE_CONFIG.shield.turnRateDegPerSec).toBeLessThanOrEqual(40);
+    expect(ELITE_CONFIG.shield.guardDownMs).toBeGreaterThanOrEqual(1200);
   });
 
   it('łup elity: pewne i większe złoto, częściej mikstura i przedmiot', () => {

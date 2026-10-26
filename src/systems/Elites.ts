@@ -37,6 +37,10 @@ export interface EliteConfig {
     /** Mnożnik obrażeń przyjętych od frontu. */
     readonly frontMultiplier: number;
     readonly turnRateDegPerSec: number;
+    /** HP Tarczownika zamiast ogólnego `hpMultiplier` elit (krok 113: tarcza i tak mnoży jego wytrzymałość). */
+    readonly hpMultiplier: number;
+    /** Po ciosie tarczą opuszcza ją na tyle ms: stoi, nie obraca się, przyjmuje pełne obrażenia (krok 113). */
+    readonly guardDownMs: number;
     /** Szarża zamiast skoku (krok 99). */
     readonly charge: ShieldChargeConfig;
     /** Wróg ze skokiem (ogar) dostaje z tarczą zwykły cios z tym zasięgiem — skacze tylko szarżą. */
@@ -114,11 +118,12 @@ export function rollElites(
 export function applyElite(definition: EnemyDefinition, affixes: readonly EliteAffix[], config: EliteConfig): EnemyDefinition {
   if (affixes.length === 0) return definition;
   const swift = affixes.includes(EliteAffix.Swift);
-  const attack = affixes.includes(EliteAffix.Shielded) ? shieldBash(definition.attack, config) : definition.attack;
+  const shielded = affixes.includes(EliteAffix.Shielded);
+  const attack = shielded ? shieldBash(definition.attack, config) : definition.attack;
   return {
     ...definition,
     affixes: [...affixes],
-    maxHp: Math.round(definition.maxHp * config.hpMultiplier),
+    maxHp: Math.round(definition.maxHp * (shielded ? config.shield.hpMultiplier : config.hpMultiplier)),
     moveSpeed: Math.round(definition.moveSpeed * (swift ? config.swift.moveSpeed : 1)),
     attack: {
       ...attack,

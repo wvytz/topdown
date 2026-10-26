@@ -22,10 +22,15 @@ export const ELITE_CONFIG: EliteConfig = {
   // Tarcza obraca się wolniej niż chodzi gracz po okręgu — obejście albo dash za plecy się opłaca.
   // Krok 99 (ocena właściciela: „antyludzki, nie da się zajść go od boku”): obrót 100 → 55°/s i stoi w miejscu
   // w trakcie szarży; zamiast doskakiwać szarżuje z telegrafem — unik wbija go w ścianę (ogłuszenie 1,8 s, plecy odsłonięte).
+  // Krok 113 (ocena właściciela: „dalej broken”, za często się obraca, nie ma kiedy wyładować combo, za dużo życia):
+  // obrót 55 → 35°/s, po każdym ciosie tarczą opuszcza tarczę na 1,6 s (stoi, nie obraca się, przyjmuje pełne
+  // obrażenia — ok. 5 ciosów barbarzyńcy), ogłuszony po ścianie też bez tarczy; HP elity ×1,8 zamiast ×2,5.
   shield: {
     arcDeg: 140,
     frontMultiplier: 0.3,
-    turnRateDegPerSec: 55,
+    turnRateDegPerSec: 35,
+    hpMultiplier: 1.8,
+    guardDownMs: 1600,
     charge: {
       minRange: 70,
       maxRange: 220,
