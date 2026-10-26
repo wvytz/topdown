@@ -76,7 +76,8 @@ import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { eliteAffixCount } from '@/systems/TowerLoop';
 import { eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
-import { BossFight } from '@/combat/BossFight';
+import { BossEncounter } from '@/combat/BossEncounter';
+import { duetForFloor } from '@/systems/BossDuet';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
 import { CocoonManager } from '@/combat/CocoonManager';
 import { PuffballManager } from '@/combat/PuffballManager';
@@ -156,7 +157,7 @@ import {
 import { ArenaGates } from '@/world/ArenaGates';
 import { ShrineSite } from '@/world/ShrineSite';
 import { StickyWebField } from '@/world/StickyWebField';
-import { BOSS_RUSH_CONFIG, BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
+import { BOSS_RUSH_CONFIG, BOSS_RUSH_DUETS, BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import { BossRushArena, arenaLabel, isBossRush } from '@/systems/BossRush';
 
 /** Sole dla RNG — każdy system losuje ze swojego strumienia, niezależnie od pozostałych. */
@@ -210,7 +211,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private enemies!: EnemyManager;
   private projectiles!: ProjectileManager;
   private playerShots!: PlayerShotManager;
-  private bossFight!: BossFight;
+  private bossFight!: BossEncounter;
   /**
    * Walka bohaterów (ataki, kieł, ultimate) — po jednym na gracza (co-op, etap C2); pusto przed zbudowaniem sceny,
    * więc szał nie przechodzi na kolejne piętro.
@@ -619,7 +620,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const ready = Boolean(this.player?.active);
     return {
       floor: this.floorNumber,
-      arenaLabel: this.bossRush ? arenaLabel(this.floorNumber, bossForFloor(this.floorNumber).name, TOWER_CONFIG) : null,
+      arenaLabel: this.bossRush ? arenaLabel(this.floorNumber, this.bossFight.name, TOWER_CONFIG) : null,
       floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
       maxHp: ready ? this.player.health.max : this.hero.stats.maxHp,
@@ -890,7 +891,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
-    this.bossFight = new BossFight({
+    // Duet bossów (krok 112): na razie tylko w arenach bossów.
+    const duet = this.bossRush ? duetForFloor(this.floorNumber, BOSS_RUSH_DUETS, TOWER_CONFIG) : null;
+    this.bossFight = new BossEncounter({
       scene: this,
       floor: this.dungeon,
       floorNumber: this.floorNumber,
@@ -915,7 +918,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (!this.party.isDown) this.offerBossReward();
       },
       aggroTarget: () => this.aggroTarget(),
-    });
+    }, duet);
 
     // Walka bohaterów (ataki, kieł, ultimate R z kroku 98) — po jednym na gracza.
     this.heroes = this.party.members.map(

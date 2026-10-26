@@ -99,6 +99,12 @@ export interface BossFightDeps {
   readonly spawnHelper?: (type: EnemyType, at: Vector2) => { readonly isDead: boolean; readonly active: boolean };
   /** Wabik (totem łucznika, krok 98): boss i jego dog celują w niego zamiast w gracza; null — w gracza. */
   readonly aggroTarget?: () => Vector2 | null;
+  /** Duet (krok 112): piętro, którego boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
+  readonly bossFloor?: number;
+  /** Duet: przesunięcie miejsca startu od środka areny (px). */
+  readonly spawnOffset?: Vector2;
+  /** Duet: własne ziarno losowania bossa i świty (brak — ziarno piętra), by partner nie powtarzał gospodarza. */
+  readonly seed?: number;
 }
 
 /** Bohater, który atakuje bossa (pozycja i czy żyje). */
@@ -231,21 +237,27 @@ export class BossFight {
   /** Ślad grzybów za Pożeraczem (krok 111). */
   private readonly trail: FungalTrail | null;
   private nextMoteAt = 0;
+  /** Pełne HP bossa (wspólny pasek duetu liczy je także po jego śmierci). */
+  readonly maxHp: number;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
     this.arena = arena;
 
-    const definition = withHpMultiplier(scaleBossForFloor(bossForFloor(deps.floorNumber), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
+    const bossFloor = deps.bossFloor ?? deps.floorNumber;
+    const definition = withHpMultiplier(scaleBossForFloor(bossForFloor(bossFloor), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
+    this.maxHp = definition.maxHp;
     this.spiderlingDefinition = definition.spiderling ?? null;
     const center = arenaCenter(arena);
-    const spawn = { x: center.x * TILE_SIZE, y: center.y * TILE_SIZE };
-    const rng = createRng(deriveSeed(deps.floor.seed, BOSS_SEED_SALT));
+    const offset = deps.spawnOffset ?? { x: 0, y: 0 };
+    const spawn = { x: center.x * TILE_SIZE + offset.x, y: center.y * TILE_SIZE + offset.y };
+    const seed = deps.seed ?? deps.floor.seed;
+    const rng = createRng(deriveSeed(seed, BOSS_SEED_SALT));
     const boss = new Boss(deps.scene, spawn.x, spawn.y, definition, rng);
     this.boss = boss;
     this.retinue = definition.retinue && deps.spawnHelper ? new RetinueSchedule(definition.retinue) : null;
-    this.retinueRng = createRng(deriveSeed(deps.floor.seed, RETINUE_SEED_SALT));
+    this.retinueRng = createRng(deriveSeed(seed, RETINUE_SEED_SALT));
     this.trail = definition.trail ? new FungalTrail(definition.trail) : null;
 
     deps.scene.physics.add.collider(boss, deps.walls);
@@ -311,6 +323,36 @@ export class BossFight {
   /** Boss pokonany (po animacji śmierci) — na tym piętrze nie będzie już walki. */
   get isDefeated(): boolean {
     return this.boss === null && !this.dying;
+  }
+
+  /** Gdzie stoi boss (null po śmierci). */
+  get position(): Vector2 | null {
+    return this.boss ? { x: this.boss.x, y: this.boss.y } : null;
+  }
+
+  /** Ciało bossa na ziemi (żywy, nie w locie skoku) — tylko takie rozpycha duet. */
+  get grounded(): (Vector2 & { readonly radius: number }) | null {
+    const boss = this.boss;
+    return boss && !this.leap ? { x: boss.x, y: boss.y, radius: boss.radius } : null;
+  }
+
+  /** Przesunięcie bossa (rozpychanie duetu); ściany zatrzymają go w kolejnym kroku fizyki. */
+  nudge(delta: Vector2): void {
+    this.boss?.setPosition(this.boss.x + delta.x, this.boss.y + delta.y);
+  }
+
+  /** HP bossa teraz (0 po śmierci). */
+  get hp(): number {
+    return this.boss?.health.value ?? 0;
+  }
+
+  get isEnraged(): boolean {
+    return this.boss?.isEnraged ?? false;
+  }
+
+  /** Imię bossa (napis areny). */
+  get bossName(): string {
+    return bossForFloor(this.deps.bossFloor ?? this.deps.floorNumber).name;
   }
 
   /** Stan dla HUD — null, dopóki walka się nie zaczęła lub po zwycięstwie. */
