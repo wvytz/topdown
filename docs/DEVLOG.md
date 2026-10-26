@@ -4417,6 +4417,15 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Testy:** 2 nowe w `saveGame.test.ts`, 2 asercje w `tests/worker/index.test.ts`.
 
+## Krok 109 — Co-op, etap C8: smoke z dwoma botami i wersja testowa w podkatalogu `#coop` `#diagnostyka`
+
+**Co powstało:**
+- `npm run smoke -- --coop`: każdy bohater gra z następnym z listy jako P2 (barbarzyńca + Czarodziejka, Czarodziejka + łucznik, łucznik + barbarzyńca); P2 steruje podstawionym padem (losowy ruch, celowanie, RT/LT/A), obaj bohaterowie lecą do każdego pokoju i na arenę, obie karty bossa są wybierane po kolei, schody — gdy obaj stoją obok; na starcie każdego piętra bot powala P2 i sprawdza, że P1 obok go podnosi; sweep pięter przenosi co-op;
+- `npm run deploy:pages -- --subdir coop`: wersja testowa z gałęzi w podkatalogu `gh-pages` (`/topdown/coop/`) — klon obecnej gałęzi, wymiana tylko podkatalogu, zwykły push; główna gra zostaje bez zmian (uwaga: zwykłe `npm run deploy:pages` nadpisuje całą gałąź i usuwa podkatalog);
+- `worker/README.md`: kolejność wdrożenia tablicy co-op (migracja `0004`, potem `wrangler deploy`).
+
+**Weryfikacja:** `npm run smoke -- --floors 8 --seeds 1 --coop` (trzy pary, 8 pięter, wskrzeszanie na każdym piętrze) i solo `npm run smoke -- --floors 8 --seeds 1`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4520,7 +4529,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108). Dalej: C8 smoke z dwoma botami.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

@@ -3,7 +3,8 @@
  * wszystkimi bohaterami (losowe wejścia, wszystkie pokoje, walka w arenie, pokonanie bossa, nagroda, schody) i szuka błędów:
  * wyjątków strony, błędów konsoli i zdarzeń `error` z dziennika diagnostycznego gry.
  *
- * Użycie:   npm run smoke -- [--floors 8] [--seeds 2] [--heroes all|barbarian|sorceress|archer] [--room-seconds 1.5] [--sweep-only]
+ * Użycie:   npm run smoke -- [--floors 8] [--seeds 2] [--heroes all|barbarian|sorceress|archer] [--room-seconds 1.5] [--sweep-only] [--coop]
+ *           --coop: co-op (krok 109) — drugi bohater (następny z listy) na podstawionym padzie, bot gra oboma i sprawdza wskrzeszanie.
  * Przeglądarka: domyślnie zainstalowany Chrome (kanał „chrome”); inna: SMOKE_CHROMIUM=<ścieżka do pliku wykonywalnego>.
  * Wymaga trybu dev (korzysta z `window.__game`). Kod wyjścia 1, gdy coś się wywróci.
  */
@@ -22,6 +23,10 @@ const SEEDS = Number(opt('seeds', 2));
 const HEROES = ['all', 'both'].includes(opt('heroes', 'all')) ? ['barbarian', 'sorceress', 'archer'] : [opt('heroes', 'barbarian')];
 const ROOM_MS = Number(opt('room-seconds', 1.5)) * 1000;
 const SWEEP_ONLY = args.includes('--sweep-only');
+const COOP = args.includes('--coop');
+const ALL_HEROES = ['barbarian', 'sorceress', 'archer'];
+const partnerOf = (hero) => ALL_HEROES[(ALL_HEROES.indexOf(hero) + 1) % ALL_HEROES.length];
+const label = (hero) => (COOP ? `${hero}+${partnerOf(hero)}` : hero);
 const PORT = Number(opt('port', 5199));
 const URL = `http://127.0.0.1:${PORT}/`;
 
@@ -88,7 +93,16 @@ async function newSession(browser, hero) {
     if (m.type() === 'error' && !/404/.test(m.text())) errors.push(`console: ${m.text().slice(0, 300)}`);
   });
   page.on('crash', () => errors.push('KARTA PRZEGLĄDARKI SIĘ WYWRÓCIŁA'));
-  await page.goto(`${URL}?hero=${hero}&seed=1&floor=1`);
+  if (COOP) {
+    // Podstawiony pad P2: bot ustawia gałki i przyciski w `window.__smokePad`.
+    await page.addInitScript(() => {
+      window.__smokePad = { axes: [0, 0, 0, 0], buttons: Array(17).fill(0) };
+      navigator.getGamepads = () => [
+        { index: 0, connected: true, axes: window.__smokePad.axes, buttons: window.__smokePad.buttons.map((v) => ({ value: v, pressed: v > 0.5 })) },
+      ];
+    });
+  }
+  await page.goto(`${URL}?hero=${hero}&seed=1&floor=1${COOP ? `&coop=${partnerOf(hero)}` : ''}`);
   await page.waitForFunction(() => window.__game?.scene?.getScenes(true).some((s) => s.player && s.dungeon), null, { timeout: 30000 });
   return { page, errors };
 }
@@ -103,7 +117,7 @@ async function sweep(browser, hero, report) {
       const before = errors.length;
       await page.evaluate(([f, s]) => {
         const g = window.__game.scene.getScenes(true).find((x) => x.dungeon && x.player);
-        g.scene.restart({ runSeed: s * 7919 + f, floor: f, run: g.run.snapshot(null) });
+        g.scene.restart({ runSeed: s * 7919 + f, floor: f, run: g.run.snapshot(null), ...(g.coop ? { coop: g.coop } : {}) });
       }, [floor, seed]);
       try {
         await page.waitForFunction(([f]) => window.__game.scene.getScenes(true).some((x) => x.player && x.dungeon && x.floorNumber === f), [floor], { timeout: 10000 });
@@ -123,7 +137,19 @@ async function fightFor(page, ms, errors) {
   const keys = ['w', 'a', 's', 'd'];
   const t0 = Date.now();
   while (Date.now() - t0 < ms && errors.length === 0) {
-    await page.evaluate(`(() => { const g = ${G}; if (g && !g.player.isDead) g.player.health.takeDamage = () => ({ dealt: 0, died: false }); })()`).catch(() => {});
+    await page.evaluate(`(() => { const g = ${G}; if (!g) return; for (const p of g.party.members) if (!p.isDead) p.health.takeDamage = () => ({ dealt: 0, died: false }); })()`).catch(() => {});
+    if (COOP) {
+      // P2: losowy ruch, celowanie i przyciski pada (RT — atak, LT — drugi atak, A — dash).
+      await page
+        .evaluate(([mx, my, ax, ay, rt, lt, a]) => {
+          window.__smokePad.axes = [mx, my, ax, ay];
+          const b = window.__smokePad.buttons;
+          b[7] = rt;
+          b[6] = lt;
+          b[0] = a;
+        }, [rnd(3) - 1, rnd(3) - 1, rnd(3) - 1, rnd(3) - 1, Math.random() < 0.7 ? 1 : 0, Math.random() < 0.3 ? 1 : 0, Math.random() < 0.2 ? 1 : 0])
+        .catch(() => {});
+    }
     const key = keys[rnd(4)];
     await page.keyboard.down(key);
     if (Math.random() < 0.4) await page.keyboard.press('Space');
@@ -136,36 +162,54 @@ async function fightFor(page, ms, errors) {
   }
 }
 
+/** Co-op: powalony P2 wstaje, gdy P1 stoi przy nim (krok 105). */
+async function checkRevive(page, floor, errors) {
+  const down = await page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; if (!b) return false;
+    delete b.health.takeDamage; b.takeHit({ damage: 99999, knockback: { x: 0, y: 0 } }, g.time.now + 1e7);
+    a.setPosition(b.x + 12, b.y); a.body.updateFromGameObject(); return b.isDead && !g.party.isDown; })()`);
+  if (!down) {
+    errors.push(`co-op: piętro ${floor} — powalenie P2 nie zadziałało`);
+    return;
+  }
+  await sleep(4500);
+  const up = await page.evaluate(`(() => { const g = ${G}; return !g.party.members[1].isDead; })()`);
+  if (!up) errors.push(`co-op: piętro ${floor} — P2 nie wstał po wskrzeszaniu`);
+}
+
 /** Faza 2: pełna wspinaczka z botem — wszystkie pokoje, arena, boss, nagroda, schody klawiszem E. */
 async function climb(browser, hero, report) {
   const { page, errors } = await newSession(browser, hero);
   for (let floor = 1; floor <= FLOORS && errors.length === 0; floor++) {
+    if (COOP) await checkRevive(page, floor, errors);
     const info = await page.evaluate(`(() => { const g = ${G}; return { floor: g.floorNumber, rooms: g.dungeon.rooms.map((r) => [r.x + (r.width >> 1), r.y + (r.height >> 1), r.kind]) }; })()`);
     for (const [x, y, kind] of info.rooms) {
       if (kind === 'boss') continue;
-      await page.evaluate(`(() => { const g = ${G}; g.run.addGold(50); g.player.setPosition(${x} * 32 + 16, ${y} * 32 + 16); })()`);
+      await page.evaluate(`(() => { const g = ${G}; g.run.addGold(50); g.party.members.forEach((p, i) => { p.setPosition(${x} * 32 + 16 + i * 20, ${y} * 32 + 16); p.body.updateFromGameObject(); }); })()`);
       await fightFor(page, ROOM_MS, errors);
       if (errors.length) break;
     }
     if (errors.length) break;
     const arena = await page.evaluate(`(() => { const g = ${G}; const r = g.dungeon.rooms[g.dungeon.bossRoomId]; return [r.x + (r.width >> 1), r.y + (r.height >> 1)]; })()`);
-    await page.evaluate(`(() => { const g = ${G}; g.player.setPosition(${arena[0]} * 32 + 16, ${arena[1]} * 32 + 16); })()`);
+    await page.evaluate(`(() => { const g = ${G}; g.party.members.forEach((p, i) => { p.setPosition(${arena[0]} * 32 + 16 + i * 20, ${arena[1]} * 32 + 16); p.body.updateFromGameObject(); }); })()`);
     await fightFor(page, ROOM_MS * 2, errors);
     await page.evaluate(`(() => { const g = ${G}; if (g && g.bossFight) g.bossFight.debugDefeat(); })()`).catch(() => {});
     for (let i = 0; i < 60; i++) {
       await sleep(500);
       const reward = await page.evaluate(() => window.__game.scene.getScenes(true).some((s) => s.scene.key === 'RewardScene'));
       if (reward) {
-        for (let k = 0; k < 8; k++) {
+        // Co-op: dwie karty po kolei — wybieramy, dopóki nakładka wraca.
+        let gone = 0;
+        for (let k = 0; k < 16 && gone < 2; k++) {
           await sleep(600);
           await page.keyboard.press('1');
-          if (!(await page.evaluate(() => window.__game.scene.getScenes(true).some((s) => s.scene.key === 'RewardScene')))) break;
+          const still = await page.evaluate(() => window.__game.scene.getScenes(true).some((s) => s.scene.key === 'RewardScene'));
+          gone = still ? 0 : gone + 1;
         }
         break;
       }
     }
     await sleep(400);
-    await page.evaluate(`(() => { const g = ${G}; const st = g.dungeon.stairs; g.player.setPosition(st.x * 32 + 32, st.y * 32 + 32); })()`);
+    await page.evaluate(`(() => { const g = ${G}; const st = g.dungeon.stairs; g.party.members.forEach((p, i) => { p.setPosition(st.x * 32 + 32 + i * 12, st.y * 32 + 32); p.body.updateFromGameObject(); }); })()`);
     await sleep(300);
     // E trzymane przez kilka klatek — pojedyncze stuknięcie potrafi zniknąć między klatkami.
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -176,7 +220,7 @@ async function climb(browser, hero, report) {
       if ((await gameFloor(page)) === floor + 1) break;
     }
     const now = await gameFloor(page);
-    process.stdout.write(`  ${hero}: piętro ${floor} → ${now}\n`);
+    process.stdout.write(`  ${label(hero)}: piętro ${floor} → ${now}\n`);
     if (now !== floor + 1 && floor < FLOORS) errors.push(`nie udało się wejść z piętra ${floor} na kolejne (stoi na ${now})`);
     if (now !== floor + 1) break;
   }
@@ -192,7 +236,7 @@ const report = [];
 try {
   browser = await launch();
   for (const hero of HEROES) {
-    process.stdout.write(`Smoke: ${hero}, piętra 1–${FLOORS}, ${SEEDS} seed(y)\n`);
+    process.stdout.write(`Smoke: ${label(hero)}, piętra 1–${FLOORS}, ${SEEDS} seed(y)\n`);
     await sweep(browser, hero, report);
     if (!SWEEP_ONLY) await climb(browser, hero, report);
   }
