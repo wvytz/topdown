@@ -26,15 +26,19 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
     combat: PLAYER_COMBAT,
     kit: { kind: 'melee' },
     // Krok 98 (pomysł właściciela: szał, żeby szybko dobić bossa, z nietykalnością).
+    // Krok 117 (ocena właściciela: szał z przedmiotami „broken”): 5 → 4 s, ciosy ×0,65 → ×0,8, obrażenia ×1,35 → ×1,2.
+    // Z pełnymi Rękawicami (czas ×1/1,6) szał dochodzi dokładnie do limitu 50% bazowego czasu ciosu (160 ms).
     ultimate: {
       kind: 'rage',
       name: 'Szał',
-      durationMs: 5000,
-      attackCooldownMultiplier: 0.65,
-      damageMultiplier: 1.35,
+      durationMs: 4000,
+      attackCooldownMultiplier: 0.8,
+      damageMultiplier: 1.2,
       moveSpeedMultiplier: 1.2,
       invulnerable: true,
     },
+    // Krok 117: barbarzyńca zabija najwięcej, więc za zabicie ładuje się wolniej (5% → 3%).
+    ultimateGauge: { perKill: 0.03 },
   },
   [HeroId.Sorceress]: {
     id: HeroId.Sorceress,

@@ -1,8 +1,7 @@
 import type Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
-import type { ItemId } from '@/core/lootTypes';
+import type { ItemDefinition, ItemId } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
-import { ITEM_POOL } from '@/config/lootConfig';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import type { Party } from '@/entities/Party';
@@ -24,6 +23,8 @@ export interface ShrineSiteDeps {
   /** Konfiguracja kapliczki na tym piętrze (z uwzględnieniem modyfikatora piętra). */
   readonly config: ShrineConfig;
   /** Wywoływane po udanej ofierze — złoto (wspólne) jest już odjęte; przedmiot daje scena temu bohaterowi. */
+  /** Krok 117: pula przedmiotów dla składającego ofiarę (bez tych, które już nic mu nie dadzą). */
+  readonly poolFor: (hero: Player) => readonly ItemDefinition[];
   readonly onBlessing: (itemId: ItemId, cost: number, hero: Player) => void;
 }
 
@@ -81,7 +82,7 @@ export class ShrineSite {
       floor: floorNumber,
       alreadyUsed: shrine.isUsed,
       config: this.deps.config,
-      pool: ITEM_POOL,
+      pool: this.deps.poolFor(hero),
       rng,
     });
     if (!outcome.ok || !run.spendGold(outcome.cost)) return;

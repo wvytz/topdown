@@ -299,10 +299,10 @@ export class HeroCombat {
   /** Wampirzy kieł: leczenie za trafienie (raz na cios lub kulę), najwyżej raz na meleeHealCooldownMs. */
   private tryVampireHeal(now: number): void {
     const { player, effects } = this.deps;
-    const { meleeHeal, meleeHealCooldownMs, meleeHealMaxHpPctPerSec } = player.effects;
+    const { meleeHeal, meleeHealCooldownMs, meleeHealMaxPerSec } = player.effects;
     if (meleeHeal <= 0 || player.health.isFull || this.healCooldown.isActive(now)) return;
     this.healCooldown.start(now, meleeHealCooldownMs);
-    const heal = this.healBudget.take(meleeHeal, now, player.health.max * meleeHealMaxHpPctPerSec);
+    const heal = this.healBudget.take(meleeHeal, now, meleeHealMaxPerSec);
     if (heal <= 0) return;
     player.heal(heal);
     effects.floatingText(player.x, player.y - 14, `+${heal}`, '#ff6b8a');

@@ -1,4 +1,4 @@
-import type { UltimateConfig, UltimateGaugeConfig } from '@/core/heroTypes';
+import type { HeroDefinition, UltimateConfig, UltimateGaugeConfig } from '@/core/heroTypes';
 import type { Vector2 } from '@/core/types';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 
@@ -54,6 +54,11 @@ export class UltimateGauge {
     if (now <= from) return;
     this.charge = clamp01(this.charge + ((now - from) / 1000) * this.config.passivePerSec);
   }
+}
+
+/** Pasek mocy bohatera: wspólne liczby z nadpisaniami bohatera (krok 117: barbarzyńca mniej za zabicie). */
+export function gaugeConfigFor(hero: HeroDefinition, base: UltimateGaugeConfig): UltimateGaugeConfig {
+  return { ...base, ...hero.ultimateGauge };
 }
 
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));

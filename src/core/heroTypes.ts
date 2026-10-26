@@ -194,4 +194,6 @@ export interface HeroDefinition {
   readonly kit: HeroKit;
   /** Ultimate pod R (krok 98). */
   readonly ultimate: UltimateConfig;
+  /** Krok 117: własne liczby paska mocy (reszta z `ULTIMATE_GAUGE`). */
+  readonly ultimateGauge?: Partial<UltimateGaugeConfig>;
 }

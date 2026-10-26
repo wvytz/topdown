@@ -73,10 +73,10 @@ describe('computeWeaponEffects', () => {
     expect(fx.shotStatus.stun?.durationMs).toBe(ITEM_EFFECTS.electricArrow.stunMs + ITEM_EFFECTS.electricArrow.stunMsPerStack);
   });
 
-  it('krok 93: kolejne kopie kła i pięści dają coraz mniej', () => {
+  it('kroki 93 i 117: kolejne kopie kła i pięści dają coraz mniej', () => {
     const heal = (n: number) => computeWeaponEffects(many(ItemId.VampireFang, n), ITEM_EFFECTS).meleeHeal;
     const tick = (n: number) => computeWeaponEffects(many(ItemId.FireFist, n), ITEM_EFFECTS).meleeStatus.burn?.tickDamage;
-    expect([1, 2, 3, 4, 5].map(heal)).toEqual([2, 4, 5, 6, 6]);
+    expect([1, 2, 3, 4, 5].map(heal)).toEqual([2, 3, 4, 4, 4]);
     expect([1, 2, 3, 4, 5].map(tick)).toEqual([3, 5, 6, 7, 7]);
     // Nawet dużo kopii nie przekroczy sumy szeregu geometrycznego (base + 2 × perStack).
     expect(heal(30)).toBeLessThanOrEqual(ITEM_EFFECTS.vampireFang.heal + 2 * ITEM_EFFECTS.vampireFang.healPerStack);

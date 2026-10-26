@@ -5,7 +5,8 @@ import { HERO_DEFINITIONS, HERO_ORDER } from '@/config/heroConfig';
 import { ITEM_DEFINITIONS, ITEM_EFFECTS, STAT_LIMITS } from '@/config/lootConfig';
 import { ULTIMATE_GAUGE } from '@/config/ultimateConfig';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
-import { UltimateGauge, applyRage, nearestInRange, ultimateActiveMs, ultimateGuardMs } from '@/systems/Ultimate';
+import { ItemId } from '@/core/lootTypes';
+import { UltimateGauge, applyRage, gaugeConfigFor, nearestInRange, ultimateActiveMs, ultimateGuardMs } from '@/systems/Ultimate';
 
 const gauge = (startCharge = 0) => new UltimateGauge({ passivePerSec: 0.1, perKill: 0.25, startCharge });
 type Rage = Extract<UltimateConfig, { kind: 'rage' }>;
@@ -72,6 +73,25 @@ describe('ultimate bohaterów', () => {
     expect(raged.combat.ranged.damage).toBeGreaterThanOrEqual(base.combat.ranged.damage);
     expect(raged.stats.moveSpeed).toBeGreaterThan(base.stats.moveSpeed);
     expect(raged.stats.maxHp).toBe(base.stats.maxHp);
+  });
+});
+
+describe('krok 117: szał z przedmiotami', () => {
+  const barbarian = HERO_DEFINITIONS[HeroId.Barbarian];
+  const rage = barbarian.ultimate as Rage;
+
+  it('szał z pełnymi Rękawicami nie skraca ciosu poniżej limitu odnowień', () => {
+    const gloves = Array.from({ length: 20 }, () => ItemId.Gloves);
+    const raged = applyRage(computeHeroLoadout(barbarian, gloves, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS), rage);
+    const floor = Math.round(barbarian.combat.attackCooldownMs * STAT_LIMITS.minCooldownMultiplier);
+    expect(raged.combat.attackCooldownMs).toBeGreaterThanOrEqual(floor);
+  });
+
+  it('barbarzyńca ładuje pasek wolniej za zabicia, reszta bohaterów jak dotąd', () => {
+    expect(gaugeConfigFor(barbarian, ULTIMATE_GAUGE).perKill).toBeLessThan(ULTIMATE_GAUGE.perKill);
+    expect(gaugeConfigFor(barbarian, ULTIMATE_GAUGE).passivePerSec).toBe(ULTIMATE_GAUGE.passivePerSec);
+    expect(gaugeConfigFor(HERO_DEFINITIONS[HeroId.Sorceress], ULTIMATE_GAUGE)).toEqual(ULTIMATE_GAUGE);
+    expect(gaugeConfigFor(HERO_DEFINITIONS[HeroId.Archer], ULTIMATE_GAUGE)).toEqual(ULTIMATE_GAUGE);
   });
 });
 

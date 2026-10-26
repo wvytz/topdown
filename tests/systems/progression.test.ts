@@ -21,7 +21,7 @@ describe('computeLoadout', () => {
     expect(loadout([ItemId.Blade]).combat.meleeDamage).toBe(PLAYER_COMBAT.meleeDamage + 3);
     expect(loadout([ItemId.Heart]).stats.maxHp).toBe(PLAYER_BASE_STATS.maxHp + 20);
     expect(loadout([ItemId.Boots]).stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * 1.1));
-    expect(loadout([ItemId.Gloves]).combat.attackCooldownMs).toBe(Math.round(PLAYER_COMBAT.attackCooldownMs * 0.88));
+    expect(loadout([ItemId.Gloves]).combat.attackCooldownMs).toBe(Math.round(PLAYER_COMBAT.attackCooldownMs / 1.12));
     expect(loadout([ItemId.Hourglass]).combat.dash.cooldownMs).toBe(Math.round(PLAYER_COMBAT.dash.cooldownMs * 0.8));
   });
 
@@ -33,9 +33,17 @@ describe('computeLoadout', () => {
   it('limity: cooldowny nie spadają poniżej minimum, prędkość nie przekracza maksimum', () => {
     const many = <T>(item: T, n: number): T[] => Array.from({ length: n }, () => item);
     const stacked = loadout([...many(ItemId.Gloves, 20), ...many(ItemId.Hourglass, 20), ...many(ItemId.Boots, 20)]);
-    expect(stacked.combat.attackCooldownMs).toBe(Math.round(PLAYER_COMBAT.attackCooldownMs * STAT_LIMITS.minCooldownMultiplier));
+    expect(stacked.combat.attackCooldownMs).toBe(Math.round(PLAYER_COMBAT.attackCooldownMs / (1 + STAT_LIMITS.maxAttackSpeedBonus)));
     expect(stacked.combat.dash.cooldownMs).toBe(Math.round(PLAYER_COMBAT.dash.cooldownMs * STAT_LIMITS.minCooldownMultiplier));
     expect(stacked.stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * STAT_LIMITS.maxMoveSpeedMultiplier));
+  });
+
+  it('krok 117: każda kopia Rękawic dodaje tyle samo tempa ataku (bez przyspieszania przyrostów)', () => {
+    const many = <T>(item: T, n: number): T[] => Array.from({ length: n }, () => item);
+    const rate = (n: number) => PLAYER_COMBAT.attackCooldownMs / loadout(many(ItemId.Gloves, n)).combat.attackCooldownMs;
+    const gains = [1, 2, 3, 4, 5].map((n) => rate(n) - rate(n - 1));
+    for (const gain of gains) expect(gain).toBeCloseTo(0.12, 1);
+    expect(rate(6)).toBeCloseTo(rate(5), 5);
   });
 
   it('nie zmienia obiektów bazowych', () => {
