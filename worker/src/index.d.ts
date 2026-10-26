@@ -3,4 +3,4 @@ declare const worker: {
   scheduled(event: unknown, env: Record<string, unknown>): Promise<void>;
 };
 export default worker;
-export function validate(body: unknown, now: number): { score: number; floor: number; timestamp: number; name: string | null; hero: string | null } | null;
+export function validate(body: unknown, now: number): { score: number; floor: number; timestamp: number; name: string | null; hero: string | null; partner: string | null } | null;
