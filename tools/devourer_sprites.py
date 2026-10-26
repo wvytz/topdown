@@ -21,12 +21,16 @@ Użycie (z katalogu głównego repozytorium; Pillow + numpy z tools/requirements
 Arkusze:
   fungal-devourer.png   96×96 · pivot 48,48, wiersze 8 kierunków N…NW;
                         0–3 szuranie (pętla), 4–7 pożarcie (telegraf, wypad, kłapnięcie, przeżuwanie),
-                        8–11 karmienie kokonem (leczenie w kolumnie 11), 12–15 zamach łapami (uderzenie w 15)
+                        8–11 karmienie kokonem (leczenie w kolumnie 11), 12–15 zamach łapami (uderzenie w 15),
+                        16–19 wyrzut zarodników (krok 111; strąk w paszczy w 18), 20–23 skok (przysiad, wybicie, lot)
   devourer-cocoon.png   48×48, wiersze = 3 warianty (twarz, dłoń, skulone ciało);
                         0–3 oddech, 4–7 zjedzenie (7 zostaje), 8–9 drżenie (zew), 10–13 rozdarcie (wychodzi zarażony)
   fungal-throne.png     96×96, tron z grzybni, oparcie na północy (dekoracja areny bez kolizji)
   fungal-fx.png         48×48, wiersz 0 krew (trafienie gracza), wiersz 1 sok (leczenie), 4 klatki bez pętli
   throne-decals.png     48×48, 6 naklejek: kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata
+  mushroom-trail.png    48×48 (krok 111): płat grzybów ze śladu; 0–5 rozrost (promień 6→18 px = hitbox płatu),
+                        6–7 puls soku, 8–9 więdnięcie
+  spore-pod.png         24×24 (krok 111): strąk zarodników w locie, 4 klatki pulsu
 """
 import argparse
 import math
@@ -330,6 +334,39 @@ def feed_pose(i):
     return p
 
 
+def spit_pose(i):
+    """Wyrzut zarodników (krok 111): głowa odchyla się, sok nabrzmiewa, paszcza pęka i wypluwa strąk."""
+    p = walk_pose(0)
+    if i == 0:   # odchyla głowę, łapy na boki
+        p.update(handL=(25, 30), elbowL=(19, 41), handR=(71, 30), elbowR=(77, 41), head=(48, 36), glow=1, spread=1)
+    elif i == 1:  # nabrzmiewa: sok świeci najjaśniej, szczęka pęka
+        p.update(handL=(24, 32), elbowL=(18, 43), handR=(72, 32), elbowR=(78, 43), head=(48, 35), jaw=1, glow=2, spread=2)
+    elif i == 2:  # wyrzut: paszcza rozdarta, strąk w paszczy
+        p.update(handL=(30, 24), elbowL=(21, 35), handR=(66, 24), elbowR=(75, 35), head=(48, 30), jaw=4, glow=1,
+                 pod=(48, 20), spores=1)
+    else:         # strąk poleciał: chmura zarodników przed paszczą
+        p.update(handL=(32, 22), elbowL=(23, 32), handR=(64, 22), elbowR=(73, 32), head=(48, 30), jaw=3, glow=1,
+                 spores=2)
+    return p
+
+
+def leap_pose(i):
+    """Szarża z kłapnięciem (krok 111): przysiad, głębszy przysiad, wybicie, lot z łapami w przód (trzyma się do lądowania)."""
+    p = walk_pose(0)
+    if i == 0:   # przysiad: łapy za barkami, nisko
+        p.update(handL=(25, 55), elbowL=(18, 45), handR=(71, 55), elbowR=(78, 45), head=(48, 36),
+                 footL=(40, 66), footR=(56, 66), glow=1, spread=1)
+    elif i == 1:  # głęboki przysiad: sok jaśnieje
+        p.update(handL=(24, 58), elbowL=(17, 47), handR=(72, 58), elbowR=(79, 47), head=(48, 38),
+                 footL=(39, 65), footR=(57, 65), glow=2, spread=2)
+    elif i == 2:  # wybicie: łapy idą w górę i na boki, paszcza się otwiera
+        p.update(handL=(25, 26), elbowL=(19, 37), handR=(71, 26), elbowR=(77, 37), head=(48, 31), jaw=2, glow=1, spread=1)
+    else:         # lot: łapy szeroko w przód, paszcza rozdarta, stopy podkulone
+        p.update(handL=(31, 17), elbowL=(22, 28), handR=(65, 17), elbowR=(74, 28), head=(48, 29), jaw=4, glow=1,
+                 footL=(43, 63), footR=(53, 63), drip=True)
+    return p
+
+
 def draw_head(L, cx, cy, k, blood_lvl):
     if k > 0:
         # Paszcza: czerwone wnętrze między połowami głowy.
@@ -488,6 +525,12 @@ def boss_frame(p):
             fx.put(h[0], h[1] + 5, BLOOD[2]); fx.put(h[0] + 1, h[1] + 6, BLOOD[1])
     if p.get('puff'):
         droplets(fx, random.Random(3), 48, 56, 12, 20, 14, SAP, size=(0.5, 1.2))
+    if 'pod' in p:  # strąk zarodników w paszczy (jak `spore-pod.png`)
+        px, py = p['pod']
+        spore_pod(fx, px, py, 0)
+    if p.get('spores'):
+        n = 8 if p['spores'] == 1 else 18
+        droplets(fx, random.Random(5), hx_, hy_ - 9, 2, 5 + 3 * p['spores'], n, SAP, size=(0.5, 1.1))
     return finish(body, fx, 96)
 
 
@@ -683,6 +726,80 @@ def fx_spore(i):
     return L.a
 
 
+def spore_pod(L, cx, cy, f):
+    """Strąk zarodników (krok 111): kapelusz grzybni zwinięty w kulę, pęknięcia świecą sokiem; `f` = puls 0–3."""
+    r = 5.5 + (0.5 if f in (1, 2) else 0)
+    ellipse(L, cx, cy, r, r * 0.9, MYC)
+    glow = SAP[3] if f == 2 else SAP[2]
+    for a in (0.4, 2.3, 4.2):  # pęknięcia od środka, obrót z klatką
+        a += f * 0.5
+        line(L, [(cx, cy), (cx + math.cos(a) * (r - 1.5), cy + math.sin(a) * (r - 1.5))], SAP[1], inside=L)
+        L.put(int(round(cx + math.cos(a) * (r - 2))), int(round(cy + math.sin(a) * (r - 2))), glow)
+    L.put(int(cx), int(cy), glow)
+
+
+def pod_frame(f):
+    L = Layer(POD, POD)
+    spore_pod(L, POD / 2, POD / 2, f)
+    outline(L)
+    return L.a
+
+
+# Promienie klatek rozrostu = webPatchRadius w grze (bossConfig.FUNGAL_DEVOURER.trail.patch: 6 → 18 px).
+TRAIL = 48
+TRAIL_RADII = (6, 8, 11, 13, 16, 18, 18, 18, 18, 18)
+POD = 24
+
+
+def trail_frame(f):
+    """Płat grzybów ze śladu Pożeracza (krok 111): ciemna mata grzybni z kościstymi kapeluszami i kroplami soku.
+    0–5 rozrost, 6–7 puls soku, 8–9 więdnięcie. Zasięg maty = promień płatu (hitbox łapie ślad stóp)."""
+    L = Layer(TRAIL, TRAIL)
+    c = TRAIL / 2
+    rad = TRAIL_RADII[f]
+    r = random.Random(1110)  # ten sam kształt w każdej klatce — płat rośnie, a nie skacze
+    lobes = [r.uniform(.8, 1.0) for _ in range(12)]
+    wither = f >= 8
+    for y in range(TRAIL):
+        for x in range(TRAIL):
+            dx, dy = x + .5 - c, y + .5 - c
+            d = math.hypot(dx, dy)
+            a = (math.atan2(dy, dx) + math.pi) / (2 * math.pi) * 12
+            i0 = int(a) % 12
+            edge = rad * (lobes[i0] + (lobes[(i0 + 1) % 12] - lobes[i0]) * (a - int(a)))
+            if d > edge - .5:
+                continue
+            t = d / edge
+            if d > edge - 1.6 and not wither and f >= 2:
+                # Brzeg płatu (= zasięg) świeci sokiem — grzyby widać na ciemnej posadzce Cmentarzyska.
+                L.put(x, y, SAP[2] if f in (6, 7) and (x + y) % 3 == 0 else SAP[1])
+                continue
+            L.put(x, y, MYC[0] if t > .82 or wither else (MYC[1] if t > .4 else MYC[2]))
+    for k in range(7):  # strzępki na brzegu
+        ang = r.uniform(0, math.tau)
+        for j in range(int(rad * .5), int(rad) - 1):
+            L.put(int(c + math.cos(ang) * j), int(c + math.sin(ang) * j), FLESH[2] if wither else MYC[3])
+    # Kapelusze: więcej i większe, im starszy płat; przy więdnięciu opadają (ciemnieją i maleją).
+    caps = [(0, 0, 3.0)] + [(k * math.tau / 6 + r.uniform(-.4, .4), r.uniform(.45, .68), r.uniform(1.8, 2.8)) for k in range(6)]
+    shown = min(len(caps), 1 + f) if f < 6 else len(caps) - (3 if f == 9 else 0)
+    for k, (ang, dist, size) in enumerate(caps[:shown]):
+        x, y = c + math.cos(ang) * dist * rad, c + math.sin(ang) * dist * rad
+        sz = size * min(1.0, rad / 14) * (.7 if wither else 1)
+        ellipse(L, x, y, sz, sz * .85, FLESH[:4] if wither else BONE)
+        if not wither:
+            L.put(int(x), int(y), MYC[1])
+    pulse = f in (6, 7)
+    for k in range(2 + min(f, 4)):  # krople soku
+        ang, dist = r.uniform(0, math.tau), r.uniform(.2, .75)
+        if wither and k % 2:
+            continue
+        x, y = int(c + math.cos(ang) * dist * rad), int(c + math.sin(ang) * dist * rad)
+        L.put(x, y, SAP[3] if pulse and (k + f) % 2 == 0 else SAP[2])
+        if pulse:
+            L.put(x + 1, y, SAP[1])
+    return L.a
+
+
 # ---------------------------------------------------------------- naklejki podłogi
 
 def decal(i):
@@ -781,13 +898,17 @@ def build():
     bite = [boss_frame(bite_pose(i)) for i in range(4)]
     feed = [boss_frame(feed_pose(i)) for i in range(4)]
     smash = [boss_frame(smash_pose(i)) for i in range(4)]
-    rows = [[anim[i][d] for anim in (walk, bite, feed, smash) for i in range(4)] for d in range(8)]
+    spit = [boss_frame(spit_pose(i)) for i in range(4)]
+    leap = [boss_frame(leap_pose(i)) for i in range(4)]
+    rows = [[anim[i][d] for anim in (walk, bite, feed, smash, spit, leap) for i in range(4)] for d in range(8)]
     sheets = {
         'fungal-devourer.png': (sheet(rows, 96), 96, 8),
         'devourer-cocoon.png': (sheet([[cocoon(v, f) for f in range(14)] for v in range(3)], 48), 48, 6),
         'fungal-throne.png': (throne(), 96, 6),
         'fungal-fx.png': (sheet([[fx_blood(i) for i in range(4)], [fx_spore(i) for i in range(4)]], 48), 48, 2),
         'throne-decals.png': (sheet([[decal(i) for i in range(6)]], 48), 48, 4),
+        'mushroom-trail.png': (sheet([[trail_frame(i) for i in range(10)]], TRAIL), TRAIL, 2),
+        'spore-pod.png': (sheet([[pod_frame(i) for i in range(4)]], POD), POD, 2),
     }
     return sheets
 
@@ -835,7 +956,7 @@ def previews(sheets, out):
         save(up(bg, k), os.path.join(out, f'preview_{name[:-4]}_{k}x.png'))
     # Klatki na północ, po 4 w pasku, 3x, z cieniem silnika.
     mb = sheets['fungal-devourer.png'][0]
-    for nm, src, c0 in (('walk', mb, 0), ('bite', mb, 4), ('feed', mb, 8), ('smash', mb, 12)):
+    for nm, src, c0 in (('walk', mb, 0), ('bite', mb, 4), ('feed', mb, 8), ('smash', mb, 12), ('spit', mb, 16), ('leap', mb, 20)):
         bg = floor_bg(384, 96)
         for i in range(4):
             over(bg, src[0:96, (c0 + i) * 96:(c0 + i + 1) * 96], i * 96, 0, shadow=(i * 96 + 48, 50, 21, 17))

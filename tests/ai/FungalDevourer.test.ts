@@ -22,8 +22,10 @@ describe('Grzybowy Pożeracz (kroki 33–34) — wybór i definicja', () => {
     expect(bossForFloor(4).id).toBe(BossId.FungalDevourer);
   });
 
-  it('wzór: tasak, szarża, zew; kąsanie poza wzorem leczy Pożeracza', () => {
-    expect([...DEVOURER.pattern].sort()).toEqual([BossAttackKind.Call, BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Slam].sort());
+  it('wzór: tasak, szarża, wyrzut zarodników, zew, zgniecenie; kąsanie poza wzorem leczy Pożeracza', () => {
+    expect([...DEVOURER.pattern].sort()).toEqual(
+      [BossAttackKind.Call, BossAttackKind.Cleave, BossAttackKind.Leap, BossAttackKind.Slam, BossAttackKind.SporeVolley].sort(),
+    );
     expect(DEVOURER.lash.healOnHit).toBeGreaterThan(0);
   });
 
@@ -80,6 +82,28 @@ function feasting(): BossBrain {
   brain.delay(1_000_000);
   return brain;
 }
+
+describe('mózg: wyprzedzenie celu (krok 111)', () => {
+  it('biegnący gracz: skok ląduje przed nim, w kierunku biegu', () => {
+    const brain = new BossBrain({ ...DEVOURER, pattern: [BossAttackKind.Leap] }, createRng(1));
+    // Atak gotowy w 10. klatce — wcześniej mózg patrzy, jak gracz biegnie w dół 150 px/s.
+    brain.activate(10 * FRAME - DEVOURER.openingDelayMs);
+    let plan: BossAttackPlan | null = null;
+    for (let i = 0; i < 20 && !plan; i++) {
+      plan = brain.think({ self: SELF, target: { x: 200, y: (150 * i * FRAME) / 1000 }, now: i * FRAME, hpRatio: 1 }).newAttack;
+    }
+    expect(plan?.kind).toBe(BossAttackKind.Leap);
+    expect(plan!.leap!.to.y).toBeGreaterThan(30);
+    expect(brain.trackedTargetVelocity.y).toBeGreaterThan(80);
+  });
+
+  it('skok celu (zmiana bohatera w co-opie) zeruje prędkość', () => {
+    const brain = new BossBrain(DEVOURER, createRng(1));
+    brain.think({ self: SELF, target: { x: 0, y: 0 }, now: 0, hpRatio: 1 });
+    brain.think({ self: SELF, target: { x: 300, y: 0 }, now: FRAME, hpRatio: 1 });
+    expect(brain.trackedTargetVelocity).toEqual({ x: 0, y: 0 });
+  });
+});
 
 describe('uczta', () => {
   const larder = { x: 200, y: 0 };
@@ -161,7 +185,24 @@ describe('ciosy Pożeracza', () => {
     expect(strike.center).toEqual({ x: DEVOURER.cleave.reach, y: 0 });
     expect(strike.radius).toBe(DEVOURER.cleave.radius);
     expect(strike.impactAt).toBe(DEVOURER.cleave.telegraphMs);
-    expect(p.endsAt).toBe(DEVOURER.cleave.telegraphMs + DEVOURER.cleave.recoveryMs);
+    expect(p.endsAt).toBe(DEVOURER.cleave.telegraphMs + DEVOURER.cleave.followUp.delayMs + DEVOURER.cleave.recoveryMs);
+  });
+
+  it('tasak (krok 111): drugi zamach krok dalej, po pierwszym, telegraf od połowy zamachu', () => {
+    const [first, second] = plan(BossAttackKind.Cleave).strikes;
+    const { followUp, telegraphMs } = DEVOURER.cleave;
+    expect(second!.center).toEqual({ x: followUp.reach, y: 0 });
+    expect(second!.radius).toBe(followUp.radius);
+    expect(second!.impactAt).toBe(first!.impactAt + followUp.delayMs);
+    expect(second!.telegraphStartAt).toBe(telegraphMs / 2);
+  });
+
+  it('balans (krok 111): gracz cofający się prosto od Pożeracza ucieka też przed drugim zamachem', () => {
+    const r = HERO_HURTBOX.ground.radius;
+    const { followUp, telegraphMs } = DEVOURER.cleave;
+    const escape = followUp.reach + followUp.radius + r - DEVOURER.engageDistance;
+    const time = telegraphMs * DEVOURER.enrage.telegraphMultiplier + followUp.delayMs - 200;
+    expect((PLAYER_BASE_STATS.moveSpeed * time) / 1000).toBeGreaterThan(escape);
   });
 
   it('balans: uważny gracz przy Pożeraczu zdąży wyjść ze strefy tasaka (także po wściekłości)', () => {
@@ -183,10 +224,66 @@ describe('ciosy Pożeracza', () => {
     expect(plan(BossAttackKind.Call, undefined, true).release!.count).toBe(DEVOURER.call.count + 1);
   });
 
-  it('szarża z kłapnięciem: skok na miejsce gracza ze strefą lądowania', () => {
+  it('szarża z kłapnięciem: skok na miejsce stojącego gracza ze strefą lądowania i płatem grzybów', () => {
     const p = plan(BossAttackKind.Leap, { x: 120, y: 0 });
     expect(p.leap?.to).toEqual({ x: 120, y: 0 });
     expect(p.strikes[0]!.radius).toBe(DEVOURER.leap.radius);
+    expect(p.webs).toHaveLength(1);
+    expect(p.webs[0]!.to).toEqual({ x: 120, y: 0 });
+    expect(p.webs[0]!.look).toBe('mushrooms');
+    expect(p.webs[0]!.landAt).toBe(p.leap!.landAt);
+  });
+
+  it('szarża (krok 111): skok tam, dokąd gracz biegnie — z limitem wyprzedzenia', () => {
+    const { lead } = DEVOURER.leap;
+    const running = planBossAttack({
+      kind: BossAttackKind.Leap, definition: DEVOURER, self: SELF, target: { x: 120, y: 0 }, now: 0, enraged: false, rng: createRng(1),
+      targetVelocity: { x: 0, y: 100 },
+    });
+    expect(running.leap!.to).toEqual({ x: 120, y: (100 * lead.ms) / 1000 });
+    expect(running.strikes[0]!.center).toEqual(running.leap!.to);
+    const dashing = planBossAttack({
+      kind: BossAttackKind.Leap, definition: DEVOURER, self: SELF, target: { x: 120, y: 0 }, now: 0, enraged: false, rng: createRng(1),
+      targetVelocity: { x: 0, y: 5000 },
+    });
+    expect(dashing.leap!.to.y).toBeCloseTo(lead.maxPx);
+  });
+
+  it('wyrzut zarodników: pierwszy strąk przed biegnącym graczem, reszta dalej za nim; każdy zostawia grzyby', () => {
+    const v = DEVOURER.sporeVolley;
+    const p = planBossAttack({
+      kind: BossAttackKind.SporeVolley, definition: DEVOURER, self: SELF, target: { x: 150, y: 0 }, now: 0, enraged: false, rng: createRng(1),
+      targetVelocity: { x: 100, y: 0 },
+    });
+    expect(p.strikes).toHaveLength(v.count);
+    expect(p.throws).toHaveLength(v.count);
+    expect(p.webs).toHaveLength(v.count);
+    const aim = { x: 150 + (100 * v.lead.ms) / 1000, y: 0 };
+    expect(p.strikes[0]!.center).toEqual(aim);
+    for (const [i, strike] of p.strikes.entries()) {
+      expect(strike.look).toBe('spores');
+      expect(strike.impactAt).toBe(v.telegraphMs + v.flightMs + i * v.intervalMs);
+      expect(p.throws[i]!.landAt).toBe(strike.impactAt);
+      expect(p.throws[i]!.look).toBe('spore');
+      expect(p.webs[i]!.to).toEqual(strike.center);
+      if (i > 0) expect(Math.hypot(strike.center.x - aim.x, strike.center.y - aim.y)).toBeCloseTo(v.behindDistance);
+      if (i > 0) expect(strike.center.x).toBeGreaterThan(aim.x);
+    }
+    expect(p.endsAt).toBe(p.strikes.at(-1)!.impactAt + v.recoveryMs);
+    const enraged = planBossAttack({
+      kind: BossAttackKind.SporeVolley, definition: DEVOURER, self: SELF, target: { x: 150, y: 0 }, now: 0, enraged: true, rng: createRng(1),
+    });
+    expect(enraged.strikes).toHaveLength(v.count + 1);
+  });
+
+  it('skalowanie piętra obejmuje wyrzut zarodników', () => {
+    expect(scaleBossForFloor(DEVOURER, 4, ENEMY_SCALING).sporeVolley.damage).toBeGreaterThan(DEVOURER.sporeVolley.damage);
+  });
+
+  it('krok 111: szybszy niż przed oceną (70/150), wolniejszy od gracza w sprincie', () => {
+    expect(DEVOURER.moveSpeed).toBeGreaterThan(80);
+    expect(DEVOURER.sprint.speed).toBeGreaterThan(170);
+    expect(DEVOURER.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
   });
 
   it('uczta nie jest atakiem ze wzoru', () => {

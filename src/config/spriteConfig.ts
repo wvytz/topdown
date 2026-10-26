@@ -622,7 +622,7 @@ export const SPRITE_SHEETS = {
     url: 'assets/sprites/fungal-devourer.png',
     frameWidth: 96,
     frameHeight: 96,
-    sheetWidth: 1536,
+    sheetWidth: 2304,
     sheetHeight: 768,
     directions: 8,
     fps: SPRITE_FPS,
@@ -636,6 +636,41 @@ export const SPRITE_SHEETS = {
       feed: { frames: [8, 9, 10, 11], loop: false },
       // Zamach łapami (cios Cleave): uderzenie na ostatniej klatce.
       smash: { frames: [12, 13, 14, 15], loop: false },
+      // Wyrzut zarodników (krok 111): odchylenie, nabrzmienie, strąk w paszczy, chmura zarodników przy wyrzucie.
+      spit: { frames: [16, 17, 18, 19], loop: false },
+      // Skok (krok 111): przysiad, głęboki przysiad, wybicie; lot trzyma ostatnią klatkę do lądowania.
+      leap: { frames: [20, 21, 22, 23], loop: false },
+    },
+  },
+  // Płat grzybów ze śladu Pożeracza (krok 111, tools/devourer_sprites.py): 48×48; 0–5 rozrost (promień 6→18 px
+  // = bossConfig.FUNGAL_DEVOURER.trail.patch), 6–7 puls soku, 8–9 więdnięcie przed zniknięciem.
+  mushroomTrail: {
+    key: 'sheet-mushroom-trail',
+    url: 'assets/sprites/mushroom-trail.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 480,
+    sheetHeight: 48,
+    directions: 1,
+    fps: 3,
+    animations: {
+      grow: { frames: [0, 1, 2, 3, 4, 5], loop: false },
+      shimmer: { frames: [6, 7], loop: true },
+      wither: { frames: [8, 9], loop: false },
+    },
+  },
+  // Strąk zarodników Pożeracza w locie (krok 111): 24×24, puls.
+  sporePod: {
+    key: 'sheet-spore-pod',
+    url: 'assets/sprites/spore-pod.png',
+    frameWidth: 24,
+    frameHeight: 24,
+    sheetWidth: 96,
+    sheetHeight: 24,
+    directions: 1,
+    fps: 10,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
     },
   },
   // Kokon spiżarni (krok 39, tools/devourer_sprites.py): 48×48, wiersze = 3 warianty (twarz, dłoń, skulone ciało).
@@ -1118,6 +1153,8 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Lash]: 'bite',
       [BossAttackKind.Feast]: 'feed',
       [BossAttackKind.Call]: 'roar',
+      [BossAttackKind.SporeVolley]: 'spit',
+      [BossAttackKind.Leap]: 'leap',
     },
     deathDecal: 'splat',
   },
@@ -1249,6 +1286,20 @@ export const BLAST_VISUAL = {
   ],
   sparkColor: 0xfff2c0,
   /** Iskry (kwadraty `sparkSize` px) lecą od środka do `sparkReach` promienia. */
+  sparkSize: 2,
+  sparkReach: 0.92,
+} as const;
+
+/** Wybuch strąka zarodników (krok 111): jak `BLAST_VISUAL`, ale w turkusie soku i zieleni trucizny. */
+export const SPORE_BLAST_VISUAL = {
+  frameMs: 60,
+  frames: [
+    { fill: 0xe6fff8, fillAlpha: 0.55, ring: 0xffffff, ringWidth: 3, ringAlpha: 1, sparks: 0 },
+    { fill: 0x5fe0d0, fillAlpha: 0.5, ring: 0xe6fff8, ringWidth: 3, ringAlpha: 0.95, sparks: 12 },
+    { fill: 0x2f9a94, fillAlpha: 0.3, ring: 0x5fe0d0, ringWidth: 2, ringAlpha: 0.8, sparks: 9 },
+    { fill: 0x1f1626, fillAlpha: 0.2, ring: 0x2f9a94, ringWidth: 1, ringAlpha: 0.55, sparks: 5 },
+  ],
+  sparkColor: 0x9ef2e6,
   sparkSize: 2,
   sparkReach: 0.92,
 } as const;
@@ -1437,7 +1488,22 @@ export const BOSS_WEB_VISUAL = {
 export const BOSS_PATCH_VISUALS = {
   web: BOSS_WEB_VISUAL.patch,
   mycelium: { sheet: 'myceliumPatch', grow: 'grow', shimmer: 'shimmer' },
-} as const satisfies Record<'web' | 'mycelium', { readonly sheet: SpriteSheetId; readonly grow: string; readonly shimmer: string }>;
+  // Krok 111: grzyby więdną przez ostatnie `witherMs` (klatki 8–9) — gracz widzi, że płat zaraz zniknie.
+  mushrooms: { sheet: 'mushroomTrail', grow: 'grow', shimmer: 'shimmer', wither: 'wither', witherMs: 600 },
+} as const satisfies Record<
+  'web' | 'mycelium' | 'mushrooms',
+  { readonly sheet: SpriteSheetId; readonly grow: string; readonly shimmer: string; readonly wither?: string; readonly witherMs?: number }
+>;
+
+/**
+ * Grzybowy Pożeracz w walce (krok 111, „scena wygląda tragicznie”): strąk zarodników w locie, rozprysk soku
+ * przy lądowaniu, zarodniki unoszące się z grzbietu (czysto wizualnie, `Math.random`).
+ */
+export const DEVOURER_FX_VISUAL = {
+  pod: { sheet: 'sporePod', animation: 'fly', arcHeight: 56 },
+  /** Zarodniki z grzbietu: co `everyMs` jedna kropka soku unosi się o `rise` px i gaśnie. */
+  motes: { everyMs: 140, enragedEveryMs: 70, spread: 22, rise: 26, lifeMs: 900, colors: [0x5fe0d0, 0x9ef2e6, 0x2f9a94] },
+} as const satisfies { readonly pod: { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number }; readonly motes: unknown };
 
 /** Kokon rzucany przez Króla Pająków (krok 29): spoczynkowe klatki kokonu leża, lot łukiem. */
 export const KING_COCOON_VISUAL = {

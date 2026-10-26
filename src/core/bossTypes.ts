@@ -38,6 +38,8 @@ export enum BossAttackKind {
   Roar = 'roar',
   /** Smuga dymu (Baron Dymu, krok 83): z fajki w prawej ręce; trafienie przywołuje doga z rogu ekranu. */
   Smoke = 'smoke',
+  /** Wyrzut zarodników (Grzybowy Pożeracz, krok 111): strąki lecą łukiem tam, dokąd biegnie gracz, i zostawiają grzyby. */
+  SporeVolley = 'spore-volley',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -69,6 +71,57 @@ export enum BossPhase {
   /** Czeka, aż gracz wejdzie na arenę. */
   Dormant = 'dormant',
   Fighting = 'fighting',
+}
+
+/**
+ * Wyprzedzenie celu (krok 111, „Pożeracz nie trafia”): boss celuje tam, gdzie gracz będzie za `ms`
+ * (prędkość gracza z ostatnich klatek), najwyżej `maxPx` od jego obecnego miejsca.
+ */
+export interface AimLead {
+  readonly ms: number;
+  readonly maxPx: number;
+}
+
+/**
+ * Płat grzybów na ziemi (krok 111, Grzybowy Pożeracz): rośnie od `startRadius` do `maxRadius` przez `spreadMs`
+ * i leży `durationMs`. Bohater, którego ślad stóp dotyka płatu, jest zatruty i spowolniony (teren — chroni dash).
+ */
+export interface FungalPatchDefinition {
+  readonly startRadius: number;
+  readonly maxRadius: number;
+  readonly spreadMs: number;
+  readonly durationMs: number;
+  readonly poison: PoisonEffect;
+  readonly slow: { readonly pct: number; readonly durationMs: number };
+}
+
+/**
+ * Ślad grzybów (krok 111, prośba właściciela): co `spacing` px drogi bossa na ziemi pod nim (środek + `offsetY`)
+ * wyrasta płat grzybów. Najwyżej `maxPatches` płatów naraz (najstarszy znika). We wściekłości płaty leżą
+ * `enragedDurationMs` i jest ich najwyżej `enragedMaxPatches`.
+ */
+export interface FungalTrailDefinition {
+  readonly spacing: number;
+  readonly offsetY: number;
+  readonly maxPatches: number;
+  readonly enragedMaxPatches: number;
+  readonly enragedDurationMs: number;
+  readonly patch: FungalPatchDefinition;
+}
+
+/**
+ * Wyrzut zarodników (krok 111): po telegrafie strąki lecą łukiem — pierwszy w miejsce, do którego biegnie gracz
+ * (`lead`), kolejne w wachlarzu dalej za nim (`behindDistance`, `fanDeg`). Lądowanie rani w strefie `radius`
+ * i zostawia płat grzybów ze śladu. Po wściekłości jeden strąk więcej.
+ */
+export interface SporeVolleyDefinition extends BaseBossAttackDefinition {
+  readonly count: number;
+  readonly radius: number;
+  readonly flightMs: number;
+  readonly intervalMs: number;
+  readonly behindDistance: number;
+  readonly fanDeg: number;
+  readonly lead: AimLead;
 }
 
 interface BaseBossAttackDefinition {
@@ -131,6 +184,10 @@ export interface LeapAttackDefinition extends BaseBossAttackDefinition {
   readonly flightMs: number;
   /** Promień fali przy lądowaniu (strefa obrażeń). */
   readonly radius: number;
+  /** Skok tam, dokąd biegnie gracz (krok 111); brak = na jego miejsce z chwili planu. */
+  readonly lead?: AimLead;
+  /** Lądowanie zostawia płat grzybów ze śladu (Grzybowy Pożeracz, krok 111). */
+  readonly leavesPatch?: boolean;
 }
 
 /**
@@ -177,6 +234,13 @@ export interface LashAttackDefinition extends BaseBossAttackDefinition {
 export interface CleaveAttackDefinition extends BaseBossAttackDefinition {
   readonly reach: number;
   readonly radius: number;
+  /** Kierunek zamachu z wyprzedzeniem ruchu gracza (krok 111). */
+  readonly lead?: AimLead;
+  /**
+   * Drugi zamach (krok 111, Pożeracz): `delayMs` po pierwszym, strefa `reach` dalej w tym samym kierunku —
+   * kto cofnął się tylko o krok, dostaje drugim.
+   */
+  readonly followUp?: { readonly delayMs: number; readonly reach: number; readonly radius: number };
 }
 
 /** Zew spiżarni: po telegrafie (kokony drżą) `count` kokonów pęka i wypuszcza zarażonych (wściekłość: +1). */
@@ -471,6 +535,10 @@ export interface BossDefinition {
   readonly kindle?: KindleAttackDefinition;
   /** Smuga dymu (Baron Dymu). */
   readonly smoke?: SmokeAttackDefinition;
+  /** Wyrzut zarodników (Grzybowy Pożeracz, krok 111). */
+  readonly sporeVolley?: SporeVolleyDefinition;
+  /** Ślad grzybów za bossem (Grzybowy Pożeracz, krok 111); też płaty z wyrzutu i skoku. */
+  readonly trail?: FungalTrailDefinition;
   /** Dog Barona — boss-pomocnik. */
   readonly dog?: BossDogDefinition;
   /** Paleniska na arenie (Kat): tyle, rozstawione w ćwiartkach areny; buchają przy oddechu. */
@@ -501,8 +569,8 @@ export interface AreaStrike {
   readonly pullTo?: Vector2;
   /** Trafienie smugi dymu przywołuje doga (Baron Dymu). */
   readonly summonsDog?: boolean;
-  /** Wygląd strefy: dym zamiast czerwonego telegrafu. */
-  readonly look?: 'smoke';
+  /** Wygląd strefy: dym zamiast czerwonego telegrafu; `spores` — czerwony telegraf, wybuch w kolorach soku (krok 111). */
+  readonly look?: 'smoke' | 'spores';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -550,16 +618,19 @@ export interface WebShot {
   readonly spreadMs: number;
   readonly expiresAt: number;
   readonly slow: { readonly pct: number; readonly durationMs: number };
-  /** Wygląd płatu: sieć (Matka Pająków) albo grzybnia (Król). Brak = sieć. */
-  readonly look?: 'web' | 'mycelium';
+  /**
+   * Wygląd płatu: sieć (Matka Pająków), grzybnia (Król) albo grzyby (Pożeracz, krok 111). Brak = sieć.
+   * Grzyby łapią ślad stóp bohatera (jak strefy z kroku 110), sieć i grzybnia — środek postaci.
+   */
+  readonly look?: 'web' | 'mycelium' | 'mushrooms';
   /** Dodatkowy status w płacie (trucizna grzybni). */
   readonly status?: StatusApplication;
 }
 
 /** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
 export interface ThrownObject {
-  /** Co leci: kokon Króla (domyślnie) albo puszka Barona. */
-  readonly look?: 'can';
+  /** Co leci: kokon Króla (domyślnie), puszka Barona albo strąk zarodników Pożeracza. */
+  readonly look?: 'can' | 'spore';
   readonly from: Vector2;
   readonly to: Vector2;
   readonly launchAt: number;
