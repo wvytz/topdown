@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { CoopSelectData, FloorSceneData, HeroSelectData } from '@/core/types';
 import { currentPlatform } from '@/core/platform';
+import { DEFAULT_COOP_DEVICES } from '@/systems/coopDevices';
 import { SceneKey } from '@/core/types';
 import { RunMode } from '@/core/runMode';
 import { GAME_WIDTH, GAME_HEIGHT } from '@/config/gameConfig';
@@ -32,7 +33,7 @@ export interface MenuSceneData {
   readonly start: FloorSceneData;
 }
 
-const SCORE_BOARDS: readonly HighscoreBoardId[] = ['tower', 'arenas'];
+const SCORE_BOARDS: readonly HighscoreBoardId[] = ['tower', 'arenas', 'coop'];
 
 /** Widok menu: lista główna, sloty zapisu albo wybór piętra startowego. */
 type View = 'main' | 'slots' | 'floors';
@@ -302,7 +303,9 @@ export class MenuScene extends Phaser.Scene {
     if (!record) return;
     const data = loadFromRecord(record, slot === 'auto' ? 'auto' : 'slot', SAVE_CONFIG.manualLoadRanked);
     diag.note('save-loaded', { slot, floor: data.floor, hero: data.run.hero, mode: data.run.mode ?? null, fromSave: data.run.fromSave ?? false });
-    const start: FloorSceneData = { ...data };
+    // Co-op (etap C7): zapis pamięta partnera; urządzenia jak w trybie testowym — P1 klawiatura z myszą, P2 pad.
+    const { coop, ...solo } = data;
+    const start: FloorSceneData = { ...solo, ...(coop && { coop: { partner: coop, devices: DEFAULT_COOP_DEVICES } }) };
     this.leave(() => this.scene.start(SceneKey.Game, start));
   }
 

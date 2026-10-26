@@ -111,6 +111,7 @@ export const MENU_SCORES = {
   titles: {
     tower: { local: 'WSPINACZKA', pending: 'WSPINACZKA · ŁĄCZENIE…', shared: 'WSPINACZKA' },
     arenas: { local: 'ARENY BOSSÓW', pending: 'ARENY BOSSÓW · ŁĄCZENIE…', shared: 'ARENY BOSSÓW' },
+    coop: { local: 'CO-OP', pending: 'CO-OP · ŁĄCZENIE…', shared: 'CO-OP' },
   },
   text: {
     empty: '  brak wyników',

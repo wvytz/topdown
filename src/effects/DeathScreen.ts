@@ -5,6 +5,7 @@ import { heroIconTexture } from '@/effects/heroIcon';
 import type { HeroId } from '@/core/heroTypes';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
+import { COOP_BOARD_HEADERS } from '@/config/coopConfig';
 import { SAVE_TEXT } from '@/config/saveConfig';
 import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
@@ -194,6 +195,7 @@ export class DeathScreen {
   private headerFor(death: DeathSummary): string {
     const source = death.source;
     if (death.arenas && (source === 'local' || source === 'pending' || source === 'shared')) return BOSS_RUSH_TEXT.boardHeaders[source];
+    if (death.coop && (source === 'local' || source === 'pending' || source === 'shared')) return COOP_BOARD_HEADERS[source];
     return HEADERS[source];
   }
 

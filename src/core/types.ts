@@ -192,6 +192,8 @@ export interface DeathSummary {
   readonly source: 'local' | 'pending' | 'shared' | 'practice' | 'fromSave' | 'floorSelect';
   /** Śmierć w arenach bossów (krok 91a): tablica aren — `floor` to arena, ranking najpierw arena, potem złoto. */
   readonly arenas?: boolean;
+  /** Co-op (etap C7): wynik drużyny na tablicy co-op. */
+  readonly coop?: boolean;
   /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
   readonly nameEntry: string | null;
 }

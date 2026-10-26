@@ -289,6 +289,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private readonly highscores = createBoardHighscores('tower');
   /** Tablica aren bossów (krok 91a): najpierw osiągnięta arena, potem złoto; własny klucz, kolejka i trasa workera. */
   private readonly arenaHighscores = createBoardHighscores('arenas');
+  /** Co-op (etap C7): osobna tablica drużyn. */
+  private readonly coopHighscores = createBoardHighscores('coop');
   private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
   private runSeed = 0;
   /** Zapis gry (krok 91): autozapis przy wejściu na piętro i ręczne sloty z pauzy. */
@@ -322,7 +324,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.replayStart = -1;
     this.runSeed = data.runSeed;
     this.bossProgressSaved = false;
-    this.checkpoint = this.replay ? null : { runSeed: data.runSeed, floor: data.floor, run: data.run };
+    this.checkpoint = this.replay ? null : { runSeed: data.runSeed, floor: data.floor, run: data.run, ...(data.coop && { coop: data.coop.partner }) };
     this.atBoss = data.atBoss === true;
     this.bossRushArena = isBossRush(data.run.mode) ? new BossRushArena(BOSS_RUSH_CONFIG.teleportDelayMs) : null;
     this.shrine = null;
@@ -1342,7 +1344,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (this.checkpoint) this.saves.remove('auto');
 
     // Złoto w chwili śmierci to wynik runu.
-    const base: ScoreEntry = { score: this.run.gold, floor: this.floorNumber, timestamp: Date.now(), hero: this.run.hero };
+    const base: ScoreEntry = {
+      score: this.run.gold,
+      floor: this.floorNumber,
+      timestamp: Date.now(),
+      hero: this.run.hero,
+      ...(this.coop && { partner: this.coop.partner.hero }),
+    };
     // Bez zapisu i bez pytania o imię: run testowy z adresu (krok 41g), run ze slotu i od wybranego piętra (krok 91).
     // Areny bossów (krok 91a) mają własną tablicę — wynik idzie na nią, a nie na tablicę wspinaczki.
     const unranked = this.run.practice
@@ -1396,13 +1404,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   /** Znacznik tablicy aren na panelu śmierci (krok 91a). */
-  private arenaFlag(): { arenas?: true } {
-    return this.bossRush ? { arenas: true } : {};
+  private arenaFlag(): { arenas?: true; coop?: true } {
+    return this.bossRush ? { arenas: true } : this.coop ? { coop: true } : {};
   }
 
   /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. Areny bossów — na własnej tablicy (krok 91a). */
   private recordDeath(entry: ScoreEntry): void {
-    const highscores = this.bossRush ? this.arenaHighscores : this.highscores;
+    const highscores = this.bossRush ? this.arenaHighscores : this.coop ? this.coopHighscores : this.highscores;
     const { rank, board } = highscores.record(entry);
     const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag() };
     this.death = death;

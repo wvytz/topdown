@@ -13,6 +13,8 @@ export interface ScoreEntry {
    * zostaje w danych, ale ekran śmierci jej nie oznacza.
    */
   readonly hero?: string;
+  /** Co-op (etap C7): bohater P2 na tablicy co-op; brak w grze solo. */
+  readonly partner?: string;
 }
 
 export interface RankedEntry {

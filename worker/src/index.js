@@ -4,6 +4,8 @@
  *   POST   /scores          ← { score, floor, timestamp, name?, hero? }
  *   GET    /arena-scores?limit=N  → tablica aren bossów (krok 91a): floor = osiągnięta arena, ranking najpierw arena, potem złoto
  *   POST   /arena-scores          ← jak /scores
+ *   GET    /coop-scores?limit=N   → tablica co-op (krok 108): jak /scores, z bohaterem P2 w polu `partner`
+ *   POST   /coop-scores           ← { score, floor, timestamp, name?, hero?, partner? }
  *   POST   /reports         ← koperta zgłoszenia (patrz `reports.js`); 201 { ok, id } | 200 { duplicate } | 400/413/429/503
  *   GET    /reports?limit&kind&since&floor  → lista metadanych       } tylko z nagłówkiem Authorization: Bearer <REPORTS_TOKEN>
  *   GET    /reports/:id                     → pełne zgłoszenie       } albo X-Reports-Token: <REPORTS_TOKEN>
@@ -35,6 +37,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const SCORE_BOARDS = {
   '/scores': { table: 'scores', order: 'score DESC, floor DESC, id ASC' },
   '/arena-scores': { table: 'arena_scores', order: 'floor DESC, score DESC, id ASC' },
+  // Co-op (krok 108): wynik drużyny = wspólne złoto; `partner` — bohater P2.
+  '/coop-scores': { table: 'coop_scores', order: 'score DESC, floor DESC, id ASC', partner: true },
 };
 
 export default {
@@ -185,7 +189,7 @@ async function getScores(url, env, cors, board) {
   const requested = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
   const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), MAX_LIMIT) : 50;
   const { results } = await env.DB.prepare(
-    `SELECT score, floor, timestamp, name, hero FROM ${board.table} ORDER BY ${board.order} LIMIT ?`,
+    `SELECT score, floor, timestamp, name, hero${board.partner ? ', partner' : ''} FROM ${board.table} ORDER BY ${board.order} LIMIT ?`,
   )
     .bind(limit)
     .all();
@@ -214,15 +218,33 @@ async function postScore(request, env, cors, board) {
   const today = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${board.table} WHERE created_at > ?`).bind(now - DAY_MS).first();
   if ((today?.n ?? 0) >= MAX_SCORES_PER_DAY) return json({ error: 'daily cap reached' }, 503, { ...cors, 'Retry-After': '3600' });
 
-  await env.DB.prepare(`INSERT INTO ${board.table} (score, floor, timestamp, name, hero, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .bind(entry.score, entry.floor, entry.timestamp, entry.name, entry.hero, ipHash, now)
-    .run();
+  const insert = board.partner
+    ? env.DB.prepare(`INSERT INTO ${board.table} (score, floor, timestamp, name, hero, partner, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+        entry.score,
+        entry.floor,
+        entry.timestamp,
+        entry.name,
+        entry.hero,
+        entry.partner,
+        ipHash,
+        now,
+      )
+    : env.DB.prepare(`INSERT INTO ${board.table} (score, floor, timestamp, name, hero, ip_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).bind(
+        entry.score,
+        entry.floor,
+        entry.timestamp,
+        entry.name,
+        entry.hero,
+        ipHash,
+        now,
+      );
+  await insert.run();
   return json({ ok: true }, 201, cors);
 }
 
 export function validate(body, now) {
   if (typeof body !== 'object' || body === null) return null;
-  const { score, floor, timestamp, name, hero } = body;
+  const { score, floor, timestamp, name, hero, partner } = body;
   if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return null;
   if (!Number.isInteger(floor) || floor < 1 || floor > MAX_FLOOR) return null;
   if (!Number.isInteger(timestamp) || Math.abs(timestamp - now) > MAX_CLOCK_SKEW_MS) return null;
@@ -230,11 +252,15 @@ export function validate(body, now) {
   const heroOk = hero === undefined || hero === null || (typeof hero === 'string' && HERO_PATTERN.test(hero));
   if (!heroOk) return null;
   const heroValue = hero ?? null;
-  if (name === undefined || name === null || name === '') return { score, floor, timestamp, name: null, hero: heroValue };
+  // Bohater P2 (tablica co-op, krok 108) — opcjonalny, ten sam wzorzec.
+  const partnerOk = partner === undefined || partner === null || (typeof partner === 'string' && HERO_PATTERN.test(partner));
+  if (!partnerOk) return null;
+  const partnerValue = partner ?? null;
+  if (name === undefined || name === null || name === '') return { score, floor, timestamp, name: null, hero: heroValue, partner: partnerValue };
   // Te same zasady co w grze (sanitizePlayerName): litery, cyfry, spacja, „_”, „-”, max 12 znaków.
   if (typeof name !== 'string' || name !== name.trim() || /\s{2,}/.test(name)) return null;
   if (!/^[\p{L}\p{N} _-]+$/u.test(name) || [...name].length > MAX_NAME_LENGTH) return null;
-  return { score, floor, timestamp, name, hero: heroValue };
+  return { score, floor, timestamp, name, hero: heroValue, partner: partnerValue };
 }
 
 function allowedOrigins(env) {

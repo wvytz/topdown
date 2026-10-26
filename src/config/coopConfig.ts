@@ -37,6 +37,13 @@ export const COOP_CONFIG = {
   balance: { enemyHpMultiplier: 1.4, bossHpMultiplier: 1.7, extraEnemiesPerRoom: 1 } satisfies CoopBalanceConfig,
 } as const;
 
+/** Nagłówki tablicy co-op na ekranie śmierci (etap C7). */
+export const COOP_BOARD_HEADERS = {
+  local: 'NAJLEPSZE DRUŻYNY',
+  pending: 'NAJLEPSZE DRUŻYNY · ŁĄCZENIE…',
+  shared: 'NAJLEPSZE DRUŻYNY · WSZYSCY GRACZE',
+} as const;
+
 /** Napisy ekranu co-opu (etap C5). */
 export const COOP_SELECT_TEXT = {
   title: 'CO-OP · DWÓCH GRACZY',

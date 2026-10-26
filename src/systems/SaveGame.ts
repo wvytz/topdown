@@ -1,5 +1,6 @@
 import type { HeroId } from '@/core/heroTypes';
 import type { RunSnapshot } from '@/core/lootTypes';
+import type { CoopPartnerSnapshot } from '@/core/types';
 import { ItemId } from '@/core/lootTypes';
 import { RunMode } from '@/core/runMode';
 import { HERO_DEFINITIONS, parseHeroId } from '@/config/heroConfig';
@@ -14,6 +15,8 @@ export interface SaveData {
   readonly runSeed: number;
   readonly floor: number;
   readonly run: RunSnapshot;
+  /** Co-op (etap C7): partner z wejścia na piętro — bohater, przedmioty, HP; brak w grze solo. */
+  readonly coop?: CoopPartnerSnapshot;
 }
 
 export interface SaveRecord extends SaveData {
@@ -25,7 +28,8 @@ export interface SaveRecord extends SaveData {
 export const SAVE_VERSION = 1;
 
 export function toSaveRecord(data: SaveData, savedAt: number): SaveRecord {
-  return { version: SAVE_VERSION, savedAt, runSeed: data.runSeed, floor: data.floor, run: { ...data.run, items: [...data.run.items] } };
+  const coop = data.coop && { coop: { ...data.coop, items: [...data.coop.items] } };
+  return { version: SAVE_VERSION, savedAt, runSeed: data.runSeed, floor: data.floor, run: { ...data.run, items: [...data.run.items] }, ...coop };
 }
 
 const ITEM_IDS = new Set<string>(Object.values(ItemId));
@@ -44,10 +48,22 @@ export function parseSaveRecord(raw: string | null): SaveRecord | null {
     return null;
   }
   if (!isRecord(value) || value.version !== SAVE_VERSION) return null;
-  const { savedAt, runSeed, floor, run } = value;
+  const { savedAt, runSeed, floor, run, coop } = value;
   if (!isCount(savedAt) || !isCount(runSeed) || runSeed > 0xffffffff || !isCount(floor) || floor < 1) return null;
   const snapshot = parseRunSnapshot(run);
-  return snapshot ? { version: SAVE_VERSION, savedAt, runSeed, floor, run: snapshot } : null;
+  if (!snapshot) return null;
+  if (coop === undefined) return { version: SAVE_VERSION, savedAt, runSeed, floor, run: snapshot };
+  const partner = parsePartner(coop);
+  return partner ? { version: SAVE_VERSION, savedAt, runSeed, floor, run: snapshot, coop: partner } : null;
+}
+
+function parsePartner(value: unknown): CoopPartnerSnapshot | null {
+  if (!isRecord(value)) return null;
+  const hero = parseHeroId(typeof value.hero === 'string' ? value.hero : null);
+  const { items, hp } = value;
+  if (!hero || !Array.isArray(items) || !items.every((id): id is ItemId => typeof id === 'string' && ITEM_IDS.has(id))) return null;
+  if (hp !== null && !(typeof hp === 'number' && Number.isFinite(hp) && hp > 0)) return null;
+  return { hero, items, hp };
 }
 
 function parseRunSnapshot(value: unknown): RunSnapshot | null {
@@ -80,7 +96,8 @@ function parseRunSnapshot(value: unknown): RunSnapshot | null {
 export function loadFromRecord(record: SaveRecord, source: 'auto' | 'slot', manualLoadRanked: boolean): SaveData {
   const fromSave = record.run.fromSave === true || (source === 'slot' && !manualLoadRanked);
   const run: RunSnapshot = { ...record.run, items: [...record.run.items], ...(fromSave ? { fromSave } : {}) };
-  return { runSeed: record.runSeed, floor: record.floor, run };
+  const coop = record.coop && { coop: { ...record.coop, items: [...record.coop.items] } };
+  return { runSeed: record.runSeed, floor: record.floor, run, ...coop };
 }
 
 /** Run nie trafia na tablicę wyników (start z adresu albo wczytany ze slotu). */
@@ -99,7 +116,8 @@ export function saveSummary(record: SaveRecord): SaveSummary {
   const where = record.run.mode === RunMode.BossRush ? `Arena ${record.floor}` : floorLabel(record.floor, TOWER_CONFIG);
   const items = record.run.items.length;
   const parts = [`${record.run.gold} złota`, `${items} ${itemsWord(items)}`, formatSavedAt(record.savedAt)];
-  return { title: `${HERO_DEFINITIONS[hero].name} · ${where}`, details: parts.join(' · ') };
+  const heroes = record.coop ? `${HERO_DEFINITIONS[hero].name} + ${HERO_DEFINITIONS[record.coop.hero].name}` : HERO_DEFINITIONS[hero].name;
+  return { title: `${heroes} · ${where}`, details: parts.join(' · ') };
 }
 
 /** Polska odmiana: 1 przedmiot, 2–4 przedmioty, 5+ przedmiotów (12–14 też „przedmiotów”). */

@@ -4405,6 +4405,18 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Testy:** 3 nowe (`coopBalance.test.ts`).
 
+## Krok 108 — Co-op, etap C7: osobna tablica co-op i zapis z partnerem `#coop` `#decyzja`
+
+**Co powstało:**
+- **osobna tablica co-op** (decyzja właściciela): `HIGHSCORE_BOARDS.coop` (lokalnie `tower-crawler.coop-highscores.v1`, wspólnie `/coop-scores`); wynik drużyny = wspólne złoto w chwili, gdy padną obaj; wpis ma bohatera P1 (`hero`) i P2 (`partner`, nowe pole `ScoreEntry`); ekran śmierci — nagłówek „NAJLEPSZE DRUŻYNY”; na środku menu trzecia lista „CO-OP”;
+- run co-op z menu trafia na tablicę co-op (nigdy na tablicę wspinaczki); tryb testowy z adresu `?coop=` zostaje bez tablicy;
+- **worker:** trasa `/coop-scores` (tabela `coop_scores` z kolumną `partner`, migracja `worker/migrations/0004_coop_scores.sql`, `schema.sql`); `validate` przyjmuje `partner` tym samym wzorcem co bohater; **worker czeka na wdrożenie** — do tego czasu tablica co-op działa lokalnie, a wpisy czekają w kolejce wysyłki;
+- **zapis gry:** punkt kontrolny i sloty pamiętają partnera (`SaveData.coop`: bohater, przedmioty, HP); uszkodzony partner unieważnia zapis; opis zapisu „Barbarzyńca + Łucznik · Piętro 3”; wczytany co-op startuje z P1 na klawiaturze z myszą i P2 na padzie.
+
+**Gra solo bez zmian:** wpisy bez `partner`, zapisy bez `coop`, tablice wspinaczki i aren jak dotąd.
+
+**Testy:** 2 nowe w `saveGame.test.ts`, 2 asercje w `tests/worker/index.test.ts`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4508,7 +4520,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107). Dalej: C7 zapis i tablica co-op, C8 smoke z dwoma botami.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108). Dalej: C8 smoke z dwoma botami.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

@@ -22,7 +22,15 @@ export function createWorkerScoreSource(baseUrl: string, fetchFn: FetchFn, path 
       const response = await fetchFn(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: entry.score, floor: entry.floor, timestamp: entry.timestamp, name: entry.name, hero: entry.hero }),
+        body: JSON.stringify({
+          score: entry.score,
+          floor: entry.floor,
+          timestamp: entry.timestamp,
+          name: entry.name,
+          hero: entry.hero,
+          // Co-op (etap C7): bohater P2 — tylko na tablicy co-op.
+          ...(entry.partner !== undefined && { partner: entry.partner }),
+        }),
         signal,
       });
       if (!response.ok) throw new Error(`scores: HTTP ${response.status}`);
