@@ -17,6 +17,7 @@ const MOBILE_KEY_SUFFIX = '.mobile';
 export const BOARD_ORDER: Readonly<Record<HighscoreBoardId, ScoreComparator>> = {
   tower: compareScores,
   arenas: compareArenaScores,
+  coop: compareScores,
 };
 
 /** Tablica wyników (lokalna + wspólna) w przeglądarce — ta sama dla ekranu śmierci i ekranu startowego. */

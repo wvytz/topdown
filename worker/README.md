@@ -84,3 +84,10 @@ Areny bossów mają osobną listę: `GET /arena-scores?limit=N` i `POST /arena-s
 Kolejność wdrożenia — **najpierw migracja, potem worker**:
 1. `npx wrangler d1 execute tower-crawler-scores --remote --file=migrations/0003_arena_scores.sql` (bezpieczne do powtórzenia)
 2. `npx wrangler deploy`
+
+## Tablica co-op (krok 108)
+
+Co-op ma osobną listę drużyn: `GET /coop-scores?limit=N` i `POST /coop-scores` (kształt jak `/scores` plus opcjonalne `partner` — bohater P2, ten sam wzorzec co `hero`). Kolejność: złoto, potem piętro. Limity liczone osobno.
+Kolejność wdrożenia — **najpierw migracja, potem worker**:
+1. `npx wrangler d1 execute tower-crawler-scores --remote --file=migrations/0004_coop_scores.sql` (bezpieczne do powtórzenia)
+2. `npx wrangler deploy`

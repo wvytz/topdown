@@ -201,7 +201,10 @@ describe('worker: bohater przy wpisie (krok 89)', () => {
   const entry = (over: Record<string, unknown> = {}) => ({ score: 10, floor: 2, timestamp: now, ...over });
 
   it('przyjmuje znanego bohatera i wpis bez bohatera (zgodność ze starą grą)', () => {
-    expect(validate(entry({ hero: 'archer' }), now)).toEqual({ score: 10, floor: 2, timestamp: now, name: null, hero: 'archer' });
+    expect(validate(entry({ hero: 'archer' }), now)).toEqual({ score: 10, floor: 2, timestamp: now, name: null, hero: 'archer', partner: null });
+    // Co-op (krok 108): bohater P2 w polu `partner`, ten sam wzorzec co bohater.
+    expect(validate(entry({ hero: 'barbarian', partner: 'archer' }), now)?.partner).toBe('archer');
+    expect(validate(entry({ partner: 'DROP TABLE' }), now)).toBeNull();
     expect(validate(entry({ name: 'Wicio', hero: 'sorceress' }), now)?.hero).toBe('sorceress');
     expect(validate(entry(), now)?.hero).toBeNull();
     expect(validate(entry({ hero: null }), now)?.hero).toBeNull();

@@ -4,6 +4,8 @@ import type { RunMode } from '@/core/runMode';
 /** Czyste typy domenowe — bez zależności od Phasera. */
 import type { RunSnapshot } from '@/core/lootTypes';
 import type { ScoreboardView } from '@/systems/Highscores';
+import type { ItemId } from '@/core/lootTypes';
+import type { PlayerDevices } from '@/systems/coopDevices';
 
 export interface Vector2 {
   readonly x: number;
@@ -34,6 +36,8 @@ export enum SceneKey {
   Hud = 'HudScene',
   Reward = 'RewardScene',
   Pause = 'PauseScene',
+  /** Ekran co-opu (etap C5): dołączanie i wybór bohaterów. */
+  CoopSelect = 'CoopSelectScene',
 }
 
 export enum TextureKey {
@@ -53,6 +57,12 @@ export interface HeroSelectData {
   readonly mode?: RunMode;
 }
 
+/** Ekran co-opu (etap C5): tylko wspinaczka od piętra 1. */
+export interface CoopSelectData {
+  readonly runSeed: number;
+  readonly practice?: boolean;
+}
+
 export interface FloorSceneData {
   readonly runSeed: number;
   readonly floor: number;
@@ -62,6 +72,23 @@ export interface FloorSceneData {
   readonly replay?: InputRecording;
   /** Start tuż przy wejściu na arenę bossa (`?boss=1`, tylko pierwsze piętro runu testowego). */
   readonly atBoss?: boolean;
+  /** Lokalny co-op (krok 101+): drugi bohater i urządzenia graczy; brak = gra solo. */
+  readonly coop?: CoopSceneData;
+}
+
+/** Drugi bohater w co-opie przenoszony między piętrami (pierwszy jest w `run`). */
+export interface CoopPartnerSnapshot {
+  readonly hero: HeroId;
+  /** Przedmioty partnera (decyzja właściciela: każdy zbiera dla siebie). */
+  readonly items: readonly ItemId[];
+  /** null = pełne HP. */
+  readonly hp: number | null;
+}
+
+export interface CoopSceneData {
+  readonly partner: CoopPartnerSnapshot;
+  /** Urządzenia graczy w kolejności P1, P2. */
+  readonly devices: readonly PlayerDevices[];
 }
 
 /** Promień Czarodziejki w HUD: świeci (pasek = pozostały czas) albo odnawia się po zgaśnięciu. */
@@ -119,12 +146,31 @@ export interface HudData {
   readonly itemNotice: HudItemNotice | null;
   /** Podsumowanie runu po śmierci; null, dopóki gracz żyje. */
   readonly death: DeathSummary | null;
+  /** Co-op (etap C5): napis przy pasku P1 („P1 · Barbarzyńca”); pusto w grze solo. */
+  readonly playerLabel: string;
+  /** Co-op (etap C5): panel drugiego gracza; null w grze solo. */
+  readonly partner: HudPartnerData | null;
+}
+
+/** Panel drugiego gracza w HUD (co-op, etap C5). */
+export interface HudPartnerData {
+  readonly label: string;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly dashReadiness: number;
+  readonly ultimate: UltimateHudData | null;
+  /** Powalony — czeka na wskrzeszenie; `reviveProgress` 0..1. */
+  readonly downed: boolean;
+  readonly reviveProgress: number;
+  readonly items: readonly HudItem[];
 }
 
 /** Dane minimapy: mgła wojny (współdzielona, mutowana przez scenę gry) i pozycje znaczników w kaflach. */
 export interface MinimapHudData {
   readonly explorer: import('@/systems/Minimap').MinimapExplorer;
   readonly player: { readonly x: number; readonly y: number };
+  /** Co-op: kafel drugiego gracza; null w grze solo. */
+  readonly partner: { readonly x: number; readonly y: number } | null;
   readonly stairs: { readonly x: number; readonly y: number };
   /** Środek areny bossa; null po jego pokonaniu (znacznik znika). */
   readonly boss: { readonly x: number; readonly y: number } | null;
@@ -146,6 +192,8 @@ export interface DeathSummary {
   readonly source: 'local' | 'pending' | 'shared' | 'practice' | 'fromSave' | 'floorSelect';
   /** Śmierć w arenach bossów (krok 91a): tablica aren — `floor` to arena, ranking najpierw arena, potem złoto. */
   readonly arenas?: boolean;
+  /** Co-op (etap C7): wynik drużyny na tablicy co-op. */
+  readonly coop?: boolean;
   /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
   readonly nameEntry: string | null;
 }

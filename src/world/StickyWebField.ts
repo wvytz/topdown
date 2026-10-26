@@ -5,7 +5,7 @@ import { TILE_SIZE } from '@/config/gameConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { STICKY_WEB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { planStickyWebs } from '@/dungeon/StickyWebPlanner';
-import type { Player } from '@/entities/Player';
+import type { Party } from '@/entities/Party';
 import type { StickyWeb, StickyWebConfig } from '@/systems/StickyWebs';
 import { isInStickyWeb } from '@/systems/StickyWebs';
 
@@ -14,7 +14,8 @@ export interface StickyWebDeps {
   readonly floor: DungeonFloor;
   readonly config: StickyWebConfig;
   readonly rng: Rng;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   /** Kafle kokonów — pajęczyny omijają je z przerwą. */
   readonly avoid: readonly TilePoint[];
 }
@@ -42,7 +43,9 @@ export class StickyWebField {
   }
 
   update(now: number): void {
-    const { player, config } = this.deps;
-    if (isInStickyWeb(this.webs, player, TILE_SIZE)) player.applyTerrainSlow(config.slow, now);
+    const { party, config } = this.deps;
+    for (const player of party.members) {
+      if (isInStickyWeb(this.webs, player, TILE_SIZE)) player.applyTerrainSlow(config.slow, now);
+    }
   }
 }

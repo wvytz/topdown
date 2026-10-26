@@ -29,6 +29,21 @@ CREATE TABLE IF NOT EXISTS arena_scores (
 CREATE INDEX IF NOT EXISTS arena_scores_rank ON arena_scores (floor DESC, score DESC, id ASC);
 CREATE INDEX IF NOT EXISTS arena_scores_ip ON arena_scores (ip_hash, created_at);
 
+-- Tablica co-op (krok 108): wynik drużyny, `partner` = bohater P2. Starą bazę uzupełnia migrations/0004_coop_scores.sql.
+CREATE TABLE IF NOT EXISTS coop_scores (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  score      INTEGER NOT NULL,
+  floor      INTEGER NOT NULL,
+  timestamp  INTEGER NOT NULL,
+  name       TEXT,
+  hero       TEXT,
+  partner    TEXT,
+  ip_hash    TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS coop_scores_rank ON coop_scores (score DESC, floor DESC, id ASC);
+CREATE INDEX IF NOT EXISTS coop_scores_ip ON coop_scores (ip_hash, created_at);
+
 -- Zgłoszenia diagnostyczne z gry (krok 57). Koperta: patrz worker/src/reports.js.
 CREATE TABLE IF NOT EXISTS reports (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,

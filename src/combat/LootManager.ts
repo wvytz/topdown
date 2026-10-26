@@ -4,6 +4,7 @@ import { PickupKind } from '@/core/lootTypes';
 import type { Vector2 } from '@/core/types';
 import { PICKUP_CONFIG } from '@/config/lootConfig';
 import { Pickup } from '@/entities/Pickup';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { directionTo, distance } from '@/systems/CombatMath';
 import { splitGold } from '@/systems/Loot';
@@ -12,10 +13,11 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 export interface LootManagerDeps {
   readonly scene: Phaser.Scene;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
-  readonly player: Player;
-  /** Czy gracz może teraz zebrać ten łup (np. mikstura przy pełnym HP — nie). */
-  readonly canCollect: (drop: LootDrop) => boolean;
-  readonly onCollect: (drop: LootDrop, position: Vector2) => void;
+  /** Bohaterowie (co-op, etap C0): łup zbiera najbliższy żywy, który może go wziąć. */
+  readonly party: Party;
+  /** Czy ten bohater może teraz zebrać ten łup (np. mikstura przy pełnym HP — nie). */
+  readonly canCollect: (drop: LootDrop, collector: Player) => boolean;
+  readonly onCollect: (drop: LootDrop, position: Vector2, collector: Player) => void;
 }
 
 /** Łupy na ziemi: rozsypanie, przyciąganie do gracza (magnes), zebranie. */
@@ -40,14 +42,15 @@ export class LootManager {
   }
 
   update(now: number): void {
-    const { player, canCollect, onCollect } = this.deps;
+    const { party, canCollect, onCollect } = this.deps;
     for (const child of [...this.group.getChildren()]) {
       if (!(child instanceof Pickup) || now < child.collectableAt) continue;
-      if (player.isDead || !canCollect(child.drop)) continue;
+      const player = this.collectorFor(child, party, canCollect);
+      if (!player) continue;
 
       const dist = distance(child, player);
       if (dist <= PICKUP_CONFIG.collectRadius) {
-        onCollect(child.drop, { x: child.x, y: child.y });
+        onCollect(child.drop, { x: child.x, y: child.y }, player);
         child.destroy();
       } else if (dist <= PICKUP_CONFIG.magnetRadius) {
         const dir = directionTo(child, player);
@@ -56,11 +59,22 @@ export class LootManager {
     }
   }
 
+  /** Najbliższy żywy bohater, który może wziąć łup (solo: gracz, o ile żyje i może). */
+  private collectorFor(pickup: Pickup, party: Party, canCollect: LootManagerDeps['canCollect']): Player | null {
+    let best: Player | null = null;
+    for (const player of party.living) {
+      if (!canCollect(pickup.drop, player)) continue;
+      if (!best || distance(pickup, player) < distance(pickup, best)) best = player;
+    }
+    return best;
+  }
+
   /** Zbiera od razu wszystko, co leży (teleport na kolejną arenę, krok 90) — łup nie przepada. */
   collectAll(): void {
     for (const child of [...this.group.getChildren()]) {
       if (!(child instanceof Pickup)) continue;
-      this.deps.onCollect(child.drop, { x: child.x, y: child.y });
+      // Areny bossów są tylko dla gry solo — łup bierze pierwszy gracz.
+      this.deps.onCollect(child.drop, { x: child.x, y: child.y }, this.deps.party.leader);
       child.destroy();
     }
   }

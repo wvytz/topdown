@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Vector2 } from '@/core/types';
 import type { StatusApplication, WaveShape } from '@/core/combatTypes';
 import { isHitByWave } from '@/systems/EnemyVariants';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { Projectile } from '@/entities/Projectile';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
@@ -44,8 +45,8 @@ export class ProjectileManager {
   constructor(
     private readonly scene: Phaser.Scene,
     walls: Phaser.Tilemaps.TilemapLayer,
-    private readonly player: Player,
-    private readonly onPlayerHit: () => void,
+    private readonly party: Party,
+    private readonly onPlayerHit: (player: Player) => void,
     private readonly decals?: CombatDecals,
   ) {
     this.group = scene.physics.add.group({ classType: Projectile });
@@ -53,9 +54,11 @@ export class ProjectileManager {
     scene.physics.add.collider(this.group, walls, (projectile) => {
       if (projectile instanceof Projectile) this.splash(projectile);
     });
-    scene.physics.add.overlap(player, this.group, (_player, projectile) => {
-      if (projectile instanceof Projectile && !this.waves.has(projectile)) this.handlePlayerOverlap(projectile);
-    });
+    for (const member of party.members) {
+      scene.physics.add.overlap(member, this.group, (_player, projectile) => {
+        if (projectile instanceof Projectile && !this.waves.has(projectile)) this.handlePlayerOverlap(projectile, member);
+      });
+    }
   }
 
   fire(spec: ProjectileSpec): void {
@@ -87,8 +90,10 @@ export class ProjectileManager {
       }
       const wave = this.waves.get(child);
       const velocity = child.body?.velocity;
-      if (wave && velocity && isHitByWave(child, velocity, wave, this.player, this.player.radius)) {
-        this.handlePlayerOverlap(child);
+      if (!wave || !velocity) continue;
+      // Fala znika na pierwszym trafionym bohaterze (co-op: drugi stoi za nim bezpiecznie).
+      for (const member of this.party.living) {
+        if (child.active && isHitByWave(child, velocity, wave, member, member.radius)) this.handlePlayerOverlap(child, member);
       }
     }
   }
@@ -100,7 +105,9 @@ export class ProjectileManager {
     projectile.destroy();
   }
 
-  private handlePlayerOverlap(projectile: Projectile): void {
+  private handlePlayerOverlap(projectile: Projectile, player: Player): void {
+    // Pocisk zniszczony na pierwszym bohaterze nie trafia drugiego w tej samej klatce.
+    if (!projectile.active) return;
     const now = this.scene.time.now;
     const velocity = projectile.body?.velocity;
     // Odrzut w kierunku lotu pocisku.
@@ -109,15 +116,15 @@ export class ProjectileManager {
       : { x: projectile.x, y: projectile.y };
     const hit = {
       damage: projectile.damage,
-      knockback: knockbackFrom(from, this.player, projectile.knockback),
+      knockback: knockbackFrom(from, player, projectile.knockback),
       status: projectile.status,
     };
 
     // Dash/nietykalność: pocisk przelatuje przez gracza.
-    if (this.player.takeHit(hit, now)) {
+    if (player.takeHit(hit, now)) {
       this.hitCallbacks.get(projectile)?.(hit.damage);
       projectile.destroy();
-      this.onPlayerHit();
+      this.onPlayerHit(player);
     }
   }
 }

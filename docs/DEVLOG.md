@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4284,6 +4284,148 @@ Co powstało:
 
 **Weryfikacja:** `npm run build` (typy + testy + build).
 
+## Krok 101 — Co-op, etap C0: drużyna zamiast gracza `#decyzja` `#coop`
+
+**Decyzje właściciela (2026-10-26)** po planie co-opu (dokument „TOP DOWN — plan co-opu dla 2 graczy”):
+1. tylko **lokalny** co-op; online teraz nie interesuje;
+2. **wspólny ekran ze smyczą** (kamera na środku między bohaterami);
+3. **powalenie i wskrzeszanie** przez partnera — run kończy się, gdy leżą obaj;
+4. trudność w co-opie: **więcej HP** wrogów i bossów **oraz 1 wróg więcej na pokój** (tylko w co-opie; solo dalej 1–2 na pokój);
+5. **każdy zbiera przedmioty dla siebie**;
+6. **bohaterowie muszą być różni**;
+7. **osobna tablica wyników** co-op;
+8. co-op **tylko w domyślnej wspinaczce** (bez aren bossów i wyboru piętra);
+9. **wersja mobilna pominięta**.
+Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP po wskrzeszeniu, karty za bossa naraz czy po kolei.
+
+**Praca na osobnej gałęzi** (decyzja właściciela: co-op nie może zepsuć gry). Etapy C0–C8 z planu; C0 to przebudowa bez zmiany zachowania gry solo.
+
+**Co powstało:**
+- `systems/Party.ts` (czysty): żywi członkowie, koniec runu (`isPartyDown`), najbliższy żywy bohater i cel wroga (`targetMember`: najbliższy żywy, a gdy nikt nie żyje — pierwszy gracz, jak dotąd w solo); testy `tests/systems/party.test.ts`;
+- `entities/Party.ts`: drużyna bohaterów w scenie (`leader`, `living`, `isDown`, `nearestLiving`, `targetFor`); solo = `new Party([player])` w `GameScene`;
+- menedżerowie walki dostają `party` zamiast `player`: wrogowie (`EnemyManager`), boss (`BossFight`), pajączki, pociski, pułapki, paleniska, kokony, purchawki, pajęczyny, psy w ścianach, pająki z sufitu, zasadzka, ukryta komnata, kraty areny, łupy;
+- zasada: **zagrożenia ranią każdego żywego bohatera w zasięgu**, **wrogowie i boss celują w najbliższego żywego**, wyzwalacze (kokony, purchawki, psy, płyty strzałek, ukryta komnata, zasadzka, start walki z bossem) reagują na **dowolnego** żywego bohatera; `onPlayerHit` dostaje trafionego bohatera;
+- łup zbiera najbliższy żywy bohater, który może go wziąć (`canCollect(drop, collector)`; mikstura — tylko ranny); na razie wszystko trafia do wspólnego runu jak dotąd (podział — etap C4).
+
+**Celowo na później (oznaczone w kodzie „etap C…”):** ataki bohatera i nietykalność bossa spoza areny sprawdzają pierwszego gracza (C2: atakujący bohater), kraty areny i pająki z sufitu pilnują pierwszego żywego (C3), kapliczka, ultimate, światło/mrok, minimapa, kamera i HUD zostają przy pierwszym graczu (C2–C5).
+
+**Testy:** 7 nowych (`party.test.ts`), razem 1703.
+
+**Weryfikacja:** `npm run build` (typy + testy + build); `npm run smoke -- --floors 8 --seeds 1` — wszyscy trzej bohaterowie przechodzą piętra 1–8 bez błędów.
+
+## Krok 102 — Co-op, etap C1: sterowanie dla dwóch graczy `#coop` `#sterowanie`
+
+**Co powstało:**
+- `config/coopConfig.ts`: `maxPlayers` (2), przyciski dołączania (A, Start) i wyjścia (B) na padzie;
+- `systems/coopDevices.ts` (czysty): urządzenie gracza (`InputDevice`: klawiatura z myszą albo pad o indeksie), sterowanie bohatera (`PlayerDevices`; solo `SOLO_DEVICES` — klawiatura, mysz i pierwszy pad naraz, jak od kroku 95), drużyna przed startem (`CoopRoster`: pierwsze urządzenie = P1, drugie = P2, wyjście P1 przesuwa P2 na jego miejsce) i odczyt dołączania (`CoopJoinReader`: zbocza przycisków na każdym padzie osobno, trzymany przycisk liczy się po puszczeniu);
+- `input/padSnapshot.ts`: odczyt pada o danym indeksie i wszystkich padów naraz;
+- `InputController` dostaje `devices`: gracz z padem nie czyta klawiatury ani myszy, gracz z klawiaturą — żadnego pada; bez `devices` działa jak dotąd (solo);
+- `createPlayerInput(scene, devices?)` — gniazdo sterowania przyjmuje urządzenia bohatera (wersja mobilna je pomija);
+- `input/CoopJoinInput.ts`: nasłuch dołączania w scenie (pady + Enter/Spacja, Esc) — użyje go ekran wyboru co-op w etapie C5.
+
+**Gra solo bez zmian:** scena gry dalej tworzy sterowanie bez `devices`.
+
+**Testy:** 10 nowych (`coopDevices.test.ts`), razem 1718.
+
+**Weryfikacja:** `npm run build`; w przeglądarce z podstawionymi dwoma padami: sterowanie z `padDevice(1)` czyta tylko drugi pad (ruch z jego gałki), z klawiatury — żadnego pada, solo — pierwszy pad; `npm run smoke -- --floors 3 --seeds 1`.
+
+## Krok 103 — Co-op, etap C2: drugi bohater, kamera ze smyczą, światło dla obu `#coop`
+
+**Co powstało:**
+- **tryb testowy co-op:** `?hero=barbarian&coop=archer` (z `?seed=`/`?floor=` też) — P1 gra klawiaturą z myszą, P2 pierwszym padem; tylko wspinaczka (decyzja właściciela); run jest testowy (bez tablicy) do czasu tablicy co-op w etapie C7; ekran dołączania i wyboru dla dwóch — etap C5;
+- **różni bohaterowie** (decyzja właściciela): `systems/Coop.ts` `partnerHero` — gdy P2 chce tego samego bohatera co P1, dostaje następnego z ekranu wyboru; `freshCoop` — partner bez przedmiotów i z pełnym HP;
+- `FloorSceneData.coop` (`CoopSceneData`: partner — bohater, przedmioty, HP — i urządzenia graczy) przechodzi na kolejne piętro i do nowego runu po śmierci;
+- `combat/HeroCombat.ts`: walka jednego bohatera wydzielona z `GameScene` (cios, strzał, kule, strzały i salwa, promień, fala, Burzowy pęd, Wampirzy kieł, ultimate, loadout) — solo jeden, co-op po jednym na gracza; cele ataków podaje scena (`HeroStrikeTargets`) w tej samej kolejności co wcześniej;
+- **nietykalność bossa spoza areny** (krok 86) liczy się dla atakującego bohatera: metody `BossFight` dostają `attacker`, pociski gracza pamiętają strzelca (`PlayerShotManager`, także strzały totemu); kieł i rozprysk kuli działają dla strzelca;
+- **wspólna kamera ze smyczą** (decyzja właściciela): `systems/CoopCamera.ts` — kamera idzie za środkiem między żywymi bohaterami (`partyFocus`), smycz (`leashPair`) nie pozwala im się rozejść poza kadr: cofa tego, kto się oddala (partner nie jest ciągnięty), przy ruchu obu dzieli nadmiar; zapas na sylwetki `COOP_CONFIG.leashMarginPx` (48×40 px, przy zoomie 2 odstęp do 384×190 px); zoom zostaje 2,0;
+- **światło dla obu:** `LightingOverlay.render` wyciera krąg światła każdego żywego bohatera (też mrok zasadzki), `EnemyVisibility` liczy najjaśniejsze światło (`partyVisibility` w `systems/lighting.ts`);
+- minimapę odkrywają obaj; run kończy się, gdy padną obaj (`party.isDown`) — wskrzeszanie w etapie C4.
+
+**Celowo na później:** HUD pokazuje tylko P1 (etap C5); schody i kapliczka reagują na P1, łupy idą do runu P1 (etap C4); powalony partner wchodzi na kolejne piętro z 1 HP (zasady wskrzeszania — C4); balans co-opu (C6).
+
+**Gra solo bez zmian:** jedna `HeroCombat`, kamera za graczem jak dotąd; testy i smoke.
+
+**Testy:** 18 nowych (`coopCamera.test.ts`, `coop.test.ts`, `partyVisibility` w `lighting.test.ts`), razem 1736.
+
+**Weryfikacja:** `npm run build`; w przeglądarce `?seed=7&hero=barbarian&coop=archer` z podstawionym padem — dwóch bohaterów, P2 chodzi i strzela padem, P1 klawiaturą, kamera między nimi, smycz cofa odsuniętego o 600 px partnera do 384 px; `npm run smoke -- --floors 8 --seeds 1` (solo, wszyscy bohaterowie).
+
+## Krok 104 — Co-op, etap C3: kraty, zasadzki i pająki z sufitu dla dwóch `#coop`
+
+**Co powstało:**
+- **kraty areny i zasadzki:** opadają, gdy w głąb pokoju wejdzie którykolwiek żywy bohater; partnera spoza pokoju (także powalonego) gra przenosi wtedy obok bohatera w środku, z błyskiem w obu miejscach (`gatherParty` w `GameScene`, czyste `straysOutside` i `spotBeside` w `systems/Party.ts`, zapas `COOP_CONFIG.gatherMarginTiles`); nikt nie zostaje odcięty od walki ani zamknięty na zewnątrz;
+- **pająki z sufitu:** pokój wyznacza pierwszy żywy bohater w zwykłym pokoju, a kolejne zrzuty celują na zmianę w każdego bohatera z tego pokoju (`CeilingDropManager`); obrażenia przy lądowaniu dostaje każdy w cieniu;
+- **aggro** było gotowe od etapu C0: wróg i boss celują w najbliższego żywego bohatera, totem łucznika wabi wszystkich.
+
+**Gra solo bez zmian:** jedyny bohater zawsze jest kotwicą, nikogo nie trzeba ściągać, zrzuty celują w niego.
+
+**Testy:** 2 nowe w `party.test.ts`.
+
+## Krok 105 — Co-op, etap C4: powalenie i wskrzeszanie, łupy dla każdego `#coop`
+
+**Co powstało:**
+- **powalenie i wskrzeszanie** (decyzja właściciela): bohater z zerowym HP leży (wrogowie go ignorują), nad nim pulsuje krąg zasięgu; partner stojący w kręgu (30 px) przez 3 s podnosi go z 40% HP i 1,5 s nietykalności, bez statusów; odejście cofa postęp trzy razy wolniej (`systems/Revive.ts`, `COOP_CONFIG.revive`, `Player.revive`, `Health.revive`); run kończy się, gdy padną obaj; kamera i smycz trzymają żywego przy powalonym, powalony ma swój krąg światła;
+- **łupy dla każdego** (decyzja właściciela): mikstura leczy i przedmiot trafia do tego, kto go podniósł; złoto idzie do wspólnej sakiewki runu (wynik drużyny); przedmioty partnera jadą z nim na kolejne piętro (`partnerItems`, `CoopPartnerSnapshot.items`);
+- **kapliczka:** ofiarę składa najbliższy żywy bohater przy kapliczce swoim E, ze wspólnego złota, i to on dostaje przedmiot (`ShrineSite` na drużynie);
+- **nagroda za bossa:** każdy bohater wybiera swoją kartę — najpierw P1, potem P2 (napis „P2 — Łucznik wybiera”, `RewardSceneData.picker`), każdy z osobnego losowania;
+- **schody:** wchodzi żywy bohater, który na nich stoi, swoim E; gdy partner leży, napis „Najpierw podnieś partnera” i schody czekają;
+- komunikat przedmiotu w co-opie z numerem gracza („P2: Buty”).
+
+**Decyzje w trakcie (do oceny właściciela):** mikstura leczy tego, kto ją podniósł; 40% HP po wskrzeszeniu; karty bossa po kolei.
+
+**Gra solo bez zmian:** jedyny bohater zbiera wszystko do runu, kapliczka i schody reagują na niego, jedna karta nagrody.
+
+**Testy:** 4 nowe (`revive.test.ts`), razem 1744.
+
+**Weryfikacja:** w przeglądarce (`?seed=7&hero=barbarian&coop=archer`): powalony P2 nie kończy runu, P1 obok podnosi go po 3 s z 34/85 HP; buty podniesione przez P2 trafiają do jego przedmiotów; dwie karty bossa po kolei — Serce dla P1, Ostrze dla P2, gra rusza dalej.
+
+## Krok 106 — Co-op, etap C5: menu co-op, ekran dołączania i HUD dla dwóch `#coop`
+
+**Co powstało:**
+- **menu główne:** nowa pozycja „CO-OP · 2 GRACZY” pod nową wspinaczką (`MenuEntry.Coop`; na telefonie wygaszona — decyzja właściciela: bez wersji mobilnej); odstęp wierszy menu 31 px, żeby siedem pozycji zmieściło się w panelu;
+- **ekran co-opu** (`scenes/CoopSelectScene.ts`, czyste `systems/coopLobby.ts`): gracz dołącza swoim urządzeniem — Enter na klawiaturze albo A na padzie (każdy pad osobno), wybiera bohatera ← → i potwierdza gotowość; bohaterowie są zawsze różni (wybór przeskakuje bohatera partnera — decyzja właściciela); Esc / B cofa gotowość, potem zwalnia miejsce, bez graczy — powrót do menu; gdy obaj są gotowi, zaczyna się wspinaczka od piętra 1 (tylko domyślny tryb); karty w kolorach graczy (P1 zielony, P2 niebieski), pod kartami urządzenie i stan każdego gracza;
+- **HUD dla dwóch:** przy pasku P1 napis „P1 · Barbarzyńca”, w prawym dolnym rogu panel P2 — imię, HP, dash, ultimate, przedmioty; powalony P2 — czerwony napis „POWALONY” i zielony pasek wskrzeszania; na minimapie niebieska kropka P2;
+- na ekranie śmierci C (zmiana bohatera) w co-opie wraca na ekran co-opu.
+
+**Gra solo bez zmian:** HUD bez napisu P1 i bez panelu P2; ekran wyboru bohatera jak dotąd.
+
+**Testy:** 4 nowe (`coopLobby.test.ts`) i poprawiony `mainMenu.test.ts`.
+
+**Weryfikacja:** w przeglądarce z podstawionym padem: menu z pozycją co-op; na ekranie co-opu Enter (P1, klawiatura) i A (P2, pad 1), P2 przechodzi na łucznika, obaj gotowi — gra startuje z barbarzyńcą (klawiatura z myszą) i łucznikiem (pad 0); panel P2 z przedmiotami i stanem powalenia.
+
+## Krok 107 — Co-op, etap C6: więcej HP i jeden wróg więcej na pokój `#coop` `#balans`
+
+**Co powstało (decyzja właściciela z kroku 101, p. 4):**
+- `COOP_CONFIG.balance`: wrogowie ×1,4 HP (także elity i upiory zasadzki), bossowie ×1,7 HP, w każdym pokoju 1 wróg więcej (1–2 → 2–3);
+- czyste `systems/CoopBalance.ts` (`withHpMultiplier`, `withExtraEnemies`, `SOLO_BALANCE`); `EnemyManager` i `BossFight` dostają mnożnik w zależnościach, `GameScene` dokłada wroga w planie spotkań tylko w co-opie;
+- obrażenia wrogów bez zmian — dwóch bohaterów to też dwa cele.
+
+**Uzasadnienie liczb:** dwóch bohaterów zadaje mniej więcej dwa razy więcej obrażeń, a wrogów jest o połowę więcej, więc HP rośnie mniej niż dwukrotnie — walka ma trwać podobnie jak solo; boss jest jeden, więc rośnie mocniej. Do strojenia po teście właściciela (zasada „nie łagodź trudności” zostaje).
+
+**Gra solo bez zmian:** mnożniki 1 i bez dodatkowych wrogów (test `coopBalance.test.ts`).
+
+**Testy:** 3 nowe (`coopBalance.test.ts`).
+
+## Krok 108 — Co-op, etap C7: osobna tablica co-op i zapis z partnerem `#coop` `#decyzja`
+
+**Co powstało:**
+- **osobna tablica co-op** (decyzja właściciela): `HIGHSCORE_BOARDS.coop` (lokalnie `tower-crawler.coop-highscores.v1`, wspólnie `/coop-scores`); wynik drużyny = wspólne złoto w chwili, gdy padną obaj; wpis ma bohatera P1 (`hero`) i P2 (`partner`, nowe pole `ScoreEntry`); ekran śmierci — nagłówek „NAJLEPSZE DRUŻYNY”; na środku menu trzecia lista „CO-OP”;
+- run co-op z menu trafia na tablicę co-op (nigdy na tablicę wspinaczki); tryb testowy z adresu `?coop=` zostaje bez tablicy;
+- **worker:** trasa `/coop-scores` (tabela `coop_scores` z kolumną `partner`, migracja `worker/migrations/0004_coop_scores.sql`, `schema.sql`); `validate` przyjmuje `partner` tym samym wzorcem co bohater; **worker czeka na wdrożenie** — do tego czasu tablica co-op działa lokalnie, a wpisy czekają w kolejce wysyłki;
+- **zapis gry:** punkt kontrolny i sloty pamiętają partnera (`SaveData.coop`: bohater, przedmioty, HP); uszkodzony partner unieważnia zapis; opis zapisu „Barbarzyńca + Łucznik · Piętro 3”; wczytany co-op startuje z P1 na klawiaturze z myszą i P2 na padzie.
+
+**Gra solo bez zmian:** wpisy bez `partner`, zapisy bez `coop`, tablice wspinaczki i aren jak dotąd.
+
+**Testy:** 2 nowe w `saveGame.test.ts`, 2 asercje w `tests/worker/index.test.ts`.
+
+## Krok 109 — Co-op, etap C8: smoke z dwoma botami i wersja testowa w podkatalogu `#coop` `#diagnostyka`
+
+**Co powstało:**
+- `npm run smoke -- --coop`: każdy bohater gra z następnym z listy jako P2 (barbarzyńca + Czarodziejka, Czarodziejka + łucznik, łucznik + barbarzyńca); P2 steruje podstawionym padem (losowy ruch, celowanie, RT/LT/A), obaj bohaterowie lecą do każdego pokoju i na arenę, obie karty bossa są wybierane po kolei, schody — gdy obaj stoją obok; na starcie każdego piętra bot powala P2 i sprawdza, że P1 obok go podnosi; sweep pięter przenosi co-op;
+- `npm run deploy:pages -- --subdir coop`: wersja testowa z gałęzi w podkatalogu `gh-pages` (`/topdown/coop/`) — klon obecnej gałęzi, wymiana tylko podkatalogu, zwykły push; główna gra zostaje bez zmian (uwaga: zwykłe `npm run deploy:pages` nadpisuje całą gałąź i usuwa podkatalog);
+- `worker/README.md`: kolejność wdrożenia tablicy co-op (migracja `0004`, potem `wrangler deploy`).
+
+**Weryfikacja:** `npm run smoke -- --floors 8 --seeds 1 --coop` (trzy pary, 8 pięter, wskrzeszanie na każdym piętrze) i solo `npm run smoke -- --floors 8 --seeds 1`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4387,7 +4529,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`); od kroku 95 pad działa w wersji PC (drugi gracz na drugim padzie — do zrobienia).
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

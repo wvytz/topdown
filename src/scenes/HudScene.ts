@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
-import type { BeamHudData, BossHudData, UltimateHudData, HudItem, HudItemNotice, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
+import type { BeamHudData, BossHudData, UltimateHudData, HudItem, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
@@ -48,6 +48,15 @@ const ITEM_FRAME_RARE = 0xe7b140;
 /** Nazwa i efekt zdobytego przedmiotu — mniejsza złota czcionka pod ikonami. */
 const ITEM_NOTICE_Y = ITEM_SLOT_Y + ITEM_SLOT_SIZE + 6;
 const ITEM_NOTICE_FADE_MS = 800;
+
+/** Panel P2 w co-opie (etap C5): prawy dolny róg, nad nim nic nie leży (minimapa u góry, pasek bossa na środku). */
+const PARTNER_BAR_WIDTH = 160;
+const PARTNER_RIGHT = 16;
+const PARTNER_TOP_FROM_BOTTOM = 112;
+const PARTNER_HP_HEIGHT = 10;
+const PARTNER_ULT_SIZE = 16;
+const PARTNER_ITEM_SIZE = 18;
+const PARTNER_ITEM_GAP = 2;
 
 /** Jeden slot przedmiotu w HUD: tło z ramką, ikona i licznik kopii. */
 interface ItemSlot {
@@ -101,6 +110,13 @@ export class HudScene extends Phaser.Scene {
   private bannerStartedAt = -Infinity;
   /** Co już ogłoszono w tej walce (przebudzenie, wściekłość) — plansza pokazuje się raz. */
   private bannerBoss: BossHudData | null = null;
+  /** Co-op (etap C5): napis P1 nad paskiem i panel P2. */
+  private playerLabelText!: Phaser.GameObjects.Text;
+  private partnerLabel!: Phaser.GameObjects.Text;
+  private partnerHpText!: Phaser.GameObjects.Text;
+  private partnerIcons: Phaser.GameObjects.Image[] = [];
+  private partnerCounts: Phaser.GameObjects.Text[] = [];
+  private partnerItemsSignature = '';
 
   constructor() {
     super(SceneKey.Hud);
@@ -153,6 +169,12 @@ export class HudScene extends Phaser.Scene {
       .setAlpha(0);
 
     this.helpText = this.add.text(BAR_X, this.scale.height - 28, '', { ...style, fontSize: '12px', color: '#8080a0' });
+
+    this.playerLabelText = this.add.text(ULT_X + ULT_SIZE + 8, HP_BAR_Y - 2, '', { ...style, fontSize: '13px', color: '#3ddc84' });
+    const px = this.scale.width - PARTNER_RIGHT - PARTNER_BAR_WIDTH;
+    const py = this.scale.height - PARTNER_TOP_FROM_BOTTOM;
+    this.partnerLabel = this.add.text(px, py - 18, '', { ...style, fontSize: '13px', color: '#6ec6ff' });
+    this.partnerHpText = this.add.text(px + PARTNER_BAR_WIDTH, py - 18, '', { ...style, fontSize: '12px' }).setOrigin(1, 0);
 
     // Ekran śmierci na samej górze: jego przyciemnienie przykrywa też resztę HUD (krok 35).
     this.deathScreen = new DeathScreen(this);
@@ -210,6 +232,66 @@ export class HudScene extends Phaser.Scene {
     this.deathScreen.update(hud.death, time);
     this.drawBossBar(hud.boss);
     this.updateBanner(hud.boss);
+    this.playerLabelText.setText(hud.playerLabel);
+    this.drawPartner(hud.partner, time);
+  }
+
+  /** Panel P2: imię, HP (albo „POWALONY” z paskiem wskrzeszania), dash, ultimate i przedmioty. */
+  private drawPartner(partner: HudPartnerData | null, time: number): void {
+    this.partnerLabel.setVisible(partner !== null);
+    this.partnerHpText.setVisible(partner !== null);
+    if (!partner) return;
+    const x = this.scale.width - PARTNER_RIGHT - PARTNER_BAR_WIDTH;
+    const y = this.scale.height - PARTNER_TOP_FROM_BOTTOM;
+    const g = this.bars;
+    this.partnerLabel.setText(partner.downed ? `${partner.label} · POWALONY` : partner.label);
+    g.fillStyle(0x000000, 0.6).fillRect(x - 2, y - 2, PARTNER_BAR_WIDTH + 4, PARTNER_HP_HEIGHT + 4);
+    if (partner.downed) {
+      const pulse = 0.5 + 0.5 * Math.sin(time / 180);
+      this.partnerHpText.setText('');
+      this.partnerLabel.setColor(pulse > 0.5 ? '#ff6b6b' : '#ffb0b0');
+      g.fillStyle(0x2a1010, 1).fillRect(x, y, PARTNER_BAR_WIDTH, PARTNER_HP_HEIGHT);
+      g.fillStyle(0x8affa0, 1).fillRect(x, y, PARTNER_BAR_WIDTH * partner.reviveProgress, PARTNER_HP_HEIGHT);
+    } else {
+      const ratio = partner.maxHp > 0 ? partner.hp / partner.maxHp : 0;
+      this.partnerHpText.setText(`${partner.hp}/${partner.maxHp}`).setColor('#e8e8f0');
+      this.partnerLabel.setColor('#6ec6ff');
+      g.fillStyle(0x4a1c1c, 1).fillRect(x, y, PARTNER_BAR_WIDTH, PARTNER_HP_HEIGHT);
+      g.fillStyle(ratio > 0.3 ? 0x3ddc84 : 0xff6b6b, 1).fillRect(x, y, PARTNER_BAR_WIDTH * ratio, PARTNER_HP_HEIGHT);
+    }
+    const dashY = y + PARTNER_HP_HEIGHT + 3;
+    g.fillStyle(0x202030, 1).fillRect(x, dashY, PARTNER_BAR_WIDTH, 3);
+    g.fillStyle(partner.dashReadiness >= 1 ? 0x6ec6ff : 0x3a6080, 1).fillRect(x, dashY, PARTNER_BAR_WIDTH * partner.dashReadiness, 3);
+    const ult = partner.ultimate;
+    if (ult) {
+      const ux = x - PARTNER_ULT_SIZE - 8;
+      const ready = ult.charge >= 1;
+      const fill = Math.round(PARTNER_ULT_SIZE * ult.charge);
+      g.fillStyle(0x000000, 0.6).fillRect(ux - 2, y - 2, PARTNER_ULT_SIZE + 4, PARTNER_ULT_SIZE + 4);
+      g.fillStyle(0x2a2418, 1).fillRect(ux, y, PARTNER_ULT_SIZE, PARTNER_ULT_SIZE);
+      g.fillStyle(ult.active ? 0xfff2b0 : ready ? 0xe7b140 : 0x7a6230, 1).fillRect(ux, y + PARTNER_ULT_SIZE - fill, PARTNER_ULT_SIZE, fill);
+    }
+    this.updatePartnerItems(partner.items, x, dashY + 8);
+  }
+
+  private updatePartnerItems(items: readonly HudItem[], x: number, y: number): void {
+    const signature = items.map((i) => `${i.frame}:${i.count}`).join('|');
+    if (signature === this.partnerItemsSignature) return;
+    this.partnerItemsSignature = signature;
+    for (const part of [...this.partnerIcons, ...this.partnerCounts]) part.destroy();
+    this.partnerIcons = [];
+    this.partnerCounts = [];
+    items.forEach((item, i) => {
+      const cx = x + i * (PARTNER_ITEM_SIZE + PARTNER_ITEM_GAP) + PARTNER_ITEM_SIZE / 2;
+      this.partnerIcons.push(this.add.image(cx, y + PARTNER_ITEM_SIZE / 2, LOOT_ATLAS.key, item.frame).setScale(0.7));
+      if (item.count > 1) {
+        this.partnerCounts.push(
+          this.add
+            .text(cx + PARTNER_ITEM_SIZE / 2, y + PARTNER_ITEM_SIZE + 2, `×${item.count}`, { fontFamily: 'monospace', fontSize: '10px', color: '#e8e8f0', stroke: '#000000', strokeThickness: 3 })
+            .setOrigin(1, 1),
+        );
+      }
+    });
   }
 
   /** Minimapa w prawym górnym rogu: odkryte kafle + znaczniki gracza, schodów i areny bossa. */
@@ -246,7 +328,10 @@ export class HudScene extends Phaser.Scene {
       marks.fillStyle(color, 1).fillRect(originX + (p.x + 0.5) * cfg.tilePx - size / 2, originY + (p.y + 0.5) * cfg.tilePx - size / 2, size, size);
     if (explorer.isRevealed(map.stairs.x, map.stairs.y)) dot(map.stairs, cfg.colors.stairs, cfg.playerPx);
     if (map.boss && explorer.isRevealed(map.boss.x, map.boss.y)) dot(map.boss, cfg.colors.boss, cfg.playerPx);
-    if (Math.floor(time / 300) % 2 === 0) dot(map.player, cfg.colors.player, cfg.playerPx);
+    if (Math.floor(time / 300) % 2 === 0) {
+      dot(map.player, cfg.colors.player, cfg.playerPx);
+      if (map.partner) dot(map.partner, cfg.colors.partner, cfg.playerPx);
+    }
   }
 
   /** Sloty na wszystkie przedmioty z puli (każdy rodzaj zajmuje jeden slot, kopie liczy licznik). */

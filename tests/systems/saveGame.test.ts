@@ -85,3 +85,20 @@ describe('zapis gry', () => {
     expect(formatSavedAt(new Date(2026, 0, 3, 23, 59).getTime())).toBe('03.01 23:59');
   });
 });
+
+describe('zapis gry w co-opie (etap C7)', () => {
+  const coop: SaveData = { ...data, coop: { hero: HeroId.Archer, items: [ItemId.Boots], hp: 40 } };
+
+  it('pamięta partnera: bohatera, przedmioty i HP', () => {
+    const record = roundTrip(coop);
+    expect(record?.coop).toEqual({ hero: HeroId.Archer, items: [ItemId.Boots], hp: 40 });
+    expect(loadFromRecord(record!, 'auto', false).coop).toEqual({ hero: HeroId.Archer, items: [ItemId.Boots], hp: 40 });
+    expect(saveSummary(record!).title).toContain('Łucznik');
+  });
+
+  it('zapis solo nie ma partnera; uszkodzony partner unieważnia zapis', () => {
+    expect(roundTrip(data)?.coop).toBeUndefined();
+    const raw = JSON.stringify({ ...toSaveRecord(coop, 1_000), coop: { hero: 'smok', items: [], hp: null } });
+    expect(parseSaveRecord(raw)).toBeNull();
+  });
+});

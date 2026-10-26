@@ -13,6 +13,8 @@ export const MINIMAP_CONFIG = {
     stairs: 0xe7b140,
     boss: 0xc0392b,
     player: 0x3ddc84,
+    /** Drugi gracz w co-opie (etap C5). */
+    partner: 0x6ec6ff,
   },
   /** Gracz jest większy niż kafel, żeby było go widać. */
   playerPx: 5,

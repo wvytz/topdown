@@ -220,6 +220,13 @@ export const HIGHSCORE_BOARDS = {
     seenKey: 'tower-crawler.arena-highscores.seen.v1',
     path: '/arena-scores',
   },
+  /** Co-op (etap C7, decyzja właściciela: osobna tablica): wynik drużyny = wspólne złoto w chwili śmierci obu. */
+  coop: {
+    storageKey: 'tower-crawler.coop-highscores.v1',
+    outboxKey: 'tower-crawler.coop-highscores.outbox.v1',
+    seenKey: 'tower-crawler.coop-highscores.seen.v1',
+    path: '/coop-scores',
+  },
 } as const;
 
 export type HighscoreBoardId = keyof typeof HIGHSCORE_BOARDS;

@@ -10,7 +10,7 @@ import { DungeonView } from '@/dungeon/DungeonView';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 import { areaBounds, planTreasureCocoons, revealMask } from '@/dungeon/SecretRoom';
 import type { CombatEffects } from '@/effects/CombatEffects';
-import type { Player } from '@/entities/Player';
+import type { Party } from '@/entities/Party';
 import { TreasureCocoon } from '@/entities/TreasureCocoon';
 import { pickWeightedItem } from '@/systems/Loot';
 import type { DashSweep } from '@/systems/DashStrike';
@@ -27,7 +27,8 @@ export interface SecretRoomDeps {
   readonly floor: DungeonFloor;
   readonly area: SecretArea;
   readonly view: DungeonView;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   readonly effects: CombatEffects;
   /** RNG komnaty: rozmieszczenie kokonów i przedmiot. */
   readonly rng: Rng;
@@ -49,10 +50,14 @@ export class SecretRoomManager {
   }
 
   update(): void {
-    const { player, floor } = this.deps;
-    if (!this.revealed && !player.isDead) {
-      const tile = DungeonView.worldToTile(player.x, player.y);
-      if (this.mask[tile.y * floor.width + tile.x] === 1) this.reveal();
+    const { party, floor } = this.deps;
+    if (!this.revealed) {
+      // Komnatę odsłania którykolwiek żywy bohater.
+      const inside = party.living.some((player) => {
+        const tile = DungeonView.worldToTile(player.x, player.y);
+        return this.mask[tile.y * floor.width + tile.x] === 1;
+      });
+      if (inside) this.reveal();
     }
     this.cocoons = this.cocoons.filter((cocoon) => {
       if (!cocoon.isCracked) return true;

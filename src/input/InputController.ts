@@ -3,7 +3,9 @@ import type { MovementIntent, Vector2 } from '@/core/types';
 import type { PlayerActions } from '@/entities/Player';
 import { GAMEPAD_CONFIG } from '@/config/gamepadConfig';
 import { PadGameplayReader, combineMovement, padAimDirection } from '@/systems/gamepadInput';
-import { readPadSnapshot } from '@/input/padSnapshot';
+import { readPadSnapshot, readPadSnapshotAt } from '@/input/padSnapshot';
+import type { PlayerDevices } from '@/systems/coopDevices';
+import { SOLO_DEVICES } from '@/systems/coopDevices';
 import type { PlayerInput, PlayerInputContext } from '@/input/playerInput';
 
 interface MovementKeys {
@@ -11,6 +13,14 @@ interface MovementKeys {
   down: Phaser.Input.Keyboard.Key;
   left: Phaser.Input.Keyboard.Key;
   right: Phaser.Input.Keyboard.Key;
+}
+
+interface KeyBindings {
+  readonly wasd: MovementKeys;
+  readonly arrows: MovementKeys;
+  readonly dash: Phaser.Input.Keyboard.Key;
+  readonly interact: Phaser.Input.Keyboard.Key;
+  readonly ultimate: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -26,14 +36,17 @@ export interface InputControllerOptions {
    * kliknięcia myszy, a dotyk obsługuje osobno (`src/mobile/`).
    */
   readonly mouse?: boolean;
+  /**
+   * Urządzenia tego bohatera (co-op, etap C1). Domyślnie solo: klawiatura, mysz i pierwszy pad naraz.
+   * W co-opie gracz z padem nie czyta klawiatury ani myszy, a gracz z klawiaturą — żadnego pada.
+   */
+  readonly devices?: PlayerDevices;
 }
 
 export class InputController implements PlayerInput {
-  private readonly wasd: MovementKeys;
-  private readonly arrows: MovementKeys;
-  private readonly dashKey: Phaser.Input.Keyboard.Key;
-  private readonly interactKey: Phaser.Input.Keyboard.Key;
-  private readonly ultimateKey: Phaser.Input.Keyboard.Key;
+  /** Klawisze — null, gdy ten bohater nie gra na klawiaturze (pad w co-opie). */
+  private readonly keys: KeyBindings | null;
+  private readonly padIndex: number | 'any' | null;
   /** Kliknięcie PPM zapamiętane do najbliższej klatki — krótki klik nie może zginąć. */
   private shootClickQueued = false;
   private readonly pad = new PadGameplayReader();
@@ -48,26 +61,10 @@ export class InputController implements PlayerInput {
     private readonly scene: Phaser.Scene,
     options: InputControllerOptions = {},
   ) {
-    this.mouse = options.mouse ?? true;
-    const keyboard = scene.input.keyboard;
-    if (!keyboard) throw new Error('InputController: klawiatura niedostępna w tej scenie.');
-
-    const K = Phaser.Input.Keyboard.KeyCodes;
-    this.wasd = {
-      up: keyboard.addKey(K.W),
-      down: keyboard.addKey(K.S),
-      left: keyboard.addKey(K.A),
-      right: keyboard.addKey(K.D),
-    };
-    this.arrows = {
-      up: keyboard.addKey(K.UP),
-      down: keyboard.addKey(K.DOWN),
-      left: keyboard.addKey(K.LEFT),
-      right: keyboard.addKey(K.RIGHT),
-    };
-    this.dashKey = keyboard.addKey(K.SPACE);
-    this.interactKey = keyboard.addKey(K.E);
-    this.ultimateKey = keyboard.addKey(K.R);
+    const devices = options.devices ?? SOLO_DEVICES;
+    this.mouse = (options.mouse ?? true) && devices.mouse;
+    this.padIndex = devices.pad;
+    this.keys = devices.keyboard ? InputController.bindKeys(scene) : null;
 
     // PPM = strzał; wyłączamy menu kontekstowe przeglądarki.
     scene.input.mouse?.disableContextMenu();
@@ -75,6 +72,25 @@ export class InputController implements PlayerInput {
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
       if (pointer.rightButtonDown()) this.shootClickQueued = true;
     });
+  }
+
+  private static bindKeys(scene: Phaser.Scene): KeyBindings {
+    const keyboard = scene.input.keyboard;
+    if (!keyboard) throw new Error('InputController: klawiatura niedostępna w tej scenie.');
+    const K = Phaser.Input.Keyboard.KeyCodes;
+    return {
+      wasd: { up: keyboard.addKey(K.W), down: keyboard.addKey(K.S), left: keyboard.addKey(K.A), right: keyboard.addKey(K.D) },
+      arrows: { up: keyboard.addKey(K.UP), down: keyboard.addKey(K.DOWN), left: keyboard.addKey(K.LEFT), right: keyboard.addKey(K.RIGHT) },
+      dash: keyboard.addKey(K.SPACE),
+      interact: keyboard.addKey(K.E),
+      ultimate: keyboard.addKey(K.R),
+    };
+  }
+
+  /** Pad tego bohatera: pierwszy podłączony (solo), wskazany (co-op) albo żaden. */
+  private readPad(): ReturnType<typeof readPadSnapshot> {
+    if (this.padIndex === null) return null;
+    return this.padIndex === 'any' ? readPadSnapshot() : readPadSnapshotAt(this.padIndex);
   }
 
   /**
@@ -93,7 +109,7 @@ export class InputController implements PlayerInput {
     const mouseAttack = this.mouse && pointer.leftButtonDown();
     const keyboardMove = this.getMovementIntent();
 
-    const pad = this.pad.read(readPadSnapshot());
+    const pad = this.pad.read(this.readPad());
     if (pointerMoved || mouseAttack || mouseShoot) this.padAiming = false;
     // Każde użycie pada oddaje mu celowanie — także gra samą lewą gałką (cel idzie wtedy za ruchem).
     if (pad && (pad.aim || pad.move.x !== 0 || pad.move.y !== 0 || pad.attack || pad.shoot || pad.dash)) this.padAiming = true;
@@ -108,16 +124,21 @@ export class InputController implements PlayerInput {
       move: pad ? combineMovement(keyboardMove, pad.move) : keyboardMove,
       aim,
       attack: mouseAttack || (pad?.attack ?? false),
-      dash: Phaser.Input.Keyboard.JustDown(this.dashKey) || (pad?.dash ?? false),
+      dash: this.justDown('dash') || (pad?.dash ?? false),
       shoot: mouseShoot || (pad?.shoot ?? false),
-      interact: Phaser.Input.Keyboard.JustDown(this.interactKey) || (pad?.interact ?? false),
-      ultimate: Phaser.Input.Keyboard.JustDown(this.ultimateKey) || (pad?.ultimate ?? false),
+      interact: this.justDown('interact') || (pad?.interact ?? false),
+      ultimate: this.justDown('ultimate') || (pad?.ultimate ?? false),
     };
   }
 
+  private justDown(key: 'dash' | 'interact' | 'ultimate'): boolean {
+    return this.keys !== null && Phaser.Input.Keyboard.JustDown(this.keys[key]);
+  }
+
   private getMovementIntent(): MovementIntent {
-    const pressed = (dir: keyof MovementKeys): boolean =>
-      this.wasd[dir].isDown || this.arrows[dir].isDown;
+    const keys = this.keys;
+    if (!keys) return { x: 0, y: 0 };
+    const pressed = (dir: keyof MovementKeys): boolean => keys.wasd[dir].isDown || keys.arrows[dir].isDown;
 
     return {
       x: Number(pressed('right')) - Number(pressed('left')),

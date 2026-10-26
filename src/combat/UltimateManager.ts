@@ -155,6 +155,7 @@ export class UltimateManager {
       { damage: config.damage, knockback: config.knockback, projectileSpeed: config.speed, projectileLifetimeMs: config.lifetimeMs, projectileRadius: 4 },
       this.deps.player.effects,
       look,
+      this.deps.player,
     );
   }
 

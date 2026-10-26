@@ -10,6 +10,7 @@ import { DungeonView } from '@/dungeon/DungeonView';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import { Cocoon } from '@/entities/Cocoon';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
 import type { CocoonConfig } from '@/systems/Cocoons';
@@ -31,10 +32,11 @@ export interface CocoonDeps {
   readonly config: CocoonConfig;
   readonly rng: Rng;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   readonly effects: CombatEffects;
   readonly decals: CombatDecals;
-  readonly onPlayerHit: () => void;
+  readonly onPlayerHit: (player: Player) => void;
 }
 
 /** Barwa napisu o spowolnieniu (jak barwa statusu). */
@@ -77,9 +79,10 @@ export class CocoonManager {
   }
 
   update(now: number): void {
-    const { player } = this.deps;
-    const target = player.isDead ? null : { x: player.x, y: player.y };
+    const { party } = this.deps;
     this.cocoons = this.cocoons.filter(({ cocoon, gfx }) => {
+      const nearest = party.nearestLiving(cocoon);
+      const target = nearest ? { x: nearest.x, y: nearest.y } : null;
       if (!cocoon.tick(target, now)) {
         if (Number.isFinite(cocoon.burstAt)) this.drawTelegraph(cocoon, gfx, now);
         return true;
@@ -129,13 +132,15 @@ export class CocoonManager {
   }
 
   private burst(cocoon: Cocoon, now: number): void {
-    const { config, player, effects } = this.deps;
+    const { config, party, effects } = this.deps;
     const at = { x: cocoon.x, y: cocoon.y };
     cocoon.destroy();
     this.playTear(at);
     effects.impact(at.x, at.y, config.blastRadius);
-    if (!player.isDead && cocoonBlastCatches(at, config.blastRadius, player, player.radius) && player.applySlow(config.slow, now)) {
-      effects.floatingText(player.x, player.y - 14, 'Spowolnienie', SLOW_TEXT_COLOR);
+    for (const player of party.living) {
+      if (cocoonBlastCatches(at, config.blastRadius, player, player.radius) && player.applySlow(config.slow, now)) {
+        effects.floatingText(player.x, player.y - 14, 'Spowolnienie', SLOW_TEXT_COLOR);
+      }
     }
     for (let i = 0; i < config.spiderlings; i++) this.swarm.spawn(at, this.spiderling, now);
   }

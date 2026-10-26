@@ -104,7 +104,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly invulnerability = new Timer();
   private readonly knockbackStun = new Timer();
   /** Statusy na graczu: spowolnienie (kokony, pajęczyny, krok 23d), trucizna (Matka Pająków, krok 27); dash nie spowalnia. */
-  private readonly status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
+  private status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
   private readonly aimMarker: Phaser.GameObjects.Image;
   private aimAngle = 0;
   private readonly animator: DirectionalAnimator;
@@ -268,6 +268,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   heal(amount: number): void {
     this.health.heal(amount);
+  }
+
+  /** Co-op (etap C4): powalony bohater wstaje z `hp` HP, bez statusów i z chwilą nietykalności. */
+  revive(hp: number, invulnerableMs: number, now: number): void {
+    if (!this.isDead) return;
+    this.health.revive(hp);
+    this.status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
+    this.invulnerability.start(now, invulnerableMs);
+    this.clearTint();
+    this.aimMarker.setVisible(true);
   }
 
   getAimAngle(): number {
