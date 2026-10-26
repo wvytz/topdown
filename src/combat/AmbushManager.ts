@@ -13,6 +13,7 @@ import type { CombatEffects } from '@/effects/CombatEffects';
 import type { LightingOverlay } from '@/effects/LightingOverlay';
 import type { Enemy } from '@/entities/Enemy';
 import type { Party } from '@/entities/Party';
+import type { Player } from '@/entities/Player';
 import type { AmbushConfig } from '@/systems/Ambush';
 import { AmbushPhase, AmbushState, ambushSpawnTiles } from '@/systems/Ambush';
 import { pickWeightedItem } from '@/systems/Loot';
@@ -38,6 +39,8 @@ export interface AmbushDeps {
   /** Upiory zasadzki: zawsze widoczne (świecą nad mrokiem), bez łupu. */
   readonly onGhost: (enemy: Enemy) => void;
   readonly toast: (text: string) => void;
+  /** Co-op (etap C3): przy zamknięciu krat ściąga partnera spoza pokoju do bohatera w środku. */
+  readonly gather: (anchor: Player, room: Room) => void;
 }
 
 /**
@@ -77,9 +80,12 @@ export class AmbushManager {
     const dt = this.lastNow === 0 ? 0 : now - this.lastNow;
     this.lastNow = now;
     this.wave = this.wave.filter((g) => g.active && !g.isDead);
-    const playerInside = party.living.some((player) => isDeepInsideRoom(room, DungeonView.worldToTile(player.x, player.y), config.triggerMargin));
-    const event = this.state.update({ playerInside, playerDead: party.isDown, aliveInWave: this.wave.length }, now);
-    if (event?.kind === 'seal') this.seal();
+    const inside = party.living.find((player) => isDeepInsideRoom(room, DungeonView.worldToTile(player.x, player.y), config.triggerMargin));
+    const event = this.state.update({ playerInside: inside !== undefined, playerDead: party.isDown, aliveInWave: this.wave.length }, now);
+    if (event?.kind === 'seal') {
+      if (inside) this.deps.gather(inside, room);
+      this.seal();
+    }
     else if (event?.kind === 'wave') this.summon(event.count);
     else if (event?.kind === 'clear') this.release();
     // Mrok narasta i opada płynnie (krok 28a: bez twardych przejść).

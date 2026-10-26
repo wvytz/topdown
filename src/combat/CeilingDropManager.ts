@@ -46,6 +46,8 @@ export class CeilingDropManager {
   private pending: PendingDrop[] = [];
   private readonly dropped = new Set<Enemy>();
   private readonly damage: number;
+  /** Kolejka celów w co-opie: który bohater dostaje następnego pająka. */
+  private turn = 0;
 
   constructor(private readonly deps: CeilingDropDeps) {
     this.planner = new CeilingDropPlanner(deps.config, deps.rng);
@@ -55,10 +57,14 @@ export class CeilingDropManager {
   update(now: number): void {
     for (const enemy of [...this.dropped]) if (!enemy.active) this.dropped.delete(enemy);
 
-    // Etap C0 co-opu: pająki spadają przy pierwszym żywym bohaterze (rozdział między graczy — etap C3).
-    const player = this.deps.party.living[0];
-    if (player) {
-      const room = this.dropRoomAt(player);
+    // Co-op (etap C3): pokój wyznacza pierwszy żywy bohater w zwykłym pokoju, a kolejne pająki celują
+    // na zmianę w każdego bohatera z tego pokoju (solo — zawsze w jedynego).
+    const living = this.deps.party.living;
+    const anchor = living.find((member) => this.dropRoomAt(member) !== null) ?? living[0];
+    if (anchor) {
+      const room = this.dropRoomAt(anchor);
+      const inRoom = living.filter((member) => this.dropRoomAt(member) === room);
+      const player = inRoom[this.turn % inRoom.length] ?? anchor;
       const drop = this.planner.update({
         now,
         player: { x: player.x, y: player.y },
@@ -66,7 +72,10 @@ export class CeilingDropManager {
         aliveDropped: this.dropped.size + this.pending.length,
         canLandAt: (point) => room !== null && this.dropRoomAt(point) === room,
       });
-      if (drop) this.start({ ...drop, damage: this.damage });
+      if (drop) {
+        this.turn++;
+        this.start({ ...drop, damage: this.damage });
+      }
     }
 
     this.pending = this.pending.filter((entry) => {

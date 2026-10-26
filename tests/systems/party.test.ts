@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PartyMember } from '@/systems/Party';
-import { isPartyDown, livingMembers, nearestLivingMember, targetMember } from '@/systems/Party';
+import { isPartyDown, livingMembers, nearestLivingMember, spotBeside, straysOutside, targetMember } from '@/systems/Party';
 
 const hero = (x: number, y: number, isDead = false): PartyMember => ({ x, y, isDead });
 
@@ -48,5 +48,22 @@ describe('Party (co-op, etap C0: drużyna zamiast gracza)', () => {
 
   it('pusta drużyna to błąd programisty', () => {
     expect(() => targetMember([], { x: 0, y: 0 })).toThrow();
+  });
+});
+
+describe('ściąganie drużyny do zamykanego pokoju (co-op, etap C3)', () => {
+  const inside = (at: { x: number }) => at.x < 100;
+  it('ściąga tylko tych spoza pokoju, bez kotwicy', () => {
+    const a = { x: 10, y: 0 };
+    const b = { x: 300, y: 0 };
+    const c = { x: 50, y: 0 };
+    expect(straysOutside([a, b, c], a, inside)).toEqual([b]);
+    expect(straysOutside([a], a, inside)).toEqual([]);
+  });
+
+  it('stawia obok kotwicy, omijając mur', () => {
+    expect(spotBeside({ x: 50, y: 50 }, 24, () => true)).toEqual({ x: 74, y: 50 });
+    expect(spotBeside({ x: 50, y: 50 }, 24, (p) => p.x < 74)).toEqual({ x: 26, y: 50 });
+    expect(spotBeside({ x: 50, y: 50 }, 24, () => false)).toEqual({ x: 50, y: 50 });
   });
 });

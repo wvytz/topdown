@@ -42,3 +42,22 @@ export function targetMember<T extends PartyMember>(members: readonly T[], from:
   if (!first) throw new Error('Drużyna bez bohaterów');
   return nearestLivingMember(members, from) ?? first;
 }
+
+/**
+ * Bohaterowie do ściągnięcia do zamykanego pokoju (co-op, etap C3): każdy poza kotwicą, kto stoi poza
+ * pokojem — także powalony, żeby partner mógł go wskrzesić za kratami.
+ */
+export function straysOutside<T extends Vector2>(members: readonly T[], anchor: T, isInside: (at: Vector2) => boolean): T[] {
+  return members.filter((member) => member !== anchor && !isInside(member));
+}
+
+/** Miejsce obok kotwicy: w bok, potem w pionie; gdy wszędzie mur — na samej kotwicy. */
+export function spotBeside(anchor: Vector2, offsetPx: number, isWalkable: (at: Vector2) => boolean): Vector2 {
+  const spots = [
+    { x: anchor.x + offsetPx, y: anchor.y },
+    { x: anchor.x - offsetPx, y: anchor.y },
+    { x: anchor.x, y: anchor.y + offsetPx },
+    { x: anchor.x, y: anchor.y - offsetPx },
+  ];
+  return spots.find(isWalkable) ?? { x: anchor.x, y: anchor.y };
+}

@@ -18,4 +18,6 @@ export const COOP_CONFIG = {
   leashMarginPx: { x: 48, y: 40 },
   /** Drugi bohater pojawia się obok pierwszego, tyle px w bok (gdy tam podłoga). */
   partnerSpawnOffsetPx: 24,
+  /** Partner bliżej krawędzi pokoju niż tyle kafli przy opadnięciu krat zostaje ściągnięty do środka (etap C3). */
+  gatherMarginTiles: 1,
 } as const;

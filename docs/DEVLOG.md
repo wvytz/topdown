@@ -4349,6 +4349,17 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Weryfikacja:** `npm run build`; w przeglądarce `?seed=7&hero=barbarian&coop=archer` z podstawionym padem — dwóch bohaterów, P2 chodzi i strzela padem, P1 klawiaturą, kamera między nimi, smycz cofa odsuniętego o 600 px partnera do 384 px; `npm run smoke -- --floors 8 --seeds 1` (solo, wszyscy bohaterowie).
 
+## Krok 104 — Co-op, etap C3: kraty, zasadzki i pająki z sufitu dla dwóch `#coop`
+
+**Co powstało:**
+- **kraty areny i zasadzki:** opadają, gdy w głąb pokoju wejdzie którykolwiek żywy bohater; partnera spoza pokoju (także powalonego) gra przenosi wtedy obok bohatera w środku, z błyskiem w obu miejscach (`gatherParty` w `GameScene`, czyste `straysOutside` i `spotBeside` w `systems/Party.ts`, zapas `COOP_CONFIG.gatherMarginTiles`); nikt nie zostaje odcięty od walki ani zamknięty na zewnątrz;
+- **pająki z sufitu:** pokój wyznacza pierwszy żywy bohater w zwykłym pokoju, a kolejne zrzuty celują na zmianę w każdego bohatera z tego pokoju (`CeilingDropManager`); obrażenia przy lądowaniu dostaje każdy w cieniu;
+- **aggro** było gotowe od etapu C0: wróg i boss celują w najbliższego żywego bohatera, totem łucznika wabi wszystkich.
+
+**Gra solo bez zmian:** jedyny bohater zawsze jest kotwicą, nikogo nie trzeba ściągać, zrzuty celują w niego.
+
+**Testy:** 2 nowe w `party.test.ts`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4452,7 +4463,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`). Dalej: C3 aggro, kraty i zasadzki przy partnerze poza pokojem, C4 powalenie i wskrzeszanie, łupy dla każdego, C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104). Dalej: C4 powalenie i wskrzeszanie, łupy dla każdego, C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

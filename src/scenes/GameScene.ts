@@ -21,7 +21,7 @@ import { RunMode } from '@/core/runMode';
 import { FLOOR_SELECT_CONFIG, FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { BossProgress } from '@/persistence/BossProgress';
 import { startFloorInfo, unlocksFloor } from '@/systems/FloorSelect';
-import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
+import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { ItemKind, PickupKind } from '@/core/lootTypes';
@@ -99,6 +99,8 @@ import { AIM_ASSIST_MIN_VISIBILITY } from '@/config/touchConfig';
 import type { AimTarget } from '@/systems/touchAim';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { Party } from '@/entities/Party';
+import { spotBeside, straysOutside } from '@/systems/Party';
+import { isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
@@ -902,6 +904,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.showToast('Kraty opadły — nie ma odwrotu!');
         this.manGalleries();
       },
+      gather: (anchor, room) => this.gatherParty(anchor, room),
     });
   }
 
@@ -951,7 +954,29 @@ export class GameScene extends Phaser.Scene implements HudSource {
       spawnLoot: (at, drops) => this.loot.spawn(at, drops),
       onGhost: (ghost) => this.ambushGhosts.add(ghost),
       toast: (text) => this.showToast(text),
+      gather: (anchor, room) => this.gatherParty(anchor, room),
     });
+  }
+
+  /**
+   * Co-op (etap C3): kraty opadają, gdy jeden bohater wszedł w głąb pokoju — partnera spoza pokoju
+   * przenosimy obok niego, by nikt nie został odcięty od walki (solo nic nie robi).
+   */
+  private gatherParty(anchor: Player, room: Room): void {
+    const walls = this.dungeonView.collisionLayer;
+    const isWalkable = (at: Vector2) => !(walls.getTileAtWorldXY(at.x, at.y)?.collides ?? true);
+    const inside = (at: Vector2) => isDeepInsideRoom(room, DungeonView.worldToTile(at.x, at.y), COOP_CONFIG.gatherMarginTiles);
+    const strays = straysOutside(this.party.members, anchor, inside);
+    if (strays.length === 0) return;
+    for (const hero of strays) {
+      const to = spotBeside(anchor, COOP_CONFIG.partnerSpawnOffsetPx, isWalkable);
+      this.effects.impact(hero.x, hero.y, TILE_SIZE * 0.5);
+      hero.setPosition(to.x, to.y);
+      (hero.body as Phaser.Physics.Arcade.Body).updateFromGameObject();
+      this.effects.impact(to.x, to.y, TILE_SIZE * 0.5);
+    }
+    this.leashFrom = null;
+    diag.note('coop-gather', { floor: this.floorNumber, room: room.id });
   }
 
   /**
