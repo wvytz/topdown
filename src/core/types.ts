@@ -4,6 +4,8 @@ import type { RunMode } from '@/core/runMode';
 /** Czyste typy domenowe — bez zależności od Phasera. */
 import type { RunSnapshot } from '@/core/lootTypes';
 import type { ScoreboardView } from '@/systems/Highscores';
+import type { ItemId } from '@/core/lootTypes';
+import type { PlayerDevices } from '@/systems/coopDevices';
 
 export interface Vector2 {
   readonly x: number;
@@ -62,6 +64,23 @@ export interface FloorSceneData {
   readonly replay?: InputRecording;
   /** Start tuż przy wejściu na arenę bossa (`?boss=1`, tylko pierwsze piętro runu testowego). */
   readonly atBoss?: boolean;
+  /** Lokalny co-op (krok 101+): drugi bohater i urządzenia graczy; brak = gra solo. */
+  readonly coop?: CoopSceneData;
+}
+
+/** Drugi bohater w co-opie przenoszony między piętrami (pierwszy jest w `run`). */
+export interface CoopPartnerSnapshot {
+  readonly hero: HeroId;
+  /** Przedmioty partnera (decyzja właściciela: każdy zbiera dla siebie). */
+  readonly items: readonly ItemId[];
+  /** null = pełne HP. */
+  readonly hp: number | null;
+}
+
+export interface CoopSceneData {
+  readonly partner: CoopPartnerSnapshot;
+  /** Urządzenia graczy w kolejności P1, P2. */
+  readonly devices: readonly PlayerDevices[];
 }
 
 /** Promień Czarodziejki w HUD: świeci (pasek = pozostały czas) albo odnawia się po zgaśnięciu. */

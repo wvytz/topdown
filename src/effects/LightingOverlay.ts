@@ -70,9 +70,8 @@ export class LightingOverlay {
     }
   }
 
-  render(player: { readonly x: number; readonly y: number }, lights: readonly PointLight[]): void {
-    const px = Math.round(player.x);
-    const py = Math.round(player.y);
+  /** `players` — bohaterowie z własnym kręgiem światła (co-op, etap C2: dwóch; solo — jeden). */
+  render(players: readonly { readonly x: number; readonly y: number }[], lights: readonly PointLight[]): void {
     // Warstwa trzyma się kadru kamery (przycięta do granic świata jak kamera), a nie środka bohatera.
     const camera = this.scene.cameras.main;
     const view = { x: camera.worldView.centerX, y: camera.worldView.centerY };
@@ -81,8 +80,10 @@ export class LightingOverlay {
     rt.setPosition(ox, oy);
     rt.clear();
     rt.fill(this.ambientColor, this.profile.maxDarkness);
-    rt.erase(this.playerKey, px - ox - this.playerHalf, py - oy - this.playerHalf);
-    this.renderDread(px, py, ox, oy);
+    for (const player of players) {
+      rt.erase(this.playerKey, Math.round(player.x) - ox - this.playerHalf, Math.round(player.y) - oy - this.playerHalf);
+    }
+    this.renderDread(players, ox, oy);
     if (!this.torchesLightUp) return;
     const area = { x: ox, y: oy, width: this.halfW * 2, height: this.halfH * 2 };
     for (const light of lights) {
@@ -92,8 +93,8 @@ export class LightingOverlay {
     }
   }
 
-  /** Warstwa mroku zasadzki: w tym samym miejscu co główna, ciemność × siła, wytarty tylko krąg gracza. */
-  private renderDread(px: number, py: number, ox: number, oy: number): void {
+  /** Warstwa mroku zasadzki: w tym samym miejscu co główna, ciemność × siła, wytarte tylko kręgi bohaterów. */
+  private renderDread(players: readonly { readonly x: number; readonly y: number }[], ox: number, oy: number): void {
     const layer = this.dreadLayer;
     if (!layer) return;
     layer.rt.setVisible(this.dread > 0);
@@ -101,7 +102,9 @@ export class LightingOverlay {
     layer.rt.setPosition(ox, oy);
     layer.rt.clear();
     layer.rt.fill(this.ambientColor, layer.darkness * this.dread);
-    layer.rt.erase(layer.key, px - ox - layer.half, py - oy - layer.half);
+    for (const player of players) {
+      layer.rt.erase(layer.key, Math.round(player.x) - ox - layer.half, Math.round(player.y) - oy - layer.half);
+    }
   }
 }
 

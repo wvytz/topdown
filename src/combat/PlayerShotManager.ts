@@ -23,8 +23,8 @@ export interface ShotLook {
   readonly extraPierce?: number;
 }
 
-/** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. */
-export type PlayerShotResolver = (shot: PlayerShot) => object | null;
+/** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. `owner` — strzelec (co-op: który bohater). */
+export type PlayerShotResolver = (shot: PlayerShot, owner: object | null) => object | null;
 
 /**
  * Pociski gracza: lot, rozbijanie o ściany i kraty, wygasanie, przebijanie wrogów (Szuriken).
@@ -32,6 +32,8 @@ export type PlayerShotResolver = (shot: PlayerShot) => object | null;
  */
 export class PlayerShotManager {
   private readonly group: Phaser.Physics.Arcade.Group;
+  /** Strzelec każdego pocisku (co-op, etap C2): trafienie leczy i nietykalność bossa liczy się dla niego. */
+  private readonly owners = new WeakMap<Projectile, object>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -43,7 +45,7 @@ export class PlayerShotManager {
     });
   }
 
-  fire(origin: Vector2, direction: Vector2, config: ShotSpec, effects: WeaponEffects, look?: ShotLook): void {
+  fire(origin: Vector2, direction: Vector2, config: ShotSpec, effects: WeaponEffects, look?: ShotLook, owner?: object): void {
     const shot = new Projectile(this.scene, origin.x, origin.y, look?.texture ?? LOOT_ATLAS.key);
     shot.damage = config.damage;
     shot.knockback = config.knockback;
@@ -53,6 +55,7 @@ export class PlayerShotManager {
     shot.vampiric = look?.vampiric ?? false;
     shot.magic = look?.magic ?? false;
     shot.setDepth(RENDER_DEPTH.projectile);
+    if (owner) this.owners.set(shot, owner);
 
     this.group.add(shot, true);
     // Ciało o promieniu z konfiguracji, wyśrodkowane w klatce 16×16 atlasu.
@@ -85,7 +88,7 @@ export class PlayerShotManager {
         ignore: child.hitTargets,
         vampiric: child.vampiric,
         magic: child.magic,
-      });
+      }, this.owners.get(child) ?? null);
       if (!target) continue;
       child.hitTargets.add(target);
       if (child.pierceLeft > 0) child.pierceLeft--;

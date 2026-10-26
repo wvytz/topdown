@@ -11,4 +11,11 @@ export const COOP_CONFIG = {
   joinButtons: [PAD_BUTTON.A, PAD_BUTTON.Start],
   /** Wyjście z drużyny przed startem na padzie (klawiatura: Esc). */
   leaveButtons: [PAD_BUTTON.B],
+  /**
+   * Smycz (etap C2, decyzja właściciela: wspólny ekran): bohaterowie nie oddalą się od siebie bardziej, niż mieści
+   * widok kamery minus ten zapas (px świata) — obaj zawsze są w kadrze, z marginesem na ich sylwetki.
+   */
+  leashMarginPx: { x: 48, y: 40 },
+  /** Drugi bohater pojawia się obok pierwszego, tyle px w bok (gdy tam podłoga). */
+  partnerSpawnOffsetPx: 24,
 } as const;

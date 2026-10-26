@@ -53,6 +53,25 @@ export function actorVisibility(
   return revealStrength <= 0 ? 1 : Math.min(1, light / revealStrength);
 }
 
+/**
+ * Widoczność wroga przy kilku bohaterach (co-op, etap C2): każdy niesie własne światło, liczy się najjaśniejsze.
+ * Jeden bohater — dokładnie `actorVisibility`.
+ */
+export function partyVisibility(
+  at: { readonly x: number; readonly y: number },
+  players: readonly { readonly x: number; readonly y: number }[],
+  profile: AmbientProfile,
+  lights: readonly { readonly x: number; readonly y: number; readonly radius: number }[],
+  revealStrength: number,
+): number {
+  let best = 0;
+  for (const player of players) {
+    best = Math.max(best, actorVisibility(at, player, profile, lights, revealStrength));
+    if (best >= 1) break;
+  }
+  return best;
+}
+
 /** Profil modyfikatora „Mrok”: płynne przejście na ostatnich `softEdge` promienia widzenia. */
 export function darknessModifierProfile(
   visionRadius: number,

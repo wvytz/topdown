@@ -4329,6 +4329,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Weryfikacja:** `npm run build`; w przeglądarce z podstawionymi dwoma padami: sterowanie z `padDevice(1)` czyta tylko drugi pad (ruch z jego gałki), z klawiatury — żadnego pada, solo — pierwszy pad; `npm run smoke -- --floors 3 --seeds 1`.
 
+## Krok 103 — Co-op, etap C2: drugi bohater, kamera ze smyczą, światło dla obu `#coop`
+
+**Co powstało:**
+- **tryb testowy co-op:** `?hero=barbarian&coop=archer` (z `?seed=`/`?floor=` też) — P1 gra klawiaturą z myszą, P2 pierwszym padem; tylko wspinaczka (decyzja właściciela); run jest testowy (bez tablicy) do czasu tablicy co-op w etapie C7; ekran dołączania i wyboru dla dwóch — etap C5;
+- **różni bohaterowie** (decyzja właściciela): `systems/Coop.ts` `partnerHero` — gdy P2 chce tego samego bohatera co P1, dostaje następnego z ekranu wyboru; `freshCoop` — partner bez przedmiotów i z pełnym HP;
+- `FloorSceneData.coop` (`CoopSceneData`: partner — bohater, przedmioty, HP — i urządzenia graczy) przechodzi na kolejne piętro i do nowego runu po śmierci;
+- `combat/HeroCombat.ts`: walka jednego bohatera wydzielona z `GameScene` (cios, strzał, kule, strzały i salwa, promień, fala, Burzowy pęd, Wampirzy kieł, ultimate, loadout) — solo jeden, co-op po jednym na gracza; cele ataków podaje scena (`HeroStrikeTargets`) w tej samej kolejności co wcześniej;
+- **nietykalność bossa spoza areny** (krok 86) liczy się dla atakującego bohatera: metody `BossFight` dostają `attacker`, pociski gracza pamiętają strzelca (`PlayerShotManager`, także strzały totemu); kieł i rozprysk kuli działają dla strzelca;
+- **wspólna kamera ze smyczą** (decyzja właściciela): `systems/CoopCamera.ts` — kamera idzie za środkiem między żywymi bohaterami (`partyFocus`), smycz (`leashPair`) nie pozwala im się rozejść poza kadr: cofa tego, kto się oddala (partner nie jest ciągnięty), przy ruchu obu dzieli nadmiar; zapas na sylwetki `COOP_CONFIG.leashMarginPx` (48×40 px, przy zoomie 2 odstęp do 384×190 px); zoom zostaje 2,0;
+- **światło dla obu:** `LightingOverlay.render` wyciera krąg światła każdego żywego bohatera (też mrok zasadzki), `EnemyVisibility` liczy najjaśniejsze światło (`partyVisibility` w `systems/lighting.ts`);
+- minimapę odkrywają obaj; run kończy się, gdy padną obaj (`party.isDown`) — wskrzeszanie w etapie C4.
+
+**Celowo na później:** HUD pokazuje tylko P1 (etap C5); schody i kapliczka reagują na P1, łupy idą do runu P1 (etap C4); powalony partner wchodzi na kolejne piętro z 1 HP (zasady wskrzeszania — C4); balans co-opu (C6).
+
+**Gra solo bez zmian:** jedna `HeroCombat`, kamera za graczem jak dotąd; testy i smoke.
+
+**Testy:** 18 nowych (`coopCamera.test.ts`, `coop.test.ts`, `partyVisibility` w `lighting.test.ts`), razem 1736.
+
+**Weryfikacja:** `npm run build`; w przeglądarce `?seed=7&hero=barbarian&coop=archer` z podstawionym padem — dwóch bohaterów, P2 chodzi i strzela padem, P1 klawiaturą, kamera między nimi, smycz cofa odsuniętego o 600 px partnera do 384 px; `npm run smoke -- --floors 8 --seeds 1` (solo, wszyscy bohaterowie).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4432,7 +4452,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102). Dalej: C2 drugi bohater, kamera ze smyczą i dwa światła, C3 aggro, kraty i zasadzki przy partnerze poza pokojem, C4 powalenie i wskrzeszanie, łupy dla każdego, C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`). Dalej: C3 aggro, kraty i zasadzki przy partnerze poza pokojem, C4 powalenie i wskrzeszanie, łupy dla każdego, C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type {
   DeathSummary,
+  CoopSceneData,
   FloorSceneData,
   HeroSelectData,
   HudData,
@@ -28,7 +29,7 @@ import { itemFrames } from '@/config/spriteConfig';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
-import { CAMERA_CONFIG, STAIRS_SIZE, TILE_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH, STAIRS_SIZE, TILE_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
@@ -54,21 +55,9 @@ import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPl
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import {
-  ARCHER_ARROW_VISUAL,
-  ELITE_VISUAL,
-  RETINUE_MARKER_VISUAL,
-  SECRET_ROOM_VISUAL,
-  SORCERESS_ORB_VISUAL,
-  SPRITE_SHEETS,
-  animationKey,
-} from '@/config/spriteConfig';
+import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL } from '@/config/spriteConfig';
 import { sorceryOf } from '@/core/heroTypes';
 import type { HeroKit } from '@/core/heroTypes';
-import { arrowSpec, volleyDirections } from '@/systems/Archery';
-import { facingDirection } from '@/systems/Facing';
-import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
-import { beamReach, crystalPoint, splashDamage } from '@/systems/Sorcery';
 import {
   BOSS_LOOT,
   BREAKABLE_LOOT,
@@ -76,11 +65,9 @@ import {
   ENEMY_LOOT,
   HIGHSCORE_CONFIG,
   ITEM_DEFINITIONS,
-  ITEM_EFFECTS,
   ITEM_POOL,
   LOOT_SCALING,
   SHRINE_CONFIG,
-  STAT_LIMITS,
 } from '@/config/lootConfig';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
@@ -96,7 +83,6 @@ import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
-import type { ShotLook } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -118,11 +104,7 @@ import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { rollItemChoices } from '@/systems/RewardChoice';
 import type { RewardSceneData } from '@/scenes/RewardScene';
-import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
-import { computeHeroLoadout } from '@/systems/PlayerLoadout';
-import { HealBudget } from '@/systems/HealBudget';
-import { Timer } from '@/systems/Timer';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { createBoardHighscores } from '@/persistence/highscoreBoards';
@@ -132,8 +114,11 @@ import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
-import { UltimateManager } from '@/combat/UltimateManager';
-import { applyRage } from '@/systems/Ultimate';
+import { HeroCombat, heroLoadout } from '@/combat/HeroCombat';
+import type { HeroStrikeTargets } from '@/combat/HeroCombat';
+import { COOP_CONFIG } from '@/config/coopConfig';
+import { leashPair, leashSpan, partyFocus } from '@/systems/CoopCamera';
+import { freshCoop } from '@/systems/Coop';
 import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
 import { BossStallDetector, LimitWatch, StuckDetector, floorConnectivityIssues, reachable } from '@/systems/AnomalyDetectors';
@@ -155,7 +140,6 @@ import { EnemyVisibility, LIGHT_VISIBILITY_KEY } from '@/effects/EnemyVisibility
 import {
   NO_FLOOR_EFFECTS,
   applyFloorToEnemyLoot,
-  applyFloorToLoadout,
   applyFloorToShrine,
   floorEffectsOf,
   floorModifierFor,
@@ -194,8 +178,6 @@ const TOAST_DURATION_MS = 2500;
 const ITEM_NOTICE_MS = 3000;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
 const FLOOR_MODIFIER_TOAST_MS = 4500;
-/** Liczby obrażeń od trucizny nad graczem — zieleń jadu (krok 27). */
-const POISON_TEXT_COLOR = '#8cff6a';
 
 export class GameScene extends Phaser.Scene implements HudSource {
   private player!: Player;
@@ -208,8 +190,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private projectiles!: ProjectileManager;
   private playerShots!: PlayerShotManager;
   private bossFight!: BossFight;
-  /** Ultimate (krok 98); null przed zbudowaniem sceny — szał nie przechodzi na kolejne piętro. */
-  private ultimates: UltimateManager | null = null;
+  /**
+   * Walka bohaterów (ataki, kieł, ultimate) — po jednym na gracza (co-op, etap C2); pusto przed zbudowaniem sceny,
+   * więc szał nie przechodzi na kolejne piętro.
+   */
+  private heroes: HeroCombat[] = [];
+  /** Lokalny co-op (krok 101+): partner i urządzenia graczy; null — gra solo. */
+  private coop: CoopSceneData | null = null;
+  /** Drugi bohater (co-op); null w grze solo. */
+  private partner: Player | null = null;
+  private partnerInput: PlayerInput | null = null;
+  /** Pozycje bohaterów z poprzedniej klatki — smycz cofa tego, kto się oddala. */
+  private leashFrom: [Vector2, Vector2] | null = null;
   private herald: BossHeraldEffects | null = null;
   /** Pająki z sufitu — tylko w biomie, który je ma (krok 23c). */
   private ceilingDrops: CeilingDropManager | null = null;
@@ -265,15 +257,6 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private galleryPosts: readonly TilePoint[] = [];
   /** Wrogowie galerii — zawsze widoczni (za kratą w półmroku byliby niewidzialnym działem). */
   private galleryEnemies = new Set<Phaser.GameObjects.Sprite>();
-  /** Cele trafione Burzowym pędem w dashu o numerze `dashHitsFor`. */
-  private dashHits = new Set<object>();
-  private dashHitsFor = -1;
-  /** Wampirzy kieł: odstęp między leczeniami za cios. */
-  private healCooldown = new Timer();
-  /** Krok 93: sufit leczenia kła na sekundę (procent maks. HP). */
-  private healBudget = new HealBudget();
-  /** Promień Czarodziejki (krok 37) — rysowany co klatkę, gdy świeci. */
-  private beamGfx: Phaser.GameObjects.Graphics | null = null;
   private readonly highscores = createBoardHighscores('tower');
   /** Tablica aren bossów (krok 91a): najpierw osiągnięta arena, potem złoto; własny klucz, kolejka i trasa workera. */
   private readonly arenaHighscores = createBoardHighscores('arenas');
@@ -326,22 +309,20 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stairsPrompt = null;
     this.isTransitioning = false;
     this.deathHandled = false;
-    this.dashHits = new Set();
-    this.dashHitsFor = -1;
-    this.healCooldown = new Timer();
-    this.healBudget = new HealBudget();
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
     this.gamePaused = false;
     this.herald = null;
-    this.ultimates = null;
+    this.heroes = [];
+    this.coop = data.coop ?? null;
+    this.partner = null;
+    this.partnerInput = null;
+    this.leashFrom = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
     this.traps = null;
     this.breakables = null;
-    // Restart sceny niszczy obiekty — grafika promienia powstanie od nowa.
-    this.beamGfx = null;
   }
 
   create(): void {
@@ -395,7 +376,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const spawn = DungeonView.tileToWorldCenter(this.atBoss || this.bossRush ? this.bossStartTile() : this.dungeon.playerSpawn);
     this.player = new Player(this, spawn.x, spawn.y, this.run.hero, this.currentLoadout(), this.startHp);
     this.physics.add.collider(this.player, this.dungeonView.collisionLayer);
-    this.party = new Party([this.player]);
+    this.partner = this.coop ? this.spawnPartner(this.coop, spawn) : null;
+    this.party = new Party(this.partner ? [this.player, this.partner] : [this.player]);
 
     this.setupCombat();
     this.setupLoot();
@@ -406,7 +388,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupSecretRoom();
     this.setupAmbush();
     this.createStairsPrompt();
-    this.inputController = createPlayerInput(this);
+    this.inputController = createPlayerInput(this, this.coop?.devices[0]);
+    this.partnerInput = this.coop && this.partner ? createPlayerInput(this, this.coop.devices[1]) : null;
     this.setupCamera();
     this.setupDebugKeys();
     this.setupPause();
@@ -547,23 +530,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     const actions = this.nextActions(time);
     this.moveHeld = actions.move.x !== 0 || actions.move.y !== 0;
-    const turn = this.player.tick(actions, time);
-    if (turn.poisonDamage > 0) {
-      this.effects.floatingText(this.player.x, this.player.y - this.player.radius, `-${turn.poisonDamage}`, POISON_TEXT_COLOR);
+    this.heroes[0]?.tick(actions, time);
+    // Co-op (etap C2): partner ze swojego urządzenia; schody i kapliczka zostają przy P1 do etapu C4.
+    const partnerHero = this.heroes[1];
+    if (partnerHero && this.partnerInput) {
+      const partner = partnerHero.player;
+      partnerHero.tick(this.partnerInput.getActions({ origin: { x: partner.x, y: partner.y }, targets: () => this.aimTargets() }), time);
     }
-    if (turn.struck) this.resolvePlayerStrike(time);
-    if (turn.shot) {
-      const { x, y, combatConfig, effects } = this.player;
-      this.playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, effects);
-    }
-    if (turn.orb) this.fireOrb(turn.orb);
-    if (turn.ultimate) this.ultimates?.use(turn.ultimate, time);
-    if (turn.nova) this.castNova(time);
-    if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.strong);
-    if (turn.volley) this.fireVolley(turn.volley);
-    this.updateBeam(turn.beam, turn.beamTicks, time);
-    this.ultimates?.update(time);
-    this.resolveDashStrike(time);
     this.enemies.update(time);
     this.ceilingDrops?.update(time);
     this.cocoons?.update(time);
@@ -581,21 +554,24 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.projectiles.update(time);
     this.playerShots.update(
       time,
-      (shot) => {
+      (shot, owner) => {
+        // Co-op: trafienie liczy się strzelcowi (kieł, rozprysk, nietykalność bossa spoza areny).
+        const shooter = this.heroes.find((hero) => hero.player === owner) ?? this.heroes[0];
+        const attacker = shooter?.player;
         // Krok 93: kieł leczy tylko za trafienie wroga lub bossa, nie kokonu (też spiżarni), purchawki czy urny.
-        const creature = this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot);
+        const creature = this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot, attacker);
         const target =
           creature ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? null;
-        if (creature && !(creature instanceof LarderCocoon) && shot.vampiric) this.tryVampireHeal(time);
-        if (target && shot.magic) this.orbSplash(shot.position, shot.damage, target, time);
+        if (target) shooter?.afterShotHit(shot, target, creature !== null && !(creature instanceof LarderCocoon), time);
         return target;
       },
     );
     this.loot.update(time);
     this.shrine?.update(actions.interact);
 
-    if (this.player.isDead) this.handlePlayerDeath();
-    else this.checkStairs(actions.interact);
+    // Co-op: run trwa, dopóki stoi choć jeden bohater (wskrzeszanie — etap C4).
+    if (this.party.isDown) this.handlePlayerDeath();
+    else if (!this.player.isDead) this.checkStairs(actions.interact);
     this.updateBossRush(time);
   }
 
@@ -641,6 +617,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private minimapData(): MinimapHudData | null {
     if (!this.minimap) return null;
     const player = DungeonView.worldToTile(this.player.x, this.player.y);
+    // Co-op: mgłę minimapy odkrywają obaj bohaterowie.
+    for (const member of this.party.living) this.minimap.reveal(DungeonView.worldToTile(member.x, member.y));
     this.minimap.reveal(player);
     const arena = this.dungeon.rooms[this.dungeon.bossRoomId];
     return {
@@ -651,11 +629,24 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
   }
 
+  /** Loadout pierwszego gracza (przedmioty runu); partner liczy swój w `HeroCombat`. */
   private currentLoadout(): PlayerLoadout {
-    const loadout = applyFloorToLoadout(computeHeroLoadout(this.hero, this.run.items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS), this.floorEffects);
-    // Szał barbarzyńcy (krok 98) mnoży loadout na czas trwania.
-    const { ultimate } = this.hero;
-    return ultimate.kind === 'rage' && this.ultimates?.isRaging(this.time.now) ? applyRage(loadout, ultimate) : loadout;
+    return heroLoadout(this.run.hero, this.run.items, this.floorEffects, this.heroes[0]?.ultimates.isRaging(this.time.now) ?? false);
+  }
+
+  /**
+   * Drugi bohater (co-op, etap C2): obok pierwszego, gdy jest tam podłoga, inaczej na tym samym miejscu
+   * (kolizja ciał ich rozsunie). Własne przedmioty i HP z poprzedniego piętra.
+   */
+  private spawnPartner(coop: CoopSceneData, at: Vector2): Player {
+    const { partner } = coop;
+    const offset = COOP_CONFIG.partnerSpawnOffsetPx;
+    const walls = this.dungeonView.collisionLayer;
+    const side = [offset, -offset].map((dx) => ({ x: at.x + dx, y: at.y })).find((p) => !(walls.getTileAtWorldXY(p.x, p.y)?.collides ?? false)) ?? at;
+    const player = new Player(this, side.x, side.y, partner.hero, heroLoadout(partner.hero, partner.items, this.floorEffects, false), partner.hp);
+    this.physics.add.collider(player, walls);
+    this.physics.add.collider(player, this.player);
+    return player;
   }
 
   private get hero() {
@@ -667,172 +658,6 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return sorceryOf(this.hero.kit)?.orbs.maxOrbs ?? this.hero.combat.ranged.maxCharges;
   }
 
-  /** Kula Czarodziejki wylatuje z kryształu; niesie wszystkie efekty broni z przedmiotów. */
-  private fireOrb(direction: Vector2): void {
-    const orbs = this.player.sorceryConfig?.orbs;
-    if (!orbs) return;
-    const { effects } = this.player;
-    const origin = crystalPoint(this.player, Math.atan2(direction.y, direction.x), orbs.forwardOffset, orbs.sideOffset);
-    this.playerShots.fire(
-      origin,
-      direction,
-      {
-        damage: orbs.damage,
-        knockback: orbs.knockback,
-        projectileSpeed: orbs.speed,
-        projectileLifetimeMs: orbs.lifetimeMs,
-        projectileRadius: orbs.radius,
-      },
-      effects,
-      {
-        texture: SPRITE_SHEETS[SORCERESS_ORB_VISUAL.sheet].key,
-        animation: animationKey(SORCERESS_ORB_VISUAL.sheet, SORCERESS_ORB_VISUAL.animation),
-        status: { ...effects.shotStatus, ...effects.meleeStatus },
-        vampiric: effects.meleeHeal > 0,
-        magic: true,
-      },
-    );
-  }
-
-  /**
-   * Strzała łucznika z łuku (krok 82; ciągły ostrzał od kroku 97): mocna strzała serii przebija.
-   * Łuk to broń główna, więc strzała niesie wszystkie efekty broni (strzał + cios), jak kula Czarodziejki,
-   * i trafia upiory zasadzki (domyślna decyzja z kroku 82, do oceny właściciela).
-   */
-  private fireArrow(direction: Vector2, strong: boolean): void {
-    const archery = this.player.archeryConfig;
-    if (!archery) return;
-    const { bow } = archery;
-    const spec = arrowSpec(bow, strong);
-    const origin = crystalPoint(this.player, Math.atan2(direction.y, direction.x), bow.forwardOffset, bow.sideOffset);
-    this.playerShots.fire(
-      origin,
-      direction,
-      {
-        damage: spec.damage,
-        knockback: spec.knockback,
-        projectileSpeed: spec.speed,
-        projectileLifetimeMs: bow.lifetimeMs,
-        projectileRadius: bow.radius,
-      },
-      this.player.effects,
-      this.arrowLook(direction, spec.strong, spec.pierce),
-    );
-  }
-
-  /** Salwa łucznika (PPM): wachlarz strzał z obrażeniami i lotem ładunków strzału (`combat.ranged`). */
-  private fireVolley(aim: Vector2): void {
-    const archery = this.player.archeryConfig;
-    if (!archery) return;
-    const { bow, volley } = archery;
-    const angle = Math.atan2(aim.y, aim.x);
-    const origin = crystalPoint(this.player, angle, bow.forwardOffset, bow.sideOffset);
-    for (const direction of volleyDirections(angle, volley.arrows, volley.spreadDeg)) {
-      this.playerShots.fire(origin, direction, this.player.combatConfig.ranged, this.player.effects, this.arrowLook(direction, false, 0));
-    }
-  }
-
-  private arrowLook(direction: Vector2, strong: boolean, extraPierce: number): ShotLook {
-    const { effects } = this.player;
-    const sheet = ARCHER_ARROW_VISUAL.sheet;
-    return {
-      texture: SPRITE_SHEETS[sheet].key,
-      animation: animationKey(sheet, strong ? ARCHER_ARROW_VISUAL.fullAnimation : ARCHER_ARROW_VISUAL.animation, facingDirection(direction) ?? 0),
-      status: { ...effects.shotStatus, ...effects.meleeStatus },
-      vampiric: effects.meleeHeal > 0,
-      magic: true,
-      extraPierce,
-    };
-  }
-
-  /** Rozprysk kuli (krok 50): sąsiedzi trafionego dostają ułamek obrażeń; wrogowie, pajączki z bossa i boss. */
-  private orbSplash(at: Vector2, orbDamage: number, mainTarget: object, now: number): void {
-    const splash = this.player.sorceryConfig?.orbs.splash;
-    if (!splash) return;
-    const strike: OrbSplash = {
-      center: { x: at.x, y: at.y },
-      radius: splash.radius,
-      damage: splashDamage(orbDamage, splash.damageFraction),
-      now,
-      source: { x: this.player.x, y: this.player.y },
-      exclude: mainTarget,
-    };
-    this.enemies.resolveSplash(strike);
-    this.bossFight.resolveSplash(strike);
-    this.effects.splash(at.x, at.y, splash.radius);
-  }
-
-  /**
-   * Fala uderzeniowa Czarodziejki (krok 97): przy rzucie ostatniej kuli serii rani i odpycha wrogów wokół niej.
-   * Magia (trafia upiory), bez efektów przedmiotów — jak rozprysk kuli.
-   */
-  private castNova(now: number): void {
-    const nova = this.player.sorceryConfig?.orbs.nova;
-    if (!nova) return;
-    const center = { x: this.player.x, y: this.player.y };
-    const strike: OrbSplash = { center, radius: nova.radius, damage: nova.damage, knockback: nova.knockback, now, source: center, exclude: null };
-    this.enemies.resolveSplash(strike);
-    this.bossFight.resolveSplash(strike);
-    this.effects.nova(center.x, center.y, nova.radius);
-  }
-
-  /** Promień Czarodziejki: rysunek co klatkę, obrażenia w klatkach z tickiem; zatrzymuje się na ścianie. */
-  private updateBeam(active: boolean, ticks: number, now: number): void {
-    const config = this.player.sorceryConfig?.beam;
-    if (!active || !config) {
-      this.beamGfx?.clear();
-      return;
-    }
-    const angle = this.player.getAimAngle();
-    const dir = { x: Math.cos(angle), y: Math.sin(angle) };
-    const from = crystalPoint(this.player, angle, config.forwardOffset, config.sideOffset);
-    const walls = this.dungeonView.collisionLayer;
-    const blocked = (p: Vector2): boolean => walls.getTileAtWorldXY(p.x, p.y)?.collides ?? false;
-    const length = blocked(from) ? 0 : beamReach(from, angle, config.range, blocked);
-    const to = { x: from.x + dir.x * length, y: from.y + dir.y * length };
-    this.drawBeam(from, to);
-    for (let i = 0; i < ticks; i++) {
-      const beam: BeamStrike = {
-        from,
-        to,
-        halfWidth: config.halfWidth,
-        damage: config.damagePerTick,
-        knockback: config.knockback,
-        now,
-        source: { x: this.player.x, y: this.player.y },
-      };
-      this.enemies.resolvePlayerBeam(beam);
-      this.bossFight.resolvePlayerBeam(beam);
-      this.cocoons?.resolvePlayerBeam(beam);
-      this.puffballs?.resolvePlayerBeam(beam);
-      this.secretRoom?.resolvePlayerBeam(beam);
-      this.breakables?.resolvePlayerBeam(beam);
-    }
-  }
-
-  /** Promień w kolorach kryształu (pełne kolory, bez przezroczystości); rdzeń migocze tylko wizualnie. */
-  private drawBeam(from: Vector2, to: Vector2): void {
-    const gfx = this.beamGfx ?? (this.beamGfx = this.add.graphics().setDepth(RENDER_DEPTH.slash));
-    const core = Math.random() < 0.5 ? 1 : 2;
-    gfx.clear();
-    gfx.lineStyle(5, 0x1d7f9c, 1).lineBetween(from.x, from.y, to.x, to.y);
-    gfx.lineStyle(3, 0x39c0d8, 1).lineBetween(from.x, from.y, to.x, to.y);
-    gfx.lineStyle(core, 0xe4fbfb, 1).lineBetween(from.x, from.y, to.x, to.y);
-    gfx.fillStyle(0x8ae6ef, 1).fillCircle(to.x, to.y, 3);
-    gfx.fillStyle(0xe4fbfb, 1).fillCircle(from.x, from.y, 2);
-  }
-
-  /** Wampirzy kieł: leczenie za trafienie (raz na cios lub kulę), najwyżej raz na meleeHealCooldownMs. */
-  private tryVampireHeal(now: number): void {
-    const { meleeHeal, meleeHealCooldownMs, meleeHealMaxHpPctPerSec } = this.player.effects;
-    if (meleeHeal <= 0 || this.player.health.isFull || this.healCooldown.isActive(now)) return;
-    this.healCooldown.start(now, meleeHealCooldownMs);
-    const heal = this.healBudget.take(meleeHeal, now, this.player.health.max * meleeHealMaxHpPctPerSec);
-    if (heal <= 0) return;
-    this.player.heal(heal);
-    this.effects.floatingText(this.player.x, this.player.y - 14, `+${heal}`, '#ff6b8a');
-  }
-
   /** Wywoływane po pokonaniu bossa — zamyka pętlę piętra. */
   private unlockStairs(): void {
     if (this.stairsUnlocked) return;
@@ -840,43 +665,47 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.dungeonView.openStairs();
   }
 
-  private resolvePlayerStrike(now: number): void {
-    const combat = this.player.combatConfig;
-    const swing: MeleeSwing = {
-      origin: { x: this.player.x, y: this.player.y },
-      angle: this.player.getAimAngle(),
-      combat,
-      now,
-      status: this.player.effects.meleeStatus,
-    };
-    const arc = Phaser.Math.DegToRad(combat.meleeArcDeg);
-    this.effects.slash(swing.origin.x, swing.origin.y, swing.angle, combat.meleeRange, arc);
-    const creatureHits = this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing);
-    this.cocoons?.resolvePlayerMelee(swing);
-    this.puffballs?.resolvePlayerMelee(swing);
-    this.secretRoom?.resolvePlayerMelee(swing);
-    this.breakables?.resolvePlayerMelee(swing);
-
-    // Wampirzy kieł: leczenie za cios, który trafił wroga lub bossa (raz na cios, niezależnie od liczby celów).
-    // Krok 93: kokony, purchawki i urny już nie leczą.
-    if (creatureHits > 0) this.tryVampireHeal(now);
+  /** Wabik: pierwszy stojący totem łucznika (każdy bohater ma własne ultimate). */
+  private aggroTarget(): Vector2 | null {
+    for (const hero of this.heroes) {
+      const lure = hero.ultimates.aggroTarget;
+      if (lure) return lure;
+    }
+    return null;
   }
 
-  /** Burzowy pęd: w trakcie dasha gracz rani dotkniętych wrogów (każdego raz na dash). */
-  private resolveDashStrike(now: number): void {
-    const damage = this.player.effects.dashDamage;
-    if (damage <= 0 || !this.player.isDashing(now)) return;
-    if (this.dashHitsFor !== this.player.dashId) {
-      this.dashHitsFor = this.player.dashId;
-      this.dashHits = new Set();
-    }
-    const sweep = { center: { x: this.player.x, y: this.player.y }, radius: this.player.radius, damage, now };
-    this.enemies.resolveDashSweep(sweep, this.dashHits);
-    this.bossFight.resolveDashSweep(sweep, this.dashHits);
-    this.cocoons?.resolveDashSweep(sweep, this.dashHits);
-    this.puffballs?.resolveDashSweep(sweep, this.dashHits);
-    this.secretRoom?.resolveDashSweep(sweep, this.dashHits);
-    this.breakables?.resolveDashSweep(sweep, this.dashHits);
+  /** Cele ataków bohaterów na piętrze — kolejność trafień jak przed co-opem. */
+  private heroStrikes(): HeroStrikeTargets {
+    return {
+      melee: (swing, attacker) => {
+        const creatureHits = this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing, attacker);
+        this.cocoons?.resolvePlayerMelee(swing);
+        this.puffballs?.resolvePlayerMelee(swing);
+        this.secretRoom?.resolvePlayerMelee(swing);
+        this.breakables?.resolvePlayerMelee(swing);
+        return creatureHits;
+      },
+      beam: (beam, attacker) => {
+        this.enemies.resolvePlayerBeam(beam);
+        this.bossFight.resolvePlayerBeam(beam, attacker);
+        this.cocoons?.resolvePlayerBeam(beam);
+        this.puffballs?.resolvePlayerBeam(beam);
+        this.secretRoom?.resolvePlayerBeam(beam);
+        this.breakables?.resolvePlayerBeam(beam);
+      },
+      splash: (strike, attacker) => {
+        this.enemies.resolveSplash(strike);
+        this.bossFight.resolveSplash(strike, attacker);
+      },
+      dash: (sweep, alreadyHit, attacker) => {
+        this.enemies.resolveDashSweep(sweep, alreadyHit);
+        this.bossFight.resolveDashSweep(sweep, alreadyHit, attacker);
+        this.cocoons?.resolveDashSweep(sweep, alreadyHit);
+        this.puffballs?.resolveDashSweep(sweep, alreadyHit);
+        this.secretRoom?.resolveDashSweep(sweep, alreadyHit);
+        this.breakables?.resolveDashSweep(sweep, alreadyHit);
+      },
+    };
   }
 
   private setupCombat(): void {
@@ -904,7 +733,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
       },
-      aggroTarget: () => this.ultimates?.aggroTarget ?? null,
+      aggroTarget: () => this.aggroTarget(),
       onEliteSpotted: (enemy) => this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs),
     });
 
@@ -1027,23 +856,27 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Animacja śmierci bossa trwa chwilę — gracz mógł w tym czasie zginąć (np. od pocisku w locie).
         if (!this.player.isDead) this.offerBossReward();
       },
-      aggroTarget: () => this.ultimates?.aggroTarget ?? null,
+      aggroTarget: () => this.aggroTarget(),
     });
 
-    // Ultimate (R, krok 98): szał, Supernowa, totem.
-    this.ultimates = new UltimateManager({
-      scene: this,
-      player: this.player,
-      effects: this.effects,
-      playerShots: this.playerShots,
-      blast: (strike) => {
-        this.enemies.resolveSplash(strike);
-        this.bossFight.resolveSplash(strike);
-      },
-      targets: () => this.aimTargets(),
-      onRageChanged: () => this.player.applyLoadout(this.currentLoadout()),
-      floorNumber: this.floorNumber,
-    });
+    // Walka bohaterów (ataki, kieł, ultimate R z kroku 98) — po jednym na gracza.
+    this.heroes = this.party.members.map(
+      (player) =>
+        new HeroCombat({
+          scene: this,
+          player,
+          hero: player === this.player ? this.run.hero : (this.coop?.partner.hero ?? this.run.hero),
+          // Etap C2: przedmioty partnera jadą z poprzedniego piętra; zbieranie dla siebie — etap C4.
+          items: player === this.player ? () => this.run.items : () => this.coop?.partner.items ?? [],
+          floorEffects: this.floorEffects,
+          floorNumber: this.floorNumber,
+          effects: this.effects,
+          playerShots: this.playerShots,
+          walls: this.dungeonView.collisionLayer,
+          strikes: this.heroStrikes(),
+          aimTargets: () => this.aimTargets(),
+        }),
+    );
 
     // Zapowiedź bossa (krok 54): odcień światła, drżenie i iskry ku arenie; milknie w walce i po niej.
     // W arenach bossów gracz już stoi na arenie — zapowiedź nie ma sensu.
@@ -1445,7 +1278,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
       // Ten sam bohater i tryb co w zakończonym runie.
       // Wybór piętra (krok 91): R zaczyna od tego samego piętra startowego.
       const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
-      const fresh: FloorSceneData = { runSeed: freshSeed, floor, run: newRun(this.run.hero, false, this.run.mode, floor) };
+      // Co-op: nowy run z tym samym partnerem (bez przedmiotów); run testowy do czasu tablicy co-op (etap C7).
+      const coop = this.coop ? freshCoop(this.coop.partner.hero, this.coop.devices) : null;
+      const fresh: FloorSceneData = {
+        runSeed: freshSeed,
+        floor,
+        run: newRun(this.run.hero, coop !== null, this.run.mode, floor),
+        ...(coop && { coop }),
+      };
       this.scene.restart(fresh);
     });
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
@@ -1544,9 +1384,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
         runSeed: this.runSeed,
         floor: this.floorNumber + 1,
         run: this.run.snapshot(this.player.health.value),
+        ...this.coopForNextFloor(),
       };
       this.scene.restart(next);
     });
+  }
+
+  /** Co-op na kolejne piętro: partner z obecnym HP (powalony wstaje z minimum — zasady wskrzeszania w etapie C4). */
+  private coopForNextFloor(): { coop?: CoopSceneData } {
+    const { coop, partner } = this;
+    if (!coop || !partner) return {};
+    return { coop: { ...coop, partner: { ...coop.partner, hp: partner.isDead ? 1 : partner.health.value } } };
   }
 
   private get bossRush(): boolean {
@@ -1622,18 +1470,24 @@ export class GameScene extends Phaser.Scene implements HudSource {
             profile,
             revealStrength: LIGHTING.enemyReveal.revealStrength,
             lights: () => (torchesLightUp ? this.pointLights() : []),
-            player: this.player,
+            players: () => this.lightBearers(),
             actors: () => this.hideableEnemies(),
           })
         : null;
     // Po fizyce: światło gracza i widoczność wrogów nie zostają klatkę za nim.
     const render = () => {
-      this.lighting.render(this.player, this.pointLights());
+      this.lighting.render(this.lightBearers(), this.pointLights());
       hiding?.update();
     };
     render();
     this.events.on(Phaser.Scenes.Events.POST_UPDATE, render);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, render));
+  }
+
+  /** Bohaterowie z własnym kręgiem światła: żywi; gdy nikt nie żyje — pierwszy gracz (jak solo). */
+  private lightBearers(): readonly Player[] {
+    const living = this.party.living;
+    return living.length > 0 ? living : [this.player];
   }
 
   /** Światła piętra: pochodnie i paleniska (krok 41b). */
@@ -1654,8 +1508,46 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
     cam.setZoom(CAMERA_CONFIG.zoom);
-    cam.startFollow(this.player, true, CAMERA_CONFIG.lerp, CAMERA_CONFIG.lerp);
+    // Co-op (etap C2): kamera idzie za środkiem między bohaterami, smycz trzyma obu w kadrze.
+    const follow = this.partner ? this.setupCoopCamera() : this.player;
+    cam.startFollow(follow, true, CAMERA_CONFIG.lerp, CAMERA_CONFIG.lerp);
     cam.setDeadzone(CAMERA_CONFIG.deadzoneWidth, CAMERA_CONFIG.deadzoneHeight);
     cam.roundPixels = true;
+  }
+
+  /** Punkt kamery i smycz co-opu: po fizyce, zanim kamera i światło policzą kadr. */
+  private setupCoopCamera(): Phaser.GameObjects.Zone {
+    const focus = this.add.zone(this.player.x, this.player.y, 1, 1);
+    const span = leashSpan(
+      { x: GAME_WIDTH / CAMERA_CONFIG.zoom, y: GAME_HEIGHT / CAMERA_CONFIG.zoom },
+      COOP_CONFIG.leashMarginPx,
+    );
+    const step = (): void => {
+      this.applyLeash(span);
+      const center = partyFocus(this.lightBearers());
+      if (center) focus.setPosition(center.x, center.y);
+    };
+    step();
+    // Przed oświetleniem (też POST_UPDATE): kolejność rejestracji — kamera ustawia się w tej samej klatce.
+    this.events.on(Phaser.Scenes.Events.POST_UPDATE, step);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, step));
+    return focus;
+  }
+
+  /** Smycz (decyzja właściciela): żywi bohaterowie nie rozejdą się poza kadr — cofa się ten, kto się oddala. */
+  private applyLeash(span: Vector2): void {
+    const [a, b] = this.party.members;
+    if (!a || !b || a.isDead || b.isDead) {
+      this.leashFrom = null;
+      return;
+    }
+    const now: [Vector2, Vector2] = [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];
+    const [na, nb] = leashPair(this.leashFrom ?? now, now, span);
+    for (const [hero, to] of [[a, na], [b, nb]] as const) {
+      if (to.x === hero.x && to.y === hero.y) continue;
+      hero.setPosition(to.x, to.y);
+      (hero.body as Phaser.Physics.Arcade.Body).updateFromGameObject();
+    }
+    this.leashFrom = [na, nb];
   }
 }

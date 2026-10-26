@@ -27,6 +27,12 @@ export interface PlayerDevices {
 /** Gra solo: klawiatura, mysz i pierwszy pad naraz — zachowanie sprzed co-opu. */
 export const SOLO_DEVICES: PlayerDevices = { keyboard: true, mouse: true, pad: 'any' };
 
+/** Co-op bez ekranu dołączania (tryb testowy `?coop=`): P1 — klawiatura z myszą, P2 — pierwszy pad. */
+export const DEFAULT_COOP_DEVICES: readonly PlayerDevices[] = [
+  { keyboard: true, mouse: true, pad: null },
+  { keyboard: false, mouse: false, pad: 'any' },
+];
+
 export function sameDevice(a: InputDevice, b: InputDevice): boolean {
   if (a.kind === 'keyboardMouse' || b.kind === 'keyboardMouse') return a.kind === b.kind;
   return a.index === b.index;

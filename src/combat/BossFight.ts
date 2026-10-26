@@ -92,6 +92,9 @@ export interface BossFightDeps {
   readonly aggroTarget?: () => Vector2 | null;
 }
 
+/** Bohater, który atakuje bossa (pozycja i czy żyje). */
+type Attacker = Vector2 & { readonly isDead: boolean; readonly radius: number };
+
 /** Znacznik świty: za `at` ms wyjdzie wróg. */
 interface PendingHelper {
   readonly at: number;
@@ -370,11 +373,11 @@ export class BossFight {
    * promień, rozprysk i dash gracza stojącego poza prostokątem areny nic im nie robią i nie budzą bossa.
    * Gracz musi wejść na arenę — tam walka się zaczyna, a kraty opadają.
    */
-  private playerOutsideArena(): boolean {
-    // Etap C0 co-opu: ataki wykonuje jeszcze tylko pierwszy gracz; w etapie C2 sprawdzimy atakującego bohatera.
-    const attacker = this.deps.party.leader;
-    if (!this.boss || attacker.isDead) return false;
-    return !this.isInArena(attacker);
+  private playerOutsideArena(attacker: Attacker | undefined): boolean {
+    // Co-op (etap C2): liczy się bohater, który atakuje; bez wskazania — pierwszy gracz.
+    const hero = attacker ?? this.deps.party.leader;
+    if (!this.boss || hero.isDead) return false;
+    return !this.isInArena(hero);
   }
 
   private isInArena(point: Vector2): boolean {
@@ -391,20 +394,20 @@ export class BossFight {
    * Krótka informacja przy próbie zranienia bossa z zewnątrz (najwyżej raz na sekundę) — tylko gdy atak
    * naprawdę sięgnąłby bossa albo jego pomocnika. Zwykła walka gdzie indziej na piętrze nie wyświetla napisu.
    */
-  private warnUntouchable(reaches: (target: MeleeTarget) => boolean): void {
+  private warnUntouchable(reaches: (target: MeleeTarget) => boolean, attacker: Attacker | undefined): void {
     if (!this.targets().some(reaches)) return;
     const { effects } = this.deps;
-    const player = this.deps.party.leader;
+    const player = attacker ?? this.deps.party.leader;
     if (this.lastNow - this.lastUntouchableTextAt < 1000) return;
     this.lastUntouchableTextAt = this.lastNow;
     effects.floatingText(player.x, player.y - player.radius - 8, 'Wejdź na arenę!', '#c8c0a8');
   }
 
   /** Cios gracza — zwraca liczbę trafionych (boss i pajączki w łuku; kokony nie liczą się do Wampirzego kła). */
-  resolvePlayerMelee(swing: MeleeSwing): number {
+  resolvePlayerMelee(swing: MeleeSwing, attacker?: Attacker): number {
     if (!this.boss) return 0;
-    if (this.playerOutsideArena()) {
-      this.warnUntouchable((t) => swingReaches(swing, t));
+    if (this.playerOutsideArena(attacker)) {
+      this.warnUntouchable((t) => swingReaches(swing, t), attacker);
       return 0;
     }
     const { hit, killed } = resolveMeleeSwing(swing, this.targets());
@@ -420,16 +423,16 @@ export class BossFight {
     return this.deps.aggroTarget?.() ?? { x: player.x, y: player.y };
   }
 
-  resolveSplash(splash: OrbSplash): void {
-    if (this.playerOutsideArena()) return;
+  resolveSplash(splash: OrbSplash, attacker?: Attacker): void {
+    if (this.playerOutsideArena(attacker)) return;
     const { killed } = resolveSplash(splash, this.targets());
     this.handleKills(killed);
   }
 
-  resolvePlayerBeam(beam: BeamStrike): number {
+  resolvePlayerBeam(beam: BeamStrike, attacker?: Attacker): number {
     if (!this.boss) return 0;
-    if (this.playerOutsideArena()) {
-      this.warnUntouchable((t) => beamReaches(beam, t));
+    if (this.playerOutsideArena(attacker)) {
+      this.warnUntouchable((t) => beamReaches(beam, t), attacker);
       return 0;
     }
     // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie. U Kata rozgrzewa tarczę.
@@ -445,11 +448,11 @@ export class BossFight {
    * Pocisk gracza trafia najbliższy cel — pajączek między graczem a bossem przyjmuje strzał na siebie.
    * Zwraca trafiony cel (trafienie budzi bossa jak cios wręcz).
    */
-  resolvePlayerShot(shot: PlayerShot): Boss | Spiderling | LarderCocoon | BossDog | null {
+  resolvePlayerShot(shot: PlayerShot, attacker?: Attacker): Boss | Spiderling | LarderCocoon | BossDog | null {
     const boss = this.boss;
     if (!boss) return null;
-    if (this.playerOutsideArena()) {
-      this.warnUntouchable((t) => shotTouches(shot, t));
+    if (this.playerOutsideArena(attacker)) {
+      this.warnUntouchable((t) => shotTouches(shot, t), attacker);
       return null;
     }
     // Tarcza (krok 41e): pocisk, który trafia w nią z przodu, wraca do strzelca (już jako pocisk wroga).
@@ -475,10 +478,10 @@ export class BossFight {
   }
 
   /** Burzowy pęd przez bossa i pajączki. */
-  resolveDashSweep(sweep: DashSweep, alreadyHit: Set<object>): void {
+  resolveDashSweep(sweep: DashSweep, alreadyHit: Set<object>, attacker?: Attacker): void {
     const boss = this.boss;
     if (!boss) return;
-    if (this.playerOutsideArena()) return;
+    if (this.playerOutsideArena(attacker)) return;
     const { hit, killed } = resolveDashSweep(sweep, this.targets(), alreadyHit);
     if (hit.includes(boss)) this.deps.effects.floatingText(boss.x, boss.y - boss.radius, `-${sweep.damage}`, '#b8a8ff');
     this.handleKills(killed);

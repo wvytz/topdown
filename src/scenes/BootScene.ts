@@ -10,7 +10,8 @@ import { registerTorchAnimation } from '@/world/Torches';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { newRun } from '@/systems/RunState';
 import { parseStartOverrides } from '@/systems/startOverrides';
-import { DEFAULT_HERO, parseHeroId } from '@/config/heroConfig';
+import { DEFAULT_HERO, HERO_ORDER, parseHeroId } from '@/config/heroConfig';
+import { freshCoop, partnerHero } from '@/systems/Coop';
 import { BOSS_RUSH_CONFIG } from '@/config/bossRushConfig';
 import { RunMode } from '@/core/runMode';
 import { parseRunMode } from '@/systems/BossRush';
@@ -55,7 +56,17 @@ export class BootScene extends Phaser.Scene {
     const { practice, ...overrides } = parseStartOverrides(window.location.search);
     // `?mode=arenas` (krok 90): od razu areny bossów; ekran wyboru i tak pozwala zmienić tryb.
     const mode = parseRunMode(window.location.search, BOSS_RUSH_CONFIG.urlParam, BOSS_RUSH_CONFIG.urlValue) ?? RunMode.Tower;
-    const startData: FloorSceneData = { runSeed: Date.now() >>> 0, floor: 1, run: newRun(hero, practice, mode), ...overrides };
+    // Co-op w trybie testowym (krok 103): `?hero=barbarian&coop=archer` — P1 na klawiaturze z myszą, P2 na padzie.
+    // Tylko wspinaczka (decyzja właściciela); do czasu tablicy co-op (etap C7) run jest testowy.
+    const coopWanted = heroParam() !== null && mode === RunMode.Tower ? parseHeroId(new URLSearchParams(window.location.search).get('coop')) : null;
+    const coop = coopWanted ? freshCoop(partnerHero(hero, coopWanted, HERO_ORDER)) : undefined;
+    const startData: FloorSceneData = {
+      runSeed: Date.now() >>> 0,
+      floor: 1,
+      run: newRun(hero, practice || coop !== undefined, mode),
+      ...overrides,
+      ...(coop && { coop }),
+    };
     if (this.scene.isActive(SceneKey.Splash)) {
       this.registry.set(BOOT_START_DATA_KEY, startData);
       this.scene.stop();

@@ -5,6 +5,7 @@ import { FLOOR_MODIFIERS } from '@/config/floorModifierConfig';
 import { FloorModifierId } from '@/core/floorModifierTypes';
 import {
   actorVisibility,
+  partyVisibility,
   ambientDarkness,
   buildLightStamp,
   darknessModifierProfile,
@@ -194,5 +195,24 @@ describe('actorVisibility — wrogowie widoczni dopiero w świetle (krok 30)', (
     const reach = Math.max(...Object.values(ENEMY_VARIANTS).map((v) => (v.attack && 'hitRange' in v.attack ? v.attack.hitRange : 0)));
     expect(reach).toBeGreaterThan(0);
     for (const profile of [DARK, FOG]) expect(actorVisibility(at(reach), P, profile, [], revealStrength)).toBe(1);
+  });
+});
+
+describe('partyVisibility — co-op: każdy bohater niesie światło (etap C2)', () => {
+  const { revealStrength } = LIGHTING.enemyReveal;
+  const vision = FLOOR_MODIFIERS[FloorModifierId.Darkness].effects.visionRadius!;
+  const DARK = darknessModifierProfile(vision, LIGHTING.darknessModifier);
+  const P1 = { x: 0, y: 0 };
+  const P2 = { x: 1000, y: 0 };
+
+  it('jeden bohater — to samo co actorVisibility', () => {
+    for (const d of [0, vision / 2, vision * 0.9, vision * 2]) {
+      expect(partyVisibility({ x: d, y: 0 }, [P1], DARK, [], revealStrength)).toBe(actorVisibility({ x: d, y: 0 }, P1, DARK, [], revealStrength));
+    }
+  });
+
+  it('wróg przy drugim bohaterze jest widoczny, choć daleko od pierwszego', () => {
+    expect(partyVisibility({ x: 1000, y: 0 }, [P1], DARK, [], revealStrength)).toBe(0);
+    expect(partyVisibility({ x: 1000, y: 0 }, [P1, P2], DARK, [], revealStrength)).toBe(1);
   });
 });
