@@ -7,7 +7,7 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 import { drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
 import { planCocoons } from '@/dungeon/CocoonPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
-import type { Player } from '@/entities/Player';
+import type { Party } from '@/entities/Party';
 import { Puffball } from '@/entities/Puffball';
 import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
@@ -25,7 +25,8 @@ export interface PuffballDeps {
   readonly floor: DungeonFloor;
   readonly config: PuffballConfig;
   readonly rng: Rng;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
 }
 
 interface Cloud {
@@ -60,9 +61,10 @@ export class PuffballManager {
   }
 
   update(now: number): void {
-    const { player } = this.deps;
-    const target = player.isDead ? null : { x: player.x, y: player.y };
+    const { party } = this.deps;
     this.puffballs = this.puffballs.filter(({ puffball, gfx }) => {
+      const nearest = party.nearestLiving(puffball);
+      const target = nearest ? { x: nearest.x, y: nearest.y } : null;
       if (!puffball.tick(target, now)) {
         if (Number.isFinite(puffball.burstAt)) this.drawTelegraph(puffball, gfx, now);
         return true;
@@ -126,7 +128,7 @@ export class PuffballManager {
   }
 
   private updateClouds(now: number): void {
-    const { player, config, scene } = this.deps;
+    const { party, config, scene } = this.deps;
     const { durationMs } = config.cloud;
     const { fadeMs } = PUFFBALL_VISUALS[config.look ?? 'puffball'].cloud;
     this.clouds = this.clouds.filter((cloud) => {
@@ -140,8 +142,8 @@ export class PuffballManager {
         cloud.fading = true;
         scene.tweens.add({ targets: cloud.sprite, alpha: 0, duration: fadeMs });
       }
-      if (!player.isDead && isInPoisonCloud(config.cloud, cloud.center, cloud.burstAt, player, now)) {
-        player.applyTerrainStatus({ poison: config.cloud.poison }, now);
+      for (const player of party.living) {
+        if (isInPoisonCloud(config.cloud, cloud.center, cloud.burstAt, player, now)) player.applyTerrainStatus({ poison: config.cloud.poison }, now);
       }
       return true;
     });

@@ -5,13 +5,14 @@ import { TILE_SIZE } from '@/config/gameConfig';
 import { ArenaGateLock, findRoomEntrances } from '@/dungeon/arenaGates';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { CombatEffects } from '@/effects/CombatEffects';
-import type { Player } from '@/entities/Player';
+import type { Party } from '@/entities/Party';
 
 export interface ArenaGatesDeps {
   readonly scene: Phaser.Scene;
   readonly floor: DungeonFloor;
   readonly view: DungeonView;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   readonly effects: CombatEffects;
   readonly isBossFighting: () => boolean;
   readonly isBossDefeated: () => boolean;
@@ -32,9 +33,11 @@ export class ArenaGates {
   }
 
   update(): void {
-    const { player, isBossFighting, isBossDefeated } = this.deps;
+    const { party, isBossFighting, isBossDefeated } = this.deps;
+    // Etap C0 co-opu: kraty pilnują pierwszego żywego bohatera (partner poza areną — etap C3).
+    const player = party.living[0] ?? party.leader;
     const change = this.lock.update({
-      bossFighting: isBossFighting() && !player.isDead,
+      bossFighting: isBossFighting() && !party.isDown,
       bossDefeated: isBossDefeated(),
       playerTile: DungeonView.worldToTile(player.x, player.y),
     });

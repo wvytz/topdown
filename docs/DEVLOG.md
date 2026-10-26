@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4284,6 +4284,35 @@ Co powstało:
 
 **Weryfikacja:** `npm run build` (typy + testy + build).
 
+## Krok 101 — Co-op, etap C0: drużyna zamiast gracza `#decyzja` `#coop`
+
+**Decyzje właściciela (2026-10-26)** po planie co-opu (dokument „TOP DOWN — plan co-opu dla 2 graczy”):
+1. tylko **lokalny** co-op; online teraz nie interesuje;
+2. **wspólny ekran ze smyczą** (kamera na środku między bohaterami);
+3. **powalenie i wskrzeszanie** przez partnera — run kończy się, gdy leżą obaj;
+4. trudność w co-opie: **więcej HP** wrogów i bossów **oraz 1 wróg więcej na pokój** (tylko w co-opie; solo dalej 1–2 na pokój);
+5. **każdy zbiera przedmioty dla siebie**;
+6. **bohaterowie muszą być różni**;
+7. **osobna tablica wyników** co-op;
+8. co-op **tylko w domyślnej wspinaczce** (bez aren bossów i wyboru piętra);
+9. **wersja mobilna pominięta**.
+Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP po wskrzeszeniu, karty za bossa naraz czy po kolei.
+
+**Praca na osobnej gałęzi** (decyzja właściciela: co-op nie może zepsuć gry). Etapy C0–C8 z planu; C0 to przebudowa bez zmiany zachowania gry solo.
+
+**Co powstało:**
+- `systems/Party.ts` (czysty): żywi członkowie, koniec runu (`isPartyDown`), najbliższy żywy bohater i cel wroga (`targetMember`: najbliższy żywy, a gdy nikt nie żyje — pierwszy gracz, jak dotąd w solo); testy `tests/systems/party.test.ts`;
+- `entities/Party.ts`: drużyna bohaterów w scenie (`leader`, `living`, `isDown`, `nearestLiving`, `targetFor`); solo = `new Party([player])` w `GameScene`;
+- menedżerowie walki dostają `party` zamiast `player`: wrogowie (`EnemyManager`), boss (`BossFight`), pajączki, pociski, pułapki, paleniska, kokony, purchawki, pajęczyny, psy w ścianach, pająki z sufitu, zasadzka, ukryta komnata, kraty areny, łupy;
+- zasada: **zagrożenia ranią każdego żywego bohatera w zasięgu**, **wrogowie i boss celują w najbliższego żywego**, wyzwalacze (kokony, purchawki, psy, płyty strzałek, ukryta komnata, zasadzka, start walki z bossem) reagują na **dowolnego** żywego bohatera; `onPlayerHit` dostaje trafionego bohatera;
+- łup zbiera najbliższy żywy bohater, który może go wziąć (`canCollect(drop, collector)`; mikstura — tylko ranny); na razie wszystko trafia do wspólnego runu jak dotąd (podział — etap C4).
+
+**Celowo na później (oznaczone w kodzie „etap C…”):** ataki bohatera i nietykalność bossa spoza areny sprawdzają pierwszego gracza (C2: atakujący bohater), kraty areny i pająki z sufitu pilnują pierwszego żywego (C3), kapliczka, ultimate, światło/mrok, minimapa, kamera i HUD zostają przy pierwszym graczu (C2–C5).
+
+**Testy:** 7 nowych (`party.test.ts`), razem 1703.
+
+**Weryfikacja:** `npm run build` (typy + testy + build); `npm run smoke -- --floors 8 --seeds 1` — wszyscy trzej bohaterowie przechodzą piętra 1–8 bez błędów.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4387,7 +4416,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op:** wejście jest już abstrakcyjne (`PlayerActions`); od kroku 95 pad działa w wersji PC (drugi gracz na drugim padzie — do zrobienia).
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza). Dalej: C1 wejście dla dwóch graczy i dołączanie P2, C2 drugi bohater, kamera ze smyczą i dwa światła, C3 aggro, kraty i zasadzki przy partnerze poza pokojem, C4 powalenie i wskrzeszanie, łupy dla każdego, C5 HUD i ekran wyboru (różni bohaterowie), C6 `config/coopConfig.ts` (HP + 1 wróg na pokój), C7 zapis i tablica co-op, C8 smoke z dwoma botami.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
 **Menu, zapis i wybór piętra (krok 91)** `#ekran-startowy` `#zapis-gry` `#wybor-pietra`: czeka na ocenę właściciela. Rozstrzygnięte (91a): wybór piętra bez tablicy i bez bonusu na start. Otwarte: większe nagrody i trudność w kolejnych kręgach (endless loop, pomysł właściciela).

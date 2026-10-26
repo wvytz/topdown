@@ -8,7 +8,7 @@ import { DungeonView } from '@/dungeon/DungeonView';
 import type { WallDogSpot } from '@/dungeon/WallDogPlanner';
 import { planWallDogs } from '@/dungeon/WallDogPlanner';
 import type { CombatEffects } from '@/effects/CombatEffects';
-import type { Player } from '@/entities/Player';
+import type { Party } from '@/entities/Party';
 import type { WallDogConfig } from '@/systems/WallDogs';
 import { WallDogPhase, WallDogState } from '@/systems/WallDogs';
 
@@ -17,7 +17,8 @@ export interface WallDogDeps {
   readonly floor: DungeonFloor;
   readonly config: WallDogConfig;
   readonly rng: Rng;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   readonly effects: CombatEffects;
   /** Wielki czarny dog wypadający na podłogę przed dziurą (zwykły Rusher biomu). */
   readonly spawnDog: (at: Vector2) => void;
@@ -52,10 +53,12 @@ export class WallDogManager {
   }
 
   update(now: number): void {
-    const { player, config, effects, scene } = this.deps;
-    const target = player.isDead ? null : { x: player.x, y: player.y };
+    const { party, config, effects, scene } = this.deps;
     for (const entry of this.entries) {
       const { state, sprite, at } = entry;
+      // Pies wyskakuje na najbliższego żywego bohatera.
+      const nearest = party.nearestLiving(at);
+      const target = nearest ? { x: nearest.x, y: nearest.y } : null;
       const before = state.phase;
       const burst = state.update(at, target, now);
       if (before === WallDogPhase.Dormant && state.phase === WallDogPhase.Cracking) {

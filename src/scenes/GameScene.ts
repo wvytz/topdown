@@ -112,6 +112,7 @@ import { GAMEPAD_CONFIG } from '@/config/gamepadConfig';
 import { AIM_ASSIST_MIN_VISIBILITY } from '@/config/touchConfig';
 import type { AimTarget } from '@/systems/touchAim';
 import { LarderCocoon } from '@/entities/LarderCocoon';
+import { Party } from '@/entities/Party';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
@@ -198,6 +199,8 @@ const POISON_TEXT_COLOR = '#8cff6a';
 
 export class GameScene extends Phaser.Scene implements HudSource {
   private player!: Player;
+  /** Bohaterowie na piętrze (co-op, etap C0): solo — sam `player`. */
+  private party!: Party;
   private inputController!: PlayerInput;
   private dungeon!: DungeonFloor;
   private dungeonView!: DungeonView;
@@ -392,6 +395,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const spawn = DungeonView.tileToWorldCenter(this.atBoss || this.bossRush ? this.bossStartTile() : this.dungeon.playerSpawn);
     this.player = new Player(this, spawn.x, spawn.y, this.run.hero, this.currentLoadout(), this.startHp);
     this.physics.add.collider(this.player, this.dungeonView.collisionLayer);
+    this.party = new Party([this.player]);
 
     this.setupCombat();
     this.setupLoot();
@@ -879,7 +883,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.effects = new CombatEffects(this);
     const onPlayerHit = (): void => this.effects.playerHit();
 
-    this.projectiles = new ProjectileManager(this, this.dungeonView.collisionLayer, this.player, onPlayerHit, this.combatDecals);
+    this.projectiles = new ProjectileManager(this, this.dungeonView.collisionLayer, this.party, onPlayerHit, this.combatDecals);
     this.playerShots = new PlayerShotManager(this, this.dungeonView.collisionLayer);
     this.enemies = new EnemyManager({
       scene: this,
@@ -888,7 +892,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       floorEffects: this.floorEffects,
       enemyVariants: this.biome.enemyVariants,
       walls: this.dungeonView.collisionLayer,
-      player: this.player,
+      party: this.party,
       projectiles: this.projectiles,
       effects: this.effects,
       decals: this.combatDecals,
@@ -922,7 +926,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           floorNumber: this.floorNumber,
           config: drops,
           rng: createRng(deriveSeed(this.dungeon.seed, CEILING_DROP_SEED_SALT)),
-          player: this.player,
+          party: this.party,
           enemies: this.enemies,
           effects: this.effects,
           onPlayerHit,
@@ -938,7 +942,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           config: cocoons,
           rng: createRng(deriveSeed(this.dungeon.seed, COCOON_SEED_SALT)),
           walls: this.dungeonView.collisionLayer,
-          player: this.player,
+          party: this.party,
           effects: this.effects,
           decals: this.combatDecals,
           onPlayerHit,
@@ -952,7 +956,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           floor: this.dungeon,
           config: webs,
           rng: createRng(deriveSeed(this.dungeon.seed, STICKY_WEB_SEED_SALT)),
-          player: this.player,
+          party: this.party,
           avoid: this.cocoons?.tiles ?? [],
         })
       : null;
@@ -964,7 +968,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           floor: this.dungeon,
           config: puffballs,
           rng: createRng(deriveSeed(this.dungeon.seed, PUFFBALL_SEED_SALT)),
-          player: this.player,
+          party: this.party,
         })
       : null;
 
@@ -976,7 +980,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           floor: this.dungeon,
           config: wallDogs,
           rng: createRng(deriveSeed(this.dungeon.seed, WALL_DOG_SEED_SALT)),
-          player: this.player,
+          party: this.party,
           effects: this.effects,
           spawnDog: (at) => {
             this.enemies.spawnAt(EnemyType.Rusher, at);
@@ -994,7 +998,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           floorNumber: this.floorNumber,
           config: braziers,
           rng: createRng(deriveSeed(this.dungeon.seed, BRAZIER_SEED_SALT)),
-          player: this.player,
+          party: this.party,
           avoid: shrineTile ? [shrineTile] : [],
           onPlayerHit,
         })
@@ -1005,7 +1009,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       floor: this.dungeon,
       floorNumber: this.floorNumber,
       walls: this.dungeonView.collisionLayer,
-      player: this.player,
+      party: this.party,
       projectiles: this.projectiles,
       effects: this.effects,
       decals: this.combatDecals,
@@ -1056,7 +1060,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       scene: this,
       floor: this.dungeon,
       view: this.dungeonView,
-      player: this.player,
+      party: this.party,
       effects: this.effects,
       isBossFighting: () => this.bossFight.isFighting,
       isBossDefeated: () => this.bossFight.isDefeated,
@@ -1087,7 +1091,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           floor: this.dungeon,
           area: this.secretArea,
           view: this.dungeonView,
-          player: this.player,
+          party: this.party,
           effects: this.effects,
           rng: createRng(deriveSeed(this.dungeon.seed, SECRET_ROOM_SEED_SALT)),
           dropLoot: (at, drops) => this.loot.spawn(at, drops),
@@ -1107,7 +1111,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       config: AMBUSH_CONFIG,
       view: this.dungeonView,
       lighting: () => this.lighting ?? null,
-      player: this.player,
+      party: this.party,
       enemies: this.enemies,
       effects: this.effects,
       rng: createRng(deriveSeed(this.dungeon.seed, AMBUSH_SEED_SALT)),
@@ -1136,7 +1140,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         floorNumber: this.floorNumber,
         spikes: traps.spikes ? { config: traps.spikes, plates } : null,
         darts: traps.darts ? { config: traps.darts, traps: darts } : null,
-        player: this.player,
+        party: this.party,
         enemies: () => this.enemies.living,
         projectiles: this.projectiles,
         onPlayerHit: () => this.effects.playerHit(),
@@ -1158,10 +1162,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.loot = new LootManager({
       scene: this,
       walls: this.dungeonView.collisionLayer,
-      player: this.player,
+      party: this.party,
       // Mikstury zostają na ziemi, dopóki gracz ma pełne HP — można po nie wrócić.
-      canCollect: (drop) =>
-        (drop.kind !== PickupKind.Health || !this.player.health.isFull) && (this.ambush?.canCollect(drop) ?? true),
+      canCollect: (drop, collector) =>
+        (drop.kind !== PickupKind.Health || !collector.health.isFull) && (this.ambush?.canCollect(drop) ?? true),
+      // Etap C0 co-opu: łup trafia do runu jak dotąd; podział między bohaterów — etap C4.
       onCollect: (drop, position) => this.collect(drop, position),
     });
   }

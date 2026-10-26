@@ -8,6 +8,7 @@ import { drawAreaTelegraph } from '@/combat/SpiderlingSwarm';
 import { planBraziers } from '@/dungeon/BrazierPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { PointLight } from '@/effects/LightingOverlay';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { BrazierConfig, BrazierTiming } from '@/systems/Braziers';
 import { BrazierPhase, brazierCycleIndex, brazierDamage, brazierState, brazierTimingForFloor } from '@/systems/Braziers';
@@ -19,10 +20,11 @@ export interface BrazierDeps {
   readonly floorNumber: number;
   readonly config: BrazierConfig;
   readonly rng: Rng;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   /** Kafle, przy których nie stawiamy palenisk (kapliczka). */
   readonly avoid: readonly TilePoint[];
-  readonly onPlayerHit: () => void;
+  readonly onPlayerHit: (player: Player) => void;
 }
 
 interface Brazier {
@@ -70,7 +72,7 @@ export class BrazierManager {
   }
 
   update(now: number): void {
-    const { player, config } = this.deps;
+    const { party, config } = this.deps;
     this.lightList.length = 0;
     for (const brazier of this.braziers) {
       const state = brazierState(this.timing, brazier.offsetMs, now);
@@ -80,15 +82,18 @@ export class BrazierManager {
       const radius = state.phase === BrazierPhase.Burst ? burstRadius : state.phase === BrazierPhase.Warn ? warnRadius : idleRadius;
       this.lightList.push({ x: brazier.at.x, y: brazier.at.y, radius });
 
-      if (player.isDead) continue;
-      const hurt = brazierDamage(config, state, brazier.at, player);
-      if (!hurt) continue;
       const cycleIndex = brazierCycleIndex(this.timing, brazier.offsetMs, now);
-      if (hurt === config.burst && brazier.burstHitCycle === cycleIndex) continue;
-      const hit = { damage: hurt.damage, knockback: knockbackFrom(brazier.at, player, hurt.knockback) };
-      if (!player.takeHit(hit, now)) continue;
-      if (hurt === config.burst) brazier.burstHitCycle = cycleIndex;
-      this.deps.onPlayerHit();
+      // Wybuch rani raz na cykl — w co-opie każdego bohatera, którego zastał w ogniu.
+      const burstHitCycle = brazier.burstHitCycle;
+      for (const player of party.living) {
+        const hurt = brazierDamage(config, state, brazier.at, player);
+        if (!hurt) continue;
+        if (hurt === config.burst && burstHitCycle === cycleIndex) continue;
+        const hit = { damage: hurt.damage, knockback: knockbackFrom(brazier.at, player, hurt.knockback) };
+        if (!player.takeHit(hit, now)) continue;
+        if (hurt === config.burst) brazier.burstHitCycle = cycleIndex;
+        this.deps.onPlayerHit(player);
+      }
     }
   }
 

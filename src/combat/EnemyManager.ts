@@ -23,6 +23,7 @@ import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import type { EnemyAttackHandler } from '@/entities/Enemy';
 import { Enemy } from '@/entities/Enemy';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { directionTo, distance, knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
@@ -47,14 +48,15 @@ export interface EnemyManagerDeps {
   /** Warianty archetypów w biomie piętra (wygląd i ewentualnie atak). */
   readonly enemyVariants: Readonly<Record<EnemyType, EnemyVariant>>;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0): wrogowie celują w najbliższego żywego, zagrożenia ranią każdego. */
+  readonly party: Party;
   readonly projectiles: ProjectileManager;
   readonly effects: CombatEffects;
   /** Trwałe ślady walki (plama w miejscu śmierci wroga). */
   readonly decals: CombatDecals;
-  readonly onPlayerHit: () => void;
+  readonly onPlayerHit: (player: Player) => void;
   readonly onEnemyKilled: (enemy: Enemy) => void;
-  /** Wabik (totem łucznika, krok 98): wrogowie celują w niego zamiast w gracza; null — w gracza. */
+  /** Wabik (totem łucznika, krok 98): wrogowie celują w niego zamiast w bohaterów; null — w najbliższego bohatera. */
   readonly aggroTarget?: () => Vector2 | null;
   /** Elita pierwszy raz widzi gracza z bliska (krok 44: komunikat z podpowiedzią). */
   readonly onEliteSpotted?: (enemy: Enemy) => void;
@@ -172,8 +174,8 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   update(now: number): void {
-    const { player, floor } = this.deps;
-    const target: Vector2 = this.deps.aggroTarget?.() ?? { x: player.x, y: player.y };
+    const { party, floor } = this.deps;
+    const lure = this.deps.aggroTarget?.() ?? null;
     for (const enemy of [...this.enemies]) {
       const burn = enemy.tickBurn(now);
       if (burn > 0) this.deps.effects.floatingText(enemy.x, enemy.y, `-${burn}`, '#ff8a3c');
@@ -181,10 +183,12 @@ export class EnemyManager implements EnemyAttackHandler {
         this.kill(enemy);
         continue;
       }
-      const canSeeTarget = !player.isDead && hasLineOfSight(floor, enemy, target, TILE_SIZE);
+      const target: Vector2 = lure ?? party.targetPointFor(enemy);
+      const canSeeTarget = !party.isDown && hasLineOfSight(floor, enemy, target, TILE_SIZE);
       enemy.tick({ target, canSeeTarget }, now, this);
       this.updateFieryTrail(enemy, now);
-      if (canSeeTarget && isElite(enemy.definition) && !this.spotted.has(enemy) && distance(enemy, player) <= ELITE_VISUAL.spotRange) {
+      const nearest = party.nearestLiving(enemy);
+      if (canSeeTarget && nearest && isElite(enemy.definition) && !this.spotted.has(enemy) && distance(enemy, nearest) <= ELITE_VISUAL.spotRange) {
         this.spotted.add(enemy);
         this.deps.onEliteSpotted?.(enemy);
       }
@@ -194,7 +198,6 @@ export class EnemyManager implements EnemyAttackHandler {
 
   /** Bomby w locie, płonące ślady i telegrafy (skok: linia do celu; rzut: strefa upadku). */
   private updateHellAttacks(now: number): void {
-    const { player } = this.deps;
     this.telegraphs.clear();
     for (const enemy of this.enemies) {
       const aim = enemy.pounceTelegraph;
@@ -216,8 +219,13 @@ export class EnemyManager implements EnemyAttackHandler {
       return true;
     });
     this.updateBlasts(now);
-    const damage = this.firePatches.update(player.isDead ? null : player, now);
-    if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit();
+    const living = this.deps.party.living;
+    // Bez żywych bohaterów i tak usuwamy wygasłe plamy.
+    if (living.length === 0) this.firePatches.update(null, now);
+    for (const player of living) {
+      const damage = this.firePatches.update(player, now);
+      if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit(player);
+    }
     this.drawFirePatches(now);
   }
 
@@ -261,9 +269,9 @@ export class EnemyManager implements EnemyAttackHandler {
     this.telegraphs.fillStyle(color, 0.3).fillCircle(at.x, at.y, radius * progress);
   }
 
-  /** Wybuchy Wybuchowych elit: strefa wypełnia się, potem trafia gracza w promieniu. */
+  /** Wybuchy Wybuchowych elit: strefa wypełnia się, potem trafia bohaterów w promieniu. */
   private updateBlasts(now: number): void {
-    const { player, effects } = this.deps;
+    const { party, effects } = this.deps;
     const { radius, delayMs, knockback } = ELITE_CONFIG.volatile;
     this.blasts = this.blasts.filter((blast) => {
       if (now < blast.detonateAt) {
@@ -272,9 +280,10 @@ export class EnemyManager implements EnemyAttackHandler {
       }
       effects.impact(blast.at.x, blast.at.y, radius);
       this.deps.decals.add('splat', blast.at.x, blast.at.y);
-      if (!player.isDead && distance(blast.at, player) <= radius + player.radius) {
+      for (const player of party.living) {
+        if (distance(blast.at, player) > radius + player.radius) continue;
         const hit: Hit = { damage: blast.damage, knockback: knockbackFrom(blast.at, player, knockback) };
-        if (player.takeHit(hit, now)) this.deps.onPlayerHit();
+        if (player.takeHit(hit, now)) this.deps.onPlayerHit(player);
       }
       this.blastShielded(blast.at, radius, blast.damage, knockback, now);
       return false;
@@ -293,28 +302,33 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   private landBomb(bomb: LobbedBomb, now: number): void {
-    const { player, effects } = this.deps;
+    const { party, effects } = this.deps;
     bomb.sprite.destroy();
     bomb.shadow.destroy();
     effects.impact(bomb.to.x, bomb.to.y, bomb.attack.blastRadius);
-    if (!player.isDead && distance(bomb.to, player) <= bomb.attack.blastRadius + player.radius) {
+    for (const player of party.living) {
+      if (distance(bomb.to, player) > bomb.attack.blastRadius + player.radius) continue;
       const hit: Hit = { damage: bomb.attack.damage, knockback: knockbackFrom(bomb.to, player, bomb.attack.knockback) };
-      if (player.takeHit(hit, now)) this.deps.onPlayerHit();
+      if (player.takeHit(hit, now)) this.deps.onPlayerHit(player);
     }
     this.blastShielded(bomb.to, bomb.attack.blastRadius, bomb.attack.damage, bomb.attack.knockback, now);
     this.firePatches.add(bomb.to, bomb.attack.patch, now);
   }
 
   chargeHit(enemy: Enemy, charge: ShieldChargeConfig): boolean {
-    const { player, scene } = this.deps;
-    if (player.isDead || distance(enemy, player) > charge.hitRadius + enemy.radius + player.radius) return false;
+    const { party, scene } = this.deps;
     const damage = Math.round(enemy.definition.attack.damage * charge.damageMultiplier);
-    const hit: Hit = { damage, knockback: knockbackFrom(enemy, player, charge.knockback) };
-    // Dash i nietykalność chronią: tarczownik biegnie dalej (i może wbić się w ścianę).
-    if (!player.takeHit(hit, scene.time.now)) return false;
-    this.deps.onPlayerHit();
-    this.lifesteal(enemy, damage);
-    return true;
+    let hitAny = false;
+    for (const player of party.living) {
+      if (distance(enemy, player) > charge.hitRadius + enemy.radius + player.radius) continue;
+      const hit: Hit = { damage, knockback: knockbackFrom(enemy, player, charge.knockback) };
+      // Dash i nietykalność chronią: tarczownik biegnie dalej (i może wbić się w ścianę).
+      if (!player.takeHit(hit, scene.time.now)) continue;
+      this.deps.onPlayerHit(player);
+      this.lifesteal(enemy, damage);
+      hitAny = true;
+    }
+    return hitAny;
   }
 
   chargeWall(enemy: Enemy): void {
@@ -326,14 +340,18 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   pounceHit(enemy: Enemy, attack: PounceAttackDefinition): boolean {
-    const { player, scene } = this.deps;
-    if (player.isDead || distance(enemy, player) > attack.hitRadius + player.radius) return false;
-    const hit: Hit = { damage: attack.damage, knockback: knockbackFrom(enemy, player, attack.knockback) };
-    // Dash i nietykalność chronią: wtedy skok jest chybiony (postój ogara).
-    if (!player.takeHit(hit, scene.time.now)) return false;
-    this.deps.onPlayerHit();
-    this.lifesteal(enemy, hit.damage);
-    return true;
+    const { party, scene } = this.deps;
+    let hitAny = false;
+    for (const player of party.living) {
+      if (distance(enemy, player) > attack.hitRadius + player.radius) continue;
+      const hit: Hit = { damage: attack.damage, knockback: knockbackFrom(enemy, player, attack.knockback) };
+      // Dash i nietykalność chronią: wtedy skok jest chybiony (postój ogara).
+      if (!player.takeHit(hit, scene.time.now)) continue;
+      this.deps.onPlayerHit(player);
+      this.lifesteal(enemy, hit.damage);
+      hitAny = true;
+    }
+    return hitAny;
   }
 
   pounceTrail(_enemy: Enemy, attack: PounceAttackDefinition, from: Vector2, to: Vector2): void {
@@ -400,17 +418,19 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   meleeStrike(enemy: Enemy, attack: MeleeAttackDefinition): void {
-    const { player, scene } = this.deps;
-    // Sprawdzamy w chwili uderzenia, nie zamachu — gracz może uciec z zasięgu podczas telegrafu.
-    if (distance(enemy, player) > attack.hitRange) return;
-    const hit: Hit = {
-      damage: attack.damage,
-      knockback: knockbackFrom(enemy, player, attack.knockback),
-      ...(attack.status && { status: attack.status }),
-    };
-    if (player.takeHit(hit, scene.time.now)) {
-      this.deps.onPlayerHit();
-      this.lifesteal(enemy, hit.damage);
+    const { party, scene } = this.deps;
+    for (const player of party.living) {
+      // Sprawdzamy w chwili uderzenia, nie zamachu — bohater może uciec z zasięgu podczas telegrafu.
+      if (distance(enemy, player) > attack.hitRange) continue;
+      const hit: Hit = {
+        damage: attack.damage,
+        knockback: knockbackFrom(enemy, player, attack.knockback),
+        ...(attack.status && { status: attack.status }),
+      };
+      if (player.takeHit(hit, scene.time.now)) {
+        this.deps.onPlayerHit(player);
+        this.lifesteal(enemy, hit.damage);
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 import { isHitByAreaStrike } from '@/ai/bossAttacks';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
@@ -13,10 +14,11 @@ import { knockbackFrom } from '@/systems/CombatMath';
 export interface SpiderlingSwarmDeps {
   readonly scene: Phaser.Scene;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0): pajączki gonią najbliższego, wybuch rani każdego w zasięgu. */
+  readonly party: Party;
   readonly effects: CombatEffects;
   readonly decals: CombatDecals;
-  readonly onPlayerHit: () => void;
+  readonly onPlayerHit: (player: Player) => void;
 }
 
 const TELEGRAPH_COLOR = 0xff4040;
@@ -52,9 +54,9 @@ export class SpiderlingSwarm {
   }
 
   update(now: number): void {
-    const { player, onPlayerHit } = this.deps;
-    const target: Vector2 = { x: player.x, y: player.y };
+    const { party, onPlayerHit } = this.deps;
     for (const { spiderling, gfx } of [...this.entries]) {
+      const target: Vector2 = party.targetPointFor(spiderling);
       const decision = spiderling.tick(target, now);
       const definition = spiderling.definition;
       const blast: AreaStrike = {
@@ -72,9 +74,10 @@ export class SpiderlingSwarm {
       this.deps.effects.impact(blast.center.x, blast.center.y, blast.radius);
       this.deps.decals.add('scorch', blast.center.x, blast.center.y);
       this.playBurst(blast.center);
-      if (!player.isDead && isHitByAreaStrike(blast, player, player.radius)) {
+      for (const player of party.living) {
+        if (!isHitByAreaStrike(blast, player, player.radius)) continue;
         const hit = { damage: blast.damage, knockback: knockbackFrom(blast.center, player, blast.knockback) };
-        if (player.takeHit(hit, now)) onPlayerHit();
+        if (player.takeHit(hit, now)) onPlayerHit(player);
       }
       this.remove(spiderling, true);
     }

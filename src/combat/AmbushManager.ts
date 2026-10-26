@@ -12,7 +12,7 @@ import { findRoomEntrances, isDeepInsideRoom } from '@/dungeon/arenaGates';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { LightingOverlay } from '@/effects/LightingOverlay';
 import type { Enemy } from '@/entities/Enemy';
-import type { Player } from '@/entities/Player';
+import type { Party } from '@/entities/Party';
 import type { AmbushConfig } from '@/systems/Ambush';
 import { AmbushPhase, AmbushState, ambushSpawnTiles } from '@/systems/Ambush';
 import { pickWeightedItem } from '@/systems/Loot';
@@ -28,7 +28,8 @@ export interface AmbushDeps {
   readonly config: AmbushConfig;
   readonly view: DungeonView;
   readonly lighting: () => LightingOverlay | null;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   readonly enemies: EnemyManager;
   readonly effects: CombatEffects;
   /** RNG zasadzki: przedmiot-przynęta i miejsca upiorów. */
@@ -72,15 +73,12 @@ export class AmbushManager {
   }
 
   update(now: number): void {
-    const { player, room, config } = this.deps;
+    const { party, room, config } = this.deps;
     const dt = this.lastNow === 0 ? 0 : now - this.lastNow;
     this.lastNow = now;
     this.wave = this.wave.filter((g) => g.active && !g.isDead);
-    const tile = DungeonView.worldToTile(player.x, player.y);
-    const event = this.state.update(
-      { playerInside: isDeepInsideRoom(room, tile, config.triggerMargin), playerDead: player.isDead, aliveInWave: this.wave.length },
-      now,
-    );
+    const playerInside = party.living.some((player) => isDeepInsideRoom(room, DungeonView.worldToTile(player.x, player.y), config.triggerMargin));
+    const event = this.state.update({ playerInside, playerDead: party.isDown, aliveInWave: this.wave.length }, now);
     if (event?.kind === 'seal') this.seal();
     else if (event?.kind === 'wave') this.summon(event.count);
     else if (event?.kind === 'clear') this.release();
@@ -103,7 +101,9 @@ export class AmbushManager {
   }
 
   private summon(count: number): void {
-    const { room, config, player, enemies, rng, effects } = this.deps;
+    const { room, config, party, enemies, rng, effects } = this.deps;
+    // Etap C0 co-opu: upiory wychodzą z dala od pierwszego żywego bohatera.
+    const player = party.living[0] ?? party.leader;
     const tiles = ambushSpawnTiles(room, DungeonView.worldToTile(player.x, player.y), count, config.minSpawnDistance, rng);
     tiles.forEach((tile, i) => {
       const at = DungeonView.tileToWorldCenter(tile);

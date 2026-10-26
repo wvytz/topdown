@@ -48,6 +48,7 @@ import { DogPhase } from '@/ai/BossDogBrain';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { planLarders } from '@/dungeon/LarderPlanner';
 import { planThrone, planThroneDecals } from '@/dungeon/ThronePlanner';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
 import { knockbackFrom } from '@/systems/CombatMath';
@@ -74,12 +75,13 @@ export interface BossFightDeps {
   readonly floor: DungeonFloor;
   readonly floorNumber: number;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0): boss celuje w najbliższego żywego, ataki obszarowe ranią każdego. */
+  readonly party: Party;
   readonly projectiles: ProjectileManager;
   readonly effects: CombatEffects;
   /** Trwałe ślady walki: przypalenie po uderzeniu obszarowym, szlam po śmierci bossa. */
   readonly decals: CombatDecals;
-  readonly onPlayerHit: () => void;
+  readonly onPlayerHit: (player: Player) => void;
   /** Wywoływane po pokonaniu bossa, z miejscem jego śmierci (tam wypadają łupy). */
   readonly onDefeated: (position: Vector2) => void;
   /** Zarażony wychodzący z kokonu spiżarni (Grzybowy Pożeracz): zwykły Rusher biomu. */
@@ -225,7 +227,7 @@ export class BossFight {
     this.retinueRng = createRng(deriveSeed(deps.floor.seed, RETINUE_SEED_SALT));
 
     deps.scene.physics.add.collider(boss, deps.walls);
-    deps.scene.physics.add.collider(deps.player, boss);
+    for (const member of deps.party.members) deps.scene.physics.add.collider(member, boss);
     this.spiderlings = new SpiderlingSwarm(deps);
     this.dogDefinition = definition.dog ?? null;
     this.dogGfx = this.dogDefinition ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) : null;
@@ -315,12 +317,8 @@ export class BossFight {
       this.fireRingGfx?.clear();
       return;
     }
-    const { player } = this.deps;
-
-    if (!boss.isFighting && !player.isDead) {
-      const playerTile = DungeonView.worldToTile(player.x, player.y);
-      if (roomContainsTile(this.arena, playerTile)) boss.activate(now);
-    }
+    // Walka zaczyna się, gdy którykolwiek żywy bohater wejdzie na arenę.
+    if (!boss.isFighting && this.deps.party.living.some((member) => this.isInArena(member))) boss.activate(now);
 
     this.lastNow = now;
     const burn = boss.tickBurn(now);
@@ -373,9 +371,20 @@ export class BossFight {
    * Gracz musi wejść na arenę — tam walka się zaczyna, a kraty opadają.
    */
   private playerOutsideArena(): boolean {
-    const { player } = this.deps;
-    if (!this.boss || player.isDead) return false;
-    return !roomContainsTile(this.arena, DungeonView.worldToTile(player.x, player.y));
+    // Etap C0 co-opu: ataki wykonuje jeszcze tylko pierwszy gracz; w etapie C2 sprawdzimy atakującego bohatera.
+    const attacker = this.deps.party.leader;
+    if (!this.boss || attacker.isDead) return false;
+    return !this.isInArena(attacker);
+  }
+
+  private isInArena(point: Vector2): boolean {
+    return roomContainsTile(this.arena, DungeonView.worldToTile(point.x, point.y));
+  }
+
+  /** Bohater, na którego patrzy boss (zapowiedzi, świta, pajączki z sufitu); solo — zawsze gracz. */
+  private focus(): Player {
+    const { party } = this.deps;
+    return this.boss ? party.targetFor(this.boss) : party.leader;
   }
 
   /**
@@ -384,7 +393,8 @@ export class BossFight {
    */
   private warnUntouchable(reaches: (target: MeleeTarget) => boolean): void {
     if (!this.targets().some(reaches)) return;
-    const { player, effects } = this.deps;
+    const { effects } = this.deps;
+    const player = this.deps.party.leader;
     if (this.lastNow - this.lastUntouchableTextAt < 1000) return;
     this.lastUntouchableTextAt = this.lastNow;
     effects.floatingText(player.x, player.y - player.radius - 8, 'Wejdź na arenę!', '#c8c0a8');
@@ -404,9 +414,9 @@ export class BossFight {
 
   /** Promień Czarodziejki przez bossa, pajączki i kokony spiżarni. */
   /** Rozprysk kuli Czarodziejki (krok 50): pajączki, kokony spiżarni i boss (tarcza działa jak przy ciosie). */
-  /** W co celuje boss: totem łucznika albo gracz. */
+  /** W co celuje boss: totem łucznika albo najbliższy żywy bohater. */
   private aggroPoint(): Vector2 {
-    const { player } = this.deps;
+    const player = this.focus();
     return this.deps.aggroTarget?.() ?? { x: player.x, y: player.y };
   }
 
@@ -537,7 +547,7 @@ export class BossFight {
     const alive = this.helpers.length + this.pendingHelpers.length;
     const count = this.retinue.due(now, alive, boss.isEnraged);
     if (count > 0) {
-      const { player } = this.deps;
+      const player = this.focus();
       const playerTile = { x: Math.floor(player.x / TILE_SIZE), y: Math.floor(player.y / TILE_SIZE) };
       for (const tile of pickRetinueTiles(this.deps.floor, this.arena, playerTile, count, def.minPlayerDistanceTiles, this.retinueRng)) {
         const position = { x: (tile.x + 0.5) * TILE_SIZE, y: (tile.y + 0.5) * TILE_SIZE };
@@ -680,7 +690,10 @@ export class BossFight {
    * jest już od nowej pozycji, więc ma kierunek.
    */
   private pushPlayerOutOf(center: Vector2, from: Vector2, radius: number): void {
-    const { player } = this.deps;
+    for (const player of this.deps.party.living) this.pushOut(player, center, from, radius);
+  }
+
+  private pushOut(player: Player, center: Vector2, from: Vector2, radius: number): void {
     const minDistance = radius + player.radius + 1;
     let dx = player.x - center.x;
     let dy = player.y - center.y;
@@ -724,7 +737,8 @@ export class BossFight {
 
   /** Miejsce lądowania poza areną (gracz przy ścianie) dosuwamy w stronę gracza, aż trafi na podłogę areny. */
   private throwWeb(planned: WebShot): void {
-    const { scene, player } = this.deps;
+    const { scene } = this.deps;
+    const player = this.focus();
     const to = this.clampToward(planned.to, { x: player.x, y: player.y }, (p) => this.isArenaFloor(p));
     const shot: WebShot = { ...planned, to };
     const { ball } = BOSS_WEB_VISUAL;
@@ -760,7 +774,7 @@ export class BossFight {
 
   /** Znacznik lądowania, lot kłębu łukiem, rozrost plamy i spowolnienie gracza w niej (dash przechodzi). */
   private updateWebs(now: number): void {
-    const { player } = this.deps;
+    const { party } = this.deps;
     this.webs = this.webs.filter((web) => {
       const { shot } = web;
       if (now >= shot.expiresAt) {
@@ -779,7 +793,8 @@ export class BossFight {
         return true;
       }
       if (!web.patch) this.landWeb(web);
-      if (isInWebPatch(shot, player, now)) {
+      for (const player of party.members) {
+        if (!isInWebPatch(shot, player, now)) continue;
         player.applyTerrainSlow(shot.slow, now);
         // Grzybnia Króla (krok 29) dodatkowo zatruwa — teren, więc chroni tylko dash.
         if (shot.status) player.applyTerrainStatus(shot.status, now);
@@ -845,7 +860,8 @@ export class BossFight {
       this.clearSpawns();
       return;
     }
-    const { player, scene } = this.deps;
+    const { scene } = this.deps;
+    const player = this.focus();
     const { fallMs, shadowRadius } = SPIDERLING_DROP_VISUAL;
     this.spawns = this.spawns.filter((pending) => {
       const { spawn } = pending;
@@ -874,7 +890,7 @@ export class BossFight {
   }
 
   private updateStrikes(now: number): void {
-    const { player, effects, onPlayerHit } = this.deps;
+    const { party, effects } = this.deps;
     this.strikes = this.strikes.filter(({ strike, gfx }) => {
       if (now < strike.impactAt) {
         drawAreaTelegraph(gfx, strike, now);
@@ -886,34 +902,39 @@ export class BossFight {
         effects.impact(strike.center.x, strike.center.y, strike.radius);
         this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       }
-      if (isHitByAreaStrike(strike, player, player.radius)) {
-        const hit = {
-          damage: strike.damage,
-          knockback: knockbackFrom(strike.center, player, strike.knockback),
-          ...(strike.status && { status: strike.status }),
-        };
-        if (player.takeHit(hit, now)) {
-          onPlayerHit();
-          // Hak Kata: złapany gracz ląduje tuż przed tarczą (zaraz potem uderzenie tarczą).
-          if (strike.pullTo && player.body instanceof Phaser.Physics.Arcade.Body) {
-            player.body.reset(strike.pullTo.x, strike.pullTo.y);
-            effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
-          }
-          this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
-          const boss = this.boss;
-          if (strike.summonsDog) this.callDog(now);
-          if (strike.healOnHit && boss) {
-            boss.heal(strike.healOnHit);
-            this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
-            effects.floatingText(boss.x, boss.y - boss.radius - 8, `+${strike.healOnHit}`, FEAST_TEXT_COLOR);
-          }
-          if (strike.status?.paralysis && player.isParalyzed(now)) {
-            effects.floatingText(player.x, player.y - player.radius - 8, 'Paraliż!', PARALYSIS_TEXT_COLOR);
-          }
-        }
-      }
+      for (const player of party.members) this.strikePlayer(player, strike, now);
       return false;
     });
+  }
+
+  /** Uderzenie obszarowe w jednego bohatera: obrażenia, hak Kata, wezwanie doga, leczenie bossa, paraliż. */
+  private strikePlayer(player: Player, strike: AreaStrike, now: number): void {
+    const { effects, onPlayerHit } = this.deps;
+    if (!isHitByAreaStrike(strike, player, player.radius)) return;
+    const hit = {
+      damage: strike.damage,
+      knockback: knockbackFrom(strike.center, player, strike.knockback),
+      ...(strike.status && { status: strike.status }),
+    };
+    if (player.takeHit(hit, now)) {
+      onPlayerHit(player);
+      // Hak Kata: złapany gracz ląduje tuż przed tarczą (zaraz potem uderzenie tarczą).
+      if (strike.pullTo && player.body instanceof Phaser.Physics.Arcade.Body) {
+        player.body.reset(strike.pullTo.x, strike.pullTo.y);
+        effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
+      }
+      this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
+      const boss = this.boss;
+      if (strike.summonsDog) this.callDog(now);
+      if (strike.healOnHit && boss) {
+        boss.heal(strike.healOnHit);
+        this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
+        effects.floatingText(boss.x, boss.y - boss.radius - 8, `+${strike.healOnHit}`, FEAST_TEXT_COLOR);
+      }
+      if (strike.status?.paralysis && player.isParalyzed(now)) {
+        effects.floatingText(player.x, player.y - player.radius - 8, 'Paraliż!', PARALYSIS_TEXT_COLOR);
+      }
+    }
   }
 
   /** Dog u boku bossa (spawn na starcie i po powrocie): pojawia się przy Baronie, z odstępem przed skokiem. */
@@ -941,7 +962,7 @@ export class BossFight {
       dog.setVelocity(0, 0);
       return;
     }
-    const { player, effects } = this.deps;
+    const { party, effects } = this.deps;
     const decision = dog.tick({ x: boss.x, y: boss.y }, this.aggroPoint(), now);
     if (decision.newBite) {
       const { center, radius, telegraphStartAt, impactAt, damage, knockback } = decision.newBite;
@@ -949,13 +970,16 @@ export class BossFight {
       this.strikes.push({ strike, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     // Skok z rogu: jedno trafienie na szarżę (dash gracza daje nietykalność, więc unik działa).
-    if (dog.phase === DogPhase.Lunge && !dog.lungeHit && !player.isDead && Math.hypot(player.x - dog.x, player.y - dog.y) <= dog.radius + player.radius) {
+    const bitten = dog.phase === DogPhase.Lunge && !dog.lungeHit
+      ? party.living.find((player) => Math.hypot(player.x - dog.x, player.y - dog.y) <= dog.radius + player.radius)
+      : undefined;
+    if (bitten) {
       dog.lungeHit = true;
       const { damage, knockback } = def.lunge;
-      const hit = { damage, knockback: knockbackFrom(dog, player, knockback) };
-      if (player.takeHit(hit, now)) {
-        this.deps.onPlayerHit();
-        effects.floatingText(player.x, player.y - player.radius - 8, 'Pogryziony!', SMOKE_VISUAL.text);
+      const hit = { damage, knockback: knockbackFrom(dog, bitten, knockback) };
+      if (bitten.takeHit(hit, now)) {
+        this.deps.onPlayerHit(bitten);
+        effects.floatingText(bitten.x, bitten.y - bitten.radius - 8, 'Pogryziony!', SMOKE_VISUAL.text);
       }
       effects.impact(dog.x, dog.y, dog.radius);
     }
@@ -966,7 +990,7 @@ export class BossFight {
   private drawDog(gfx: Phaser.GameObjects.Graphics, dog: BossDog): void {
     const aim = dog.lungeAim;
     if (aim) {
-      const { player } = this.deps;
+      const player = this.deps.party.targetFor(dog);
       const toPlayer = Math.hypot(player.x - dog.x, player.y - dog.y) || 1;
       const unit = aim.direction ?? { x: (player.x - dog.x) / toPlayer, y: (player.y - dog.y) / toPlayer };
       const reach = (dog.definition.lunge.speed * dog.definition.lunge.durationMs) / 1000;
@@ -985,7 +1009,8 @@ export class BossFight {
   private callDog(now: number): void {
     const dog = this.dog;
     if (!dog || !this.boss || !dog.canSummon(now)) return;
-    const { player, effects, scene } = this.deps;
+    const { effects, scene } = this.deps;
+    const player = this.focus();
     const view = scene.cameras.main.worldView;
     const inset = 18;
     const corners: Vector2[] = [
@@ -1124,10 +1149,11 @@ export class BossFight {
       );
     }
     gfx.lineStyle(edgeWidth, edge, edgeAlpha).strokeCircle(center.x, center.y, radius);
-    const { player } = this.deps;
-    if (player.isDead || Math.hypot(player.x - center.x, player.y - center.y) <= radius) return;
-    const hit = { damage: ring.damage, knockback: knockbackFrom(player, center, ring.knockback) };
-    if (player.takeHit(hit, now)) this.deps.onPlayerHit();
+    for (const player of this.deps.party.living) {
+      if (Math.hypot(player.x - center.x, player.y - center.y) <= radius) continue;
+      const hit = { damage: ring.damage, knockback: knockbackFrom(player, center, ring.knockback) };
+      if (player.takeHit(hit, now)) this.deps.onPlayerHit(player);
+    }
   }
 
   /** Łuk tarczy przed bossem: widać, skąd trafienia się odbijają (tylko w walce). */

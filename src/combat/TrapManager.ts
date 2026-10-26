@@ -8,6 +8,7 @@ import type { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { DartTrap, SpikePlate } from '@/dungeon/TrapPlanner';
 import type { Enemy } from '@/entities/Enemy';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
 import type { DartConfig, SpikeConfig } from '@/systems/Traps';
@@ -18,10 +19,11 @@ export interface TrapDeps {
   readonly floorNumber: number;
   readonly spikes: { readonly config: SpikeConfig; readonly plates: readonly SpikePlate[] } | null;
   readonly darts: { readonly config: DartConfig; readonly traps: readonly DartTrap[] } | null;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   readonly enemies: () => readonly Enemy[];
   readonly projectiles: ProjectileManager;
-  readonly onPlayerHit: () => void;
+  readonly onPlayerHit: (player: Player) => void;
 }
 
 interface LivePlate {
@@ -52,8 +54,8 @@ export class TrapManager {
   private readonly plates: LivePlate[] = [];
   private readonly darts: LiveDart[] = [];
   private readonly telegraph: Phaser.GameObjects.Graphics;
-  /** Cykl każdej grupy, w którym kolce już zraniły gracza. */
-  private readonly playerHitCycle = new Map<number, number>();
+  /** Cykl każdej grupy, w którym kolce już zraniły danego bohatera. */
+  private readonly playerHitCycle = new WeakMap<Player, Map<number, number>>();
   private readonly enemyHitCycle = new WeakMap<Enemy, Map<number, number>>();
   private readonly spikeDamage: number;
   private readonly dartDamage: number;
@@ -103,8 +105,7 @@ export class TrapManager {
     const spikes = this.deps.spikes;
     if (!spikes) return;
     const { config } = spikes;
-    const { player } = this.deps;
-    const playerTile = DungeonView.worldToTile(player.x, player.y);
+    const { party } = this.deps;
     for (const live of this.plates) {
       const offset = spikeGroupOffset(config.timing, live.plate.group);
       const state = spikeState(config.timing, offset, now);
@@ -119,11 +120,15 @@ export class TrapManager {
       if (state.phase !== SpikePhase.Up) continue;
       const cycle = spikeCycleIndex(config.timing, offset, now);
       const group = live.plate.group;
-      if (!player.isDead && playerTile.x === live.plate.tile.x && playerTile.y === live.plate.tile.y && this.playerHitCycle.get(group) !== cycle) {
+      for (const player of party.living) {
+        const playerTile = DungeonView.worldToTile(player.x, player.y);
+        const hits = this.playerHitCycle.get(player) ?? new Map<number, number>();
+        if (playerTile.x !== live.plate.tile.x || playerTile.y !== live.plate.tile.y || hits.get(group) === cycle) continue;
         const hit = { damage: this.spikeDamage, knockback: knockbackFrom(live.at, player, config.knockback) };
         if (player.takeHit(hit, now)) {
-          this.playerHitCycle.set(group, cycle);
-          this.deps.onPlayerHit();
+          hits.set(group, cycle);
+          this.playerHitCycle.set(player, hits);
+          this.deps.onPlayerHit(player);
         }
       }
       for (const enemy of this.deps.enemies()) {
@@ -141,10 +146,11 @@ export class TrapManager {
   private updateDarts(now: number): void {
     const darts = this.deps.darts;
     if (!darts) return;
-    const { player, projectiles } = this.deps;
-    const playerTile = DungeonView.worldToTile(player.x, player.y);
+    const { party, projectiles } = this.deps;
+    const tiles = party.living.map((player) => DungeonView.worldToTile(player.x, player.y));
     for (const live of this.darts) {
-      const onPlate = !player.isDead && playerTile.x === live.trap.plate.x && playerTile.y === live.trap.plate.y;
+      // Płytę naciska którykolwiek żywy bohater.
+      const onPlate = tiles.some((tile) => tile.x === live.trap.plate.x && tile.y === live.trap.plate.y);
       const shots = live.state.update(onPlate, now);
       const phase = live.state.phase;
       if (phase !== live.phase) {

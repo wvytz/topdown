@@ -12,6 +12,7 @@ import { roomContainsTile } from '@/dungeon/rooms';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { EnemyManager } from '@/combat/EnemyManager';
 import type { Enemy } from '@/entities/Enemy';
+import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { CeilingDrop, CeilingDropConfig } from '@/systems/CeilingDrops';
 import { CeilingDropPlanner, dropShadowRadius } from '@/systems/CeilingDrops';
@@ -23,10 +24,11 @@ export interface CeilingDropDeps {
   readonly floorNumber: number;
   readonly config: CeilingDropConfig;
   readonly rng: Rng;
-  readonly player: Player;
+  /** Bohaterowie (co-op, etap C0). */
+  readonly party: Party;
   readonly enemies: EnemyManager;
   readonly effects: CombatEffects;
-  readonly onPlayerHit: () => void;
+  readonly onPlayerHit: (player: Player) => void;
 }
 
 interface PendingDrop {
@@ -51,10 +53,11 @@ export class CeilingDropManager {
   }
 
   update(now: number): void {
-    const { player } = this.deps;
     for (const enemy of [...this.dropped]) if (!enemy.active) this.dropped.delete(enemy);
 
-    if (!player.isDead) {
+    // Etap C0 co-opu: pająki spadają przy pierwszym żywym bohaterze (rozdział między graczy — etap C3).
+    const player = this.deps.party.living[0];
+    if (player) {
       const room = this.dropRoomAt(player);
       const drop = this.planner.update({
         now,
@@ -98,11 +101,12 @@ export class CeilingDropManager {
 
   private land({ drop, view }: PendingDrop, now: number): void {
     view.destroy();
-    const { player, effects, onPlayerHit, enemies } = this.deps;
+    const { party, effects, onPlayerHit, enemies } = this.deps;
     effects.impact(drop.position.x, drop.position.y, drop.radius);
-    if (!player.isDead && Math.hypot(player.x - drop.position.x, player.y - drop.position.y) <= drop.radius + player.radius) {
+    for (const player of party.living) {
+      if (Math.hypot(player.x - drop.position.x, player.y - drop.position.y) > drop.radius + player.radius) continue;
       const hit = { damage: drop.damage, knockback: knockbackFrom(drop.position, player, drop.knockback) };
-      if (player.takeHit(hit, now)) onPlayerHit();
+      if (player.takeHit(hit, now)) onPlayerHit(player);
     }
     this.dropped.add(enemies.spawnAt(EnemyType.Rusher, drop.position));
   }
