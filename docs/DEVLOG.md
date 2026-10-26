@@ -4449,6 +4449,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** wielkość śladu stóp (5 px) i tułowia (8 px), siła błysku wybuchu (60% alfy w pierwszej klatce), czas migania brzegu (180 ms).
 
+## Krok 111 — Pajęczy duet na arenie: Król i Matka Pająków naraz `#decyzja` `#areny-bossow` `#matka-pajakow` `#krol-pajakow`
+
+**Pomysł właściciela (26.10.2026):** połączyć obu bossów pająków w jedną walkę — na razie w arenach bossów, jako utrudnienie („to nie jest najtrudniejszy boss”).
+
+**Decyzja (wariant domyślny, do potwierdzenia przez właściciela):** duet stoi na **arenie 3** (Grzybnia): Król Pająków + Matka Pająków, obaj z pełnym HP i wszystkimi atakami. Arena 2 zostaje z samą Matką — gracz poznaje ją sam na sam, potem dostaje ją w parze z Królem. Numeracja aren i tablica wyników bez zmian. Duet wraca w każdym kręgu (arena 10, 17…), partner skalowany do bieżącego piętra. We wspinaczce bez zmian.
+
+**Co powstało:**
+- `systems/BossDuet.ts` (czyste): `duetForFloor` (duet na piętrze kręgu), `duetStatus` (wspólny pasek: suma HP obu, pokonany liczy się jako 0, wściekłość od pierwszego wściekłego), `pushApart` (rozpychanie ciał).
+- `BOSS_RUSH_DUETS` w `config/bossRushConfig.ts`: arena, partner, rozstawienie (±2,5 kafla od środka: Król po lewej, Matka po prawej), odstęp ciał (4 px), mnożnik HP (1), świta partnera (wyłączona — przywołuje tylko Król; dwie świty to za duży tłok), napisy („Matka i Król Pająków”, plansza „Pajęczy duet”).
+- `combat/BossEncounter.ts`: scena widzi jedną walkę — jeden boss albo dwie niezależne `BossFight` na tej samej arenie. Walka trwa, gdy walczy którykolwiek; łup, karty i teleport dopiero po drugim (w miejscu jego śmierci). Pocisk gracza trafia najpierw bliższego bossa (z jego pajączkami). Oba ciała są nieruchome dla fizyki, więc duet rozpycha się sam (skok Matki przelatuje nad Królem, rozsuwają się po lądowaniu).
+- `BossFight`: opcjonalne `bossFloor` (boss innego piętra, skalowany do bieżącego), `spawnOffset`, `seed` (partner losuje inaczej niż gospodarz); gettery `hp`, `maxHp`, `position`, `grounded`, `nudge`.
+- Napis areny w HUD: „Arena 3 · Matka i Król Pająków”.
+- **Hitboxy z kroku 110 obowiązują obu** — każda walka używa wspólnych stref (`systems/Hurtbox.ts`) i telegrafu.
+
+**Testy:** `tests/systems/bossDuet.test.ts` (duet na arenie 3 w każdym kręgu, brak na innych, pełne HP, pasek, rozpychanie). Build zielony (1783 testy).
+
+**Weryfikacja:** Playwright, `?mode=arenas&seed=3&floor=3` barbarzyńcą, łucznikiem i Czarodziejką: oba bossy walczą i atakują, pasek 936/936 (420 + 300 przeskalowane do piętra 3, razem), rozpychanie działa, po pokonaniu obu — łup i karty nagrody (`RewardScene`), bez błędów w konsoli. `npm run smoke -- --floors 4 --seeds 1` bez błędów (wspinaczka bez zmian).
+
+**Czeka na ocenę właściciela:** trudność duetu (HP obu, czy dwie świty), rozstawienie, czy duet przenieść do wspinaczki.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4526,6 +4546,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **2. Do oceny przy okazji**
 - **Tarczownik (krok 99):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę, obrót 55°/s, bomby go ranią — czeka na test właściciela.
+- **Pajęczy duet (krok 111):** `#areny-bossow` Król i Matka Pająków naraz na arenie 3 — trudność, świta tylko Króla; potem decyzja o wspinaczce — czeka na test właściciela.
 - **Hitboxy i wybuchy (krok 110):** `#ocena` `#balans` strefy łapią ślad stóp (5 px), pociski tułów (8 px); nowy telegraf i wybuch w promieniu strefy (bomby kultystów, wybuch elity, ataki bossów) — czeka na test właściciela.
 - **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału, Supernowej i totemu, wygląd totemu (placeholder).
 - **Bohaterowie po kroku 97:** `#balans` `#czarodziejka` `#lucznik` ciągły ostrzał łucznika (co 0,34 s, co 3. mocna), fala uderzeniowa i powrót kul Czarodziejki (0,6 s), mocniejszy promień; czy barbarzyńca dalej jest OP.
