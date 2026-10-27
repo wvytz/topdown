@@ -131,6 +131,8 @@ class Palette:
     ember: tuple = ()  # 3: czerwień, pomarańcz, rozgrzany środek
     # Zadymiona palarnia (krok 84): śmieci na podłodze — puszki energetyków (zieleń, srebro) i opakowania z kurczaka
     # (czerwień, krem, tłuszcz, frytki). Puste w innych biomach.
+    # Lustrzana komnata (propozycja, docs/WIEDZMA.md): opalizujące refleksy na polerowanej posadzce. Puste w innych biomach.
+    opal: tuple = ()  # 4: róż, błękit, liliowy, blada żółć
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
@@ -321,6 +323,22 @@ PALETTES = {
         litter=oks((.27, .090, 258), (.39, .130, 258), (.54, .140, 252), (.50, .008, 250), (.78, .008, 250),
                    (.40, .150, 28), (.52, .190, 28), (.90, .030, 90), (.38, .070, 70), (.82, .150, 95)),
     ),
+    # Lustrzana komnata (propozycja, docs/WIEDZMA.md): posadzka jak wypolerowany kryształ — najjaśniejsza w wieży,
+    # chłodny błękit z opalizującymi refleksami; mury najbrudniejsze i najbardziej zniszczone (zgnilizna, zacieki brudnej wody).
+    'lustro_opal': Palette(
+        key='lustro_opal', label='Lustrzana komnata (opalizujący kryształ)',
+        floor=oks((.60, .020, 250), (.68, .022, 248), (.78, .020, 244), (.84, .018, 240), (.90, .014, 235), (.94, .010, 230)),
+        floor_alt=ok(.75, .024, 232),
+        wall_top=oks((.15, .016, 95), (.22, .020, 92), (.31, .026, 88), (.37, .028, 86), (.44, .028, 86), (.51, .026, 88)),
+        wall_block_alt=ok(.28, .030, 75),
+        wall_face=oks((.10, .014, 95), (.15, .018, 92), (.19, .020, 90)),
+        wall_fade=oks((.07, .012, 95), (.11, .014, 92), (.14, .016, 90)),
+        deep=oks((.05, .010, 95), (.07, .012, 95)),
+        # Brud: zacieki i plamy brudnej wody (szarozielony brąz).
+        stain=oks((.36, .040, 100), (.46, .045, 105)),
+        ash=oks((.58, .016, 95), (.48, .016, 90)),
+        opal=oks((.88, .050, 350), (.88, .050, 200), (.84, .055, 300), (.91, .055, 95)),
+    ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
     # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
     # A: krwawy bazalt — prawie czarna, chłodna skała z nutą czerwieni; czerwień niesie krew i żar.
@@ -385,6 +403,8 @@ BIOMES = {
     'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
     # Zadymiona palarnia (krok 83): piętro Barona Dymu; kafle bez dodatków (jak ruiny), inna paleta.
     'smoke_den': {'palette': 'dymna_palarnia', 'extras': ('smoke',), 'reserved_hues': True},
+    # Lustrzana komnata (propozycja, docs/WIEDZMA.md): piętra Wiedźmy Mopa; błyszcząca posadzka, mury w ruinie.
+    'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror',), 'reserved_hues': True},
 }
 
 
@@ -1687,6 +1707,125 @@ def overgrow_grave(e, img, p, r):
                         img.put(x, y, p.stain[0])
 
 
+def mirror_decal(kind):
+    """Nakładki lustrzanej komnaty: odłamki lustra, kałuże brudnej wody, piana mydlin."""
+    def gen(p, r):
+        F, S, Op = p.floor, p.stain, p.opal
+        img = Img(T, T)
+        if kind.startswith('shards'):  # trójkątne odłamki: jasna tafla z refleksem, ciemna krawędź pęknięcia
+            for _ in range(4 if kind == 'shards_a' else 3):
+                cx, cy, rad = r.uniform(7, 25), r.uniform(7, 25), r.uniform(2.5, 4.5)
+                a0 = r.uniform(0, math.tau)
+                pts = [(cx + math.cos(a0 + k * 2.1 + r.uniform(-.3, .3)) * rad,
+                        cy + math.sin(a0 + k * 2.1 + r.uniform(-.3, .3)) * rad) for k in range(3)]
+                xs, ys = [q[0] for q in pts], [q[1] for q in pts]
+                for y in range(int(min(ys)), int(max(ys)) + 1):
+                    for x in range(int(min(xs)), int(max(xs)) + 1):
+                        inside = all(((pts[(k + 1) % 3][0] - pts[k][0]) * (y + .5 - pts[k][1])
+                                      - (pts[(k + 1) % 3][1] - pts[k][1]) * (x + .5 - pts[k][0])) >= 0 for k in range(3)) or \
+                                 all(((pts[(k + 1) % 3][0] - pts[k][0]) * (y + .5 - pts[k][1])
+                                      - (pts[(k + 1) % 3][1] - pts[k][1]) * (x + .5 - pts[k][0])) <= 0 for k in range(3))
+                        if inside:
+                            img.put(x, y, F[5] if (x + y) % 5 == 0 else Op[r.randrange(4)] if (x * 7 + y) % 9 == 0 else F[4])
+                for (x, y) in pts:
+                    img.put(int(x), int(y) + 1, F[0])
+            for _ in range(5):  # okruchy
+                img.put(r.randrange(3, 29), r.randrange(3, 29), F[5])
+        elif kind.startswith('slop'):  # kałuża brudnej wody: ciemny brzeg, jaśniejszy środek, refleks
+            cx, cy, rad = (15, 16, 7.5) if kind == 'slop_a' else (17, 15, 5.5)
+            lobes = [r.uniform(0, math.tau) for _ in range(2)]
+            for y in range(T):
+                for x in range(T):
+                    a = math.atan2(y - cy, x - cx)
+                    reach = rad * (1 + .14 * math.sin(3 * a + lobes[0]) + .08 * math.sin(5 * a + lobes[1]))
+                    d = math.hypot(x + .5 - cx, (y + .5 - cy) * 1.2)
+                    if d < reach:
+                        img.put(x, y, S[0] if d > reach - 1.3 else S[1])
+            for i in range(3):
+                img.put(int(cx - 3 + i), int(cy - 2 - i), F[3])
+        elif kind == 'suds':  # piana mydlin: kępki bąbli
+            for _ in range(7):
+                cx, cy, rad = r.uniform(6, 26), r.uniform(6, 26), r.choice((1.2, 1.6, 2.2))
+                for y in range(T):
+                    for x in range(T):
+                        d = math.hypot(x + .5 - cx, y + .5 - cy)
+                        if d < rad:
+                            img.put(x, y, F[1] if d > rad - .9 else (F[5] if x + y < cx + cy - 1 else Op[1]))
+        return img
+    return gen
+
+
+def mirror_face(kind):
+    """Lica murów lustrzanej komnaty — najbardziej zniszczone w wieży: zawalone lico z dziurą w głąb muru,
+    zaciek brudnej wody, wybite cegły."""
+    def gen(p, r):
+        img, S, D, wt = Img(T, T), p.stain, p.deep, p.wall_top
+        fy = T - FACE
+        if kind == 'collapse':  # lico wyrwane: ciemna dziura w głąb muru, gruz na krawędzi
+            cx = 16 + r.randint(-3, 3)
+            for y in range(fy - 3, T - 1):
+                for x in range(T):
+                    w = 7 + (y - fy) * .6 + r.uniform(-1, 1)
+                    if abs(x + .5 - cx) < w:
+                        img.put(x, y, D[0] if abs(x + .5 - cx) < w - 1.5 else wt[1])
+            for x in range(cx - 10, cx + 11, 2):
+                pebble(img, x, T - 2 - (x % 3 == 0), 1, wt)
+        elif kind == 'leak':  # zaciek brudnej wody od wierzchu do posadzki, kapie
+            x = 12 + r.randint(0, 8)
+            for y in range(fy - 2, T):
+                if r.random() < .3:
+                    x += r.choice((-1, 1))
+                img.put(x, y, S[0])
+                img.put(x + 1, y, S[1] if y % 3 else S[0])
+            img.put(x, T - 1, S[1])
+        elif kind == 'bricks':  # wybite cegły: ciemne prostokąty w licu
+            for _ in range(3):
+                bx, by = r.randrange(2, T - 8), fy + r.choice((1, 4))
+                for y in range(by, by + 3):
+                    for x in range(bx, bx + 6):
+                        img.put(x, y, D[1] if y > by else D[0])
+        return img
+    return gen
+
+
+def overgrow_mirror(e, img, p, r):
+    """Lustrzana komnata: posadzka wypolerowana — ukośne pasy połysku i opalizujące refleksy (bez kurzu w szczelinach);
+    mury brudne i walące się — zacieki brudnej wody na licu, plamy zgnilizny, wykruszone spoiny."""
+    F, Op = p.floor, p.opal
+    if e.layer == 'floorBase':
+        polished = (F[2], p.floor_alt, F[3])
+        for _ in range(e.w * e.h * r.randint(1, 2)):  # krótkie ukośne smugi połysku, na końcu opalizujący refleks
+            x0, y0, n = r.randrange(img.w), r.randrange(img.h), r.randint(5, 13)
+            for i in range(n):
+                x, y = x0 + i, y0 - i
+                if img.get(x, y) in polished:
+                    img.put(x, y, F[5] if 1 < i < n - 2 else F[4])
+                if img.get(x + 1, y) in polished and i % 2:
+                    img.put(x + 1, y, F[4])
+            if img.get(x0 + n, y0 - n) in polished:
+                img.put(x0 + n, y0 - n, Op[r.randrange(4)])
+        for _ in range(e.w * e.h * r.randint(2, 4)):  # iskry na krawędziach płyt
+            x, y = r.randrange(img.w), r.randrange(img.h)
+            if img.get(x, y) == F[3]:
+                img.put(x, y, Op[r.randrange(4)])
+    elif e.layer == 'wall':
+        wt = p.wall_top
+        face_top = T - FACE if img.get(4, T - 1) == p.outline else T
+        for y in range(face_top):  # wykruszone spoiny i zgnilizna na wierzchu
+            for x in range(T):
+                c = img.get(x, y)
+                if c == wt[1] and r.random() < .25:
+                    img.put(x, y, p.deep[1])
+                elif c in (wt[2], p.wall_block_alt) and r.random() < .05:
+                    img.put(x, y, p.stain[0])
+        if face_top < T:  # zacieki brudnej wody na licu
+            for _ in range(r.randint(1, 3)):
+                x = r.randrange(3, T - 3)
+                for y in range(face_top, face_top + r.randint(3, FACE)):
+                    if img.get(x, y) not in (None, p.outline, CLR):
+                        img.put(x, y, p.stain[0])
+
+
 def arch(p, r):
     """Nadproże łuku nad przejściem szerokości 2 kafli: wierzch muru i lico z łukowatą dolną krawędzią.
     Rysowane nad postaciami (overheadDecor) — przejście pod nim zostaje czytelne."""
@@ -1934,6 +2073,16 @@ def manifest():
         for kind, group in (('can_a', 'decal.cans'), ('can_b', 'decal.cans'), ('can_c', 'decal.cans'), ('can_d', 'decal.cans'), ('can_e', 'decal.cans'),
                             ('bucket', 'decal.kfc'), ('box', 'decal.kfc'), ('butts', 'decal.butts')):
             m.append(Entry(f'decal_{kind}', smoke_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+    if 'mirror' in BIOMES[BIOME]['extras']:
+        # Lustrzana komnata (propozycja): odłamki, kałuże, piana, zniszczone lica; dopisane na końcu (first-fit).
+        for kind, weight in (('collapse', 3), ('leak', 3), ('bricks', 2)):
+            m.append(Entry(f'face_{kind}', mirror_face(kind), 'wallDecor', group='wallFace.mirror', weight=weight))
+        for kind, group in (('shards_a', 'decal.shards'), ('shards_b', 'decal.shards'), ('slop_a', 'decal.slop'),
+                            ('slop_b', 'decal.slop'), ('suds', 'decal.suds')):
+            m.append(Entry(f'decal_{kind}', mirror_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+        # Najbardziej zniszczone mury w wieży: pęknięte i wyszczerbione warianty 8× częściej (Grzybnia 4×).
+        m = [dataclasses.replace(e, weight=e.weight * 8)
+             if e.layer == 'wall' and e.name.endswith(('_crack', '_chunk')) else e for e in m]
     # Ślady wleczenia i krwi ku arenie bossa (krok 54): na samym końcu (first-fit), nic się nie przesuwa.
     for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
                         ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):
@@ -1955,6 +2104,8 @@ def render_tiles(p):
             overgrow_grave(e, img, p, random.Random(seed_of(e.name + '/porost')))
         if 'infernal' in BIOMES[BIOME]['extras']:  # Piekło: żar w fugach, sadza na licach
             overgrow_infernal(e, img, p, random.Random(seed_of(e.name + '/porost')))
+        if 'mirror' in BIOMES[BIOME]['extras']:  # Lustrzana komnata: połysk posadzki, brud murów
+            overgrow_mirror(e, img, p, random.Random(seed_of(e.name + '/porost')))
         tiles[e.name] = img
     return tiles
 
@@ -2143,6 +2294,12 @@ SPRITES = {
     'hellhound': ('hellhound_run-pounce.png', 48, '#1b1a22', 'Ogar'),
     'cultist': ('cultist_walk-throw.png', 48, '#1b1a22', 'Kultysta'),
     'tar_bomb': ('tar-bomb.png', 16, None, None),
+    # Lustrzana komnata (propozycja): łucznik, Wiedźma Mopa i jej efekty (tools/witch_sprites.py).
+    'archer': ('archer_walk-draw.png', 48, '#1b1a22', 'Łucznik'),
+    'witch': ('mop-witch_walk-spill-bucket-broom-tangle-flip.png', 128, '#1b1a22', 'Wiedźma Mopa'),
+    'soap_puddle': ('soap-puddle.png', 96, None, None),
+    'broom_tangle': ('broom-tangle.png', 48, None, None),
+    'bucket': ('bucket.png', 24, None, None),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -2187,8 +2344,20 @@ MOCKUP_ACTORS_INFERNAL = [
     ('cultist', 6, 752, 252, True, 0),
     ('tar_bomb', 0, 262, 230, False, 0),
 ]
+# Lustrzana komnata: trójka bohaterów przeciw Wiedźmie — chlust mydlin, barbarzyńca w kałuży, Czarodziejka w plątaninie.
+MOCKUP_ACTORS_MIRROR = [
+    ('barbarian_sword', 2, 392, 268, True, 4),
+    ('sorceress', 1, 300, 330, True, 0),
+    ('archer', 2, 236, 236, True, 0),
+    ('witch', 6, 540, 290, False, 6),
+    ('bucket', 0, 470, 230, False, 1),
+]
+# Efekty pod postaciami (rysowane na posadzce przed odbiciami): (sprite, kolumna, środek x, środek y).
+MOCKUP_FLOOR_FX_MIRROR = [('soap_puddle', 6, 420, 286), ('broom_tangle', 4, 300, 338)]
 # Nakładki biomu na makiecie: (kafel, x, y) w kaflach.
 MOCKUP_BIOME_DECALS = {
+    'mirror_hall': [('decal_shards_a', 6, 7), ('decal_slop_a', 15, 5), ('decal_suds', 8, 11), ('decal_shards_b', 17, 8),
+                    ('decal_slop_b', 5, 10), ('decal_suds', 12, 5)],
     'infernal': [('decal_sigil_2x2', 13, 8), ('decal_ember_a', 6, 7), ('decal_ember_b', 15, 5), ('decal_blood_a', 10, 11),
                  ('decal_blood_b', 17, 11), ('decal_bones_a', 8, 5), ('decal_ember_a', 18, 8)],
     'graveyard': [('decal_corpse_2x1', 9, 12), ('decal_grave_slab_1x2', 15, 5), ('decal_grave_slab_1x2', 17, 5),
@@ -2197,6 +2366,8 @@ MOCKUP_BIOME_DECALS = {
 }
 # Detale lica biomu na makiecie (rysowane po murach): (kafel, x, y).
 MOCKUP_BIOME_FACES = {
+    'mirror_hall': [('face_collapse', 5, 3), ('face_leak', 7, 3), ('face_bricks', 12, 3), ('face_collapse', 15, 3),
+                    ('face_leak', 17, 3), ('torch_sconce', 9, 3), ('torch_flame_0', 9, 3)],
     'infernal': [('face_chains', 5, 3), ('face_skull_spike', 7, 3), ('face_lava_seep', 12, 3), ('face_chains', 14, 3),
                  ('torch_sconce', 9, 3), ('torch_flame_0', 9, 3)],
     'graveyard': [('face_niche', 5, 3), ('face_skulls', 7, 3), ('face_niche', 12, 3), ('face_epitaph', 14, 3),
@@ -2210,13 +2381,14 @@ METRIC_CAST = {
     'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
     'graveyard': ('barbarian_sword', 'zombie', 'sower'),
     'infernal': ('barbarian_sword', 'sorceress', 'hellhound', 'cultist'),
+    'mirror_hall': ('barbarian_sword', 'sorceress', 'archer', 'witch'),
 }
 
 
 def load_frame(key, row, col=0):
     file, cell, _, _ = SPRITES[key]
     im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
-    if key in ('orb', 'glob', 'sorceress_orb', 'tar_bomb'):
+    if key in ('orb', 'glob', 'sorceress_orb', 'tar_bomb', 'soap_puddle', 'broom_tangle', 'bucket'):
         row = 0  # bez kierunków
     return im.crop((col * cell, row * cell, (col + 1) * cell, (row + 1) * cell))
 
@@ -2295,11 +2467,18 @@ def compose_mockup(p, tiles, meta, seed=16):
             m = (1 if wall(x, y - 1) else 0) | (2 if wall(x + 1, y) else 0) | (8 if wall(x - 1, y) else 0)
             if m:
                 put(f'shadow_{m:02d}', x, y)
+    # 4b. lustrzana posadzka: efekty na podłodze, potem odbicia postaci (w grze: kopia sprite'a odwrócona w pionie,
+    # zaczepiona pod stopami, przezroczystość malejąca z odległością, lekki opalizujący odcień; tylko na podłodze)
+    if BIOME == 'mirror_hall':
+        for key, col, cx, cy in MOCKUP_FLOOR_FX_MIRROR:
+            fr = load_frame(key, 0, col)
+            canvas.alpha_composite(fr, (cx - fr.width // 2, cy - fr.height // 2))
+        canvas.alpha_composite(mirror_reflections(p, MOCKUP_ACTORS_MIRROR, wall, canvas.size))
     # 5. cienie kontaktowe postaci chodzących (w grze da je silnik)
     shadow_layer = Image.new('RGBA', canvas.size, CLR)
     d = ImageDraw.Draw(shadow_layer)
     for key, row, cx, cy, walks in MOCKUP_ACTORS:
-        if walks:
+        if walks and BIOME != 'mirror_hall':  # lustro: zamiast cienia odbicie (krok 4b)
             d.ellipse((cx - 10, cy + 9, cx + 10, cy + 15), fill=p.outline[:3] + (ENV_SHADOW_ALPHA,))
     canvas.alpha_composite(shadow_layer)
     # 6. ściany: pasma odległości, maska, narożniki, ważone warianty
@@ -2330,7 +2509,8 @@ def compose_mockup(p, tiles, meta, seed=16):
             if grid[y][x] in props:
                 put(props[grid[y][x]], x, y)
     # 8. postacie (wg y), potem ściany nad postaciami
-    actors = (MOCKUP_ACTORS_INFERNAL if BIOME == 'infernal'
+    actors = (MOCKUP_ACTORS_MIRROR if BIOME == 'mirror_hall'
+              else MOCKUP_ACTORS_INFERNAL if BIOME == 'infernal'
               else MOCKUP_ACTORS_GRAVE if BIOME == 'graveyard'
               else MOCKUP_ACTORS_LAIR if BIOME in ('spider_lair', 'fungal_grove')
               else [(*a, 0) for a in MOCKUP_ACTORS])
@@ -2342,6 +2522,43 @@ def compose_mockup(p, tiles, meta, seed=16):
     for name, x, y in MOCKUP_BIOME_FACES.get(BIOME, []):
         put(name, x, y)
     return canvas
+
+
+REFLECTION_ALPHA = .5  # przezroczystość odbicia przy stopach (w grze do configu biomu)
+
+
+def mirror_reflections(p, actors, wall, size):
+    """Warstwa odbić: każdy sprite odwrócony w pionie, przyklejony do dolnej krawędzi sylwetki, gaśnie ku dołowi."""
+    layer = Image.new('RGBA', size, CLR)
+    tint = p.opal[1]
+    for key, row, cx, cy, _, col in actors:
+        fr = load_frame(key, row, col)
+        bbox = fr.getbbox()
+        if not bbox:
+            continue
+        bottom = bbox[3]
+        ref = fr.transpose(Image.FLIP_TOP_BOTTOM)
+        top = cy - fr.height // 2 + bottom - (fr.height - bottom)
+        px = ref.load()
+        span = max(1, bbox[3] - bbox[1])
+        for y in range(ref.height):
+            fade = max(0.0, 1 - (y - (fr.height - bottom)) / span * .7)
+            for x in range(ref.width):
+                c = px[x, y]
+                if c[3]:
+                    rgb = tuple(int(c[i] * .7 + tint[i] * .3) for i in range(3))
+                    px[x, y] = rgb + (int(255 * REFLECTION_ALPHA * fade),)
+        layer.alpha_composite(ref, (cx - fr.width // 2, top))
+    # odbicie tylko na posadzce (mury i tak przykryją resztę, ale lico nie odbija)
+    mask = Image.new('L', size, 0)
+    md = ImageDraw.Draw(mask)
+    for ty in range(size[1] // T):
+        for tx in range(size[0] // T):
+            if not wall(tx, ty):
+                md.rectangle((tx * T, ty * T, tx * T + T - 1, ty * T + T - 1), fill=255)
+    out = Image.new('RGBA', size, CLR)
+    out.paste(layer, (0, 0), mask)
+    return out
 
 
 def sprite_metrics(p, tiles):
