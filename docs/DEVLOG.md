@@ -4866,6 +4866,47 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Weryfikacja:** Playwright, `?floor=2&boss=1`: pasek „Matka i Król Pająków”, oboje walczą od wejścia, po pokonaniu obojga — nagroda. Bez błędów w konsoli.
 
+## Krok 128 — Generator: bez równoległych korytarzy i pięter-okrążeń `#ocena` `#decyzja`
+
+**Skąd:** ocena właściciela po testach (27.10.2026): „często spotykałem równolegle biegnące do siebie korytarze albo mapy będące jednym wielkim okrążeniem dookoła”. Właściciel poprosił o przegląd generatora przy okazji nowego biomu i bossów, wdrożenie bez pytania.
+
+**Pomiar (480 pięter: piętra 1–8 kręgu × 60 seedów).** Narzędzie analizy w scratchpadzie, te same miary w `tests/dungeon/corridorLayout.test.ts`.
+- **Równoległy bieg:** dwa pasy korytarza rozdzielone 1–3 kaflami muru na długości ≥ 6 kafli.
+- **Czysty pierścień:** cykl pokojów bez skrótów obejmujący co najmniej połowę piętra.
+
+| | przed | po |
+|---|---|---|
+| pięter z równoległymi korytarzami | 31% (piętro 8: 48%) | 5% |
+| czysty pierścień ≥ połowy piętra | 7% | 1% |
+| cykli na piętro (średnio) | 1,76 | 1,06 |
+
+**Przyczyny:**
+- Każdy korytarz był niezależnym „L” od środka do środka, więc korytarze z sąsiednich pokojów biegły obok siebie, czasem zlewając się w szeroki pas.
+- Dodatkowe połączenia (pętle) łączyły losowe pary pokojów. Gdy para była już połączona, drugie „L” w drugą stronę tworzyło prostokąt z dwóch równoległych korytarzy. Gdy pokoje były daleko, powstawało okrążenie całego piętra.
+
+**Zmiana (`dungeon/DungeonGenerator.ts`, liczby w `BASE_DUNGEON_CONFIG.routing`):**
+- **Korytarz to najtańsza droga** (Dijkstra ze stanem kierunku):
+  - krok kosztuje 1, zakręt +4, więc korytarze zostają proste jak dawne „L”;
+  - krok po istniejącej podłodze kosztuje 0,5, więc korytarze łączą się w skrzyżowania;
+  - krok, którego pędzel dotyka muru do 2 kafli od cudzej podłogi, kosztuje +6, więc korytarz nie biegnie wzdłuż innego ani nie ociera się o ściany pokojów.
+  - Ograniczenia z kroku 45 (arena na końcu, ukryta komnata) działają jak dotąd.
+- **Pętle to lokalne skróty.** Kandydaci to pary pokojów od najbliższych w przestrzeni (z lekkim losowym rozrzutem). Pętla:
+  - musi obejmować co najmniej 3 pokoje, więc nie dubluje połączenia dwóch sąsiadów;
+  - może objąć najwyżej połowę pokojów piętra, więc nie ma okrążenia;
+  - musi być w co najmniej połowie nowym korytarzem, a nie przejściem po starych.
+  - Liczba pętli bez zmian (`extraConnectionRatio`), ale część kandydatów odpada, stąd mniej cykli. Tracimy głównie te zbędne: równoległe duble i okrążenia.
+- Rozmiary map, liczba i wielkość pokojów, arena i reguła końca piętra bez zmian. Te same seedy dają teraz inne mapy.
+
+**Testy:** `tests/dungeon/corridorLayout.test.ts` (200 pięter):
+- równoległe korytarze na mniej niż 10% pięter;
+- pierścień na mniej niż 3%;
+- na dużych piętrach średnio co najmniej 1 pętla;
+- każde piętro spójne.
+
+Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zasadzki, kapliczki, pułapki…) przechodzą bez zmian.
+
+**Czeka na ocenę właściciela:** czy mapy są ciekawsze i czy pętli nie jest za mało (do podkręcenia przez `extraConnectionRatio` albo `routing.loops.maxRoomsRatio`).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
