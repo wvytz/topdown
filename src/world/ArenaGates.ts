@@ -3,7 +3,7 @@ import type Phaser from 'phaser';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { ARENA_GATES } from '@/config/bossConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { ArenaGateLock, findRoomEntrances, isDeepInsideRoom } from '@/dungeon/arenaGates';
+import { ArenaGateLock, ArenaGateState, findRoomEntrances, isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Party } from '@/entities/Party';
@@ -36,6 +36,11 @@ export class ArenaGates {
     this.arena = arena;
     this.lock = new ArenaGateLock(arena, ARENA_GATES.sealMarginTiles);
     this.gates = findRoomEntrances(deps.floor, arena);
+  }
+
+  /** Kraty opuszczone: walka trwa, a gracz jest w środku. */
+  get sealed(): boolean {
+    return this.lock.state === ArenaGateState.Sealed;
   }
 
   update(): void {
