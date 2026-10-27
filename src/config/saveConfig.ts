@@ -1,6 +1,7 @@
 /**
  * Zapis gry (krok 91): autozapis „Kontynuuj” i ręczne sloty.
  * Zapis to punkt kontrolny z wejścia na piętro (arenę) — stan w trakcie piętra nie jest zapisywany.
+ * W walce z bossem zapisu nie ma (krok 121, `BossSaveLock` w `systems/SaveGame.ts`).
  */
 export const SAVE_CONFIG = {
   /** Liczba ręcznych slotów (pauza → 1, 2, 3). */

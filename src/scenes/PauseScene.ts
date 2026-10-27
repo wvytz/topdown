@@ -23,6 +23,8 @@ export interface PauseSceneData {
   readonly onResume: () => void;
   /** Zapis w ręcznym slocie (krok 91); null = zapis niedostępny (odtwarzanie nagrania). Zwraca, czy magazyn przyjął zapis. */
   readonly onSave: ((slot: number) => boolean) | null;
+  /** Krok 121: trwa walka z bossem — zapisu nie ma, a wyjście do menu kończy run. */
+  readonly saveLocked?: boolean;
   /** Wyjście do menu głównego — scena gry sama zamyka pauzę i HUD. */
   readonly onQuit: () => void;
 }
@@ -290,9 +292,13 @@ export class PauseScene extends Phaser.Scene {
       row.text.setText(selected && !this.mobile ? `▶ ${label} ◀` : label).setColor(this.color(row.item, selected));
     }
     if (this.note) {
-      const note = this.cursor === PauseItem.Save ? PAUSE_CONFIG.notes.save : this.cursor === PauseItem.Quit ? PAUSE_CONFIG.notes.quit : '';
+      const note = this.cursor === PauseItem.Save ? PAUSE_CONFIG.notes.save : this.cursor === PauseItem.Quit ? this.quitNote : '';
       this.note.setText(note);
     }
+  }
+
+  private get quitNote(): string {
+    return this.pauseData.saveLocked ? PAUSE_CONFIG.notes.quitBossFight : PAUSE_CONFIG.notes.quit;
   }
 
   private label(item: PauseItem): string {

@@ -134,3 +134,47 @@ export function formatSavedAt(savedAt: number): string {
   const two = (n: number): string => String(n).padStart(2, '0');
   return `${two(d.getDate())}.${two(d.getMonth() + 1)} ${two(d.getHours())}:${two(d.getMinutes())}`;
 }
+
+/** Stan walki podawany blokadzie zapisu co klatkę. */
+export interface BossSaveLockState {
+  readonly bossFighting: boolean;
+  readonly bossDefeated: boolean;
+}
+
+/** Zmiana blokady: `lock` — usuń autozapis, `unlock` — zapisz go z powrotem. */
+export type BossSaveLockStep = 'lock' | 'unlock' | null;
+
+/**
+ * Blokada zapisu na czas walki z bossem (krok 121, zgłoszenie właściciela: zapis w trakcie walki
+ * cofał na początek areny — darmowa druga szansa). Od przebudzenia bossa do jego śmierci nie ma ręcznego
+ * zapisu ani autozapisu „Kontynuuj”, więc wyjście z gry w trakcie walki kończy run. W arenach bossów
+ * piętro to sama walka, więc blokada trwa od wejścia. Po zwycięstwie zapis wraca (stan z wejścia na piętro).
+ */
+export class BossSaveLock {
+  private engaged: boolean;
+  private released = false;
+
+  constructor(bossRush: boolean) {
+    this.engaged = bossRush;
+  }
+
+  get locked(): boolean {
+    return this.engaged;
+  }
+
+  update(state: BossSaveLockState): BossSaveLockStep {
+    if (this.released) return null;
+    if (state.bossDefeated) {
+      this.released = true;
+      if (!this.engaged) return null;
+      this.engaged = false;
+      return 'unlock';
+    }
+    // Boss raz obudzony trzyma blokadę do śmierci — także gdy na chwilę wypadnie z fazy walki.
+    if (!this.engaged && state.bossFighting) {
+      this.engaged = true;
+      return 'lock';
+    }
+    return null;
+  }
+}

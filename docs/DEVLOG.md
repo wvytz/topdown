@@ -4694,6 +4694,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** układ pauzy i miejsce głośnika.
 
+## Krok 121 — Bez zapisu w walce z bossem `#ocena` `#zapis-gry` `#areny-bossow`
+
+**Zgłoszenie właściciela (27.10.2026):** „zapisanie stanu gry nie powinno go resetować do początkowego stanu na arenie bo daje to darmową drugą szansę”.
+
+**Przyczyna:** zapis to punkt kontrolny z wejścia na piętro (krok 91). W arenach bossów piętro to sama arena, a we wspinaczce arena jest na końcu piętra — zapis w slocie albo wyjście do menu w przegranej walce i „Kontynuuj” cofało na początek, z pełnym HP sprzed walki. Przy autozapisie run nadal liczył się do tablicy.
+
+**Zmiana (`BossSaveLock` w `systems/SaveGame.ts`, użycie w `scenes/GameScene.ts`):**
+- od przebudzenia bossa do jego śmierci nie ma zapisu: „Zapisz grę” znika z pauzy (skróty 1 / 2 / 3 też), a autozapis „Kontynuuj” jest usuwany — wyjście do menu, zamknięcie karty czy awaria w trakcie walki kończy run (bez wpisu na tablicę);
+- w arenach bossów blokada trwa od wejścia na arenę (stary autozapis poprzedniej areny też znika);
+- po zwycięstwie zapis wraca (nadal stan z wejścia na piętro / arenę — wczytanie powtarza wygraną walkę, nic nie daje);
+- boss, który na chwilę wypadnie z fazy walki, nie zdejmuje blokady; śmierć drużyny nie przywraca autozapisu;
+- notka pauzy przy „Menu główne” w walce: „Walka z bossem — bez zapisu, wyjście kończy run” (`PAUSE_CONFIG.notes.quitBossFight`); okruch diagnostyki `save-lock`.
+- Ręczny slot zapisany przed walką (we wspinaczce, przed areną) dalej działa jak dotąd — run z niego i tak nie trafia na tablicę.
+
+**Testy:** `tests/systems/saveGame.test.ts` — blokada we wspinaczce, w arenach, przy chwilowym wyjściu bossa z walki i po zwycięstwie. Build zielony.
+
+**Weryfikacja:** Playwright (Chromium, dev): `?mode=arenas` i `?boss=1` — w walce brak autozapisu w `localStorage`, pauza bez zapisu (`saveLocked`); po pokonaniu bossa autozapis wraca.
+
+**Czeka na ocenę właściciela:** czy wyjście z gry w walce ma kończyć run bez wpisu na tablicę (teraz tak), czy liczyć się jak śmierć.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

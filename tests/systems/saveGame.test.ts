@@ -4,7 +4,7 @@ import { ItemId } from '@/core/lootTypes';
 import { RunMode } from '@/core/runMode';
 import { RunState, newRun } from '@/systems/RunState';
 import type { SaveData } from '@/systems/SaveGame';
-import { formatSavedAt, isUnranked, itemsWord, loadFromRecord, parseSaveRecord, saveSummary, toSaveRecord } from '@/systems/SaveGame';
+import { BossSaveLock, formatSavedAt, isUnranked, itemsWord, loadFromRecord, parseSaveRecord, saveSummary, toSaveRecord } from '@/systems/SaveGame';
 
 const data: SaveData = {
   runSeed: 123456,
@@ -100,5 +100,46 @@ describe('zapis gry w co-opie (etap C7)', () => {
     expect(roundTrip(data)?.coop).toBeUndefined();
     const raw = JSON.stringify({ ...toSaveRecord(coop, 1_000), coop: { hero: 'smok', items: [], hp: null } });
     expect(parseSaveRecord(raw)).toBeNull();
+  });
+});
+
+describe('blokada zapisu w walce z bossem (krok 121)', () => {
+  const idle = { bossFighting: false, bossDefeated: false };
+  const fighting = { bossFighting: true, bossDefeated: false };
+  const defeated = { bossFighting: false, bossDefeated: true };
+
+  it('we wspinaczce blokuje od przebudzenia bossa do jego śmierci', () => {
+    const lock = new BossSaveLock(false);
+    expect(lock.locked).toBe(false);
+    expect(lock.update(idle)).toBeNull();
+    expect(lock.update(fighting)).toBe('lock');
+    expect(lock.locked).toBe(true);
+    expect(lock.update(fighting)).toBeNull();
+    expect(lock.update(defeated)).toBe('unlock');
+    expect(lock.locked).toBe(false);
+    expect(lock.update(defeated)).toBeNull();
+  });
+
+  it('boss, który na chwilę wypadnie z fazy walki, nie zdejmuje blokady', () => {
+    const lock = new BossSaveLock(false);
+    lock.update(fighting);
+    expect(lock.update(idle)).toBeNull();
+    expect(lock.locked).toBe(true);
+  });
+
+  it('w arenach bossów blokuje od wejścia na arenę', () => {
+    const lock = new BossSaveLock(true);
+    expect(lock.locked).toBe(true);
+    expect(lock.update(idle)).toBeNull();
+    expect(lock.update(fighting)).toBeNull();
+    expect(lock.update(defeated)).toBe('unlock');
+    expect(lock.locked).toBe(false);
+  });
+
+  it('po pokonaniu bossa piętro zostaje odblokowane', () => {
+    const lock = new BossSaveLock(false);
+    expect(lock.update(defeated)).toBeNull();
+    expect(lock.update(fighting)).toBeNull();
+    expect(lock.locked).toBe(false);
   });
 });
