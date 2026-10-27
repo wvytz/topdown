@@ -66,7 +66,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     name: 'Ruiny wieży',
     tileset: TILESET_ASSET,
     dressing: FLOOR_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.TrashcanMan, [EnemyType.Kiter]: EnemyVariant.DemonMage },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.TrashcanMan, [EnemyType.Kiter]: EnemyVariant.DemonMage, [EnemyType.Nester]: EnemyVariant.BroodSac },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
@@ -104,7 +104,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     tileset: SPIDER_LAIR_TILESET_ASSET,
     dressing: SPIDER_LAIR_DRESSING,
     // Mała liczba archetypów (decyzja właściciela): pająki to Rushery, nietoperz z falą to Kiter.
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.CaveSpider, [EnemyType.Kiter]: EnemyVariant.Bat },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.CaveSpider, [EnemyType.Kiter]: EnemyVariant.Bat, [EnemyType.Nester]: EnemyVariant.SilkMother },
     // Pająki z sufitu: rosnący cień blisko gracza, przy lądowaniu rani stojącego w cieniu, potem walczy jak Rusher.
     // Tylko zwykłe pokoje (nie startowy, nie arena); obrażenia skalowane z piętrem jak u wrogów.
     ceilingDrops: {
@@ -161,7 +161,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     name: 'Grzybnia',
     tileset: FUNGAL_GROVE_TILESET_ASSET,
     dressing: FUNGAL_GROVE_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.InfectedSpider, [EnemyType.Kiter]: EnemyVariant.Fungoid },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.InfectedSpider, [EnemyType.Kiter]: EnemyVariant.Fungoid, [EnemyType.Nester]: EnemyVariant.Puffcap },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
@@ -199,7 +199,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     name: 'Cmentarzysko',
     tileset: GRAVEYARD_TILESET_ASSET,
     dressing: GRAVEYARD_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Zombie, [EnemyType.Kiter]: EnemyVariant.Sower },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Zombie, [EnemyType.Kiter]: EnemyVariant.Sower, [EnemyType.Nester]: EnemyVariant.Necromancer },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
@@ -217,7 +217,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     name: 'Piekło',
     tileset: INFERNAL_TILESET_ASSET,
     dressing: INFERNAL_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Hellhound, [EnemyType.Kiter]: EnemyVariant.Cultist },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Hellhound, [EnemyType.Kiter]: EnemyVariant.Cultist, [EnemyType.Nester]: EnemyVariant.ImpMother },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
@@ -248,7 +248,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     tileset: SMOKE_DEN_TILESET_ASSET,
     dressing: SMOKE_DEN_DRESSING,
     // Rusher to wielki czarny dog (pies Barona), Kiter — kultysta.
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.BlackDog, [EnemyType.Kiter]: EnemyVariant.Cultist },
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.BlackDog, [EnemyType.Kiter]: EnemyVariant.Cultist, [EnemyType.Nester]: EnemyVariant.Hookah },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,

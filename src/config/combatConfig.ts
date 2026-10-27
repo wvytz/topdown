@@ -1,8 +1,10 @@
 import type {
+  BroodAttackDefinition,
   EnemyDefinition,
   EnemyScalingConfig,
   EnemyViewRule,
   PlayerCombatConfig,
+  StatusApplication,
   StatusResistance,
 } from '@/core/combatTypes';
 import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
@@ -38,7 +40,10 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
   },
 };
 
-/** Na razie dwa podstawowe archetypy z GDD: wręcz (Rusher) i dystansowy (Kiter). */
+/**
+ * Archetypy: wręcz (Rusher) i dystansowy (Kiter) z GDD oraz Gniazdownik (krok 122, wybór właściciela) —
+ * przywoływacz, który ożywia pokój kruchymi stworkami i sam jest celem do wybicia w pierwszej kolejności.
+ */
 export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
   [EnemyType.Rusher]: {
     type: EnemyType.Rusher,
@@ -80,7 +85,70 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
       projectileLifetimeMs: 2000,
     },
   },
+  // Gniazdownik: wolny i trzyma dystans jak Kiter (ucieka wolniej, niż chodzi bohater — da się go dopaść);
+  // co 4,5 s zamach 0,8 s (worek pęcznieje) i 2 czerwie. Najwyżej 4 żywe naraz, 10 na całe życie gniazda.
+  // Sam nie rani. Czerwie giną razem z gniazdem — szybkie zabicie gniazda ucisza pokój.
+  [EnemyType.Nester]: {
+    type: EnemyType.Nester,
+    variant: EnemyVariant.BroodSac,
+    radius: 12,
+    color: 0xb07a62,
+    maxHp: 35,
+    moveSpeed: 45,
+    behaviour: {
+      aggroRange: 260,
+      kiting: { preferredRange: 170, retreatRange: 120 },
+    },
+    attack: {
+      kind: EnemyAttackKind.Brood,
+      damage: 0,
+      range: 230,
+      windupMs: 800,
+      cooldownMs: 4500,
+      knockback: 0,
+      count: 2,
+      maxAlive: 4,
+      total: 10,
+      spawnDistance: 20,
+      spreadDeg: 90,
+      hatchMs: 400,
+      minion: EnemyVariant.Grub,
+    },
+  },
 };
+
+/** Wylęg Gniazdownika (krok 122) z innym stworkiem — rytm i limity jak u archetypu. */
+function broodAttack(minion: EnemyVariant): BroodAttackDefinition {
+  const attack = ENEMY_DEFINITIONS[EnemyType.Nester].attack as BroodAttackDefinition;
+  return { ...attack, minion };
+}
+
+/**
+ * Stworek z gniazda (krok 122): kruchy (cios barbarzyńcy go zabija), szybki, gryzie słabo i krótko — groźny tylko
+ * w gromadzie. Wersje biomów różnią się kolorem plamy i ewentualnie lekkim statusem.
+ */
+function broodling(color: number, status?: StatusApplication): EnemyVariantDefinition {
+  return {
+    type: EnemyType.Rusher,
+    color,
+    radius: 7,
+    maxHp: 8,
+    moveSpeed: 145,
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 4,
+      range: 22,
+      hitRange: 30,
+      windupMs: 280,
+      cooldownMs: 900,
+      knockback: 70,
+      ...(status && { status }),
+    },
+  };
+}
+
+/** Lekka trucizna stworków Grzybni i Cmentarzyska: 2 co 0,5 s przez 1 s. */
+const BROODLING_POISON: StatusApplication = { poison: { tickDamage: 2, tickMs: 500, durationMs: 1000 } };
 
 /**
  * Warianty archetypów (krok 23b). Bez nadpisań = statystyki i atak archetypu.
@@ -258,6 +326,22 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       status: { slow: { pct: 0.15, durationMs: 800 } },
     },
   },
+  // Gniazdownicy biomów (krok 122a): ten sam rytm wylęgu, inny wygląd i stworek. Ruiny — worek z czerwiami.
+  [EnemyVariant.BroodSac]: { type: EnemyType.Nester },
+  [EnemyVariant.Grub]: broodling(0xd8c49a),
+  // Leże: pajęczaki spowalniają jak pajęczyny leża (15% na 0,8 s).
+  [EnemyVariant.SilkMother]: { type: EnemyType.Nester, color: 0xd8d0e0, attack: broodAttack(EnemyVariant.Hatchling) },
+  [EnemyVariant.Hatchling]: broodling(0x3c272a, { slow: { pct: 0.15, durationMs: 800 } }),
+  // Grzybnia i Cmentarzysko: stworki lekko zatruwają (jak wrogowie tych biomów, ale słabiej: 2 + 2).
+  [EnemyVariant.Puffcap]: { type: EnemyType.Nester, color: 0xc8b890, attack: broodAttack(EnemyVariant.Sporeling) },
+  [EnemyVariant.Sporeling]: broodling(0x8a4a2a, BROODLING_POISON),
+  [EnemyVariant.Necromancer]: { type: EnemyType.Nester, color: 0x6a3a2a, attack: broodAttack(EnemyVariant.CrawlingHand) },
+  [EnemyVariant.CrawlingHand]: broodling(0x9aa4b0, BROODLING_POISON),
+  // Piekło i palarnia: stworki bez statusu (ogień biomu robią już ogary, kultyści i paleniska).
+  [EnemyVariant.ImpMother]: { type: EnemyType.Nester, color: 0x8a2a20, attack: broodAttack(EnemyVariant.Imp) },
+  [EnemyVariant.Imp]: broodling(0xa03020),
+  [EnemyVariant.Hookah]: { type: EnemyType.Nester, color: 0x3a8a8a, attack: broodAttack(EnemyVariant.SmokeWisp) },
+  [EnemyVariant.SmokeWisp]: broodling(0xb8b8b0),
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */
@@ -307,10 +391,13 @@ export const PLAYER_STATUS_RESISTANCE: StatusResistance = {
 /**
  * Celowo mało przeciwników: 1–2 na pokój. Liczba rośnie tylko razem z liczbą pokojów,
  * a trudność głównie przez ENEMY_SCALING (HP/obrażenia).
+ * Gniazdownik (krok 122) zastępuje jednego z nich co kilka pokojów; jego czerwie są poza tym limitem
+ * (decyzja właściciela — lokacje były zbyt puste). Na piętrze 1 rzadziej (nauka).
  */
 export function getEncounterConfigForFloor(floor: number): EncounterConfig {
   return {
     enemiesPerRoom: { min: 1, max: 2 },
     kiterChance: floor === 1 ? 0.25 : 0.35,
+    nester: { roomChance: floor === 1 ? 0.2 : 0.3, minRoomSide: 6, maxPerFloor: 3 },
   };
 }

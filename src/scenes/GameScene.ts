@@ -95,7 +95,7 @@ import { PlayerShotManager } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
-import { planEncounters } from '@/dungeon/EncounterPlanner';
+import { assignNesters, planEncounters } from '@/dungeon/EncounterPlanner';
 import { isStairsTile } from '@/dungeon/stairs';
 import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
@@ -184,6 +184,8 @@ const PUFFBALL_SEED_SALT = 0x9bff;
 const WALL_DOG_SEED_SALT = 0x4d09;
 const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
+/** Gniazdownicy (krok 122). */
+const NESTER_SEED_SALT = 0x6e57;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
 /** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
 function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
@@ -811,6 +813,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       decals: this.combatDecals,
       onPlayerHit,
       onEnemyKilled: (enemy) => {
+        // Czerwie Gniazdownika (krok 122): bez łupu i bez ładowania ultimate — gniazda nie da się farmić.
+        if (this.enemies.isBroodling(enemy)) return;
         // Upiory zasadzki rozwiewają się bez łupu — nagrodą jest przynęta.
         this.player.addUltimateKill(this.time.now);
         if (this.ambushGhosts.has(enemy)) return;
@@ -824,7 +828,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Areny bossów (krok 90): bez wrogów w pokojach i bez zagrożeń biomu poza areną — tylko boss i jego pomocnicy.
     if (!this.bossRush) {
       const rng = createRng(deriveSeed(this.dungeon.seed, ENCOUNTER_SEED_SALT));
-      const spawns = planEncounters(this.dungeon, withExtraEnemies(getEncounterConfigForFloor(this.floorNumber), this.balance.extraEnemiesPerRoom), rng);
+      const encounters = withExtraEnemies(getEncounterConfigForFloor(this.floorNumber), this.balance.extraEnemiesPerRoom);
+      // Gniazdownicy (krok 122): własny strumień RNG — reszta rozmieszczenia jak dotąd.
+      const nesterRng = createRng(deriveSeed(this.dungeon.seed, NESTER_SEED_SALT));
+      const spawns = assignNesters(this.dungeon, planEncounters(this.dungeon, encounters, rng), encounters.nester, nesterRng);
       // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
       const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
       this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
