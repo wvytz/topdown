@@ -166,7 +166,7 @@ async function fightFor(page, ms, errors) {
 async function checkRevive(page, floor, errors) {
   const down = await page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; if (!b) return false;
     delete b.health.takeDamage; b.takeHit({ damage: 99999, knockback: { x: 0, y: 0 } }, g.time.now + 1e7);
-    a.setPosition(b.x + 12, b.y); a.body.updateFromGameObject(); return b.isDead && !g.party.isDown; })()`);
+    a.setPosition(b.x, b.y); a.body.updateFromGameObject(); return b.isDead && !g.party.isDown; })()`);
   if (!down) {
     errors.push(`co-op: piętro ${floor} — powalenie P2 nie zadziałało`);
     return;

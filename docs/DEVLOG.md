@@ -4668,7 +4668,7 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 **Co się zmieniło:**
 - `entities/Player.ts`: powalony bohater ma wyłączone kolizje ciała (`checkCollision.none`), po wstaniu wracają. Partner może stanąć na ciele, nikt go nie przepchnie, pociski wrogów przelatują.
 - `systems/CoopCamera.ts`: `leashAxis`/`leashPair` dostały `anchored` — smycz nigdy nie rusza powalonego, cały nadmiar cofa żywy (`GameScene.applyLeash`).
-- `tools/smoke.mjs`: sprawdzenie wskrzeszania czeka do 6 s **czasu gry** (nie zegara ściany — wolna przeglądarka bez GPU daje mniej klatek) i przy błędzie podaje postęp i odstęp bohaterów.
+- `tools/smoke.mjs`: sprawdzenie wskrzeszania czeka do 6 s **czasu gry** (nie zegara ściany — wolna przeglądarka bez GPU daje mniej klatek) i przy błędzie podaje postęp i odstęp bohaterów. Wskrzeszający staje na ciele (poza kolizją), bo obok ciała przy murze bezpiecznik areny z kroku 98a cofał go na poprzednie miejsce.
 
 **Testy:** `tests/systems/coopCamera.test.ts` — smycz nie rusza powalonego. Build zielony.
 
