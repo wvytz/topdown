@@ -12,6 +12,7 @@ import { planStairs } from '@/dungeon/stairs';
 import { checkBossRoomAtEnd } from '@/dungeon/bossRoomRule';
 
 const BOSS_ROOM_INDEX = 0;
+
 /** Prób ułożenia piętra z areną na końcu (każda z własnym RNG z seeda piętra). */
 const BOSS_AT_END_ATTEMPTS = 12;
 
@@ -26,8 +27,10 @@ interface RoomRect {
 }
 
 /**
- * Generuje piętro: losowo rozmieszczone pokoje połączone korytarzami w kształcie litery L.
+ * Generuje piętro: losowo rozmieszczone pokoje połączone korytarzami.
  * Połączenia = minimalne drzewo rozpinające (gwarantuje spójność) + kilka dodatkowych pętli.
+ * Od kroku 128 korytarz to najtańsza droga (proste odcinki, łączenie w skrzyżowania, bez biegu tuż obok cudzej
+ * podłogi), a pętle to lokalne skróty — bez równoległych korytarzy i bez piętra-okrążenia (ocena właściciela).
  * Komnata bossa to duży pokój umieszczany jako pierwszy; start to pokój najdalszy od niej (po ścieżce).
  * Z `bossRoomAtEnd` (krok 45) arena leży na końcu piętra: korytarze reszty piętra ją omijają, arena ma jedno
  * połączenie z resztą i czasem jeden ślepy pokój końcowy za sobą (`checkBossRoomAtEnd`).
@@ -119,34 +122,12 @@ export class DungeonGenerator {
 
     // Reszta piętra: drzewo rozpinające (Prim) i pętle — bez dotykania areny i pokoju końcowego.
     const blockedMain: Blocked = (x, y) => avoidBoss(x, y) || avoidEnd(x, y);
-    const connected = new Set<number>([main[0]!]);
-    while (connected.size < main.length) {
-      let bestFrom = -1;
-      let bestTo = -1;
-      let bestDistance = Infinity;
-      for (const from of connected) {
-        for (const to of main) {
-          if (connected.has(to)) continue;
-          const distance = centerDistanceSq(rects[from]!, rects[to]!);
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestFrom = from;
-            bestTo = to;
-          }
-        }
-      }
-      if (!this.carveRouted(tiles, roomCenter(rects[bestFrom]!), roomCenter(rects[bestTo]!), rng, blockedMain)) return undefined;
-      connected.add(bestTo);
-    }
-    const extraConnections = Math.floor(main.length * this.config.extraConnectionRatio);
-    for (let i = 0; i < extraConnections; i++) {
-      const a = main[rng.int(0, main.length - 1)]!;
-      const b = main[rng.int(0, main.length - 1)]!;
-      if (a !== b) this.carveRouted(tiles, roomCenter(rects[a]!), roomCenter(rects[b]!), rng, blockedMain);
-    }
+    const links = new RoomLinks();
+    if (!this.connectTree(tiles, rects, main, links, blockedMain)) return undefined;
+    this.addLoops(tiles, rects, main, links, rng, blockedMain);
 
     // Jedno wejście na arenę: z najbliższego pokoju reszty piętra.
-    if (!this.carveRouted(tiles, roomCenter(boss), roomCenter(rects[main[0]!]!), rng, avoidEnd)) return undefined;
+    if (!this.carveRoute(tiles, rects, BOSS_ROOM_INDEX, main[0]!, avoidEnd, links)) return undefined;
     if (end === null) return null;
 
     // Korytarz do pokoju końcowego: nie styka się z niczym poza areną i tym pokojem.
@@ -248,14 +229,21 @@ export class DungeonGenerator {
   }
 
   private connectRooms(tiles: TileType[], rects: readonly RoomRect[], rng: Rng): void {
-    // Algorytm Prima na odległościach między środkami pokojów.
-    const connected = new Set<number>([0]);
-    while (connected.size < rects.length) {
+    const all = rects.map((_, i) => i);
+    const links = new RoomLinks();
+    this.connectTree(tiles, rects, all, links, () => false);
+    this.addLoops(tiles, rects, all, links, rng, () => false);
+  }
+
+  /** Drzewo rozpinające (Prim na odległościach środków) — każdy korytarz omija istniejące równolegle. */
+  private connectTree(tiles: TileType[], rects: readonly RoomRect[], nodes: readonly number[], links: RoomLinks, blocked: Blocked): boolean {
+    const connected = new Set<number>([nodes[0]!]);
+    while (connected.size < nodes.length) {
       let bestFrom = -1;
       let bestTo = -1;
       let bestDistance = Infinity;
       for (const from of connected) {
-        for (let to = 0; to < rects.length; to++) {
+        for (const to of nodes) {
           if (connected.has(to)) continue;
           const distance = centerDistanceSq(rects[from]!, rects[to]!);
           if (distance < bestDistance) {
@@ -265,36 +253,176 @@ export class DungeonGenerator {
           }
         }
       }
-      this.carveCorridor(tiles, roomCenter(rects[bestFrom]!), roomCenter(rects[bestTo]!), rng);
+      if (!this.carveRoute(tiles, rects, bestFrom, bestTo, blocked, links)) return false;
       connected.add(bestTo);
     }
+    return true;
+  }
 
-    const extraConnections = Math.floor(rects.length * this.config.extraConnectionRatio);
-    for (let i = 0; i < extraConnections; i++) {
-      const a = rng.int(0, rects.length - 1);
-      const b = rng.int(0, rects.length - 1);
-      if (a !== b) this.carveCorridor(tiles, roomCenter(rects[a]!), roomCenter(rects[b]!), rng);
+  /**
+   * Pętle (krok 128): zamiast korytarzy między losowymi pokojami — skróty między pokojami bliskimi w przestrzeni,
+   * ale dalekimi w drodze. Pętla obejmuje najwyżej `loopMaxRoomsRatio` pokojów (bez „okrążenia całego piętra”)
+   * i nie dubluje istniejącego połączenia (bez równoległych korytarzy do tego samego pokoju).
+   */
+  private addLoops(tiles: TileType[], rects: readonly RoomRect[], nodes: readonly number[], links: RoomLinks, rng: Rng, blocked: Blocked): void {
+    const wanted = Math.floor(nodes.length * this.config.extraConnectionRatio);
+    if (wanted <= 0) return;
+    const { loops } = this.config.routing;
+    const maxRing = Math.max(loops.minRooms, Math.floor(nodes.length * loops.maxRoomsRatio));
+    const candidates: Array<{ a: number; b: number; score: number }> = [];
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i]!;
+        const b = nodes[j]!;
+        candidates.push({ a, b, score: Math.sqrt(centerDistanceSq(rects[a]!, rects[b]!)) * (1 - loops.jitter / 2 + rng.next() * loops.jitter) });
+      }
+    }
+    candidates.sort((p, q) => p.score - q.score);
+    let added = 0;
+    for (const { a, b } of candidates) {
+      if (added >= wanted) break;
+      const ring = links.pathRooms(a, b);
+      if (ring === null || ring < loops.minRooms || ring > maxRing) continue;
+      if (this.carveRoute(tiles, rects, a, b, blocked, links, true)) added++;
     }
   }
 
-  private carveCorridor(tiles: TileType[], from: TilePoint, to: TilePoint, rng: Rng): void {
-    const corner: TilePoint = rng.chance(0.5) ? { x: to.x, y: from.y } : { x: from.x, y: to.y };
-    this.carveLine(tiles, from, corner);
-    this.carveLine(tiles, corner, to);
+  /** Korytarz między środkami pokojów `a` i `b` po najtańszej drodze; zapisuje, przez które pokoje przeszedł. */
+  private carveRoute(tiles: TileType[], rects: readonly RoomRect[], a: number, b: number, blocked: Blocked, links: RoomLinks, loop = false): boolean {
+    const { routing } = this.config;
+    const path = this.route(tiles, a, b, rects, blocked, loop ? routing.loops.reuseCost : routing.reuseCost);
+    if (!path) return false;
+    // Pętla musi być nowym korytarzem, a nie przejściem po starych.
+    if (loop) {
+      const fresh = path.filter((p) => tiles[p.y * this.config.widthTiles + p.x] === TileType.Wall).length;
+      if (fresh < path.length * routing.loops.minFreshRatio) return false;
+    }
+    let last = -1;
+    for (const p of path) {
+      this.carveBrush(tiles, p.x, p.y);
+      const room = rects.findIndex((r) => inRect(r, p.x, p.y));
+      if (room >= 0 && room !== last) {
+        if (last >= 0) links.add(last, room);
+        last = room;
+      }
+    }
+    return true;
   }
 
-  /** Linia pozioma lub pionowa „pędzlem” o szerokości korytarza. */
-  private carveLine(tiles: TileType[], from: TilePoint, to: TilePoint): void {
-    const stepX = Math.sign(to.x - from.x);
-    const stepY = Math.sign(to.y - from.y);
-    let x = from.x;
-    let y = from.y;
-    for (;;) {
-      this.carveBrush(tiles, x, y);
-      if (x === to.x && y === to.y) break;
-      x += stepX;
-      y += stepY;
+  /**
+   * Najtańsza droga pędzla (Dijkstra ze stanem kierunku): krok 1, zakręt drożej (korytarze proste, jak dawne „L”),
+   * wejście w istniejącą podłogę tanio (korytarze łączą się w skrzyżowania), a krok tuż obok cudzej podłogi drogo —
+   * dlatego nowy korytarz nie biegnie wzdłuż starego ani nie ociera się o ściany innych pokojów.
+   */
+  private route(tiles: readonly TileType[], a: number, b: number, rects: readonly RoomRect[], blocked: Blocked, reuseCost: number): TilePoint[] | null {
+    const { widthTiles: width, heightTiles: height, corridorWidth: cw } = this.config;
+    const from = roomCenter(rects[a]!);
+    const to = roomCenter(rects[b]!);
+    const { turnCost, hugCost } = this.config.routing;
+    const near = this.nearMask(tiles);
+    const cellCost = new Float32Array(width * height).fill(-1);
+    const costAt = (x: number, y: number): number => {
+      const key = y * width + x;
+      const cached = cellCost[key]!;
+      if (cached >= 0) return cached;
+      let allFloor = true;
+      let hugs = false;
+      for (let dy = 0; dy < cw; dy++) {
+        for (let dx = 0; dx < cw; dx++) {
+          const t = (y + dy) * width + x + dx;
+          if (tiles[t] === TileType.Wall) {
+            allFloor = false;
+            if (near[t]) hugs = true;
+          }
+        }
+      }
+      const cost = allFloor ? reuseCost : 1 + (hugs ? hugCost : 0);
+      cellCost[key] = cost;
+      return cost;
+    };
+    const DIRS = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const;
+    const states = width * height * 4;
+    const dist = new Float64Array(states).fill(Infinity);
+    const prev = new Int32Array(states).fill(-1);
+    const heap = new MinHeap();
+    for (let d = 0; d < 4; d++) {
+      const s = (from.y * width + from.x) * 4 + d;
+      dist[s] = 0;
+      heap.push(s, 0);
     }
+    let goal = -1;
+    while (heap.size > 0) {
+      const [s, cost] = heap.pop();
+      if (cost > dist[s]!) continue;
+      const cell = s >> 2;
+      const dir = s & 3;
+      const cx = cell % width;
+      const cy = Math.floor(cell / width);
+      if (cx === to.x && cy === to.y) {
+        goal = s;
+        break;
+      }
+      for (let d = 0; d < 4; d++) {
+        const nx = cx + DIRS[d]![0];
+        const ny = cy + DIRS[d]![1];
+        if (nx < 1 || ny < 1 || nx + cw > width - 1 || ny + cw > height - 1) continue;
+        if (blocked(nx, ny)) continue;
+        const next = (ny * width + nx) * 4 + d;
+        const turn = cost === 0 || d === dir ? 0 : turnCost;
+        const total = cost + costAt(nx, ny) + turn;
+        if (total < dist[next]!) {
+          dist[next] = total;
+          prev[next] = s;
+          heap.push(next, total);
+        }
+      }
+    }
+    if (goal < 0) return null;
+    const path: TilePoint[] = [];
+    for (let s = goal; s !== -1; s = prev[s]!) {
+      const cell = s >> 2;
+      path.push({ x: cell % width, y: Math.floor(cell / width) });
+    }
+    return path.reverse();
+  }
+
+  /** Kafle muru w odległości 1..`routing.hugDistance` od podłogi. */
+  private nearMask(tiles: readonly TileType[]): Uint8Array {
+    const { hugDistance } = this.config.routing;
+    const { widthTiles: width, heightTiles: height } = this.config;
+    const dist = new Int8Array(width * height).fill(-1);
+    const queue: number[] = [];
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i] === TileType.Wall) continue;
+      dist[i] = 0;
+      queue.push(i);
+    }
+    for (let head = 0; head < queue.length; head++) {
+      const cur = queue[head]!;
+      if (dist[cur]! >= hugDistance) continue;
+      const cx = cur % width;
+      const cy = Math.floor(cur / width);
+      for (const [nx, ny] of [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1],
+      ] as const) {
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const next = ny * width + nx;
+        if (dist[next] !== -1) continue;
+        dist[next] = dist[cur]! + 1;
+        queue.push(next);
+      }
+    }
+    const near = new Uint8Array(width * height);
+    for (let i = 0; i < near.length; i++) near[i] = dist[i]! > 0 ? 1 : 0;
+    return near;
   }
 
   private carveBrush(tiles: TileType[], x: number, y: number): void {
@@ -398,4 +526,84 @@ function rectsOverlap(a: RoomRect, b: RoomRect, padding: number): boolean {
     a.y - padding < b.y + b.height &&
     a.y + a.height + padding > b.y
   );
+}
+
+/** Połączenia pokojów (graf nieskierowany) — do oceny, jak dużą pętlę zamknie nowy korytarz. */
+class RoomLinks {
+  private readonly adj = new Map<number, Set<number>>();
+
+  add(a: number, b: number): void {
+    (this.adj.get(a) ?? this.adj.set(a, new Set()).get(a)!).add(b);
+    (this.adj.get(b) ?? this.adj.set(b, new Set()).get(b)!).add(a);
+  }
+
+  /** Liczba pokojów na najkrótszej drodze z `a` do `b` (z oboma końcami); null, gdy nie są połączone. */
+  pathRooms(a: number, b: number): number | null {
+    const depth = new Map<number, number>([[a, 1]]);
+    const queue = [a];
+    for (let head = 0; head < queue.length; head++) {
+      const cur = queue[head]!;
+      if (cur === b) return depth.get(cur)!;
+      for (const next of this.adj.get(cur) ?? []) {
+        if (depth.has(next)) continue;
+        depth.set(next, depth.get(cur)! + 1);
+        queue.push(next);
+      }
+    }
+    return null;
+  }
+}
+
+/** Kopiec binarny (stan, koszt) dla Dijkstry. */
+class MinHeap {
+  private readonly keys: number[] = [];
+  private readonly costs: number[] = [];
+
+  get size(): number {
+    return this.keys.length;
+  }
+
+  push(key: number, cost: number): void {
+    const { keys, costs } = this;
+    let i = keys.length;
+    keys.push(key);
+    costs.push(cost);
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (costs[parent]! <= cost) break;
+      keys[i] = keys[parent]!;
+      costs[i] = costs[parent]!;
+      i = parent;
+    }
+    keys[i] = key;
+    costs[i] = cost;
+  }
+
+  pop(): [number, number] {
+    const { keys, costs } = this;
+    const top: [number, number] = [keys[0]!, costs[0]!];
+    const lastKey = keys.pop()!;
+    const lastCost = costs.pop()!;
+    if (keys.length > 0) {
+      let i = 0;
+      for (;;) {
+        const l = 2 * i + 1;
+        const r = l + 1;
+        let m = i;
+        let mc = lastCost;
+        if (l < keys.length && costs[l]! < mc) {
+          m = l;
+          mc = costs[l]!;
+        }
+        if (r < keys.length && costs[r]! < mc) m = r;
+        if (m === i) break;
+        keys[i] = keys[m]!;
+        costs[i] = costs[m]!;
+        i = m;
+      }
+      keys[i] = lastKey;
+      costs[i] = lastCost;
+    }
+    return top;
+  }
 }

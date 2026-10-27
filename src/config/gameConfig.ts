@@ -20,6 +20,14 @@ export const BASE_DUNGEON_CONFIG: DungeonGeneratorConfig = {
   roomPadding: 2,
   corridorWidth: 2,
   extraConnectionRatio: 0.25,
+  // Krok 128 (ocena właściciela: równoległe korytarze, piętra-okrążenia): wartości z pomiaru na 480 piętrach.
+  routing: {
+    turnCost: 4,
+    hugCost: 6,
+    hugDistance: 2,
+    reuseCost: 0.5,
+    loops: { minRooms: 3, maxRoomsRatio: 0.5, jitter: 0.6, reuseCost: 1, minFreshRatio: 0.5 },
+  },
   maxPlacementAttempts: 300,
   bossRoomAtEnd: true,
   endRoomChance: 0,

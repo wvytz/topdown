@@ -59,6 +59,32 @@ export interface DungeonGeneratorConfig {
   readonly bossRoomAtEnd: boolean;
   /** Szansa na pokój końcowy za areną (gdy `bossRoomAtEnd`). */
   readonly endRoomChance: number;
+  /** Prowadzenie korytarzy i pętli (krok 128). */
+  readonly routing: CorridorRoutingConfig;
+}
+
+/**
+ * Koszty drogi korytarza (krok 128): krok = 1, zakręt `turnCost`, krok po istniejącej podłodze `reuseCost`
+ * (korytarze łączą się w skrzyżowania), krok, którego pędzel dotyka muru w odległości 1..`hugDistance` od cudzej
+ * podłogi — dodatkowo `hugCost` (korytarz nie biegnie wzdłuż innego ani nie ociera się o pokoje).
+ */
+export interface CorridorRoutingConfig {
+  readonly turnCost: number;
+  readonly hugCost: number;
+  readonly hugDistance: number;
+  readonly reuseCost: number;
+  readonly loops: {
+    /** Najmniej pokojów w pętli (3 = pętla nie dubluje połączenia dwóch sąsiadów). */
+    readonly minRooms: number;
+    /** Najwięcej pokojów w pętli jako ułamek pokojów piętra — bez okrążenia całego piętra. */
+    readonly maxRoomsRatio: number;
+    /** Losowy rozrzut kolejności kandydatów (± połowa, mnożnik odległości). */
+    readonly jitter: number;
+    /** Koszt kroku po istniejącej podłodze dla pętli (drożej niż zwykle — pętla to nowy korytarz). */
+    readonly reuseCost: number;
+    /** Najmniejszy udział nowo wykutych kafli drogi pętli. */
+    readonly minFreshRatio: number;
+  };
 }
 
 export interface DungeonFloor {
