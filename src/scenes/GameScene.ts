@@ -95,7 +95,7 @@ import { PlayerShotManager } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
-import { assignNesters, planEncounters } from '@/dungeon/EncounterPlanner';
+import { assignLurkers, assignNesters, planEncounters } from '@/dungeon/EncounterPlanner';
 import { isStairsTile } from '@/dungeon/stairs';
 import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
@@ -186,6 +186,8 @@ const BRAZIER_SEED_SALT = 0xb4a2;
 const ELITE_SEED_SALT = 0xe117;
 /** Gniazdownicy (krok 122). */
 const NESTER_SEED_SALT = 0x6e57;
+/** Czyhacze (krok 123). */
+const LURKER_SEED_SALT = 0x1c4e;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
 /** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
 function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
@@ -261,6 +263,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private ambush: AmbushManager | null = null;
   /** Upiory zasadzki: zawsze widoczne (świecą nad mrokiem), bez łupu. */
   private ambushGhosts = new Set<Phaser.GameObjects.Sprite>();
+  /** Kafle kryjówek Czyhaczy (krok 123) — pułapki i urny ruin je omijają. */
+  private lurkerDens: TilePoint[] = [];
   private traps: TrapManager | null = null;
   private breakables: BreakableManager | null = null;
   private braziers: BrazierManager | null = null;
@@ -374,6 +378,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.leashFrom = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
+    this.lurkerDens = [];
     this.traps = null;
     this.breakables = null;
   }
@@ -831,7 +836,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const encounters = withExtraEnemies(getEncounterConfigForFloor(this.floorNumber), this.balance.extraEnemiesPerRoom);
       // Gniazdownicy (krok 122): własny strumień RNG — reszta rozmieszczenia jak dotąd.
       const nesterRng = createRng(deriveSeed(this.dungeon.seed, NESTER_SEED_SALT));
-      const spawns = assignNesters(this.dungeon, planEncounters(this.dungeon, encounters, rng), encounters.nester, nesterRng);
+      const nested = assignNesters(this.dungeon, planEncounters(this.dungeon, encounters, rng), encounters.nester, nesterRng);
+      // Czyhacze (krok 123): po gniazdach, własny strumień RNG — pokój z gniazdem nie dostaje Czyhacza.
+      const spawns = assignLurkers(this.dungeon, nested, encounters.lurker, createRng(deriveSeed(this.dungeon.seed, LURKER_SEED_SALT)));
+      this.lurkerDens = spawns.filter((s) => s.type === EnemyType.Lurker).map((s) => s.tile);
       // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
       const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
       this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
@@ -1096,7 +1104,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const { traps, breakables } = this.biome;
     const seed = this.dungeon.seed;
     const shrine = planShrineLocation(this.dungeon, createRng(deriveSeed(seed, SHRINE_SEED_SALT)));
-    const avoid: TilePoint[] = shrine ? [shrine] : [];
+    const avoid: TilePoint[] = [...(shrine ? [shrine] : []), ...this.lurkerDens];
     const plates = traps?.spikes ? planSpikeStrips(this.dungeon, traps.spikes, createRng(deriveSeed(seed, SPIKE_SEED_SALT)), avoid) : [];
     avoid.push(...plates.map((p) => p.tile));
     const darts = traps?.darts ? planDartTraps(this.dungeon, traps.darts, createRng(deriveSeed(seed, DART_SEED_SALT)), avoid) : [];
@@ -1612,7 +1620,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Cele automatycznego celowania na dotyku: żywi wrogowie widoczni w świetle (Mrok i mgła ich nie zdradzają) i boss z pomocnikami. */
   private *aimTargets(): Iterable<AimTarget> {
     for (const enemy of this.enemies.living) {
-      if (!enemy.active || enemy.isDead) continue;
+      // Czyhacz w kryjówce (krok 123): celowanie go nie zdradza.
+      if (!enemy.active || enemy.isDead || enemy.isLurking) continue;
       const visibility = (enemy.getData(LIGHT_VISIBILITY_KEY) as number | undefined) ?? 1;
       if (visibility >= AIM_ASSIST_MIN_VISIBILITY) yield { x: enemy.x, y: enemy.y, radius: enemy.radius };
     }

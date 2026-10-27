@@ -6,6 +6,8 @@ export enum EnemyType {
   Kiter = 'kiter',
   /** Gniazdownik (krok 122): trzyma dystans i co kilka sekund wypuszcza kruche stworki (przywoływacz). */
   Nester = 'nester',
+  /** Czyhacz (krok 123): czeka w kryjówce przy ścianie (trumna, mur, kokon…), wyskakuje doskokiem i tnie seriami. */
+  Lurker = 'lurker',
 }
 
 /** Rytm przenikania upiora: tyle ms cielesny, potem tyle bezcielesny (w pętli). */
@@ -72,6 +74,13 @@ export enum EnemyVariant {
   /** Gniazdownik palarni (krok 122a): żywa fajka wodna na mosiężnych nóżkach; dymek. */
   Hookah = 'hookah',
   SmokeWisp = 'smoke-wisp',
+  /** Czyhacze biomów (krok 123): kamienny z muru ruin, z kokonu leża, z kopca Grzybni, z trumny, z żaru szczeliny, z beczki palarni. */
+  StoneLurker = 'stone-lurker',
+  SilkLurker = 'silk-lurker',
+  MoundLurker = 'mound-lurker',
+  CoffinLurker = 'coffin-lurker',
+  CinderLurker = 'cinder-lurker',
+  BarrelLurker = 'barrel-lurker',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
@@ -199,6 +208,18 @@ export interface MeleeAttackDefinition extends BaseAttackDefinition {
   readonly kind: EnemyAttackKind.Melee;
   /** Faktyczny zasięg trafienia w chwili uderzenia (po zamachu). */
   readonly hitRange: number;
+  /** Seria ciosów (Czyhacz, krok 123); brak = pojedyncze ciosy w rytmie `cooldownMs`. */
+  readonly series?: AttackSeries;
+}
+
+/**
+ * Seria (krok 123): `hits` ciosów co `gapMs` po każdym uderzeniu, potem zadyszka `breatherMs` (wróg stoi — okno
+ * na kontrę) i odnowienie do pełnego `cooldownMs` liczonego od początku ostatniego zamachu.
+ */
+export interface AttackSeries {
+  readonly hits: number;
+  readonly gapMs: number;
+  readonly breatherMs: number;
 }
 
 /** Kształt fali (półksiężyc) w układzie lotu: szeroka w poprzek, wąska wzdłuż. */

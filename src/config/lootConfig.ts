@@ -162,6 +162,14 @@ export const ENEMY_LOOT: Readonly<Record<EnemyType, LootTable>> = {
     healthAmount: 15,
     itemChance: 0.05,
   },
+  // Czyhacz (krok 123): nagroda za ryzyko zasadzki — zawsze złoto, więcej niż u gniazda.
+  [EnemyType.Lurker]: {
+    gold: { min: 4, max: 7 },
+    goldChance: 1,
+    healthChance: 0.15,
+    healthAmount: 15,
+    itemChance: 0.06,
+  },
   // Gniazdownik (krok 122): nagroda za wybicie gniazda — trochę więcej złota; czerwie nie mają łupu.
   [EnemyType.Nester]: {
     gold: { min: 3, max: 5 },

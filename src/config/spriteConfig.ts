@@ -57,6 +57,24 @@ function broodSheet(name: string, action: 'birth' | 'bite') {
   } as const satisfies SpriteSheetDef;
 }
 
+/** Arkusz Czyhacza (krok 123, tools/lurker_sprites.py): 48×48, 8 kierunków; 0–3 chód, 4–7 cięcie (uderzenie w 6). */
+function lurkerSheet(name: string) {
+  return {
+    key: `sheet-${name}`,
+    url: `assets/sprites/${name}_walk-slash.png`,
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      slash: { frames: [4, 5, 6, 7], loop: false },
+    },
+  } as const satisfies SpriteSheetDef;
+}
+
 export const SPRITE_SHEETS = {
   // Generator tools/barbarian_sword.py (krok 21): chód z mieczem (0–3) i cios od prawej do lewej (4–7).
   barbarian: {
@@ -524,6 +542,24 @@ export const SPRITE_SHEETS = {
   imp: broodSheet('imp', 'bite'),
   hookah: broodSheet('hookah', 'birth'),
   smokeWisp: broodSheet('smoke-wisp', 'bite'),
+  // Czyhacze biomów (krok 123) i ich kryjówki: po 3 klatki na biom — spokój, znak, rozbita (klatki ustawiane ręcznie).
+  stoneLurker: lurkerSheet('stone-lurker'),
+  silkLurker: lurkerSheet('silk-lurker'),
+  moundLurker: lurkerSheet('mound-lurker'),
+  coffinLurker: lurkerSheet('coffin-lurker'),
+  cinderLurker: lurkerSheet('cinder-lurker'),
+  barrelLurker: lurkerSheet('barrel-lurker'),
+  lurkerHideouts: {
+    key: 'sheet-lurker-hideouts',
+    url: 'assets/sprites/lurker-hideouts.png',
+    frameWidth: 32,
+    frameHeight: 48,
+    sheetWidth: 576,
+    sheetHeight: 48,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {},
+  },
   // Kultysta: 0–3 chód, 4–7 rzut (bomba wylatuje po kolumnie 7).
   cultist: {
     key: 'sheet-cultist',
@@ -1009,6 +1045,10 @@ function nestVisual(sheet: SpriteSheetId): EnemyVisual {
   return { sheet, move: 'crawl', attack: 'birth', groundShadow: { width: 24, height: 10, offsetX: 0, offsetY: 5 } };
 }
 
+function lurkerVisual(sheet: SpriteSheetId): EnemyVisual {
+  return { sheet, move: 'walk', attack: 'slash', leap: 'slash', groundShadow: WALKER_SHADOW };
+}
+
 function broodlingVisual(sheet: SpriteSheetId): EnemyVisual {
   return { sheet, move: 'crawl', attack: 'bite', groundShadow: { width: 12, height: 6, offsetX: 0, offsetY: 3 } };
 }
@@ -1058,7 +1098,36 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.Imp]: broodlingVisual('imp'),
   [EnemyVariant.Hookah]: nestVisual('hookah'),
   [EnemyVariant.SmokeWisp]: broodlingVisual('smokeWisp'),
+  // Czyhacze (krok 123): skok z kryjówki gra animację cięcia.
+  [EnemyVariant.StoneLurker]: lurkerVisual('stoneLurker'),
+  [EnemyVariant.SilkLurker]: lurkerVisual('silkLurker'),
+  [EnemyVariant.MoundLurker]: lurkerVisual('moundLurker'),
+  [EnemyVariant.CoffinLurker]: lurkerVisual('coffinLurker'),
+  [EnemyVariant.CinderLurker]: lurkerVisual('cinderLurker'),
+  [EnemyVariant.BarrelLurker]: lurkerVisual('barrelLurker'),
 };
+
+/**
+ * Kryjówka Czyhacza (krok 123): grupa 3 klatek arkusza `lurkerHideouts` dla wariantu, drganie przy znaku i ostrzeżeniu (px),
+ * czerwony błysk przy ostrzeżeniu. Dół klatki stoi na dole kafla pod murem.
+ */
+export const LURKER_HIDEOUT_VISUAL = {
+  sheet: 'lurkerHideouts',
+  rows: {
+    [EnemyVariant.StoneLurker]: 0,
+    [EnemyVariant.SilkLurker]: 1,
+    [EnemyVariant.MoundLurker]: 2,
+    [EnemyVariant.CoffinLurker]: 3,
+    [EnemyVariant.CinderLurker]: 4,
+    [EnemyVariant.BarrelLurker]: 5,
+  } as Partial<Record<EnemyVariant, number>>,
+  columns: 3,
+  tellJitter: 1,
+  warnJitter: 2,
+  warnTint: 0xff6a5a,
+  /** Ślepia błyskają co tyle ms w trakcie ostrzeżenia. */
+  warnFlashMs: 90,
+} as const;
 
 /** Upiór (krok 49): świeci nad mrokiem; przezroczystość cielesny/bezcielesny; wynurzanie się przy pojawieniu. */
 export const GHOST_VISUAL = {

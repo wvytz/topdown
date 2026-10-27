@@ -31,6 +31,8 @@ import { isPhased } from '@/systems/Ambush';
 import { isShielded, turnToward } from '@/systems/Shield';
 import type { ShieldChargeConfig } from '@/systems/ShieldCharge';
 import { ChargeOutcome, ChargePhase, ShieldCharge } from '@/systems/ShieldCharge';
+import type { Lurk } from '@/systems/Lurk';
+import { LURKER_CONFIG } from '@/config/lurkerConfig';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -73,6 +75,16 @@ const WINDUP_TINT = 0xffb347;
 const BLOCKED_FLASH_TINT = 0x8a90a0;
 /** Tarczownik ogłuszony po wbiciu w ścianę (krok 99) — chłodny, „przygaszony” odcień. */
 const CHARGE_STUN_TINT = 0x8fa8ff;
+/** Czyhacz w zadyszce po serii (krok 123) — przygaszony, jak zmęczony. */
+const BREATHER_TINT = 0xb0a8a0;
+
+/** Doskok Czyhacza z kryjówki (krok 123): prosto w strefę lądowania; obrażenia zadaje menedżer w chwili lądowania. */
+interface LurkLeap {
+  readonly to: Vector2;
+  readonly speed: number;
+  readonly startAt: number;
+  readonly endAt: number;
+}
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly definition: EnemyDefinition;
@@ -99,6 +111,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private lastTickAt: number | null = null;
   /** Ostatnie trafienie przyjęte na tarczę — błysk w kolorze stali zamiast bieli. */
   private lastHitBlocked = false;
+  /** Czyhacz (krok 123): kryjówka (null u innych wrogów), doskok i ogłuszenie po wywabieniu trafieniem. */
+  readonly lurk: Lurk | null;
+  private leap: LurkLeap | null = null;
+  private readonly lurkStun = new Timer();
 
   /** Upiór (krok 49): przesunięcie fazy przenikania i koniec wynurzania (do tej chwili nietykalny i bierny). */
   private readonly phaseOffsetMs: number;
@@ -110,13 +126,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     x: number,
     y: number,
     definition: EnemyDefinition,
-    options: { readonly phaseOffsetMs?: number; readonly riseMs?: number } = {},
+    options: { readonly phaseOffsetMs?: number; readonly riseMs?: number; readonly lurk?: Lurk } = {},
   ) {
     super(scene, x, y, SPRITE_SHEETS[ENEMY_VISUALS[definition.variant].sheet].key);
     this.definition = definition;
     this.health = new Health(definition.maxHp);
     this.brain = new EnemyBrain(definition.behaviour, definition.attack.range, ENEMY_VIEW_RULE);
-    this.attackCycle = new AttackCycle(definition.attack.windupMs, definition.attack.cooldownMs);
+    const series = definition.attack.kind === EnemyAttackKind.Melee ? definition.attack.series : undefined;
+    this.attackCycle = new AttackCycle(definition.attack.windupMs, definition.attack.cooldownMs, series);
     this.charge = definition.affixes?.includes(EliteAffix.Shielded) ? new ShieldCharge(ELITE_CONFIG.shield.charge) : null;
 
     scene.add.existing(this);
@@ -133,6 +150,30 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.riseUntil = scene.time.now + (options.riseMs ?? 0);
     // Upiór świeci nad mrokiem (zasadzka przyciemnia światło).
     if (this.visual.aboveDarkness) this.setDepth(RENDER_DEPTH.darkness + 0.1);
+    // Czyhacz w kryjówce: niewidoczny i nieruchomy (inni wrogowie go nie przepchną); trafienie w kryjówkę go wywabia.
+    this.lurk = options.lurk ?? null;
+    if (this.lurk) {
+      this.setVisible(false);
+      (this.body as Phaser.Physics.Arcade.Body).setImmovable(true);
+    }
+  }
+
+  /** Czyhacz jeszcze w kryjówce (także przy ostrzeżeniu) — nie celujemy w niego automatycznie. */
+  get isLurking(): boolean {
+    return this.lurk?.isHiding ?? false;
+  }
+
+  /** Doskok z kryjówki (krok 123) w strefę lądowania. */
+  leapFromDen(to: Vector2, now: number): void {
+    this.revealFromDen();
+    const { speed } = LURKER_CONFIG.leap;
+    this.leap = { to, speed, startAt: now, endAt: now + pounceDurationMs({ x: this.x, y: this.y }, to, speed) };
+    this.animator.face({ x: to.x - this.x, y: to.y - this.y });
+  }
+
+  private revealFromDen(): void {
+    this.setVisible(true);
+    (this.body as Phaser.Physics.Arcade.Body).setImmovable(false);
   }
 
   /** Bezcielesny (przenikanie) albo jeszcze się wynurza — wtedy nietykalny i nie atakuje. */
@@ -194,6 +235,22 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   tick(perception: EnemyPerception, now: number, handler: EnemyAttackHandler): void {
     if (this.isDead) return;
+    if (this.isLurking) {
+      this.setVelocity(0, 0);
+      return;
+    }
+    if (this.leap) {
+      this.updateLeap(now);
+      return;
+    }
+    if (this.lurkStun.isActive(now)) {
+      // Wywabiony z kryjówki trafieniem: stoi ogłuszony (odrzut z trafienia działa).
+      this.attackCycle.interrupt();
+      if (!this.hitStun.isActive(now)) this.setVelocity(0, 0);
+      this.animator.play(this.visual.idle ?? this.visual.move);
+      this.updateTint(now);
+      return;
+    }
     this.turnShield(perception, now);
     this.updateGhostAlpha(now);
     if (now < this.riseUntil) {
@@ -244,6 +301,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       return; // odrzut po trafieniu — prędkość nadana w takeHit
     }
 
+    if (this.attackCycle.isBreathing(now)) {
+      // Zadyszka po serii ciosów (krok 123): stoi — okno na kontrę.
+      this.setVelocity(0, 0);
+      this.animator.play(this.visual.idle ?? this.visual.move);
+      this.updateTint(now);
+      return;
+    }
+
     const decision = this.brain.think({
       self: { x: this.x, y: this.y },
       target: perception.target,
@@ -267,6 +332,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeHit(hit: Hit, now: number, source: Vector2): DamageResult {
+    // Trafiona kryjówka (krok 123): Czyhacz wypada od razu — bez doskoku i ogłuszony (nagroda za uważność).
+    if (this.lurk?.provoke()) {
+      this.revealFromDen();
+      this.lurkStun.start(now, LURKER_CONFIG.provokedStunMs);
+    }
     // Bezcielesny upiór: ciosy i strzały przenikają przez niego; magia Czarodziejki trafia zawsze (krok 49b).
     if (this.isIntangible(now) && !hit.magic) return { dealt: 0, died: false };
     // Tarczownik: cios od frontu przyjmuje tylko część obrażeń (wybuch z góry — całość).
@@ -282,7 +352,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.lastHitBlocked = blocked;
     if (!result.died) sound.play(blocked ? SoundCue.ShieldBlock : SoundCue.EnemyHit, this);
     // Skoku i szarży nie da się zatrzymać trafieniem — bez odrzutu i ogłuszenia w biegu.
-    if (!this.pounce && this.charge?.phase(now) !== ChargePhase.Charging) {
+    if (!this.pounce && !this.leap && this.charge?.phase(now) !== ChargePhase.Charging) {
       this.hitStun.start(now, HIT_STUN_MS);
       this.setVelocity(hit.knockback.x, hit.knockback.y);
     }
@@ -380,6 +450,27 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.updateTint(now);
   }
 
+  /** Lot doskoku Czyhacza: prosto do strefy lądowania; ściana albo koniec czasu kończy lot. */
+  private updateLeap(now: number): void {
+    const leap = this.leap!;
+    const dx = leap.to.x - this.x;
+    const dy = leap.to.y - this.y;
+    const d = Math.hypot(dx, dy);
+    // Przy murze kryjówki ciało zaczyna „zablokowane” — ścianę liczymy dopiero po chwili lotu.
+    const blocked = this.body instanceof Phaser.Physics.Arcade.Body && !this.body.blocked.none && now - leap.startAt > 80;
+    if (now >= leap.endAt || d < 4 || blocked) {
+      this.leap = null;
+      this.brain.alert(leap.to);
+      this.setVelocity(0, 0);
+      this.animator.play(this.visual.move);
+      this.updateTint(now);
+      return;
+    }
+    this.setVelocity((dx / d) * leap.speed, (dy / d) * leap.speed);
+    if (this.visual.leap) this.animator.play(this.visual.leap);
+    this.updateTint(now);
+  }
+
   /**
    * Szarża Tarczownika (krok 99): rusza tylko w gotowości (nie w zamachu ciosu ani ogłuszony), gdy gracz jest
    * przed tarczą w zasięgu szarży. Zwraca true, gdy szarża zajmuje wroga w tej klatce.
@@ -437,8 +528,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.setTintFill(this.lastHitBlocked ? BLOCKED_FLASH_TINT : 0xffffff);
     } else if (tint !== null) {
       this.setTint(tint);
-    } else if (chargePhase === ChargePhase.Stunned) {
+    } else if (chargePhase === ChargePhase.Stunned || this.lurkStun.isActive(now)) {
       this.setTint(CHARGE_STUN_TINT);
+    } else if (this.attackCycle.isBreathing(now)) {
+      this.setTint(BREATHER_TINT);
     } else if (this.attackCycle.phase(now) === AttackPhase.Windup || chargePhase === ChargePhase.Windup) {
       this.setTint(WINDUP_TINT);
     } else {

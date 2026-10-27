@@ -7,7 +7,7 @@ import { ENEMY_DEFINITIONS, ENEMY_SCALING, ENEMY_VARIANTS } from '@/config/comba
 import { TILE_SIZE } from '@/config/gameConfig';
 import { ENEMY_PROJECTILE_VISUALS, LOB_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { FirePatchField, lobPosition, trailPoints } from '@/systems/HellAttacks';
+import { FirePatchField, lobPosition, pounceDurationMs, trailPoints } from '@/systems/HellAttacks';
 import type { EnemyScalingConfig, EnemyVariant } from '@/core/combatTypes';
 import { EliteAffix, EnemyType } from '@/core/combatTypes';
 import { BroodLedger, broodCapacity, broodSpawnPoints } from '@/systems/Brood';
@@ -44,6 +44,10 @@ import type { DashSweep } from '@/systems/DashStrike';
 import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
+import { Lurk, LurkEvent, LurkPhase } from '@/systems/Lurk';
+import { LURKER_CONFIG } from '@/config/lurkerConfig';
+import { LurkHideout } from '@/effects/LurkHideout';
+import { diag } from '@/diagnostics/DiagnosticsHub';
 
 export interface EnemyManagerDeps {
   readonly scene: Phaser.Scene;
@@ -90,6 +94,25 @@ interface PendingBlast {
   readonly damage: number;
 }
 
+/** Kryjówka Czyhacza (krok 123): stan, wygląd i chwila lądowania doskoku (od przebudzenia). */
+interface LurkerDen {
+  readonly lurk: Lurk;
+  readonly hideout: LurkHideout;
+  revealed: boolean;
+  impactAt: number;
+}
+
+/** Doskok Czyhacza w locie: strefa lądowania rani w chwili `impactAt` (ta sama strefa co w ostrzeżeniu). */
+interface LurkLanding {
+  readonly enemy: Enemy;
+  readonly at: Vector2;
+  readonly startAt: number;
+  readonly impactAt: number;
+}
+
+/** Odstęp rytmu drgnięć kolejnych kryjówek (ms) — kilka Czyhaczy nie drga naraz. */
+const LURK_TELL_STAGGER_MS = 977;
+
 /** Spawnuje przeciwników, karmi ich percepcją i rozstrzyga trafienia w obie strony. */
 export class EnemyManager implements EnemyAttackHandler {
   private readonly group: Phaser.Physics.Arcade.Group;
@@ -103,6 +126,9 @@ export class EnemyManager implements EnemyAttackHandler {
   private readonly spotted = new WeakSet<Enemy>();
   /** Gniazdownicy i ich czerwie (krok 122). */
   private readonly broods = new BroodLedger<Enemy, Enemy>();
+  /** Czyhacze w kryjówkach (krok 123) i ich doskoki w locie. */
+  private readonly dens = new Map<Enemy, LurkerDen>();
+  private landings: LurkLanding[] = [];
   private readonly telegraphs: Phaser.GameObjects.Graphics;
   private readonly fire: FirePatchRenderer;
 
@@ -125,7 +151,20 @@ export class EnemyManager implements EnemyAttackHandler {
 
   /** Spawny piętra; `elites[i]` to cechy i-tego spawnu (pusto = zwykły wróg, krok 42). */
   spawnAll(spawns: readonly EnemySpawn[], elites: readonly (readonly EliteAffix[])[] = []): void {
-    spawns.forEach((spawn, i) => this.spawnAt(spawn.type, DungeonView.tileToWorldCenter(spawn.tile), elites[i] ?? []));
+    spawns.forEach((spawn, i) => {
+      const at = DungeonView.tileToWorldCenter(spawn.tile);
+      // Czyhacz (krok 123) czeka w kryjówce i nie bywa elitą — jego zasadzka to już wyzwanie.
+      if (spawn.type === EnemyType.Lurker) this.spawnLurker(at, i);
+      else this.spawnAt(spawn.type, at, elites[i] ?? []);
+    });
+  }
+
+  /** Czyhacz w kryjówce pod murem; kryjówka zależy od biomu (trumna, kokon, pęknięty mur…). */
+  private spawnLurker(den: Vector2, index: number): Enemy {
+    const lurk = new Lurk(LURKER_CONFIG, den, index * LURK_TELL_STAGGER_MS);
+    const enemy = this.spawnAt(EnemyType.Lurker, den, [], { lurk });
+    this.dens.set(enemy, { lurk, hideout: new LurkHideout(this.deps.scene, den, enemy.definition.variant), revealed: false, impactAt: Number.NaN });
+    return enemy;
   }
 
   /** Wróg archetypu w wariancie biomu, ze skalowaniem piętra i modyfikatorem (także pająk z sufitu); z cechami — elita. */
@@ -139,6 +178,8 @@ export class EnemyManager implements EnemyAttackHandler {
       readonly riseMs?: number;
       /** Własne skalowanie z piętrem (upiory zasadzki) — wtedy bez modyfikatora piętra. */
       readonly scaling?: EnemyScalingConfig;
+      /** Kryjówka Czyhacza (krok 123). */
+      readonly lurk?: Lurk;
     } = {},
   ): Enemy {
     const base = enemyDefinitionFor(ENEMY_DEFINITIONS[type], options.variant ?? this.deps.enemyVariants[type], ENEMY_VARIANTS);
@@ -200,6 +241,8 @@ export class EnemyManager implements EnemyAttackHandler {
         this.kill(enemy);
         continue;
       }
+      const den = this.dens.get(enemy);
+      if (den) this.updateDen(enemy, den, now);
       const target: Vector2 = lure ?? party.targetPointFor(enemy);
       const canSeeTarget = !party.isDown && hasLineOfSight(floor, enemy, target, TILE_SIZE);
       enemy.tick({ target, canSeeTarget }, now, this);
@@ -213,6 +256,62 @@ export class EnemyManager implements EnemyAttackHandler {
     this.updateHellAttacks(now);
   }
 
+  /**
+   * Kryjówka Czyhacza (krok 123): najbliższy żywy bohater w zasięgu i w linii wzroku budzi go (co-op: wyzwala
+   * bliższy); po ostrzeżeniu doskok w strefę z chwili przebudzenia. Wyjście — gruz i dźwięk, kryjówka zostaje rozbita.
+   */
+  private updateDen(enemy: Enemy, den: LurkerDen, now: number): void {
+    const { lurk } = den;
+    if (lurk.isHiding) {
+      const hero = this.deps.party.nearestLiving(lurk.den);
+      const canSeeHero = hero !== null && hasLineOfSight(this.deps.floor, lurk.den, hero, TILE_SIZE);
+      const event = lurk.sense({ now, hero, canSeeHero });
+      const landing = lurk.landingAt;
+      if (event === LurkEvent.Woke && landing) {
+        den.impactAt = lurk.leapAt + pounceDurationMs(lurk.den, landing, LURKER_CONFIG.leap.speed);
+        sound.play(SoundCue.LurkWake, lurk.den);
+      } else if (event === LurkEvent.Leapt && landing) {
+        enemy.leapFromDen(landing, now);
+        this.landings.push({ enemy, at: landing, startAt: lurk.wakeStartedAt, impactAt: den.impactAt });
+      }
+    }
+    if (lurk.phase === LurkPhase.Out && !den.revealed) this.revealDen(enemy, den);
+    den.hideout.update(lurk, now);
+  }
+
+  private revealDen(enemy: Enemy, den: LurkerDen): void {
+    den.revealed = true;
+    const { x, y } = den.lurk.den;
+    this.deps.effects.deathBurst(x, y, enemy.definition.color, enemy.radius);
+    sound.play(SoundCue.LurkBurst, den.lurk.den);
+    diag.note('lurker-out', { floor: this.deps.floorNumber, variant: enemy.definition.variant, provoked: den.lurk.provoked });
+  }
+
+  /** Strefy doskoku Czyhaczy: wypełniają się od przebudzenia do lądowania, potem ranią bohaterów w środku. */
+  private updateLurkLandings(now: number): void {
+    const { radius, damageMultiplier, knockback } = LURKER_CONFIG.leap;
+    for (const den of this.dens.values()) {
+      const landing = den.lurk.landingAt;
+      if (den.lurk.phase !== LurkPhase.Waking || !landing) continue;
+      drawZoneTelegraph(this.telegraphs, { center: landing, radius, telegraphStartAt: den.lurk.wakeStartedAt, impactAt: den.impactAt }, now);
+    }
+    this.landings = this.landings.filter((landing) => {
+      // Czyhacz zabity w locie — strefa przepada.
+      if (!landing.enemy.active || landing.enemy.isDead) return false;
+      if (now < landing.impactAt) {
+        drawZoneTelegraph(this.telegraphs, { center: landing.at, radius, telegraphStartAt: landing.startAt, impactAt: landing.impactAt }, now);
+        return true;
+      }
+      const damage = Math.round(landing.enemy.definition.attack.damage * damageMultiplier);
+      for (const player of this.deps.party.living) {
+        if (!isCaughtByGroundArea(landing.at, radius, player)) continue;
+        if (player.takeHit({ damage, knockback: knockbackFrom(landing.at, player, knockback) }, now)) this.deps.onPlayerHit(player);
+      }
+      sound.play(SoundCue.Impact, landing.at);
+      return false;
+    });
+  }
+
   /** Bomby w locie, płonące ślady i telegrafy (skok: linia do celu; rzut: strefa upadku). */
   private updateHellAttacks(now: number): void {
     this.telegraphs.clear();
@@ -222,6 +321,7 @@ export class EnemyManager implements EnemyAttackHandler {
       const lane = enemy.chargeTelegraph;
       if (lane) this.drawChargeLane(enemy, lane.from, lane.to);
     }
+    this.updateLurkLandings(now);
     this.bombs = this.bombs.filter((bomb) => {
       const progress = (now - bomb.launchAt) / (bomb.landAt - bomb.launchAt);
       if (progress >= 1) {
@@ -497,6 +597,13 @@ export class EnemyManager implements EnemyAttackHandler {
     this.enemies = this.enemies.filter((e) => e !== enemy);
     this.deps.onEnemyKilled(enemy);
     this.broods.remove(enemy);
+    // Czyhacz zabity jeszcze w kryjówce albo w chwili wywabienia — kryjówka i tak pęka.
+    const den = this.dens.get(enemy);
+    if (den) {
+      if (!den.revealed) this.revealDen(enemy, den);
+      den.hideout.update(den.lurk, now);
+      this.dens.delete(enemy);
+    }
     enemy.destroy();
     // Gniazdo padło — jego czerwie giną razem z nim (krok 122).
     for (const grub of this.broods.release(enemy)) this.kill(grub);

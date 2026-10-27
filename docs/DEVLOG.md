@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4757,6 +4757,29 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** wygląd wersji biomów, statusy stworków (spowolnienie w leżu, trucizna w Grzybni i na Cmentarzysku).
 
+## Krok 123 — Czyhacz, czwarty archetyp wroga `#decyzja` `#czyhacz`
+
+**Prośba właściciela (27.10.2026):** „bierz się za czyhacza, który respi się jeszcze rzadziej i wyskakuje z trumny albo ze ściany. proponuj”. Propozycja (osobny dokument w plikach projektu `projekty/czyhacz-propozycja.md`) zaakceptowana; z trzech wariantów widoczności kryjówki właściciel wybrał **subtelny znak** `#decyzja`.
+
+**Mechanika:**
+- **Czyhacz** (`EnemyType.Lurker`) zastępuje jednego wroga w pokoju (liczba wrogów bez zmian) i czeka w **kryjówce pod północnym murem** pokoju (kafel podłogi z murem nad sobą, co najmniej kafel od wejść). W kryjówce jest niewidoczny i nieruchomy.
+- **Subtelny znak:** co 2,6 s kryjówka na 0,38 s drgnie i błysną w niej dwa ślepia (rytm przesunięty między kryjówkami). Uważny gracz ją wypatrzy; w „Mroku” trudniej.
+- **Przebudzenie:** bohater bliżej niż 3 kafle (96 px) i w linii wzroku → 0,6 s ostrzeżenia (kryjówka trzęsie się coraz mocniej i błyska na czerwono, skrobanie `SoundCue.LurkWake`) i czerwona strefa lądowania (promień 26 px) w miejscu bohatera z chwili przebudzenia (najwyżej 120 px od kryjówki). Potem **doskok** (420 px/s, trzask `SoundCue.LurkBurst`, gruz) — strefa rani w chwili lądowania za ×1,3 ciosu Czyhacza. Kto z niej zejdzie, nie dostaje.
+- **Kontra:** trafienie kryjówki czymkolwiek (cios, strzała, kula, promień, ultimate) wywabia go od razu — **bez doskoku i ogłuszonego na 1 s**, a obrażenia trafienia wchodzą. Automatyczne celowanie (dotyk, pad) go nie zdradza.
+- **Walka:** szybszy od Rushera (132 px/s, +15%), 35 HP (ok. ×1,2 — przy 45 HP łamał regułę „≤ 7 ciosów na piętrze 10”), cios 10. Tnie **seriami po 2 ciosy** (drugi 0,22 s po pierwszym), po serii **0,8 s zadyszki** (stoi, przygaszony odcień) — okno na kontrę. Nie wraca do kryjówki. Nie bywa elitą.
+- **Łup:** zawsze złoto (4–7), 15% mikstury, 6% przedmiotu — nagroda za ryzyko.
+- **Co-op:** budzi go bliższy z bohaterów, doskok celuje w niego; strefa rani każdego, kto w niej stoi; HP ×1,4 jak inni wrogowie.
+- **Rozmieszczenie** (`assignLurkers` w `dungeon/EncounterPlanner.ts`, po gniazdach, własna sól RNG `0x1c4e`): zwykłe pokoje o boku ≥ 5, szansa 12% na pokój (gniazdo: 20–30%), najwyżej **1 na piętro w pierwszym kręgu wieży, 2 w kolejnych**; pokój z Gniazdownikiem go nie dostaje. Pułapki i urny ruin omijają kryjówki. W arenach bossów brak.
+- **Kryjówki biomów:** ruiny — wysunięty, pęknięty blok muru; leże — kokon przyklejony nićmi; Grzybnia — kopiec z grzybami; Cmentarzysko — **stojąca trumna** (uchylone wieko przy znaku); Piekło — bazaltowa płyta z żarzącą się szczeliną; palarnia — beczka ze smużką dymu. Po wyjściu zostaje rozbita (otwarta trumna, gruz, rozdarty kokon, klepki).
+
+**Kod:** czysto — `systems/Lurk.ts` (maszyna stanów kryjówki: ukryty → budzi się → poza; wywabienie; znak), `config/lurkerConfig.ts`, seria ciosów w `AttackCycle` (`AttackSeries` w `MeleeAttackDefinition`), `lurkerDens`/`assignLurkers`; Phaser — `Enemy` (ukrycie, doskok `leapFromDen`, ogłuszenie po wywabieniu w `takeHit`, zadyszka), `EnemyManager` (budzenie przez najbliższego bohatera, strefy lądowania, `diag.note('lurker-out')`), `effects/LurkHideout.ts` (klatki i drganie kryjówki). Grafika: `tools/lurker_sprites.py` — 6 arkuszy Czyhaczy (48×48, 8 kierunków, chód i cięcie) i pas kryjówek `lurker-hideouts.png` (18 klatek 32×48: spokój, znak, rozbita).
+
+**Testy:** `tests/systems/lurk.test.ts` (budzenie, strefa z chwili przebudzenia, limit doskoku, wywabienie, rytm znaku, archetyp i biomy, seria w `AttackCycle`), `tests/dungeon/EncounterPlanner.test.ts` (kryjówka pod murem, bez pokoi z gniazdem, limit, determinizm, rzadziej niż gniazda), `tests/assets/lurker.test.ts` (arkusze). Build zielony (2070 testów).
+
+**Weryfikacja:** Playwright (Chromium, dev, piętro 4): trumna stoi pod murem, drga ze ślepiami, przy podejściu czerwona strefa i doskok, po wyjściu otwarta trumna; trafienie kryjówki strzałem wywabia go ogłuszonego (bez doskoku). `npm run smoke -- --floors 7 --seeds 1` (3 bohaterów) bez błędów. `npm run smoke -- --coop --floors 3`: przejście pięter bez błędów, ale sprawdzenie wskrzeszania na piętrze 1 zgłasza „P2 nie wstał” (P1 odsuwa się ok. 68 px od ciała w trakcie) — **to samo dzieje się na `main` sprzed tego kroku**, więc to osobny problem smoke'a albo wskrzeszania, do zbadania.
+
+**Czeka na ocenę właściciela:** częstość (12%, 1/2 na piętro), widoczność znaku, czas ostrzeżenia i siła doskoku, rytm serii i zadyszki, wygląd Czyhaczy i kryjówek (placeholdery z generatora).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4833,6 +4856,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).
 - **Dźwięk (krok 116):** `#dzwiek` brzmienie efektów, muzyka wieży i zaświatów, proporcje głośności (60% / 70%), czy coś przeszkadza w co-opie — czeka na test właściciela; lista i licencje w `docs/AUDIO.md`.

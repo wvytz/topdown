@@ -14,11 +14,13 @@ describe('warianty wrogów (krok 23b)', () => {
       [EnemyType.Rusher]: EnemyVariant.TrashcanMan,
       [EnemyType.Kiter]: EnemyVariant.DemonMage,
       [EnemyType.Nester]: EnemyVariant.BroodSac,
+      [EnemyType.Lurker]: EnemyVariant.StoneLurker,
     });
     expect(BIOMES[BiomeId.SpiderLair].enemyVariants).toEqual({
       [EnemyType.Rusher]: EnemyVariant.CaveSpider,
       [EnemyType.Kiter]: EnemyVariant.Bat,
       [EnemyType.Nester]: EnemyVariant.SilkMother,
+      [EnemyType.Lurker]: EnemyVariant.SilkLurker,
     });
     for (const biome of Object.values(BIOMES)) {
       for (const [type, variant] of Object.entries(biome.enemyVariants)) expect(ENEMY_VARIANTS[variant].type).toBe(type);
@@ -93,6 +95,7 @@ describe('wrogowie Grzybni (krok 28b)', () => {
       [EnemyType.Rusher]: EnemyVariant.InfectedSpider,
       [EnemyType.Kiter]: EnemyVariant.Fungoid,
       [EnemyType.Nester]: EnemyVariant.Puffcap,
+      [EnemyType.Lurker]: EnemyVariant.MoundLurker,
     });
   });
 
@@ -133,6 +136,7 @@ describe('wrogowie Cmentarzyska (krok 32b)', () => {
       [EnemyType.Rusher]: EnemyVariant.Zombie,
       [EnemyType.Kiter]: EnemyVariant.Sower,
       [EnemyType.Nester]: EnemyVariant.Necromancer,
+      [EnemyType.Lurker]: EnemyVariant.CoffinLurker,
     });
   });
 
