@@ -38,6 +38,13 @@ describe('CoopCamera (co-op, etap C2: wspólny ekran ze smyczą)', () => {
     expect([a, b]).toEqual([10, 210]);
   });
 
+  it('powalonego smycz nie rusza — nadmiar cofa żywy, nawet gdy nikt się nie oddalał', () => {
+    expect(leashAxis([0, 220], [0, 220], 200, 0)).toEqual([0, 200]);
+    expect(leashAxis([0, 220], [0, 220], 200, 1)).toEqual([20, 220]);
+    // Ciało przepchnięte na zewnątrz też nie jest cofane — wraca żywy.
+    expect(leashAxis([0, 200], [0, 230], 200, 1)).toEqual([30, 230]);
+  });
+
   it('obie osie osobno', () => {
     const [p, q] = leashPair([{ x: 0, y: 0 }, { x: 100, y: 70 }], [{ x: 0, y: 0 }, { x: 130, y: 90 }], { x: 120, y: 80 });
     expect(p).toEqual({ x: 0, y: 0 });

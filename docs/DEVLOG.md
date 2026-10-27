@@ -4555,6 +4555,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Do decyzji właściciela:** samo celowanie ułatwia grę padem względem myszy (na telefonie dlatego jest osobna tablica). Na razie pad zostaje na wspólnej tablicy. **Czeka na test właściciela:** układ przycisków, siła samego celowania (stożek, zasięg), czas trzymania kierunku gałki.
 
+## Krok 114a — Animacja płonących śladów na podłodze `#ocena` `#pieklo`
+
+**Prośba właściciela (26.10.2026):** poprawić animację ognistych śladów zostawianych przez przeciwników na piętrach z Tarczownikiem (Piekło, 5–6: smuga skoku ogara, kałuża smoły po bombie kultysty, żar Ognistej elity i plama po jej śmierci). Hitbox ma się zgadzać z rysunkiem (jak strefy w kroku 110).
+
+**Było:** dwa półprzezroczyste koła ADD (czerwone i pomarańczowe) z migotaniem o 1 px. Nachodzące plamy smugi rozjaśniały się na stykach, brzeg był rozmyty, a plama parzyła, gdy w kole był **środek postaci** — przy stopach poza ogniem głowa „wchodziła” w plamę i parzyło.
+
+**Co powstało:**
+- **Parzenie przy stopach** (`isStandingInGroundArea` w `systems/Hurtbox.ts`, `FirePatchField.update`): plama parzy, gdy środek śladu stóp (cień, 4 px pod środkiem) leży w kole. Bez promienia stóp, więc zasięg plamy jest taki sam jak wcześniej, tylko liczony tam, gdzie gracz widzi swoją postać na ziemi. Obrażenia, promienie i czasy plam bez zmian.
+- **Nowy wygląd** (`effects/FirePatchRenderer.ts`, liczby w `FIRE_PATCH_VISUAL`):
+  - wypalona podłoga i czerwona poświata jako dwie warstwy kadru (koła kryjące przeniesione na `RenderTexture` ze stałą alfą) — cała smuga to jedna równa plama, bez soczewek na stykach;
+  - **brzeg = zasięg:** 2 px najciemniejszego tonu rampy ognia w całości wewnątrz koła (§6b — płomienie bez czarnego obrysu); smuga ma jeden obrys sumy kół (`exposedArcs` z kroku 110, liczony tylko po zmianie listy plam — `FirePatchField.version`);
+  - w środku żar: mała plama ma jedną kulę, duża (kałuża smoły, plama po elicie) kilka nieregularnych, drgających o piksel; między plamami smugi pulsująca żyła żaru;
+  - języki ognia (słupki pikseli, wysokość skacze co klatkę, czubek nigdy nie wychodzi za brzeg) i iskry wznoszące się z żaru;
+  - etapy (`firePatchStage`): **rozbłysk** przy zapłonie (120 ms, całe koło jasne — od razu widać pełny zasięg), **płonięcie**, **dogasanie** (ostatnie 500 ms: bez języków, żar przygasa, brzeg miga skokowo — plama nadal parzy aż do końca);
+  - wszystko skokowo w rytmie 6 kl./s, w pełnych pikselach świata; wygląd plamy stały (hash z pozycji, bez losowania co klatkę).
+- **Testy:** `tests/systems/hellAttacks.test.ts` — parzenie przy stopach (postać nad plamą, stopy za brzegiem, brzeg ±1 px), etapy plamy, wersja listy. Build zielony (1810 testów po scaleniu z krokami 111–113).
+- **Przeglądarka (Playwright, `?seed=3&floor=5`):** smuga ogara, smuga elity, kałuża smoły i plama po elicie obok siebie; klatki zapłonu, płonięcia, dogasania i zgaśnięcia (ręczne `game.step()`). Zrzut: `screens/krok114-slady-ognia.png` w plikach projektu. `npm run smoke` wszystkimi bohaterami, piętra 1–7 — bez błędów.
+
+**Czeka na ocenę właściciela:** siła rozbłysku przy zapłonie, liczba języków ognia, czas migania przed zgaśnięciem (500 ms).
+
 ## Krok 115 — Płynność: fizyka krokiem klatki obrazu (zacinanie na monitorach 120/144 Hz) `#ocena` `#wydajnosc`
 
 **Ocena właściciela (26.10.2026, co-op na padzie po krokach 110–113):** „Gra strasznie zacina.”
@@ -4594,40 +4614,6 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela (na słuchawkach / głośnikach):** brzmienie efektów (zwłaszcza cios, trafienie, wybuch, złoto), czy muzyka pasuje i nie męczy (pętla ok. 27 s wieży, ok. 48 s zaświatów), proporcje muzyka/efekty (domyślnie 60% / 70%), czy czegoś brakuje albo coś jest za głośne. Strojenie — liczby w `config/audioConfig.ts`. Do rozważenia później: utwory z plików (CC0/CC-BY) zamiast syntezy, osobny utwór bossa, kroki bohatera, dźwięki otoczenia biomów.
 
-## Krok 118 — Większy obraz: pełny ekran i „Wypełnij okno” `#decyzja` `#obraz`
-
-**Pytanie właściciela (26–27.10.2026):** „czy możemy zwiększyć okno gry nie psując tego, co zbudowaliśmy?”. Przyczyna czarnych pasów: na PC płótno 960×540 skaluje się tylko o całkowite krotności piksela świata (`systems/pixelScale.ts`, STYLEGUIDE §2), więc na 1080p w oknie przeglądarki obraz ma ok. 1440×810, a przy Windows 125% (okno ok. 1536×730) tylko 1152×648. Opcje: pełny ekran, skala ułamkowa „Wypełnij okno”, większe pole widzenia. **Decyzja:** pełny ekran + „Wypełnij okno”; **pole widzenia bez zmian** (większe zmieniłoby balans: więcej widać z pokoju i areny, Kiterzy strzelają z dalej — `ENEMY_VIEW_RULE` liczy się z kadru — mrok, zapowiedź bossa, smycz co-opu, czytelność postaci, porównywalność wyników). Właściciel: „wdróż proponowane przez Ciebie zmiany”.
-
-**Co powstało:**
-- **Warstwa czysta (testy):** `core/displayTypes.ts`, `systems/DisplaySettings.ts` (odczyt ustawień z magazynu, przełącznik, reguła klawisza pełnego ekranu: bez Ctrl/Alt/Meta, bez autopowtórzenia, nie w polu tekstowym raportu F9), `config/displayConfig.ts` (domyślnie ostre piksele, klawisze F i O, teksty), `persistence/DisplaySettingsStorage.ts` (`localStorage`, klucz `tower-crawler.display.v1`).
-- **`input/DisplayControls.ts`** — obiekt `display`: „Wypełnij okno” (zapamiętane między sesjami) i pełny ekran całej strony; po zmianie skala płótna liczy się od nowa (`rescaleOn` w `main.ts`). **F** działa wszędzie w wersji PC (menu, gra, pauza); wersja mobilna bez zmian (już ma skalę ułamkową i pełny ekran po pierwszym dotyku).
-- **Pauza (tylko PC):** wiersz „O — Wypełnij okno: TAK/NIE” i „F — Pełny ekran / Wyjdź z pełnego ekranu” — klik, klawisz albo pad (↑ ↓ wybór, A). Przeglądarka nie uznaje przycisku pada za gest użytkownika, więc pełny ekran z pada może się nie włączyć — wtedy pauza podpowiada F albo kliknięcie. Układ pauzy: komunikat zapisu pod suwakami, wiersz obrazu nad „M — menu główne”.
-- „Wypełnij okno” daje skalę ułamkową jak na telefonie: obraz zawsze na całe okno, ale na monitorze 100% niektóre piksele są o włos szersze (widać przy ruchu kamery). Zoom kamery 2,0 i 960×540 bez zmian — rozgrywka, zasięgi, HUD i tablice wyników nietknięte.
-
-**Testy:** `tests/systems/displaySettings.test.ts`, `tests/persistence/displaySettingsStorage.test.ts`. Build zielony (1911 testów).
-
-**Weryfikacja (Playwright, Chromium):** okno 1536×730 przy skali 1,25: ostre piksele 1152×648 → „Wypełnij okno” 1298×730 (pełna wysokość), ustawienie zostaje po przeładowaniu; F włącza pełny ekran; pauza: kursor strzałkami na wierszu obrazu, zrzut ekranu sprawdzony; bez błędów w konsoli. `npm run smoke -- --floors 2 --seeds 1` — wszyscy bohaterowie bez błędów.
-
-**Czeka na ocenę właściciela:** czy pełny ekran (F) wystarcza, czy „Wypełnij okno” jest potrzebne na co dzień i czy nierówne piksele przeszkadzają.
-## Krok 114a — Animacja płonących śladów na podłodze `#ocena` `#pieklo`
-
-**Prośba właściciela (26.10.2026):** poprawić animację ognistych śladów zostawianych przez przeciwników na piętrach z Tarczownikiem (Piekło, 5–6: smuga skoku ogara, kałuża smoły po bombie kultysty, żar Ognistej elity i plama po jej śmierci). Hitbox ma się zgadzać z rysunkiem (jak strefy w kroku 110).
-
-**Było:** dwa półprzezroczyste koła ADD (czerwone i pomarańczowe) z migotaniem o 1 px. Nachodzące plamy smugi rozjaśniały się na stykach, brzeg był rozmyty, a plama parzyła, gdy w kole był **środek postaci** — przy stopach poza ogniem głowa „wchodziła” w plamę i parzyło.
-
-**Co powstało:**
-- **Parzenie przy stopach** (`isStandingInGroundArea` w `systems/Hurtbox.ts`, `FirePatchField.update`): plama parzy, gdy środek śladu stóp (cień, 4 px pod środkiem) leży w kole. Bez promienia stóp, więc zasięg plamy jest taki sam jak wcześniej, tylko liczony tam, gdzie gracz widzi swoją postać na ziemi. Obrażenia, promienie i czasy plam bez zmian.
-- **Nowy wygląd** (`effects/FirePatchRenderer.ts`, liczby w `FIRE_PATCH_VISUAL`):
-  - wypalona podłoga i czerwona poświata jako dwie warstwy kadru (koła kryjące przeniesione na `RenderTexture` ze stałą alfą) — cała smuga to jedna równa plama, bez soczewek na stykach;
-  - **brzeg = zasięg:** 2 px najciemniejszego tonu rampy ognia w całości wewnątrz koła (§6b — płomienie bez czarnego obrysu); smuga ma jeden obrys sumy kół (`exposedArcs` z kroku 110, liczony tylko po zmianie listy plam — `FirePatchField.version`);
-  - w środku żar: mała plama ma jedną kulę, duża (kałuża smoły, plama po elicie) kilka nieregularnych, drgających o piksel; między plamami smugi pulsująca żyła żaru;
-  - języki ognia (słupki pikseli, wysokość skacze co klatkę, czubek nigdy nie wychodzi za brzeg) i iskry wznoszące się z żaru;
-  - etapy (`firePatchStage`): **rozbłysk** przy zapłonie (120 ms, całe koło jasne — od razu widać pełny zasięg), **płonięcie**, **dogasanie** (ostatnie 500 ms: bez języków, żar przygasa, brzeg miga skokowo — plama nadal parzy aż do końca);
-  - wszystko skokowo w rytmie 6 kl./s, w pełnych pikselach świata; wygląd plamy stały (hash z pozycji, bez losowania co klatkę).
-- **Testy:** `tests/systems/hellAttacks.test.ts` — parzenie przy stopach (postać nad plamą, stopy za brzegiem, brzeg ±1 px), etapy plamy, wersja listy. Build zielony (1810 testów po scaleniu z krokami 111–113).
-- **Przeglądarka (Playwright, `?seed=3&floor=5`):** smuga ogara, smuga elity, kałuża smoły i plama po elicie obok siebie; klatki zapłonu, płonięcia, dogasania i zgaśnięcia (ręczne `game.step()`). Zrzut: `screens/krok114-slady-ognia.png` w plikach projektu. `npm run smoke` wszystkimi bohaterami, piętra 1–7 — bez błędów.
-
-**Czeka na ocenę właściciela:** siła rozbłysku przy zapłonie, liczba języków ognia, czas migania przed zgaśnięciem (500 ms).
 ## Krok 116a — Dźwięk niżej i łagodniej, muzyka mniej męcząca `#ocena` `#dzwiek`
 
 **Ocena właściciela (26.10.2026, po wdrożeniu kroku 116):** „dźwięki są zbyt wysokie i ogółem zbyt ostre. muzyka lekko psychodeliczna jak najbardziej na plus, ale po 20 minutach grania czułem lekki dyskomfort”.
@@ -4639,6 +4625,7 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 **Testy:** `tests/systems/sfxTone.test.ts` (niżej, filtr, długość bez zmian, każdy efekt dalej słyszalny), oddech melodii w `musicComposer.test.ts`. Build zielony (1935 testów). Przeglądarka: dźwięk i muzyka grają, bez błędów.
 
 **Czeka na ocenę właściciela:** czy efekty są już dość niskie i miękkie (jeśli nie — `pitchScale` 0,6, filtr 2,5 kHz), czy muzyka da się słuchać dłużej.
+
 ## Krok 117 — Balans: Szał barbarzyńcy, tempo ataku, Wampirzy kieł, krótszy dash `#ocena` `#balans` `#coop`
 
 **Ocena właściciela (26.10.2026, nagranie z runu barbarzyńcą do piętra 16):** „barbarzyńca dalej jest kompletnie broken z kilkoma przedmiotami, a jego ultimate tym bardziej; dash wydaje się zbyt długi na rozmiar pomieszczeń; lifesteal i attack speed mocno się skalują i wydają jedyny słuszny wybór”.
@@ -4655,6 +4642,39 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 **Testy:** `tests/systems/itemUsefulness.test.ts` (nowy), `progression` (równy przyrost tempa, limit), `ultimate` (szał nie schodzi poniżej limitu, pasek barbarzyńcy), `healBudget` (sufit z bazowego HP), `itemEffects`, `archery`. Build zielony (1908 testów). `npm run smoke` — wszyscy bohaterowie bez błędów. `npm run smoke -- --coop`: wspinaczka co-op przechodzi, ale smoke zgłasza „P2 nie wstał po wskrzeszaniu” na piętrze 1 — **ten sam błąd jest na `main` przed tym krokiem** (sprawdzone), więc to osobna sprawa do zbadania.
 
 **Czeka na ocenę właściciela:** czy barbarzyńca z przedmiotami i Szał są teraz w porządku, długość dasha (70 px), czy kieł nie stał się bezużyteczny, czy limit tempa +60% nie jest za niski. Do rozważenia, jeśli dalej za mocno: malejący przyrost Ostrza (dziś liniowo +3, ×11 = 45 obrażeń przy HP wrogów ×3,25 na piętrze 16).
+
+## Krok 118 — Większy obraz: pełny ekran i „Wypełnij okno” `#decyzja` `#obraz`
+
+**Pytanie właściciela (26–27.10.2026):** „czy możemy zwiększyć okno gry nie psując tego, co zbudowaliśmy?”. Przyczyna czarnych pasów: na PC płótno 960×540 skaluje się tylko o całkowite krotności piksela świata (`systems/pixelScale.ts`, STYLEGUIDE §2), więc na 1080p w oknie przeglądarki obraz ma ok. 1440×810, a przy Windows 125% (okno ok. 1536×730) tylko 1152×648. Opcje: pełny ekran, skala ułamkowa „Wypełnij okno”, większe pole widzenia. **Decyzja:** pełny ekran + „Wypełnij okno”; **pole widzenia bez zmian** (większe zmieniłoby balans: więcej widać z pokoju i areny, Kiterzy strzelają z dalej — `ENEMY_VIEW_RULE` liczy się z kadru — mrok, zapowiedź bossa, smycz co-opu, czytelność postaci, porównywalność wyników). Właściciel: „wdróż proponowane przez Ciebie zmiany”.
+
+**Co powstało:**
+- **Warstwa czysta (testy):** `core/displayTypes.ts`, `systems/DisplaySettings.ts` (odczyt ustawień z magazynu, przełącznik, reguła klawisza pełnego ekranu: bez Ctrl/Alt/Meta, bez autopowtórzenia, nie w polu tekstowym raportu F9), `config/displayConfig.ts` (domyślnie ostre piksele, klawisze F i O, teksty), `persistence/DisplaySettingsStorage.ts` (`localStorage`, klucz `tower-crawler.display.v1`).
+- **`input/DisplayControls.ts`** — obiekt `display`: „Wypełnij okno” (zapamiętane między sesjami) i pełny ekran całej strony; po zmianie skala płótna liczy się od nowa (`rescaleOn` w `main.ts`). **F** działa wszędzie w wersji PC (menu, gra, pauza); wersja mobilna bez zmian (już ma skalę ułamkową i pełny ekran po pierwszym dotyku).
+- **Pauza (tylko PC):** wiersz „O — Wypełnij okno: TAK/NIE” i „F — Pełny ekran / Wyjdź z pełnego ekranu” — klik, klawisz albo pad (↑ ↓ wybór, A). Przeglądarka nie uznaje przycisku pada za gest użytkownika, więc pełny ekran z pada może się nie włączyć — wtedy pauza podpowiada F albo kliknięcie. Układ pauzy: komunikat zapisu pod suwakami, wiersz obrazu nad „M — menu główne”.
+- „Wypełnij okno” daje skalę ułamkową jak na telefonie: obraz zawsze na całe okno, ale na monitorze 100% niektóre piksele są o włos szersze (widać przy ruchu kamery). Zoom kamery 2,0 i 960×540 bez zmian — rozgrywka, zasięgi, HUD i tablice wyników nietknięte.
+
+**Testy:** `tests/systems/displaySettings.test.ts`, `tests/persistence/displaySettingsStorage.test.ts`. Build zielony (1911 testów).
+
+**Weryfikacja (Playwright, Chromium):** okno 1536×730 przy skali 1,25: ostre piksele 1152×648 → „Wypełnij okno” 1298×730 (pełna wysokość), ustawienie zostaje po przeładowaniu; F włącza pełny ekran; pauza: kursor strzałkami na wierszu obrazu, zrzut ekranu sprawdzony; bez błędów w konsoli. `npm run smoke -- --floors 2 --seeds 1` — wszyscy bohaterowie bez błędów.
+
+**Czeka na ocenę właściciela:** czy pełny ekran (F) wystarcza, czy „Wypełnij okno” jest potrzebne na co dzień i czy nierówne piksele przeszkadzają.
+
+## Krok 119 — Co-op: wskrzeszanie bez przepychania ciała `#ocena` `#coop`
+
+**Zgłoszenie właściciela (27.10.2026):** „udało mi się raz wskrzesić drugiego gracza, ale też przesuwać jego ciało podczas ultimate barbarzyńcy”. Do tego kilka wątków widziało w `npm run smoke -- --coop` błąd „P2 nie wstał po wskrzeszaniu”.
+
+**Przyczyna:** ciało powalonego bohatera dalej brało udział w kolizjach Arcade (partner, boss). Żywy partner, idąc do ciała, wypychał je przed sobą (w Szale szybciej, ale działo się to zawsze), a ciała 24×24 px nie pozwalały stanąć bliżej niż na ok. 24 px — podejście po skosie zatrzymywało partnera na krawędzi zasięgu 30 px, więc pasek rósł i opadał. Do tego smycz przy ściągnięciu bohaterów (np. po zebraniu drużyny w pokoju) mogła przesunąć ciało o połowę nadmiaru.
+
+**Co się zmieniło:**
+- `entities/Player.ts`: powalony bohater ma wyłączone kolizje ciała (`checkCollision.none`), po wstaniu wracają. Partner może stanąć na ciele, nikt go nie przepchnie, pociski wrogów przelatują.
+- `systems/CoopCamera.ts`: `leashAxis`/`leashPair` dostały `anchored` — smycz nigdy nie rusza powalonego, cały nadmiar cofa żywy (`GameScene.applyLeash`).
+- `tools/smoke.mjs`: sprawdzenie wskrzeszania czeka do 6 s **czasu gry** (nie zegara ściany — wolna przeglądarka bez GPU daje mniej klatek) i przy błędzie podaje postęp i odstęp bohaterów.
+
+**Testy:** `tests/systems/coopCamera.test.ts` — smycz nie rusza powalonego. Build zielony.
+
+**Weryfikacja:** Playwright (Chromium): powalony P2, barbarzyńca w Szale idzie prosto na ciało — przed poprawką ciało jechało razem z nim (1576 → 1590 px), po poprawce stoi, a barbarzyńca przechodzi przez nie. `npm run smoke -- --coop` (wszystkie pary, piętra 1–8, 2 seedy) bez błędów.
+
+**Czeka na ocenę właściciela:** czy wskrzeszanie w grze z drugim graczem działa za każdym razem.
 
 ## Znane ograniczenia i backlog
 
@@ -4765,7 +4785,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Krok 119: powalone ciało bez kolizji i smyczy (wskrzeszanie działa za każdym razem, ciała nie da się przepchnąć). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
 - **Pad (krok 114):** `#sterowanie` nowy układ (X/B ataki, A dash, Y — E, RB ultimate) i samo celowanie przy ataku bez prawej gałki — czeka na test właściciela; otwarte: czy pad z samym celowaniem zostaje na wspólnej tablicy.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 
