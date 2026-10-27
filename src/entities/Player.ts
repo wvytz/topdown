@@ -20,6 +20,8 @@ import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
 import { slideVelocity } from '@/systems/Slip';
+import { RootState } from '@/systems/Root';
+import type { RootEffect } from '@/core/bossTypes';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
 import { BeamChannel, OrbSeries, orbitOffsets } from '@/systems/Sorcery';
@@ -102,6 +104,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Poślizg z kałuży (krok 125) i chwila ostatniego ruchu — krok czasu bezwładności. */
   private slip: SlipEffect | null = null;
   private slipUntil = -Infinity;
+  /** Plątanie brunetki (krok 126): bez ruchu i dasha, ataki wolno. */
+  private readonly root = new RootState();
   private lastMoveAt: number | null = null;
   private attackCycle: AttackCycle;
   private dash: DashController;
@@ -281,6 +285,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return started;
   }
 
+  /**
+   * Unieruchomienie miotłą (krok 126) — skutek trafienia, więc scena woła je tylko po udanym `takeHit`
+   * (ten już włączył nietykalność). Zwraca true, gdy się zaczęło.
+   */
+  applyRoot(effect: RootEffect, now: number): boolean {
+    if (this.isDead) return false;
+    return this.root.apply(effect, now);
+  }
+
+  isRooted(now: number): boolean {
+    return this.root.isRooted(now);
+  }
+
   isSlipping(now: number): boolean {
     return now < this.slipUntil;
   }
@@ -298,6 +315,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (!this.isDead) return;
     this.health.revive(hp);
     this.status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
+    this.root.clear();
     this.invulnerability.start(now, invulnerableMs);
     this.setBodyCollision(true);
     this.clearTint();
@@ -375,6 +393,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const ultimate = this.tryUltimate(actions.ultimate, now);
 
+    // Zaplątany (krok 126): stoi w miejscu — bez ruchu, dasha i animacji chodu; atakuje dalej.
+    const rooted = this.root.isRooted(now);
+    if (rooted) actions = { ...actions, move: { x: 0, y: 0 }, dash: false };
     if (actions.dash) {
       const moving = actions.move.x !== 0 || actions.move.y !== 0;
       const direction = moving ? actions.move : { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
@@ -395,6 +416,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.dash.isDashing(now)) {
       const velocity = this.dash.velocity();
       this.setVelocity(velocity.x, velocity.y);
+    } else if (rooted && !this.knockbackStun.isActive(now)) {
+      this.setVelocity(0, 0);
     } else if (!this.knockbackStun.isActive(now)) {
       const velocity = computeVelocity(actions.move, this.stats);
       // Promień spowalnia Czarodziejkę (decyzja właściciela).

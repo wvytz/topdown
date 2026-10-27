@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BossAttackKind, BossId } from '@/core/bossTypes';
-import { CLEANER_BLONDE, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { CLEANER_BLONDE, CLEANER_DARK, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import { BOSS_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
@@ -199,5 +199,65 @@ describe('poślizg (krok 125)', () => {
     const once = slideVelocity({ x: 200, y: 0 }, { x: 0, y: 0 }, 100, traction);
     const twice = slideVelocity(slideVelocity({ x: 200, y: 0 }, { x: 0, y: 0 }, 50, traction), { x: 0, y: 0 }, 50, traction);
     expect(twice.x).toBeCloseTo(once.x, 6);
+  });
+});
+
+describe('czarnowłosa sprzątaczka (krok 126)', () => {
+  const ctx = (over: Partial<AttackPlanContext>): AttackPlanContext => ({
+    kind: BossAttackKind.Tangle,
+    definition: CLEANER_DARK,
+    self: { x: 0, y: 0 },
+    target: { x: 120, y: 40 },
+    targetVelocity: { x: 0, y: 150 },
+    now: 1000,
+    enraged: false,
+    rng: createRng(2),
+    ...over,
+  });
+
+  it('kończy piętro 9; miotła, plątanie i chlust we wzorze, bez wiadra i bez ucieczki', () => {
+    expect(bossForFloor(9).id).toBe(BossId.CleanerDark);
+    expect(CLEANER_DARK.pattern).toEqual(expect.arrayContaining([BossAttackKind.Cleave, BossAttackKind.Tangle, BossAttackKind.Spill]));
+    expect('hook' in CLEANER_DARK).toBe(false);
+    expect('escape' in CLEANER_DARK).toBe(false);
+    expect(CLEANER_DARK.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
+  });
+
+  it('plątanie: strefa pod graczem unieruchamia (z odpornością po), lekkie obrażenia', () => {
+    const plan = planBossAttack(ctx({}));
+    expect(plan.kind).toBe(BossAttackKind.Tangle);
+    expect(plan.strikes).toHaveLength(1);
+    expect(plan.strikes[0]).toMatchObject({ center: { x: 120, y: 40 }, look: 'tangle', root: CLEANER_DARK.tangle.root });
+    expect(plan.strikes[0]!.impactAt).toBe(1000 + CLEANER_DARK.tangle.telegraphMs);
+    expect(CLEANER_DARK.tangle.root.immunityMs).toBeGreaterThan(CLEANER_DARK.tangle.root.durationMs);
+    expect(CLEANER_DARK.tangle.damage).toBeLessThan(CLEANER_DARK.cleave.damage);
+  });
+
+  it('wściekłość: druga strefa tam, dokąd bohater biegnie', () => {
+    const plan = planBossAttack(ctx({ enraged: true }));
+    expect(plan.strikes).toHaveLength(2);
+    expect(plan.strikes[1]!.center.y).toBeGreaterThan(40);
+  });
+
+  it('chlust z jedną kałużą (mniej poślizgu niż u blondynki)', () => {
+    const plan = planBossAttack(ctx({ kind: BossAttackKind.Spill }));
+    expect(plan.webs).toHaveLength(1);
+    expect(CLEANER_DARK.spill.count).toBeLessThan(CLEANER_BLONDE.spill.count);
+  });
+
+  it('skalowanie piętra obejmuje plątanie; czas unieruchomienia bez zmian', () => {
+    const scaled = scaleBossForFloor(CLEANER_DARK, 16, ENEMY_SCALING);
+    expect(scaled.tangle.damage).toBe(scaleForFloor(CLEANER_DARK.tangle.damage, 16, ENEMY_SCALING.damagePerFloor));
+    expect(scaled.tangle.root).toEqual(CLEANER_DARK.tangle.root);
+  });
+
+  it('wygląd: wspólny model, miotła i plątanie mają animacje; zwłoki zostają', () => {
+    const visual = BOSS_VISUALS[BossId.CleanerDark];
+    const sheet = SPRITE_SHEETS[visual.sheet];
+    expect(sheet.sheetWidth / sheet.frameWidth).toBe(28);
+    for (const kind of [BossAttackKind.Cleave, BossAttackKind.Tangle, BossAttackKind.Spill]) {
+      expect(sheet.animations).toHaveProperty(visual.attacks[kind]!);
+    }
+    expect(visual.idle).toBe('polish');
   });
 });

@@ -39,7 +39,7 @@ import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH, STAIRS_SIZE, TILE_SIZE, getDung
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
-import { bossForFloor } from '@/config/bossConfig';
+import { bossForFloor, CLIMB_DUETS } from '@/config/bossConfig';
 import { carveArenaGalleries } from '@/dungeon/ArenaGalleries';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 import { disguiseFloor, secretArea } from '@/dungeon/SecretRoom';
@@ -937,8 +937,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
-    // Duet bossów (krok 114): na razie tylko w arenach bossów.
-    const duet = this.bossRush ? duetForFloor(this.floorNumber, BOSS_RUSH_DUETS, TOWER_CONFIG) : null;
+    // Duet bossów (krok 114): pajęczy tylko w arenach bossów; sprzątaczki (krok 126) także we wspinaczce.
+    const duets = this.bossRush ? [...BOSS_RUSH_DUETS, ...CLIMB_DUETS] : CLIMB_DUETS;
+    const duet = duetForFloor(this.floorNumber, duets, TOWER_CONFIG);
     this.bossFight = new BossEncounter({
       scene: this,
       floor: this.dungeon,

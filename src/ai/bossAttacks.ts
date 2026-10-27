@@ -69,6 +69,8 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planSporeVolley(ctx);
     case BossAttackKind.Spill:
       return planSpill(ctx);
+    case BossAttackKind.Tangle:
+      return planTangle(ctx);
     case BossAttackKind.Feast:
       throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }
@@ -229,6 +231,27 @@ function planSpill(ctx: AttackPlanContext): BossAttackPlan {
     look: 'water',
   };
   return { kind: BossAttackKind.Spill, ...EMPTY, strikes: [strike], webs, endsAt: impactAt + spill.recoveryMs };
+}
+
+/**
+ * Plątanie (brunetka, krok 126): strefa pod graczem z chwili planu; we wściekłości druga tam, dokąd biegnie
+ * (`lead`). Trafienie unieruchamia (`root`) — warstwa gry pilnuje odporności po unieruchomieniu.
+ */
+function planTangle(ctx: AttackPlanContext): BossAttackPlan {
+  const tangle = required(ctx.definition.tangle, BossAttackKind.Tangle, ctx);
+  const impactAt = ctx.now + telegraph(ctx, tangle.telegraphMs);
+  const centers = ctx.enraged ? [ctx.target, aimPoint(ctx, tangle.lead)] : [ctx.target];
+  const strikes: AreaStrike[] = centers.map((center) => ({
+    center,
+    radius: tangle.radius,
+    telegraphStartAt: ctx.now,
+    impactAt,
+    damage: tangle.damage,
+    knockback: tangle.knockback,
+    root: tangle.root,
+    look: 'tangle',
+  }));
+  return { kind: BossAttackKind.Tangle, ...EMPTY, strikes, endsAt: impactAt + tangle.recoveryMs };
 }
 
 /**

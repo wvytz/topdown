@@ -42,6 +42,8 @@ export enum BossAttackKind {
   SporeVolley = 'spore-volley',
   /** Chlust z wiadra (sprzątaczki, krok 125): woda rozlewa się przed bossem w kałuże, na których bohater się ślizga. */
   Spill = 'spill',
+  /** Plątanie (brunetka, krok 126): pod bohaterem wyrasta czarne włosie miotły — kto stoi w strefie, nie może chodzić. */
+  Tangle = 'tangle',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -58,6 +60,8 @@ export enum BossId {
   SmokeBaron = 'smoke-baron',
   /** Lustrzana komnata, piętro A (krok 125): blond sprzątaczka — chlust i wiadro; przy 1/3 HP ucieka windą. */
   CleanerBlonde = 'cleaner-blonde',
+  /** Lustrzana komnata, piętro B (krok 126): brunetka — miotła, plątanie i chlust; w połowie walki wraca blondynka. */
+  CleanerDark = 'cleaner-dark',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -485,6 +489,27 @@ export interface BossShoutDefinition {
   readonly minGapMs: number;
   /** Okrzyk przy ucieczce windą (escape). */
   readonly escape?: string;
+  /** Okrzyk przy wyjściu z windy w trakcie walki (blondynka w duecie, krok 126). */
+  readonly arrive?: string;
+}
+
+/**
+ * Unieruchomienie (plątanie brunetki, krok 126): trafiony nie chodzi i nie robi dasha przez `durationMs`, ale może
+ * atakować. Potem przez `immunityMs` nie da się go unieruchomić znowu (koncept: nigdy dwa unieruchomienia naraz).
+ */
+export interface RootEffect {
+  readonly durationMs: number;
+  readonly immunityMs: number;
+}
+
+/**
+ * Plątanie (brunetka, krok 126): miotła wbita w posadzkę, po telegrafie pod graczem wyrasta czarne włosie — strefa
+ * `radius` na miejscu gracza z chwili planu (we wściekłości druga tam, dokąd biegnie). Lekkie obrażenia i `root`.
+ */
+export interface TangleAttackDefinition extends BaseBossAttackDefinition {
+  readonly radius: number;
+  readonly root: RootEffect;
+  readonly lead: AimLead;
 }
 
 /**
@@ -589,6 +614,8 @@ export interface BossDefinition {
   readonly sporeVolley?: SporeVolleyDefinition;
   /** Chlust z wiadra (sprzątaczki, krok 125). */
   readonly spill?: SpillAttackDefinition;
+  /** Plątanie miotłą (brunetka, krok 126). */
+  readonly tangle?: TangleAttackDefinition;
   /** Okrzyki z napisami (sprzątaczki, krok 125). */
   readonly shouts?: BossShoutDefinition;
   /** Ucieczka windą zamiast śmierci (blond sprzątaczka, krok 125). */
@@ -625,8 +652,10 @@ export interface AreaStrike {
   readonly pullTo?: Vector2;
   /** Trafienie smugi dymu przywołuje doga (Baron Dymu). */
   readonly summonsDog?: boolean;
+  /** Trafienie unieruchamia (plątanie brunetki, krok 126). */
+  readonly root?: RootEffect;
   /** Wygląd strefy: dym zamiast czerwonego telegrafu; `spores` — czerwony telegraf, wybuch w kolorach soku (krok 111). */
-  readonly look?: 'smoke' | 'spores' | 'water';
+  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */

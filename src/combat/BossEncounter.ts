@@ -4,7 +4,7 @@ import { TILE_SIZE } from '@/config/gameConfig';
 import type { BossFightDeps } from '@/combat/BossFight';
 import { BossFight } from '@/combat/BossFight';
 import type { BossDuetDefinition } from '@/systems/BossDuet';
-import { duetStatus, pushApart } from '@/systems/BossDuet';
+import { duetStatus, pushApart, shouldPartnerArrive } from '@/systems/BossDuet';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
@@ -48,12 +48,14 @@ export class BossEncounter {
         bossFloor: duet.partnerFloorInLoop,
         spawnOffset: { x: offset, y: 0 },
         seed: deriveSeed(deps.floor.seed, DUET_SEED_SALT),
+        ...(duet.arrival && { arrival: duet.arrival }),
       }),
     ];
   }
 
-  /** Napis areny w HUD: imię bossa albo nazwa duetu. */
+  /** Napis areny w HUD: imię bossa albo nazwa duetu (duet z wejściem partnera nie zdradza go zawczasu). */
   get name(): string {
+    if (this.duet?.arrival) return this.fights[0]!.bossName;
     return this.duet?.name ?? this.fights[0]!.bossName;
   }
 
@@ -73,6 +75,8 @@ export class BossEncounter {
   getStatus(): BossHudData | null {
     const [first] = this.fights;
     if (!this.duet) return first!.getStatus();
+    // Partner, który jeszcze nie wszedł (krok 126): pasek gospodarza, dopóki nie wyjdzie z windy.
+    if (this.fights.some((fight) => fight.isDormant)) return first!.getStatus();
     const members = this.fights.map((fight) => {
       const status = fight.getStatus();
       return {
@@ -88,8 +92,18 @@ export class BossEncounter {
   }
 
   update(now: number): void {
+    this.callPartner(now);
     for (const fight of this.fights) fight.update(now);
     this.separate();
+  }
+
+  /** Duet z wejściem (krok 126): przy progu HP gospodarza partner wychodzi z windy. */
+  private callPartner(now: number): void {
+    const arrival = this.duet?.arrival;
+    const [host, partner] = this.fights;
+    if (!arrival || !host || !partner?.isDormant) return;
+    const hostState = { hp: host.hp, maxHp: host.maxHp, fighting: host.isFighting, defeated: host.isDefeated || host.hp <= 0 };
+    if (shouldPartnerArrive(hostState, arrival)) partner.arrive(now);
   }
 
   /** Bossowie duetu nie stoją jeden w drugim (pajęczy skok przelatuje nad partnerem, rozpychają się po lądowaniu). */

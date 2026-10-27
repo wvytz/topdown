@@ -4828,6 +4828,27 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** siła poślizgu (2,2/s, 0,45 s), wielkość i czas kałuż, częstość okrzyków, próg wściekłości (60%), HP (600 przed skalowaniem; walka trwa do 1/3), wygląd windy i kałuży.
 
+## Krok 126 — Czarnowłosa sprzątaczka „Twarda Miotła” i powrót blondynki windą `#sprzataczki` `#lustrzana-komnata`
+
+**Co powstało:** boss piętra 9 (`CLEANER_DARK`, `BossId.CleanerDark`) na wspólnym modelu sprzątaczek oraz pierwszy duet we wspinaczce: w połowie walki z brunetką z windy wraca blondynka, która uciekła piętro niżej.
+
+**Walka brunetki:**
+- **Cios miotłą** (cleave): szerszy i mocniejszy niż u blondynki (42 px, 19 obrażeń, mocny odrzut).
+- **Plątanie** (nowy atak `BossAttackKind.Tangle`, `TangleAttackDefinition`): wbija miotłę w posadzkę, po 0,8 s pod graczem wyrasta czarne włosie (strefa 26 px, 4 obrażenia). Trafiony jest **unieruchomiony** na 1,1 s (`RootEffect`, `systems/Root.ts`, `Player.applyRoot`): nie chodzi i nie robi dasha, ale atakuje dalej. Potem przez 2,2 s jest odporny — nigdy dwa unieruchomienia pod rząd. Włosie (`broom-tangle.png`: wyrasta, trzyma, pęka) idzie za bohaterem przy odrzucie, napis „Zaplątany!”. Dash i nietykalność po trafieniu chronią jak przed każdym atakiem. We wściekłości dwie strefy, druga tam, dokąd bohater biegnie.
+- **Chlust** jak u blondynki, ale z jedną kałużą (mniej poślizgu, więcej plątania).
+- Okrzyki: wspólna lista plus „Stój, nie depcz!”/„Ani kroku dalej!” przy plątaniu. Wściekłość przy 50% HP. Zwłoki zostają (bez roztapiania). Świta: Rusher biomu.
+
+**Powrót blondynki** (decyzja z karty w wątku: opcja polecana „wraca w walce z brunetką”, właściciel zostawił wybór mnie `#decyzja`):
+- `CLIMB_DUETS` w `config/bossConfig.ts` — duet z wejściem (`DuetArrival` w `systems/BossDuet.ts`: `shouldPartnerArrive`, `arrivalWounds`). Wspinaczka i areny bossów używają go tak samo; pajęczy duet zostaje tylko w arenach.
+- Do progu blondynki nie ma na arenie: niewidoczna, bez ciała, nie jest celem, pasek pokazuje samą brunetkę. Gdy brunetka spadnie do **50% HP** (albo padnie wcześniej), drzwi windy w północnym murze się otwierają, blondynka wychodzi z nich (0,7 s, nietykalna) z **1/3 HP** — tyle, z ilu uciekła — krzyczy „Znowu ty?!” i walczy do końca (bez ponownej ucieczki). Pasek zmienia się na wspólny „Sprzątaczki — Wielkie sprzątanie”.
+- Nagroda, łupy i schody dopiero po obu.
+
+**Testy:** `tests/systems/root.test.ts` (czas, brak przedłużania, odporność), `tests/systems/bossDuetArrival.test.ts` (próg wejścia, rany, duet na piętrze 9 w każdym kręgu, HP powrotu = HP ucieczki), brunetka w `tests/ai/Cleaners.test.ts` (piętro 9, plątanie i wściekłość z wyprzedzeniem, jedna kałuża, skalowanie, wygląd), jej arkusze w `tests/assets/cleaners.test.ts`. Build zielony.
+
+**Weryfikacja:** Playwright (`?floor=9&boss=1`): brunetka walczy sama, pasek „Sprzątaczka”; po zbiciu jej HP do połowy winda się otwiera, blondynka wychodzi z 1/3 HP z okrzykiem „Znowu ty?!”, pasek „Sprzątaczki”; po pokonaniu obu — nagroda. Plątanie: bohater stoi mimo wciśniętego klawisza, włosie na stopach, po 1,1 s rusza. Znaleziony i naprawiony błąd: unieruchomienie sprawdzało nietykalność, którą przed chwilą włączyło samo trafienie. Test dymny kroku 125 (piętra 1–9, trzej bohaterowie) zielony.
+
+**Czeka na ocenę właściciela:** długość unieruchomienia (1,1 s) i odporności (2,2 s), próg powrotu blondynki (50% HP brunetki), HP brunetki (700 przed skalowaniem), wygląd włosia.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4904,7 +4925,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Lustrzana komnata (krok 124):** `#lustrzana-komnata` piętra 8–9 (po kroku 127 — 7–8); odbicia postaci, błyski polerowania, mury — czekają na test właściciela. Blondynka z ucieczką windą (krok 125) czeka na test; w toku: brunetka (krok 126), pajęczy duet jako jedno piętro (127). Otwarte: własni wrogowie biomu.
+- **Lustrzana komnata (krok 124):** `#lustrzana-komnata` piętra 8–9 (po kroku 127 — 7–8); odbicia postaci, błyski polerowania, mury — czekają na test właściciela. Blondynka z ucieczką windą (krok 125), brunetka z plątaniem i powrót blondynki windą (krok 126) czekają na test; w toku: pajęczy duet jako jedno piętro (127). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).

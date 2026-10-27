@@ -16,6 +16,9 @@ const sheets = [
   SPRITE_SHEETS.plasticBucket,
   SPRITE_SHEETS.serviceElevator,
   SPRITE_SHEETS.polishSparkle,
+  SPRITE_SHEETS.cleanerDark,
+  SPRITE_SHEETS.cleanerDarkDeath,
+  SPRITE_SHEETS.broomTangle,
 ] as const;
 
 describe('sprzątaczki: arkusze', () => {

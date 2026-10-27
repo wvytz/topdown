@@ -1,6 +1,7 @@
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorInLoop } from '@/systems/TowerLoop';
 import type { BossDefinition } from '@/core/bossTypes';
+import type { BossDuetDefinition } from '@/systems/BossDuet';
 import { BossAttackKind, BossId, PatternOrder } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
 import { EnemyType } from '@/core/combatTypes';
@@ -647,6 +648,7 @@ const CLEANER_SHOUTS = {
     [BossAttackKind.Hook]: ['Do wiadra z tobą!'],
     [BossAttackKind.Cleave]: ['Zaraz cię wymiotę!'],
     [BossAttackKind.Roar]: ['Kto tu nabłocił?!'],
+    [BossAttackKind.Tangle]: ['Stój, nie depcz!', 'Ani kroku dalej!'],
   },
   everyMs: { min: 5000, max: 9000 },
   minGapMs: 1800,
@@ -707,12 +709,59 @@ export const CLEANER_BLONDE = {
     knockback: 0,
     followUp: { delayMs: 450, reach: 26, radius: 42, damage: 14, knockback: 300 },
   },
-  shouts: { ...CLEANER_SHOUTS, escape: 'Sprzątaj sobie sam!' },
+  // `arrive` — wyjście z windy w walce z brunetką (krok 126).
+  shouts: { ...CLEANER_SHOUTS, escape: 'Sprzątaj sobie sam!', arrive: 'Znowu ty?!' },
   escape: { hpRatio: 1 / 3, speedMultiplier: 2.2, boardMs: 700, closeMs: 600 },
   enrage: {
     ...ENRAGE_FURY,
     // Wściekłość przed ucieczką (przy 1/3 HP): krótszy telegraf i serie w ostatniej części walki.
     hpThreshold: 0.6,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
+ * Czarnowłosa sprzątaczka „Twarda Miotła” (krok 126, `#sprzataczki`): boss piętra B Lustrzanej komnaty, na tym samym
+ * modelu co blondynka (ciut niższa). Miotła zamiast wiadra:
+ * - cios miotłą — szerszy i mocniejszy niż u blondynki;
+ * - plątanie: wbija miotłę w posadzkę, pod graczem wyrasta czarne włosie i unieruchamia go (ataki wolno, ruch
+ *   i dash nie); po uwolnieniu chwila odporności; we wściekłości dwie strefy — druga tam, dokąd bohater biegnie;
+ * - chlust jak u blondynki, ale jedna kałuża (mniej poślizgu, więcej plątania);
+ * - w połowie jej HP z windy wraca blondynka z 1/3 HP (duet `CLIMB_DUETS`, decyzja w wątku właściciela).
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const CLEANER_DARK = {
+  id: BossId.CleanerDark,
+  name: 'Sprzątaczka',
+  title: 'Twarda Miotła',
+  enragedLabel: 'Wściekła!',
+  radius: 17,
+  color: 0x403848,
+  maxHp: 700,
+  moveSpeed: 78,
+  sprint: { speed: 155, distance: 170 },
+  engageDistance: 50,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1100,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Tangle, BossAttackKind.Spill],
+  patternOrder: PatternOrder.Shuffled,
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 18000, enragedEveryMs: 13000 },
+  cleave: { reach: 34, radius: 42, telegraphMs: 620, recoveryMs: 600, damage: 19, knockback: 300 },
+  tangle: {
+    telegraphMs: 800,
+    recoveryMs: 700,
+    damage: 4,
+    knockback: 0,
+    radius: 26,
+    root: { durationMs: 1100, immunityMs: 2200 },
+    lead: { ms: 500, maxPx: 100 },
+  },
+  spill: { ...CLEANER_BLONDE.spill, count: 1 },
+  shouts: CLEANER_SHOUTS,
+  enrage: {
+    ...ENRAGE_FURY,
+    hpThreshold: 0.5,
     telegraphMultiplier: 0.8,
     restMultiplier: 0.65,
   },
@@ -730,6 +779,7 @@ export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   6: ABYSS_EXECUTIONER,
   7: SMOKE_BARON,
   8: CLEANER_BLONDE,
+  9: CLEANER_DARK,
 };
 
 /** Boss piętra; od piętra 7 kolejny krąg wieży powtarza bossów 1–6 (krok 43). */
@@ -770,6 +820,7 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.smoke && { smoke: dmg(boss.smoke) }),
     ...(boss.sporeVolley && { sporeVolley: dmg(boss.sporeVolley) }),
     ...(boss.spill && { spill: dmg(boss.spill) }),
+    ...(boss.tangle && { tangle: dmg(boss.tangle) }),
     ...(boss.dog && {
       dog: {
         ...boss.dog,
@@ -796,3 +847,23 @@ export const BOSS_STATUS_RESISTANCE: StatusResistance = {
   slowMultiplier: 0.5,
   burnMultiplier: 0.5,
 };
+
+/**
+ * Duety we wspinaczce (krok 126, `#sprzataczki`; w arenach bossów też): na piętrze brunetki w połowie jej HP z windy
+ * w północnym murze wraca blondynka, która uciekła piętro niżej — z 1/3 HP (tyle, z ilu uciekła).
+ * Decyzja w wątku właściciela (opcja polecana, czeka na potwierdzenie).
+ */
+export const CLIMB_DUETS: readonly BossDuetDefinition[] = [
+  {
+    floorInLoop: 9,
+    partnerFloorInLoop: 8,
+    spawnOffsetTiles: 0,
+    bodyGapPx: 4,
+    hpMultiplier: 1,
+    // Blondynka wpada sama — świtę przywołuje tylko brunetka.
+    partnerRetinue: false,
+    name: 'Sprzątaczki',
+    title: 'Wielkie sprzątanie',
+    arrival: { hostHpRatio: 0.5, partnerHpRatio: 1 / 3, enterMs: 700 },
+  },
+];

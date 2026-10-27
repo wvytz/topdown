@@ -247,6 +247,24 @@ export const SPRITE_SHEETS = {
   // z wiadra, 12–15 wiadro na sznurze, 16–19 cios miotłą, 20–23 plątanie, 24–27 krzyk. Śmierć: 8 klatek (poślizg, upadek).
   cleanerBlonde: cleanerSheet('blonde'),
   cleanerBlondeDeath: cleanerDeathSheet('blonde'),
+  cleanerDark: cleanerSheet('dark'),
+  cleanerDarkDeath: cleanerDeathSheet('dark'),
+  // Plątanie brunetki (krok 126): czarne włosie oplata stopy — 0–3 wyrasta, 4–5 trzyma (pętla), 6–7 pęka.
+  broomTangle: {
+    key: 'sheet-broom-tangle',
+    url: 'assets/sprites/broom-tangle.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 48,
+    directions: 1,
+    fps: 10,
+    animations: {
+      grow: { frames: [0, 1, 2, 3], loop: false },
+      hold: { frames: [4, 5], loop: true, fps: 4 },
+      break: { frames: [6, 7], loop: false },
+    },
+  },
   // Kałuża mydlin (krok 125): 0–5 rośnie (promień = strefa poślizgu), 6–7 połysk w pętli.
   soapPuddle: {
     key: 'sheet-soap-puddle',
@@ -1466,6 +1484,20 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     deathDecal: 'splat',
     death: { sheet: 'cleanerBlondeDeath', animation: 'die', keepCorpse: true },
   },
+  // Brunetka (krok 126): cios miotłą, plątanie, chlust, krzyk (ryk wściekłości); stojąc poleruje.
+  [BossId.CleanerDark]: {
+    sheet: 'cleanerDark',
+    move: 'walk',
+    idle: 'polish',
+    attacks: {
+      [BossAttackKind.Cleave]: 'broom',
+      [BossAttackKind.Tangle]: 'tangle',
+      [BossAttackKind.Spill]: 'spill',
+      [BossAttackKind.Roar]: 'shout',
+    },
+    deathDecal: 'splat',
+    death: { sheet: 'cleanerDarkDeath', animation: 'die', keepCorpse: true },
+  },
   // Strażnik Bram (krok 41e): wirowanie łańcuchem (slam) i uderzenie tarczą (cleave).
   [BossId.GateWarden]: {
     sheet: 'gateWarden',
@@ -1826,6 +1858,8 @@ export const CLEANER_FX_VISUAL = {
   slipText: { text: 'Ślisko!', color: '#bfe4ff', minGapMs: 2500 },
   elevator: { sheet: 'serviceElevator', open: 'open', close: 'close', closed: 'closed' },
   polish: { sheet: 'polishSparkle', animation: 'twinkle', everyMs: 140, spread: 22 },
+  /** Plątanie (krok 126): włosie u stóp unieruchomionego bohatera i napis. */
+  tangle: { sheet: 'broomTangle', grow: 'grow', hold: 'hold', break: 'break', offsetY: 6, text: 'Zaplątany!', color: '#c8c0d8' },
 } as const;
 
 export const SPIDERLING_DROP_VISUAL = {
