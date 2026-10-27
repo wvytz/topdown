@@ -4735,7 +4735,27 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Weryfikacja:** Playwright (Chromium, dev, `?seed=1&floor=2`): gniazdo wypluwa 2 czerwie, po 4,5 s kolejne 2 i staje przy limicie 4; śmierć gniazda zabija wszystkie czerwie. `npm run smoke -- --floors 7 --seeds 1` (3 bohaterów) i `--coop --floors 3` bez błędów.
 
-**Czeka na ocenę właściciela:** częstość gniazd (20/30% pokojów), rytm wylęgu (4,5 s, 2 czerwie, limit 4/10), siła czerwi, wygląd. **Następnie:** wersje gniazda dla biomów (kokon w leżu, purchawka w Grzybni, nekromanta na Cmentarzysku, czarci krąg w Piekle, fajka z chochlikami w palarni).
+**Czeka na ocenę właściciela:** częstość gniazd (20/30% pokojów), rytm wylęgu (4,5 s, 2 czerwie, limit 4/10), siła czerwi, wygląd. **Następnie:** wersje gniazda dla biomów — zrobione w kroku 122a.
+
+## Krok 122a — Gniazdownicy biomów `#ocena` `#gniazdownik`
+
+**Ocena właściciela po kroku 122 (27.10.2026):** „zrób odpowiedniki do reszty biomów jest ok”. Wersja z ruin (worek z czerwiami) zaakceptowana.
+
+**Wersje biomów** (gniazdo / stworek; rytm wylęgu, limity i statystyki jak w kroku 122):
+- **Ruiny:** worek z jajami / czerw (bez zmian).
+- **Pajęcze leże:** pajęczyca z jedwabnym kokonem jaj (zielone jaja prześwitują) / pajęczak — ugryzienie spowalnia 15% na 0,8 s (jak pajęczyny leża).
+- **Grzybnia:** omszała, zielona purchawa na korzeniach grzybni z cyjanowymi porami / grzybek-zarodnik na nóżkach — lekka trucizna (2 + 2). Zieleń zamiast beżu, żeby nie mylić z purchawami-pułapkami biomu.
+- **Cmentarzysko:** nekromanta w rdzawych łachmanach z kosturem (kula grzybni świeci przy wylęgu) / pełzająca dłoń — lekka trucizna.
+- **Piekło (piętra 5–6):** rozdęta czarcica z żarem w pęknięciach brzucha / chochlik ze skrzydełkami i ogonem; bez statusu.
+- **Zadymiona palarnia:** żywa fajka wodna na mosiężnych nóżkach (żar w główce, kłąb dymu przy wylęgu) / dymek z żarem oczu; bez statusu.
+
+**Kod:** `EnemyVariant` — 10 nowych wariantów; `config/combatConfig.ts` — `broodAttack(minion)` (wylęg archetypu z innym stworkiem) i `broodling(kolor, status)` (wspólne statystyki stworków); `biomeConfig` — gniazdo każdego biomu; `spriteConfig` — `broodSheet`, `nestVisual`, `broodlingVisual`. Grafika: `tools/brood_sprites.py` (12 arkuszy, 48×48, 8 kierunków).
+
+**Testy:** `tests/systems/brood.test.ts` — każdy biom ma własne gniazdo i własnego stworka, ten sam rytm wylęgu i statystyki, arkusze 8-kierunkowe; `enemyVariants.test.ts` — mapowanie biomów. Build zielony (2027 testów).
+
+**Weryfikacja:** Playwright (Chromium, dev): na piętrach 2, 3, 4, 5 i 7 gniazdo biomu wypluwa swoje stworki (pajęczaki, zarodniki, dłonie, chochliki, dymki), bez błędów. `npm run smoke -- --floors 7 --seeds 1` (3 bohaterów) bez błędów.
+
+**Czeka na ocenę właściciela:** wygląd wersji biomów, statusy stworków (spowolnienie w leżu, trucizna w Grzybni i na Cmentarzysku).
 
 ## Znane ograniczenia i backlog
 
@@ -4813,7 +4833,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Gniazdownik (krok 122):** `#gniazdownik` trzeci archetyp — częstość, rytm wylęgu, siła czerwi, wygląd; potem wersje dla biomów — czeka na test właściciela.
+- **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).
 - **Dźwięk (krok 116):** `#dzwiek` brzmienie efektów, muzyka wieży i zaświatów, proporcje głośności (60% / 70%), czy coś przeszkadza w co-opie — czeka na test właściciela; lista i licencje w `docs/AUDIO.md`.
 - **Tarczownik (kroki 99, 113):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę (bez tarczy), bomby go ranią; od kroku 113 obrót 35°/s, 1,6 s bez tarczy po każdym ciosie, HP ×1,8 — czeka na test właściciela.

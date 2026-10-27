@@ -36,6 +36,27 @@ export interface SpriteSheetDef {
 
 export const SPRITE_FPS = 6;
 
+/**
+ * Arkusz Gniazdownika albo stworka (krok 122): 48×48, 8 kierunków; 0–3 pełzanie, 4–7 wylęg (`birth`, wyplucie po
+ * kolumnie 7) albo ugryzienie (`bite`).
+ */
+function broodSheet(name: string, action: 'birth' | 'bite') {
+  return {
+    key: `sheet-${name}`,
+    url: `assets/sprites/${name}_crawl-${action}.png`,
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      crawl: { frames: [0, 1, 2, 3], loop: true },
+      [action]: { frames: [4, 5, 6, 7], loop: false },
+    },
+  } as const satisfies SpriteSheetDef;
+}
+
 export const SPRITE_SHEETS = {
   // Generator tools/barbarian_sword.py (krok 21): chód z mieczem (0–3) i cios od prawej do lewej (4–7).
   barbarian: {
@@ -490,36 +511,19 @@ export const SPRITE_SHEETS = {
       grasp: { frames: [4, 5, 6, 7], loop: false },
     },
   },
-  // Gniazdownik (krok 122, tools/brood_sprites.py): 0–3 pełzanie, 4–7 wylęg (worek pęcznieje, wyplucie po kolumnie 7).
-  broodSac: {
-    key: 'sheet-brood-sac',
-    url: 'assets/sprites/brood-sac_crawl-birth.png',
-    frameWidth: 48,
-    frameHeight: 48,
-    sheetWidth: 384,
-    sheetHeight: 384,
-    directions: 8,
-    fps: SPRITE_FPS,
-    animations: {
-      crawl: { frames: [0, 1, 2, 3], loop: true },
-      birth: { frames: [4, 5, 6, 7], loop: false },
-    },
-  },
-  // Czerw z gniazda (ten sam generator): 0–3 pełzanie, 4–7 ugryzienie.
-  grub: {
-    key: 'sheet-grub',
-    url: 'assets/sprites/grub_crawl-bite.png',
-    frameWidth: 48,
-    frameHeight: 48,
-    sheetWidth: 384,
-    sheetHeight: 384,
-    directions: 8,
-    fps: SPRITE_FPS,
-    animations: {
-      crawl: { frames: [0, 1, 2, 3], loop: true },
-      bite: { frames: [4, 5, 6, 7], loop: false },
-    },
-  },
+  // Gniazdownicy i ich stworki (kroki 122–122a, tools/brood_sprites.py).
+  broodSac: broodSheet('brood-sac', 'birth'),
+  grub: broodSheet('grub', 'bite'),
+  silkMother: broodSheet('silk-mother', 'birth'),
+  hatchling: broodSheet('hatchling', 'bite'),
+  puffcap: broodSheet('puffcap', 'birth'),
+  sporeling: broodSheet('sporeling', 'bite'),
+  necromancer: broodSheet('necromancer', 'birth'),
+  crawlingHand: broodSheet('crawling-hand', 'bite'),
+  impMother: broodSheet('imp-mother', 'birth'),
+  imp: broodSheet('imp', 'bite'),
+  hookah: broodSheet('hookah', 'birth'),
+  smokeWisp: broodSheet('smoke-wisp', 'bite'),
   // Kultysta: 0–3 chód, 4–7 rzut (bomba wylatuje po kolumnie 7).
   cultist: {
     key: 'sheet-cultist',
@@ -1001,6 +1005,14 @@ export interface EnemyVisual {
 /** Cień pod postaciami 32 px (bohater, Rusher): lekko w dół, jak światło z północy. */
 const WALKER_SHADOW = { width: 22, height: 12, offsetX: 1, offsetY: 4 } as const;
 
+function nestVisual(sheet: SpriteSheetId): EnemyVisual {
+  return { sheet, move: 'crawl', attack: 'birth', groundShadow: { width: 24, height: 10, offsetX: 0, offsetY: 5 } };
+}
+
+function broodlingVisual(sheet: SpriteSheetId): EnemyVisual {
+  return { sheet, move: 'crawl', attack: 'bite', groundShadow: { width: 12, height: 6, offsetX: 0, offsetY: 3 } };
+}
+
 /** Wygląd każdego wariantu wroga (krok 23b: warianty biomów). */
 export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.TrashcanMan]: { sheet: 'trashcanMan', move: 'walk', idle: 'idle', groundShadow: WALKER_SHADOW },
@@ -1033,9 +1045,19 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.Cultist]: { sheet: 'cultist', move: 'walk', idle: 'idle', attack: 'throw', groundShadow: WALKER_SHADOW },
   // Upiór unosi się nad posadzką — bez cienia (krok 49).
   [EnemyVariant.Ghost]: { sheet: 'ghost', move: 'float', attack: 'grasp', aboveDarkness: true },
-  // Gniazdownik i czerw (krok 122) pełzną przy ziemi: płaskie cienie.
-  [EnemyVariant.BroodSac]: { sheet: 'broodSac', move: 'crawl', attack: 'birth', groundShadow: { width: 24, height: 10, offsetX: 0, offsetY: 5 } },
-  [EnemyVariant.Grub]: { sheet: 'grub', move: 'crawl', attack: 'bite', groundShadow: { width: 12, height: 6, offsetX: 0, offsetY: 3 } },
+  // Gniazdownicy i stworki (kroki 122–122a) pełzną przy ziemi: płaskie cienie.
+  [EnemyVariant.BroodSac]: nestVisual('broodSac'),
+  [EnemyVariant.Grub]: broodlingVisual('grub'),
+  [EnemyVariant.SilkMother]: nestVisual('silkMother'),
+  [EnemyVariant.Hatchling]: broodlingVisual('hatchling'),
+  [EnemyVariant.Puffcap]: nestVisual('puffcap'),
+  [EnemyVariant.Sporeling]: broodlingVisual('sporeling'),
+  [EnemyVariant.Necromancer]: nestVisual('necromancer'),
+  [EnemyVariant.CrawlingHand]: broodlingVisual('crawlingHand'),
+  [EnemyVariant.ImpMother]: nestVisual('impMother'),
+  [EnemyVariant.Imp]: broodlingVisual('imp'),
+  [EnemyVariant.Hookah]: nestVisual('hookah'),
+  [EnemyVariant.SmokeWisp]: broodlingVisual('smokeWisp'),
 };
 
 /** Upiór (krok 49): świeci nad mrokiem; przezroczystość cielesny/bezcielesny; wynurzanie się przy pojawieniu. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BIOMES } from '@/config/biomeConfig';
+import { BIOMES, BiomeId } from '@/config/biomeConfig';
 import { ENEMY_DEFINITIONS, ENEMY_VARIANTS } from '@/config/combatConfig';
+import { ENEMY_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { ENEMY_LOOT } from '@/config/lootConfig';
 import type { BroodAttackDefinition } from '@/core/combatTypes';
 import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
@@ -13,12 +14,30 @@ const attack = nester.attack as BroodAttackDefinition;
 
 describe('Gniazdownik (krok 122)', () => {
   it('jest w każdym biomie, wylęga czerwie (Rusher), trzyma dystans i sam nie rani', () => {
-    for (const biome of Object.values(BIOMES)) expect(biome.enemyVariants[EnemyType.Nester]).toBe(EnemyVariant.BroodSac);
+    expect(BIOMES[BiomeId.TowerRuins].enemyVariants[EnemyType.Nester]).toBe(EnemyVariant.BroodSac);
+    expect(attack.minion).toBe(EnemyVariant.Grub);
     expect(attack.kind).toBe(EnemyAttackKind.Brood);
     expect(attack.damage).toBe(0);
     expect(ENEMY_VARIANTS[attack.minion].type).toBe(EnemyType.Rusher);
     expect(nester.behaviour.kiting).toBeDefined();
     expect(ENEMY_LOOT[EnemyType.Nester].gold.max).toBeGreaterThan(0);
+  });
+
+  it('wersje biomów (krok 122a): każdy biom ma własne gniazdo i stworka, ten sam rytm wylęgu i te same statystyki', () => {
+    const nests = Object.values(BIOMES).map((b) => b.enemyVariants[EnemyType.Nester]);
+    expect(new Set(nests).size).toBe(nests.length);
+    for (const nest of nests) {
+      const def = enemyDefinitionFor(nester, nest, ENEMY_VARIANTS);
+      const brood = def.attack as BroodAttackDefinition;
+      expect(def.maxHp).toBe(nester.maxHp);
+      expect({ ...brood, minion: attack.minion }).toEqual(attack);
+      const minion = enemyDefinitionFor(ENEMY_DEFINITIONS[EnemyType.Rusher], brood.minion, ENEMY_VARIANTS);
+      expect(minion.maxHp).toBe(8);
+      expect(minion.attack.damage).toBe(4);
+      for (const variant of [nest, brood.minion]) expect(SPRITE_SHEETS[ENEMY_VISUALS[variant].sheet].directions).toBe(8);
+    }
+    const minions = nests.map((n) => (enemyDefinitionFor(nester, n, ENEMY_VARIANTS).attack as BroodAttackDefinition).minion);
+    expect(new Set(minions).size).toBe(minions.length);
   });
 
   it('czerw jest kruchy i słaby: cios barbarzyńcy (12) go zabija, gryzie słabiej niż Rusher', () => {

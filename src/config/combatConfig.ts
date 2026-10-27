@@ -1,8 +1,10 @@
 import type {
+  BroodAttackDefinition,
   EnemyDefinition,
   EnemyScalingConfig,
   EnemyViewRule,
   PlayerCombatConfig,
+  StatusApplication,
   StatusResistance,
 } from '@/core/combatTypes';
 import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
@@ -114,6 +116,39 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
     },
   },
 };
+
+/** Wylęg Gniazdownika (krok 122) z innym stworkiem — rytm i limity jak u archetypu. */
+function broodAttack(minion: EnemyVariant): BroodAttackDefinition {
+  const attack = ENEMY_DEFINITIONS[EnemyType.Nester].attack as BroodAttackDefinition;
+  return { ...attack, minion };
+}
+
+/**
+ * Stworek z gniazda (krok 122): kruchy (cios barbarzyńcy go zabija), szybki, gryzie słabo i krótko — groźny tylko
+ * w gromadzie. Wersje biomów różnią się kolorem plamy i ewentualnie lekkim statusem.
+ */
+function broodling(color: number, status?: StatusApplication): EnemyVariantDefinition {
+  return {
+    type: EnemyType.Rusher,
+    color,
+    radius: 7,
+    maxHp: 8,
+    moveSpeed: 145,
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 4,
+      range: 22,
+      hitRange: 30,
+      windupMs: 280,
+      cooldownMs: 900,
+      knockback: 70,
+      ...(status && { status }),
+    },
+  };
+}
+
+/** Lekka trucizna stworków Grzybni i Cmentarzyska: 2 co 0,5 s przez 1 s. */
+const BROODLING_POISON: StatusApplication = { poison: { tickDamage: 2, tickMs: 500, durationMs: 1000 } };
 
 /**
  * Warianty archetypów (krok 23b). Bez nadpisań = statystyki i atak archetypu.
@@ -291,25 +326,22 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       status: { slow: { pct: 0.15, durationMs: 800 } },
     },
   },
-  // Gniazdownik (krok 122): na razie jeden wygląd we wszystkich biomach.
+  // Gniazdownicy biomów (krok 122a): ten sam rytm wylęgu, inny wygląd i stworek. Ruiny — worek z czerwiami.
   [EnemyVariant.BroodSac]: { type: EnemyType.Nester },
-  // Czerw z gniazda: kruchy (cios barbarzyńcy go zabija), szybki, gryzie słabo i krótko — groźny tylko w gromadzie.
-  [EnemyVariant.Grub]: {
-    type: EnemyType.Rusher,
-    color: 0xd8c49a,
-    radius: 7,
-    maxHp: 8,
-    moveSpeed: 145,
-    attack: {
-      kind: EnemyAttackKind.Melee,
-      damage: 4,
-      range: 22,
-      hitRange: 30,
-      windupMs: 280,
-      cooldownMs: 900,
-      knockback: 70,
-    },
-  },
+  [EnemyVariant.Grub]: broodling(0xd8c49a),
+  // Leże: pajęczaki spowalniają jak pajęczyny leża (15% na 0,8 s).
+  [EnemyVariant.SilkMother]: { type: EnemyType.Nester, color: 0xd8d0e0, attack: broodAttack(EnemyVariant.Hatchling) },
+  [EnemyVariant.Hatchling]: broodling(0x3c272a, { slow: { pct: 0.15, durationMs: 800 } }),
+  // Grzybnia i Cmentarzysko: stworki lekko zatruwają (jak wrogowie tych biomów, ale słabiej: 2 + 2).
+  [EnemyVariant.Puffcap]: { type: EnemyType.Nester, color: 0xc8b890, attack: broodAttack(EnemyVariant.Sporeling) },
+  [EnemyVariant.Sporeling]: broodling(0x8a4a2a, BROODLING_POISON),
+  [EnemyVariant.Necromancer]: { type: EnemyType.Nester, color: 0x6a3a2a, attack: broodAttack(EnemyVariant.CrawlingHand) },
+  [EnemyVariant.CrawlingHand]: broodling(0x9aa4b0, BROODLING_POISON),
+  // Piekło i palarnia: stworki bez statusu (ogień biomu robią już ogary, kultyści i paleniska).
+  [EnemyVariant.ImpMother]: { type: EnemyType.Nester, color: 0x8a2a20, attack: broodAttack(EnemyVariant.Imp) },
+  [EnemyVariant.Imp]: broodling(0xa03020),
+  [EnemyVariant.Hookah]: { type: EnemyType.Nester, color: 0x3a8a8a, attack: broodAttack(EnemyVariant.SmokeWisp) },
+  [EnemyVariant.SmokeWisp]: broodling(0xb8b8b0),
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */

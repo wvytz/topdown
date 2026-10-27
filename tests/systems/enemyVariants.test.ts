@@ -18,7 +18,7 @@ describe('warianty wrogów (krok 23b)', () => {
     expect(BIOMES[BiomeId.SpiderLair].enemyVariants).toEqual({
       [EnemyType.Rusher]: EnemyVariant.CaveSpider,
       [EnemyType.Kiter]: EnemyVariant.Bat,
-      [EnemyType.Nester]: EnemyVariant.BroodSac,
+      [EnemyType.Nester]: EnemyVariant.SilkMother,
     });
     for (const biome of Object.values(BIOMES)) {
       for (const [type, variant] of Object.entries(biome.enemyVariants)) expect(ENEMY_VARIANTS[variant].type).toBe(type);
@@ -92,7 +92,7 @@ describe('wrogowie Grzybni (krok 28b)', () => {
     expect(BIOMES[BiomeId.FungalGrove].enemyVariants).toEqual({
       [EnemyType.Rusher]: EnemyVariant.InfectedSpider,
       [EnemyType.Kiter]: EnemyVariant.Fungoid,
-      [EnemyType.Nester]: EnemyVariant.BroodSac,
+      [EnemyType.Nester]: EnemyVariant.Puffcap,
     });
   });
 
@@ -132,7 +132,7 @@ describe('wrogowie Cmentarzyska (krok 32b)', () => {
     expect(BIOMES[BiomeId.Graveyard].enemyVariants).toEqual({
       [EnemyType.Rusher]: EnemyVariant.Zombie,
       [EnemyType.Kiter]: EnemyVariant.Sower,
-      [EnemyType.Nester]: EnemyVariant.BroodSac,
+      [EnemyType.Nester]: EnemyVariant.Necromancer,
     });
   });
 

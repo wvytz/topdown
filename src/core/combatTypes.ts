@@ -53,10 +53,25 @@ export enum EnemyVariant {
   BlackDog = 'black-dog',
   /** Zasadzki (krok 49): upiór (Rusher) — przenika (chwilami bezcielesny i nietykalny), dotyk mrozi i spowalnia. */
   Ghost = 'ghost',
-  /** Gniazdownik (krok 122, pierwsza wersja dla wszystkich biomów): pełzający worek z jajami, wypluwa czerwie. */
+  /** Gniazdownik ruin (krok 122): pełzający worek z jajami, wypluwa czerwie. */
   BroodSac = 'brood-sac',
   /** Czerw (krok 122, Rusher): stworek z gniazda — kruchy, szybki, słabo gryzie; ginie razem z gniazdem. */
   Grub = 'grub',
+  /** Gniazdownik leża (krok 122a): pajęczyca z jedwabnym kokonem jaj; pajęczak spowalnia ugryzieniem. */
+  SilkMother = 'silk-mother',
+  Hatchling = 'hatchling',
+  /** Gniazdownik Grzybni (krok 122a): purchawa na korzeniach; grzybek-zarodnik lekko zatruwa. */
+  Puffcap = 'puffcap',
+  Sporeling = 'sporeling',
+  /** Gniazdownik Cmentarzyska (krok 122a): nekromanta z kosturem; pełzająca dłoń lekko zatruwa. */
+  Necromancer = 'necromancer',
+  CrawlingHand = 'crawling-hand',
+  /** Gniazdownik Piekła (krok 122a): rozdęta czarcica z żarem w brzuchu; chochlik. */
+  ImpMother = 'imp-mother',
+  Imp = 'imp',
+  /** Gniazdownik palarni (krok 122a): żywa fajka wodna na mosiężnych nóżkach; dymek. */
+  Hookah = 'hookah',
+  SmokeWisp = 'smoke-wisp',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
