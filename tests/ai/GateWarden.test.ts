@@ -12,8 +12,8 @@ import { ShieldGuard, fireRingRadius } from '@/systems/Shield';
 import { BOSS_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 
 describe('Strażnik Bram (krok 41e)', () => {
-  it('kończy piętro 5 (Piekło)', () => {
-    expect(bossForFloor(5).id).toBe(BossId.GateWarden);
+  it('kończy piętro 4 (Piekło)', () => {
+    expect(bossForFloor(4).id).toBe(BossId.GateWarden);
   });
 
   it('ma tarczę z przodu: stożek węższy niż pół okręgu (da się go obejść), obraca się wolniej niż gracz go okrąża', () => {
@@ -93,8 +93,8 @@ describe('Kat Otchłani (krok 41f)', () => {
     ...over,
   });
 
-  it('kończy piętro 6 i ma tarczę jak Strażnik Bram, ale rozgrzewaną promieniem', () => {
-    expect(bossForFloor(6).id).toBe(BossId.AbyssExecutioner);
+  it('kończy piętro 5 i ma tarczę jak Strażnik Bram, ale rozgrzewaną promieniem', () => {
+    expect(bossForFloor(5).id).toBe(BossId.AbyssExecutioner);
     expect(ABYSS_EXECUTIONER.shield.heat.ticks).toBeGreaterThan(0);
   });
 

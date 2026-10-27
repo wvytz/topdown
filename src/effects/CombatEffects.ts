@@ -118,6 +118,18 @@ export class CombatEffects {
     this.scene.tweens.add({ targets: label, y: y - 30, alpha: 0, duration: 700, onComplete: () => label.destroy() });
   }
 
+  /**
+   * Okrzyk nad postacią (sprzątaczki, krok 125): większy napis z obrysem, trzyma się `holdMs`, potem unosi i gaśnie.
+   */
+  shout(x: number, y: number, text: string, color: string, holdMs: number, riseMs: number): Phaser.GameObjects.Text {
+    const label = this.scene.add
+      .text(Math.round(x), Math.round(y), text, { fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color, stroke: '#000000', strokeThickness: 4 })
+      .setOrigin(0.5, 1)
+      .setDepth(RENDER_DEPTH.worldText);
+    this.scene.tweens.add({ targets: label, y: y - 14, alpha: 0, delay: holdMs, duration: riseMs, onComplete: () => label.destroy() });
+    return label;
+  }
+
   playerHit(): void {
     this.scene.cameras.main.shake(100, 0.004);
   }

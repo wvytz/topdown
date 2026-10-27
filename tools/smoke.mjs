@@ -166,7 +166,7 @@ async function fightFor(page, ms, errors) {
 async function checkRevive(page, floor, errors) {
   const down = await page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; if (!b) return false;
     delete b.health.takeDamage; b.takeHit({ damage: 99999, knockback: { x: 0, y: 0 } }, g.time.now + 1e7);
-    a.setPosition(b.x, b.y); a.body.updateFromGameObject(); return b.isDead && !g.party.isDown; })()`);
+    a.body.reset(b.x, b.y); return b.isDead && !g.party.isDown; })()`);
   if (!down) {
     errors.push(`co-op: piętro ${floor} — powalenie P2 nie zadziałało`);
     return;
@@ -174,6 +174,8 @@ async function checkRevive(page, floor, errors) {
   // Czekamy na czas gry, nie na zegar ściany: wolna przeglądarka (bez GPU) daje mniej klatek.
   const state = () =>
     page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; const r = g.revives.get(b);
+      // P1 stoi przy partnerze: kałuża (poślizg) albo odrzut bossa nie mogą go odsunąć w trakcie sprawdzania.
+      if (b.isDead) a.body.reset(b.x, b.y);
       return { up: !b.isDead, now: g.time.now, progress: r ? r.progress : null, dist: Math.round(Math.hypot(a.x - b.x, a.y - b.y)) }; })()`);
   const start = await state();
   let last = start;

@@ -316,6 +316,31 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
     ],
   },
   [SoundCue.Secret]: { gain: 0.4, layers: arpeggio('triangle', [659, 784, 988, 1319], 0.1, 0.4, 0.55) },
+  /** Okrzyk sprzątaczki (krok 125): dwa piskliwe „hej!” z drżeniem — nie mowa, tylko barwa głosu pod napisem. */
+  [SoundCue.Shout]: {
+    gain: 0.3,
+    layers: [
+      { wave: 'square', freq: 820, freqEnd: 1180, attack: 0.01, decay: 0.12, volume: 0.45, duty: 0.35, lowpass: 2600, vibrato: { depth: 0.04, rate: 22 } },
+      { wave: 'square', freq: 1100, freqEnd: 760, delay: 0.13, attack: 0.01, decay: 0.18, volume: 0.45, duty: 0.35, lowpass: 2400, vibrato: { depth: 0.05, rate: 18 } },
+    ],
+  },
+  /** Chlust wody: szum opadający od jasnego do ciemnego i krótki bulgot. */
+  [SoundCue.Splash]: {
+    gain: 0.4,
+    layers: [
+      { wave: 'noise', freq: 5000, freqEnd: 900, attack: 0.005, decay: 0.35, volume: 0.6, lowpass: 4000, curve: 1.3 },
+      { wave: 'sine', freq: 260, freqEnd: 520, delay: 0.05, attack: 0.01, decay: 0.12, volume: 0.25, vibrato: { depth: 0.2, rate: 30 } },
+    ],
+  },
+  /** Winda: dzwonek „dzyń” i szum rozsuwanych drzwi. */
+  [SoundCue.Elevator]: {
+    gain: 0.35,
+    layers: [
+      { wave: 'sine', freq: 1318, attack: 0.005, decay: 0.6, volume: 0.45 },
+      { wave: 'sine', freq: 988, delay: 0.18, attack: 0.005, decay: 0.8, volume: 0.45 },
+      { wave: 'noise', freq: 900, freqEnd: 500, delay: 0.3, attack: 0.1, decay: 0.5, volume: 0.25, lowpass: 1200 },
+    ],
+  },
 };
 
 /**
@@ -375,6 +400,9 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.Dart]: { minGapMs: 80 },
   [SoundCue.Ambush]: { minGapMs: 1000 },
   [SoundCue.Secret]: { minGapMs: 1000 },
+  [SoundCue.Shout]: { minGapMs: 600 },
+  [SoundCue.Splash]: { minGapMs: 120 },
+  [SoundCue.Elevator]: { minGapMs: 800 },
 };
 
 /**
@@ -411,7 +439,7 @@ export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = 
   },
 };
 
-/** Klimat muzyki biomu: piętra 1–3 to wieża, cmentarzysko, piekło i palarnia — zaświaty. */
+/** Klimat muzyki biomu: piętra 1–3 to wieża, cmentarzysko, piekło i palarnia i Lustrzana komnata — zaświaty. */
 export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
   [BiomeId.TowerRuins]: MusicTheme.Tower,
   [BiomeId.SpiderLair]: MusicTheme.Tower,
@@ -419,6 +447,7 @@ export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
   [BiomeId.Graveyard]: MusicTheme.Underworld,
   [BiomeId.Infernal]: MusicTheme.Underworld,
   [BiomeId.SmokeDen]: MusicTheme.Underworld,
+  [BiomeId.MirrorHall]: MusicTheme.Underworld,
 };
 
 /** Głośność głosów muzyki i ich barwa (odtwarzacz Web Audio). */

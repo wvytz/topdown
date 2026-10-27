@@ -239,6 +239,40 @@ export const SMOKE_DEN_DRESSING: FloorDressingConfig = {
 };
 
 /**
+ * Lustrzana komnata (krok 124, `#lustrzana-komnata`): wypolerowana posadzka prawie bez śmieci — tylko odłamki lustra,
+ * kałuże brudnej wody i piana; mury najbardziej zniszczone w wieży (zawalone lica, zacieki, wybite cegły).
+ * Ku arenie sprzątaczki gęstnieje piana mydlin. Moje liczby, do oceny.
+ */
+export const MIRROR_HALL_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalChance: 0.08,
+  decalGroupWeights: {
+    'decal.crack': 1,
+    'decal.shards': 2,
+    'decal.slop': 1.5,
+    'decal.suds': 1.2,
+  },
+  longCrackChance: 0.004,
+  // Posadzka wypolerowana: kurz pod murami rzadki.
+  dust: {
+    north: { chance: 0.1, group: 'decal.dustN' },
+    west: { chance: 0.06, group: 'decal.dustW' },
+    east: { chance: 0.06, group: 'decal.dustE' },
+  },
+  wallFace: { chance: 0.35, group: 'wallFace.mirror' },
+  cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.2 },
+  nest: {
+    radiusTiles: 18,
+    cobwebChance: 0,
+    corridorCobwebChance: 0,
+    wallFaceChance: 0.6,
+    wallFaceGroup: 'wallFace.mirror',
+    decals: { group: 'decal.suds', chance: 0.22 },
+    trail: TRAIL,
+  },
+};
+
+/**
  * Piekło (krok 41a): rozżarzone szczeliny i krew na posadzce, rzadkie pieczęcie 2×2 (duże nakładki),
  * kości; na licach okowy, czaszki na kolcach i szczeliny z żarem. Bez pajęczyn — za gorąco.
  */

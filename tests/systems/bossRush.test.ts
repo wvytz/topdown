@@ -82,6 +82,6 @@ describe('areny bossów — tryb runu', () => {
 
   it('napis areny w HUD, w kolejnych kręgach z kręgiem', () => {
     expect(arenaLabel(2, 'Matka Pająków', TOWER_CONFIG)).toBe('Arena 2 · Matka Pająków');
-    expect(arenaLabel(TOWER_CONFIG.floorsPerLoop + 1, 'Strażnik Piętra', TOWER_CONFIG)).toBe('Arena 8 · Strażnik Piętra · Krąg II');
+    expect(arenaLabel(TOWER_CONFIG.floorsPerLoop + 1, 'Strażnik Piętra', TOWER_CONFIG)).toBe(`Arena ${TOWER_CONFIG.floorsPerLoop + 1} · Strażnik Piętra · Krąg II`);
   });
 });

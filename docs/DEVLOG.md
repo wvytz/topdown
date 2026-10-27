@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4780,6 +4780,92 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** częstość (12%, 1/2 na piętro), widoczność znaku, czas ostrzeżenia i siła doskoku, rytm serii i zadyszki, wygląd Czyhaczy i kryjówek (placeholdery z generatora).
 
+## Krok 124 — Lustrzana komnata, biom pięter 8–9 `#decyzja` `#lustrzana-komnata` `#sprzataczki`
+
+**Pomysł właściciela (27.10.2026):** pajęczy duet zwalnia jedno piętro, a w jego miejsce wchodzą dwa piętra nowego biomu z dwiema sprzątaczkami-bossami. Pierwszy koncept (wiedźma z mopem) odrzucony; drugi — młode sprzątaczki, blondynka na piętrze A i brunetka na piętrze B — zaakceptowany („niech tak będzie”) `#decyzja`, razem z propozycjami z `docs/SPRZATACZKI.md` (miejsce w wieży, podział ataków, teksty okrzyków). Dodatkowa zmiana właściciela: gdy blondynka spadnie do 1/3 HP, w północnej ścianie otwiera się winda i sprzątaczka ucieka na górne piętro (krok 125).
+
+**Plan wdrożenia:** 124 — biom; 125 — blondynka z ucieczką windą; 126 — brunetka (blondynka wraca windą w trakcie walki); 127 — pajęczy duet jako jedno piętro wspinaczki, Lustrzana komnata przechodzi na piętra 7–8. Do kroku 127 krąg ma 9 pięter, a do kroków 125–126 piętra 8–9 kończy Strażnik Piętra.
+
+**Co powstało:**
+- **Biom `BiomeId.MirrorHall`** na piętrach 8–9 (`TOWER_CONFIG.floorsPerLoop` 7 → 9): arkusz `mirror_hall_tileset` (generator `--biome mirror_hall`, paleta `lustro_opal`), dekoracje `MIRROR_HALL_DRESSING` — mało nakładek (odłamki lustra, kałuże brudnej wody, piana), rzadki kurz, lica muru „zawalone/zaciek/wybite cegły” w 35% (ku arenie 60%) i piana mydlin gęstniejąca ku arenie. Zapowiedź bossa: zimny, opalizujący odcień; muzyka zaświatów.
+- **Bez mgły** — posadzka jest jasna mimo braku światła (zwykły mrok 30% na krawędziach kadru).
+- **Odbicia postaci** (`effects/MirrorFloor.ts`): każda postać z ciałem fizycznym (bohaterowie, wrogowie, bossowie) ma pod sobą kopię z tą samą klatką, odwróconą w pionie, z błękitnym odcieniem; krycie 45% przy postaci, 8% na końcu. Oś odbicia to dolny nieprzezroczysty wiersz klatki (liczony raz na klatkę z jednego odczytu płótna) — od ciała fizycznego odbicie odstawało albo chowało się pod postacią. Odbicia leżą pod murami (głębokość 2,3), więc rysują się tylko na podłodze; wróg ukryty w mroku chowa też odbicie.
+- **Błyski polerowania:** co 90–260 ms na losowym kaflu podłogi w kadrze miga błysk (`polish-sparkle.png`, mieszanie ADD nad warstwą mroku — świeci), najwyżej 14 naraz.
+- **Wrogowie biomu:** na razie z ruin (Rusher, Kiter, gniazdo, Czyhacz) — pytanie o własnych wrogów zostaje otwarte. Testy „każdy biom ma własne gniazdo/Czyhacza” pomijają ten biom do decyzji.
+- Liczby w `config/lightingConfig.ts` (`MIRROR_FLOOR`) i `config/dressingConfig.ts` — moje, do oceny.
+
+**Testy:** `tests/assets/biomes.test.ts` (piętra 8–9 i 17 to Lustrzana komnata, arkusz ma grupy dekoracji, odbicie tylko w tym biomie i gaśnie ku dołowi). Testy pętli wieży, aren, wyboru piętra, zapisów, ukrytej komnaty i Czyhacza liczą teraz piętra z `TOWER_CONFIG.floorsPerLoop` zamiast stałej 7. Build zielony (2077 testów).
+
+**Weryfikacja:** Playwright (Chromium, dev, `?floor=8`, `?floor=9`, `?boss=1`): posadzka jasna, odbicia barbarzyńcy, łucznika, Czarodziejki i Strażnika pod stopami, błyski na podłodze, bez błędów w konsoli.
+
+**Czeka na ocenę właściciela:** siła odbić (45% → 8%), gęstość błysków, jasność posadzki, gęstość dekoracji muru.
+
+## Krok 125 — Blond sprzątaczka „Mokra Podłoga” i ucieczka windą `#sprzataczki` `#lustrzana-komnata`
+
+**Co powstało:** boss piętra 8 (`CLEANER_BLONDE`, `BossId.CleanerBlonde`) według zaakceptowanego konceptu (`docs/SPRZATACZKI.md`) i pomysłu właściciela z ucieczką windą.
+
+**Walka:**
+- **Chlust z wiadra** (nowy atak `BossAttackKind.Spill`, we wzorze): po zamachu (0,75 s) woda uderza w miejsce gracza (strefa 34 px, 6 obrażeń, odrzut) i rozlewa się w **kałuże mydlin** — pierwsza pod graczem, druga za nim (we wściekłości trzy). Kałuża rośnie do 44 px i leży 8 s.
+- **Poślizg** (`SlipEffect`, `systems/Slip.ts`, `Player.applyTerrainSlip`): na mokrym prędkość bohatera dąży do zamierzonej powoli (siła 2,2/s) — sunie po puszczeniu klawiszy, skręca z bezwładnością, pęd z odrzutu i dasha wygasa długo. Trzyma jeszcze 0,45 s po zejściu z kałuży. Dash nie chroni (po dashu na mokrym sunie się dalej). Kałuża łapie ślad stóp (jak grzyby Pożeracza). Przy wejściu na mokre napis „Ślisko!” (najwyżej co 2,5 s).
+- **Wiadro na sznurze** (hak z `look: 'bucket'`, poza wzorem, gdy gracz stoi 110–240 px od niej): linia stref, wiadro leci na sznurze, trafiony ląduje pod jej stopami, a 0,45 s później zamach miotłą przed sobą.
+- **Cios miotłą** (cleave, we wzorze): krótki zamach przed sobą, 16 obrażeń.
+- **Polerowanie:** stojąc (także przed walką) gra animację polerowania i sypie błyskami spod miotły (nad mrokiem — świecą).
+- **Okrzyki** (`BossShoutDefinition`, `systems/BossShouts.ts`): napis nad głową (biały z obrysem, 1,3 s) i piskliwy dźwięk `SoundCue.Shout`. Na początku ataku: chlust — „Nie chodź po mokrym!”/„Uwaga, ślisko!”, wiadro — „Do wiadra z tobą!”, miotła — „Zaraz cię wymiotę!”, ryk wściekłości — „Kto tu nabłocił?!”; co 5–9 s linia z listy konceptu. Nowy napis zastępuje poprzedni. Teksty w `config/bossConfig.ts`.
+- **Wściekłość** przy 60% HP (serie po dwa ataki, krótsze telegrafy), żeby przed ucieczką było jej trochę.
+- Świta: Rusher biomu (na razie śmieciarz z ruin).
+
+**Ucieczka windą** (pomysł właściciela `#decyzja`, `BossEscapeDefinition`, `systems/BossEscape.ts`):
+- Winda stoi w północnym murze areny od początku (zamknięta) — `dungeon/ElevatorPlanner.ts` wybiera dwa kafle muru nad podłogą areny najbliżej osi, z odstępem od wejść. Sprite `service-elevator.png` (generator `tools/cleaner_sprites.py`): stalowa rama, rozsuwane drzwi, lampka ze strzałką w górę.
+- Przy **1/3 HP** drzwi się otwierają (dzwonek `SoundCue.Elevator`), sprzątaczka krzyczy „Sprzątaj sobie sam!”, przerywa walkę i biegnie do windy (×2,2 chodu) — w tym czasie jest nietykalna; zaplanowane strefy i kałuże działają do końca, nowa świta już nie wychodzi. Przy drzwiach wsiada (0,7 s), drzwi się zamykają (0,6 s) i odjeżdża.
+- Odjazd = pokonanie piętra: łupy przed windą, karty (napis „SPRZĄTACZKA UCIEKŁA!” zamiast „STRAŻNIK POKONANY”), schody, kraty. Do progu trafienia nie zbijają jej poniżej 1 HP, więc ucieczka zawsze nastąpi (nie da się jej zabić jednym potężnym ciosem).
+- Działa też w arenach bossów (arena 8).
+
+**Grafika:** arkusze z kroku konceptu podpięte w `spriteConfig` (`cleanerBlonde`, `soapPuddle`, `waterSplash`, `plasticBucket`, `serviceElevator`), wygląd w `BOSS_VISUALS` (chlust, wiadro, miotła, krzyk; `idle: 'polish'`) i `CLEANER_FX_VISUAL`. Dźwięki z syntezy: okrzyk, plusk, winda.
+
+**Testy:** `tests/ai/Cleaners.test.ts` (piętro 8, chlust i kałuże, ślad stóp, wiadro i miotła, hak z dystansu w `BossBrain`, skalowanie, okrzyki z odstępem i bez powtórzeń, deterministyczne, próg ucieczki, limit obrażeń, etapy odjazdu, poślizg niezależny od klatek), `tests/dungeon/ElevatorPlanner.test.ts`, `tests/assets/cleaners.test.ts`. Testy „reszta pięter ma Strażnika” liczą piętro z `floorsPerLoop`. Build zielony (2132 testy).
+
+**Weryfikacja:** Playwright (Chromium, dev, `?floor=8&boss=1`): kałuże pod i za bohaterem, „Ślisko!”, okrzyki nad głową, odbicie sprzątaczki w posadzce; po zbiciu HP do 1/3 drzwi windy się otwierają, sprzątaczka biegnie, wsiada, drzwi się zamykają, pojawiają się karty nagrody. Bez błędów w konsoli.
+
+**Czeka na ocenę właściciela:** siła poślizgu (2,2/s, 0,45 s), wielkość i czas kałuż, częstość okrzyków, próg wściekłości (60%), HP (600 przed skalowaniem; walka trwa do 1/3), wygląd windy i kałuży.
+
+## Krok 126 — Czarnowłosa sprzątaczka „Twarda Miotła” i powrót blondynki windą `#sprzataczki` `#lustrzana-komnata`
+
+**Co powstało:** boss piętra 9 (`CLEANER_DARK`, `BossId.CleanerDark`) na wspólnym modelu sprzątaczek oraz pierwszy duet we wspinaczce: w połowie walki z brunetką z windy wraca blondynka, która uciekła piętro niżej.
+
+**Walka brunetki:**
+- **Cios miotłą** (cleave): szerszy i mocniejszy niż u blondynki (42 px, 19 obrażeń, mocny odrzut).
+- **Plątanie** (nowy atak `BossAttackKind.Tangle`, `TangleAttackDefinition`): wbija miotłę w posadzkę, po 0,8 s pod graczem wyrasta czarne włosie (strefa 26 px, 4 obrażenia). Trafiony jest **unieruchomiony** na 1,1 s (`RootEffect`, `systems/Root.ts`, `Player.applyRoot`): nie chodzi i nie robi dasha, ale atakuje dalej. Potem przez 2,2 s jest odporny — nigdy dwa unieruchomienia pod rząd. Włosie (`broom-tangle.png`: wyrasta, trzyma, pęka) idzie za bohaterem przy odrzucie, napis „Zaplątany!”. Dash i nietykalność po trafieniu chronią jak przed każdym atakiem. We wściekłości dwie strefy, druga tam, dokąd bohater biegnie.
+- **Chlust** jak u blondynki, ale z jedną kałużą (mniej poślizgu, więcej plątania).
+- Okrzyki: wspólna lista plus „Stój, nie depcz!”/„Ani kroku dalej!” przy plątaniu. Wściekłość przy 50% HP. Zwłoki zostają (bez roztapiania). Świta: Rusher biomu.
+
+**Powrót blondynki** (decyzja z karty w wątku: opcja polecana „wraca w walce z brunetką”, właściciel zostawił wybór mnie `#decyzja`):
+- `CLIMB_DUETS` w `config/bossConfig.ts` — duet z wejściem (`DuetArrival` w `systems/BossDuet.ts`: `shouldPartnerArrive`, `arrivalWounds`). Wspinaczka i areny bossów używają go tak samo; pajęczy duet zostaje tylko w arenach.
+- Do progu blondynki nie ma na arenie: niewidoczna, bez ciała, nie jest celem, pasek pokazuje samą brunetkę. Gdy brunetka spadnie do **50% HP** (albo padnie wcześniej), drzwi windy w północnym murze się otwierają, blondynka wychodzi z nich (0,7 s, nietykalna) z **1/3 HP** — tyle, z ilu uciekła — krzyczy „Znowu ty?!” i walczy do końca (bez ponownej ucieczki). Pasek zmienia się na wspólny „Sprzątaczki — Wielkie sprzątanie”.
+- Nagroda, łupy i schody dopiero po obu.
+
+**Testy:** `tests/systems/root.test.ts` (czas, brak przedłużania, odporność), `tests/systems/bossDuetArrival.test.ts` (próg wejścia, rany, duet na piętrze 9 w każdym kręgu, HP powrotu = HP ucieczki), brunetka w `tests/ai/Cleaners.test.ts` (piętro 9, plątanie i wściekłość z wyprzedzeniem, jedna kałuża, skalowanie, wygląd), jej arkusze w `tests/assets/cleaners.test.ts`. Build zielony.
+
+**Weryfikacja:** Playwright (`?floor=9&boss=1`): brunetka walczy sama, pasek „Sprzątaczka”; po zbiciu jej HP do połowy winda się otwiera, blondynka wychodzi z 1/3 HP z okrzykiem „Znowu ty?!”, pasek „Sprzątaczki”; po pokonaniu obu — nagroda. Plątanie: bohater stoi mimo wciśniętego klawisza, włosie na stopach, po 1,1 s rusza. Znaleziony i naprawiony błąd: unieruchomienie sprawdzało nietykalność, którą przed chwilą włączyło samo trafienie. Test dymny kroku 125 (piętra 1–9, trzej bohaterowie) zielony.
+
+**Czeka na ocenę właściciela:** długość unieruchomienia (1,1 s) i odporności (2,2 s), próg powrotu blondynki (50% HP brunetki), HP brunetki (700 przed skalowaniem), wygląd włosia.
+
+## Krok 127 — Pajęczy duet we wspinaczce, Lustrzana komnata na piętrach 7–8 `#decyzja` `#lustrzana-komnata` `#sprzataczki`
+
+**Co powstało:** układ wieży z zaakceptowanego konceptu sprzątaczek (`docs/SPRZATACZKI.md`, punkt 1): pajęczy duet zwalnia piętro, a Lustrzana komnata zajmuje koniec kręgu.
+
+**Nowy krąg (8 pięter, `TOWER_CONFIG.floorsPerLoop` 9 → 8):** 1 ruiny · 2 Grzybnia — Król i Matka Pająków w duecie (od początku, oboje z pełnym HP, świtę przywołuje tylko Król) · 3 Cmentarzysko — Grzybowy Pożeracz · 4–5 Piekło — Strażnik Bram, Kat Otchłani · 6 Palarnia — Baron Dymu · 7 Lustrzana komnata — blondynka (ucieka windą) · 8 Lustrzana komnata — brunetka (blondynka wraca windą). Od piętra 9 kolejny krąg.
+
+**Decyzje:**
+- Piętro duetu to **Grzybnia** (arena Króla, ukryta komnata po nim zostaje — reguła jest przypięta do biomu). **Pajęcze leże** wypada na razie ze wspinaczki (biom i kafle zostają w kodzie, do użycia jako filler albo w przyszłym kręgu) — `#decyzja` do potwierdzenia przez właściciela.
+- Duety mają jedną listę `BOSS_DUETS` (`config/bossConfig.ts`) dla wspinaczki i aren bossów; `BOSS_RUSH_DUETS` usunięte. Partner duetu wskazany przez `BossId` (`bossById`), bo Matka Pająków nie ma już własnego piętra.
+- Wybór piętra pokazuje nazwę duetu („Matka i Król Pająków”).
+- Areny bossów idą za wspinaczką: arena 2 to pajęczy duet, 7–8 sprzątaczki.
+- Uwaga: zapisy i postęp „Wybór piętra” pamiętają numer piętra — po zmianie układu stary zapis z piętra 3+ wczyta nowy biom tego numeru.
+
+**Testy:** testy bossów i biomów przepięte na nowy układ (piętra, krąg 8, ukryta komnata na piętrze 2, duet na piętrze 2 w każdym kręgu, Matka bez własnego piętra). Build zielony (2158 testów).
+
+**Weryfikacja:** Playwright, `?floor=2&boss=1`: pasek „Matka i Król Pająków”, oboje walczą od wejścia, po pokonaniu obojga — nagroda. Bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4856,6 +4942,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Lustrzana komnata (kroki 124–127):** `#lustrzana-komnata` piętra 7–8; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).

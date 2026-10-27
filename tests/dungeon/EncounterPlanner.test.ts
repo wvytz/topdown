@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TOWER_CONFIG } from '@/config/towerConfig';
 import { EnemyType } from '@/core/combatTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import { createRng } from '@/core/random';
@@ -147,7 +148,7 @@ describe('assignLurkers (krok 123)', () => {
 
   it('w konfiguracji: rzadziej niż gniazda — 1 na piętro w pierwszym kręgu, 2 w kolejnych', () => {
     expect(getEncounterConfigForFloor(3).lurker.maxPerFloor).toBe(1);
-    expect(getEncounterConfigForFloor(9).lurker.maxPerFloor).toBe(2);
+    expect(getEncounterConfigForFloor(TOWER_CONFIG.floorsPerLoop + 1).lurker.maxPerFloor).toBe(2);
     let nesters = 0;
     let lurkers = 0;
     FLOORS.forEach((floor, i) => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TOWER_CONFIG } from '@/config/towerConfig';
 import { HeroId } from '@/core/heroTypes';
 import { ItemId } from '@/core/lootTypes';
 import { RunMode } from '@/core/runMode';
@@ -72,7 +73,7 @@ describe('zapis gry', () => {
     expect(summary.details).toBe('540 złota · 3 przedmioty · 22.10 09:05');
     const arena = saveSummary(toSaveRecord({ ...data, floor: 2, run: { ...data.run, mode: RunMode.BossRush } }, 0));
     expect(arena.title).toBe('Łucznik · Arena 2');
-    expect(saveSummary(toSaveRecord({ ...data, floor: 9 }, 0)).title).toBe('Łucznik · Piętro 9 · Krąg II');
+    expect(saveSummary(toSaveRecord({ ...data, floor: TOWER_CONFIG.floorsPerLoop + 1 }, 0)).title).toBe(`Łucznik · Piętro ${TOWER_CONFIG.floorsPerLoop + 1} · Krąg II`);
   });
 
   it('odmiana słowa „przedmiot”', () => {

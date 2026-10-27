@@ -1,5 +1,5 @@
 /** Typy domenowe bossa — czyste dane, bez zależności od Phasera. */
-import type { EnemyType, ParalysisEffect, PoisonEffect, StatusApplication } from '@/core/combatTypes';
+import type { EnemyType, ParalysisEffect, PoisonEffect, SlipEffect, StatusApplication } from '@/core/combatTypes';
 import type { IntRange } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 
@@ -40,6 +40,10 @@ export enum BossAttackKind {
   Smoke = 'smoke',
   /** Wyrzut zarodników (Grzybowy Pożeracz, krok 111): strąki lecą łukiem tam, dokąd biegnie gracz, i zostawiają grzyby. */
   SporeVolley = 'spore-volley',
+  /** Chlust z wiadra (sprzątaczki, krok 125): woda rozlewa się przed bossem w kałuże, na których bohater się ślizga. */
+  Spill = 'spill',
+  /** Plątanie (brunetka, krok 126): pod bohaterem wyrasta czarne włosie miotły — kto stoi w strefie, nie może chodzić. */
+  Tangle = 'tangle',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -48,12 +52,16 @@ export enum BossId {
   SpiderQueen = 'spider-queen',
   SpiderKing = 'spider-king',
   FungalDevourer = 'fungal-devourer',
-  /** Piekło, piętro 5 (krok 41e): Strażnik Bram — tarcza z przodu, wirujący łańcuch. */
+  /** Piekło, pierwsze piętro (krok 41e; od kroku 127 piętro 4): Strażnik Bram — tarcza z przodu, wirujący łańcuch. */
   GateWarden = 'gate-warden',
-  /** Piekło, piętro 6 (krok 41f): Kat Otchłani — tarcza, hak, oddech palenisk, pierścień ognia. */
+  /** Piekło, drugie piętro (krok 41f; od kroku 127 piętro 5): Kat Otchłani — tarcza, hak, oddech palenisk, pierścień ognia. */
   AbyssExecutioner = 'abyss-executioner',
-  /** Piętro 7 (krok 83): Baron Dymu — gruby z puszką i fajką, smuga dymu, czarny dog u boku. */
+  /** Palarnia (krok 83; od kroku 127 piętro 6): Baron Dymu — gruby z puszką i fajką, smuga dymu, czarny dog u boku. */
   SmokeBaron = 'smoke-baron',
+  /** Lustrzana komnata, piętro A (krok 125): blond sprzątaczka — chlust i wiadro; przy 1/3 HP ucieka windą. */
+  CleanerBlonde = 'cleaner-blonde',
+  /** Lustrzana komnata, piętro B (krok 126): brunetka — miotła, plątanie i chlust; w połowie walki wraca blondynka. */
+  CleanerDark = 'cleaner-dark',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -381,6 +389,8 @@ export interface HookAttackDefinition extends BaseBossAttackDefinition {
   readonly step: number;
   readonly radius: number;
   readonly followUp: { readonly delayMs: number; readonly reach: number; readonly radius: number; readonly damage: number; readonly knockback: number };
+  /** Wiadro na sznurze zamiast łańcucha z hakiem (sprzątaczka, krok 125): leci wiadro, napis „Do wiadra z tobą!”. */
+  readonly look?: 'bucket';
 }
 
 /** Oddech palenisk: po telegrafie wszystkie paleniska areny buchają naraz (strefa `radius` wokół każdego). */
@@ -452,6 +462,67 @@ export interface BossDogDefinition {
   readonly summonCooldownMs: number;
   /** Po śmierci dog wraca do boku Barona po tylu ms. */
   readonly respawnMs: number;
+}
+
+/**
+ * Chlust z wiadra (sprzątaczki, krok 125): po zamachu woda chlusta przed bossa — strefa `splashRadius` na miejscu
+ * gracza (lekkie obrażenia, odrzut) i `count` kałuż (po wściekłości jedna więcej): pierwsza tam, dalsze w wachlarzu
+ * `behindDistance` za graczem. Kałuża rośnie, leży `puddle.durationMs` i daje poślizg (`slip`) każdemu w niej.
+ */
+export interface SpillAttackDefinition extends BaseBossAttackDefinition {
+  readonly splashRadius: number;
+  readonly count: number;
+  readonly behindDistance: number;
+  readonly fanDeg: number;
+  readonly puddle: { readonly startRadius: number; readonly maxRadius: number; readonly spreadMs: number; readonly durationMs: number };
+  readonly slip: SlipEffect;
+}
+
+/**
+ * Okrzyki bossa (sprzątaczki, krok 125): napis nad głową. Na początku ataku z `attacks` (o ile od ostatniego minęło
+ * `minGapMs`), a poza tym co `everyMs` linia z `idle`. Teksty w konfiguracji bossa — łatwo je zmienić.
+ */
+export interface BossShoutDefinition {
+  readonly idle: readonly string[];
+  readonly attacks: Readonly<Partial<Record<BossAttackKind, readonly string[]>>>;
+  readonly everyMs: { readonly min: number; readonly max: number };
+  readonly minGapMs: number;
+  /** Okrzyk przy ucieczce windą (escape). */
+  readonly escape?: string;
+  /** Okrzyk przy wyjściu z windy w trakcie walki (blondynka w duecie, krok 126). */
+  readonly arrive?: string;
+}
+
+/**
+ * Unieruchomienie (plątanie brunetki, krok 126): trafiony nie chodzi i nie robi dasha przez `durationMs`, ale może
+ * atakować. Potem przez `immunityMs` nie da się go unieruchomić znowu (koncept: nigdy dwa unieruchomienia naraz).
+ */
+export interface RootEffect {
+  readonly durationMs: number;
+  readonly immunityMs: number;
+}
+
+/**
+ * Plątanie (brunetka, krok 126): miotła wbita w posadzkę, po telegrafie pod graczem wyrasta czarne włosie — strefa
+ * `radius` na miejscu gracza z chwili planu (we wściekłości druga tam, dokąd biegnie). Lekkie obrażenia i `root`.
+ */
+export interface TangleAttackDefinition extends BaseBossAttackDefinition {
+  readonly radius: number;
+  readonly root: RootEffect;
+  readonly lead: AimLead;
+}
+
+/**
+ * Ucieczka windą (pomysł właściciela, krok 125): przy `hpRatio` HP boss przerywa walkę, w północnym murze areny
+ * otwiera się winda, boss biegnie do niej (`speedMultiplier` × chód) i odjeżdża na górne piętro — to jego „pokonanie”
+ * (łupy, karty, schody). Do tej chwili trafienia nie zbiją go poniżej 1 HP, więc ucieczka zawsze nastąpi.
+ */
+export interface BossEscapeDefinition {
+  readonly hpRatio: number;
+  readonly speedMultiplier: number;
+  /** Drzwi otwierają się, gdy boss rusza do windy; przy drzwiach wsiada przez `boardMs`, potem zamykanie `closeMs`. */
+  readonly boardMs: number;
+  readonly closeMs: number;
 }
 
 export interface BossEnrageConfig {
@@ -541,6 +612,14 @@ export interface BossDefinition {
   readonly smoke?: SmokeAttackDefinition;
   /** Wyrzut zarodników (Grzybowy Pożeracz, krok 111). */
   readonly sporeVolley?: SporeVolleyDefinition;
+  /** Chlust z wiadra (sprzątaczki, krok 125). */
+  readonly spill?: SpillAttackDefinition;
+  /** Plątanie miotłą (brunetka, krok 126). */
+  readonly tangle?: TangleAttackDefinition;
+  /** Okrzyki z napisami (sprzątaczki, krok 125). */
+  readonly shouts?: BossShoutDefinition;
+  /** Ucieczka windą zamiast śmierci (blond sprzątaczka, krok 125). */
+  readonly escape?: BossEscapeDefinition;
   /** Ślad grzybów za bossem (Grzybowy Pożeracz, krok 111); też płaty z wyrzutu i skoku. */
   readonly trail?: FungalTrailDefinition;
   /** Dog Barona — boss-pomocnik. */
@@ -573,8 +652,10 @@ export interface AreaStrike {
   readonly pullTo?: Vector2;
   /** Trafienie smugi dymu przywołuje doga (Baron Dymu). */
   readonly summonsDog?: boolean;
+  /** Trafienie unieruchamia (plątanie brunetki, krok 126). */
+  readonly root?: RootEffect;
   /** Wygląd strefy: dym zamiast czerwonego telegrafu; `spores` — czerwony telegraf, wybuch w kolorach soku (krok 111). */
-  readonly look?: 'smoke' | 'spores';
+  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -621,20 +702,24 @@ export interface WebShot {
   readonly maxRadius: number;
   readonly spreadMs: number;
   readonly expiresAt: number;
-  readonly slow: { readonly pct: number; readonly durationMs: number };
+  /** Spowolnienie w płacie; brak = bez spowolnienia (kałuża sprzątaczki ślizga zamiast spowalniać). */
+  readonly slow?: { readonly pct: number; readonly durationMs: number };
+  /** Poślizg w płacie (kałuża sprzątaczki, krok 125). */
+  readonly slip?: SlipEffect;
   /**
-   * Wygląd płatu: sieć (Matka Pająków), grzybnia (Król) albo grzyby (Pożeracz, krok 111). Brak = sieć.
-   * Grzyby łapią ślad stóp bohatera (jak strefy z kroku 110), sieć i grzybnia — środek postaci.
+   * Wygląd płatu: sieć (Matka Pająków), grzybnia (Król), grzyby (Pożeracz, krok 111) albo kałuża mydlin
+   * (sprzątaczki, krok 125). Brak = sieć. Grzyby i kałuża łapią ślad stóp bohatera (jak strefy z kroku 110),
+   * sieć i grzybnia — środek postaci.
    */
-  readonly look?: 'web' | 'mycelium' | 'mushrooms';
+  readonly look?: 'web' | 'mycelium' | 'mushrooms' | 'water';
   /** Dodatkowy status w płacie (trucizna grzybni). */
   readonly status?: StatusApplication;
 }
 
 /** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
 export interface ThrownObject {
-  /** Co leci: kokon Króla (domyślnie), puszka Barona albo strąk zarodników Pożeracza. */
-  readonly look?: 'can' | 'spore';
+  /** Co leci: kokon Króla (domyślnie), puszka Barona, strąk zarodników Pożeracza albo wiadro sprzątaczki. */
+  readonly look?: 'can' | 'spore' | 'bucket';
   readonly from: Vector2;
   readonly to: Vector2;
   readonly launchAt: number;

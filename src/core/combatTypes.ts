@@ -131,6 +131,16 @@ export interface ParalysisEffect {
   readonly durationMs: number;
 }
 
+/**
+ * Poślizg na mokrej posadzce (krok 125, sprzątaczki): bohater zachowuje pęd i skręca z bezwładnością — prędkość
+ * dąży do zamierzonej z siłą `traction` (1/s; im mniej, tym dłużej sunie). Odnawiany co klatkę w kałuży,
+ * trzyma jeszcze `durationMs` po wyjściu (mokre buty).
+ */
+export interface SlipEffect {
+  readonly durationMs: number;
+  readonly traction: number;
+}
+
 /** Trucizna (krok 27, Matka Pająków): obrażenia co `tickMs` przez `durationMs` — mechanika jak podpalenie. */
 export type PoisonEffect = BurnEffect;
 

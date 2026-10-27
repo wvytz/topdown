@@ -48,15 +48,17 @@ function groupPixels(meta: TilesetMeta, sheet: RgbaImage, group: string): Rgba[]
 }
 
 describe('biomy: wybór piętra', () => {
-  it('biomy: 2 leże, 3 Grzybnia, 4 Cmentarzysko, 5–6 Piekło (dwa piętra), 7 palarnia, 1 ruiny; potem kolejny krąg (kroki 43, 83)', () => {
-    expect(biomeForFloor(2).id).toBe(BiomeId.SpiderLair);
-    expect(biomeForFloor(3).id).toBe(BiomeId.FungalGrove);
-    expect(biomeForFloor(4).id).toBe(BiomeId.Graveyard);
+  it('biomy: 2 Grzybnia (pajęczy duet), 3 Cmentarzysko, 4–5 Piekło, 6 palarnia, 7–8 Lustrzana komnata, 1 ruiny; potem kolejny krąg (kroki 43, 83, 124, 127)', () => {
+    expect(biomeForFloor(2).id).toBe(BiomeId.FungalGrove);
+    expect(biomeForFloor(3).id).toBe(BiomeId.Graveyard);
+    expect(biomeForFloor(4).id).toBe(BiomeId.Infernal);
     expect(biomeForFloor(5).id).toBe(BiomeId.Infernal);
-    expect(biomeForFloor(6).id).toBe(BiomeId.Infernal);
-    expect(biomeForFloor(7).id).toBe(BiomeId.SmokeDen);
-    for (const floor of [1, 8, 15]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
+    expect(biomeForFloor(6).id).toBe(BiomeId.SmokeDen);
+    expect(biomeForFloor(7).id).toBe(BiomeId.MirrorHall);
+    expect(biomeForFloor(8).id).toBe(BiomeId.MirrorHall);
+    for (const floor of [1, 9, 17]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
     expect(biomeForFloor(10).id).toBe(BiomeId.FungalGrove);
+    expect(biomeForFloor(16).id).toBe(BiomeId.MirrorHall);
   });
 
   it('każdy biom ma własne klucze tekstur i animacji pochodni', () => {
@@ -85,6 +87,26 @@ describe.each(biomes)('arkusz biomu: %s', (_name, biome) => {
     }
     expect(meta.tiles.torch_sconce).toBeDefined();
     expect(meta.groups.torchFlame?.length).toBe(4);
+  });
+});
+
+describe('Lustrzana komnata (krok 124)', () => {
+  const hall = BIOMES[BiomeId.MirrorHall];
+  const meta = loadTileset(fileOf(hall.tileset.jsonUrl));
+
+  it('ma lustrzaną posadzkę, własne lica i nakładki; bez mgły (posadzka świeci)', () => {
+    expect(hall.mirrorFloor).toBeTruthy();
+    expect(hall.fog).toBeNull();
+    expect(hall.dressing.wallFace.group).toBe('wallFace.mirror');
+    for (const group of ['decal.shards', 'decal.slop', 'decal.suds']) expect(meta.groups[group]?.length, group).toBeGreaterThan(0);
+    expect(hall.dressing.nest?.decals?.group).toBe('decal.suds');
+  });
+
+  it('odbicie gaśnie ku dołowi, a inne biomy go nie mają', () => {
+    const r = hall.mirrorFloor!.reflection;
+    expect(r.alphaNear).toBeGreaterThan(r.alphaFar);
+    expect(r.alphaNear).toBeLessThanOrEqual(0.5);
+    expect(Object.values(BIOMES).filter((b) => b.mirrorFloor).map((b) => b.id)).toEqual([BiomeId.MirrorHall]);
   });
 });
 

@@ -1,6 +1,7 @@
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorInLoop } from '@/systems/TowerLoop';
 import type { BossDefinition } from '@/core/bossTypes';
+import type { BossDuetDefinition } from '@/systems/BossDuet';
 import { BossAttackKind, BossId, PatternOrder } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
 import { EnemyType } from '@/core/combatTypes';
@@ -639,20 +640,170 @@ export const SMOKE_BARON = {
   },
 } satisfies BossDefinition;
 
+/** Okrzyki sprzątaczek (krok 125, teksty z konceptu zaakceptowanego przez właściciela; łatwo je zmienić). */
+const CLEANER_SHOUTS = {
+  idle: ['Nie chodź po mokrym!', 'Uwaga, ślisko!', 'Dopiero co myłam!', 'Wycieraj buty!', 'Kto tu nabłocił?!'],
+  attacks: {
+    [BossAttackKind.Spill]: ['Nie chodź po mokrym!', 'Uwaga, ślisko!'],
+    [BossAttackKind.Hook]: ['Do wiadra z tobą!'],
+    [BossAttackKind.Cleave]: ['Zaraz cię wymiotę!'],
+    [BossAttackKind.Roar]: ['Kto tu nabłocił?!'],
+    [BossAttackKind.Tangle]: ['Stój, nie depcz!', 'Ani kroku dalej!'],
+  },
+  everyMs: { min: 5000, max: 9000 },
+  minGapMs: 1800,
+} as const;
+
 /**
- * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
- * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
+ * Blond sprzątaczka „Mokra Podłoga” (krok 125, pomysł właściciela `#sprzataczki`): boss piętra A Lustrzanej komnaty.
+ * Młoda, szczupła, ciut wyższa od brunetki; polerując posadzkę stoi i sypie błyskami.
+ * - chlust z wiadra: kałuże mydlin przed nią i za graczem — na mokrym bohater się ślizga (sunie, skręca z bezwładnością);
+ * - wiadro na sznurze (poza wzorem, z dystansu): ściąga trafionego pod jej stopy, zaraz potem zamiata miotłą;
+ * - cios miotłą przed sobą;
+ * - krzyczy z napisami nad głową;
+ * - przy 1/3 HP (pomysł właściciela) w północnym murze otwiera się winda i sprzątaczka ucieka na górne piętro.
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const CLEANER_BLONDE = {
+  id: BossId.CleanerBlonde,
+  name: 'Sprzątaczka',
+  title: 'Mokra Podłoga',
+  enragedLabel: 'Wściekła!',
+  radius: 18,
+  color: 0xe0c070,
+  maxHp: 600,
+  moveSpeed: 74,
+  sprint: { speed: 150, distance: 170 },
+  engageDistance: 54,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1150,
+  pattern: [BossAttackKind.Spill, BossAttackKind.Cleave],
+  patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): Rusher biomu — na razie śmieciarz z ruin, pasuje do sprzątania.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 18000, enragedEveryMs: 13000 },
+  spill: {
+    telegraphMs: 750,
+    recoveryMs: 600,
+    damage: 6,
+    knockback: 140,
+    splashRadius: 34,
+    count: 2,
+    behindDistance: 72,
+    fanDeg: 70,
+    puddle: { startRadius: 16, maxRadius: 44, spreadMs: 500, durationMs: 8000 },
+    slip: { durationMs: 450, traction: 2.2 },
+  },
+  // Cios miotłą: krótki zamach przed sobą.
+  cleave: { reach: 30, radius: 36, telegraphMs: 600, recoveryMs: 650, damage: 16, knockback: 260 },
+  // Wiadro na sznurze: z dystansu ściąga pod stopy, potem zamach miotłą dookoła przed sobą.
+  hook: {
+    look: 'bucket',
+    minRange: 110,
+    maxRange: 240,
+    cooldownMs: 5000,
+    telegraphMs: 650,
+    recoveryMs: 500,
+    step: 22,
+    radius: 14,
+    damage: 5,
+    knockback: 0,
+    followUp: { delayMs: 450, reach: 26, radius: 42, damage: 14, knockback: 300 },
+  },
+  // `arrive` — wyjście z windy w walce z brunetką (krok 126).
+  shouts: { ...CLEANER_SHOUTS, escape: 'Sprzątaj sobie sam!', arrive: 'Znowu ty?!' },
+  escape: { hpRatio: 1 / 3, speedMultiplier: 2.2, boardMs: 700, closeMs: 600 },
+  enrage: {
+    ...ENRAGE_FURY,
+    // Wściekłość przed ucieczką (przy 1/3 HP): krótszy telegraf i serie w ostatniej części walki.
+    hpThreshold: 0.6,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
+ * Czarnowłosa sprzątaczka „Twarda Miotła” (krok 126, `#sprzataczki`): boss piętra B Lustrzanej komnaty, na tym samym
+ * modelu co blondynka (ciut niższa). Miotła zamiast wiadra:
+ * - cios miotłą — szerszy i mocniejszy niż u blondynki;
+ * - plątanie: wbija miotłę w posadzkę, pod graczem wyrasta czarne włosie i unieruchamia go (ataki wolno, ruch
+ *   i dash nie); po uwolnieniu chwila odporności; we wściekłości dwie strefy — druga tam, dokąd bohater biegnie;
+ * - chlust jak u blondynki, ale jedna kałuża (mniej poślizgu, więcej plątania);
+ * - w połowie jej HP z windy wraca blondynka z 1/3 HP (duet `BOSS_DUETS`, decyzja w wątku właściciela).
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const CLEANER_DARK = {
+  id: BossId.CleanerDark,
+  name: 'Sprzątaczka',
+  title: 'Twarda Miotła',
+  enragedLabel: 'Wściekła!',
+  radius: 17,
+  color: 0x403848,
+  maxHp: 700,
+  moveSpeed: 78,
+  sprint: { speed: 155, distance: 170 },
+  engageDistance: 50,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1100,
+  pattern: [BossAttackKind.Cleave, BossAttackKind.Tangle, BossAttackKind.Spill],
+  patternOrder: PatternOrder.Shuffled,
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 18000, enragedEveryMs: 13000 },
+  cleave: { reach: 34, radius: 42, telegraphMs: 620, recoveryMs: 600, damage: 19, knockback: 300 },
+  tangle: {
+    telegraphMs: 800,
+    recoveryMs: 700,
+    damage: 4,
+    knockback: 0,
+    radius: 26,
+    root: { durationMs: 1100, immunityMs: 2200 },
+    lead: { ms: 500, maxPx: 100 },
+  },
+  spill: { ...CLEANER_BLONDE.spill, count: 1 },
+  shouts: CLEANER_SHOUTS,
+  enrage: {
+    ...ENRAGE_FURY,
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
+ * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem.
+ * Od kroku 127 (koncept sprzątaczek zaakceptowany przez właściciela): 2 — Król Pająków z Matką Pająków (duet
+ * w Grzybni, `BOSS_DUETS`), 3 — Grzybowy Pożeracz (Cmentarzysko), 4–5 — Piekło, 6 — Baron Dymu,
+ * 7–8 — sprzątaczki (Lustrzana komnata).
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
-  2: SPIDER_QUEEN,
-  3: SPIDER_KING,
-  4: FUNGAL_DEVOURER,
-  5: GATE_WARDEN,
-  6: ABYSS_EXECUTIONER,
-  7: SMOKE_BARON,
+  2: SPIDER_KING,
+  3: FUNGAL_DEVOURER,
+  4: GATE_WARDEN,
+  5: ABYSS_EXECUTIONER,
+  6: SMOKE_BARON,
+  7: CLEANER_BLONDE,
+  8: CLEANER_DARK,
 };
 
-/** Boss piętra; od piętra 7 kolejny krąg wieży powtarza bossów 1–6 (krok 43). */
+/** Wszyscy bossowie gry — partner duetu nie musi mieć własnego piętra (Matka Pająków od kroku 127). */
+const ALL_BOSSES: readonly BossDefinition[] = [
+  FLOOR_GUARDIAN,
+  SPIDER_QUEEN,
+  SPIDER_KING,
+  FUNGAL_DEVOURER,
+  GATE_WARDEN,
+  ABYSS_EXECUTIONER,
+  SMOKE_BARON,
+  CLEANER_BLONDE,
+  CLEANER_DARK,
+];
+
+/** Definicja bossa po identyfikatorze (partner duetu). */
+export function bossById(id: BossId): BossDefinition {
+  const boss = ALL_BOSSES.find((b) => b.id === id);
+  if (!boss) throw new Error(`bossById: nieznany boss ${id}`);
+  return boss;
+}
+
+/** Boss piętra; po ostatnim piętrze kręgu kolejny krąg wieży powtarza bossów od nowa (krok 43). */
 export function bossForFloor(floor: number): BossDefinition {
   return BOSS_BY_FLOOR[floorInLoop(floor, TOWER_CONFIG)] ?? FLOOR_GUARDIAN;
 }
@@ -689,6 +840,8 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.kindle && { kindle: dmg(boss.kindle) }),
     ...(boss.smoke && { smoke: dmg(boss.smoke) }),
     ...(boss.sporeVolley && { sporeVolley: dmg(boss.sporeVolley) }),
+    ...(boss.spill && { spill: dmg(boss.spill) }),
+    ...(boss.tangle && { tangle: dmg(boss.tangle) }),
     ...(boss.dog && {
       dog: {
         ...boss.dog,
@@ -715,3 +868,36 @@ export const BOSS_STATUS_RESISTANCE: StatusResistance = {
   slowMultiplier: 0.5,
   burnMultiplier: 0.5,
 };
+
+/**
+ * Duety bossów — we wspinaczce i w arenach bossów tak samo.
+ * - Pajęczy duet (krok 114, pomysł właściciela; od kroku 127 także we wspinaczce): w Grzybni Król Pająków
+ *   i Matka Pająków walczą naraz, każde z pełnym HP. Zwolnione piętro dostała Lustrzana komnata.
+ * - Sprzątaczki (krok 126, `#sprzataczki`): na piętrze brunetki w połowie jej HP z windy w północnym murze wraca
+ *   blondynka, która uciekła piętro niżej — z 1/3 HP (tyle, z ilu uciekła).
+ */
+export const BOSS_DUETS: readonly BossDuetDefinition[] = [
+  {
+    floorInLoop: 2,
+    partner: BossId.SpiderQueen,
+    spawnOffsetTiles: 2.5,
+    bodyGapPx: 4,
+    hpMultiplier: 1,
+    // Dwie świty naraz to za dużo tłoku na arenie — przywołuje tylko Król (zarażone pająki).
+    partnerRetinue: false,
+    name: 'Matka i Król Pająków',
+    title: 'Pajęczy duet',
+  },
+  {
+    floorInLoop: 8,
+    partner: BossId.CleanerBlonde,
+    spawnOffsetTiles: 0,
+    bodyGapPx: 4,
+    hpMultiplier: 1,
+    // Blondynka wpada sama — świtę przywołuje tylko brunetka.
+    partnerRetinue: false,
+    name: 'Sprzątaczki',
+    title: 'Wielkie sprzątanie',
+    arrival: { hostHpRatio: 0.5, partnerHpRatio: 1 / 3, enterMs: 700 },
+  },
+];

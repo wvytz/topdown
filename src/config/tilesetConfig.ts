@@ -45,6 +45,20 @@ export const SMOKE_DEN_TILESET_ASSET: TilesetAsset = {
   version: 2,
 };
 
+/**
+ * Lustrzana komnata (krok 124): `python tools/tower_ruins_tiles.py --biome mirror_hall`. Polerowana, opalizująca
+ * posadzka i najbardziej zniszczone mury w wieży; pochodnie jak w ruinach.
+ */
+export const MIRROR_HALL_TILESET_ASSET: TilesetAsset = {
+  imageKey: 'tex-tileset-mirror-hall',
+  jsonKey: 'json-tileset-mirror-hall',
+  sheetKey: 'sheet-tileset-mirror-hall',
+  imageUrl: 'assets/tilesets/mirror_hall_tileset.png',
+  jsonUrl: 'assets/tilesets/mirror_hall_tileset.json',
+  torchAnimation: 'torch-flame-mirror-hall',
+  version: 2,
+};
+
 /** Cmentarzysko (krok 32a): `python tools/tower_ruins_tiles.py --biome graveyard`. Pochodnie to świece w uchwytach. */
 export const GRAVEYARD_TILESET_ASSET: TilesetAsset = {
   imageKey: 'tex-tileset-graveyard',

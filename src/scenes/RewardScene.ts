@@ -16,6 +16,8 @@ export interface RewardSceneData {
   readonly onPick: (itemId: ItemId) => void;
   /** Co-op (etap C4): kto teraz wybiera, np. „P2 — Łucznik wybiera”. */
   readonly picker?: string;
+  /** Napis nad kartami zamiast „STRAŻNIK POKONANY” (np. sprzątaczka uciekła windą, krok 125). */
+  readonly headline?: string;
 }
 
 const CARD_WIDTH = 210;
@@ -69,7 +71,7 @@ export class RewardScene extends Phaser.Scene {
     };
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x05050a, 0.78);
-    this.add.text(width / 2, 70, 'STRAŻNIK POKONANY', { ...style, fontSize: '28px', color: '#f5c542' }).setOrigin(0.5);
+    this.add.text(width / 2, 70, data.headline ?? 'STRAŻNIK POKONANY', { ...style, fontSize: '28px', color: '#f5c542' }).setOrigin(0.5);
     this.hintText = this.add
       .text(width / 2, 108, '…', { ...style, fontSize: '14px', color: '#8080a0' })
       .setOrigin(0.5);

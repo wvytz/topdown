@@ -14,12 +14,12 @@ import type {
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
-import type { BossDogDefinition } from '@/core/bossTypes';
+import type { BossDefinition, BossDogDefinition, BossId } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { withHpMultiplier } from '@/systems/CoopBalance';
 import {
   BOSS_LEAP_VISUAL,
@@ -68,6 +68,12 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot, shotTouches } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { CLEANER_FX_VISUAL } from '@/config/spriteConfig';
+import { ShoutSchedule } from '@/systems/BossShouts';
+import { EscapeStage, escapeStage, shouldEscape } from '@/systems/BossEscape';
+import type { DuetArrival } from '@/systems/BossDuet';
+import { arrivalWounds } from '@/systems/BossDuet';
+import { planElevator } from '@/dungeon/ElevatorPlanner';
 import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
 import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
 import { FungalTrail } from '@/systems/FungalTrail';
@@ -100,12 +106,17 @@ export interface BossFightDeps {
   readonly spawnHelper?: (type: EnemyType, at: Vector2) => { readonly isDead: boolean; readonly active: boolean };
   /** Wabik (totem łucznika, krok 98): boss i jego dog celują w niego zamiast w gracza; null — w gracza. */
   readonly aggroTarget?: () => Vector2 | null;
-  /** Duet (krok 114): piętro, którego boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
-  readonly bossFloor?: number;
+  /** Duet (krok 114): który boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
+  readonly bossId?: BossId;
   /** Duet: przesunięcie miejsca startu od środka areny (px). */
   readonly spawnOffset?: Vector2;
   /** Duet: własne ziarno losowania bossa i świty (brak — ziarno piętra), by partner nie powtarzał gospodarza. */
   readonly seed?: number;
+  /**
+   * Duet z wejściem (krok 126): boss czeka poza areną, aż BossEncounter wywoła `arrive` — wtedy wychodzi z windy
+   * w północnym murze, ranny. Bez ucieczki (już raz uciekł).
+   */
+  readonly arrival?: DuetArrival;
 }
 
 /** Bohater, który atakuje bossa (pozycja i czy żyje). */
@@ -176,6 +187,9 @@ const RETINUE_SEED_SALT = 0x5717;
 const LARDER_SEED_SALT = 0x1a4d;
 const THRONE_SEED_SALT = 0x7407;
 const REFLECT_SEED_SALT = 0x2ef1;
+const SHOUT_SEED_SALT = 0x5a0f;
+/** Winda nie może stać tuż przy wejściu w północnej ścianie (kafle odstępu). */
+const ELEVATOR_ENTRANCE_CLEAR = 1;
 /** Napisy uczty i leczenia Pożeracza. */
 const FEAST_TEXT_COLOR = '#ff5a6e';
 const BOSS_DEFAULT_ENRAGED_LABEL = 'wściekły!';
@@ -241,6 +255,25 @@ export class BossFight {
   /** Ślad grzybów za Pożeraczem (krok 111). */
   private readonly trail: FungalTrail | null;
   private nextMoteAt = 0;
+  /** Okrzyki z napisami (sprzątaczki, krok 125). */
+  private readonly shouts: ShoutSchedule | null;
+  private lastSlipTextAt = -Infinity;
+  /** Ostatni napis okrzyku — nowy zastępuje go, żeby napisy się nie nakładały. */
+  private lastShout: Phaser.GameObjects.Text | null = null;
+  private nextPolishAt = 0;
+  /** Włosie miotły na stopach zaplątanych bohaterów (brunetka, krok 126). */
+  private tangles: Array<{ readonly player: Player; readonly sprite: Phaser.GameObjects.Sprite }> = [];
+  /** Sznur wiadra w locie (sprzątaczka). */
+  private readonly ropeGfx: Phaser.GameObjects.Graphics | null;
+  /** Winda w północnym murze (krok 125): sprite drzwi i miejsce przed nimi, do którego biegnie boss. */
+  private readonly elevator: { readonly sprite: Phaser.GameObjects.Sprite; readonly door: Vector2 } | null;
+  /** Duet z wejściem (krok 126): boss jeszcze poza areną / chwila wychodzenia z windy (nietykalny). */
+  private dormant = false;
+  private enteringUntil = -Infinity;
+  /** Ucieczka windą w toku. */
+  private escape: { arrivedAt: number | null; closing: boolean } | null = null;
+  /** Boss odjechał windą (krok 125) — „pokonany” bez śmierci. */
+  escaped = false;
   /** Pełne HP bossa (wspólny pasek duetu liczy je także po jego śmierci). */
   readonly maxHp: number;
 
@@ -249,8 +282,9 @@ export class BossFight {
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
     this.arena = arena;
 
-    const bossFloor = deps.bossFloor ?? deps.floorNumber;
-    const definition = withHpMultiplier(scaleBossForFloor(bossForFloor(bossFloor), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
+    const scaled = withHpMultiplier(scaleBossForFloor(this.baseDefinition(), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
+    // Wracający z windy boss już raz uciekł — tym razem walczy do końca.
+    const definition = deps.arrival ? withoutEscape(scaled) : scaled;
     this.maxHp = definition.maxHp;
     this.spiderlingDefinition = definition.spiderling ?? null;
     const center = arenaCenter(arena);
@@ -264,6 +298,14 @@ export class BossFight {
     this.retinueRng = createRng(deriveSeed(seed, RETINUE_SEED_SALT));
     this.reflectRng = createRng(deriveSeed(seed, REFLECT_SEED_SALT));
     this.trail = definition.trail ? new FungalTrail(definition.trail) : null;
+    this.shouts = definition.shouts ? new ShoutSchedule(definition.shouts, createRng(deriveSeed(seed, SHOUT_SEED_SALT))) : null;
+    this.ropeGfx = definition.hook?.look === 'bucket' ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.projectile) : null;
+    this.elevator = definition.escape || deps.arrival ? this.buildElevator(arena, definition.radius) : null;
+    if (deps.arrival) {
+      this.dormant = true;
+      boss.setVisible(false);
+      (boss.body as Phaser.Physics.Arcade.Body).enable = false;
+    }
 
     deps.scene.physics.add.collider(boss, deps.walls);
     for (const member of deps.party.members) deps.scene.physics.add.collider(member, boss);
@@ -295,6 +337,20 @@ export class BossFight {
         this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius, i));
       });
     }
+  }
+
+  /**
+   * Winda w północnym murze areny (krok 125): stoi zamknięta od początku walki (gracz może się domyślić, dokąd boss
+   * ucieknie). Bez miejsca w murze — drzwi „niewidoczne” na środku górnej krawędzi areny.
+   */
+  private buildElevator(arena: Room, bossRadius: number): { readonly sprite: Phaser.GameObjects.Sprite; readonly door: Vector2 } {
+    const tile = planElevator(this.deps.floor, arena, ELEVATOR_ENTRANCE_CLEAR) ?? { x: arena.x + Math.floor(arena.width / 2) - 1, y: arena.y - 1 };
+    const x = (tile.x + 1) * TILE_SIZE;
+    const wallBottom = (tile.y + 1) * TILE_SIZE;
+    const { sheet, closed } = CLEANER_FX_VISUAL.elevator;
+    const sprite = this.deps.scene.add.sprite(x, wallBottom, SPRITE_SHEETS[sheet].key).setOrigin(0.5, 1).setDepth(RENDER_DEPTH.wallDecor);
+    sprite.play(animationKey(sheet, closed));
+    return { sprite, door: { x, y: wallBottom + bossRadius + 2 } };
   }
 
   /** Tron z grzybni i naklejki krwi, grzybni i soku (dekoracje bez kolizji; zostają po walce). */
@@ -332,13 +388,13 @@ export class BossFight {
 
   /** Gdzie stoi boss (null po śmierci). */
   get position(): Vector2 | null {
-    return this.boss ? { x: this.boss.x, y: this.boss.y } : null;
+    return this.boss && !this.dormant ? { x: this.boss.x, y: this.boss.y } : null;
   }
 
   /** Ciało bossa na ziemi (żywy, nie w locie skoku) — tylko takie rozpycha duet. */
   get grounded(): (Vector2 & { readonly radius: number }) | null {
     const boss = this.boss;
-    return boss && !this.leap ? { x: boss.x, y: boss.y, radius: boss.radius } : null;
+    return boss && !this.leap && !this.dormant ? { x: boss.x, y: boss.y, radius: boss.radius } : null;
   }
 
   /** Przesunięcie bossa (rozpychanie duetu); ściany zatrzymają go w kolejnym kroku fizyki. */
@@ -357,7 +413,11 @@ export class BossFight {
 
   /** Imię bossa (napis areny). */
   get bossName(): string {
-    return bossForFloor(this.deps.bossFloor ?? this.deps.floorNumber).name;
+    return this.baseDefinition().name;
+  }
+
+  private baseDefinition(): BossDefinition {
+    return this.deps.bossId ? bossById(this.deps.bossId) : bossForFloor(this.deps.floorNumber);
   }
 
   /** Stan dla HUD — null, dopóki walka się nie zaczęła lub po zwycięstwie. */
@@ -387,6 +447,12 @@ export class BossFight {
       this.fireRingGfx?.clear();
       return;
     }
+    // Partner duetu poza areną (krok 126) albo w drzwiach windy.
+    if (this.dormant) return;
+    if (this.updateEntering(boss, now)) {
+      this.lastNow = now;
+      return;
+    }
     // Walka zaczyna się, gdy którykolwiek żywy bohater wejdzie na arenę.
     if (!boss.isFighting && this.deps.party.living.some((member) => this.isInArena(member))) boss.activate(now);
 
@@ -398,9 +464,23 @@ export class BossFight {
       return;
     }
 
+    // Ucieczka windą (krok 125): przy progu HP boss przerywa walkę i biegnie do windy; zaplanowane strefy dobiegają końca.
+    const escape = boss.definition.escape;
+    if (escape && !this.escape && boss.isFighting && shouldEscape(boss.health.value, boss.health.max, escape)) this.startEscape(boss);
+    if (this.escape) {
+      this.updateEscape(boss, now);
+      if (!this.boss) return;
+      this.updateStrikes(now);
+      this.updateTangles(now);
+      this.updateWebs(now);
+      this.updateThrows(now);
+      return;
+    }
+
     const larders = this.larders.map((larder) => larder.position);
     const braziers = this.arenaBraziers.map((b) => b.at);
     const plan = boss.tick(this.aggroPoint(), now, this.spiderlings.count + this.spawns.length, larders, braziers);
+    if (boss.isFighting) this.updateShouts(now);
     this.updateFireRing(boss, now);
     if (plan) this.schedule(plan);
     this.updateLarders(boss, now);
@@ -409,8 +489,10 @@ export class BossFight {
     this.updateLeap(boss, now);
     this.updateTrail(boss, now);
     this.updateDog(boss, now);
+    this.updatePolish(boss, now);
 
     this.updateStrikes(now);
+    this.updateTangles(now);
     this.updateBursts(now);
     this.updateSpawns(now);
     this.updateWebs(now);
@@ -426,14 +508,65 @@ export class BossFight {
   /** Cele automatycznego celowania na dotyku (krok 96): walczący boss, jego pies i pajączki. */
   get aimTargets(): readonly { readonly x: number; readonly y: number; readonly radius: number }[] {
     const boss = this.boss;
-    const fighting = boss && boss.isFighting && !boss.isDead ? [boss] : [];
+    const fighting = boss && boss.isFighting && !boss.isDead && !this.untouchable(boss) ? [boss] : [];
     return [...this.spiderlings.living, ...(this.dog ? [this.dog] : []), ...fighting];
   }
 
   /** Cele gracza: pajączki (żywa tarcza), kokony spiżarni i boss. */
   private targets(): Array<Boss | Spiderling | LarderCocoon | BossDog> {
     const living: Array<Spiderling | LarderCocoon | BossDog> = [...this.spiderlings.living, ...this.larders, ...(this.dog ? [this.dog] : [])];
-    return this.boss ? [...living, this.boss] : living;
+    // Uciekająca do windy sprzątaczka (krok 125) jest nietykalna.
+    return this.boss && !this.untouchable(this.boss) ? [...living, this.boss] : living;
+  }
+
+  /** Uciekająca do windy albo dopiero z niej wychodząca sprzątaczka jest nietykalna. */
+  private untouchable(boss: Boss): boolean {
+    return boss.isFleeing || this.dormant || this.lastNow < this.enteringUntil;
+  }
+
+  /** Partner duetu jeszcze nie wszedł na arenę (krok 126). */
+  get isDormant(): boolean {
+    return this.dormant;
+  }
+
+  /**
+   * Wejście z windy (krok 126): drzwi się otwierają, boss wychodzi z nich ranny (`partnerHpRatio` HP) i nietykalny
+   * przez `enterMs`, potem drzwi się zamykają i boss rusza do walki z okrzykiem.
+   */
+  arrive(now: number): void {
+    const boss = this.boss;
+    const arrival = this.deps.arrival;
+    if (!boss || !this.dormant || !arrival) return;
+    this.dormant = false;
+    this.enteringUntil = now + arrival.enterMs;
+    boss.health.takeDamage(arrivalWounds(boss.health.max, arrival));
+    const door = this.elevator?.door ?? { x: boss.x, y: boss.y };
+    boss.setPosition(door.x, door.y - boss.radius).setAlpha(0).setVisible(true);
+    this.deps.scene.tweens.add({ targets: boss, y: door.y, alpha: 1, duration: arrival.enterMs });
+    if (this.elevator) {
+      const { sheet, open } = CLEANER_FX_VISUAL.elevator;
+      this.elevator.sprite.play(animationKey(sheet, open));
+      sound.play(SoundCue.Elevator, door);
+    }
+  }
+
+  /** Koniec wychodzenia z windy: ciało, walka, zamknięte drzwi i okrzyk. */
+  private updateEntering(boss: Boss, now: number): boolean {
+    if (this.enteringUntil === -Infinity) return false;
+    if (now < this.enteringUntil) return true;
+    this.enteringUntil = -Infinity;
+    (boss.body as Phaser.Physics.Arcade.Body).enable = true;
+    boss.activate(now);
+    if (this.elevator) {
+      const { sheet, close } = CLEANER_FX_VISUAL.elevator;
+      this.elevator.sprite.play(animationKey(sheet, close));
+    }
+    const line = boss.definition.shouts?.arrive;
+    if (line && this.shouts) {
+      this.shouts.start(now);
+      this.shout(this.shouts.force(line, now));
+    }
+    return false;
   }
 
   /**
@@ -572,10 +705,12 @@ export class BossFight {
   private schedule(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
     if (plan.kind === BossAttackKind.Kindle) this.kindleBraziers(plan);
-    if (plan.kind === BossAttackKind.Roar && this.boss) {
+    if (plan.kind === BossAttackKind.Roar && this.boss && !this.shouts) {
       this.deps.effects.floatingText(this.boss.x, this.boss.y - this.boss.radius - 8, 'Ryk!', '#ff5a3c');
       sound.play(SoundCue.BossRoar, this.boss);
     }
+    const line = this.shouts?.onAttack(plan.kind, scene.time.now);
+    if (line) this.shout(line);
     // Strefa uderzenia skoku idzie za miejscem lądowania (mogło zostać dosunięte od ściany).
     const planned = plan.leap;
     const landing = planned ? this.startLeap(planned) : null;
@@ -928,7 +1063,12 @@ export class BossFight {
       this.witherPatch(web, now);
       for (const player of party.members) {
         if (!isInWebPatch(shot, player, now)) continue;
-        player.applyTerrainSlow(shot.slow, now);
+        if (shot.slow) player.applyTerrainSlow(shot.slow, now);
+        // Kałuża sprzątaczki (krok 125): poślizg; napis „Ślisko!” przy wejściu na mokre (najwyżej co kilka sekund).
+        if (shot.slip && player.applyTerrainSlip(shot.slip, now) && now - this.lastSlipTextAt >= CLEANER_FX_VISUAL.slipText.minGapMs) {
+          this.lastSlipTextAt = now;
+          this.deps.effects.floatingText(player.x, player.y - player.radius - 8, CLEANER_FX_VISUAL.slipText.text, CLEANER_FX_VISUAL.slipText.color);
+        }
         // Grzybnia Króla (krok 29) dodatkowo zatruwa — teren, więc chroni tylko dash.
         if (shot.status) player.applyTerrainStatus(shot.status, now);
       }
@@ -938,6 +1078,7 @@ export class BossFight {
 
   /** Kokon w locie: łuk nad ziemią; przy lądowaniu pęka (klatki rozdarcia kokonu leża). */
   private updateThrows(now: number): void {
+    this.ropeGfx?.clear();
     this.throws = this.throws.filter(({ thrown, sprite }) => {
       if (now < thrown.launchAt) return true;
       if (now < thrown.landAt) {
@@ -946,9 +1087,11 @@ export class BossFight {
         sprite
           .setVisible(true)
           .setPosition(Math.round(thrown.from.x + (thrown.to.x - thrown.from.x) * t), Math.round(thrown.from.y + (thrown.to.y - thrown.from.y) * t - lift));
+        // Sznur wiadra: od dłoni sprzątaczki do lecącego wiadra.
+        if (thrown.look === 'bucket' && this.boss) this.ropeGfx?.lineStyle(1, CLEANER_FX_VISUAL.bucket.rope, 0.9).lineBetween(this.boss.x, this.boss.y, sprite.x, sprite.y);
         return true;
       }
-      if (thrown.look === 'can' || thrown.look === 'spore') {
+      if (thrown.look === 'can' || thrown.look === 'spore' || thrown.look === 'bucket') {
         // Puszka i strąk znikają w chwili uderzenia strefy (`strikes` rani w tej samej klatce).
         sprite.destroy();
         return false;
@@ -1039,6 +1182,8 @@ export class BossFight {
       }
       gfx.destroy();
       if (strike.look === 'smoke') this.playSmokeBurst(strike);
+      else if (strike.look === 'water') this.playSplash(strike);
+      else if (strike.look === 'tangle') this.playTangleBurst(strike);
       else if (strike.look === 'spores') {
         // Strąk zarodników (krok 111): wybuch w kolorach soku, rozprysk soku; płat grzybów wyrasta w tej chwili.
         effects.blast(strike.center.x, strike.center.y, strike.radius, [], SPORE_BLAST_VISUAL);
@@ -1066,7 +1211,8 @@ export class BossFight {
       // Hak Kata: złapany gracz ląduje tuż przed tarczą (zaraz potem uderzenie tarczą).
       if (strike.pullTo && player.body instanceof Phaser.Physics.Arcade.Body) {
         player.body.reset(strike.pullTo.x, strike.pullTo.y);
-        effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
+        // Wiadro sprzątaczki (krok 125) ma swój okrzyk przy rzucie — bez napisu „Hak!”.
+        if (this.boss?.definition.hook?.look !== 'bucket') effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
       }
       this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
       const boss = this.boss;
@@ -1076,6 +1222,7 @@ export class BossFight {
         this.playThroneFx(THRONE_ROOM_VISUAL.fx.sapRow, boss.x, boss.y);
         effects.floatingText(boss.x, boss.y - boss.radius - 8, `+${strike.healOnHit}`, FEAST_TEXT_COLOR);
       }
+      if (strike.root && player.applyRoot(strike.root, now)) this.entangle(player);
       if (strike.status?.paralysis && player.isParalyzed(now)) {
         effects.floatingText(player.x, player.y - player.radius - 8, 'Paraliż!', PARALYSIS_TEXT_COLOR);
       }
@@ -1323,29 +1470,7 @@ export class BossFight {
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
     sound.play(SoundCue.BossDeath, boss);
-    for (const pending of [...this.strikes, ...this.bursts, ...this.pendingHelpers]) pending.gfx.destroy();
-    // Dog ginie razem z Baronem (nie ma już kogo pilnować); nowy już nie wróci.
-    this.dogRespawnAt = null;
-    if (this.dog) this.killDog(this.lastNow, false);
-    this.dogGfx?.destroy();
-    this.strikes = [];
-    this.bursts = [];
-    // Świta, która jeszcze nie wyszła, przepada; ta na arenie walczy dalej.
-    this.pendingHelpers = [];
-    // Sieci są częścią walki — znikają razem z Matką Pająków.
-    for (const web of this.webs) this.removeWeb(web);
-    for (const { sprite } of this.throws) sprite.destroy();
-    this.throws = [];
-    this.webs = [];
-    // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
-    this.spiderlings.clear();
-    // Spiżarnia pustoszeje razem z Pożeraczem (kokony pękają bez zarażonych).
-    for (const larder of [...this.larders]) this.tearLarder(larder, 'empty');
-    this.pendingFeast = null;
-    this.pendingRelease = null;
-    this.clearSpawns();
-    // Śmierć w locie: zwłoki na ziemi, w miejscu lądowania.
-    this.finishLeap(boss);
+    this.clearFight(boss);
     const position: Vector2 = { x: boss.x, y: boss.y };
     const { visual, facing } = boss;
     boss.destroy();
@@ -1367,6 +1492,164 @@ export class BossFight {
       this.finishDefeat(visual.deathDecal, position);
     });
     corpse.play(animationKey(sheet, animation, facing));
+  }
+
+  /** Koniec walki (śmierć albo odjazd windą): zaplanowane ataki, pomocnicy i płaty znikają razem z bossem. */
+  private clearFight(boss: Boss): void {
+    this.ropeGfx?.clear();
+    for (const pending of [...this.strikes, ...this.bursts, ...this.pendingHelpers]) pending.gfx.destroy();
+    // Dog ginie razem z Baronem (nie ma już kogo pilnować); nowy już nie wróci.
+    this.dogRespawnAt = null;
+    if (this.dog) this.killDog(this.lastNow, false);
+    this.dogGfx?.destroy();
+    this.strikes = [];
+    this.bursts = [];
+    // Włosie puszcza razem z bossem.
+    for (const tangle of this.tangles) this.breakTangle(tangle.sprite);
+    this.tangles = [];
+    // Świta, która jeszcze nie wyszła, przepada; ta na arenie walczy dalej.
+    this.pendingHelpers = [];
+    // Sieci są częścią walki — znikają razem z Matką Pająków.
+    for (const web of this.webs) this.removeWeb(web);
+    for (const { sprite } of this.throws) sprite.destroy();
+    this.throws = [];
+    this.webs = [];
+    // Pajączki giną razem z matką (bez wybuchów), niewyklute już się nie pojawią.
+    this.spiderlings.clear();
+    // Spiżarnia pustoszeje razem z Pożeraczem (kokony pękają bez zarażonych).
+    for (const larder of [...this.larders]) this.tearLarder(larder, 'empty');
+    this.pendingFeast = null;
+    this.pendingRelease = null;
+    this.clearSpawns();
+    // Śmierć w locie: zwłoki na ziemi, w miejscu lądowania.
+    this.finishLeap(boss);
+  }
+
+  /** Okrzyk nad bossem: napis i piskliwy dźwięk. */
+  private shout(line: string): void {
+    const boss = this.boss;
+    if (!boss) return;
+    const { color, offsetY, holdMs, riseMs } = CLEANER_FX_VISUAL.shout;
+    if (this.lastShout?.active) this.lastShout.destroy();
+    this.lastShout = this.deps.effects.shout(boss.x, boss.y - offsetY, line, color, holdMs, riseMs);
+    sound.play(SoundCue.Shout, boss);
+  }
+
+  /** Okrzyki „z nudów” w trakcie walki (sprzątaczki, krok 125). */
+  private updateShouts(now: number): void {
+    const shouts = this.shouts;
+    if (!shouts) return;
+    shouts.start(now);
+    const line = shouts.idle(now);
+    if (line) this.shout(line);
+  }
+
+  /** Polerowanie: stojąca sprzątaczka sypie błyskami spod miotły (czysto wizualnie). */
+  private updatePolish(boss: Boss, now: number): void {
+    if (!boss.isIdling || now < this.nextPolishAt) return;
+    const { sheet, animation, everyMs, spread } = CLEANER_FX_VISUAL.polish;
+    this.nextPolishAt = now + everyMs;
+    const x = Math.round(boss.x + Phaser.Math.Between(-spread, spread));
+    const y = Math.round(boss.y + Phaser.Math.Between(0, spread));
+    const glint = this.deps.scene.add.sprite(x, y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.torchGlow).setBlendMode(Phaser.BlendModes.ADD);
+    glint.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => glint.destroy());
+    glint.play(animationKey(sheet, animation));
+  }
+
+  /** Chlust wody: kilka rozprysków w strefie i plusk. */
+  private playSplash(strike: AreaStrike): void {
+    const { sheet, animation, count } = CLEANER_FX_VISUAL.splash;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const d = i === 0 ? 0 : strike.radius * 0.6;
+      const x = Math.round(strike.center.x + Math.cos(angle) * d);
+      const y = Math.round(strike.center.y + Math.sin(angle) * d);
+      const splash = this.deps.scene.add.sprite(x, y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.slash);
+      splash.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => splash.destroy());
+      splash.play(animationKey(sheet, animation));
+    }
+    sound.play(SoundCue.Splash, strike.center);
+  }
+
+  /** Plątanie bez ofiary: włosie wyrasta z posadzki i od razu pęka. */
+  private playTangleBurst(strike: AreaStrike): void {
+    const { sheet, grow } = CLEANER_FX_VISUAL.tangle;
+    const sprite = this.deps.scene.add.sprite(strike.center.x, strike.center.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.slash);
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.breakTangle(sprite));
+    sprite.play(animationKey(sheet, grow));
+  }
+
+  /** Zaplątany bohater: włosie na stopach (wyrasta, trzyma) i napis. */
+  private entangle(player: Player): void {
+    const { sheet, grow, hold, offsetY, text, color } = CLEANER_FX_VISUAL.tangle;
+    const sprite = this.deps.scene.add.sprite(player.x, player.y + offsetY, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.player + 0.1);
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.play(animationKey(sheet, hold)));
+    sprite.play(animationKey(sheet, grow));
+    this.tangles.push({ player, sprite });
+    this.deps.effects.floatingText(player.x, player.y - player.radius - 8, text, color);
+  }
+
+  /** Włosie podąża za bohaterem (odrzut) i pęka, gdy unieruchomienie minie. */
+  private updateTangles(now: number): void {
+    const { offsetY } = CLEANER_FX_VISUAL.tangle;
+    this.tangles = this.tangles.filter(({ player, sprite }) => {
+      if (player.isRooted(now) && !player.isDead) {
+        sprite.setPosition(player.x, player.y + offsetY);
+        return true;
+      }
+      this.breakTangle(sprite);
+      return false;
+    });
+  }
+
+  private breakTangle(sprite: Phaser.GameObjects.Sprite): void {
+    const { sheet, break: shatter } = CLEANER_FX_VISUAL.tangle;
+    sprite.off(Phaser.Animations.Events.ANIMATION_COMPLETE);
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
+    sprite.play(animationKey(sheet, shatter));
+  }
+
+  /** Próg HP: drzwi windy się otwierają, sprzątaczka krzyczy i biegnie do nich (nietykalna). */
+  private startEscape(boss: Boss): void {
+    this.escape = { arrivedAt: null, closing: false };
+    boss.startFleeing();
+    const line = boss.definition.shouts?.escape;
+    if (line && this.shouts) this.shout(this.shouts.force(line, this.lastNow));
+    if (this.elevator) {
+      const { sheet, open } = CLEANER_FX_VISUAL.elevator;
+      this.elevator.sprite.play(animationKey(sheet, open));
+      sound.play(SoundCue.Elevator, this.elevator.door);
+    }
+    this.pendingHelpers.forEach((pending) => pending.gfx.destroy());
+    this.pendingHelpers = [];
+  }
+
+  /** Bieg do windy, wsiadanie (znika w drzwiach), zamknięcie drzwi i odjazd — nagroda jak za pokonanie. */
+  private updateEscape(boss: Boss, now: number): void {
+    const state = this.escape;
+    const def = boss.definition.escape;
+    if (!state || !def) return;
+    const door = this.elevator?.door ?? { x: boss.x, y: boss.y };
+    if (state.arrivedAt === null) {
+      if (!boss.fleeTick(door, def.speedMultiplier)) return;
+      state.arrivedAt = now;
+      // Wsiada: krok w głąb drzwi i znika.
+      this.deps.scene.tweens.add({ targets: boss, y: boss.y - boss.radius, alpha: 0, duration: def.boardMs });
+      (boss.body as Phaser.Physics.Arcade.Body).enable = false;
+    }
+    const stage = escapeStage(state.arrivedAt, now, def);
+    if (stage === EscapeStage.Closing && !state.closing && this.elevator) {
+      state.closing = true;
+      const { sheet, close } = CLEANER_FX_VISUAL.elevator;
+      this.elevator.sprite.play(animationKey(sheet, close));
+    }
+    if (stage !== EscapeStage.Gone) return;
+    this.clearFight(boss);
+    boss.destroy();
+    this.boss = null;
+    this.escape = null;
+    this.escaped = true;
+    this.deps.onDefeated(door);
   }
 
   /** Dym znad plamy po Baronie: kłęby wznoszą się, rosną i gasną przez `rise.durationMs`. */
@@ -1400,9 +1683,16 @@ export class BossFight {
   }
 }
 
-/** Sprite i wysokość łuku rzucanego przedmiotu: kokon Króla, puszka Barona, strąk Pożeracza. */
+/** Sprite i wysokość łuku rzucanego przedmiotu: kokon Króla, puszka Barona, strąk Pożeracza, wiadro sprzątaczki. */
+/** Definicja bez ucieczki windą (krok 126: wracający boss walczy do końca). */
+function withoutEscape(definition: BossDefinition): BossDefinition {
+  const { escape: _escape, ...rest } = definition;
+  return rest;
+}
+
 function thrownVisual(thrown: ThrownObject): { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number } {
   if (thrown.look === 'can') return SMOKE_VISUAL.can;
+  if (thrown.look === 'bucket') return CLEANER_FX_VISUAL.bucket;
   if (thrown.look === 'spore') return DEVOURER_FX_VISUAL.pod;
   return KING_COCOON_VISUAL;
 }

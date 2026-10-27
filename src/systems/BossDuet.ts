@@ -1,4 +1,5 @@
 import type { BossHudData, Vector2 } from '@/core/types';
+import type { BossId } from '@/core/bossTypes';
 import type { TowerLoopConfig } from '@/systems/TowerLoop';
 import { floorInLoop } from '@/systems/TowerLoop';
 
@@ -10,8 +11,8 @@ import { floorInLoop } from '@/systems/TowerLoop';
 export interface BossDuetDefinition {
   /** Piętro w kręgu, którego arena dostaje duet (gospodarz = boss tego piętra). */
   readonly floorInLoop: number;
-  /** Piętro w kręgu, z którego przychodzi partner (jego definicja, skalowana do bieżącego piętra). */
-  readonly partnerFloorInLoop: number;
+  /** Partner (jego definicja, skalowana do bieżącego piętra). */
+  readonly partner: BossId;
   /** Bossowie stają po bokach środka areny, tyle kafli od niego (gospodarz po lewej, partner po prawej). */
   readonly spawnOffsetTiles: number;
   /** Najmniejszy odstęp między ciałami bossów (px) — rozpychają się, zamiast stać jeden w drugim. */
@@ -23,6 +24,32 @@ export interface BossDuetDefinition {
   /** Napis paska i planszy. */
   readonly name: string;
   readonly title: string;
+  /** Partner dochodzi w trakcie walki zamiast od początku (blondynka z windy, krok 126). */
+  readonly arrival?: DuetArrival;
+}
+
+/**
+ * Wejście partnera w trakcie walki (krok 126): do progu HP gospodarza partnera nie ma na arenie; potem wychodzi
+ * z windy (`enterMs`, w tym czasie nietykalny) z ułamkiem `partnerHpRatio` swojego HP — tyle, z ilu uciekła wcześniej.
+ */
+export interface DuetArrival {
+  readonly hostHpRatio: number;
+  readonly partnerHpRatio: number;
+  readonly enterMs: number;
+}
+
+/** Czy partner już wchodzi: gospodarz walczy i spadł do progu HP (albo padł, zanim partner zdążył wejść). */
+export function shouldPartnerArrive(
+  host: { readonly hp: number; readonly maxHp: number; readonly fighting: boolean; readonly defeated: boolean },
+  arrival: Pick<DuetArrival, 'hostHpRatio'>,
+): boolean {
+  if (host.defeated) return true;
+  return host.fighting && host.maxHp > 0 && host.hp <= host.maxHp * arrival.hostHpRatio;
+}
+
+/** Obrażenia, które partner „przynosi” z poprzedniej walki: zostaje mu `partnerHpRatio` maksimum (co najmniej 1 HP). */
+export function arrivalWounds(maxHp: number, arrival: Pick<DuetArrival, 'partnerHpRatio'>): number {
+  return Math.max(0, maxHp - Math.max(1, Math.round(maxHp * arrival.partnerHpRatio)));
 }
 
 /** Duet na danym piętrze (w każdym kręgu wieży) albo null. */

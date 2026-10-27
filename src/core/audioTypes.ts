@@ -38,6 +38,12 @@ export enum SoundCue {
   LurkWake = 'lurk-wake',
   /** Czyhacz wyskakuje: trzask drewna/kamienia. */
   LurkBurst = 'lurk-burst',
+  /** Sprzątaczka krzyczy (krok 125): krótki, piskliwy okrzyk do napisu nad głową. */
+  Shout = 'shout',
+  /** Chlust wody z wiadra. */
+  Splash = 'splash',
+  /** Winda w murze areny: dzwonek i rozsuwane drzwi. */
+  Elevator = 'elevator',
   // Świat i łupy
   Coin = 'coin',
   Heal = 'heal',

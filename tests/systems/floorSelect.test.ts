@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TOWER_CONFIG } from '@/config/towerConfig';
 import { RunMode } from '@/core/runMode';
 import { HeroId } from '@/core/heroTypes';
 import { BossProgress } from '@/persistence/BossProgress';
@@ -28,9 +29,10 @@ describe('wybór piętra', () => {
   });
 
   it('opis piętra: krąg, biom i boss', () => {
-    expect(startFloorInfo(2)).toEqual({ label: 'Piętro 2', biome: 'Pajęcze leże', boss: 'Matka Pająków' });
-    expect(startFloorInfo(9).label).toBe('Piętro 9 · Krąg II');
-    expect(startFloorInfo(9).boss).toBe(startFloorInfo(2).boss);
+    expect(startFloorInfo(2)).toEqual({ label: 'Piętro 2', biome: 'Grzybnia', boss: 'Matka i Król Pająków' });
+    expect(startFloorInfo(3).boss).toBe('Grzybowy Pożeracz');
+    expect(startFloorInfo(TOWER_CONFIG.floorsPerLoop + 1).label).toBe(`Piętro ${TOWER_CONFIG.floorsPerLoop + 1} · Krąg II`);
+    expect(startFloorInfo(TOWER_CONFIG.floorsPerLoop + 2).boss).toBe(startFloorInfo(2).boss);
   });
 
   it('piętro startowe przechodzi przez kolejne piętra runu', () => {

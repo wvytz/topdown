@@ -10,7 +10,7 @@ import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 
-const floorsWithSecret = Array.from({ length: 60 }, (_, i) => new DungeonGenerator(getDungeonConfigForFloor(3)).generate(i * 31 + 5)).filter(
+const floorsWithSecret = Array.from({ length: 60 }, (_, i) => new DungeonGenerator(getDungeonConfigForFloor(2)).generate(i * 31 + 5)).filter(
   (f) => f.endRoomId !== undefined,
 );
 

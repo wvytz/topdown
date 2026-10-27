@@ -181,3 +181,29 @@ export const TORCH_PLACEMENT: TorchPlacementConfig = {
   maxPerRoom: 2,
   maxPerBossRoom: 4,
 };
+
+/**
+ * Lustrzana posadzka (krok 124, `#lustrzana-komnata`): sprzątaczki polerują ją, aż świeci i odbija postacie.
+ * Odbicie = kopia sprite'a odwrócona w pionie pod stopami (pod murami, więc rysuje się tylko na podłodze),
+ * przezroczysta, gasnąca ku dołowi i lekko zabarwiona na błękit. Błyski świecą nad mrokiem jak płomienie pochodni.
+ * Czysto wizualne; moje liczby, do oceny właściciela.
+ */
+export interface MirrorFloorConfig {
+  readonly reflection: {
+    /** Krycie odbicia przy stopach i na jego drugim końcu. */
+    readonly alphaNear: number;
+    readonly alphaFar: number;
+    readonly tint: number;
+  };
+  readonly glints: {
+    /** Odstęp między błyskami (ms) i najwięcej naraz. */
+    readonly intervalMs: { readonly min: number; readonly max: number };
+    readonly maxAlive: number;
+    readonly alpha: number;
+  };
+}
+
+export const MIRROR_FLOOR: MirrorFloorConfig = {
+  reflection: { alphaNear: 0.45, alphaFar: 0.08, tint: 0xc8dcff },
+  glints: { intervalMs: { min: 90, max: 260 }, maxAlive: 14, alpha: 0.85 },
+};
