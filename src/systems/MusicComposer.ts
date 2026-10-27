@@ -46,14 +46,15 @@ export function composeBar(theme: MusicThemeDefinition, bar: number, intense: bo
 
   const cycle = theme.progression.length * theme.barsPerChord * PROGRESSION_LOOPS_PER_CYCLE;
   const rng = createRng(deriveSeed(theme.seed, bar % cycle));
-  const density = intense ? Math.min(1, theme.bellDensity * 1.6) : theme.bellDensity;
+  const resting = bar % theme.bellRest.every >= theme.bellRest.every - theme.bellRest.rest;
+  const density = resting ? 0 : intense ? Math.min(1, theme.bellDensity * 1.6) : theme.bellDensity;
   for (let eighth = 0; eighth < BEATS_PER_BAR * 2; eighth++) {
     if (!rng.chance(density)) continue;
     const tone = triad[rng.int(0, triad.length - 1)] ?? degree;
     notes.push({
       voice: 'bell',
       at: (eighth * beat) / 2,
-      midi: scaleDegreeMidi(theme, tone) + 24,
+      midi: scaleDegreeMidi(theme, tone) + theme.bellTranspose,
       duration: beat * 1.5,
       velocity: 0.3 + rng.next() * 0.2,
     });

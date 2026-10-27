@@ -4,7 +4,7 @@
 
 **Wszystkie dźwięki i muzyka powstają w kodzie gry** — nie ma w repozytorium ani jednego pliku audio z zewnątrz.
 
-- **Efekty:** synteza w stylu jsfxr/sfxr (`systems/SfxSynth.ts`): warstwy fal (sinus, trójkąt, prostokąt, piła, szum) z przesuwem wysokości, obwiednią i filtrem. Przepisy (liczby) są w `config/audioConfig.ts` (`SOUND_RECIPES`). Bufor liczy się raz, przy pierwszym użyciu.
+- **Efekty:** synteza w stylu jsfxr/sfxr (`systems/SfxSynth.ts`): warstwy fal (sinus, trójkąt, prostokąt, piła, szum) z przesuwem wysokości, obwiednią i filtrem. Przepisy (liczby) są w `config/audioConfig.ts` (`SOUND_RECIPES`). Bufor liczy się raz, przy pierwszym użyciu. Od kroku 116a wszystkie przepisy przechodzą przez wspólną barwę `SFX_TONE` (niżej i ciemniej — ocena właściciela).
 - **Muzyka:** utwory składane w locie z akordów i skali (`systems/MusicComposer.ts`), grane syntezatorami Web Audio (`audio/MusicPlayer.ts`). Seed melodii jest stały, więc utwór brzmi zawsze tak samo.
 - **Licencja:** to nasz własny kod i nasze liczby — dźwięki należą do projektu, bez przypisów i bez ograniczeń (także komercyjnie). Narzędzia, którymi się inspirowaliśmy (jsfxr), nie są dołączone ani wymagane.
 

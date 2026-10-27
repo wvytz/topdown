@@ -13,7 +13,7 @@ import type { SoundSpaceConfig } from '@/systems/SoundSpace';
 
 /** Ustawienia na pierwsze uruchomienie i krok suwaka (10%). */
 export const AUDIO_SETTINGS_RULES: AudioSettingsRules = {
-  defaults: { music: 0.6, sfx: 0.7, muted: false } satisfies AudioSettings,
+  defaults: { music: 0.5, sfx: 0.7, muted: false } satisfies AudioSettings,
   step: 0.1,
 };
 
@@ -40,6 +40,13 @@ export const SOUND_SPACE: SoundSpaceConfig = {
 
 /** Pułapki (kolce) słychać tylko, gdy bohater jest bliżej niż tyle px — pasy cyklują na całym piętrze. */
 export const TRAP_HEARING_PX = 160;
+
+/**
+ * Barwa efektów (krok 116a, ocena właściciela: „zbyt wysokie i zbyt ostre”): każdy przepis gra niżej
+ * (`pitchScale`) i ciemniej (filtr warstwy najwyżej `maxLowpassHz`); szyna efektów ma jeszcze łagodny
+ * filtr `busLowpassHz` — ostre góry fal prostokątnych i szumu nie przechodzą.
+ */
+export const SFX_TONE = { pitchScale: 0.7, maxLowpassHz: 3000, busLowpassHz: 4200 };
 
 /** Arpeggio: kolejne nuty co `step` sekund (dzwonki przedmiotu, wskrzeszenia, ukrytej komnaty). */
 function arpeggio(wave: SynthLayer['wave'], freqs: readonly number[], step: number, decay: number, volume: number): SynthLayer[] {
@@ -353,7 +360,9 @@ export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = 
     scale: [0, 2, 3, 5, 7, 9, 10],
     progression: [0, 5, 3, 4],
     barsPerChord: 2,
-    bellDensity: 0.22,
+    bellDensity: 0.16,
+    bellTranspose: 12,
+    bellRest: { every: 8, rest: 2 },
     drumBeats: [0, 2],
     drumAlways: false,
     seed: 116,
@@ -364,7 +373,9 @@ export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = 
     scale: [0, 1, 3, 5, 7, 8, 10],
     progression: [0, 1, 5, 0, 3, 1],
     barsPerChord: 2,
-    bellDensity: 0.14,
+    bellDensity: 0.1,
+    bellTranspose: 12,
+    bellRest: { every: 8, rest: 3 },
     drumBeats: [0, 0.4, 2],
     drumAlways: true,
     seed: 666,
@@ -384,9 +395,11 @@ export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
 /** Głośność głosów muzyki i ich barwa (odtwarzacz Web Audio). */
 export const MUSIC_MIX = {
   master: 0.5,
-  pad: { gain: 0.12, attack: 1.2, release: 1.5, lowpass: 900, detuneCents: 8 },
+  // Krok 116a (ocena: „po 20 minutach lekki dyskomfort”): ciemniejszy pad, słabsze dudnienie rozstrojenia.
+  pad: { gain: 0.12, attack: 1.2, release: 1.5, lowpass: 700, detuneCents: 5 },
   bass: { gain: 0.22, attack: 0.05, release: 0.4, lowpass: 400 },
-  bell: { gain: 0.08, attack: 0.005, release: 1.4 },
+  /** Dzwonek: alikwot harmoniczny (2×, cicho) zamiast metalicznego 2,76× — mniej kłuje w uszy. */
+  bell: { gain: 0.07, attack: 0.01, release: 1.4, overtoneRatio: 2, overtoneLevel: 0.15, lowpass: 2500 },
   drum: { gain: 0.5, pitchFrom: 110, pitchTo: 40, decay: 0.35 },
   /** Ile sekund naprzód planujemy nuty (odtwarzacz budzi się co `tickMs`). */
   lookaheadS: 0.6,

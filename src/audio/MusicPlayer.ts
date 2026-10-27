@@ -138,17 +138,19 @@ export class MusicPlayer {
     this.oscillator('triangle', midiToHz(note.midi), at, end).connect(this.lowpass(mix.lowpass)).connect(env).connect(out);
   }
 
-  /** Dzwonek: ton podstawowy i cichszy, niesforny alikwot (2,76×) — brzmi jak metal. */
+  /** Dzwonek: ton podstawowy i cichy alikwot, za filtrem. */
   private bell(note: MusicNote, at: number, out: AudioNode): void {
     const mix = MUSIC_MIX.bell;
     const end = at + mix.attack + mix.release;
     const hz = midiToHz(note.midi);
-    for (const [ratio, level] of [[1, 1], [2.76, 0.3]] as const) {
+    const filter = this.lowpass(mix.lowpass);
+    filter.connect(out);
+    for (const [ratio, level] of [[1, 1], [mix.overtoneRatio, mix.overtoneLevel]] as const) {
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0, at);
       gain.gain.linearRampToValueAtTime(mix.gain * note.velocity * level, at + mix.attack);
       gain.gain.exponentialRampToValueAtTime(0.0001, end);
-      this.oscillator('sine', hz * ratio, at, end).connect(gain).connect(out);
+      this.oscillator('sine', hz * ratio, at, end).connect(gain).connect(filter);
     }
   }
 

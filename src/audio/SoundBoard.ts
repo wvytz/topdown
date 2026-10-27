@@ -10,6 +10,7 @@ import {
   SOUND_GATE_CONFIG,
   SOUND_GATE_RULES,
   SOUND_RECIPES,
+  SFX_TONE,
   SOUND_SPACE,
 } from '@/config/audioConfig';
 import { MusicPlayer } from '@/audio/MusicPlayer';
@@ -18,6 +19,7 @@ import { AudioSettingsStorage } from '@/persistence/AudioSettingsStorage';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { channelGains, stepVolume, toggleMute } from '@/systems/AudioSettings';
 import { renderSound } from '@/systems/SfxSynth';
+import { applySfxTone } from '@/systems/SfxTone';
 import { SoundGate } from '@/systems/SoundGate';
 import { spatialize } from '@/systems/SoundSpace';
 
@@ -185,7 +187,12 @@ export class SoundBoard {
     this.ctx = ctx;
     this.sfxBus = ctx.createGain();
     this.musicBus = ctx.createGain();
-    this.sfxBus.connect(ctx.destination);
+    // Łagodny filtr całej szyny efektów (krok 116a) — bez ostrych gór.
+    const soften = ctx.createBiquadFilter();
+    soften.type = 'lowpass';
+    soften.frequency.value = SFX_TONE.busLowpassHz;
+    soften.Q.value = 0.5;
+    this.sfxBus.connect(soften).connect(ctx.destination);
     this.musicBus.connect(ctx.destination);
     this.applyGains();
     this.music = new MusicPlayer(ctx, this.musicBus);
@@ -207,7 +214,7 @@ export class SoundBoard {
     const cached = this.buffers.get(key);
     if (cached) return cached;
     const ctx = this.ctx as AudioContext;
-    const samples = renderSound(recipe(), ctx.sampleRate);
+    const samples = renderSound(applySfxTone(recipe(), SFX_TONE), ctx.sampleRate);
     const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate);
     buffer.copyToChannel(samples, 0);
     this.buffers.set(key, buffer);

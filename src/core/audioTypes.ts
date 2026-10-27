@@ -122,6 +122,10 @@ export interface MusicThemeDefinition {
   readonly barsPerChord: number;
   /** Szansa nuty dzwonka na każdą ósemkę (0..1). */
   readonly bellDensity: number;
+  /** O ile półtonów nad akordem grają dzwonki (krok 116a: oktawa niżej niż dotąd — mniej przenikliwie). */
+  readonly bellTranspose: number;
+  /** Oddech melodii: w każdych `every` taktach ostatnie `rest` są bez dzwonków — ucho odpoczywa. */
+  readonly bellRest: { readonly every: number; readonly rest: number };
   /** Bęben (puls serca) w każdym takcie: ćwierćnuty z uderzeniem. */
   readonly drumBeats: readonly number[];
   /** Bęben gra zawsze (zaświaty) albo tylko w walce z bossem. */
