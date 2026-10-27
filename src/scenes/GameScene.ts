@@ -1757,13 +1757,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Smycz (decyzja właściciela): żywi bohaterowie nie rozejdą się poza kadr — cofa się ten, kto się oddala. */
   private applyLeash(span: Vector2): void {
     const [a, b] = this.party.members;
-    // Powalony stoi w miejscu, więc smycz trzyma żywego przy nim (etap C4); po śmierci obu — bez smyczy.
+    // Powalony stoi w miejscu, więc smycz trzyma żywego przy nim (etap C4) i nigdy nie ciągnie ciała; po śmierci obu — bez smyczy.
     if (!a || !b || this.party.isDown) {
       this.leashFrom = null;
       return;
     }
     const now: [Vector2, Vector2] = [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];
-    const [na, nb] = leashPair(this.leashFrom ?? now, now, span);
+    const anchored = a.isDead ? 0 : b.isDead ? 1 : null;
+    const [na, nb] = leashPair(this.leashFrom ?? now, now, span, anchored);
     for (const [hero, to] of [[a, na], [b, nb]] as const) {
       if (to.x === hero.x && to.y === hero.y) continue;
       hero.setPosition(to.x, to.y);

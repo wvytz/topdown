@@ -171,9 +171,17 @@ async function checkRevive(page, floor, errors) {
     errors.push(`co-op: piętro ${floor} — powalenie P2 nie zadziałało`);
     return;
   }
-  await sleep(4500);
-  const up = await page.evaluate(`(() => { const g = ${G}; return !g.party.members[1].isDead; })()`);
-  if (!up) errors.push(`co-op: piętro ${floor} — P2 nie wstał po wskrzeszaniu`);
+  // Czekamy na czas gry, nie na zegar ściany: wolna przeglądarka (bez GPU) daje mniej klatek.
+  const state = () =>
+    page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; const r = g.revives.get(b);
+      return { up: !b.isDead, now: g.time.now, progress: r ? r.progress : null, dist: Math.round(Math.hypot(a.x - b.x, a.y - b.y)) }; })()`);
+  const start = await state();
+  let last = start;
+  for (let i = 0; i < 40 && !last.up && last.now - start.now < 6000; i++) {
+    await sleep(250);
+    last = await state();
+  }
+  if (!last.up) errors.push(`co-op: piętro ${floor} — P2 nie wstał po wskrzeszaniu (${Math.round(last.now - start.now)} ms gry, postęp ${last.progress}, odstęp ${last.dist} px)`);
 }
 
 /** Faza 2: pełna wspinaczka z botem — wszystkie pokoje, arena, boss, nagroda, schody klawiszem E. */

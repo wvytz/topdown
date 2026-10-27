@@ -277,8 +277,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.health.revive(hp);
     this.status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
     this.invulnerability.start(now, invulnerableMs);
+    this.setBodyCollision(true);
     this.clearTint();
     this.aimMarker.setVisible(true);
+  }
+
+  /**
+   * Powalone ciało nie bierze udziału w kolizjach: partner, boss ani nikt inny go nie przepchnie (wcześniej dało się
+   * je wypychać, np. w Szale), a wskrzeszający może stanąć tuż przy nim. Ruchu i tak nie ma — tick zeruje prędkość.
+   */
+  private setBodyCollision(enabled: boolean): void {
+    (this.body as Phaser.Physics.Arcade.Body).checkCollision.none = !enabled;
   }
 
   getAimAngle(): number {
@@ -505,6 +514,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private die(): void {
     sound.play(SoundCue.HeroDeath, this);
     this.setVelocity(0, 0);
+    this.setBodyCollision(false);
     this.setTint(0x555555).setAlpha(1);
     this.animator.stop();
     this.aimMarker.setVisible(false);

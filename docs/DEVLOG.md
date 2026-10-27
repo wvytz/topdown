@@ -4576,6 +4576,23 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela (na słuchawkach / głośnikach):** brzmienie efektów (zwłaszcza cios, trafienie, wybuch, złoto), czy muzyka pasuje i nie męczy (pętla ok. 27 s wieży, ok. 48 s zaświatów), proporcje muzyka/efekty (domyślnie 60% / 70%), czy czegoś brakuje albo coś jest za głośne. Strojenie — liczby w `config/audioConfig.ts`. Do rozważenia później: utwory z plików (CC0/CC-BY) zamiast syntezy, osobny utwór bossa, kroki bohatera, dźwięki otoczenia biomów.
 
+## Krok 118 — Co-op: wskrzeszanie bez przepychania ciała `#ocena` `#coop`
+
+**Zgłoszenie właściciela (27.10.2026):** „udało mi się raz wskrzesić drugiego gracza, ale też przesuwać jego ciało podczas ultimate barbarzyńcy”. Do tego kilka wątków widziało w `npm run smoke -- --coop` błąd „P2 nie wstał po wskrzeszaniu”.
+
+**Przyczyna:** ciało powalonego bohatera dalej brało udział w kolizjach Arcade (partner, boss). Żywy partner, idąc do ciała, wypychał je przed sobą (w Szale szybciej, ale działo się to zawsze), a ciała 24×24 px nie pozwalały stanąć bliżej niż na ok. 24 px — podejście po skosie zatrzymywało partnera na krawędzi zasięgu 30 px, więc pasek rósł i opadał. Do tego smycz przy ściągnięciu bohaterów (np. po zebraniu drużyny w pokoju) mogła przesunąć ciało o połowę nadmiaru.
+
+**Co się zmieniło:**
+- `entities/Player.ts`: powalony bohater ma wyłączone kolizje ciała (`checkCollision.none`), po wstaniu wracają. Partner może stanąć na ciele, nikt go nie przepchnie, pociski wrogów przelatują.
+- `systems/CoopCamera.ts`: `leashAxis`/`leashPair` dostały `anchored` — smycz nigdy nie rusza powalonego, cały nadmiar cofa żywy (`GameScene.applyLeash`).
+- `tools/smoke.mjs`: sprawdzenie wskrzeszania czeka do 6 s **czasu gry** (nie zegara ściany — wolna przeglądarka bez GPU daje mniej klatek) i przy błędzie podaje postęp i odstęp bohaterów.
+
+**Testy:** `tests/systems/coopCamera.test.ts` — smycz nie rusza powalonego. Build zielony.
+
+**Weryfikacja:** Playwright (Chromium): powalony P2, barbarzyńca w Szale idzie prosto na ciało — przed poprawką ciało jechało razem z nim (1576 → 1590 px), po poprawce stoi, a barbarzyńca przechodzi przez nie. `npm run smoke -- --coop` (wszystkie pary, piętra 1–8, 2 seedy) bez błędów.
+
+**Czeka na ocenę właściciela:** czy wskrzeszanie w grze z drugim graczem działa za każdym razem.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4682,7 +4699,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
 - **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
-- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
+- **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Krok 118: powalone ciało bez kolizji i smyczy (wskrzeszanie działa za każdym razem, ciała nie da się przepchnąć). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
 - **Pad (krok 114):** `#sterowanie` nowy układ (X/B ataki, A dash, Y — E, RB ultimate) i samo celowanie przy ataku bez prawej gałki — czeka na test właściciela; otwarte: czy pad z samym celowaniem zostaje na wspólnej tablicy.
 - **Wersja mobilna (krok 96):** gotowa w `mobile.html`, czeka na test na telefonie i decyzję o wdrożeniu na Pages. Do rozważenia: wspólna tablica wyników telefonów (worker), usuwanie slotów i wybór piętra dotykiem (wiersze menu działają, X — tylko klawiatura), podpowiedzi zależne od urządzenia także na PC (pad). `#sterowanie`
 

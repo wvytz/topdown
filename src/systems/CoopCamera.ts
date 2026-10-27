@@ -21,8 +21,14 @@ export function partyFocus(positions: readonly Vector2[]): Vector2 | null {
  * Smycz na jednej osi dla dwóch bohaterów. `before` — pozycje z poprzedniej klatki (w zasięgu smyczy),
  * `after` — po ruchu. Gdy odstęp przekracza `max`, nadmiar cofa ten, kto się oddalał; gdy oddalali się obaj
  * (każdy w swoją stronę), nadmiar dzielą proporcjonalnie do własnego ruchu. Bohater nie ciągnie partnera.
+ * `anchored` — indeks bohatera, którego smycz nie rusza (powalony): cały nadmiar cofa wtedy drugi.
  */
-export function leashAxis(before: readonly [number, number], after: readonly [number, number], max: number): [number, number] {
+export function leashAxis(
+  before: readonly [number, number],
+  after: readonly [number, number],
+  max: number,
+  anchored: 0 | 1 | null = null,
+): [number, number] {
   const [a, b] = after;
   const gap = Math.abs(a - b);
   if (gap <= max) return [a, b];
@@ -33,18 +39,19 @@ export function leashAxis(before: readonly [number, number], after: readonly [nu
   const outB = Math.max(0, (b - before[1]) * -sideA);
   const total = outA + outB;
   // Nikt się nie oddalał (np. odrzut ciosem) — dzielimy po równo, żeby odstęp wrócił do smyczy.
-  const shareA = total > 0 ? outA / total : 0.5;
+  const shareA = anchored === 0 ? 0 : anchored === 1 ? 1 : total > 0 ? outA / total : 0.5;
   return [a - sideA * excess * shareA, b + sideA * excess * (1 - shareA)];
 }
 
-/** Smycz dla dwóch bohaterów na obu osiach; `max` — największy odstęp w poziomie i w pionie. */
+/** Smycz dla dwóch bohaterów na obu osiach; `max` — największy odstęp w poziomie i w pionie, `anchored` jak w `leashAxis`. */
 export function leashPair(
   before: readonly [Vector2, Vector2],
   after: readonly [Vector2, Vector2],
   max: Vector2,
+  anchored: 0 | 1 | null = null,
 ): [Vector2, Vector2] {
-  const [ax, bx] = leashAxis([before[0].x, before[1].x], [after[0].x, after[1].x], max.x);
-  const [ay, by] = leashAxis([before[0].y, before[1].y], [after[0].y, after[1].y], max.y);
+  const [ax, bx] = leashAxis([before[0].x, before[1].x], [after[0].x, after[1].x], max.x, anchored);
+  const [ay, by] = leashAxis([before[0].y, before[1].y], [after[0].y, after[1].y], max.y, anchored);
   return [
     { x: ax, y: ay },
     { x: bx, y: by },
