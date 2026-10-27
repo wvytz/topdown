@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4576,6 +4576,22 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela (na słuchawkach / głośnikach):** brzmienie efektów (zwłaszcza cios, trafienie, wybuch, złoto), czy muzyka pasuje i nie męczy (pętla ok. 27 s wieży, ok. 48 s zaświatów), proporcje muzyka/efekty (domyślnie 60% / 70%), czy czegoś brakuje albo coś jest za głośne. Strojenie — liczby w `config/audioConfig.ts`. Do rozważenia później: utwory z plików (CC0/CC-BY) zamiast syntezy, osobny utwór bossa, kroki bohatera, dźwięki otoczenia biomów.
 
+## Krok 118 — Większy obraz: pełny ekran i „Wypełnij okno” `#decyzja` `#obraz`
+
+**Pytanie właściciela (26–27.10.2026):** „czy możemy zwiększyć okno gry nie psując tego, co zbudowaliśmy?”. Przyczyna czarnych pasów: na PC płótno 960×540 skaluje się tylko o całkowite krotności piksela świata (`systems/pixelScale.ts`, STYLEGUIDE §2), więc na 1080p w oknie przeglądarki obraz ma ok. 1440×810, a przy Windows 125% (okno ok. 1536×730) tylko 1152×648. Opcje: pełny ekran, skala ułamkowa „Wypełnij okno”, większe pole widzenia. **Decyzja:** pełny ekran + „Wypełnij okno”; **pole widzenia bez zmian** (większe zmieniłoby balans: więcej widać z pokoju i areny, Kiterzy strzelają z dalej — `ENEMY_VIEW_RULE` liczy się z kadru — mrok, zapowiedź bossa, smycz co-opu, czytelność postaci, porównywalność wyników). Właściciel: „wdróż proponowane przez Ciebie zmiany”.
+
+**Co powstało:**
+- **Warstwa czysta (testy):** `core/displayTypes.ts`, `systems/DisplaySettings.ts` (odczyt ustawień z magazynu, przełącznik, reguła klawisza pełnego ekranu: bez Ctrl/Alt/Meta, bez autopowtórzenia, nie w polu tekstowym raportu F9), `config/displayConfig.ts` (domyślnie ostre piksele, klawisze F i O, teksty), `persistence/DisplaySettingsStorage.ts` (`localStorage`, klucz `tower-crawler.display.v1`).
+- **`input/DisplayControls.ts`** — obiekt `display`: „Wypełnij okno” (zapamiętane między sesjami) i pełny ekran całej strony; po zmianie skala płótna liczy się od nowa (`rescaleOn` w `main.ts`). **F** działa wszędzie w wersji PC (menu, gra, pauza); wersja mobilna bez zmian (już ma skalę ułamkową i pełny ekran po pierwszym dotyku).
+- **Pauza (tylko PC):** wiersz „O — Wypełnij okno: TAK/NIE” i „F — Pełny ekran / Wyjdź z pełnego ekranu” — klik, klawisz albo pad (↑ ↓ wybór, A). Przeglądarka nie uznaje przycisku pada za gest użytkownika, więc pełny ekran z pada może się nie włączyć — wtedy pauza podpowiada F albo kliknięcie. Układ pauzy: komunikat zapisu pod suwakami, wiersz obrazu nad „M — menu główne”.
+- „Wypełnij okno” daje skalę ułamkową jak na telefonie: obraz zawsze na całe okno, ale na monitorze 100% niektóre piksele są o włos szersze (widać przy ruchu kamery). Zoom kamery 2,0 i 960×540 bez zmian — rozgrywka, zasięgi, HUD i tablice wyników nietknięte.
+
+**Testy:** `tests/systems/displaySettings.test.ts`, `tests/persistence/displaySettingsStorage.test.ts`. Build zielony (1911 testów).
+
+**Weryfikacja (Playwright, Chromium):** okno 1536×730 przy skali 1,25: ostre piksele 1152×648 → „Wypełnij okno” 1298×730 (pełna wysokość), ustawienie zostaje po przeładowaniu; F włącza pełny ekran; pauza: kursor strzałkami na wierszu obrazu, zrzut ekranu sprawdzony; bez błędów w konsoli. `npm run smoke -- --floors 2 --seeds 1` — wszyscy bohaterowie bez błędów.
+
+**Czeka na ocenę właściciela:** czy pełny ekran (F) wystarcza, czy „Wypełnij okno” jest potrzebne na co dzień i czy nierówne piksele przeszkadzają.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4652,6 +4668,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).
 - **Dźwięk (krok 116):** `#dzwiek` brzmienie efektów, muzyka wieży i zaświatów, proporcje głośności (60% / 70%), czy coś przeszkadza w co-opie — czeka na test właściciela; lista i licencje w `docs/AUDIO.md`.
 - **Tarczownik (kroki 99, 113):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę (bez tarczy), bomby go ranią; od kroku 113 obrót 35°/s, 1,6 s bez tarczy po każdym ciosie, HP ×1,8 — czeka na test właściciela.
 - **Bossowie z tarczą (krok 113):** `#boss` `#balans` odbicia w losową stronę (30–80°), wolniejszy obrót, okno bez tarczy po ataku, mniej HP — czeka na test właściciela.
