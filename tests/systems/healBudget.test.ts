@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ITEM_EFFECTS } from '@/config/lootConfig';
+import { ItemId } from '@/core/lootTypes';
+import { PLAYER_COMBAT } from '@/config/combatConfig';
+import { PLAYER_BASE_STATS } from '@/config/gameConfig';
+import { ITEM_DEFINITIONS, ITEM_EFFECTS, STAT_LIMITS } from '@/config/lootConfig';
+import { computeLoadout } from '@/systems/PlayerLoadout';
 import { HealBudget } from '@/systems/HealBudget';
 
 describe('HealBudget (krok 93: sufit leczenia kła)', () => {
@@ -30,5 +34,12 @@ describe('HealBudget (krok 93: sufit leczenia kła)', () => {
   it('jedna kopia kła mieści się pod sufitem nawet przy 75 HP', () => {
     const { heal, cooldownMs, maxHpPctPerSec } = ITEM_EFFECTS.vampireFang;
     expect((heal * 1000) / cooldownMs).toBeLessThanOrEqual(75 * maxHpPctPerSec);
+  });
+
+  it('krok 117: sufit liczony od bazowego HP — Serca go nie podnoszą', () => {
+    const items = [ItemId.VampireFang, ...Array.from({ length: 8 }, () => ItemId.Heart)];
+    const geared = computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
+    expect(geared.stats.maxHp).toBeGreaterThan(PLAYER_BASE_STATS.maxHp);
+    expect(geared.effects.meleeHealMaxPerSec).toBeCloseTo(PLAYER_BASE_STATS.maxHp * ITEM_EFFECTS.vampireFang.maxHpPctPerSec);
   });
 });

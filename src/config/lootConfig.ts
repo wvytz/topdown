@@ -37,10 +37,11 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
     id: ItemId.Gloves,
     kind: ItemKind.Stat,
     name: 'Rękawice',
-    effect: '-12% czasu ataku',
+    effect: '+12% tempa ataku',
     color: 0xf0a040,
     weight: 5,
-    modifiers: { attackCooldownPct: -0.12 },
+    // Krok 117: tempo zamiast czasu ataku — każda kopia daje tyle samo (wcześniej −12% czasu: 5 kopii = ×2 ciosów).
+    modifiers: { attackSpeedPct: 0.12 },
   },
   [ItemId.Hourglass]: {
     id: ItemId.Hourglass,
@@ -124,10 +125,11 @@ export const ITEM_EFFECTS: ItemEffectsConfig = {
   electricArrow: { stunMs: 900, stunMsPerStack: 300 },
   // Krok 93: przyrost kolejnych kopii maleje o połowę — tyknięcie 3 / 5 / 6 / 7 / 7 (wcześniej liniowo do 11).
   fireFist: { tickDamage: 3, tickDamagePerStack: 2, stackDecay: 0.5, tickMs: 500, durationMs: 2000 },
-  // Raz na 0,7 s: ok. 2,9 HP/s przy jednej kopii (bez limitu: 2 HP co cios = 6,25 HP/s, ok. 60% DPS Rushera).
-  // Krok 93: leczenie 2 / 4 / 5 / 6 / 6 (wcześniej liniowo do 10) i sufit 4% maks. HP/s
-  // (barbarzyńca 100 HP: 4 HP/s, Czarodziejka 75 HP: 3 HP/s) — jedna kopia (2,9 HP/s) mieści się pod nim.
-  vampireFang: { heal: 2, healPerStack: 2, stackDecay: 0.5, maxHpPctPerSec: 0.04, cooldownMs: 700 },
+  // Krok 93: malejący przyrost i sufit 4% maks. HP/s.
+  // Krok 117 (ocena właściciela: kieł to „jedyny słuszny wybór”): leczenie 2 / 3 / 4 / 4 raz na 1 s
+  // (wcześniej 2 / 4 / 5 / 6 co 0,7 s), a sufit liczony od bazowego HP bohatera, więc Serca go nie podnoszą:
+  // barbarzyńca 4 HP/s, łucznik 3,4, Czarodziejka 3 (wcześniej barbarzyńca z 260 HP — 10,4 HP/s).
+  vampireFang: { heal: 2, healPerStack: 1, stackDecay: 0.5, maxHpPctPerSec: 0.04, cooldownMs: 1000 },
   stormDash: { damage: 10, damagePerStack: 6 },
   frostShard: { slowPct: 0.4, slowPctPerStack: 0.1, maxSlowPct: 0.7, durationMs: 1500 },
 };
@@ -137,6 +139,8 @@ export const ITEM_POOL: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIO
 export const STAT_LIMITS: StatLimits = {
   /** Cooldowny nie spadną poniżej 50% bazowych. */
   minCooldownMultiplier: 0.5,
+  /** Krok 117: Rękawice maks. +60% tempa ataku (5 kopii); szał barbarzyńcy ×0,8 dochodzi do 50% bazowego czasu. */
+  maxAttackSpeedBonus: 0.6,
   /** Prędkość ruchu maks. +60%. */
   maxMoveSpeedMultiplier: 1.6,
   /** Kołczany: maks. 6 ładunków strzału. */

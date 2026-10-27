@@ -4,6 +4,7 @@ import type { ItemDefinition, ItemEffectsConfig, ItemId, StatLimits, StatModifie
 import type { PlayerStats } from '@/core/types';
 import { applyArcheryModifiers } from '@/systems/Archery';
 import { applySorceryModifiers } from '@/systems/Sorcery';
+import { attackCooldownMultiplier } from '@/systems/StatScaling';
 import { computeWeaponEffects } from '@/systems/WeaponEffects';
 
 /** Finalne statystyki gracza po zastosowaniu przedmiotów. */
@@ -20,7 +21,7 @@ const NO_MODIFIERS: StatModifiers = {
   maxHp: 0,
   meleeDamage: 0,
   moveSpeedPct: 0,
-  attackCooldownPct: 0,
+  attackSpeedPct: 0,
   dashCooldownPct: 0,
   rangedCharges: 0,
 };
@@ -50,7 +51,7 @@ export function sumModifiers(
       maxHp: acc.maxHp + (mods.maxHp ?? 0),
       meleeDamage: acc.meleeDamage + (mods.meleeDamage ?? 0),
       moveSpeedPct: acc.moveSpeedPct + (mods.moveSpeedPct ?? 0),
-      attackCooldownPct: acc.attackCooldownPct + (mods.attackCooldownPct ?? 0),
+      attackSpeedPct: acc.attackSpeedPct + (mods.attackSpeedPct ?? 0),
       dashCooldownPct: acc.dashCooldownPct + (mods.dashCooldownPct ?? 0),
       rangedCharges: acc.rangedCharges + (mods.rangedCharges ?? 0),
     };
@@ -84,14 +85,14 @@ export function computeLoadout(
     combat: {
       ...baseCombat,
       meleeDamage: Math.max(1, baseCombat.meleeDamage + mods.meleeDamage),
-      attackCooldownMs: Math.round(baseCombat.attackCooldownMs * cooldownMultiplier(mods.attackCooldownPct)),
+      attackCooldownMs: Math.round(baseCombat.attackCooldownMs * attackCooldownMultiplier(mods, limits)),
       dash: {
         ...baseCombat.dash,
         cooldownMs: Math.round(baseCombat.dash.cooldownMs * cooldownMultiplier(mods.dashCooldownPct)),
       },
       ranged: { ...baseCombat.ranged, maxCharges },
     },
-    effects: computeWeaponEffects(itemIds, effectsConfig),
+    effects: computeWeaponEffects(itemIds, effectsConfig, baseStats.maxHp),
     kit: applyKitModifiers(baseKit, mods, limits),
   };
 }

@@ -148,8 +148,8 @@ export interface WeaponEffects {
   readonly meleeHeal: number;
   /** Minimalny odstęp między leczeniami za cios (ms). */
   readonly meleeHealCooldownMs: number;
-  /** Krok 93: sufit leczenia kła — część maks. HP na sekundę (0, gdy brak kła). */
-  readonly meleeHealMaxHpPctPerSec: number;
+  /** Krok 93: sufit leczenia kła w HP na sekundę (0, gdy brak kła); od kroku 117 liczony od bazowego HP bohatera. */
+  readonly meleeHealMaxPerSec: number;
   /** Obrażenia zadawane wrogom, przez których gracz przelatuje dashem (0 = brak). */
   readonly dashDamage: number;
 }

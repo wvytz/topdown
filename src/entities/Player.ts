@@ -23,7 +23,7 @@ import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
 import { BeamChannel, OrbSeries, orbitOffsets } from '@/systems/Sorcery';
 import { BowRepeater } from '@/systems/Archery';
-import { UltimateGauge, ultimateActiveMs, ultimateGuardMs } from '@/systems/Ultimate';
+import { UltimateGauge, gaugeConfigFor, ultimateActiveMs, ultimateGuardMs } from '@/systems/Ultimate';
 import { ULTIMATE_GAUGE } from '@/config/ultimateConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { statusTint } from '@/effects/statusTints';
@@ -120,7 +120,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private bowReleasedAt = -Infinity;
   /** Ultimate (R, krok 98): pasek mocy i nietykalność z szału albo tarczy. */
   private readonly ultimateConfig: UltimateConfig;
-  private readonly ultimateGauge = new UltimateGauge(ULTIMATE_GAUGE);
+  private readonly ultimateGauge: UltimateGauge;
   private readonly ultimateGuard = new Timer();
   /** Kule krążące wokół Czarodziejki (tyle, ile jest gotowych do rzutu). */
   private readonly orbitSprites: Phaser.GameObjects.Sprite[] = [];
@@ -133,6 +133,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, SPRITE_SHEETS[HERO_VISUALS[hero].sheet].key);
     this.visual = HERO_VISUALS[hero];
     this.ultimateConfig = HERO_DEFINITIONS[hero].ultimate;
+    this.ultimateGauge = new UltimateGauge(gaugeConfigFor(HERO_DEFINITIONS[hero], ULTIMATE_GAUGE));
     this.stats = loadout.stats;
     this.combat = loadout.combat;
     this.weaponEffects = loadout.effects;

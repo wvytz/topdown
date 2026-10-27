@@ -4639,6 +4639,22 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 **Testy:** `tests/systems/sfxTone.test.ts` (niżej, filtr, długość bez zmian, każdy efekt dalej słyszalny), oddech melodii w `musicComposer.test.ts`. Build zielony (1935 testów). Przeglądarka: dźwięk i muzyka grają, bez błędów.
 
 **Czeka na ocenę właściciela:** czy efekty są już dość niskie i miękkie (jeśli nie — `pitchScale` 0,6, filtr 2,5 kHz), czy muzyka da się słuchać dłużej.
+## Krok 117 — Balans: Szał barbarzyńcy, tempo ataku, Wampirzy kieł, krótszy dash `#ocena` `#balans` `#coop`
+
+**Ocena właściciela (26.10.2026, nagranie z runu barbarzyńcą do piętra 16):** „barbarzyńca dalej jest kompletnie broken z kilkoma przedmiotami, a jego ultimate tym bardziej; dash wydaje się zbyt długi na rozmiar pomieszczeń; lifesteal i attack speed mocno się skalują i wydają jedyny słuszny wybór”.
+
+**Co pokazało nagranie (piętro 16):** Ostrze ×11, Buty ×9, Serce ×8, Klepsydra ×5, Kieł ×5, Elektryczna strzała ×5, Rękawice ×3, Ognista pięść ×2. Szał mnożył czas ciosu już po limicie z przedmiotów (3 Rękawice: 205 ms → 133 ms, z Ostrzami kilkaset obrażeń/s w łuku przy nietykalności); sufit leczenia kła rósł z Sercami (260 HP → 10,4 HP/s); 3 kopie Butów i 2 Klepsydry nic nie dawały (statystyki na limicie).
+
+**Zmiany (liczby w configu):**
+- **Szał** (`heroConfig.ts`): 5 → 4 s, ciosy ×0,65 → ×0,8, obrażenia ×1,35 → ×1,2; nietykalność zostaje. Pasek barbarzyńcy za zabicie 5% → 3% (nowe pole `HeroDefinition.ultimateGauge`, `gaugeConfigFor`); Czarodziejka i łucznik bez zmian.
+- **Tempo ataku** (`lootConfig.ts`, `systems/StatScaling.ts`): Rękawice „+12% tempa ataku” (`attackSpeedPct`) zamiast −12% czasu. Czas = bazowy / (1 + tempo), limit +60% (`STAT_LIMITS.maxAttackSpeedBonus`, 5 kopii). Każda kopia daje tyle samo ciosów na sekundę (dawniej 5 kopii = ×2). Z pełnymi Rękawicami szał dochodzi dokładnie do 50% bazowego czasu (160 ms) — niżej nie zejdzie. Dotyczy też kul Czarodziejki i ostrzału łucznika.
+- **Wampirzy kieł:** leczenie 2 / 3 / 4 / 4 HP raz na 1 s (było 2 / 4 / 5 / 6 co 0,7 s); sufit 4% **bazowego** HP bohatera na sekundę (`WeaponEffects.meleeHealMaxPerSec`): barbarzyńca 4 HP/s, łucznik 3,4, Czarodziejka 3 — Serca go nie podnoszą.
+- **Dash (wszyscy bohaterowie):** 620 px/s × 150 ms ≈ 93 px → 500 px/s × 140 ms = 70 px (ok. 2 kafle przy pokojach 5–10 kafli). Nietykalność dasha = czas trwania, więc spada tylko o 10 ms.
+- **Przedmioty na limicie** (`systems/ItemUsefulness.ts`): karty za bossa i kapliczka losują tylko z przedmiotów, które bohaterowi coś zmienią (porównanie loadoutu z kopią i bez). Znikają Buty, Klepsydra, Rękawice na limicie, Kieł po 3 kopiach, Lodowy odłamek po 4, Ognista pięść po 5. Łupy z ziemi bez zmian. W co-opie pula liczona osobno dla każdego gracza.
+
+**Testy:** `tests/systems/itemUsefulness.test.ts` (nowy), `progression` (równy przyrost tempa, limit), `ultimate` (szał nie schodzi poniżej limitu, pasek barbarzyńcy), `healBudget` (sufit z bazowego HP), `itemEffects`, `archery`. Build zielony (1908 testów). `npm run smoke` — wszyscy bohaterowie bez błędów. `npm run smoke -- --coop`: wspinaczka co-op przechodzi, ale smoke zgłasza „P2 nie wstał po wskrzeszaniu” na piętrze 1 — **ten sam błąd jest na `main` przed tym krokiem** (sprawdzone), więc to osobna sprawa do zbadania.
+
+**Czeka na ocenę właściciela:** czy barbarzyńca z przedmiotami i Szał są teraz w porządku, długość dasha (70 px), czy kieł nie stał się bezużyteczny, czy limit tempa +60% nie jest za niski. Do rozważenia, jeśli dalej za mocno: malejący przyrost Ostrza (dziś liniowo +3, ×11 = 45 obrażeń przy HP wrogów ×3,25 na piętrze 16).
 
 ## Znane ograniczenia i backlog
 
@@ -4723,7 +4739,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Pajęczy duet (krok 112):** `#areny-bossow` Król i Matka Pająków naraz na arenie 3 — trudność, świta tylko Króla; potem decyzja o wspinaczce — czeka na test właściciela.
 - **Hitboxy i wybuchy (krok 110):** `#ocena` `#balans` strefy łapią ślad stóp (5 px), pociski tułów (8 px); nowy telegraf i wybuch w promieniu strefy (bomby kultystów, wybuch elity, ataki bossów) — czeka na test właściciela.
 - **Wypadanie za kratę areny (krok 98a):** `#ocena` bezpiecznik cofa gracza przepchniętego przez mur lub kratę; czy w teście właściciela sytuacja z Areny 5 się nie powtarza (F9: `player-unstuck`).
-- **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału, Supernowej i totemu, wygląd totemu (placeholder).
+- **Ultimate (krok 98):** `#balans` czas ładowania paska mocy, siła szału (osłabiony w kroku 117: 4 s, ×0,8 czasu, ×1,2 obrażeń, 3% za zabicie), Supernowej i totemu, wygląd totemu (placeholder).
+- **Balans przedmiotów (krok 117):** `#balans` `#ocena` tempo ataku (limit +60%), kieł (2/3/4 HP, sufit z bazowego HP), dash 70 px, przedmioty na limicie poza kartami i kapliczką — czeka na test właściciela.
 - **Bohaterowie po kroku 97:** `#balans` `#czarodziejka` `#lucznik` ciągły ostrzał łucznika (co 0,34 s, co 3. mocna), fala uderzeniowa i powrót kul Czarodziejki (0,6 s), mocniejszy promień; czy barbarzyńca dalej jest OP.
 - **Raport testera (24.10.2026): gra powtarzalna** `#ocena` — do osobnego kroku; właściciel przekaże więcej uwag.
 - **HUD z ikonami (krok 67):** `#hud` rozmiar ikon (16 px 1:1 w slocie 28 px), czytelność liczników, czas podpisu (3 s).

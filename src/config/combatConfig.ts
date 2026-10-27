@@ -18,9 +18,11 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
   attackCooldownMs: 320,
   knockback: 260,
   invulnerabilityMs: 600,
+  // Krok 117 (ocena właściciela: dash za długi na pokoje 5–10 kafli): 620 × 150 ms ≈ 93 px (prawie 3 kafle)
+  // → 500 × 140 ms = 70 px (ok. 2 kafle); nietykalność dasha prawie bez zmian (= czas trwania).
   dash: {
-    speed: 620,
-    durationMs: 150,
+    speed: 500,
+    durationMs: 140,
     cooldownMs: 700,
   },
   // Strzał jest słabszy od ciosu wręcz: uzupełnienie walki (dobijanie, Kitery), nie zamiennik.

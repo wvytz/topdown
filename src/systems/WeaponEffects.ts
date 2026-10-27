@@ -8,7 +8,7 @@ export const NO_WEAPON_EFFECTS: WeaponEffects = {
   meleeStatus: {},
   meleeHeal: 0,
   meleeHealCooldownMs: 0,
-  meleeHealMaxHpPctPerSec: 0,
+  meleeHealMaxPerSec: 0,
   dashDamage: 0,
 };
 
@@ -27,8 +27,11 @@ const diminished = (stacks: number, base: number, perStack: number, decay: numbe
   return Math.round(value);
 };
 
-/** Zlicza przedmioty z efektem i zamienia je na efekty broni. Kolejne kopie wzmacniają efekt. */
-export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEffectsConfig): WeaponEffects {
+/**
+ * Zlicza przedmioty z efektem i zamienia je na efekty broni. Kolejne kopie wzmacniają efekt.
+ * `baseMaxHp` — bazowe HP bohatera (bez Serc): od niego liczymy sufit leczenia kła (krok 117).
+ */
+export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEffectsConfig, baseMaxHp = 100): WeaponEffects {
   const count = (id: ItemId): number => itemIds.filter((item) => item === id).length;
 
   const electric = count(ItemId.ElectricArrow);
@@ -65,7 +68,7 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
     meleeStatus,
     meleeHeal: diminished(fangs, config.vampireFang.heal, config.vampireFang.healPerStack, config.vampireFang.stackDecay),
     meleeHealCooldownMs: fangs > 0 ? config.vampireFang.cooldownMs : 0,
-    meleeHealMaxHpPctPerSec: fangs > 0 ? config.vampireFang.maxHpPctPerSec : 0,
+    meleeHealMaxPerSec: fangs > 0 ? config.vampireFang.maxHpPctPerSec * baseMaxHp : 0,
     dashDamage: stacked(count(ItemId.StormDash), config.stormDash.damage, config.stormDash.damagePerStack),
   };
 }

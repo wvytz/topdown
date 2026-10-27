@@ -1,6 +1,7 @@
 import type { ArcheryConfig, BowConfig } from '@/core/heroTypes';
 import type { StatLimits, StatModifiers } from '@/core/lootTypes';
 import type { Vector2 } from '@/core/types';
+import { attackCooldownMultiplier } from '@/systems/StatScaling';
 
 /**
  * Zestaw łucznika (krok 82, ciągły ostrzał od kroku 97): siła strzały, wachlarz salwy, przedmioty.
@@ -8,7 +9,7 @@ import type { Vector2 } from '@/core/types';
  * Rękawice (krótszy odstęp między strzałami). Kołczan dokłada ładunek salwy (`combat.ranged`).
  */
 export function applyArcheryModifiers(base: ArcheryConfig, mods: StatModifiers, limits: StatLimits): ArcheryConfig {
-  const cooldown = Math.max(limits.minCooldownMultiplier, 1 + mods.attackCooldownPct);
+  const cooldown = attackCooldownMultiplier(mods, limits);
   const { bow } = base;
   return {
     ...base,

@@ -28,7 +28,7 @@ import { BossProgress } from '@/persistence/BossProgress';
 import { startFloorInfo, unlocksFloor } from '@/systems/FloorSelect';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
-import type { ItemId, LootDrop, LootTable } from '@/core/lootTypes';
+import type { ItemDefinition, ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { ItemKind, PickupKind } from '@/core/lootTypes';
 import { itemFrames } from '@/config/spriteConfig';
 import { EnemyType } from '@/core/combatTypes';
@@ -70,9 +70,11 @@ import {
   ENEMY_LOOT,
   HIGHSCORE_CONFIG,
   ITEM_DEFINITIONS,
+  ITEM_EFFECTS,
   ITEM_POOL,
   LOOT_SCALING,
   SHRINE_CONFIG,
+  STAT_LIMITS,
 } from '@/config/lootConfig';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
@@ -114,6 +116,7 @@ import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { rollItemChoices } from '@/systems/RewardChoice';
+import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
@@ -1128,6 +1131,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       run: this.run,
       rng: createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)),
       config: applyFloorToShrine(SHRINE_CONFIG, this.floorEffects),
+      poolFor: (hero) => this.usefulPoolFor(hero),
       onBlessing: (itemId, cost, hero) => {
         diag.note('shrine-offering', { floor: this.floorNumber, item: itemId, cost });
         this.effects.floatingText(hero.x, hero.y, `-${cost}`, '#f5c542');
@@ -1350,9 +1354,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
         onPicked?.();
         return;
       }
-      this.offerRewardTo(hero, rollItemChoices(ITEM_POOL, BOSS_REWARD.choices, rng), offerNext);
+      this.offerRewardTo(hero, rollItemChoices(this.usefulPoolFor(hero), BOSS_REWARD.choices, rng), offerNext);
     };
     offerNext();
+  }
+
+  /** Krok 117: pula bez przedmiotów, które temu bohaterowi już nic nie dadzą (karty za bossa, kapliczka). */
+  private usefulPoolFor(hero: Player): readonly ItemDefinition[] {
+    const items = hero === this.player ? this.run.items : this.partnerItems;
+    return usefulItemPool(ITEM_POOL, HERO_DEFINITIONS[this.heroIdOf(hero)], items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
   }
 
   private offerRewardTo(hero: Player, choices: readonly ItemId[], onPicked: () => void): void {

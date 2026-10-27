@@ -110,9 +110,9 @@ describe('przedmioty u łucznika', () => {
     expect(geared.combat.ranged.maxCharges).toBe(archer.combat.ranged.maxCharges + 1);
   });
 
-  it('Rękawice nie skrócą odstępu poniżej limitu odnowień', () => {
+  it('Rękawice nie przyspieszą ostrzału ponad limit tempa ataku', () => {
     const gloves = Array.from({ length: 20 }, () => ItemId.Gloves);
-    expect(archeryOf(loadout(gloves).kit)!.bow.intervalMs).toBe(Math.round(bow.intervalMs * STAT_LIMITS.minCooldownMultiplier));
+    expect(archeryOf(loadout(gloves).kit)!.bow.intervalMs).toBe(Math.round(bow.intervalMs / (1 + STAT_LIMITS.maxAttackSpeedBonus)));
   });
 
   it('modyfikator piętra wydłuża odnawianie salwy (ładunki strzału)', () => {

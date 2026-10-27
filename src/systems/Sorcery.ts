@@ -2,6 +2,7 @@ import type { Hit, StatusApplication } from '@/core/combatTypes';
 import type { BeamConfig, SorceryConfig } from '@/core/heroTypes';
 import type { StatLimits, StatModifiers } from '@/core/lootTypes';
 import type { Vector2 } from '@/core/types';
+import { attackCooldownMultiplier } from '@/systems/StatScaling';
 import { knockbackFrom } from '@/systems/CombatMath';
 import type { MeleeTarget, SwingResult } from '@/systems/MeleeResolver';
 
@@ -11,7 +12,7 @@ import type { MeleeTarget, SwingResult } from '@/systems/MeleeResolver';
  * Ostrze (+obrażenia kul i fali), Rękawice (szybszy rzut i powrót kul), Kołczan (+1 kula). Promień to umiejętność bazowa.
  */
 export function applySorceryModifiers(base: SorceryConfig, mods: StatModifiers, limits: StatLimits): SorceryConfig {
-  const cooldown = Math.max(limits.minCooldownMultiplier, 1 + mods.attackCooldownPct);
+  const cooldown = attackCooldownMultiplier(mods, limits);
   const { orbs } = base;
   return {
     ...base,

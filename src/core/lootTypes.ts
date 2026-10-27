@@ -34,13 +34,13 @@ export enum ItemKind {
 
 /**
  * Modyfikatory statystyk gracza. Wartości procentowe są ułamkami (0.1 = +10%).
- * Ujemny procent cooldownu = szybciej.
+ * Ujemny procent cooldownu = szybciej. Tempo ataku (krok 117) to dodatni procent szybkości: +0,12 = 12% więcej ciosów.
  */
 export interface StatModifiers {
   readonly maxHp: number;
   readonly meleeDamage: number;
   readonly moveSpeedPct: number;
-  readonly attackCooldownPct: number;
+  readonly attackSpeedPct: number;
   readonly dashCooldownPct: number;
   /** Dodatkowe ładunki strzału. */
   readonly rangedCharges: number;
@@ -79,6 +79,8 @@ export interface LootScalingConfig {
 /** Granice, w których mieszczą się statystyki niezależnie od liczby przedmiotów. */
 export interface StatLimits {
   readonly minCooldownMultiplier: number;
+  /** Krok 117: tempo ataku z przedmiotów najwyżej +tyle (0,6 = +60%, czas ataku ≥ 1/1,6 bazowego). */
+  readonly maxAttackSpeedBonus: number;
   readonly maxMoveSpeedMultiplier: number;
   readonly maxRangedCharges: number;
 }
@@ -103,7 +105,7 @@ export interface ItemEffectsConfig {
     readonly healPerStack: number;
     /** Krok 93: malejący przyrost kolejnych kopii, jak w Ognistej pięści. */
     readonly stackDecay: number;
-    /** Krok 93: kieł leczy najwyżej tyle maks. HP na sekundę (0,04 = 4%), niezależnie od liczby kopii. */
+    /** Krok 93: kieł leczy najwyżej tyle maks. HP na sekundę (0,04 = 4%); od kroku 117 bazowego HP bohatera. */
     readonly maxHpPctPerSec: number;
     /** Leczenie najwyżej raz na tyle ms — bez tego szybkie ciosy dają ogromną regenerację. */
     readonly cooldownMs: number;
