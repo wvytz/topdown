@@ -13,7 +13,8 @@ import type { SoundSpaceConfig } from '@/systems/SoundSpace';
 
 /** Ustawienia na pierwsze uruchomienie i krok suwaka (10%). */
 export const AUDIO_SETTINGS_RULES: AudioSettingsRules = {
-  defaults: { music: 0.5, sfx: 0.7, muted: false } satisfies AudioSettings,
+  /** Krok 120 (decyzja właściciela): gra startuje wyciszona; dźwięk włącza głośnik na ekranie startowym, N albo pauza. */
+  defaults: { music: 0.5, sfx: 0.7, muted: true } satisfies AudioSettings,
   step: 0.1,
 };
 
@@ -412,8 +413,16 @@ export const MUSIC_MIX = {
 export const AUDIO_TEXT = {
   music: 'Muzyka',
   sfx: 'Efekty',
-  muted: 'WYCISZONE',
-  muteHint: (key: string) => `${key} — wycisz / włącz dźwięk`,
-  padHint: '↑ ↓ wybór · ← → głośność',
-  touchHint: 'Stuknij − / + · stuknij tutaj — wycisz',
 };
+
+/**
+ * Głośnik w rogu ekranu startowego (krok 120): kliknięcie albo stuknięcie włącza i wycisza dźwięk
+ * (to samo ustawienie co N i pauza, zapamiętane w przeglądarce). Pozycja od prawego górnego rogu płótna.
+ */
+export const SPEAKER_BUTTON = {
+  marginX: 30,
+  marginY: 30,
+  radius: 18,
+  colors: { fill: 0x0c0c16, fillAlpha: 0.7, border: 0x8a7440, icon: 0xf0d27a, muted: 0xff7a6a, hover: 0xffffff },
+  label: { on: 'DŹWIĘK', off: 'BEZ DŹWIĘKU' },
+} as const;

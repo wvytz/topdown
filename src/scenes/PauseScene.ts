@@ -14,13 +14,8 @@ import { menuCommandFromKey } from '@/systems/gamepadInput';
 import { volumeLabel } from '@/systems/AudioSettings';
 import { DISPLAY_CONFIG, DISPLAY_TEXT } from '@/config/displayConfig';
 import { display } from '@/input/DisplayControls';
-
-/** Kanał głośności na ekranie pauzy (krok 116). */
-type AudioChannel = 'music' | 'sfx';
-/** Przełącznik obrazu na ekranie pauzy (krok 118, tylko PC). */
-type DisplayToggle = 'fill' | 'fullscreen';
-/** Wiersz wybrany padem lub strzałkami: slot zapisu, suwak głośności albo przełącznik obrazu. */
-type PauseCursor = number | AudioChannel | DisplayToggle;
+import { PauseItem, PausePage, movePauseCursor, pageOf, pauseBack, pauseItems, slotOf } from '@/systems/pauseMenu';
+import type { PauseMenuOptions } from '@/systems/pauseMenu';
 
 export interface PauseSceneData {
   readonly reason: PauseReason;
@@ -32,265 +27,345 @@ export interface PauseSceneData {
   readonly onQuit: () => void;
 }
 
+/** Wiersz strony: napis pozycji (dla głośności także − i +). */
+interface PauseRow {
+  readonly item: PauseItem;
+  readonly text: Phaser.GameObjects.Text;
+}
+
+const COLORS = { item: '#e8e8f0', selected: '#f5c542', dim: '#80809a', hint: '#a0a0b8', ok: '#9be08a', error: '#ff7a6a' } as const;
+
 /**
  * Nakładka pauzy (krok 70). GameScene jest w tym czasie wstrzymana, a jej czas zamrożony (PauseClock),
- * więc nakładka nie używa tweenów ani czasu sceny. Wznowienie: Esc, P albo kliknięcie (po puszczeniu przycisku,
- * żeby kliknięcie powracające do okna nie zamieniło się w atak).
- * Krok 91: 1 / 2 / 3 (albo kliknięcie wiersza) zapisuje grę w slocie, M wychodzi do menu głównego.
- * Krok 95 (pad): Start / B — wznów, ↑ ↓ — wybór slotu, A — zapis w wybranym slocie, Y — menu główne.
+ * więc nakładka nie używa tweenów ani czasu sceny.
+ * Krok 120: krótkie menu (Wznów, Zapisz grę, Dźwięk i obraz, Sterowanie, Menu główne) z podstronami
+ * (`systems/pauseMenu.ts`). Mysz: najechanie wybiera, kliknięcie potwierdza, kliknięcie obok listy na stronie
+ * głównej wznawia (powrót do okna po utracie fokusu). Klawiatura: strzałki / WASD i Enter, Esc — wstecz (na głównej
+ * wznów), P — wznów; skróty 1 / 2 / 3 (zapis), M (menu), N (dźwięk), O i F (obraz) działają na każdej stronie.
+ * Pad: ↑ ↓ + A, ← → głośność, B — wstecz, Start — wznów, Y — menu główne.
  */
 export class PauseScene extends Phaser.Scene {
   private resumed = false;
   private readonly saves = new SaveStorage(SaveStorage.browserStorage());
-  private slotRows: Phaser.GameObjects.Text[] = [];
+  private pauseData!: PauseSceneData;
+  private options!: PauseMenuOptions;
+  private mobile = false;
+  private page = PausePage.Main;
+  private cursor: PauseItem | null = null;
+  /** Zmiana strony czeka do `update` — nie niszczymy napisu w trakcie obsługi jego kliknięcia. */
+  private pendingPage: { readonly page: PausePage; readonly cursor: PauseItem | null } | null = null;
+  private pageLayer!: Phaser.GameObjects.Container;
+  private rows: PauseRow[] = [];
+  private note: Phaser.GameObjects.Text | null = null;
   private status!: Phaser.GameObjects.Text;
-  /** Wiersz wybrany padem albo strzałkami (krok 95, suwaki — krok 116); null — jeszcze nic. */
-  private cursor: PauseCursor | null = null;
-  private audioRows: { readonly channel: AudioChannel; readonly value: Phaser.GameObjects.Text }[] = [];
-  private muteText!: Phaser.GameObjects.Text;
-  private muteHint = '';
-  private displayRows: { readonly toggle: DisplayToggle; readonly text: Phaser.GameObjects.Text }[] = [];
+  private style!: Phaser.Types.GameObjects.Text.TextStyle;
 
   constructor() {
     super(SceneKey.Pause);
   }
 
   create(data: PauseSceneData): void {
+    this.pauseData = data;
     this.resumed = false;
-    this.slotRows = [];
-    this.audioRows = [];
-    this.displayRows = [];
-    this.cursor = null;
+    this.mobile = currentPlatform() === 'mobile';
+    this.options = { canSave: data.onSave !== null, display: !this.mobile };
+    this.pendingPage = null;
     const { width, height } = this.scale;
     const L = PAUSE_CONFIG.layout;
-    const texts = currentPlatform() === 'mobile' ? PAUSE_CONFIG.mobile : PAUSE_CONFIG;
-    const style: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: 'monospace',
-      color: '#e8e8f0',
-      stroke: '#000000',
-      strokeThickness: 4,
-    };
+    this.style = { fontFamily: 'monospace', color: COLORS.item, stroke: '#000000', strokeThickness: 4 };
 
     this.add.rectangle(width / 2, height / 2, width, height, PAUSE_CONFIG.overlay.color, PAUSE_CONFIG.overlay.alpha);
-    this.add.text(width / 2, L.titleY, PAUSE_CONFIG.title, { ...style, fontSize: '40px', color: '#f0d27a', strokeThickness: 6 }).setOrigin(0.5);
-    this.add.text(width / 2, L.reasonY, PAUSE_CONFIG.reasonText[data.reason], { ...style, fontSize: '15px', color: '#d8c0ff' }).setOrigin(0.5);
+    const P = L.panel;
     this.add
-      .text(width / 2, L.controlsY, texts.controls.join('\n'), { ...style, fontSize: '14px', color: '#a0a0b8', align: 'center', lineSpacing: 6 })
-      .setOrigin(0.5, 0);
+      .rectangle(width / 2, P.top, P.width, P.bottom - P.top, P.color, P.alpha)
+      .setOrigin(0.5, 0)
+      .setStrokeStyle(2, P.border);
+    this.pageLayer = this.add.container(0, 0);
+    this.status = this.add.text(width / 2, L.statusY, '', { ...this.style, fontSize: '14px', color: COLORS.ok }).setOrigin(0.5);
+    this.showPage(PausePage.Main, this.mobile ? null : PauseItem.Resume);
 
-    const onSave = data.onSave;
-    this.add
-      .text(width / 2, L.saveTitleY, onSave ? texts.saveTitle : PAUSE_CONFIG.saveUnavailable, { ...style, fontSize: '14px', color: '#f0d27a' })
-      .setOrigin(0.5);
-    if (onSave) {
-      for (const slot of this.saves.slots) {
-        const row = this.add
-          .text(width / 2, L.slotsY + (slot - 1) * L.slotStep, '', { ...style, fontSize: '13px' })
-          .setOrigin(0.5)
-          .setInteractive({ useHandCursor: true });
-        row.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.save(onSave, slot));
-        this.slotRows.push(row);
-        this.input.keyboard?.on(`keydown-${slotKeyName(slot)}`, (event: KeyboardEvent) => {
-          if (!event.repeat) this.save(onSave, slot);
-        });
-      }
-      this.refreshSlots();
-    }
-    this.createAudioRows(style, texts === PAUSE_CONFIG.mobile);
-    if (texts !== PAUSE_CONFIG.mobile) this.createDisplayRows(style);
-    this.status = this.add.text(width / 2, L.statusY, '', { ...style, fontSize: '14px', color: '#9be08a' }).setOrigin(0.5);
-    // Napis „M — menu główne” da się też kliknąć albo stuknąć (krok 96, telefon bez klawiatury).
-    this.add
-      .text(width / 2, L.quitY, texts.quitHint, { ...style, fontSize: '14px', color: '#a0a0b8' })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.quit(data));
-    this.add.text(width / 2, L.resumeY, texts.resumeHint, { ...style, fontSize: '16px', color: '#f5c542' }).setOrigin(0.5);
-
-    for (const key of PAUSE_CONFIG.keys) {
-      this.input.keyboard?.on(`keydown-${key}`, (event: KeyboardEvent) => {
-        if (!event.repeat) this.resume(data);
-      });
-    }
-    this.input.keyboard?.on('keydown-M', (event: KeyboardEvent) => {
-      if (!event.repeat) this.quit(data);
-    });
-    // Strzałki i Enter — jak pad: wybór wiersza, głośność, zapis (krok 116).
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
-      if (!event.key.startsWith('Arrow') && event.key !== 'Enter') return;
-      const command = menuCommandFromKey(event.key);
-      if (command) this.onPadCommand(command, data);
-    });
-    this.input.keyboard?.on(`keydown-${MUTE_KEY}`, (event: KeyboardEvent) => {
-      if (!event.repeat) sound.toggleMute();
-    });
-    const unwatch = sound.watch(() => this.refreshAudio());
+    this.bindKeys(data);
+    const unwatch = sound.watch(() => this.refresh());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unwatch);
-    const unwatchDisplay = display.watch(() => this.refreshDisplay());
+    const unwatchDisplay = display.watch(() => this.refresh());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unwatchDisplay);
-    bindPadMenu(this, (command) => this.onPadCommand(command, data));
-    // Kliknięcie poza wierszem slotu wznawia grę.
+    bindPadMenu(this, (command) => this.onCommand(command));
+    // Kliknięcie obok listy na stronie głównej wznawia grę (podstrony: nic — łatwo chybić przycisku głośności).
     this.input.on(Phaser.Input.Events.POINTER_UP, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (over.length === 0) this.resume(data);
+      if (over.length === 0 && this.page === PausePage.Main && !this.pendingPage) this.resume();
     });
   }
 
-  private onPadCommand(command: MenuCommand, data: PauseSceneData): void {
-    const slots = this.saves.slots;
+  override update(): void {
+    if (!this.pendingPage) return;
+    const { page, cursor } = this.pendingPage;
+    this.pendingPage = null;
+    this.showPage(page, cursor);
+  }
+
+  private bindKeys(data: PauseSceneData): void {
+    const keyboard = this.input.keyboard;
+    if (!keyboard) return;
+    const once = (name: string, action: () => void): void => {
+      keyboard.on(`keydown-${name}`, (event: KeyboardEvent) => {
+        if (!event.repeat) action();
+      });
+    };
+    once('P', () => this.resume());
+    once('M', () => this.quit());
+    once(MUTE_KEY, () => sound.toggleMute());
+    if (this.options.display) once(DISPLAY_CONFIG.fillKey, () => this.activate(PauseItem.Fill));
+    const onSave = data.onSave;
+    if (onSave) for (const slot of this.saves.slots) once(slotKeyName(slot), () => this.save(onSave, slot));
+    // Strzałki, WASD, Enter i Esc — jak pad (Esc to „wstecz”, na stronie głównej wznawia).
+    keyboard.on('keydown', (event: KeyboardEvent) => {
+      if (event.repeat && (event.key === 'Escape' || event.key === 'Enter')) return;
+      const command = menuCommandFromKey(event.key);
+      if (command) this.onCommand(command);
+    });
+  }
+
+  private onCommand(command: MenuCommand): void {
+    if (this.pendingPage) return;
     switch (command) {
       case MenuCommand.Pause:
+        this.resume();
+        break;
       case MenuCommand.Back:
-        this.resume(data);
+        this.back();
         break;
       case MenuCommand.Alt:
-        this.quit(data);
+        this.quit();
         break;
       case MenuCommand.Up:
-      case MenuCommand.Down: {
-        const rows: PauseCursor[] = [...(data.onSave ? slots : []), 'music', 'sfx', ...this.displayRows.map((row) => row.toggle)];
-        const step = command === MenuCommand.Up ? -1 : 1;
-        const index = this.cursor === null ? (step > 0 ? 0 : rows.length - 1) : (rows.indexOf(this.cursor) + step + rows.length) % rows.length;
-        this.cursor = rows[index] ?? null;
+      case MenuCommand.Down:
+        this.cursor = movePauseCursor(pauseItems(this.page, this.options), this.cursor, command === MenuCommand.Up ? -1 : 1);
         sound.play(SoundCue.UiMove);
-        this.refreshSlots();
-        this.refreshAudio();
-        this.refreshDisplay();
+        this.refresh();
         break;
-      }
       case MenuCommand.Left:
       case MenuCommand.Right:
-        if (this.cursor === 'music' || this.cursor === 'sfx') this.changeVolume(this.cursor, command === MenuCommand.Left ? -1 : 1);
+        if (this.cursor === PauseItem.Music || this.cursor === PauseItem.Sfx) this.changeVolume(this.cursor, command === MenuCommand.Left ? -1 : 1);
         break;
       case MenuCommand.Confirm:
-        if (this.cursor === 'music' || this.cursor === 'sfx') sound.toggleMute();
-        else if (this.cursor === 'fill' || this.cursor === 'fullscreen') this.useDisplay(this.cursor);
-        else if (data.onSave && this.cursor !== null) this.save(data.onSave, this.cursor);
+        if (this.cursor !== null) this.activate(this.cursor);
         break;
       default:
     }
   }
 
-  private quit(data: PauseSceneData): void {
+  private back(): void {
+    const target = pauseBack(this.page);
+    if (!target) {
+      this.resume();
+      return;
+    }
+    sound.play(SoundCue.UiMove);
+    this.pendingPage = target;
+  }
+
+  private activate(item: PauseItem): void {
+    if (this.resumed) return;
+    const page = pageOf(item);
+    if (page) {
+      sound.play(SoundCue.UiMove);
+      this.pendingPage = { page, cursor: this.mobile ? null : (pauseItems(page, this.options)[0] ?? null) };
+      return;
+    }
+    const slot = slotOf(item);
+    if (slot !== null) {
+      if (this.pauseData.onSave) this.save(this.pauseData.onSave, slot);
+      return;
+    }
+    switch (item) {
+      case PauseItem.Resume:
+        this.resume();
+        break;
+      case PauseItem.Quit:
+        this.quit();
+        break;
+      case PauseItem.Back:
+        this.back();
+        break;
+      // Enter na suwaku głośności wycisza, jak przed krokiem 120.
+      case PauseItem.Music:
+      case PauseItem.Sfx:
+      case PauseItem.Mute:
+        sound.toggleMute();
+        break;
+      case PauseItem.Fill:
+      case PauseItem.Fullscreen:
+        this.useDisplay(item);
+        break;
+      default:
+    }
+  }
+
+  /** Buduje stronę od nowa: tytuł, pozycje (dla głośności z − i +), ewentualny opis sterowania i podpowiedź. */
+  private showPage(page: PausePage, cursor: PauseItem | null): void {
+    this.page = page;
+    this.cursor = cursor;
+    this.pageLayer.removeAll(true);
+    this.rows = [];
+    this.note = null;
+    this.status.setText('');
+    const { width } = this.scale;
+    const L = PAUSE_CONFIG.layout;
+    const cx = width / 2;
+    const add = <T extends Phaser.GameObjects.GameObject>(object: T): T => {
+      this.pageLayer.add(object);
+      return object;
+    };
+
+    if (page === PausePage.Main) {
+      add(this.add.text(cx, L.titleY, PAUSE_CONFIG.title, { ...this.style, fontSize: '40px', color: '#f0d27a', strokeThickness: 6 }).setOrigin(0.5));
+      add(this.add.text(cx, L.subtitleY, PAUSE_CONFIG.reasonText[this.pauseData.reason], { ...this.style, fontSize: '14px', color: '#d8c0ff' }).setOrigin(0.5));
+    } else {
+      add(this.add.text(cx, L.titleY, PAUSE_CONFIG.pageTitles[page], { ...this.style, fontSize: '28px', color: '#f0d27a', strokeThickness: 5 }).setOrigin(0.5));
+    }
+    if (page === PausePage.Save) {
+      const unavailable = !this.pauseData.onSave;
+      const subtitle = unavailable ? PAUSE_CONFIG.saveUnavailable : PAUSE_CONFIG.notes.save;
+      add(this.add.text(cx, L.subtitleY, subtitle, { ...this.style, fontSize: '14px', color: unavailable ? COLORS.error : '#d8c0ff' }).setOrigin(0.5));
+    }
+    if (page === PausePage.Controls) {
+      const lines = this.mobile ? PAUSE_CONFIG.mobile.controls : PAUSE_CONFIG.controls;
+      add(
+        this.add
+          .text(cx, L.controlsY, lines.join('\n'), { ...this.style, fontSize: '13px', color: '#c8c8d8', align: 'center', lineSpacing: 4 })
+          .setOrigin(0.5, 0),
+      );
+    }
+
+    const items = pauseItems(page, this.options);
+    const firstY = page === PausePage.Controls ? L.controlsItemsY : L.itemsY;
+    items.forEach((item, i) => {
+      const y = firstY + i * L.itemStep;
+      const text = add(
+        this.add
+          .text(cx, y, '', { ...this.style, fontSize: `${slotOf(item) === null ? L.itemFontSize : L.slotFontSize}px` })
+          .setOrigin(0.5)
+          .setPadding(16, 4, 16, 4)
+          .setInteractive({ useHandCursor: true }),
+      );
+      text.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.hover(item));
+      text.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.activate(item));
+      if (item === PauseItem.Music || item === PauseItem.Sfx) {
+        const button = (dx: number, label: string, steps: number): void => {
+          add(
+            this.add
+              .text(cx + dx, y, label, { ...this.style, fontSize: '22px', color: '#f0d27a' })
+              .setOrigin(0.5)
+              .setPadding(10, 2, 10, 2)
+              .setInteractive({ useHandCursor: true })
+              .on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.hover(item))
+              .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.changeVolume(item, steps)),
+          );
+        };
+        button(-L.volumeButtonDx, '−', -1);
+        button(L.volumeButtonDx, '+', 1);
+      }
+      this.rows.push({ item, text });
+    });
+    if (page === PausePage.Main) {
+      const noteY = firstY + items.length * L.itemStep + L.noteGap;
+      this.note = add(this.add.text(cx, noteY, '', { ...this.style, fontSize: '13px', color: COLORS.hint }).setOrigin(0.5));
+    }
+    const hint = this.mobile ? PAUSE_CONFIG.mobile.hint : page === PausePage.Main ? PAUSE_CONFIG.hints.main : page === PausePage.Settings ? PAUSE_CONFIG.hints.settings : PAUSE_CONFIG.hints.sub;
+    add(this.add.text(cx, L.hintY, hint, { ...this.style, fontSize: '13px', color: COLORS.hint }).setOrigin(0.5));
+    this.refresh();
+  }
+
+  private hover(item: PauseItem): void {
+    if (this.cursor === item || this.pendingPage) return;
+    this.cursor = item;
+    this.refresh();
+  }
+
+  /** Napisy pozycji i kolor wybranej; wołane po każdej zmianie kursora, dźwięku albo obrazu. */
+  private refresh(): void {
+    for (const row of this.rows) {
+      const selected = row.item === this.cursor;
+      const label = this.label(row.item);
+      row.text.setText(selected && !this.mobile ? `▶ ${label} ◀` : label).setColor(this.color(row.item, selected));
+    }
+    if (this.note) {
+      const note = this.cursor === PauseItem.Save ? PAUSE_CONFIG.notes.save : this.cursor === PauseItem.Quit ? PAUSE_CONFIG.notes.quit : '';
+      this.note.setText(note);
+    }
+  }
+
+  private label(item: PauseItem): string {
+    const T = PAUSE_CONFIG.items;
+    const slot = slotOf(item);
+    if (slot !== null) {
+      const record = this.saves.load(slot);
+      const summary = record ? saveSummary(record) : null;
+      return `${SAVE_TEXT.slotName(slot)}: ${summary ? `${summary.title} · ${summary.details}` : SAVE_TEXT.emptySlot}`;
+    }
+    const settings = sound.settings;
+    switch (item) {
+      case PauseItem.Music:
+      case PauseItem.Sfx: {
+        const channel = item === PauseItem.Music ? 'music' : 'sfx';
+        return `${AUDIO_TEXT[channel]} ${volumeLabel(settings[channel])}`;
+      }
+      case PauseItem.Mute:
+        return T.mute(settings.muted);
+      case PauseItem.Fill:
+        return DISPLAY_TEXT.fill(display.settings.fillWindow);
+      case PauseItem.Fullscreen:
+        return DISPLAY_TEXT.fullscreen(display.fullscreen);
+      default:
+        return T[item as keyof typeof T] as string;
+    }
+  }
+
+  private color(item: PauseItem, selected: boolean): string {
+    if (selected) return COLORS.selected;
+    const slot = slotOf(item);
+    if (slot !== null) return this.saves.load(slot) ? COLORS.item : COLORS.dim;
+    if ((item === PauseItem.Music || item === PauseItem.Sfx) && sound.settings.muted) return COLORS.dim;
+    if (item === PauseItem.Mute && sound.settings.muted) return COLORS.error;
+    return COLORS.item;
+  }
+
+  private quit(): void {
     if (this.resumed) return;
     this.resumed = true;
-    data.onQuit();
+    this.pauseData.onQuit();
   }
 
   private save(onSave: (slot: number) => boolean, slot: number): void {
     if (this.resumed) return;
     const ok = onSave(slot);
-    this.status.setText(ok ? SAVE_TEXT.savedToast(slot) : SAVE_TEXT.saveFailed).setColor(ok ? '#9be08a' : '#ff7a6a');
-    this.refreshSlots();
+    this.status.setText(ok ? SAVE_TEXT.savedToast(slot) : SAVE_TEXT.saveFailed).setColor(ok ? COLORS.ok : COLORS.error);
+    this.refresh();
   }
 
-  private refreshSlots(): void {
-    this.slotRows.forEach((row, i) => {
-      const slot = i + 1;
-      const record = this.saves.load(slot);
-      const summary = record ? saveSummary(record) : null;
-      row
-        .setText(`${slot === this.cursor ? '▶ ' : ''}${slot} — ${SAVE_TEXT.slotName(slot)}: ${summary ? `${summary.title} · ${summary.details}` : SAVE_TEXT.emptySlot}`)
-        .setColor(summary ? '#e8e8f0' : '#80809a');
-    });
-  }
-
-  /**
-   * Głośność muzyki i efektów (krok 116): „Muzyka − 50% +”; − i + da się kliknąć i stuknąć,
-   * strzałki i pad zmieniają wybrany wiersz, N (albo stuknięcie napisu) wycisza wszystko.
-   */
-  private createAudioRows(style: Phaser.Types.GameObjects.Text.TextStyle, mobile: boolean): void {
-    const L = PAUSE_CONFIG.layout;
-    const { width } = this.scale;
-    const font = { ...style, fontSize: '14px' };
-    (['music', 'sfx'] as const).forEach((channel, i) => {
-      const x = width / 2 + (i === 0 ? -L.audioColumn : L.audioColumn);
-      this.add.text(x - 70, L.audioY, AUDIO_TEXT[channel], font).setOrigin(1, 0.5);
-      const button = (dx: number, label: string, steps: number) =>
-        this.add
-          .text(x + dx, L.audioY, label, { ...font, fontSize: '18px', color: '#f0d27a' })
-          .setOrigin(0.5)
-          .setPadding(8, 2, 8, 2)
-          .setInteractive({ useHandCursor: true })
-          .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.changeVolume(channel, steps));
-      button(-50, '−', -1);
-      button(50, '+', 1);
-      this.audioRows.push({ channel, value: this.add.text(x, L.audioY, '', font).setOrigin(0.5) });
-    });
-    this.muteText = this.add
-      .text(width / 2, L.audioY + L.audioHintStep, '', { ...style, fontSize: '12px', color: '#a0a0b8' })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => sound.toggleMute());
-    this.muteHint = mobile ? AUDIO_TEXT.touchHint : `${AUDIO_TEXT.muteHint(MUTE_KEY)} · ${AUDIO_TEXT.padHint}`;
-    this.refreshAudio();
-  }
-
-  /**
-   * Wielkość obrazu (krok 118): „Wypełnij okno” (O) i pełny ekran (F — klawisz działa na całej stronie, DisplayControls).
-   * Oba napisy da się kliknąć; pad wybiera wiersz strzałkami i potwierdza A.
-   */
-  private createDisplayRows(style: Phaser.Types.GameObjects.Text.TextStyle): void {
-    const L = PAUSE_CONFIG.layout;
-    const { width } = this.scale;
-    (['fill', 'fullscreen'] as const).forEach((toggle, i) => {
-      const text = this.add
-        .text(width / 2 + (i === 0 ? -L.audioColumn : L.audioColumn), L.displayY, '', { ...style, fontSize: '14px' })
-        .setOrigin(0.5)
-        .setPadding(6, 2, 6, 2)
-        .setInteractive({ useHandCursor: true })
-        .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.useDisplay(toggle));
-      this.displayRows.push({ toggle, text });
-    });
-    this.input.keyboard?.on(`keydown-${DISPLAY_CONFIG.fillKey}`, (event: KeyboardEvent) => {
-      if (!event.repeat) this.useDisplay('fill');
-    });
-    this.refreshDisplay();
-  }
-
-  private useDisplay(toggle: DisplayToggle): void {
+  private useDisplay(item: PauseItem.Fill | PauseItem.Fullscreen): void {
     sound.play(SoundCue.UiMove);
-    if (toggle === 'fill') {
+    if (item === PauseItem.Fill) {
       display.toggleFillWindow();
       return;
     }
     void display.toggleFullscreen().then((ok) => {
-      if (!ok && this.scene.isActive()) this.status.setText(DISPLAY_TEXT.fullscreenFailed).setColor('#ff7a6a');
+      if (!ok && this.scene.isActive()) this.status.setText(DISPLAY_TEXT.fullscreenFailed).setColor(COLORS.error);
     });
   }
 
-  private refreshDisplay(): void {
-    for (const row of this.displayRows) {
-      const selected = this.cursor === row.toggle;
-      const label =
-        row.toggle === 'fill'
-          ? `${DISPLAY_CONFIG.fillKey} — ${DISPLAY_TEXT.fill(display.settings.fillWindow)}`
-          : `${DISPLAY_CONFIG.fullscreenKey} — ${DISPLAY_TEXT.fullscreen(display.fullscreen)}`;
-      row.text.setText(`${selected ? '▶ ' : ''}${label}`).setColor(selected ? '#f5c542' : '#e8e8f0');
-    }
-  }
-
-  private changeVolume(channel: AudioChannel, steps: number): void {
+  private changeVolume(item: PauseItem.Music | PauseItem.Sfx, steps: number): void {
+    const channel = item === PauseItem.Music ? 'music' : 'sfx';
     sound.stepVolume(channel, steps);
     // Próbka nowej głośności efektów (muzyka słychać od razu).
     if (channel === 'sfx') sound.play(SoundCue.UiMove);
   }
 
-  private refreshAudio(): void {
-    const settings = sound.settings;
-    for (const row of this.audioRows) {
-      const selected = this.cursor === row.channel;
-      row.value
-        .setText(`${selected ? '▶ ' : ''}${volumeLabel(settings[row.channel])}`)
-        .setColor(settings.muted ? '#80809a' : selected ? '#f5c542' : '#e8e8f0');
-    }
-    this.muteText.setText(settings.muted ? `${AUDIO_TEXT.muted} — ${this.muteHint}` : this.muteHint).setColor(settings.muted ? '#ff7a6a' : '#a0a0b8');
-  }
-
-  private resume(data: PauseSceneData): void {
+  private resume(): void {
     if (this.resumed) return;
     this.resumed = true;
     this.scene.stop();
-    data.onResume();
+    this.pauseData.onResume();
   }
 }
 

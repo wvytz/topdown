@@ -4676,6 +4676,24 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** czy wskrzeszanie w grze z drugim graczem działa za każdym razem.
 
+## Krok 120 — Prostszy ekran pauzy, gra domyślnie wyciszona `#decyzja` `#pauza` `#dzwiek`
+
+**Prośba właściciela (27.10.2026):** „musimy przerobić ten ekran pauzy. jest za dużo tekstu. sam się gubię” oraz „gra ma być domyślnie wyciszona. na pierwszym ekranie w jednym z narożników dołóż ikonę głośniczka dla tych, którzy chcą audio. przeglądarka musi pamiętać ustawienie”.
+
+**Pauza (`scenes/PauseScene.ts`, zasady w `systems/pauseMenu.ts`):**
+- Strona główna to krótka lista w ramce: **Wznów · Zapisz grę · Dźwięk i obraz · Sterowanie · Menu główne** i jedna linijka podpowiedzi. Pod listą szara notka tylko przy „Zapisz grę” (stan z wejścia na piętro) i „Menu główne” (autozapis zostaje).
+- Podstrony: **Zapis gry** (3 sloty, Wróć), **Dźwięk i obraz** (Muzyka − / +, Efekty − / +, Dźwięk: WŁĄCZONY / WYCISZONY, Wypełnij okno, Pełny ekran — tylko PC, Wróć), **Sterowanie** (klawiatura z myszą, pad, skróty w pauzie; na telefonie opis dotyku).
+- Mysz: najechanie wybiera, kliknięcie potwierdza; kliknięcie obok listy na stronie głównej wznawia (jak dotąd, np. powrót do okna). Klawiatura: strzałki / WASD i Enter, **Esc — wstecz** (na głównej wznów), P — wznów. Skróty 1 / 2 / 3, M, N, O i F działają na każdej stronie. Pad: ↑ ↓ + A, ← → głośność, B — wstecz, Start — wznów, Y — menu.
+- Zapis niedostępny (odtwarzanie nagrania): „Zapisz grę” znika z listy.
+
+**Dźwięk:** `AUDIO_SETTINGS_RULES.defaults.muted = true` — nowa przeglądarka startuje bez dźwięku. Głośnik w prawym górnym rogu ekranu startowego i menu (`effects/SpeakerButton.ts`, rysowany w kodzie, liczby w `SPEAKER_BUTTON`): przekreślony na czerwono, gdy wyciszone; kliknięcie/stuknięcie przełącza, po najechaniu podpis. To samo ustawienie co N i pauza, zapis w `localStorage` (`tower-crawler.audio.v1`). Kliknięcie głośnika nie przewija intra. Gracz, który już zmieniał głośność (zapisane ustawienia), zostaje przy swoim.
+
+**Testy:** `tests/systems/pauseMenu.test.ts` (pozycje stron, kursor, „wstecz”, sloty), `audioSettings.test.ts` (domyślne wyciszenie). Build zielony.
+
+**Weryfikacja:** Playwright (Chromium, dev): pusty `localStorage` → głośnik przekreślony; kliknięcie → `{"muted":false}` w magazynie i po przeładowaniu; pauza: strona główna, zapis do slotu 1, „Dźwięk i obraz”, „Sterowanie”, Esc wraca, drugie Esc wznawia grę. Bez błędów w konsoli.
+
+**Czeka na ocenę właściciela:** układ pauzy i miejsce głośnika.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

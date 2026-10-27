@@ -55,6 +55,7 @@ Nazwa w kodzie: `SoundCue` w `core/audioTypes.ts`. Odsłuch w trybie dev z konso
 
 ## Ustawienia gracza
 
-- **Pauza:** „Muzyka − 50% +” i „Efekty − 70% +” — klik/stuknięcie w − i +, strzałki albo pad (↑ ↓ wybór, ← → głośność, A — wycisz). Zapis w `localStorage` (`tower-crawler.audio.v1`).
+- **Domyślnie wyciszone (krok 120):** gra startuje bez dźwięku; głośnik w prawym górnym rogu ekranu startowego (`effects/SpeakerButton.ts`) włącza go i wycisza. To samo ustawienie co N i pauza, zapamiętane w przeglądarce.
+- **Pauza → „Dźwięk i obraz”:** „Muzyka − 50% +”, „Efekty − 70% +” i „Dźwięk: WŁĄCZONY / WYCISZONY” — klik/stuknięcie, strzałki albo pad (↑ ↓ wybór, ← → głośność, A — wycisz). Zapis w `localStorage` (`tower-crawler.audio.v1`).
 - **N** — wycisz / włącz dźwięk (w grze, w menu i na pauzie; nie na ekranie wpisywania imienia).
 - Przeglądarka włącza dźwięk dopiero po pierwszym geście gracza (klawisz, kliknięcie, dotyk albo przycisk pada w menu).

@@ -11,34 +11,73 @@ export const PAUSE_CONFIG = {
     manual: 'Gra wstrzymana',
     focus: 'Gra wstrzymana — okno straciło fokus',
   },
-  resumeHint: 'Esc / P / kliknięcie — wznów',
-  /** Zapis gry i wyjście do menu (krok 91). */
-  saveTitle: 'ZAPIS GRY — 1 / 2 / 3 (stan z wejścia na piętro)',
+  /**
+   * Krok 120 (prośba właściciela: „za dużo tekstu”): pauza to krótkie menu, a zapis, dźwięk z obrazem
+   * i sterowanie leżą na podstronach (`systems/pauseMenu.ts`).
+   */
+  items: {
+    resume: 'Wznów',
+    save: 'Zapisz grę',
+    settings: 'Dźwięk i obraz',
+    controls: 'Sterowanie',
+    quit: 'Menu główne',
+    back: 'Wróć',
+    mute: (muted: boolean) => `Dźwięk: ${muted ? 'WYCISZONY' : 'WŁĄCZONY'}`,
+  },
+  /** Jedna szara linijka pod listą — tylko przy pozycjach, które jej potrzebują. */
+  notes: {
+    save: 'Stan z wejścia na piętro',
+    quit: 'Autozapis zostaje — „Kontynuuj” w menu',
+  },
+  pageTitles: { save: 'ZAPIS GRY', settings: 'DŹWIĘK I OBRAZ', controls: 'STEROWANIE' },
   saveUnavailable: 'Zapis niedostępny podczas odtwarzania nagrania',
-  quitHint: 'M — menu główne (autozapis zostaje: Kontynuuj)',
+  /** Podpowiedź na dole: strona główna i podstrony. */
+  hints: {
+    main: '↑ ↓ wybór · Enter — OK · Esc — wznów',
+    sub: '↑ ↓ wybór · Enter — OK · Esc — wróć',
+    settings: '← → głośność · Enter — zmień · Esc — wróć',
+  },
   /** Układ (y w pikselach płótna 960×540). */
-  layout: { titleY: 52, reasonY: 92, controlsY: 118, saveTitleY: 316, slotsY: 340, slotStep: 22, audioY: 414, audioColumn: 150, audioHintStep: 18, statusY: 452, displayY: 472, quitY: 494, resumeY: 518 },
+  layout: {
+    panel: { width: 680, top: 28, bottom: 512, color: 0x0c0c16, alpha: 0.85, border: 0x5a4a2a },
+    titleY: 76,
+    subtitleY: 116,
+    itemsY: 176,
+    itemStep: 38,
+    itemFontSize: 20,
+    slotFontSize: 14,
+    volumeButtonDx: 150,
+    controlsY: 140,
+    controlsItemsY: 430,
+    noteGap: 14,
+    statusY: 452,
+    hintY: 488,
+  },
+  /** Strona „Sterowanie” (PC): klawiatura z myszą, pad i skróty w pauzie. */
   controls: [
-    'WASD — ruch',
-    'LPM / PPM — ataki bohatera',
-    'Spacja — dash · R — ultimate (gdy pasek mocy jest pełny)',
-    'E — kapliczka, schody',
-    'F9 — raport błędów · N — wycisz dźwięk · F — pełny ekran',
-    'Pad: lewa gałka — ruch · prawa — cel · X / B — ataki (też RT / LT) · A — dash · Y — E · RB — ultimate',
-    'Pad w pauzie: ↑ ↓ + A — zapis, obraz · ← → głośność · Y — menu · Start / B — wznów',
+    'KLAWIATURA I MYSZ',
+    'WASD — ruch · LPM / PPM — ataki',
+    'Spacja — dash · R — ultimate · E — kapliczka, schody',
+    'N — dźwięk · F — pełny ekran · F9 — raport błędów',
+    '',
+    'PAD',
+    'Lewa gałka — ruch · prawa — cel · X / B (RT / LT) — ataki',
+    'A — dash · Y — E · RB — ultimate · Start — pauza',
+    '',
+    'SKRÓTY W PAUZIE',
+    '1 / 2 / 3 — zapis · M — menu główne · O — wypełnij okno',
   ],
-  /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wiersze slotów i napis menu się stuka. */
+  /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wszystko się stuka. */
   mobile: {
     controls: [
       'Lewa część ekranu — gałka ruchu',
-      'Duże kółko — atak: przeciągnij w stronę celu; stuknij lub przytrzymaj — celuje sam',
+      'Duże kółko — atak: przeciągnij w stronę celu',
+      'stuknij lub przytrzymaj — celuje sam',
       'STRZAŁ / PROMIEŃ / SALWA (nad kółkiem) — tak samo',
-      'ZRYW — dash · E — kapliczka, schody (pojawia się na miejscu)',
-      'SZAŁ / NOVA / TOTEM — ultimate (świeci, gdy pasek mocy jest pełny)',
+      'ZRYW — dash · E — kapliczka, schody',
+      'SZAŁ / NOVA / TOTEM — ultimate (gdy pasek mocy pełny)',
     ],
-    saveTitle: 'ZAPIS GRY — stuknij slot (stan z wejścia na piętro)',
-    quitHint: 'MENU GŁÓWNE — stuknij (autozapis zostaje: Kontynuuj)',
-    resumeHint: 'Stuknij gdziekolwiek — wznów',
+    hint: 'Stuknij pozycję',
   },
 } as const;
 

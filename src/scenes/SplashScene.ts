@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SpeakerButton } from '@/effects/SpeakerButton';
 import { SceneKey } from '@/core/types';
 import type { FloorSceneData } from '@/core/types';
 import { GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
@@ -36,7 +37,7 @@ const GLOW_TEXTURE = 'splash-glow';
 const VIGNETTE_TEXTURE = 'splash-vignette';
 const SCANLINE_TEXTURE = 'splash-scanlines';
 /** Głębokości warstw: świat (tło, popiół, odłamki) pod napisem i nakładkami. */
-const DEPTH = { debris: 1, title: 10, vignette: 11, scanlines: 12, flash: 13, blackout: 14 } as const;
+const DEPTH = { debris: 1, title: 10, vignette: 11, scanlines: 12, flash: 13, blackout: 14, speaker: 20 } as const;
 
 /** Płatek popiołu: opada i kołysze się na boki. */
 interface Ash {
@@ -121,6 +122,9 @@ export class SplashScene extends Phaser.Scene {
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, this.scanlineTexture()).setOrigin(0).setDepth(DEPTH.scanlines);
     this.flash = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.bone2).setOrigin(0).setAlpha(0).setDepth(DEPTH.flash);
     this.blackout = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.chitin0).setOrigin(0).setDepth(DEPTH.blackout);
+
+    // Gra startuje wyciszona (krok 120) — głośnik w rogu włącza dźwięk.
+    new SpeakerButton(this, DEPTH.speaker);
 
     const skip = (): void => {
       this.skipRequested = true;

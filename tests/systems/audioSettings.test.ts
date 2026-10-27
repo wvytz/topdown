@@ -5,6 +5,11 @@ import { AUDIO_SETTINGS_RULES } from '@/config/audioConfig';
 const { defaults } = AUDIO_SETTINGS_RULES;
 
 describe('AudioSettings (krok 116)', () => {
+  it('pierwsze uruchomienie — gra wyciszona (krok 120)', () => {
+    expect(defaults.muted).toBe(true);
+    expect(channelGains(defaults)).toEqual({ music: 0, sfx: 0 });
+  });
+
   it('zepsute dane z magazynu — wartości domyślne', () => {
     expect(parseAudioSettings(null, defaults)).toEqual(defaults);
     expect(parseAudioSettings({ music: 'głośno', sfx: 3, muted: 1 }, defaults)).toEqual({ ...defaults, sfx: 1 });
