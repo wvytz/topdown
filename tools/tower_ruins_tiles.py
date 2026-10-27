@@ -131,7 +131,7 @@ class Palette:
     ember: tuple = ()  # 3: czerwień, pomarańcz, rozgrzany środek
     # Zadymiona palarnia (krok 84): śmieci na podłodze — puszki energetyków (zieleń, srebro) i opakowania z kurczaka
     # (czerwień, krem, tłuszcz, frytki). Puste w innych biomach.
-    # Lustrzana komnata (propozycja, docs/WIEDZMA.md): opalizujące refleksy na polerowanej posadzce. Puste w innych biomach.
+    # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): opalizujące refleksy na polerowanej posadzce. Puste w innych biomach.
     opal: tuple = ()  # 4: róż, błękit, liliowy, blada żółć
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
@@ -323,7 +323,7 @@ PALETTES = {
         litter=oks((.27, .090, 258), (.39, .130, 258), (.54, .140, 252), (.50, .008, 250), (.78, .008, 250),
                    (.40, .150, 28), (.52, .190, 28), (.90, .030, 90), (.38, .070, 70), (.82, .150, 95)),
     ),
-    # Lustrzana komnata (propozycja, docs/WIEDZMA.md): posadzka jak wypolerowany kryształ — najjaśniejsza w wieży,
+    # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): posadzka jak wypolerowany kryształ — najjaśniejsza w wieży,
     # chłodny błękit z opalizującymi refleksami; mury najbrudniejsze i najbardziej zniszczone (zgnilizna, zacieki brudnej wody).
     'lustro_opal': Palette(
         key='lustro_opal', label='Lustrzana komnata (opalizujący kryształ)',
@@ -337,7 +337,7 @@ PALETTES = {
         # Brud: zacieki i plamy brudnej wody (szarozielony brąz).
         stain=oks((.36, .040, 100), (.46, .045, 105)),
         ash=oks((.58, .016, 95), (.48, .016, 90)),
-        opal=oks((.88, .050, 350), (.88, .050, 200), (.84, .055, 300), (.91, .055, 95)),
+        opal=oks((.86, .075, 350), (.87, .070, 200), (.82, .080, 300), (.90, .075, 95)),
     ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
     # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
@@ -403,7 +403,7 @@ BIOMES = {
     'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
     # Zadymiona palarnia (krok 83): piętro Barona Dymu; kafle bez dodatków (jak ruiny), inna paleta.
     'smoke_den': {'palette': 'dymna_palarnia', 'extras': ('smoke',), 'reserved_hues': True},
-    # Lustrzana komnata (propozycja, docs/WIEDZMA.md): piętra Wiedźmy Mopa; błyszcząca posadzka, mury w ruinie.
+    # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): piętra dwóch Sprzątaczek; błyszcząca posadzka, mury w ruinie.
     'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror',), 'reserved_hues': True},
 }
 
@@ -1794,7 +1794,7 @@ def overgrow_mirror(e, img, p, r):
     F, Op = p.floor, p.opal
     if e.layer == 'floorBase':
         polished = (F[2], p.floor_alt, F[3])
-        for _ in range(e.w * e.h * r.randint(1, 2)):  # krótkie ukośne smugi połysku, na końcu opalizujący refleks
+        for _ in range(e.w * e.h * r.randint(2, 3)):  # krótkie ukośne smugi połysku, na końcu opalizujący refleks
             x0, y0, n = r.randrange(img.w), r.randrange(img.h), r.randint(5, 13)
             for i in range(n):
                 x, y = x0 + i, y0 - i
@@ -1802,8 +1802,9 @@ def overgrow_mirror(e, img, p, r):
                     img.put(x, y, F[5] if 1 < i < n - 2 else F[4])
                 if img.get(x + 1, y) in polished and i % 2:
                     img.put(x + 1, y, F[4])
-            if img.get(x0 + n, y0 - n) in polished:
-                img.put(x0 + n, y0 - n, Op[r.randrange(4)])
+            for j in range(r.randint(1, 3)):  # opalizujący refleks na końcu smugi
+                if img.get(x0 + n + j, y0 - n - j) in polished:
+                    img.put(x0 + n + j, y0 - n - j, Op[(r.randrange(4) + j) % 4])
         for _ in range(e.w * e.h * r.randint(2, 4)):  # iskry na krawędziach płyt
             x, y = r.randrange(img.w), r.randrange(img.h)
             if img.get(x, y) == F[3]:
@@ -2294,12 +2295,14 @@ SPRITES = {
     'hellhound': ('hellhound_run-pounce.png', 48, '#1b1a22', 'Ogar'),
     'cultist': ('cultist_walk-throw.png', 48, '#1b1a22', 'Kultysta'),
     'tar_bomb': ('tar-bomb.png', 16, None, None),
-    # Lustrzana komnata (propozycja): łucznik, Wiedźma Mopa i jej efekty (tools/witch_sprites.py).
+    # Lustrzana komnata (propozycja): łucznik, Sprzątaczki i efekty ich ataków (tools/cleaner_sprites.py).
     'archer': ('archer_walk-draw.png', 48, '#1b1a22', 'Łucznik'),
-    'witch': ('mop-witch_walk-spill-bucket-broom-tangle-flip.png', 128, '#1b1a22', 'Wiedźma Mopa'),
+    'cleaner_blonde': ('cleaner-blonde_walk-polish-spill-bucket-broom-tangle-shout.png', 128, '#1b1a22', 'Blondynka'),
+    'cleaner_dark': ('cleaner-dark_walk-polish-spill-bucket-broom-tangle-shout.png', 128, '#1b1a22', 'Brunetka'),
     'soap_puddle': ('soap-puddle.png', 96, None, None),
     'broom_tangle': ('broom-tangle.png', 48, None, None),
-    'bucket': ('bucket.png', 24, None, None),
+    'bucket': ('plastic-bucket.png', 24, None, None),
+    'sparkle': ('polish-sparkle.png', 16, None, None),
 }
 # (sprite, wiersz kierunku, środek x, środek y, chodzi = cień kontaktowy od silnika)
 MOCKUP_ACTORS = [
@@ -2344,16 +2347,18 @@ MOCKUP_ACTORS_INFERNAL = [
     ('cultist', 6, 752, 252, True, 0),
     ('tar_bomb', 0, 262, 230, False, 0),
 ]
-# Lustrzana komnata: trójka bohaterów przeciw Wiedźmie — chlust mydlin, barbarzyńca w kałuży, Czarodziejka w plątaninie.
+# Lustrzana komnata: trójka bohaterów przeciw blond Sprzątaczce — chlust mydlin, barbarzyńca w kałuży,
+# Czarodziejka w plątaninie (atak brunetki, pokazany dla porównania).
 MOCKUP_ACTORS_MIRROR = [
     ('barbarian_sword', 2, 392, 268, True, 4),
     ('sorceress', 1, 300, 330, True, 0),
     ('archer', 2, 236, 236, True, 0),
-    ('witch', 6, 540, 290, False, 6),
+    ('cleaner_blonde', 6, 528, 262, False, 10),
     ('bucket', 0, 470, 230, False, 1),
 ]
 # Efekty pod postaciami (rysowane na posadzce przed odbiciami): (sprite, kolumna, środek x, środek y).
-MOCKUP_FLOOR_FX_MIRROR = [('soap_puddle', 6, 420, 286), ('broom_tangle', 4, 300, 338)]
+MOCKUP_FLOOR_FX_MIRROR = [('soap_puddle', 6, 420, 286), ('broom_tangle', 4, 300, 338), ('sparkle', 2, 520, 360),
+                          ('sparkle', 1, 200, 170), ('sparkle', 3, 330, 200)]
 # Nakładki biomu na makiecie: (kafel, x, y) w kaflach.
 MOCKUP_BIOME_DECALS = {
     'mirror_hall': [('decal_shards_a', 6, 7), ('decal_slop_a', 15, 5), ('decal_suds', 8, 11), ('decal_shards_b', 17, 8),
@@ -2381,14 +2386,14 @@ METRIC_CAST = {
     'fungal_grove': ('barbarian_sword', 'infected_spider', 'fungoid'),
     'graveyard': ('barbarian_sword', 'zombie', 'sower'),
     'infernal': ('barbarian_sword', 'sorceress', 'hellhound', 'cultist'),
-    'mirror_hall': ('barbarian_sword', 'sorceress', 'archer', 'witch'),
+    'mirror_hall': ('barbarian_sword', 'sorceress', 'archer', 'cleaner_blonde', 'cleaner_dark'),
 }
 
 
 def load_frame(key, row, col=0):
     file, cell, _, _ = SPRITES[key]
     im = Image.open(os.path.join(SPRITES_DIR, file)).convert('RGBA')
-    if key in ('orb', 'glob', 'sorceress_orb', 'tar_bomb', 'soap_puddle', 'broom_tangle', 'bucket'):
+    if key in ('orb', 'glob', 'sorceress_orb', 'tar_bomb', 'soap_puddle', 'broom_tangle', 'bucket', 'sparkle'):
         row = 0  # bez kierunków
     return im.crop((col * cell, row * cell, (col + 1) * cell, (row + 1) * cell))
 
