@@ -45,7 +45,7 @@ export class BossEncounter {
         ...(duet.partnerRetinue && spawnHelper ? { spawnHelper } : {}),
         onDefeated,
         bossHpMultiplier: hpMultiplier,
-        bossFloor: duet.partnerFloorInLoop,
+        bossId: duet.partner,
         spawnOffset: { x: offset, y: 0 },
         seed: deriveSeed(deps.floor.seed, DUET_SEED_SALT),
         ...(duet.arrival && { arrival: duet.arrival }),

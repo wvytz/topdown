@@ -14,12 +14,12 @@ import type {
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
-import type { BossDefinition, BossDogDefinition } from '@/core/bossTypes';
+import type { BossDefinition, BossDogDefinition, BossId } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { withHpMultiplier } from '@/systems/CoopBalance';
 import {
   BOSS_LEAP_VISUAL,
@@ -106,8 +106,8 @@ export interface BossFightDeps {
   readonly spawnHelper?: (type: EnemyType, at: Vector2) => { readonly isDead: boolean; readonly active: boolean };
   /** Wabik (totem łucznika, krok 98): boss i jego dog celują w niego zamiast w gracza; null — w gracza. */
   readonly aggroTarget?: () => Vector2 | null;
-  /** Duet (krok 114): piętro, którego boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
-  readonly bossFloor?: number;
+  /** Duet (krok 114): który boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
+  readonly bossId?: BossId;
   /** Duet: przesunięcie miejsca startu od środka areny (px). */
   readonly spawnOffset?: Vector2;
   /** Duet: własne ziarno losowania bossa i świty (brak — ziarno piętra), by partner nie powtarzał gospodarza. */
@@ -282,8 +282,7 @@ export class BossFight {
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
     this.arena = arena;
 
-    const bossFloor = deps.bossFloor ?? deps.floorNumber;
-    const scaled = withHpMultiplier(scaleBossForFloor(bossForFloor(bossFloor), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
+    const scaled = withHpMultiplier(scaleBossForFloor(this.baseDefinition(), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
     // Wracający z windy boss już raz uciekł — tym razem walczy do końca.
     const definition = deps.arrival ? withoutEscape(scaled) : scaled;
     this.maxHp = definition.maxHp;
@@ -414,7 +413,11 @@ export class BossFight {
 
   /** Imię bossa (napis areny). */
   get bossName(): string {
-    return bossForFloor(this.deps.bossFloor ?? this.deps.floorNumber).name;
+    return this.baseDefinition().name;
+  }
+
+  private baseDefinition(): BossDefinition {
+    return this.deps.bossId ? bossById(this.deps.bossId) : bossForFloor(this.deps.floorNumber);
   }
 
   /** Stan dla HUD — null, dopóki walka się nie zaczęła lub po zwycięstwie. */

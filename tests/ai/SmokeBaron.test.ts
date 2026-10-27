@@ -22,8 +22,8 @@ describe('Baron Dymu (krok 83)', () => {
     ...over,
   });
 
-  it('kończy piętro 7 i ma dwa ataki obszarowe poza smugą (brzuch, puszki)', () => {
-    expect(bossForFloor(7).id).toBe(BossId.SmokeBaron);
+  it('kończy piętro 6 i ma dwa ataki obszarowe poza smugą (brzuch, puszki)', () => {
+    expect(bossForFloor(6).id).toBe(BossId.SmokeBaron);
     expect(SMOKE_BARON.pattern).toEqual(expect.arrayContaining([BossAttackKind.Smoke, BossAttackKind.Slam, BossAttackKind.Barrage]));
     expect(SMOKE_BARON.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
   });

@@ -728,7 +728,7 @@ export const CLEANER_BLONDE = {
  * - plątanie: wbija miotłę w posadzkę, pod graczem wyrasta czarne włosie i unieruchamia go (ataki wolno, ruch
  *   i dash nie); po uwolnieniu chwila odporności; we wściekłości dwie strefy — druga tam, dokąd bohater biegnie;
  * - chlust jak u blondynki, ale jedna kałuża (mniej poślizgu, więcej plątania);
- * - w połowie jej HP z windy wraca blondynka z 1/3 HP (duet `CLIMB_DUETS`, decyzja w wątku właściciela).
+ * - w połowie jej HP z windy wraca blondynka z 1/3 HP (duet `BOSS_DUETS`, decyzja w wątku właściciela).
  * Liczby moje, do strojenia w teście właściciela.
  */
 export const CLEANER_DARK = {
@@ -768,21 +768,42 @@ export const CLEANER_DARK = {
 } satisfies BossDefinition;
 
 /**
- * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
- * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
+ * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem.
+ * Od kroku 127 (koncept sprzątaczek zaakceptowany przez właściciela): 2 — Król Pająków z Matką Pająków (duet
+ * w Grzybni, `BOSS_DUETS`), 3 — Grzybowy Pożeracz (Cmentarzysko), 4–5 — Piekło, 6 — Baron Dymu,
+ * 7–8 — sprzątaczki (Lustrzana komnata).
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
-  2: SPIDER_QUEEN,
-  3: SPIDER_KING,
-  4: FUNGAL_DEVOURER,
-  5: GATE_WARDEN,
-  6: ABYSS_EXECUTIONER,
-  7: SMOKE_BARON,
-  8: CLEANER_BLONDE,
-  9: CLEANER_DARK,
+  2: SPIDER_KING,
+  3: FUNGAL_DEVOURER,
+  4: GATE_WARDEN,
+  5: ABYSS_EXECUTIONER,
+  6: SMOKE_BARON,
+  7: CLEANER_BLONDE,
+  8: CLEANER_DARK,
 };
 
-/** Boss piętra; od piętra 7 kolejny krąg wieży powtarza bossów 1–6 (krok 43). */
+/** Wszyscy bossowie gry — partner duetu nie musi mieć własnego piętra (Matka Pająków od kroku 127). */
+const ALL_BOSSES: readonly BossDefinition[] = [
+  FLOOR_GUARDIAN,
+  SPIDER_QUEEN,
+  SPIDER_KING,
+  FUNGAL_DEVOURER,
+  GATE_WARDEN,
+  ABYSS_EXECUTIONER,
+  SMOKE_BARON,
+  CLEANER_BLONDE,
+  CLEANER_DARK,
+];
+
+/** Definicja bossa po identyfikatorze (partner duetu). */
+export function bossById(id: BossId): BossDefinition {
+  const boss = ALL_BOSSES.find((b) => b.id === id);
+  if (!boss) throw new Error(`bossById: nieznany boss ${id}`);
+  return boss;
+}
+
+/** Boss piętra; po ostatnim piętrze kręgu kolejny krąg wieży powtarza bossów od nowa (krok 43). */
 export function bossForFloor(floor: number): BossDefinition {
   return BOSS_BY_FLOOR[floorInLoop(floor, TOWER_CONFIG)] ?? FLOOR_GUARDIAN;
 }
@@ -849,14 +870,27 @@ export const BOSS_STATUS_RESISTANCE: StatusResistance = {
 };
 
 /**
- * Duety we wspinaczce (krok 126, `#sprzataczki`; w arenach bossów też): na piętrze brunetki w połowie jej HP z windy
- * w północnym murze wraca blondynka, która uciekła piętro niżej — z 1/3 HP (tyle, z ilu uciekła).
- * Decyzja w wątku właściciela (opcja polecana, czeka na potwierdzenie).
+ * Duety bossów — we wspinaczce i w arenach bossów tak samo.
+ * - Pajęczy duet (krok 114, pomysł właściciela; od kroku 127 także we wspinaczce): w Grzybni Król Pająków
+ *   i Matka Pająków walczą naraz, każde z pełnym HP. Zwolnione piętro dostała Lustrzana komnata.
+ * - Sprzątaczki (krok 126, `#sprzataczki`): na piętrze brunetki w połowie jej HP z windy w północnym murze wraca
+ *   blondynka, która uciekła piętro niżej — z 1/3 HP (tyle, z ilu uciekła).
  */
-export const CLIMB_DUETS: readonly BossDuetDefinition[] = [
+export const BOSS_DUETS: readonly BossDuetDefinition[] = [
   {
-    floorInLoop: 9,
-    partnerFloorInLoop: 8,
+    floorInLoop: 2,
+    partner: BossId.SpiderQueen,
+    spawnOffsetTiles: 2.5,
+    bodyGapPx: 4,
+    hpMultiplier: 1,
+    // Dwie świty naraz to za dużo tłoku na arenie — przywołuje tylko Król (zarażone pająki).
+    partnerRetinue: false,
+    name: 'Matka i Król Pająków',
+    title: 'Pajęczy duet',
+  },
+  {
+    floorInLoop: 8,
+    partner: BossId.CleanerBlonde,
     spawnOffsetTiles: 0,
     bodyGapPx: 4,
     hpMultiplier: 1,

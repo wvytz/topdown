@@ -22,9 +22,9 @@ const plan = (kind: BossAttackKind, now = 0, enraged = false, target = PLAYER, s
   planBossAttack({ kind, definition: KING, self: SELF, target, now, enraged, rng: createRng(seed) });
 
 describe('Król Pająków — wybór i skalowanie', () => {
-  it('piętro 3 (Grzybnia) kończy Król Pająków; 2 — Matka Pająków; 4 — Grzybowy Pożeracz; reszta — Strażnik', () => {
-    expect(bossForFloor(3).id).toBe(BossId.SpiderKing);
-    expect(bossForFloor(2).id).toBe(BossId.SpiderQueen);
+  it('piętro 2 (Grzybnia) kończy Król Pająków (z Matką w duecie, krok 127); 3 — Grzybowy Pożeracz; reszta — Strażnik', () => {
+    expect(bossForFloor(2).id).toBe(BossId.SpiderKing);
+    expect(bossForFloor(3).id).toBe(BossId.FungalDevourer);
     for (const floor of [1, TOWER_CONFIG.floorsPerLoop + 1]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
   });
 

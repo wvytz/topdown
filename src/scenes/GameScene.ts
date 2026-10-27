@@ -39,7 +39,7 @@ import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH, STAIRS_SIZE, TILE_SIZE, getDung
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
-import { bossForFloor, CLIMB_DUETS } from '@/config/bossConfig';
+import { bossForFloor, BOSS_DUETS } from '@/config/bossConfig';
 import { carveArenaGalleries } from '@/dungeon/ArenaGalleries';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 import { disguiseFloor, secretArea } from '@/dungeon/SecretRoom';
@@ -167,7 +167,7 @@ import { PlayerContainment } from '@/systems/PlayerContainment';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { ShrineSite } from '@/world/ShrineSite';
 import { StickyWebField } from '@/world/StickyWebField';
-import { BOSS_RUSH_CONFIG, BOSS_RUSH_DUETS, BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
+import { BOSS_RUSH_CONFIG, BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import { BossRushArena, arenaLabel, isBossRush } from '@/systems/BossRush';
 
 /** Sole dla RNG — każdy system losuje ze swojego strumienia, niezależnie od pozostałych. */
@@ -937,9 +937,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
-    // Duet bossów (krok 114): pajęczy tylko w arenach bossów; sprzątaczki (krok 126) także we wspinaczce.
-    const duets = this.bossRush ? [...BOSS_RUSH_DUETS, ...CLIMB_DUETS] : CLIMB_DUETS;
-    const duet = duetForFloor(this.floorNumber, duets, TOWER_CONFIG);
+    // Duet bossów (krok 114; od kroku 127 także we wspinaczce): pająki w Grzybni, sprzątaczki na piętrze brunetki.
+    const duet = duetForFloor(this.floorNumber, BOSS_DUETS, TOWER_CONFIG);
     this.bossFight = new BossEncounter({
       scene: this,
       floor: this.dungeon,

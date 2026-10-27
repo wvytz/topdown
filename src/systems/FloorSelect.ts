@@ -1,6 +1,7 @@
 import { RunMode } from '@/core/runMode';
 import { biomeForFloor } from '@/config/biomeConfig';
-import { bossForFloor } from '@/config/bossConfig';
+import { BOSS_DUETS, bossForFloor } from '@/config/bossConfig';
+import { duetForFloor } from '@/systems/BossDuet';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
 
@@ -36,5 +37,7 @@ export interface StartFloorInfo {
 }
 
 export function startFloorInfo(floor: number): StartFloorInfo {
-  return { label: floorLabel(floor, TOWER_CONFIG), biome: biomeForFloor(floor).name, boss: bossForFloor(floor).name };
+  // Duet (krok 127) pod wspólną nazwą — np. „Matka i Król Pająków”.
+  const boss = duetForFloor(floor, BOSS_DUETS, TOWER_CONFIG)?.name ?? bossForFloor(floor).name;
+  return { label: floorLabel(floor, TOWER_CONFIG), biome: biomeForFloor(floor).name, boss };
 }

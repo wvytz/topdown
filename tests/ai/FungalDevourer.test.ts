@@ -18,8 +18,8 @@ const FRAME = 16;
 const F = DEVOURER.feast;
 
 describe('Grzybowy Pożeracz (kroki 33–34) — wybór i definicja', () => {
-  it('piętro 4 (Cmentarzysko) kończy Grzybowy Pożeracz', () => {
-    expect(bossForFloor(4).id).toBe(BossId.FungalDevourer);
+  it('piętro 3 (Cmentarzysko) kończy Grzybowy Pożeracz', () => {
+    expect(bossForFloor(3).id).toBe(BossId.FungalDevourer);
   });
 
   it('wzór: tasak, szarża, wyrzut zarodników, zew, zgniecenie; kąsanie poza wzorem leczy Pożeracza', () => {

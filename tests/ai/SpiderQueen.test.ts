@@ -8,7 +8,7 @@ import { attackLeadTimeMs, isInWebPatch, leapProgress, planBossAttack, webFlight
 import { SpiderlingBrain, SpiderlingPhase } from '@/ai/SpiderlingBrain';
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import { createRng } from '@/core/random';
-import { FLOOR_GUARDIAN, SPIDER_QUEEN as QUEEN, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { FLOOR_GUARDIAN, SPIDER_QUEEN as QUEEN, bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
@@ -308,8 +308,9 @@ describe('pajączek-kamikaze', () => {
 });
 
 describe('wybór i skalowanie bossa', () => {
-  it('Matka Pająków tylko na piętrze 2 (3 — Król, 4 — Pożeracz), 5 — Strażnik Bram, reszta pięter ma Strażnika', () => {
-    expect(bossForFloor(2).id).toBe(BossId.SpiderQueen);
+  it('Matka Pająków nie ma własnego piętra — walczy w duecie z Królem (krok 127); reszta pięter ma Strażnika', () => {
+    for (let floor = 1; floor <= TOWER_CONFIG.floorsPerLoop; floor++) expect(bossForFloor(floor).id).not.toBe(BossId.SpiderQueen);
+    expect(bossById(BossId.SpiderQueen)).toBe(QUEEN);
     for (const floor of [1, TOWER_CONFIG.floorsPerLoop + 1]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
     expect(bossForFloor(1)).toBe(FLOOR_GUARDIAN);
   });

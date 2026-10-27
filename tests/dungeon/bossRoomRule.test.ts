@@ -28,19 +28,19 @@ describe('arena na końcu piętra (krok 45)', () => {
         total++;
       }
     }
-    // Pokój końcowy (ukryta komnata) tylko na piętrach Grzybni; z badanych pięter (2–7 i 5. w drugim kręgu) to samo piętro 3, czyli 1 z 7.
+    // Pokój końcowy (ukryta komnata) tylko na piętrach Grzybni; z badanych pięter (2–7 i 5. w drugim kręgu) to samo piętro 2 (krok 127), czyli 1 z 7.
     expect(withEnd).toBeGreaterThan(total * 0.1);
     expect(withEnd).toBeLessThan(total * 0.2);
   });
 
   it('ukryta komnata (pokój końcowy) tylko w Grzybni, także w kolejnych kręgach (krok 51)', () => {
-    for (const floorNumber of [1, 2, 4, 5, 6, 7, 8, 9, L + 1, L + 2, L + 4, L + 5, 2 * L]) {
+    for (const floorNumber of [1, 3, 4, 5, 6, 7, 8, L + 1, L + 3, L + 4, L + 5, 2 * L]) {
       expect(getDungeonConfigForFloor(floorNumber).endRoomChance, `piętro ${floorNumber}`).toBe(0);
     }
-    for (const floorNumber of [3, L + 3, 2 * L + 3]) expect(getDungeonConfigForFloor(floorNumber).endRoomChance, `piętro ${floorNumber}`).toBe(1);
+    for (const floorNumber of [2, L + 2, 2 * L + 2]) expect(getDungeonConfigForFloor(floorNumber).endRoomChance, `piętro ${floorNumber}`).toBe(1);
     for (let seed = 0; seed < 20; seed++) {
-      expect(generate(3, seed * 31 + 1).endRoomId, `seed ${seed}`).toBeDefined();
-      expect(generate(4, seed * 31 + 1).endRoomId, `seed ${seed}`).toBeUndefined();
+      expect(generate(2, seed * 31 + 1).endRoomId, `seed ${seed}`).toBeDefined();
+      expect(generate(3, seed * 31 + 1).endRoomId, `seed ${seed}`).toBeUndefined();
     }
   });
 

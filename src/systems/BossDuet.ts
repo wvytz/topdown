@@ -1,4 +1,5 @@
 import type { BossHudData, Vector2 } from '@/core/types';
+import type { BossId } from '@/core/bossTypes';
 import type { TowerLoopConfig } from '@/systems/TowerLoop';
 import { floorInLoop } from '@/systems/TowerLoop';
 
@@ -10,8 +11,8 @@ import { floorInLoop } from '@/systems/TowerLoop';
 export interface BossDuetDefinition {
   /** Piętro w kręgu, którego arena dostaje duet (gospodarz = boss tego piętra). */
   readonly floorInLoop: number;
-  /** Piętro w kręgu, z którego przychodzi partner (jego definicja, skalowana do bieżącego piętra). */
-  readonly partnerFloorInLoop: number;
+  /** Partner (jego definicja, skalowana do bieżącego piętra). */
+  readonly partner: BossId;
   /** Bossowie stają po bokach środka areny, tyle kafli od niego (gospodarz po lewej, partner po prawej). */
   readonly spawnOffsetTiles: number;
   /** Najmniejszy odstęp między ciałami bossów (px) — rozpychają się, zamiast stać jeden w drugim. */

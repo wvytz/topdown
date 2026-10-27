@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { arrivalWounds, duetForFloor, shouldPartnerArrive } from '@/systems/BossDuet';
-import { CLEANER_BLONDE, CLEANER_DARK, CLIMB_DUETS, bossForFloor } from '@/config/bossConfig';
+import { CLEANER_BLONDE, CLEANER_DARK, BOSS_DUETS, bossById, bossForFloor } from '@/config/bossConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 
 const ARRIVAL = { hostHpRatio: 0.5, partnerHpRatio: 1 / 3, enterMs: 700 };
@@ -32,20 +32,21 @@ describe('wejście partnera duetu (krok 126)', () => {
 describe('sprzątaczki we wspinaczce (krok 126)', () => {
   it('na piętrze brunetki (w każdym kręgu) z windy wraca blondynka', () => {
     const loop = TOWER_CONFIG.floorsPerLoop;
-    for (const floor of [9, 9 + loop]) {
-      const duet = duetForFloor(floor, CLIMB_DUETS, TOWER_CONFIG);
+    for (const floor of [8, 8 + loop]) {
+      const duet = duetForFloor(floor, BOSS_DUETS, TOWER_CONFIG);
       expect(duet?.arrival).toBeDefined();
       expect(bossForFloor(floor).id).toBe(CLEANER_DARK.id);
-      expect(bossForFloor(duet!.partnerFloorInLoop).id).toBe(CLEANER_BLONDE.id);
+      expect(duet!.partner).toBe(CLEANER_BLONDE.id);
     }
   });
 
   it('wraca z tym HP, z którym uciekła', () => {
-    const duet = CLIMB_DUETS[0]!;
+    const duet = BOSS_DUETS.find((d) => d.partner === CLEANER_BLONDE.id)!;
     expect(duet.arrival!.partnerHpRatio).toBeCloseTo(CLEANER_BLONDE.escape.hpRatio);
   });
 
   it('na piętrze blondynki duetu nie ma', () => {
-    expect(duetForFloor(8, CLIMB_DUETS, TOWER_CONFIG)).toBeNull();
+    expect(duetForFloor(7, BOSS_DUETS, TOWER_CONFIG)).toBeNull();
+    expect(bossById(CLEANER_BLONDE.id)).toBe(CLEANER_BLONDE);
   });
 });

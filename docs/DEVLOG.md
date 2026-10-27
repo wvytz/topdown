@@ -4849,6 +4849,23 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** długość unieruchomienia (1,1 s) i odporności (2,2 s), próg powrotu blondynki (50% HP brunetki), HP brunetki (700 przed skalowaniem), wygląd włosia.
 
+## Krok 127 — Pajęczy duet we wspinaczce, Lustrzana komnata na piętrach 7–8 `#decyzja` `#lustrzana-komnata` `#sprzataczki`
+
+**Co powstało:** układ wieży z zaakceptowanego konceptu sprzątaczek (`docs/SPRZATACZKI.md`, punkt 1): pajęczy duet zwalnia piętro, a Lustrzana komnata zajmuje koniec kręgu.
+
+**Nowy krąg (8 pięter, `TOWER_CONFIG.floorsPerLoop` 9 → 8):** 1 ruiny · 2 Grzybnia — Król i Matka Pająków w duecie (od początku, oboje z pełnym HP, świtę przywołuje tylko Król) · 3 Cmentarzysko — Grzybowy Pożeracz · 4–5 Piekło — Strażnik Bram, Kat Otchłani · 6 Palarnia — Baron Dymu · 7 Lustrzana komnata — blondynka (ucieka windą) · 8 Lustrzana komnata — brunetka (blondynka wraca windą). Od piętra 9 kolejny krąg.
+
+**Decyzje:**
+- Piętro duetu to **Grzybnia** (arena Króla, ukryta komnata po nim zostaje — reguła jest przypięta do biomu). **Pajęcze leże** wypada na razie ze wspinaczki (biom i kafle zostają w kodzie, do użycia jako filler albo w przyszłym kręgu) — `#decyzja` do potwierdzenia przez właściciela.
+- Duety mają jedną listę `BOSS_DUETS` (`config/bossConfig.ts`) dla wspinaczki i aren bossów; `BOSS_RUSH_DUETS` usunięte. Partner duetu wskazany przez `BossId` (`bossById`), bo Matka Pająków nie ma już własnego piętra.
+- Wybór piętra pokazuje nazwę duetu („Matka i Król Pająków”).
+- Areny bossów idą za wspinaczką: arena 2 to pajęczy duet, 7–8 sprzątaczki.
+- Uwaga: zapisy i postęp „Wybór piętra” pamiętają numer piętra — po zmianie układu stary zapis z piętra 3+ wczyta nowy biom tego numeru.
+
+**Testy:** testy bossów i biomów przepięte na nowy układ (piętra, krąg 8, ukryta komnata na piętrze 2, duet na piętrze 2 w każdym kręgu, Matka bez własnego piętra). Build zielony (2158 testów).
+
+**Weryfikacja:** Playwright, `?floor=2&boss=1`: pasek „Matka i Król Pająków”, oboje walczą od wejścia, po pokonaniu obojga — nagroda. Bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4925,7 +4942,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Lustrzana komnata (krok 124):** `#lustrzana-komnata` piętra 8–9 (po kroku 127 — 7–8); odbicia postaci, błyski polerowania, mury — czekają na test właściciela. Blondynka z ucieczką windą (krok 125), brunetka z plątaniem i powrót blondynki windą (krok 126) czekają na test; w toku: pajęczy duet jako jedno piętro (127). Otwarte: własni wrogowie biomu.
+- **Lustrzana komnata (kroki 124–127):** `#lustrzana-komnata` piętra 7–8; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).
