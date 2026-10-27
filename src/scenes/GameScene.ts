@@ -21,6 +21,7 @@ import { SceneKey } from '@/core/types';
 import { SAVE_TEXT } from '@/config/saveConfig';
 import { SaveStorage } from '@/persistence/SaveStorage';
 import type { SaveData } from '@/systems/SaveGame';
+import { BossSaveLock } from '@/systems/SaveGame';
 import { openMainMenu } from '@/scenes/BootScene';
 import { RunMode } from '@/core/runMode';
 import { FLOOR_SELECT_CONFIG, FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
@@ -308,6 +309,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private readonly saves = new SaveStorage(SaveStorage.browserStorage());
   /** Stan z wejścia na to piętro — to on trafia do zapisu; null przy odtwarzaniu nagrania (nie ruszamy zapisów). */
   private checkpoint: SaveData | null = null;
+  /** Krok 121: w walce z bossem (w arenach — od wejścia) nie ma zapisu ani autozapisu. */
+  private saveLock = new BossSaveLock(false);
   /** Wybór piętra (krok 91): najwyższe piętro z pokonanym bossem; zapisujemy raz na piętro. */
   private readonly bossProgress = new BossProgress(HighscoreStorage.browserStorage());
   private bossProgressSaved = false;
@@ -338,6 +341,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.checkpoint = this.replay ? null : { runSeed: data.runSeed, floor: data.floor, run: data.run, ...(data.coop && { coop: data.coop.partner }) };
     this.atBoss = data.atBoss === true;
     this.bossRushArena = isBossRush(data.run.mode) ? new BossRushArena(BOSS_RUSH_CONFIG.teleportDelayMs) : null;
+    this.saveLock = new BossSaveLock(this.bossRushArena !== null);
     this.shrine = null;
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
@@ -465,7 +469,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupDiagnostics();
     this.setupAudio();
     // Autozapis „Kontynuuj” (krok 91): stan z wejścia na piętro; po śmierci znika.
-    if (this.checkpoint) this.saves.save('auto', this.checkpoint, Date.now());
+    // Arena bossów to od razu walka (krok 121) — stary autozapis z poprzedniej areny też znika.
+    if (this.checkpoint) {
+      if (this.saveLock.locked) this.saves.remove('auto');
+      else this.saves.save('auto', this.checkpoint, Date.now());
+    }
   }
 
   /** Dziennik diagnostyczny (krok 55): okruch „nowe piętro” i stan gry do pulsu (po twardym wyrzuceniu to ostatni ślad). */
@@ -604,6 +612,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.breakables?.update();
     this.braziers?.update(time);
     this.bossFight.update(time);
+    this.updateSaveLock();
     this.herald?.update(time);
     this.arenaGates.update();
     this.keepPlayerContained();
@@ -1295,7 +1304,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const data: PauseSceneData = {
       reason,
       onResume: () => this.resumeGame(),
-      onSave: this.checkpoint ? (slot) => this.saveToSlot(slot) : null,
+      onSave: this.checkpoint && !this.saveLock.locked ? (slot) => this.saveToSlot(slot) : null,
+      ...(this.checkpoint && this.saveLock.locked && { saveLocked: true }),
       onQuit: () => this.quitToMenu(),
     };
     this.scene.pause();
@@ -1313,6 +1323,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
     }
   }
 
+  /**
+   * Krok 121: przebudzony boss zdejmuje autozapis (zamknięcie gry w walce nie daje powtórki od wejścia),
+   * zwycięstwo zapisuje go z powrotem.
+   */
+  private updateSaveLock(): void {
+    const step = this.saveLock.update({ bossFighting: this.bossFight.isFighting, bossDefeated: this.bossFight.isDefeated });
+    if (!step || !this.checkpoint || this.deathHandled) return;
+    if (step === 'lock') this.saves.remove('auto');
+    else this.saves.save('auto', this.checkpoint, Date.now());
+    diag.note('save-lock', { floor: this.floorNumber, step });
+  }
+
   /** Ręczny zapis (krok 91) — stan z wejścia na piętro, nie bieżąca chwila. */
   private saveToSlot(slot: number): boolean {
     if (!this.checkpoint) return false;
@@ -1321,7 +1343,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return ok;
   }
 
-  /** Wyjście do menu głównego z pauzy albo ekranu śmierci; autozapis zostaje (Kontynuuj). */
+  /** Wyjście do menu głównego z pauzy albo ekranu śmierci; autozapis zostaje (Kontynuuj), chyba że trwa walka z bossem (krok 121). */
   private quitToMenu(): void {
     if (this.gamePaused) {
       this.gamePaused = false;

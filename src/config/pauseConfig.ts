@@ -28,6 +28,8 @@ export const PAUSE_CONFIG = {
   notes: {
     save: 'Stan z wejścia na piętro',
     quit: 'Autozapis zostaje — „Kontynuuj” w menu',
+    /** Krok 121: w walce z bossem nie ma zapisu — inaczej wyjście dawałoby darmową powtórkę walki. */
+    quitBossFight: 'Walka z bossem — bez zapisu, wyjście kończy run',
   },
   pageTitles: { save: 'ZAPIS GRY', settings: 'DŹWIĘK I OBRAZ', controls: 'STEROWANIE' },
   saveUnavailable: 'Zapis niedostępny podczas odtwarzania nagrania',
