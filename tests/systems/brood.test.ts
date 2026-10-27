@@ -9,6 +9,9 @@ import { BroodLedger, broodCapacity, broodSpawnPoints } from '@/systems/Brood';
 import { distance } from '@/systems/CombatMath';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
 
+/** Lustrzana komnata (krok 124) ma na razie wrogów z ruin — własnych jeszcze nie ma (decyzja właściciela otwarta). */
+const OWN_ENEMY_BIOMES = Object.values(BIOMES).filter((b) => b.id !== BiomeId.MirrorHall);
+
 const nester = ENEMY_DEFINITIONS[EnemyType.Nester];
 const attack = nester.attack as BroodAttackDefinition;
 
@@ -24,7 +27,7 @@ describe('Gniazdownik (krok 122)', () => {
   });
 
   it('wersje biomów (krok 122a): każdy biom ma własne gniazdo i stworka, ten sam rytm wylęgu i te same statystyki', () => {
-    const nests = Object.values(BIOMES).map((b) => b.enemyVariants[EnemyType.Nester]);
+    const nests = OWN_ENEMY_BIOMES.map((b) => b.enemyVariants[EnemyType.Nester]);
     expect(new Set(nests).size).toBe(nests.length);
     for (const nest of nests) {
       const def = enemyDefinitionFor(nester, nest, ENEMY_VARIANTS);

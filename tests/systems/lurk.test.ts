@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BIOMES } from '@/config/biomeConfig';
+import { BIOMES, BiomeId } from '@/config/biomeConfig';
 import { ENEMY_DEFINITIONS, ENEMY_VARIANTS } from '@/config/combatConfig';
 import { ENEMY_LOOT } from '@/config/lootConfig';
 import { LURKER_CONFIG } from '@/config/lurkerConfig';
@@ -9,6 +9,9 @@ import { AttackPhase, EnemyAttackKind, EnemyType } from '@/core/combatTypes';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
 import { Lurk, LurkEvent, LurkPhase } from '@/systems/Lurk';
+
+/** Lustrzana komnata (krok 124) ma na razie wrogów z ruin — własnych jeszcze nie ma (decyzja właściciela otwarta). */
+const OWN_ENEMY_BIOMES = Object.values(BIOMES).filter((b) => b.id !== BiomeId.MirrorHall);
 
 const den = { x: 100, y: 100 };
 const near = { x: 100, y: 100 + LURKER_CONFIG.triggerRange - 1 };
@@ -94,7 +97,7 @@ describe('Czyhacz (krok 123): archetyp i biomy', () => {
   });
 
   it('każdy biom ma własnego Czyhacza z własną kryjówką i arkuszem 8 kierunków', () => {
-    const variants = Object.values(BIOMES).map((b) => b.enemyVariants[EnemyType.Lurker]);
+    const variants = OWN_ENEMY_BIOMES.map((b) => b.enemyVariants[EnemyType.Lurker]);
     expect(new Set(variants).size).toBe(variants.length);
     const rows = new Set<number>();
     for (const variant of variants) {

@@ -411,7 +411,7 @@ export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = 
   },
 };
 
-/** Klimat muzyki biomu: piętra 1–3 to wieża, cmentarzysko, piekło i palarnia — zaświaty. */
+/** Klimat muzyki biomu: piętra 1–3 to wieża, cmentarzysko, piekło i palarnia i Lustrzana komnata — zaświaty. */
 export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
   [BiomeId.TowerRuins]: MusicTheme.Tower,
   [BiomeId.SpiderLair]: MusicTheme.Tower,
@@ -419,6 +419,7 @@ export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
   [BiomeId.Graveyard]: MusicTheme.Underworld,
   [BiomeId.Infernal]: MusicTheme.Underworld,
   [BiomeId.SmokeDen]: MusicTheme.Underworld,
+  [BiomeId.MirrorHall]: MusicTheme.Underworld,
 };
 
 /** Głośność głosów muzyki i ich barwa (odtwarzacz Web Audio). */

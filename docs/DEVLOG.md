@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4780,6 +4780,26 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** częstość (12%, 1/2 na piętro), widoczność znaku, czas ostrzeżenia i siła doskoku, rytm serii i zadyszki, wygląd Czyhaczy i kryjówek (placeholdery z generatora).
 
+## Krok 124 — Lustrzana komnata, biom pięter 8–9 `#decyzja` `#lustrzana-komnata` `#sprzataczki`
+
+**Pomysł właściciela (27.10.2026):** pajęczy duet zwalnia jedno piętro, a w jego miejsce wchodzą dwa piętra nowego biomu z dwiema sprzątaczkami-bossami. Pierwszy koncept (wiedźma z mopem) odrzucony; drugi — młode sprzątaczki, blondynka na piętrze A i brunetka na piętrze B — zaakceptowany („niech tak będzie”) `#decyzja`, razem z propozycjami z `docs/SPRZATACZKI.md` (miejsce w wieży, podział ataków, teksty okrzyków). Dodatkowa zmiana właściciela: gdy blondynka spadnie do 1/3 HP, w północnej ścianie otwiera się winda i sprzątaczka ucieka na górne piętro (krok 125).
+
+**Plan wdrożenia:** 124 — biom; 125 — blondynka z ucieczką windą; 126 — brunetka (blondynka wraca windą w trakcie walki); 127 — pajęczy duet jako jedno piętro wspinaczki, Lustrzana komnata przechodzi na piętra 7–8. Do kroku 127 krąg ma 9 pięter, a do kroków 125–126 piętra 8–9 kończy Strażnik Piętra.
+
+**Co powstało:**
+- **Biom `BiomeId.MirrorHall`** na piętrach 8–9 (`TOWER_CONFIG.floorsPerLoop` 7 → 9): arkusz `mirror_hall_tileset` (generator `--biome mirror_hall`, paleta `lustro_opal`), dekoracje `MIRROR_HALL_DRESSING` — mało nakładek (odłamki lustra, kałuże brudnej wody, piana), rzadki kurz, lica muru „zawalone/zaciek/wybite cegły” w 35% (ku arenie 60%) i piana mydlin gęstniejąca ku arenie. Zapowiedź bossa: zimny, opalizujący odcień; muzyka zaświatów.
+- **Bez mgły** — posadzka jest jasna mimo braku światła (zwykły mrok 30% na krawędziach kadru).
+- **Odbicia postaci** (`effects/MirrorFloor.ts`): każda postać z ciałem fizycznym (bohaterowie, wrogowie, bossowie) ma pod sobą kopię z tą samą klatką, odwróconą w pionie, z błękitnym odcieniem; krycie 45% przy postaci, 8% na końcu. Oś odbicia to dolny nieprzezroczysty wiersz klatki (liczony raz na klatkę z jednego odczytu płótna) — od ciała fizycznego odbicie odstawało albo chowało się pod postacią. Odbicia leżą pod murami (głębokość 2,3), więc rysują się tylko na podłodze; wróg ukryty w mroku chowa też odbicie.
+- **Błyski polerowania:** co 90–260 ms na losowym kaflu podłogi w kadrze miga błysk (`polish-sparkle.png`, mieszanie ADD nad warstwą mroku — świeci), najwyżej 14 naraz.
+- **Wrogowie biomu:** na razie z ruin (Rusher, Kiter, gniazdo, Czyhacz) — pytanie o własnych wrogów zostaje otwarte. Testy „każdy biom ma własne gniazdo/Czyhacza” pomijają ten biom do decyzji.
+- Liczby w `config/lightingConfig.ts` (`MIRROR_FLOOR`) i `config/dressingConfig.ts` — moje, do oceny.
+
+**Testy:** `tests/assets/biomes.test.ts` (piętra 8–9 i 17 to Lustrzana komnata, arkusz ma grupy dekoracji, odbicie tylko w tym biomie i gaśnie ku dołowi). Testy pętli wieży, aren, wyboru piętra, zapisów, ukrytej komnaty i Czyhacza liczą teraz piętra z `TOWER_CONFIG.floorsPerLoop` zamiast stałej 7. Build zielony (2077 testów).
+
+**Weryfikacja:** Playwright (Chromium, dev, `?floor=8`, `?floor=9`, `?boss=1`): posadzka jasna, odbicia barbarzyńcy, łucznika, Czarodziejki i Strażnika pod stopami, błyski na podłodze, bez błędów w konsoli.
+
+**Czeka na ocenę właściciela:** siła odbić (45% → 8%), gęstość błysków, jasność posadzki, gęstość dekoracji muru.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4856,6 +4876,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Lustrzana komnata (krok 124):** `#lustrzana-komnata` piętra 8–9 (po kroku 127 — 7–8); odbicia postaci, błyski polerowania, mury — czekają na test właściciela. W toku: sprzątaczki-bossowie (kroki 125–126), pajęczy duet jako jedno piętro (127). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).

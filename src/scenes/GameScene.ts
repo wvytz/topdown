@@ -136,6 +136,7 @@ import { leashPair, leashSpan, partyFocus } from '@/systems/CoopCamera';
 import { freshCoop } from '@/systems/Coop';
 import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
+import { MirrorFloor } from '@/effects/MirrorFloor';
 import { BossStallDetector, LimitWatch, StuckDetector, floorConnectivityIssues, reachable } from '@/systems/AnomalyDetectors';
 import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
 import { sanityIssues } from '@/systems/Diagnostics';
@@ -455,6 +456,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupPause();
 
     this.setupLighting(biome.tileset, tileset, torchSpots);
+    // Lustrzana komnata (krok 124): odbicia postaci i błyski polerowanej posadzki.
+    if (biome.mirrorFloor) new MirrorFloor(this, this.dungeon, biome.mirrorFloor);
 
     if (!this.scene.isActive(SceneKey.Hud)) {
       const hudData: HudSceneData = { source: this };

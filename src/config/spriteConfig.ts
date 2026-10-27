@@ -206,6 +206,20 @@ export const SPRITE_SHEETS = {
       fly: { frames: [0, 1, 2, 3], loop: true },
     },
   },
+  // Błysk polerowanej posadzki Lustrzanej komnaty (krok 124, `tools/cleaner_sprites.py`): 4 klatki, bez kierunków.
+  polishSparkle: {
+    key: 'sheet-polish-sparkle',
+    url: 'assets/sprites/polish-sparkle.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 8,
+    animations: {
+      twinkle: { frames: [0, 1, 2, 3, 2, 1, 0], loop: false },
+    },
+  },
   // Boss „Sludge King” (bez sprites.json — układ odczytany z obrazu): komórka 96×96, wiersze = 8 kierunków
   // jak wyżej; kolumny 0–3 ruch (kołysanie), 4–7 plucie (w kolumnie 7 wylatuje kula).
   sludgeKing: {
