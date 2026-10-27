@@ -162,6 +162,14 @@ export const ENEMY_LOOT: Readonly<Record<EnemyType, LootTable>> = {
     healthAmount: 15,
     itemChance: 0.05,
   },
+  // Gniazdownik (krok 122): nagroda za wybicie gniazda — trochę więcej złota; czerwie nie mają łupu.
+  [EnemyType.Nester]: {
+    gold: { min: 3, max: 5 },
+    goldChance: 0.9,
+    healthChance: 0.12,
+    healthAmount: 15,
+    itemChance: 0.05,
+  },
 };
 
 /** Boss: zawsze złoto i mikstura. Przedmiot gracz wybiera z kart (BOSS_REWARD), więc nie wypada na ziemię. */

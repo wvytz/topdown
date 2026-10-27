@@ -1,6 +1,7 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type {
+  BroodAttackDefinition,
   DamageResult,
   EnemyDefinition,
   Hit,
@@ -45,6 +46,10 @@ export interface EnemyAttackHandler {
   chargeHit(enemy: Enemy, charge: ShieldChargeConfig): boolean;
   /** Tarczownik wbił się w ścianę — efekt uderzenia. */
   chargeWall(enemy: Enemy): void;
+  /** Gniazdownik (krok 122): ile stworków może teraz wypluć (0 = nie zaczyna zamachu). */
+  broodCapacity(enemy: Enemy, attack: BroodAttackDefinition): number;
+  /** Wylęg po zamachu: stworki wachlarzem w stronę celu. */
+  brood(enemy: Enemy, attack: BroodAttackDefinition, target: Vector2): void;
 }
 
 /** Skok w toku: tor, czas i to, czy już trafił. */
@@ -246,7 +251,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       attackPhase: this.attackCycle.phase(now),
     });
 
-    if (decision.startAttack && this.attackCycle.tryStart(now)) {
+    if (decision.startAttack && this.canStartAttack(handler) && this.attackCycle.tryStart(now)) {
       // Skok leci w miejsce gracza z początku zamachu — widać je przez cały telegraf.
       this.pounceAim = { x: perception.target.x, y: perception.target.y };
     }
@@ -316,6 +321,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.animator.play(moving ? this.visual.move : (this.visual.idle ?? this.visual.move));
   }
 
+  /** Gniazdo bez miejsca na stworki (limit żywych albo wyczerpany zapas) nie zaczyna zamachu. */
+  private canStartAttack(handler: EnemyAttackHandler): boolean {
+    const attack = this.definition.attack;
+    return attack.kind !== EnemyAttackKind.Brood || handler.broodCapacity(this, attack) > 0;
+  }
+
   private releaseAttack(target: Vector2, handler: EnemyAttackHandler, now: number): void {
     const attack = this.definition.attack;
     switch (attack.kind) {
@@ -336,6 +347,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       }
       case EnemyAttackKind.Lob:
         handler.lobBomb(this, attack, target);
+        break;
+      case EnemyAttackKind.Brood:
+        handler.brood(this, attack, target);
         break;
     }
   }

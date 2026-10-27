@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4714,6 +4714,29 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** czy wyjście z gry w walce ma kończyć run bez wpisu na tablicę (teraz tak), czy liczyć się jak śmierć.
 
+## Krok 122 — Gniazdownik, trzeci archetyp wroga `#decyzja` `#gniazdownik`
+
+**Prośba właściciela (27.10.2026):** „chciałbym teraz dodać trzeci rodzaj kanonicznego potwora. nasze lokacje są zbyt puste”. Z trzech propozycji (Gniazdownik-przywoływacz, Osiłek-tank, Czyhacz udający dekorację) właściciel wybrał **Gniazdownika**.
+
+**Zasada:** `#decyzja` wyjątek od „1–2 wrogów na pokój” — Gniazdownik zastępuje jednego z nich (liczba wrogów w pokoju bez zmian), a jego kruche czerwie są poza limitem. Pokój żyje, a nie dokładamy silnych wrogów.
+
+**Mechanika:**
+- **Gniazdownik** (`EnemyType.Nester`, wariant `BroodSac`): pękaty worek z jajami na krótkich nóżkach. Wolny (45 px/s), trzyma dystans jak Kiter (170 / 120 px), 35 HP. Sam nie rani. Gdy widzi gracza (z reguły widoku Kiterów), co 4,5 s zamach 0,8 s (worek pęcznieje, pomarańczowy odcień) i wypluwa 2 czerwie wachlarzem w stronę gracza.
+- **Limity:** najwyżej 4 żywe czerwie jednego gniazda i 10 na całe jego życie. Bez miejsca gniazdo nie zaczyna zamachu. Gniazda nie da się farmić, a pokój w końcu cichnie.
+- **Czerw** (`EnemyVariant.Grub`, wariant Rushera): 8 HP (cios barbarzyńcy zabija), szybki (145 px/s), gryzie za 4 z krótkim zamachem. Wykluwa się 0,4 s (nietykalny i bierny).
+- **Kontra:** czerwie giną razem z gniazdem, więc szybkie dobicie gniazda ucisza pokój. W co-opie jeden gracz zajmuje się czerwiami, drugi biegnie do gniazda.
+- **Łup:** gniazdo 3–5 złota (90%), czerwie nic i nie ładują ultimate.
+- **Rozmieszczenie** (`assignNesters` w `dungeon/EncounterPlanner.ts`, własna sól RNG `0x6e57`): w zwykłych pokojach o boku ≥ 6 kafli, szansa 20% na piętrze 1 i 30% dalej, najwyżej 3 na piętro. Rozmieszczenie pozostałych wrogów bez zmian. Może zostać elitą (bez Tarczownika — ten jest tylko dla Rusherów). W arenach bossów brak.
+- **Wygląd:** pierwsza wersja dla wszystkich biomów — generator `tools/brood_sprites.py` (worek: pełzanie i wylęg; czerw: pełzanie i ugryzienie, 8 kierunków). Dźwięk wylęgu `SoundCue.Brood` (mokre „blurp”).
+
+**Kod:** czysto — `systems/Brood.ts` (`broodCapacity`, `broodSpawnPoints`, `BroodLedger` — kto kogo wykluł), `BroodAttackDefinition` / `EnemyAttackKind.Brood` w `core/combatTypes.ts`, liczby w `config/combatConfig.ts` i `lootConfig.ts`; Phaser — `Enemy` pyta menedżera o miejsce przed zamachem i woła `brood` po nim; `EnemyManager` wykluwa czerwie (miejsce za ścianą → w samym gnieździe), zabija je ze śmiercią gniazda i pilnuje podwójnej śmierci w jednej klatce.
+
+**Testy:** `tests/systems/brood.test.ts` (konfiguracja, limity, wachlarz, rejestr gniazd), `tests/dungeon/EncounterPlanner.test.ts` (zamiana bez zmiany liczby i miejsc, limity, determinizm, częstość). Balans: gniazdo na piętrze 10 pada od 7 ciosów (stąd 35 HP, nie 40). Build zielony (2006 testów).
+
+**Weryfikacja:** Playwright (Chromium, dev, `?seed=1&floor=2`): gniazdo wypluwa 2 czerwie, po 4,5 s kolejne 2 i staje przy limicie 4; śmierć gniazda zabija wszystkie czerwie. `npm run smoke -- --floors 7 --seeds 1` (3 bohaterów) i `--coop --floors 3` bez błędów.
+
+**Czeka na ocenę właściciela:** częstość gniazd (20/30% pokojów), rytm wylęgu (4,5 s, 2 czerwie, limit 4/10), siła czerwi, wygląd. **Następnie:** wersje gniazda dla biomów (kokon w leżu, purchawka w Grzybni, nekromanta na Cmentarzysku, czarci krąg w Piekle, fajka z chochlikami w palarni).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4790,6 +4813,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Gniazdownik (krok 122):** `#gniazdownik` trzeci archetyp — częstość, rytm wylęgu, siła czerwi, wygląd; potem wersje dla biomów — czeka na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).
 - **Dźwięk (krok 116):** `#dzwiek` brzmienie efektów, muzyka wieży i zaświatów, proporcje głośności (60% / 70%), czy coś przeszkadza w co-opie — czeka na test właściciela; lista i licencje w `docs/AUDIO.md`.
 - **Tarczownik (kroki 99, 113):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę (bez tarczy), bomby go ranią; od kroku 113 obrót 35°/s, 1,6 s bez tarczy po każdym ciosie, HP ×1,8 — czeka na test właściciela.

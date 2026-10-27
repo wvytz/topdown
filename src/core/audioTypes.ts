@@ -32,6 +32,8 @@ export enum SoundCue {
   BossRoar = 'boss-roar',
   BossDeath = 'boss-death',
   ShieldBlock = 'shield-block',
+  /** Gniazdownik wypluwa czerwie (krok 122). */
+  Brood = 'brood',
   // Świat i łupy
   Coin = 'coin',
   Heal = 'heal',

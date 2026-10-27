@@ -4,6 +4,8 @@ import type { Vector2 } from '@/core/types';
 export enum EnemyType {
   Rusher = 'rusher',
   Kiter = 'kiter',
+  /** Gniazdownik (krok 122): trzyma dystans i co kilka sekund wypuszcza kruche stworki (przywoływacz). */
+  Nester = 'nester',
 }
 
 /** Rytm przenikania upiora: tyle ms cielesny, potem tyle bezcielesny (w pętli). */
@@ -51,6 +53,10 @@ export enum EnemyVariant {
   BlackDog = 'black-dog',
   /** Zasadzki (krok 49): upiór (Rusher) — przenika (chwilami bezcielesny i nietykalny), dotyk mrozi i spowalnia. */
   Ghost = 'ghost',
+  /** Gniazdownik (krok 122, pierwsza wersja dla wszystkich biomów): pełzający worek z jajami, wypluwa czerwie. */
+  BroodSac = 'brood-sac',
+  /** Czerw (krok 122, Rusher): stworek z gniazda — kruchy, szybki, słabo gryzie; ginie razem z gniazdem. */
+  Grub = 'grub',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
@@ -74,6 +80,8 @@ export enum EnemyAttackKind {
   Pounce = 'pounce',
   /** Rzut łukiem w miejsce gracza z chwili rzutu; strefa upadku widoczna w locie (kultysta, krok 41d). */
   Lob = 'lob',
+  /** Wylęg (Gniazdownik, krok 122): po zamachu wypluwa stworki obok siebie. */
+  Brood = 'brood',
 }
 
 /** Podpalenie: obrażenia co `tickMs` przez `durationMs`. Ponowne podpalenie odświeża czas. */
@@ -225,7 +233,35 @@ export interface LobAttackDefinition extends BaseAttackDefinition {
   readonly patch: FirePatchDefinition;
 }
 
-export type EnemyAttackDefinition = MeleeAttackDefinition | ProjectileAttackDefinition | PounceAttackDefinition | LobAttackDefinition;
+/**
+ * Wylęg Gniazdownika (krok 122): po zamachu (telegraf — worek pęcznieje) wypluwa `count` stworków.
+ * Gniazdo ma limit żywych stworków i zapas na całe życie — nie da się go farmić, a pokój w końcu cichnie.
+ * Pole `damage` archetypu nie jest używane (gniazdo samo nie rani).
+ */
+export interface BroodAttackDefinition extends BaseAttackDefinition {
+  readonly kind: EnemyAttackKind.Brood;
+  /** Stworków na jeden wylęg. */
+  readonly count: number;
+  /** Najwięcej żywych stworków jednego gniazda naraz. */
+  readonly maxAlive: number;
+  /** Zapas stworków na całe życie gniazda. */
+  readonly total: number;
+  /** Stworki pojawiają się tyle px od środka gniazda, wachlarzem w stronę celu. */
+  readonly spawnDistance: number;
+  /** Rozpiętość wachlarza (stopnie). */
+  readonly spreadDeg: number;
+  /** Wykluwanie: tyle ms stworek stoi nietykalny i niegroźny. */
+  readonly hatchMs: number;
+  /** Wariant stworka (archetyp Rusher). */
+  readonly minion: EnemyVariant;
+}
+
+export type EnemyAttackDefinition =
+  | MeleeAttackDefinition
+  | ProjectileAttackDefinition
+  | PounceAttackDefinition
+  | LobAttackDefinition
+  | BroodAttackDefinition;
 
 /** Utrzymywanie dystansu przez przeciwników dystansowych. */
 export interface KitingBehaviour {

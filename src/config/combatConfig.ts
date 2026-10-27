@@ -38,7 +38,10 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
   },
 };
 
-/** Na razie dwa podstawowe archetypy z GDD: wręcz (Rusher) i dystansowy (Kiter). */
+/**
+ * Archetypy: wręcz (Rusher) i dystansowy (Kiter) z GDD oraz Gniazdownik (krok 122, wybór właściciela) —
+ * przywoływacz, który ożywia pokój kruchymi stworkami i sam jest celem do wybicia w pierwszej kolejności.
+ */
 export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
   [EnemyType.Rusher]: {
     type: EnemyType.Rusher,
@@ -78,6 +81,36 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
       knockback: 120,
       projectileSpeed: 240,
       projectileLifetimeMs: 2000,
+    },
+  },
+  // Gniazdownik: wolny i trzyma dystans jak Kiter (ucieka wolniej, niż chodzi bohater — da się go dopaść);
+  // co 4,5 s zamach 0,8 s (worek pęcznieje) i 2 czerwie. Najwyżej 4 żywe naraz, 10 na całe życie gniazda.
+  // Sam nie rani. Czerwie giną razem z gniazdem — szybkie zabicie gniazda ucisza pokój.
+  [EnemyType.Nester]: {
+    type: EnemyType.Nester,
+    variant: EnemyVariant.BroodSac,
+    radius: 12,
+    color: 0xb07a62,
+    maxHp: 35,
+    moveSpeed: 45,
+    behaviour: {
+      aggroRange: 260,
+      kiting: { preferredRange: 170, retreatRange: 120 },
+    },
+    attack: {
+      kind: EnemyAttackKind.Brood,
+      damage: 0,
+      range: 230,
+      windupMs: 800,
+      cooldownMs: 4500,
+      knockback: 0,
+      count: 2,
+      maxAlive: 4,
+      total: 10,
+      spawnDistance: 20,
+      spreadDeg: 90,
+      hatchMs: 400,
+      minion: EnemyVariant.Grub,
     },
   },
 };
@@ -258,6 +291,25 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       status: { slow: { pct: 0.15, durationMs: 800 } },
     },
   },
+  // Gniazdownik (krok 122): na razie jeden wygląd we wszystkich biomach.
+  [EnemyVariant.BroodSac]: { type: EnemyType.Nester },
+  // Czerw z gniazda: kruchy (cios barbarzyńcy go zabija), szybki, gryzie słabo i krótko — groźny tylko w gromadzie.
+  [EnemyVariant.Grub]: {
+    type: EnemyType.Rusher,
+    color: 0xd8c49a,
+    radius: 7,
+    maxHp: 8,
+    moveSpeed: 145,
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 4,
+      range: 22,
+      hitRange: 30,
+      windupMs: 280,
+      cooldownMs: 900,
+      knockback: 70,
+    },
+  },
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */
@@ -307,10 +359,13 @@ export const PLAYER_STATUS_RESISTANCE: StatusResistance = {
 /**
  * Celowo mało przeciwników: 1–2 na pokój. Liczba rośnie tylko razem z liczbą pokojów,
  * a trudność głównie przez ENEMY_SCALING (HP/obrażenia).
+ * Gniazdownik (krok 122) zastępuje jednego z nich co kilka pokojów; jego czerwie są poza tym limitem
+ * (decyzja właściciela — lokacje były zbyt puste). Na piętrze 1 rzadziej (nauka).
  */
 export function getEncounterConfigForFloor(floor: number): EncounterConfig {
   return {
     enemiesPerRoom: { min: 1, max: 2 },
     kiterChance: floor === 1 ? 0.25 : 0.35,
+    nester: { roomChance: floor === 1 ? 0.2 : 0.3, minRoomSide: 6, maxPerFloor: 3 },
   };
 }

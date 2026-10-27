@@ -490,6 +490,36 @@ export const SPRITE_SHEETS = {
       grasp: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Gniazdownik (krok 122, tools/brood_sprites.py): 0–3 pełzanie, 4–7 wylęg (worek pęcznieje, wyplucie po kolumnie 7).
+  broodSac: {
+    key: 'sheet-brood-sac',
+    url: 'assets/sprites/brood-sac_crawl-birth.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      crawl: { frames: [0, 1, 2, 3], loop: true },
+      birth: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Czerw z gniazda (ten sam generator): 0–3 pełzanie, 4–7 ugryzienie.
+  grub: {
+    key: 'sheet-grub',
+    url: 'assets/sprites/grub_crawl-bite.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      crawl: { frames: [0, 1, 2, 3], loop: true },
+      bite: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
   // Kultysta: 0–3 chód, 4–7 rzut (bomba wylatuje po kolumnie 7).
   cultist: {
     key: 'sheet-cultist',
@@ -1003,6 +1033,9 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.Cultist]: { sheet: 'cultist', move: 'walk', idle: 'idle', attack: 'throw', groundShadow: WALKER_SHADOW },
   // Upiór unosi się nad posadzką — bez cienia (krok 49).
   [EnemyVariant.Ghost]: { sheet: 'ghost', move: 'float', attack: 'grasp', aboveDarkness: true },
+  // Gniazdownik i czerw (krok 122) pełzną przy ziemi: płaskie cienie.
+  [EnemyVariant.BroodSac]: { sheet: 'broodSac', move: 'crawl', attack: 'birth', groundShadow: { width: 24, height: 10, offsetX: 0, offsetY: 5 } },
+  [EnemyVariant.Grub]: { sheet: 'grub', move: 'crawl', attack: 'bite', groundShadow: { width: 12, height: 6, offsetX: 0, offsetY: 3 } },
 };
 
 /** Upiór (krok 49): świeci nad mrokiem; przezroczystość cielesny/bezcielesny; wynurzanie się przy pojawieniu. */

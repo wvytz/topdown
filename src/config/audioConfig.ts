@@ -165,6 +165,14 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'square', freq: 180, freqEnd: 60, attack: 0.002, decay: 0.2, volume: 0.3, lowpass: 1000 },
     ],
   },
+  /** Wylęg Gniazdownika (krok 122): mokre, niskie „blurp” i chlupot — słychać, że coś się wykluło. */
+  [SoundCue.Brood]: {
+    gain: 0.4,
+    layers: [
+      { wave: 'sine', freq: 140, freqEnd: 320, attack: 0.01, decay: 0.18, volume: 0.7, curve: 1.5 },
+      { wave: 'noise', freq: 1800, freqEnd: 500, delay: 0.06, attack: 0.004, decay: 0.2, volume: 0.45, lowpass: 900, curve: 1.5 },
+    ],
+  },
   /** Pocisk wroga (mag, łucznik szkieletów): ciche „pfiu”, żeby ostrzał nie zagłuszał walki. */
   [SoundCue.EnemyShot]: { gain: 0.18, layers: [{ wave: 'square', freq: 700, freqEnd: 400, attack: 0.002, decay: 0.08, volume: 0.5, duty: 0.25, lowpass: 2500 }] },
   /** Wybuch (bomby, elita Wybuchowa, ataki bossów): szum z opadającym filtrem i głęboki bas. */
@@ -330,6 +338,7 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.EnemyHit]: { minGapMs: 45 },
   [SoundCue.EnemyDeath]: { minGapMs: 60 },
   [SoundCue.EnemyShot]: { minGapMs: 90 },
+  [SoundCue.Brood]: { minGapMs: 150 },
   [SoundCue.Explosion]: { minGapMs: 70 },
   [SoundCue.Impact]: { minGapMs: 70 },
   [SoundCue.BossHit]: { minGapMs: 80 },

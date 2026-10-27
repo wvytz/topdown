@@ -1,6 +1,6 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
-import type { Hit, LobAttackDefinition, MeleeAttackDefinition, PounceAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
+import type { BroodAttackDefinition, Hit, LobAttackDefinition, MeleeAttackDefinition, PounceAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
 import { ENEMY_DEFINITIONS, ENEMY_SCALING, ENEMY_VARIANTS } from '@/config/combatConfig';
@@ -8,8 +8,9 @@ import { TILE_SIZE } from '@/config/gameConfig';
 import { ENEMY_PROJECTILE_VISUALS, LOB_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { FirePatchField, lobPosition, trailPoints } from '@/systems/HellAttacks';
-import type { EnemyScalingConfig, EnemyType, EnemyVariant } from '@/core/combatTypes';
-import { EliteAffix } from '@/core/combatTypes';
+import type { EnemyScalingConfig, EnemyVariant } from '@/core/combatTypes';
+import { EliteAffix, EnemyType } from '@/core/combatTypes';
+import { BroodLedger, broodCapacity, broodSpawnPoints } from '@/systems/Brood';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { ELITE_VISUAL, SHIELD_CHARGE_VISUAL } from '@/config/spriteConfig';
 import { applyElite, bombDamageToShielded, isElite, lifestealHeal } from '@/systems/Elites';
@@ -100,6 +101,8 @@ export class EnemyManager implements EnemyAttackHandler {
   /** Ognista elita: miejsce ostatniego kawałka smugi żaru. */
   private readonly trailFrom = new WeakMap<Enemy, Vector2>();
   private readonly spotted = new WeakSet<Enemy>();
+  /** Gniazdownicy i ich czerwie (krok 122). */
+  private readonly broods = new BroodLedger<Enemy, Enemy>();
   private readonly telegraphs: Phaser.GameObjects.Graphics;
   private readonly fire: FirePatchRenderer;
 
@@ -176,6 +179,11 @@ export class EnemyManager implements EnemyAttackHandler {
     this.trailFrom.set(enemy, { x: enemy.x, y: enemy.y });
   }
 
+  /** Czerw z gniazda (krok 122): bez łupu i bez ładowania ultimate za zabicie. */
+  isBroodling(enemy: Enemy): boolean {
+    return this.broods.isMinion(enemy);
+  }
+
   variantOf(type: EnemyType): EnemyVariant {
     return this.deps.enemyVariants[type];
   }
@@ -184,6 +192,8 @@ export class EnemyManager implements EnemyAttackHandler {
     const { party, floor } = this.deps;
     const lure = this.deps.aggroTarget?.() ?? null;
     for (const enemy of [...this.enemies]) {
+      // Czerw mógł zginąć w tej klatce razem ze swoim gniazdem.
+      if (!enemy.active) continue;
       const burn = enemy.tickBurn(now);
       if (burn > 0) this.deps.effects.floatingText(enemy.x, enemy.y, `-${burn}`, '#ff8a3c');
       if (enemy.isDead) {
@@ -332,6 +342,24 @@ export class EnemyManager implements EnemyAttackHandler {
     effects.floatingText(enemy.x, enemy.y, text, textColor);
   }
 
+  broodCapacity(enemy: Enemy, attack: BroodAttackDefinition): number {
+    return broodCapacity(attack, this.broods.aliveOf(enemy), this.broods.spawnedBy(enemy));
+  }
+
+  /** Wylęg Gniazdownika: czerwie wykluwają się przed gniazdem (miejsce za ścianą — w samym gnieździe). */
+  brood(enemy: Enemy, attack: BroodAttackDefinition, target: Vector2): void {
+    const count = this.broodCapacity(enemy, attack);
+    if (count <= 0) return;
+    const nest = { x: enemy.x, y: enemy.y };
+    for (const point of broodSpawnPoints(nest, target, count, attack)) {
+      const at = hasLineOfSight(this.deps.floor, nest, point, TILE_SIZE) ? point : nest;
+      const grub = this.spawnAt(EnemyType.Rusher, at, [], { variant: attack.minion, riseMs: attack.hatchMs });
+      this.broods.add(enemy, grub);
+      this.deps.effects.deathBurst(at.x, at.y, enemy.definition.color, grub.radius);
+    }
+    sound.play(SoundCue.Brood, nest);
+  }
+
   pounceHit(enemy: Enemy, attack: PounceAttackDefinition): boolean {
     const { party, scene } = this.deps;
     let hitAny = false;
@@ -451,6 +479,8 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   private kill(enemy: Enemy): void {
+    // Ten sam wróg może paść dwa razy w jednej klatce (np. cios trafił gniazdo i jego czerwia).
+    if (!this.enemies.includes(enemy)) return;
     const now = this.deps.scene.time.now;
     const at = { x: enemy.x, y: enemy.y };
     if (enemy.hasAffix(EliteAffix.Fiery)) {
@@ -466,6 +496,9 @@ export class EnemyManager implements EnemyAttackHandler {
     this.deps.decals.add('splat', enemy.x, enemy.y);
     this.enemies = this.enemies.filter((e) => e !== enemy);
     this.deps.onEnemyKilled(enemy);
+    this.broods.remove(enemy);
     enemy.destroy();
+    // Gniazdo padło — jego czerwie giną razem z nim (krok 122).
+    for (const grub of this.broods.release(enemy)) this.kill(grub);
   }
 }

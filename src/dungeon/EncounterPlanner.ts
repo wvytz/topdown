@@ -7,6 +7,14 @@ export interface EncounterConfig {
   readonly enemiesPerRoom: IntRange;
   /** Szansa, że dany przeciwnik będzie dystansowy (Kiter) zamiast Rushera. */
   readonly kiterChance: number;
+  /** Gniazdownik (krok 122): szansa na pokój, najkrótszy bok pokoju (kafle) i limit na piętro. */
+  readonly nester: NesterPlacement;
+}
+
+export interface NesterPlacement {
+  readonly roomChance: number;
+  readonly minRoomSide: number;
+  readonly maxPerFloor: number;
 }
 
 export interface EnemySpawn {
@@ -42,4 +50,24 @@ export function planEncounters(floor: DungeonFloor, config: EncounterConfig, rng
     }
   }
   return spawns;
+}
+
+/**
+ * Gniazdownicy (krok 122): w wylosowanych pokojach pierwszy wróg staje się Gniazdownikiem — liczba wrogów
+ * w pokoju się nie zmienia. Tylko w pokojach o boku co najmniej `minRoomSide` (czerwie potrzebują miejsca).
+ * Własny strumień RNG: rozmieszczenie i rodzaje pozostałych wrogów zostają jak dotąd.
+ */
+export function assignNesters(floor: DungeonFloor, spawns: readonly EnemySpawn[], config: NesterPlacement, rng: Rng): EnemySpawn[] {
+  const result = [...spawns];
+  let placed = 0;
+  for (const room of floor.rooms) {
+    if (room.kind !== RoomKind.Normal) continue;
+    const roll = rng.chance(config.roomChance);
+    if (!roll || placed >= config.maxPerFloor || Math.min(room.width, room.height) < config.minRoomSide) continue;
+    const index = result.findIndex((s) => s.room === room.id);
+    if (index < 0) continue;
+    result[index] = { ...result[index]!, type: EnemyType.Nester };
+    placed++;
+  }
+  return result;
 }
