@@ -17,15 +17,15 @@ export const PAUSE_CONFIG = {
   saveUnavailable: 'Zapis niedostępny podczas odtwarzania nagrania',
   quitHint: 'M — menu główne (autozapis zostaje: Kontynuuj)',
   /** Układ (y w pikselach płótna 960×540). */
-  layout: { titleY: 52, reasonY: 92, controlsY: 118, saveTitleY: 316, slotsY: 340, slotStep: 22, audioY: 414, audioColumn: 150, audioHintStep: 18, statusY: 454, quitY: 480, resumeY: 512 },
+  layout: { titleY: 52, reasonY: 92, controlsY: 118, saveTitleY: 316, slotsY: 340, slotStep: 22, audioY: 414, audioColumn: 150, audioHintStep: 18, statusY: 452, displayY: 472, quitY: 494, resumeY: 518 },
   controls: [
     'WASD — ruch',
     'LPM / PPM — ataki bohatera',
     'Spacja — dash · R — ultimate (gdy pasek mocy jest pełny)',
     'E — kapliczka, schody',
-    'F9 — raport błędów · N — wycisz dźwięk',
+    'F9 — raport błędów · N — wycisz dźwięk · F — pełny ekran',
     'Pad: lewa gałka — ruch · prawa — cel · X / B — ataki (też RT / LT) · A — dash · Y — E · RB — ultimate',
-    'Pad w pauzie: ↑ ↓ + A — zapis · ← → głośność · Y — menu · Start / B — wznów',
+    'Pad w pauzie: ↑ ↓ + A — zapis, obraz · ← → głośność · Y — menu · Start / B — wznów',
   ],
   /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wiersze slotów i napis menu się stuka. */
   mobile: {

@@ -56,7 +56,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
   - zasady pikseli są w `docs/STYLEGUIDE.md`.
 - **Warstwa wizualna (krok 16):**
   - paleta C „jasny piaskowiec”: czytelność walki ma pierwszeństwo, a mrok daje światło i winieta;
-  - zoom 2,0 pixel-perfect;
+  - zoom 2,0 pixel-perfect; obraz na PC powiększa pełny ekran (**F**) i opcja „Wypełnij okno” w pauzie (krok 118, skala ułamkowa) — pole widzenia kamery celowo bez zmian (zmieniłoby balans);
   - schody 2×2;
   - cienie środowiska ze stałą alfą 0,4;
   - światło (mrok, mgła, pochodnie) przechodzi płynnie — bez twardych pasm (decyzja z kroku 28a, odwołuje pasma z 19a);

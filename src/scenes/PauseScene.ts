@@ -12,11 +12,15 @@ import { SoundCue, sound } from '@/audio/SoundBoard';
 import { AUDIO_TEXT, MUTE_KEY } from '@/config/audioConfig';
 import { menuCommandFromKey } from '@/systems/gamepadInput';
 import { volumeLabel } from '@/systems/AudioSettings';
+import { DISPLAY_CONFIG, DISPLAY_TEXT } from '@/config/displayConfig';
+import { display } from '@/input/DisplayControls';
 
 /** Kanał głośności na ekranie pauzy (krok 116). */
 type AudioChannel = 'music' | 'sfx';
-/** Wiersz wybrany padem lub strzałkami: slot zapisu albo suwak głośności. */
-type PauseCursor = number | AudioChannel;
+/** Przełącznik obrazu na ekranie pauzy (krok 118, tylko PC). */
+type DisplayToggle = 'fill' | 'fullscreen';
+/** Wiersz wybrany padem lub strzałkami: slot zapisu, suwak głośności albo przełącznik obrazu. */
+type PauseCursor = number | AudioChannel | DisplayToggle;
 
 export interface PauseSceneData {
   readonly reason: PauseReason;
@@ -45,6 +49,7 @@ export class PauseScene extends Phaser.Scene {
   private audioRows: { readonly channel: AudioChannel; readonly value: Phaser.GameObjects.Text }[] = [];
   private muteText!: Phaser.GameObjects.Text;
   private muteHint = '';
+  private displayRows: { readonly toggle: DisplayToggle; readonly text: Phaser.GameObjects.Text }[] = [];
 
   constructor() {
     super(SceneKey.Pause);
@@ -54,6 +59,7 @@ export class PauseScene extends Phaser.Scene {
     this.resumed = false;
     this.slotRows = [];
     this.audioRows = [];
+    this.displayRows = [];
     this.cursor = null;
     const { width, height } = this.scale;
     const L = PAUSE_CONFIG.layout;
@@ -91,6 +97,7 @@ export class PauseScene extends Phaser.Scene {
       this.refreshSlots();
     }
     this.createAudioRows(style, texts === PAUSE_CONFIG.mobile);
+    if (texts !== PAUSE_CONFIG.mobile) this.createDisplayRows(style);
     this.status = this.add.text(width / 2, L.statusY, '', { ...style, fontSize: '14px', color: '#9be08a' }).setOrigin(0.5);
     // Napis „M — menu główne” da się też kliknąć albo stuknąć (krok 96, telefon bez klawiatury).
     this.add
@@ -119,6 +126,8 @@ export class PauseScene extends Phaser.Scene {
     });
     const unwatch = sound.watch(() => this.refreshAudio());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unwatch);
+    const unwatchDisplay = display.watch(() => this.refreshDisplay());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unwatchDisplay);
     bindPadMenu(this, (command) => this.onPadCommand(command, data));
     // Kliknięcie poza wierszem slotu wznawia grę.
     this.input.on(Phaser.Input.Events.POINTER_UP, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
@@ -138,13 +147,14 @@ export class PauseScene extends Phaser.Scene {
         break;
       case MenuCommand.Up:
       case MenuCommand.Down: {
-        const rows: PauseCursor[] = [...(data.onSave ? slots : []), 'music', 'sfx'];
+        const rows: PauseCursor[] = [...(data.onSave ? slots : []), 'music', 'sfx', ...this.displayRows.map((row) => row.toggle)];
         const step = command === MenuCommand.Up ? -1 : 1;
         const index = this.cursor === null ? (step > 0 ? 0 : rows.length - 1) : (rows.indexOf(this.cursor) + step + rows.length) % rows.length;
         this.cursor = rows[index] ?? null;
         sound.play(SoundCue.UiMove);
         this.refreshSlots();
         this.refreshAudio();
+        this.refreshDisplay();
         break;
       }
       case MenuCommand.Left:
@@ -153,6 +163,7 @@ export class PauseScene extends Phaser.Scene {
         break;
       case MenuCommand.Confirm:
         if (this.cursor === 'music' || this.cursor === 'sfx') sound.toggleMute();
+        else if (this.cursor === 'fill' || this.cursor === 'fullscreen') this.useDisplay(this.cursor);
         else if (data.onSave && this.cursor !== null) this.save(data.onSave, this.cursor);
         break;
       default:
@@ -212,6 +223,50 @@ export class PauseScene extends Phaser.Scene {
       .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => sound.toggleMute());
     this.muteHint = mobile ? AUDIO_TEXT.touchHint : `${AUDIO_TEXT.muteHint(MUTE_KEY)} · ${AUDIO_TEXT.padHint}`;
     this.refreshAudio();
+  }
+
+  /**
+   * Wielkość obrazu (krok 118): „Wypełnij okno” (O) i pełny ekran (F — klawisz działa na całej stronie, DisplayControls).
+   * Oba napisy da się kliknąć; pad wybiera wiersz strzałkami i potwierdza A.
+   */
+  private createDisplayRows(style: Phaser.Types.GameObjects.Text.TextStyle): void {
+    const L = PAUSE_CONFIG.layout;
+    const { width } = this.scale;
+    (['fill', 'fullscreen'] as const).forEach((toggle, i) => {
+      const text = this.add
+        .text(width / 2 + (i === 0 ? -L.audioColumn : L.audioColumn), L.displayY, '', { ...style, fontSize: '14px' })
+        .setOrigin(0.5)
+        .setPadding(6, 2, 6, 2)
+        .setInteractive({ useHandCursor: true })
+        .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.useDisplay(toggle));
+      this.displayRows.push({ toggle, text });
+    });
+    this.input.keyboard?.on(`keydown-${DISPLAY_CONFIG.fillKey}`, (event: KeyboardEvent) => {
+      if (!event.repeat) this.useDisplay('fill');
+    });
+    this.refreshDisplay();
+  }
+
+  private useDisplay(toggle: DisplayToggle): void {
+    sound.play(SoundCue.UiMove);
+    if (toggle === 'fill') {
+      display.toggleFillWindow();
+      return;
+    }
+    void display.toggleFullscreen().then((ok) => {
+      if (!ok && this.scene.isActive()) this.status.setText(DISPLAY_TEXT.fullscreenFailed).setColor('#ff7a6a');
+    });
+  }
+
+  private refreshDisplay(): void {
+    for (const row of this.displayRows) {
+      const selected = this.cursor === row.toggle;
+      const label =
+        row.toggle === 'fill'
+          ? `${DISPLAY_CONFIG.fillKey} — ${DISPLAY_TEXT.fill(display.settings.fillWindow)}`
+          : `${DISPLAY_CONFIG.fullscreenKey} — ${DISPLAY_TEXT.fullscreen(display.fullscreen)}`;
+      row.text.setText(`${selected ? '▶ ' : ''}${label}`).setColor(selected ? '#f5c542' : '#e8e8f0');
+    }
   }
 
   private changeVolume(channel: AudioChannel, steps: number): void {
