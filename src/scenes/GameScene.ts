@@ -905,7 +905,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
-    // Duet bossów (krok 112): na razie tylko w arenach bossów.
+    // Duet bossów (krok 114): na razie tylko w arenach bossów.
     const duet = this.bossRush ? duetForFloor(this.floorNumber, BOSS_RUSH_DUETS, TOWER_CONFIG) : null;
     this.bossFight = new BossEncounter({
       scene: this,

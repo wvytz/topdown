@@ -3,7 +3,7 @@ import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
 import { BIOMES, BiomeId } from '@/config/biomeConfig';
 import { ENEMY_DEFINITIONS, ENEMY_VARIANTS } from '@/config/combatConfig';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
-import { FirePatchField, lobPosition, pounceDurationMs, pounceLanding, trailPoints } from '@/systems/HellAttacks';
+import { FirePatchField, firePatchStage, lobPosition, pounceDurationMs, pounceLanding, trailPoints } from '@/systems/HellAttacks';
 
 const hound = enemyDefinitionFor(ENEMY_DEFINITIONS[EnemyType.Rusher], EnemyVariant.Hellhound, ENEMY_VARIANTS);
 const cultist = enemyDefinitionFor(ENEMY_DEFINITIONS[EnemyType.Kiter], EnemyVariant.Cultist, ENEMY_VARIANTS);
@@ -68,5 +68,42 @@ describe('płonące ślady', () => {
     expect(field.update({ x: 0, y: 0 }, 1000)).toBe(0);
     expect(field.patches).toHaveLength(0);
     expect(field.update(null, 0)).toBe(0);
+  });
+});
+
+describe('płonące ślady przy stopach (krok 114)', () => {
+  const def = { radius: 9, durationMs: 1000, damage: 5 };
+
+  it('parzą, gdy ślad stóp (cień, 4 px pod środkiem) stoi w plamie — tak jak widać ogień', () => {
+    const field = new FirePatchField();
+    field.add({ x: 0, y: 0 }, def, 0);
+    // Środek postaci 12 px nad plamą, ale stopy 8 px od środka plamy — w ogniu.
+    expect(field.update({ x: 0, y: -12 }, 10)).toBe(5);
+    // Środek postaci 6 px pod brzegiem (w kole), ale stopy już 1 px za brzegiem — nie parzy.
+    expect(field.update({ x: 0, y: 6 }, 10)).toBe(0);
+    // Zasięg plamy bez zmian: stopy na samym brzegu jeszcze parzą, piksel dalej nie.
+    expect(field.update({ x: 9, y: -4 }, 10)).toBe(5);
+    expect(field.update({ x: 10, y: -4 }, 10)).toBe(0);
+  });
+
+  it('etap do rysowania: rozbłysk, płonięcie, dogasanie (plama parzy aż do końca)', () => {
+    const field = new FirePatchField();
+    field.add({ x: 0, y: 0 }, def, 100);
+    const patch = field.patches[0]!;
+    expect(firePatchStage(patch, 150, 120, 500)).toBe('ignite');
+    expect(firePatchStage(patch, 400, 120, 500)).toBe('burn');
+    expect(firePatchStage(patch, 700, 120, 500)).toBe('dying');
+    expect(field.update({ x: 0, y: -4 }, 1050)).toBe(5);
+  });
+
+  it('wersja rośnie przy dodaniu i wygaśnięciu plamy, nie co klatkę', () => {
+    const field = new FirePatchField();
+    const start = field.version;
+    field.add({ x: 0, y: 0 }, def, 0);
+    expect(field.version).toBe(start + 1);
+    field.update(null, 500);
+    expect(field.version).toBe(start + 1);
+    field.update(null, 1000);
+    expect(field.version).toBe(start + 2);
   });
 });

@@ -1015,13 +1015,46 @@ export const GHOST_VISUAL = {
 
 /**
  * Rzuty łukiem (krok 41d): wygląd bomby, start przed rzucającym i wysokość łuku (wizualnie — bomba unosi się
- * nad swoim cieniem). Ogień na podłodze rysuje silnik: koła w kolorach żaru (ADD, stała alfa — §6b).
+ * nad swoim cieniem). Ogień na podłodze rysuje silnik (`effects/FirePatchRenderer.ts`, `FIRE_PATCH_VISUAL`).
  */
 export const LOB_VISUALS: Readonly<Partial<Record<EnemyVariant, { readonly sheet: SpriteSheetId; readonly animation: string; readonly forwardOffset: number; readonly arcHeight: number }>>> = {
   [EnemyVariant.Cultist]: { sheet: 'tarBomb', animation: 'fly', forwardOffset: 12, arcHeight: 28 },
 };
 
-export const FIRE_PATCH_VISUAL = { outer: 0xa82010, inner: 0xe0701c, alpha: 0.3, innerScale: 0.55 } as const;
+/**
+ * Płonące plamy na podłodze (krok 114, zamiast dwóch rozmytych kół). Brzeg plamy to dokładny zasięg parzenia
+ * (stopy bohatera): wypalona podłoga w całym kole, na brzegu najciemniejszy ton rampy ognia (bez czarnego obrysu,
+ * §6b), w środku jasny żar i języki ognia. Smuga z nachodzących plam ma jeden obrys sumy kół.
+ * Klatki skokowo co `frameMs` (6 kl./s); rozbłysk przy zapłonie, brzeg miga przed zgaśnięciem (parzy do końca).
+ */
+export const FIRE_PATCH_VISUAL = {
+  /** Wypalona podłoga pod ogniem (zwykłe mieszanie): ciemna plama dokładnie w zasięgu. */
+  char: { color: 0x200a06, alpha: 0.6 },
+  /** Rampa ognia od brzegu do środka (mieszanie ADD). */
+  edge: { color: 0xb8240e, alpha: 0.95, width: 2 },
+  body: { color: 0xa82010, alpha: 0.4 },
+  /**
+   * Żar w środku: mała plama ma jedną kulę (`smallScale` promienia), duża (od `bigRadius`) kilka kul w różnych
+   * miejscach — nachodzące się świecą jaśniej, kształt ognia jest nieregularny i drga o piksel co klatkę.
+   */
+  core: { color: 0xe0661c, alpha: 0.45, smallScale: 0.4, bigRadius: 14, blobsPerRadius: 1 / 8, maxBlobs: 4, blobScale: [0.28, 0.42], spread: 0.4 },
+  /** Żyła żaru między nachodzącymi plamami smugi (grubość jako ułamek promienia) — smuga jest ciągła, nie z koralików. */
+  vein: { scale: 0.6, alpha: 0.35 },
+  hot: { color: 0xffd86a, alpha: 0.85 },
+  frameMs: 166,
+  /** Rozbłysk przy zapłonie: całe koło jasne przez tyle ms. */
+  igniteMs: 120,
+  igniteAlpha: 0.55,
+  /** Dogasanie: przez ostatnie tyle ms bez języków ognia, brzeg miga (plama nadal parzy). */
+  dyingMs: 500,
+  dyingBlinkMs: 83,
+  dyingEdgeAlpha: 0.35,
+  /** Języki ognia (podstawa w środkowej części koła, czubek nie wychodzi za brzeg); wysokość rośnie z plamą. */
+  tongues: { perRadius: 1 / 5, max: 6, maxHeight: 10, heightPerRadius: 0.6, spread: 0.6 },
+  /** Iskry: piksele wznoszące się nad żarem (`rise` px na klatkę przez `lifeFrames` klatek), zawsze w kole. */
+  sparks: { perRadius: 1 / 6, max: 4, rise: 2, lifeFrames: 3 },
+  outlineSegments: 32,
+} as const;
 
 /**
  * Pocisk wariantu strzelającego: arkusz, animacja, przesunięcie startu przed strzelca (px)

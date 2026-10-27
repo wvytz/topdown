@@ -16,7 +16,7 @@ const DUET_SEED_SALT = 0xd0e7;
 type Attacker = Vector2 & { readonly isDead: boolean; readonly radius: number };
 
 /**
- * Walka na arenie: jeden boss albo duet (krok 112) — dwie niezależne walki na tej samej arenie.
+ * Walka na arenie: jeden boss albo duet (krok 114) — dwie niezależne walki na tej samej arenie.
  * Scena widzi jedną walkę: trwa, gdy walczy którykolwiek, wygrana — gdy padną obaj; łup i nagroda po ostatnim.
  */
 export class BossEncounter {

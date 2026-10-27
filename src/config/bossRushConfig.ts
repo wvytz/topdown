@@ -17,7 +17,7 @@ export const BOSS_RUSH_CONFIG = {
 } as const;
 
 /**
- * Duety bossów w arenach (krok 112, pomysł właściciela — utrudnienie): arena Króla Pająków (3. w kręgu)
+ * Duety bossów w arenach (krok 114, pomysł właściciela — utrudnienie): arena Króla Pająków (3. w kręgu)
  * dostaje też Matkę Pająków; walczą naraz, każdy z pełnym HP. We wspinaczce bez zmian.
  */
 export const BOSS_RUSH_DUETS: readonly BossDuetDefinition[] = [

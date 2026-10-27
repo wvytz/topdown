@@ -3,7 +3,7 @@ import type { TowerLoopConfig } from '@/systems/TowerLoop';
 import { floorInLoop } from '@/systems/TowerLoop';
 
 /**
- * Duet bossów (krok 112, pomysł właściciela): na wybranej arenie walczą naraz dwaj bossowie — gospodarz areny
+ * Duet bossów (krok 114, pomysł właściciela): na wybranej arenie walczą naraz dwaj bossowie — gospodarz areny
  * i partner z innego piętra kręgu (np. Król Pająków z Matką Pająków). Utrudnienie, na razie tylko w arenach.
  * Czysta logika: który duet na którym piętrze i wspólny pasek HP.
  */
