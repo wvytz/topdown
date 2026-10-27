@@ -12,6 +12,8 @@ import type { EnemyVariantDefinition } from '@/systems/EnemyVariants';
 import type { EncounterConfig } from '@/dungeon/EncounterPlanner';
 import { GUARANTEED_VIEW_HALF } from '@/config/gameConfig';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
+import { TOWER_CONFIG } from '@/config/towerConfig';
+import { towerLoop } from '@/systems/TowerLoop';
 
 export const PLAYER_COMBAT: PlayerCombatConfig = {
   meleeDamage: 12,
@@ -113,6 +115,27 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
       spreadDeg: 90,
       hatchMs: 400,
       minion: EnemyVariant.Grub,
+    },
+  },
+  // Czyhacz (krok 123): z kryjówki doskokiem (strefa lądowania, LURKER_CONFIG), potem szybszy od Rushera
+  // (+15%) i twardszy (ok. ×1,2 HP — więcej łamałoby regułę „≤ 7 ciosów na piętrze 10”); tnie seriami po 2 ciosy, po serii 0,8 s zadyszki — okno na kontrę.
+  [EnemyType.Lurker]: {
+    type: EnemyType.Lurker,
+    variant: EnemyVariant.StoneLurker,
+    radius: 11,
+    color: 0x8a8478,
+    maxHp: 35,
+    moveSpeed: 132,
+    behaviour: { aggroRange: 320 },
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 10,
+      range: 32,
+      hitRange: 42,
+      windupMs: 300,
+      cooldownMs: 1600,
+      knockback: 200,
+      series: { hits: 2, gapMs: 220, breatherMs: 800 },
     },
   },
 };
@@ -342,6 +365,13 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
   [EnemyVariant.Imp]: broodling(0xa03020),
   [EnemyVariant.Hookah]: { type: EnemyType.Nester, color: 0x3a8a8a, attack: broodAttack(EnemyVariant.SmokeWisp) },
   [EnemyVariant.SmokeWisp]: broodling(0xb8b8b0),
+  // Czyhacze biomów (krok 123): ten sam archetyp, inna kryjówka i kolor (posoka, gruz przy wyskoku).
+  [EnemyVariant.StoneLurker]: { type: EnemyType.Lurker },
+  [EnemyVariant.SilkLurker]: { type: EnemyType.Lurker, color: 0xd8d0e0 },
+  [EnemyVariant.MoundLurker]: { type: EnemyType.Lurker, color: 0x7a6a4a },
+  [EnemyVariant.CoffinLurker]: { type: EnemyType.Lurker, color: 0x6a4a32 },
+  [EnemyVariant.CinderLurker]: { type: EnemyType.Lurker, color: 0xc0401c },
+  [EnemyVariant.BarrelLurker]: { type: EnemyType.Lurker, color: 0x7a5a3a },
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */
@@ -399,5 +429,7 @@ export function getEncounterConfigForFloor(floor: number): EncounterConfig {
     enemiesPerRoom: { min: 1, max: 2 },
     kiterChance: floor === 1 ? 0.25 : 0.35,
     nester: { roomChance: floor === 1 ? 0.2 : 0.3, minRoomSide: 6, maxPerFloor: 3 },
+    // Czyhacz (krok 123): rzadszy od gniazda — 1 na piętro w pierwszym kręgu wieży, potem 2.
+    lurker: { roomChance: 0.12, minRoomSide: 5, maxPerFloor: towerLoop(floor, TOWER_CONFIG) > 0 ? 2 : 1 },
   };
 }

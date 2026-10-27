@@ -34,6 +34,10 @@ export enum SoundCue {
   ShieldBlock = 'shield-block',
   /** Gniazdownik wypluwa czerwie (krok 122). */
   Brood = 'brood',
+  /** Czyhacz się budzi (krok 123): skrobanie w kryjówce — ostrzeżenie przed wyskokiem. */
+  LurkWake = 'lurk-wake',
+  /** Czyhacz wyskakuje: trzask drewna/kamienia. */
+  LurkBurst = 'lurk-burst',
   // Świat i łupy
   Coin = 'coin',
   Heal = 'heal',

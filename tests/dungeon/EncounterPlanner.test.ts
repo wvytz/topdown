@@ -3,7 +3,7 @@ import { EnemyType } from '@/core/combatTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import { createRng } from '@/core/random';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
-import { assignNesters, planEncounters } from '@/dungeon/EncounterPlanner';
+import { assignLurkers, assignNesters, lurkerDens, planEncounters } from '@/dungeon/EncounterPlanner';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { sampleFloors } from '../helpers/floors';
 
@@ -42,8 +42,8 @@ describe('planEncounters', () => {
   it('kiterChance steruje proporcją typów', () => {
     const floor = FLOORS[0]!;
     const nester = getEncounterConfigForFloor(1).nester;
-    const onlyRushers = planEncounters(floor, { enemiesPerRoom: { min: 2, max: 2 }, kiterChance: 0, nester }, createRng(1));
-    const onlyKiters = planEncounters(floor, { enemiesPerRoom: { min: 2, max: 2 }, kiterChance: 1, nester }, createRng(1));
+    const onlyRushers = planEncounters(floor, { enemiesPerRoom: { min: 2, max: 2 }, kiterChance: 0, nester, lurker: nester }, createRng(1));
+    const onlyKiters = planEncounters(floor, { enemiesPerRoom: { min: 2, max: 2 }, kiterChance: 1, nester, lurker: nester }, createRng(1));
     expect(onlyRushers.every((s) => s.type === EnemyType.Rusher)).toBe(true);
     expect(onlyKiters.every((s) => s.type === EnemyType.Kiter)).toBe(true);
   });
@@ -102,5 +102,63 @@ describe('assignNesters (krok 122)', () => {
     });
     expect(nesters).toBeGreaterThan(0);
     expect(nesters / rooms).toBeLessThan(0.35);
+  });
+});
+
+describe('assignLurkers (krok 123)', () => {
+  const always = { roomChance: 1, minRoomSide: 0, maxPerFloor: 99 };
+
+  it('Czyhacz zastępuje jednego wroga i stoi w kryjówce pod północnym murem, z dala od wejść', () => {
+    FLOORS.forEach((floor, i) => {
+      const spawns = planEncounters(floor, getEncounterConfigForFloor(3), createRng(i));
+      const lurked = assignLurkers(floor, spawns, always, createRng(i));
+      expect(lurked).toHaveLength(spawns.length);
+      const lurkers = lurked.filter((s) => s.type === EnemyType.Lurker);
+      expect(lurkers.length).toBeGreaterThan(0);
+      for (const lurker of lurkers) {
+        const room = floor.rooms.find((r) => r.id === lurker.room)!;
+        expect(lurker.tile.y).toBe(room.y);
+        expect(floor.tiles[(lurker.tile.y - 1) * floor.width + lurker.tile.x]).toBe(TileType.Wall);
+        expect(lurkerDens(floor, room)).toContainEqual(lurker.tile);
+        expect(lurked.filter((s) => s.room === room.id && s.type === EnemyType.Lurker)).toHaveLength(1);
+      }
+    });
+  });
+
+  it('pokój z Gniazdownikiem nie dostaje Czyhacza; limit na piętro', () => {
+    FLOORS.forEach((floor, i) => {
+      const spawns = planEncounters(floor, getEncounterConfigForFloor(3), createRng(i));
+      const nested = assignNesters(floor, spawns, { roomChance: 0.5, minRoomSide: 0, maxPerFloor: 99 }, createRng(i));
+      const lurked = assignLurkers(floor, nested, { ...always, maxPerFloor: 2 }, createRng(i));
+      expect(lurked.filter((s) => s.type === EnemyType.Lurker).length).toBeLessThanOrEqual(2);
+      expect(lurked.filter((s) => s.type === EnemyType.Nester)).toEqual(nested.filter((s) => s.type === EnemyType.Nester));
+      const nestRooms = new Set(nested.filter((s) => s.type === EnemyType.Nester).map((s) => s.room));
+      for (const s of lurked) if (s.type === EnemyType.Lurker) expect(nestRooms.has(s.room)).toBe(false);
+    });
+  });
+
+  it('szansa 0 nic nie zmienia; ten sam seed — te same kryjówki', () => {
+    const floor = FLOORS[1]!;
+    const spawns = planEncounters(floor, getEncounterConfigForFloor(2), createRng(4));
+    expect(assignLurkers(floor, spawns, { ...always, roomChance: 0 }, createRng(1))).toEqual(spawns);
+    const config = getEncounterConfigForFloor(2).lurker;
+    expect(assignLurkers(floor, spawns, config, createRng(7))).toEqual(assignLurkers(floor, spawns, config, createRng(7)));
+  });
+
+  it('w konfiguracji: rzadziej niż gniazda — 1 na piętro w pierwszym kręgu, 2 w kolejnych', () => {
+    expect(getEncounterConfigForFloor(3).lurker.maxPerFloor).toBe(1);
+    expect(getEncounterConfigForFloor(9).lurker.maxPerFloor).toBe(2);
+    let nesters = 0;
+    let lurkers = 0;
+    FLOORS.forEach((floor, i) => {
+      const config = getEncounterConfigForFloor(3);
+      const nested = assignNesters(floor, planEncounters(floor, config, createRng(i)), config.nester, createRng(i + 100));
+      const spawns = assignLurkers(floor, nested, config.lurker, createRng(i + 200));
+      nesters += spawns.filter((s) => s.type === EnemyType.Nester).length;
+      lurkers += spawns.filter((s) => s.type === EnemyType.Lurker).length;
+      expect(spawns.filter((s) => s.type === EnemyType.Lurker).length).toBeLessThanOrEqual(1);
+    });
+    expect(lurkers).toBeLessThan(nesters);
+    expect(getEncounterConfigForFloor(3).lurker.roomChance).toBeLessThan(getEncounterConfigForFloor(3).nester.roomChance);
   });
 });

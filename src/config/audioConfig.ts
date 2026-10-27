@@ -173,6 +173,23 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'noise', freq: 1800, freqEnd: 500, delay: 0.06, attack: 0.004, decay: 0.2, volume: 0.45, lowpass: 900, curve: 1.5 },
     ],
   },
+  /** Czyhacz się budzi (krok 123): suche skrobanie pazurów od środka kryjówki — szum z drgającym filtrem. */
+  [SoundCue.LurkWake]: {
+    gain: 0.35,
+    layers: [
+      { wave: 'noise', freq: 2400, freqEnd: 1400, attack: 0.01, decay: 0.12, volume: 0.5, lowpass: 3000, curve: 1.2 },
+      { wave: 'noise', freq: 2600, freqEnd: 1200, delay: 0.16, attack: 0.01, decay: 0.12, volume: 0.5, lowpass: 3000, curve: 1.2 },
+      { wave: 'noise', freq: 2800, freqEnd: 1000, delay: 0.32, attack: 0.01, decay: 0.16, volume: 0.6, lowpass: 3200, curve: 1.2 },
+    ],
+  },
+  /** Czyhacz wyskakuje: trzask pękającej kryjówki i niski łomot. */
+  [SoundCue.LurkBurst]: {
+    gain: 0.45,
+    layers: [
+      { wave: 'noise', freq: 3000, freqEnd: 400, attack: 0.002, decay: 0.22, volume: 0.7, lowpass: 2600, curve: 1.6 },
+      { wave: 'square', freq: 120, freqEnd: 50, attack: 0.002, decay: 0.2, volume: 0.35, lowpass: 900 },
+    ],
+  },
   /** Pocisk wroga (mag, łucznik szkieletów): ciche „pfiu”, żeby ostrzał nie zagłuszał walki. */
   [SoundCue.EnemyShot]: { gain: 0.18, layers: [{ wave: 'square', freq: 700, freqEnd: 400, attack: 0.002, decay: 0.08, volume: 0.5, duty: 0.25, lowpass: 2500 }] },
   /** Wybuch (bomby, elita Wybuchowa, ataki bossów): szum z opadającym filtrem i głęboki bas. */
@@ -339,6 +356,8 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.EnemyDeath]: { minGapMs: 60 },
   [SoundCue.EnemyShot]: { minGapMs: 90 },
   [SoundCue.Brood]: { minGapMs: 150 },
+  [SoundCue.LurkWake]: { minGapMs: 300 },
+  [SoundCue.LurkBurst]: { minGapMs: 150 },
   [SoundCue.Explosion]: { minGapMs: 70 },
   [SoundCue.Impact]: { minGapMs: 70 },
   [SoundCue.BossHit]: { minGapMs: 80 },
