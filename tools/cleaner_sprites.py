@@ -22,6 +22,8 @@ plastic-bucket.png (192x24, komórka 24): wiadro w locie — 0–3 niebieskie (b
   co 90° (sznur rysuje gra linią od dłoni).
 broom-tangle.png (384x48, komórka 48): czarne włosie oplata stopy bohatera — 0–3 wyrasta, 4–5 trzyma (pętla), 6–7 pęka.
 polish-sparkle.png (64x16, komórka 16): błysk wypolerowanej posadzki pod miotłą, 4 klatki.
+service-elevator.png (384x64, komórka 64): winda towarowa w północnym murze areny (krok 125, ucieczka blondynki) —
+  dół komórki = dolna krawędź muru; 0 zamknięta, 1–4 drzwi się rozsuwają, 5 otwarta (zamykanie = odwrotnie).
 Dominująca cecha: jasny kucyk / czarny warkocz za głową + miotła; akcenty: żółte rękawice i błękit wody.
 """
 import argparse
@@ -417,6 +419,50 @@ def sparkle_frame(k):
     return img
 
 
+STEEL = (ok(.34, .012, 250), ok(.46, .014, 248), ok(.58, .014, 246), ok(.70, .012, 244), ok(.82, .010, 240))
+CABIN = (ok(.16, .020, 60), ok(.24, .030, 64), ok(.36, .040, 70))
+LAMP = (ok(.62, .150, 60), ok(.80, .140, 80), ok(.92, .080, 95))
+ELEVATOR = 64
+ELEVATOR_FRAMES = 6
+
+
+def elevator_frame(k):
+    """Winda w murze (64x64, dół = krawędź muru nad areną): stalowa rama, rozsuwane drzwi, lampka ze strzałką w górę."""
+    img = Img(ELEVATOR, ELEVATOR)
+    x0, x1, top, bottom = 8, 55, 14, 63  # rama
+    for y in range(top, bottom + 1):
+        for x in range(x0, x1 + 1):
+            edge = x in (x0, x1) or y == top
+            img.put(x, y, STEEL[1] if edge else STEEL[0])
+    for x in range(x0 + 1, x1):  # nadproże z fazą
+        img.put(x, top + 1, STEEL[3])
+        img.put(x, top + 2, STEEL[2])
+    dl, dr, dt = x0 + 3, x1 - 3, top + 5  # otwór drzwi
+    for y in range(dt, bottom + 1):  # wnętrze kabiny: ciemne, ciepłe światło z sufitu
+        for x in range(dl, dr + 1):
+            img.put(x, y, CABIN[2] if y < dt + 3 else CABIN[1] if (x + y) % 7 else CABIN[0])
+    half = (dr - dl + 1) // 2
+    shift = round(half * min(1.0, k / (ELEVATOR_FRAMES - 1)))
+    for side in (0, 1):  # dwa skrzydła drzwi rozsuwają się na boki (chowają w ramę)
+        for i in range(half - shift):
+            x = dl + i if side == 0 else dr - i
+            inner = i == half - shift - 1
+            for y in range(dt, bottom + 1):
+                band = STEEL[4] if inner else STEEL[3] if (i + side) % 6 == 1 else STEEL[2]
+                img.put(x, y, band)
+            img.put(x, dt + 18, STEEL[1])  # poziomy przetłoczenie
+    lx = (x0 + x1) // 2  # lampka ze strzałką w górę nad drzwiami
+    lit = LAMP[2] if k > 0 else LAMP[0]
+    for dy in range(3):
+        for dx in range(-dy, dy + 1):
+            img.put(lx + dx, 6 + dy, lit)
+    for dy in range(3, 5):
+        img.put(lx, 6 + dy, lit)
+    img.put(lx - 4, 8, STEEL[3])
+    img.put(lx + 4, 8, STEEL[3])
+    return img
+
+
 def build():
     sheets = {}
     for key, v in VARIANTS.items():
@@ -429,12 +475,14 @@ def build():
     buck, buf = strip_sheet(24, bucket_frame, 8)
     tangle, tf = strip_sheet(48, tangle_frame, 8)
     sparkle, spf = strip_sheet(16, sparkle_frame, 4)
+    lift, lf = strip_sheet(ELEVATOR, elevator_frame, ELEVATOR_FRAMES)
     sheets.update({
         'soap-puddle.png': (puddle, pf, PUDDLE, 1),
         'water-splash.png': (splash, sf, 32, 1),
         'plastic-bucket.png': (buck, buf, 24, 1),
         'broom-tangle.png': (tangle, tf, 48, 1),
         'polish-sparkle.png': (sparkle, spf, 16, 1),
+        'service-elevator.png': (lift, lf, ELEVATOR, 0),
     })
     return sheets
 

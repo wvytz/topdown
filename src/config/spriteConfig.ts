@@ -75,6 +75,43 @@ function lurkerSheet(name: string) {
   } as const satisfies SpriteSheetDef;
 }
 
+/** Arkusz sprzątaczki (kroki 125–126): obie mają wspólny model i układ klatek. */
+function cleanerSheet(variant: 'blonde' | 'dark') {
+  return {
+    key: `sheet-cleaner-${variant}`,
+    url: `assets/sprites/cleaner-${variant}_walk-polish-spill-bucket-broom-tangle-shout.png`,
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 3584,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      polish: { frames: [4, 5, 6, 7], loop: true },
+      spill: { frames: [8, 9, 10, 11], loop: false },
+      bucket: { frames: [12, 13, 14, 15], loop: false },
+      broom: { frames: [16, 17, 18, 19], loop: false },
+      tangle: { frames: [20, 21, 22, 23], loop: false },
+      shout: { frames: [24, 25, 26, 27], loop: false },
+    },
+  } as const satisfies SpriteSheetDef;
+}
+
+function cleanerDeathSheet(variant: 'blonde' | 'dark') {
+  return {
+    key: `sheet-cleaner-${variant}-death`,
+    url: `assets/sprites/cleaner-${variant}_death.png`,
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 1024,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: { die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false } },
+  } as const satisfies SpriteSheetDef;
+}
+
 export const SPRITE_SHEETS = {
   // Generator tools/barbarian_sword.py (krok 21): chód z mieczem (0–3) i cios od prawej do lewej (4–7).
   barbarian: {
@@ -204,6 +241,67 @@ export const SPRITE_SHEETS = {
     fps: 10,
     animations: {
       fly: { frames: [0, 1, 2, 3], loop: true },
+    },
+  },
+  // Sprzątaczki (kroki 125–126, tools/cleaner_sprites.py): 128×128, 8 kierunków; 0–3 chód, 4–7 polerowanie, 8–11 chlust
+  // z wiadra, 12–15 wiadro na sznurze, 16–19 cios miotłą, 20–23 plątanie, 24–27 krzyk. Śmierć: 8 klatek (poślizg, upadek).
+  cleanerBlonde: cleanerSheet('blonde'),
+  cleanerBlondeDeath: cleanerDeathSheet('blonde'),
+  // Kałuża mydlin (krok 125): 0–5 rośnie (promień = strefa poślizgu), 6–7 połysk w pętli.
+  soapPuddle: {
+    key: 'sheet-soap-puddle',
+    url: 'assets/sprites/soap-puddle.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 96,
+    directions: 1,
+    fps: 3,
+    animations: {
+      grow: { frames: [0, 1, 2, 3, 4, 5], loop: false },
+      shimmer: { frames: [6, 7], loop: true },
+    },
+  },
+  waterSplash: {
+    key: 'sheet-water-splash',
+    url: 'assets/sprites/water-splash.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 128,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 12,
+    animations: { splash: { frames: [0, 1, 2, 3], loop: false } },
+  },
+  // Wiadro w locie: 0–3 niebieskie (blondynka), 4–7 czerwone (brunetka), obrót co 90°.
+  plasticBucket: {
+    key: 'sheet-plastic-bucket',
+    url: 'assets/sprites/plastic-bucket.png',
+    frameWidth: 24,
+    frameHeight: 24,
+    sheetWidth: 192,
+    sheetHeight: 24,
+    directions: 1,
+    fps: 16,
+    animations: {
+      blue: { frames: [0, 1, 2, 3], loop: true },
+      red: { frames: [4, 5, 6, 7], loop: true },
+    },
+  },
+  // Winda w północnym murze areny (krok 125): 0 zamknięta, 1–4 drzwi się rozsuwają, 5 otwarta.
+  serviceElevator: {
+    key: 'sheet-service-elevator',
+    url: 'assets/sprites/service-elevator.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    sheetWidth: 384,
+    sheetHeight: 64,
+    directions: 1,
+    fps: 10,
+    animations: {
+      closed: { frames: [0], loop: false },
+      open: { frames: [0, 1, 2, 3, 4, 5], loop: false },
+      close: { frames: [5, 4, 3, 2, 1, 0], loop: false },
     },
   },
   // Błysk polerowanej posadzki Lustrzanej komnaty (krok 124, `tools/cleaner_sprites.py`): 4 klatki, bez kierunków.
@@ -1354,6 +1452,20 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     deathDecal: 'splat',
     death: { sheet: 'smokeBaronDeath', animation: 'die', keepCorpse: true, risingSmoke: true },
   },
+  // Blond sprzątaczka (krok 125): chlust, wiadro na sznurze, cios miotłą, krzyk (ryk wściekłości); stojąc poleruje.
+  [BossId.CleanerBlonde]: {
+    sheet: 'cleanerBlonde',
+    move: 'walk',
+    idle: 'polish',
+    attacks: {
+      [BossAttackKind.Spill]: 'spill',
+      [BossAttackKind.Hook]: 'bucket',
+      [BossAttackKind.Cleave]: 'broom',
+      [BossAttackKind.Roar]: 'shout',
+    },
+    deathDecal: 'splat',
+    death: { sheet: 'cleanerBlondeDeath', animation: 'die', keepCorpse: true },
+  },
   // Strażnik Bram (krok 41e): wirowanie łańcuchem (slam) i uderzenie tarczą (cleave).
   [BossId.GateWarden]: {
     sheet: 'gateWarden',
@@ -1655,14 +1767,16 @@ export const BOSS_WEB_VISUAL = {
   arcHeight: 36,
 } as const;
 
-/** Płaty z ataków bossów: sieć Matki Pająków i grzybnia Króla (ten sam mechanizm, inny arkusz). */
+/** Płaty z ataków bossów: sieć Matki Pająków, grzybnia Króla, grzyby Pożeracza, kałuża sprzątaczek (ten sam mechanizm). */
 export const BOSS_PATCH_VISUALS = {
   web: BOSS_WEB_VISUAL.patch,
   mycelium: { sheet: 'myceliumPatch', grow: 'grow', shimmer: 'shimmer' },
   // Krok 111: grzyby więdną przez ostatnie `witherMs` (klatki 8–9) — gracz widzi, że płat zaraz zniknie.
   mushrooms: { sheet: 'mushroomTrail', grow: 'grow', shimmer: 'shimmer', wither: 'wither', witherMs: 600 },
+  // Kałuża mydlin sprzątaczek (krok 125).
+  water: { sheet: 'soapPuddle', grow: 'grow', shimmer: 'shimmer' },
 } as const satisfies Record<
-  'web' | 'mycelium' | 'mushrooms',
+  'web' | 'mycelium' | 'mushrooms' | 'water',
   { readonly sheet: SpriteSheetId; readonly grow: string; readonly shimmer: string; readonly wither?: string; readonly witherMs?: number }
 >;
 
@@ -1699,6 +1813,21 @@ export const BOSS_LEAP_VISUAL = {
 } as const;
 
 /** Wylęg z sufitu (krok 26): pajączek widoczny na nici w końcówce cienia; promień pełnego cienia. */
+/**
+ * Sprzątaczki w walce (krok 125): chlust wody, wiadro w locie (sznur rysuje gra), okrzyki z napisami, winda
+ * i błyski polerowania pod stojącą sprzątaczką. Czysto wizualne.
+ */
+export const CLEANER_FX_VISUAL = {
+  splash: { sheet: 'waterSplash', animation: 'splash', count: 5 },
+  bucket: { sheet: 'plasticBucket', animation: 'blue', arcHeight: 10, rope: 0xd8d4c8 },
+  /** Napis okrzyku: biały z obrysem, nad głową, trzyma się `holdMs`. */
+  shout: { color: '#f4f0e8', offsetY: 44, holdMs: 1300, riseMs: 400 },
+  /** Napis przy wejściu na mokre (najwyżej co `minGapMs`). */
+  slipText: { text: 'Ślisko!', color: '#bfe4ff', minGapMs: 2500 },
+  elevator: { sheet: 'serviceElevator', open: 'open', close: 'close', closed: 'closed' },
+  polish: { sheet: 'polishSparkle', animation: 'twinkle', everyMs: 140, spread: 22 },
+} as const;
+
 export const SPIDERLING_DROP_VISUAL = {
   fallMs: 220,
   shadowRadius: 10,

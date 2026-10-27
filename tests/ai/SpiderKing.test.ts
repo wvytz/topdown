@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { TOWER_CONFIG } from '@/config/towerConfig';
 import { describe, expect, it } from 'vitest';
 import { BossBrain } from '@/ai/BossBrain';
 import { attackLeadTimeMs, isInWebPatch, planBossAttack, webPatchRadius } from '@/ai/bossAttacks';
@@ -24,7 +25,7 @@ describe('Król Pająków — wybór i skalowanie', () => {
   it('piętro 3 (Grzybnia) kończy Król Pająków; 2 — Matka Pająków; 4 — Grzybowy Pożeracz; reszta — Strażnik', () => {
     expect(bossForFloor(3).id).toBe(BossId.SpiderKing);
     expect(bossForFloor(2).id).toBe(BossId.SpiderQueen);
-    for (const floor of [1, 8]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
+    for (const floor of [1, TOWER_CONFIG.floorsPerLoop + 1]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
   });
 
   it('większy i wytrzymalszy od Matki Pająków', () => {

@@ -65,6 +65,11 @@ export class BossEncounter {
     return this.fights.every((fight) => fight.isDefeated);
   }
 
+  /** Boss nie zginął, tylko uciekł windą (blond sprzątaczka, krok 125) — napis nad kartami nagrody. */
+  get escaped(): boolean {
+    return this.fights.some((fight) => fight.escaped);
+  }
+
   getStatus(): BossHudData | null {
     const [first] = this.fights;
     if (!this.duet) return first!.getStatus();

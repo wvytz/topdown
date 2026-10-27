@@ -67,12 +67,16 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planSmoke(ctx);
     case BossAttackKind.SporeVolley:
       return planSporeVolley(ctx);
+    case BossAttackKind.Spill:
+      return planSpill(ctx);
     case BossAttackKind.Feast:
       throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }
 }
 
 const EMPTY = { strikes: [], bursts: [], spawns: [], webs: [], leap: null, throws: [] } as const;
+/** Lot wiadra na sznurze (czysto wizualny, kończy się z uderzeniem stref haka). */
+const BUCKET_FLIGHT_MS = 220;
 
 /** Strefa przed bossem: środek `reach` px w kierunku `dir` (domyślnie w stronę gracza). */
 function frontStrike(
@@ -185,6 +189,49 @@ function planSporeVolley(ctx: AttackPlanContext): BossAttackPlan {
 }
 
 /**
+ * Chlust z wiadra (sprzątaczki, krok 125): po zamachu woda uderza w miejsce gracza z chwili planu (strefa `splashRadius`,
+ * lekkie obrażenia) i rozlewa się w kałuże — pierwsza tam, kolejne w wachlarzu `behindDistance` za graczem (droga
+ * ucieczki). Kałuże wyrastają od razu w chwili chlustu (bez lotu); poślizg daje warstwa gry.
+ */
+function planSpill(ctx: AttackPlanContext): BossAttackPlan {
+  const spill = required(ctx.definition.spill, BossAttackKind.Spill, ctx);
+  const impactAt = ctx.now + telegraph(ctx, spill.telegraphMs);
+  const count = spill.count + (ctx.enraged ? 1 : 0);
+  const away = Math.atan2(ctx.target.y - ctx.self.y, ctx.target.x - ctx.self.x);
+  const fan = (spill.fanDeg * Math.PI) / 180;
+  const others = count - 1;
+  const centers: Vector2[] = [ctx.target];
+  for (let i = 0; i < others; i++) {
+    const angle = others === 1 ? away : away - fan / 2 + (fan * i) / (others - 1);
+    centers.push({ x: ctx.target.x + Math.cos(angle) * spill.behindDistance, y: ctx.target.y + Math.sin(angle) * spill.behindDistance });
+  }
+  const { puddle } = spill;
+  const webs: WebShot[] = centers.map((to) => ({
+    from: to,
+    to,
+    telegraphStartAt: ctx.now,
+    launchAt: impactAt,
+    landAt: impactAt,
+    startRadius: puddle.startRadius,
+    maxRadius: puddle.maxRadius,
+    spreadMs: puddle.spreadMs,
+    expiresAt: impactAt + puddle.durationMs,
+    slip: spill.slip,
+    look: 'water',
+  }));
+  const strike: AreaStrike = {
+    center: ctx.target,
+    radius: spill.splashRadius,
+    telegraphStartAt: ctx.now,
+    impactAt,
+    damage: spill.damage,
+    knockback: spill.knockback,
+    look: 'water',
+  };
+  return { kind: BossAttackKind.Spill, ...EMPTY, strikes: [strike], webs, endsAt: impactAt + spill.recoveryMs };
+}
+
+/**
  * Hak (Kat Otchłani, krok 41f): linia stref od bossa w stronę gracza aż do `maxRange`, wszystkie uderzają
  * naraz po telegrafie; trafienie przyciąga gracza pod tarczę (`pullTo` tuż przed bossem). Potem uderzenie
  * tarczą przed sobą — złapany gracz ma chwilę na unik.
@@ -217,7 +264,10 @@ function planHook(ctx: AttackPlanContext): BossAttackPlan {
     damage: followUp.damage,
     knockback: followUp.knockback,
   });
-  return { kind: BossAttackKind.Hook, ...EMPTY, strikes, endsAt: bashAt + hook.recoveryMs };
+  // Wiadro na sznurze (sprzątaczka, krok 125): leci od bossa do końca linii i ląduje w chwili uderzenia stref.
+  const end = strikes.at(-2)?.center ?? pullTo;
+  const throws: ThrownObject[] = hook.look === 'bucket' ? [{ look: 'bucket', from: ctx.self, to: end, launchAt: impactAt - BUCKET_FLIGHT_MS, landAt: impactAt }] : [];
+  return { kind: BossAttackKind.Hook, ...EMPTY, strikes, throws, endsAt: bashAt + hook.recoveryMs };
 }
 
 /**
@@ -583,7 +633,7 @@ export function webPatchRadius(web: WebShot, now: number): number {
 export function isInWebPatch(web: WebShot, point: Vector2, now: number): boolean {
   const r = webPatchRadius(web, now);
   if (r <= 0) return false;
-  if (web.look === 'mushrooms') return isCaughtByGroundArea(web.to, r, point);
+  if (web.look === 'mushrooms' || web.look === 'water') return isCaughtByGroundArea(web.to, r, point);
   return Math.hypot(point.x - web.to.x, point.y - web.to.y) <= r;
 }
 

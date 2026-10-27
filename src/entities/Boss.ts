@@ -18,9 +18,12 @@ import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
 import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ShieldGuard, isGuardLowered, isShielded, turnToward } from '@/systems/Shield';
+import { escapeCappedDamage } from '@/systems/BossEscape';
 
 const HIT_FLASH_MS = 70;
 const ENRAGE_TINT = 0xff7050;
+/** Boss uciekający windą jest „na miejscu” tak blisko drzwi (px). */
+const FLEE_ARRIVE_PX = 4;
 
 /** Widok + ciało bossa. Decyzje podejmuje BossBrain; wykonanie ataków — BossFight. */
 export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
@@ -44,6 +47,10 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   private shieldBreakPending = false;
   /** Koniec ostatniego ataku — od niego liczy się okno z opuszczoną tarczą (krok 113). */
   private lastAttackEndsAt = -Infinity;
+  /** Ucieczka windą (krok 125): boss biegnie do windy i nie walczy. */
+  private fleeing = false;
+  /** Stoi i gra animację `idle` (sprzątaczka poleruje posadzkę). */
+  private standingIdle = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: BossDefinition, rng: Rng) {
     super(scene, x, y, SPRITE_SHEETS[BOSS_VISUALS[definition.id].sheet].key);
@@ -120,6 +127,44 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     this.brain.activate(now);
   }
 
+  get isFleeing(): boolean {
+    return this.fleeing;
+  }
+
+  /** Stoi i poleruje (animacja `idle`) — gra sypie wtedy błyski spod miotły. */
+  get isIdling(): boolean {
+    return this.standingIdle && !this.fleeing;
+  }
+
+  /** Początek ucieczki windą: od teraz boss tylko biegnie (`fleeTick`). */
+  startFleeing(): void {
+    this.fleeing = true;
+    this.standingIdle = false;
+    this.clearTint();
+  }
+
+  /**
+   * Bieg do windy (`to`) z prędkością chodu × `speedMultiplier`; zwraca true, gdy boss dotarł (wtedy stoi tyłem
+   * do kamery, przodem do drzwi).
+   */
+  fleeTick(to: Vector2, speedMultiplier: number): boolean {
+    const dx = to.x - this.x;
+    const dy = to.y - this.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist <= FLEE_ARRIVE_PX) {
+      this.setVelocity(0, 0);
+      this.animator.face({ x: 0, y: -1 });
+      this.animator.play(this.visual.move);
+      this.anims.pause();
+      return true;
+    }
+    const speed = this.definition.moveSpeed * speedMultiplier;
+    this.setVelocity((dx / dist) * speed, (dy / dist) * speed);
+    this.animator.face({ x: dx, y: dy });
+    this.animator.play(this.visual.move);
+    return false;
+  }
+
   /** Leczenie (uczta i kąsanie Grzybowego Pożeracza). */
   heal(amount: number): void {
     this.health.heal(amount);
@@ -164,7 +209,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     // Opuszczona tarcza po ataku (krok 113): boss stoi — okno na combo.
     const speed = this.isGuardLowered(now) ? 0 : decision.speed * this.status.speedMultiplier(now);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
-    this.updateAnimation(target, decision.newAttack, now);
+    this.updateAnimation(target, decision.newAttack, now, speed === 0);
     this.updateTint(now);
     return decision.newAttack;
   }
@@ -177,7 +222,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     const shield = this.definition.shield;
     this.guardNow = now;
     const blocked = Boolean(shield) && this.isShieldedFrom(source);
-    const damage = shield && blocked ? Math.max(1, Math.round(hit.damage * shield.frontMeleeMultiplier)) : hit.damage;
+    const raw = shield && blocked ? Math.max(1, Math.round(hit.damage * shield.frontMeleeMultiplier)) : hit.damage;
+    // Boss z ucieczką windą (krok 125) nie spada poniżej 1 HP — ucieczka przy progu zawsze nastąpi.
+    const damage = escapeCappedDamage(raw, this.health.value, this.definition.escape);
     if (blocked && this.guard?.absorb(hit.damage, now)) this.shieldBreakPending = true;
     const result = this.health.takeDamage(damage);
     sound.play(blocked ? SoundCue.ShieldBlock : SoundCue.BossHit, this);
@@ -191,7 +238,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
 
   /** Obrażenia od podpalenia należne do `now`; śmierć od ognia wykrywa BossFight po `isDead`. */
   tickBurn(now: number): number {
-    const damage = this.status.takeBurnDamage(now);
+    const damage = escapeCappedDamage(this.status.takeBurnDamage(now), this.health.value, this.definition.escape);
     if (damage > 0 && !this.isDead) {
       this.health.takeDamage(damage);
       this.hitFlash.start(now, HIT_FLASH_MS);
@@ -204,7 +251,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
    * gra ich animację (plucie, zew, smagnięcie): trwa do pierwszego wystrzału / wybuchu / wylęgu,
    * a ostatnia klatka trzyma się do końca ataku. Pusty wylęg (limit pajączków) nie ma animacji.
    */
-  private updateAnimation(target: Vector2, newAttack: BossAttackPlan | null, now: number): void {
+  private updateAnimation(target: Vector2, newAttack: BossAttackPlan | null, now: number, standing: boolean): void {
     const dt = this.lastTickAt === null ? 0 : now - this.lastTickAt;
     this.guardNow = now;
     this.lastTickAt = now;
@@ -227,11 +274,14 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       (newAttack.strikes.length + newAttack.bursts.length + newAttack.spawns.length > 0 || Boolean(newAttack.feast ?? newAttack.release));
     if (newAttack && animation && hasEvents) {
       this.attackPoseUntil = newAttack.endsAt;
+      this.standingIdle = false;
       this.animator.restart(animation, attackLeadTimeMs(newAttack, now));
       return;
     }
     if (now < this.attackPoseUntil) return;
-    this.animator.play(this.visual.move);
+    // Stojąc (uśpiony albo przy graczu) boss z animacją `idle` gra ją — sprzątaczka poleruje posadzkę.
+    this.standingIdle = standing && this.visual.idle !== undefined;
+    this.animator.play(this.standingIdle && this.visual.idle ? this.visual.idle : this.visual.move);
   }
 
   /** Tarcza opuszczona po ataku (krok 113); bossowie bez tarczy — nigdy. */

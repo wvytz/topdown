@@ -1,6 +1,6 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
-import type { Hit, PlayerCombatConfig, StatusApplication, WeaponEffects } from '@/core/combatTypes';
+import type { Hit, PlayerCombatConfig, SlipEffect, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import type { ArcheryConfig, HeroId, HeroKit, SorceryConfig, UltimateConfig } from '@/core/heroTypes';
 import { archeryOf, sorceryOf } from '@/core/heroTypes';
 import { AttackPhase } from '@/core/combatTypes';
@@ -19,6 +19,7 @@ import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { DashController } from '@/systems/DashController';
 import { Health } from '@/systems/Health';
 import { computeVelocity } from '@/systems/MovementSystem';
+import { slideVelocity } from '@/systems/Slip';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
 import { BeamChannel, OrbSeries, orbitOffsets } from '@/systems/Sorcery';
@@ -98,6 +99,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private weaponEffects: WeaponEffects;
   /** Numer bieżącego dasha — Burzowy pęd rani każdego wroga raz na dash. */
   private dashCount = 0;
+  /** Poślizg z kałuży (krok 125) i chwila ostatniego ruchu — krok czasu bezwładności. */
+  private slip: SlipEffect | null = null;
+  private slipUntil = -Infinity;
+  private lastMoveAt: number | null = null;
   private attackCycle: AttackCycle;
   private dash: DashController;
   private shotCharges: ChargePool;
@@ -264,6 +269,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return true;
   }
 
+  /**
+   * Poślizg na mokrej posadzce (kałuża sprzątaczki, krok 125): odnawiany co klatkę w kałuży. Działa też w dashu —
+   * po nim bohater sunie dalej. Zwraca true, gdy poślizg właśnie się zaczął (napis „Ślisko!”).
+   */
+  applyTerrainSlip(slip: SlipEffect, now: number): boolean {
+    if (this.isDead) return false;
+    const started = !this.isSlipping(now);
+    this.slip = slip;
+    this.slipUntil = now + slip.durationMs;
+    return started;
+  }
+
+  isSlipping(now: number): boolean {
+    return now < this.slipUntil;
+  }
+
   isSlowed(now: number): boolean {
     return this.status.isSlowed(now);
   }
@@ -386,8 +407,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             ? archery.bow.moveSpeedMultiplier
             : 1;
       const slow = this.status.speedMultiplier(now) * channel;
-      this.setVelocity(velocity.x * slow, velocity.y * slow);
+      const desired = { x: velocity.x * slow, y: velocity.y * slow };
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      // Na mokrym (krok 125) prędkość dąży do zamierzonej powoli — bohater sunie i skręca z bezwładnością.
+      const sliding = this.slip && this.isSlipping(now) ? slideVelocity(body.velocity, desired, now - (this.lastMoveAt ?? now), this.slip.traction) : desired;
+      this.setVelocity(sliding.x, sliding.y);
     }
+    this.lastMoveAt = now;
 
     if (this.castCycle && this.orbPool) {
       // Czarodziejka: LPM rzuca kulę (seria przy przytrzymaniu), w trakcie promienia nie rzuca.

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { TOWER_CONFIG } from '@/config/towerConfig';
 import { describe, expect, it } from 'vitest';
 import { SPRITE_SHEETS } from '@/config/spriteConfig';
 import { pixel, readPng } from '../helpers/png';
@@ -309,7 +310,7 @@ describe('pajączek-kamikaze', () => {
 describe('wybór i skalowanie bossa', () => {
   it('Matka Pająków tylko na piętrze 2 (3 — Król, 4 — Pożeracz), 5 — Strażnik Bram, reszta pięter ma Strażnika', () => {
     expect(bossForFloor(2).id).toBe(BossId.SpiderQueen);
-    for (const floor of [1, 8]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
+    for (const floor of [1, TOWER_CONFIG.floorsPerLoop + 1]) expect(bossForFloor(floor).id).toBe(BossId.FloorGuardian);
     expect(bossForFloor(1)).toBe(FLOOR_GUARDIAN);
   });
 

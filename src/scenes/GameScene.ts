@@ -210,6 +210,8 @@ const AMBUSH_SEED_SALT = 0xa3b1;
 const DART_SEED_SALT = 0xda27;
 const BREAKABLE_SEED_SALT = 0xb7ea;
 const TOAST_DURATION_MS = 2500;
+/** Napis nad kartami, gdy boss uciekł windą zamiast zginąć (blond sprzątaczka, krok 125). */
+const ESCAPED_HEADLINE = 'SPRZĄTACZKA UCIEKŁA!';
 /** Nazwa i efekt zdobytego przedmiotu pod ikonami w HUD (krok 67). */
 const ITEM_NOTICE_MS = 3000;
 /** Komunikat o modyfikatorze piętra wisi dłużej — to ważna informacja na start piętra. */
@@ -1420,6 +1422,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       choices,
       owned,
       ...(tag && { picker: `${tag} — ${HERO_DEFINITIONS[this.heroIdOf(hero)].name} wybiera` }),
+      ...(this.bossFight.escaped && { headline: ESCAPED_HEADLINE }),
       onPick: (itemId) => {
         this.scene.resume(SceneKey.Game);
         this.grantItem(itemId, hero);

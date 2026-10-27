@@ -4800,6 +4800,34 @@ Otwarte drobiazgi (rozstrzygniemy w trakcie): mikstura leczy jednego czy obu, HP
 
 **Czeka na ocenę właściciela:** siła odbić (45% → 8%), gęstość błysków, jasność posadzki, gęstość dekoracji muru.
 
+## Krok 125 — Blond sprzątaczka „Mokra Podłoga” i ucieczka windą `#sprzataczki` `#lustrzana-komnata`
+
+**Co powstało:** boss piętra 8 (`CLEANER_BLONDE`, `BossId.CleanerBlonde`) według zaakceptowanego konceptu (`docs/SPRZATACZKI.md`) i pomysłu właściciela z ucieczką windą.
+
+**Walka:**
+- **Chlust z wiadra** (nowy atak `BossAttackKind.Spill`, we wzorze): po zamachu (0,75 s) woda uderza w miejsce gracza (strefa 34 px, 6 obrażeń, odrzut) i rozlewa się w **kałuże mydlin** — pierwsza pod graczem, druga za nim (we wściekłości trzy). Kałuża rośnie do 44 px i leży 8 s.
+- **Poślizg** (`SlipEffect`, `systems/Slip.ts`, `Player.applyTerrainSlip`): na mokrym prędkość bohatera dąży do zamierzonej powoli (siła 2,2/s) — sunie po puszczeniu klawiszy, skręca z bezwładnością, pęd z odrzutu i dasha wygasa długo. Trzyma jeszcze 0,45 s po zejściu z kałuży. Dash nie chroni (po dashu na mokrym sunie się dalej). Kałuża łapie ślad stóp (jak grzyby Pożeracza). Przy wejściu na mokre napis „Ślisko!” (najwyżej co 2,5 s).
+- **Wiadro na sznurze** (hak z `look: 'bucket'`, poza wzorem, gdy gracz stoi 110–240 px od niej): linia stref, wiadro leci na sznurze, trafiony ląduje pod jej stopami, a 0,45 s później zamach miotłą przed sobą.
+- **Cios miotłą** (cleave, we wzorze): krótki zamach przed sobą, 16 obrażeń.
+- **Polerowanie:** stojąc (także przed walką) gra animację polerowania i sypie błyskami spod miotły (nad mrokiem — świecą).
+- **Okrzyki** (`BossShoutDefinition`, `systems/BossShouts.ts`): napis nad głową (biały z obrysem, 1,3 s) i piskliwy dźwięk `SoundCue.Shout`. Na początku ataku: chlust — „Nie chodź po mokrym!”/„Uwaga, ślisko!”, wiadro — „Do wiadra z tobą!”, miotła — „Zaraz cię wymiotę!”, ryk wściekłości — „Kto tu nabłocił?!”; co 5–9 s linia z listy konceptu. Nowy napis zastępuje poprzedni. Teksty w `config/bossConfig.ts`.
+- **Wściekłość** przy 60% HP (serie po dwa ataki, krótsze telegrafy), żeby przed ucieczką było jej trochę.
+- Świta: Rusher biomu (na razie śmieciarz z ruin).
+
+**Ucieczka windą** (pomysł właściciela `#decyzja`, `BossEscapeDefinition`, `systems/BossEscape.ts`):
+- Winda stoi w północnym murze areny od początku (zamknięta) — `dungeon/ElevatorPlanner.ts` wybiera dwa kafle muru nad podłogą areny najbliżej osi, z odstępem od wejść. Sprite `service-elevator.png` (generator `tools/cleaner_sprites.py`): stalowa rama, rozsuwane drzwi, lampka ze strzałką w górę.
+- Przy **1/3 HP** drzwi się otwierają (dzwonek `SoundCue.Elevator`), sprzątaczka krzyczy „Sprzątaj sobie sam!”, przerywa walkę i biegnie do windy (×2,2 chodu) — w tym czasie jest nietykalna; zaplanowane strefy i kałuże działają do końca, nowa świta już nie wychodzi. Przy drzwiach wsiada (0,7 s), drzwi się zamykają (0,6 s) i odjeżdża.
+- Odjazd = pokonanie piętra: łupy przed windą, karty (napis „SPRZĄTACZKA UCIEKŁA!” zamiast „STRAŻNIK POKONANY”), schody, kraty. Do progu trafienia nie zbijają jej poniżej 1 HP, więc ucieczka zawsze nastąpi (nie da się jej zabić jednym potężnym ciosem).
+- Działa też w arenach bossów (arena 8).
+
+**Grafika:** arkusze z kroku konceptu podpięte w `spriteConfig` (`cleanerBlonde`, `soapPuddle`, `waterSplash`, `plasticBucket`, `serviceElevator`), wygląd w `BOSS_VISUALS` (chlust, wiadro, miotła, krzyk; `idle: 'polish'`) i `CLEANER_FX_VISUAL`. Dźwięki z syntezy: okrzyk, plusk, winda.
+
+**Testy:** `tests/ai/Cleaners.test.ts` (piętro 8, chlust i kałuże, ślad stóp, wiadro i miotła, hak z dystansu w `BossBrain`, skalowanie, okrzyki z odstępem i bez powtórzeń, deterministyczne, próg ucieczki, limit obrażeń, etapy odjazdu, poślizg niezależny od klatek), `tests/dungeon/ElevatorPlanner.test.ts`, `tests/assets/cleaners.test.ts`. Testy „reszta pięter ma Strażnika” liczą piętro z `floorsPerLoop`. Build zielony (2132 testy).
+
+**Weryfikacja:** Playwright (Chromium, dev, `?floor=8&boss=1`): kałuże pod i za bohaterem, „Ślisko!”, okrzyki nad głową, odbicie sprzątaczki w posadzce; po zbiciu HP do 1/3 drzwi windy się otwierają, sprzątaczka biegnie, wsiada, drzwi się zamykają, pojawiają się karty nagrody. Bez błędów w konsoli.
+
+**Czeka na ocenę właściciela:** siła poślizgu (2,2/s, 0,45 s), wielkość i czas kałuż, częstość okrzyków, próg wściekłości (60%), HP (600 przed skalowaniem; walka trwa do 1/3), wygląd windy i kałuży.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4876,7 +4904,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Lustrzana komnata (krok 124):** `#lustrzana-komnata` piętra 8–9 (po kroku 127 — 7–8); odbicia postaci, błyski polerowania, mury — czekają na test właściciela. W toku: sprzątaczki-bossowie (kroki 125–126), pajęczy duet jako jedno piętro (127). Otwarte: własni wrogowie biomu.
+- **Lustrzana komnata (krok 124):** `#lustrzana-komnata` piętra 8–9 (po kroku 127 — 7–8); odbicia postaci, błyski polerowania, mury — czekają na test właściciela. Blondynka z ucieczką windą (krok 125) czeka na test; w toku: brunetka (krok 126), pajęczy duet jako jedno piętro (127). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).

@@ -639,6 +639,85 @@ export const SMOKE_BARON = {
   },
 } satisfies BossDefinition;
 
+/** Okrzyki sprzątaczek (krok 125, teksty z konceptu zaakceptowanego przez właściciela; łatwo je zmienić). */
+const CLEANER_SHOUTS = {
+  idle: ['Nie chodź po mokrym!', 'Uwaga, ślisko!', 'Dopiero co myłam!', 'Wycieraj buty!', 'Kto tu nabłocił?!'],
+  attacks: {
+    [BossAttackKind.Spill]: ['Nie chodź po mokrym!', 'Uwaga, ślisko!'],
+    [BossAttackKind.Hook]: ['Do wiadra z tobą!'],
+    [BossAttackKind.Cleave]: ['Zaraz cię wymiotę!'],
+    [BossAttackKind.Roar]: ['Kto tu nabłocił?!'],
+  },
+  everyMs: { min: 5000, max: 9000 },
+  minGapMs: 1800,
+} as const;
+
+/**
+ * Blond sprzątaczka „Mokra Podłoga” (krok 125, pomysł właściciela `#sprzataczki`): boss piętra A Lustrzanej komnaty.
+ * Młoda, szczupła, ciut wyższa od brunetki; polerując posadzkę stoi i sypie błyskami.
+ * - chlust z wiadra: kałuże mydlin przed nią i za graczem — na mokrym bohater się ślizga (sunie, skręca z bezwładnością);
+ * - wiadro na sznurze (poza wzorem, z dystansu): ściąga trafionego pod jej stopy, zaraz potem zamiata miotłą;
+ * - cios miotłą przed sobą;
+ * - krzyczy z napisami nad głową;
+ * - przy 1/3 HP (pomysł właściciela) w północnym murze otwiera się winda i sprzątaczka ucieka na górne piętro.
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const CLEANER_BLONDE = {
+  id: BossId.CleanerBlonde,
+  name: 'Sprzątaczka',
+  title: 'Mokra Podłoga',
+  enragedLabel: 'Wściekła!',
+  radius: 18,
+  color: 0xe0c070,
+  maxHp: 600,
+  moveSpeed: 74,
+  sprint: { speed: 150, distance: 170 },
+  engageDistance: 54,
+  openingDelayMs: 1200,
+  restBetweenAttacksMs: 1150,
+  pattern: [BossAttackKind.Spill, BossAttackKind.Cleave],
+  patternOrder: PatternOrder.Shuffled,
+  // Świta (krok 80): Rusher biomu — na razie śmieciarz z ruin, pasuje do sprzątania.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 18000, enragedEveryMs: 13000 },
+  spill: {
+    telegraphMs: 750,
+    recoveryMs: 600,
+    damage: 6,
+    knockback: 140,
+    splashRadius: 34,
+    count: 2,
+    behindDistance: 72,
+    fanDeg: 70,
+    puddle: { startRadius: 16, maxRadius: 44, spreadMs: 500, durationMs: 8000 },
+    slip: { durationMs: 450, traction: 2.2 },
+  },
+  // Cios miotłą: krótki zamach przed sobą.
+  cleave: { reach: 30, radius: 36, telegraphMs: 600, recoveryMs: 650, damage: 16, knockback: 260 },
+  // Wiadro na sznurze: z dystansu ściąga pod stopy, potem zamach miotłą dookoła przed sobą.
+  hook: {
+    look: 'bucket',
+    minRange: 110,
+    maxRange: 240,
+    cooldownMs: 5000,
+    telegraphMs: 650,
+    recoveryMs: 500,
+    step: 22,
+    radius: 14,
+    damage: 5,
+    knockback: 0,
+    followUp: { delayMs: 450, reach: 26, radius: 42, damage: 14, knockback: 300 },
+  },
+  shouts: { ...CLEANER_SHOUTS, escape: 'Sprzątaj sobie sam!' },
+  escape: { hpRatio: 1 / 3, speedMultiplier: 2.2, boardMs: 700, closeMs: 600 },
+  enrage: {
+    ...ENRAGE_FURY,
+    // Wściekłość przed ucieczką (przy 1/3 HP): krótszy telegraf i serie w ostatniej części walki.
+    hpThreshold: 0.6,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
 /**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem:
  * 2 — Matka Pająków (Pajęcze leże), 3 — Król Pająków (Grzybnia), 4 — Grzybowy Pożeracz (Cmentarzysko).
@@ -650,6 +729,7 @@ export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   5: GATE_WARDEN,
   6: ABYSS_EXECUTIONER,
   7: SMOKE_BARON,
+  8: CLEANER_BLONDE,
 };
 
 /** Boss piętra; od piętra 7 kolejny krąg wieży powtarza bossów 1–6 (krok 43). */
@@ -689,6 +769,7 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.kindle && { kindle: dmg(boss.kindle) }),
     ...(boss.smoke && { smoke: dmg(boss.smoke) }),
     ...(boss.sporeVolley && { sporeVolley: dmg(boss.sporeVolley) }),
+    ...(boss.spill && { spill: dmg(boss.spill) }),
     ...(boss.dog && {
       dog: {
         ...boss.dog,
