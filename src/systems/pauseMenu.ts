@@ -16,6 +16,8 @@ export enum PauseItem {
   Save = 'save',
   Settings = 'settings',
   Controls = 'controls',
+  /** Czat „Napisz do autora” (krok 133). */
+  Feedback = 'feedback',
   Quit = 'quit',
   Slot1 = 'slot1',
   Slot2 = 'slot2',
@@ -28,10 +30,14 @@ export enum PauseItem {
   Back = 'back',
 }
 
-/** Co jest dostępne w tej chwili: zapis (nie przy odtwarzaniu nagrania) i ustawienia obrazu (tylko PC). */
+/**
+ * Co jest dostępne w tej chwili: zapis (nie przy odtwarzaniu nagrania), ustawienia obrazu (tylko PC)
+ * i czat z autorem (krok 133; tylko gdy gra zna adres workera).
+ */
 export interface PauseMenuOptions {
   readonly canSave: boolean;
   readonly display: boolean;
+  readonly feedback?: boolean;
 }
 
 const SLOTS = [PauseItem.Slot1, PauseItem.Slot2, PauseItem.Slot3] as const;
@@ -44,6 +50,7 @@ export function pauseItems(page: PausePage, options: PauseMenuOptions): readonly
         ...(options.canSave ? [PauseItem.Save] : []),
         PauseItem.Settings,
         PauseItem.Controls,
+        ...(options.feedback ? [PauseItem.Feedback] : []),
         PauseItem.Quit,
       ];
     case PausePage.Save:

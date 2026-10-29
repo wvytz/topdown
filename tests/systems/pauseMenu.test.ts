@@ -9,6 +9,14 @@ describe('menu pauzy', () => {
     expect(pauseItems(PausePage.Main, { ...pc, canSave: false })).not.toContain(PauseItem.Save);
   });
 
+  it('krok 133: „Napisz do autora” przed „Menu główne”, tylko gdy wysyłka jest dostępna; niczego nie otwiera', () => {
+    expect(pauseItems(PausePage.Main, { ...pc, feedback: true })).toEqual([
+      PauseItem.Resume, PauseItem.Save, PauseItem.Settings, PauseItem.Controls, PauseItem.Feedback, PauseItem.Quit,
+    ]);
+    expect(pauseItems(PausePage.Main, { ...pc, feedback: false })).not.toContain(PauseItem.Feedback);
+    expect(pageOf(PauseItem.Feedback)).toBeNull();
+  });
+
   it('ustawienia obrazu tylko na PC; każda podstrona kończy się „Wróć”', () => {
     expect(pauseItems(PausePage.Settings, pc)).toContain(PauseItem.Fullscreen);
     expect(pauseItems(PausePage.Settings, { ...pc, display: false })).toEqual([PauseItem.Music, PauseItem.Sfx, PauseItem.Mute, PauseItem.Back]);

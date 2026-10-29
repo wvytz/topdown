@@ -68,9 +68,25 @@ CREATE TABLE IF NOT EXISTS reports (
   size           INTEGER NOT NULL,
   text           TEXT NOT NULL,
   -- JSON: [{ name, type, data }] — np. nagranie wejść.
-  attachments    TEXT
+  attachments    TEXT,
+  -- Krok 133: imię z tablicy wyników (może być puste) i gwiazdki autora 0–3 za ciekawą wiadomość.
+  player_name    TEXT,
+  stars          INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS reports_created ON reports (created_at);
 CREATE INDEX IF NOT EXISTS reports_ip ON reports (ip_hash, created_at);
 CREATE INDEX IF NOT EXISTS reports_dedupe ON reports (client_id, text_hash);
 CREATE INDEX IF NOT EXISTS reports_kind ON reports (kind, created_at);
+
+-- Ukryta tablica współtwórców (krok 133): liczniki zgłoszeń i suma gwiazdek autora na przeglądarkę testera.
+-- Starą bazę uzupełnia migrations/0005_feedback.sql.
+CREATE TABLE IF NOT EXISTS contributors (
+  client_id      TEXT PRIMARY KEY,
+  name           TEXT,
+  feedback_count INTEGER NOT NULL DEFAULT 0,
+  report_count   INTEGER NOT NULL DEFAULT 0,
+  stars          INTEGER NOT NULL DEFAULT 0,
+  first_at       INTEGER NOT NULL,
+  last_at        INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS contributors_rank ON contributors (stars DESC, feedback_count DESC);

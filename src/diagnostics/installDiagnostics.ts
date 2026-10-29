@@ -9,6 +9,9 @@ import { AutoReportPolicy } from '@/systems/AutoReport';
 import { createRemoteReportSink } from '@/persistence/remoteReports';
 import { FrameMonitor } from '@/systems/Diagnostics';
 import type { DiagData } from '@/systems/Diagnostics';
+import { FeedbackBox, setFeedbackBox } from '@/diagnostics/FeedbackBox';
+import { PlayerName } from '@/persistence/PlayerName';
+import { currentPlatform } from '@/core/platform';
 
 interface PerformanceWithMemory extends Performance {
   readonly memory?: { readonly usedJSHeapSize: number };
@@ -47,6 +50,10 @@ export function installDiagnostics(game: Phaser.Game): DiagnosticsHub {
   setDiagnostics(hub);
   // Wysyłka raportów do workera (krok 57) — tylko gdy skonfigurowano `VITE_SCORES_URL`; ręczna, z przycisku w F9.
   hub.setReporting(createRemoteReportSink(), getClientId(HighscoreStorage.browserStorage()), import.meta.env.MODE);
+  // Czat „Napisz do autora” (krok 133): podpis imieniem z tablicy wyników; okienko otwiera Enter w grze albo pauza.
+  const playerName = new PlayerName(HighscoreStorage.browserStorage());
+  hub.setIdentity(() => playerName.load(), currentPlatform());
+  setFeedbackBox(new FeedbackBox(hub, currentPlatform() === 'mobile', () => playerName.load()));
   const consent = new AutoReportConsentStore(HighscoreStorage.browserStorage());
   const overlay = new ReportOverlay(hub, consent);
   const policy = new AutoReportPolicy();

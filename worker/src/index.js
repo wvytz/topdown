@@ -10,10 +10,14 @@
  *   GET    /reports?limit&kind&since&floor  → lista metadanych       } tylko z nagłówkiem Authorization: Bearer <REPORTS_TOKEN>
  *   GET    /reports/:id                     → pełne zgłoszenie       } albo X-Reports-Token: <REPORTS_TOKEN>
  *   DELETE /reports/:id                     → usunięcie              } (bez sekretu te trasy zwracają 404)
- *   cron (codziennie)       → usuwa zgłoszenia starsze niż REPORT_LIMITS.retentionDays
+ *   PATCH  /reports/:id  ← { stars }        → gwiazdki autora (krok 133) }
+ *   GET    /contributors                    → ukryta tablica współtwórców (krok 133) }
+ *   GET    /inbox           → strona „Skrzynka autora” (krok 133): sama nic nie zdradza, dane pobiera z tokenem
+ *   cron (codziennie)       → usuwa zgłoszenia starsze niż REPORT_LIMITS.retentionDays (bez wiadomości z czatu)
  * Wynik liczy klient, więc da się go sfałszować; worker odsiewa tylko oczywiste bzdury i zalew wpisów.
  */
-import { REPORT_LIMITS, processReport, retentionCutoff, sha256Hex, tokensEqual } from './reports.js';
+import { REPORT_LIMITS, parseStars, processReport, retentionCutoff, sha256Hex, tokensEqual } from './reports.js';
+import { INBOX_HTML } from './inbox.js';
 
 // Granice sensownego wpisu — luźne, żeby nie odrzucać prawdziwych runów.
 const MAX_SCORE = 1_000_000;
@@ -56,6 +60,14 @@ export default {
       }
       const reportPath = /^\/reports(?:\/(\d+))?$/.exec(url.pathname);
       if (reportPath) return await routeReports(request, url, reportPath[1], env, cors);
+      if (url.pathname === '/contributors') {
+        if (!(await isAuthor(request, env))) return json({ error: 'not found' }, 404, cors);
+        if (request.method === 'GET') return await listContributors(env);
+        return json({ error: 'method not allowed' }, 405, cors);
+      }
+      if (url.pathname === '/inbox' && request.method === 'GET') {
+        return new Response(INBOX_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+      }
       return json({ error: 'not found' }, 404, cors);
     } catch {
       return json({ error: 'server error' }, 500, cors);
@@ -73,18 +85,59 @@ export default {
 async function routeReports(request, url, idText, env, cors) {
   if (request.method === 'POST' && idText === undefined) return await postReport(request, env, cors);
   // Reszta to trasy administratora: bez skonfigurowanego sekretu nie istnieją, bez poprawnego tokena — 404 (nie zdradzamy ich).
-  // Token: `Authorization: Bearer <token>` albo `X-Reports-Token: <token>` (gdy pośrednik nadpisuje Authorization).
-  // `X-Reports-Token` ma pierwszeństwo: pośrednik (proxy, narzędzia) może dopisać własny Authorization.
-  const header = request.headers.get('Authorization') ?? '';
-  const token = request.headers.get('X-Reports-Token') ?? (header.startsWith('Bearer ') ? header.slice(7) : '');
-  if (!(await tokensEqual(token, env.REPORTS_TOKEN))) return json({ error: 'not found' }, 404, cors);
+  if (!(await isAuthor(request, env))) return json({ error: 'not found' }, 404, cors);
   if (request.method === 'GET' && idText === undefined) return await listReports(url, env);
   if (request.method === 'GET') return await getReport(Number(idText), env);
   if (request.method === 'DELETE' && idText !== undefined) {
+    const row = await env.DB.prepare('SELECT client_id FROM reports WHERE id = ?').bind(Number(idText)).first();
     await env.DB.prepare('DELETE FROM reports WHERE id = ?').bind(Number(idText)).run();
+    // Usunięta wiadomość nie liczy się już do gwiazdek współtwórcy (licznik zgłoszeń zostaje — to historia).
+    if (row?.client_id) await recountStars(env, row.client_id);
     return json({ ok: true }, 200, {});
   }
+  if (request.method === 'PATCH' && idText !== undefined) return await rateReport(request, Number(idText), env);
   return json({ error: 'method not allowed' }, 405, cors);
+}
+
+/**
+ * Token autora: `Authorization: Bearer <token>` albo `X-Reports-Token: <token>` (gdy pośrednik nadpisuje Authorization).
+ * `X-Reports-Token` ma pierwszeństwo: pośrednik (proxy, narzędzia) może dopisać własny Authorization.
+ */
+async function isAuthor(request, env) {
+  const header = request.headers.get('Authorization') ?? '';
+  const token = request.headers.get('X-Reports-Token') ?? (header.startsWith('Bearer ') ? header.slice(7) : '');
+  return await tokensEqual(token, env.REPORTS_TOKEN);
+}
+
+/** Gwiazdki autora za wiadomość (krok 133): zapis w zgłoszeniu i przeliczenie sumy w tablicy współtwórców. */
+async function rateReport(request, id, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'bad json' }, 400, {});
+  }
+  const stars = parseStars(body?.stars);
+  if (stars === null) return json({ error: 'bad stars' }, 400, {});
+  const row = await env.DB.prepare('SELECT client_id FROM reports WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: 'not found' }, 404, {});
+  await env.DB.prepare('UPDATE reports SET stars = ? WHERE id = ?').bind(stars, id).run();
+  await recountStars(env, row.client_id);
+  return json({ ok: true, stars }, 200, {});
+}
+
+async function recountStars(env, clientId) {
+  await env.DB.prepare('UPDATE contributors SET stars = (SELECT COALESCE(SUM(stars), 0) FROM reports WHERE client_id = ?) WHERE client_id = ?')
+    .bind(clientId, clientId)
+    .run();
+}
+
+/** Ukryta tablica współtwórców (krok 133): najpierw gwiazdki autora, potem liczba wiadomości (ta tylko informacyjnie). */
+async function listContributors(env) {
+  const { results } = await env.DB.prepare(
+    'SELECT client_id, name, stars, feedback_count, report_count, first_at, last_at FROM contributors ORDER BY stars DESC, feedback_count DESC, first_at ASC LIMIT 200',
+  ).all();
+  return json(results, 200, { 'Cache-Control': 'no-store' });
 }
 
 async function postReport(request, env, cors) {
@@ -112,8 +165,10 @@ async function postReport(request, env, cors) {
 
 function d1Repo(env) {
   return {
-    async countByIp(ipHash, since) {
-      const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE ip_hash = ? AND created_at > ?').bind(ipHash, since).first();
+    async countByIp(ipHash, since, feedback) {
+      const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM reports WHERE ip_hash = ? AND created_at > ? AND (kind = 'feedback') = ?")
+        .bind(ipHash, since, feedback ? 1 : 0)
+        .first();
       return row?.n ?? 0;
     },
     async countAll(since) {
@@ -128,24 +183,37 @@ function d1Repo(env) {
     },
     async insert(r) {
       const result = await env.DB.prepare(
-        'INSERT INTO reports (created_at, ip_hash, schema_version, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, text_hash, size, text, attachments) ' +
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO reports (created_at, ip_hash, schema_version, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, text_hash, size, text, attachments, player_name) ' +
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       )
         .bind(
           r.createdAt, r.ipHash, r.version, r.kind, r.build, r.clientId, r.sessionId,
           r.summary.errors ?? null, r.summary.warnings ?? null, r.summary.floor ?? null, r.summary.hero ?? null, r.summary.seed ?? null,
           r.summary.abnormalPrev === undefined ? null : r.summary.abnormalPrev ? 1 : 0,
-          r.textHash, r.size, r.text, r.attachments.length > 0 ? JSON.stringify(r.attachments) : null,
+          r.textHash, r.size, r.text, r.attachments.length > 0 ? JSON.stringify(r.attachments) : null, r.playerName,
         )
         .run();
       return result.meta?.last_row_id ?? 0;
+    },
+    async bumpContributor({ clientId, name, feedback, now }) {
+      await env.DB.prepare(
+        'INSERT INTO contributors (client_id, name, feedback_count, report_count, stars, first_at, last_at) VALUES (?, ?, ?, ?, 0, ?, ?) ' +
+          'ON CONFLICT(client_id) DO UPDATE SET name = COALESCE(excluded.name, contributors.name), ' +
+          'feedback_count = contributors.feedback_count + excluded.feedback_count, report_count = contributors.report_count + excluded.report_count, last_at = excluded.last_at',
+      )
+        .bind(clientId, name, feedback ? 1 : 0, feedback ? 0 : 1, now, now)
+        .run();
     },
   };
 }
 
 async function purgeOldReports(env, now) {
-  await env.DB.prepare('DELETE FROM reports WHERE created_at < ?').bind(retentionCutoff(now, REPORT_LIMITS)).run();
+  // Wiadomości z czatu (krok 133) zostają — retencja dotyczy tylko raportów diagnostycznych.
+  await env.DB.prepare("DELETE FROM reports WHERE created_at < ? AND kind <> 'feedback'").bind(retentionCutoff(now, REPORT_LIMITS)).run();
 }
+
+/** Początek treści na liście (krok 133) — wiadomość z czatu mieści się w całości, raport F9 tylko nagłówkiem. */
+const REPORT_PREVIEW_CHARS = 700;
 
 async function listReports(url, env) {
   const requested = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
@@ -169,7 +237,7 @@ async function listReports(url, env) {
   }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const { results } = await env.DB.prepare(
-    `SELECT id, created_at, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, size FROM reports ${where} ORDER BY id DESC LIMIT ?`,
+    `SELECT id, created_at, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, size, player_name, stars, substr(text, 1, ${REPORT_PREVIEW_CHARS}) AS preview FROM reports ${where} ORDER BY id DESC LIMIT ?`,
   )
     .bind(...params, limit)
     .all();
