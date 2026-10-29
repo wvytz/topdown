@@ -9,7 +9,7 @@ import type { CoopBalanceConfig } from '@/systems/CoopBalance';
 export const COOP_CONFIG = {
   /** Ilu bohaterów naraz — co-op dla par i znajomych. */
   maxPlayers: 2,
-  /** Dołączenie do drużyny na padzie (klawiatura: Enter albo Spacja). */
+  /** Dołączenie do drużyny na padzie (klawiatura: Enter). */
   joinButtons: [PAD_BUTTON.A, PAD_BUTTON.Start],
   /** Wyjście z drużyny przed startem na padzie (klawiatura: Esc). */
   leaveButtons: [PAD_BUTTON.B],

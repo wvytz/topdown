@@ -174,7 +174,9 @@ describe('menuCommandFromKey', () => {
     expect(menuCommandFromKey('s')).toBe(MenuCommand.Down);
     expect(menuCommandFromKey('A')).toBe(MenuCommand.Left);
     expect(menuCommandFromKey('ArrowRight')).toBe(MenuCommand.Right);
-    expect(menuCommandFromKey(' ')).toBe(MenuCommand.Confirm);
+    expect(menuCommandFromKey('Enter')).toBe(MenuCommand.Confirm);
+    // Krok 129: spacja to dash — w menu nic nie zatwierdza.
+    expect(menuCommandFromKey(' ')).toBeNull();
     expect(menuCommandFromKey('Backspace')).toBe(MenuCommand.Back);
     expect(menuCommandFromKey('Delete')).toBe(MenuCommand.Alt);
     expect(menuCommandFromKey('1')).toBeNull();
