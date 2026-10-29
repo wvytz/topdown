@@ -4920,6 +4920,27 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Weryfikacja w przeglądarce:** w menu głównym trzy wciśnięcia spacji nic nie zmieniają, Enter przechodzi do wyboru bohatera.
 
+## Krok 130 — Odliczanie 3-2-1 po wznowieniu z pauzy `#ocena` `#sterowanie`
+
+**Skąd:** karteczka testera (29.10.2026), uwaga 3: „po wstrzymaniu gry w jakimkolwiek trybie musimy dać chwilę na przypomnienie graczowi, w jakiej sytuacji zatrzymał rozgrywkę — krótkie odliczanie 3-2-1”.
+
+**Co powstało:**
+- `systems/ResumeCountdown.ts` (czysty): odliczanie na surowym czasie klatek (`delta`), bo czas gry stoi w pauzie (`PauseClock`). Pojedyncza klatka liczy się najwyżej 100 ms, więc po zacięciu karty odliczanie nie przeskakuje.
+- `scenes/PauseScene.ts`: „Wznów” (Enter, P, Esc na stronie głównej, Start, kliknięcie obok listy, stuknięcie na telefonie) nie zamyka już pauzy od razu:
+  - panel menu znika, nakładka jaśnieje (alfa 0,22 zamiast 0,72), więc widać planszę, wrogów i HUD;
+  - nad bohaterem (nie na nim) duża cyfra 3 → 2 → 1 z pulsem i podpis „Przygotuj się…”, piknięcie na każdą cyfrę, na start gry dźwięk potwierdzenia;
+  - czas gry przez cały czas zamrożony, gra rusza dokładnie po 3 s;
+  - Esc / P / Start / B w trakcie odliczania wraca do menu pauzy; utrata fokusu (inne okno, ukryta karta) też;
+  - inne klawisze (zapis 1/2/3, M, kursor) w trakcie odliczania nic nie robią.
+- Liczby i wygląd w `PAUSE_CONFIG.countdown` (`config/pauseConfig.ts`).
+- Działa wszędzie, gdzie jest pauza: wspinaczka, areny, wybór piętra, co-op i telefon (ta sama `PauseScene`). Wyjście do menu z pauzy — bez odliczania.
+
+**Testy:** `tests/systems/resumeCountdown.test.ts` — kolejność 3/2/1 i koniec po 3 s, jedna zmiana na krok, długa klatka nie przeskakuje, domyślne 3 s.
+
+**Weryfikacja:** `npm run build`; w przeglądarce (Playwright): Esc → pauza, Enter → odliczanie z widoczną planszą, czas gry stoi (`time.now` bez zmian), Esc w trakcie → z powrotem menu, P → po 3 s gra rusza; `npm run smoke` solo i `--coop`.
+
+**Czeka na ocenę właściciela:** długość (3 s), jasność nakładki, czy podpis „Przygotuj się…” jest potrzebny.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -4996,6 +5017,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Lustrzana komnata (kroki 124–127):** `#lustrzana-komnata` piętra 7–8; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
