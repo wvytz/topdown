@@ -16,6 +16,7 @@ import { DISPLAY_CONFIG, DISPLAY_TEXT } from '@/config/displayConfig';
 import { display } from '@/input/DisplayControls';
 import { PauseItem, PausePage, movePauseCursor, pageOf, pauseBack, pauseItems, slotOf } from '@/systems/pauseMenu';
 import type { PauseMenuOptions } from '@/systems/pauseMenu';
+import { ResumeCountdown } from '@/systems/ResumeCountdown';
 
 export interface PauseSceneData {
   readonly reason: PauseReason;
@@ -45,6 +46,8 @@ const COLORS = { item: '#e8e8f0', selected: '#f5c542', dim: '#80809a', hint: '#a
  * głównej wznawia (powrót do okna po utracie fokusu). Klawiatura: strzałki / WASD i Enter, Esc — wstecz (na głównej
  * wznów), P — wznów; skróty 1 / 2 / 3 (zapis), M (menu), N (dźwięk), O i F (obraz) działają na każdej stronie.
  * Pad: ↑ ↓ + A, ← → głośność, B — wstecz, Start — wznów, Y — menu główne.
+ * Krok 130: „Wznów” nie zamyka nakładki od razu — menu znika, plansza prześwituje i trwa odliczanie 3-2-1
+ * (czas gry dalej zamrożony). Esc / P / Start / B w trakcie odliczania wraca do pauzy, utrata fokusu też.
  */
 export class PauseScene extends Phaser.Scene {
   private resumed = false;
@@ -61,6 +64,12 @@ export class PauseScene extends Phaser.Scene {
   private note: Phaser.GameObjects.Text | null = null;
   private status!: Phaser.GameObjects.Text;
   private style!: Phaser.Types.GameObjects.Text.TextStyle;
+  private overlay!: Phaser.GameObjects.Rectangle;
+  private panel!: Phaser.GameObjects.Rectangle;
+  /** Odliczanie po „Wznów” (krok 130); null = menu pauzy. */
+  private countdown: ResumeCountdown | null = null;
+  private countdownLayer!: Phaser.GameObjects.Container;
+  private countdownText!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SceneKey.Pause);
@@ -72,19 +81,21 @@ export class PauseScene extends Phaser.Scene {
     this.mobile = currentPlatform() === 'mobile';
     this.options = { canSave: data.onSave !== null, display: !this.mobile };
     this.pendingPage = null;
+    this.countdown = null;
     const { width, height } = this.scale;
     const L = PAUSE_CONFIG.layout;
     this.style = { fontFamily: 'monospace', color: COLORS.item, stroke: '#000000', strokeThickness: 4 };
 
-    this.add.rectangle(width / 2, height / 2, width, height, PAUSE_CONFIG.overlay.color, PAUSE_CONFIG.overlay.alpha);
+    this.overlay = this.add.rectangle(width / 2, height / 2, width, height, PAUSE_CONFIG.overlay.color, PAUSE_CONFIG.overlay.alpha);
     const P = L.panel;
-    this.add
+    this.panel = this.add
       .rectangle(width / 2, P.top, P.width, P.bottom - P.top, P.color, P.alpha)
       .setOrigin(0.5, 0)
       .setStrokeStyle(2, P.border);
     this.pageLayer = this.add.container(0, 0);
     this.status = this.add.text(width / 2, L.statusY, '', { ...this.style, fontSize: '14px', color: COLORS.ok }).setOrigin(0.5);
     this.showPage(PausePage.Main, this.mobile ? null : PauseItem.Resume);
+    this.createCountdown(width);
 
     this.bindKeys(data);
     const unwatch = sound.watch(() => this.refresh());
@@ -94,11 +105,24 @@ export class PauseScene extends Phaser.Scene {
     bindPadMenu(this, (command) => this.onCommand(command));
     // Kliknięcie obok listy na stronie głównej wznawia grę (podstrony: nic — łatwo chybić przycisku głośności).
     this.input.on(Phaser.Input.Events.POINTER_UP, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (over.length === 0 && this.page === PausePage.Main && !this.pendingPage) this.resume();
+      if (over.length === 0 && this.page === PausePage.Main && !this.pendingPage && !this.countdown) this.resume();
+    });
+    // Utrata fokusu w trakcie odliczania wraca do pauzy — gra nie może ruszyć, gdy gracz patrzy gdzie indziej.
+    const { events } = this.game;
+    const onFocusLost = (): void => this.cancelCountdown();
+    events.on(Phaser.Core.Events.BLUR, onFocusLost);
+    events.on(Phaser.Core.Events.HIDDEN, onFocusLost);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      events.off(Phaser.Core.Events.BLUR, onFocusLost);
+      events.off(Phaser.Core.Events.HIDDEN, onFocusLost);
     });
   }
 
-  override update(): void {
+  override update(_time: number, delta: number): void {
+    if (this.countdown) {
+      this.tickCountdown(this.countdown, delta);
+      return;
+    }
     if (!this.pendingPage) return;
     const { page, cursor } = this.pendingPage;
     this.pendingPage = null;
@@ -114,11 +138,15 @@ export class PauseScene extends Phaser.Scene {
       });
     };
     once('P', () => this.resume());
-    once('M', () => this.quit());
+    once('M', () => {
+      if (!this.countdown) this.quit();
+    });
     once(MUTE_KEY, () => sound.toggleMute());
     if (this.options.display) once(DISPLAY_CONFIG.fillKey, () => this.activate(PauseItem.Fill));
     const onSave = data.onSave;
-    if (onSave) for (const slot of this.saves.slots) once(slotKeyName(slot), () => this.save(onSave, slot));
+    if (onSave) for (const slot of this.saves.slots) once(slotKeyName(slot), () => {
+      if (!this.countdown) this.save(onSave, slot);
+    });
     // Strzałki, WASD, Enter i Esc — jak pad (Esc to „wstecz”, na stronie głównej wznawia).
     keyboard.on('keydown', (event: KeyboardEvent) => {
       if (event.repeat && (event.key === 'Escape' || event.key === 'Enter')) return;
@@ -129,6 +157,11 @@ export class PauseScene extends Phaser.Scene {
 
   private onCommand(command: MenuCommand): void {
     if (this.pendingPage) return;
+    // W trakcie odliczania działa tylko powrót do pauzy.
+    if (this.countdown) {
+      if (command === MenuCommand.Pause || command === MenuCommand.Back) this.cancelCountdown();
+      return;
+    }
     switch (command) {
       case MenuCommand.Pause:
         this.resume();
@@ -167,7 +200,7 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private activate(item: PauseItem): void {
-    if (this.resumed) return;
+    if (this.resumed || this.countdown) return;
     const page = pageOf(item);
     if (page) {
       sound.play(SoundCue.UiMove);
@@ -279,7 +312,7 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private hover(item: PauseItem): void {
-    if (this.cursor === item || this.pendingPage) return;
+    if (this.cursor === item || this.pendingPage || this.countdown) return;
     this.cursor = item;
     this.refresh();
   }
@@ -367,11 +400,75 @@ export class PauseScene extends Phaser.Scene {
     if (channel === 'sfx') sound.play(SoundCue.UiMove);
   }
 
+  /** „Wznów”: zamiast od razu oddać sterowanie — odliczanie nad widoczną planszą (krok 130). Drugie wołanie w trakcie wraca do pauzy. */
   private resume(): void {
     if (this.resumed) return;
+    if (this.countdown) {
+      this.cancelCountdown();
+      return;
+    }
+    this.countdown = new ResumeCountdown(PAUSE_CONFIG.countdown);
+    this.setMenuVisible(false);
+    this.overlay.setFillStyle(PAUSE_CONFIG.overlay.color, PAUSE_CONFIG.countdown.overlayAlpha);
+    this.countdownLayer.setVisible(true);
+    this.drawCountdown(this.countdown);
+    sound.play(SoundCue.UiMove);
+  }
+
+  private tickCountdown(countdown: ResumeCountdown, delta: number): void {
+    const changed = countdown.advance(delta);
+    if (countdown.done) {
+      this.finishResume();
+      return;
+    }
+    if (changed) sound.play(SoundCue.UiMove);
+    this.drawCountdown(countdown);
+  }
+
+  private drawCountdown(countdown: ResumeCountdown): void {
+    const C = PAUSE_CONFIG.countdown;
+    const t = countdown.stepProgress;
+    this.countdownText
+      .setText(String(countdown.value))
+      .setScale(C.pulseScale - (C.pulseScale - 1) * Math.min(1, t * 4))
+      .setAlpha(1 - (1 - C.fadeAlpha) * t);
+  }
+
+  /** Powrót z odliczania do menu pauzy (Esc, P, Start, utrata fokusu). */
+  private cancelCountdown(): void {
+    if (!this.countdown || this.resumed) return;
+    this.countdown = null;
+    this.countdownLayer.setVisible(false);
+    this.overlay.setFillStyle(PAUSE_CONFIG.overlay.color, PAUSE_CONFIG.overlay.alpha);
+    this.setMenuVisible(true);
+    sound.play(SoundCue.UiBack);
+    this.showPage(PausePage.Main, this.mobile ? null : PauseItem.Resume);
+  }
+
+  private finishResume(): void {
+    if (this.resumed) return;
     this.resumed = true;
+    this.countdown = null;
+    sound.play(SoundCue.UiConfirm);
     this.scene.stop();
     this.pauseData.onResume();
+  }
+
+  private setMenuVisible(visible: boolean): void {
+    this.panel.setVisible(visible);
+    this.pageLayer.setVisible(visible);
+    this.status.setVisible(visible);
+  }
+
+  private createCountdown(width: number): void {
+    const C = PAUSE_CONFIG.countdown;
+    this.countdownText = this.add
+      .text(width / 2, C.y, '', { ...this.style, fontSize: `${C.fontSize}px`, color: C.color, strokeThickness: 10 })
+      .setOrigin(0.5);
+    const caption = this.add
+      .text(width / 2, C.y + C.captionDy, C.caption, { ...this.style, fontSize: '16px', color: '#d8c0ff' })
+      .setOrigin(0.5);
+    this.countdownLayer = this.add.container(0, 0, [this.countdownText, caption]).setVisible(false);
   }
 }
 

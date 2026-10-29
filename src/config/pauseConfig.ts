@@ -69,6 +69,27 @@ export const PAUSE_CONFIG = {
     'SKRÓTY W PAUZIE',
     '1 / 2 / 3 — zapis · M — menu główne · O — wypełnij okno',
   ],
+  /**
+   * Krok 130 (uwaga testera): po „Wznów” gra nie rusza od razu — plansza stoi widoczna pod jasną nakładką
+   * i odlicza 3-2-1, żeby gracz przypomniał sobie sytuację. Esc / P / Start w trakcie wraca do pauzy.
+   */
+  countdown: {
+    steps: 3,
+    stepMs: 1000,
+    maxFrameMs: 100,
+    /** Nakładka w czasie odliczania — dużo lżejsza niż w pauzie, żeby było widać planszę. */
+    overlayAlpha: 0.22,
+    fontSize: 96,
+    color: '#f0d27a',
+    /** Cyfra na początku kroku jest większa i maleje do 1 (puls). */
+    pulseScale: 1.5,
+    /** Pod koniec kroku cyfra blednie do tej przezroczystości. */
+    fadeAlpha: 0.35,
+    caption: 'Przygotuj się…',
+    /** Cyfra nad bohaterem (kamera trzyma go na środku) — nie zasłania jego okolicy. */
+    y: 140,
+    captionDy: 70,
+  },
   /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wszystko się stuka. */
   mobile: {
     controls: [
