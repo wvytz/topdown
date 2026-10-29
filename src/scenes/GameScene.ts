@@ -56,6 +56,9 @@ import { AmbushManager } from '@/combat/AmbushManager';
 import { AMBUSH_CONFIG } from '@/config/ambushConfig';
 import { planAmbushRoom } from '@/dungeon/AmbushPlanner';
 import { hasAmbush } from '@/systems/Ambush';
+import { GATE_WAIT_CONFIG } from '@/config/gateWaitConfig';
+import { GateWait } from '@/systems/GateWait';
+import type { Enemy } from '@/entities/Enemy';
 import { BreakableManager } from '@/combat/BreakableManager';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
@@ -225,6 +228,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dungeon!: DungeonFloor;
   private dungeonView!: DungeonView;
   private enemies!: EnemyManager;
+  /** Wrogowie za kratami zasadzki i areny (krok 132). */
+  private gateWait!: GateWait<Enemy>;
   private projectiles!: ProjectileManager;
   private playerShots!: PlayerShotManager;
   private bossFight!: BossEncounter;
@@ -809,6 +814,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     this.projectiles = new ProjectileManager(this, this.dungeonView.collisionLayer, this.party, onPlayerHit, this.combatDecals);
     this.playerShots = new PlayerShotManager(this, this.dungeonView.collisionLayer);
+    this.gateWait = new GateWait<Enemy>(GATE_WAIT_CONFIG, this.dungeon, TILE_SIZE);
     this.enemies = new EnemyManager({
       scene: this,
       floor: this.dungeon,
@@ -832,6 +838,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
       },
       aggroTarget: () => this.aggroTarget(),
+      gateWait: this.gateWait,
+      ignoresGates: (enemy) => this.galleryEnemies.has(enemy),
       onEliteSpotted: (enemy) => this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs),
     });
 
@@ -1010,6 +1018,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.manGalleries();
       },
       gather: (anchor, room) => this.gatherParty(anchor, room),
+      gateWait: this.gateWait,
     });
 
     const arena = this.dungeon.rooms[this.dungeon.bossRoomId]!;
@@ -1077,6 +1086,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onGhost: (ghost) => this.ambushGhosts.add(ghost),
       toast: (text) => this.showToast(text),
       gather: (anchor, room) => this.gatherParty(anchor, room),
+      gateWait: this.gateWait,
     });
   }
 

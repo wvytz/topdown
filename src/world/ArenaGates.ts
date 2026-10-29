@@ -5,7 +5,10 @@ import { ARENA_GATES } from '@/config/bossConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { ArenaGateLock, ArenaGateState, findRoomEntrances, isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { DungeonView } from '@/dungeon/DungeonView';
+import { GATE_WAIT_CONFIG } from '@/config/gateWaitConfig';
+import { type GateWait, gatePosts } from '@/systems/GateWait';
 import type { CombatEffects } from '@/effects/CombatEffects';
+import type { Enemy } from '@/entities/Enemy';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 
@@ -22,6 +25,8 @@ export interface ArenaGatesDeps {
   readonly onSealed: () => void;
   /** Co-op (etap C3): przy zamknięciu krat ściąga partnera spoza areny do bohatera w środku. */
   readonly gather: (anchor: Player, room: Room) => void;
+  /** Wrogowie spoza pokoju czekają pod kratami, po ich podniesieniu ruszają zrywem (krok 132). */
+  readonly gateWait: GateWait<Enemy>;
 }
 
 /** Kraty na wejściach do areny: opadają w trakcie walki z bossem, podnoszą się po zwycięstwie. */
@@ -60,7 +65,8 @@ export class ArenaGates {
   }
 
   private seal(): void {
-    const { scene, view, effects, onSealed } = this.deps;
+    const { scene, view, effects, onSealed, floor, gateWait } = this.deps;
+    gateWait.seal(this.arena, gatePosts(floor, this.arena, this.gates, TILE_SIZE, GATE_WAIT_CONFIG.postOffsetTiles));
     for (const gate of this.gates) {
       view.sealGate(gate);
       const center = DungeonView.tileToWorldCenter(gate);
@@ -73,5 +79,6 @@ export class ArenaGates {
 
   private release(): void {
     for (const gate of this.gates) this.deps.view.releaseGate(gate);
+    this.deps.gateWait.release(this.arena, this.deps.scene.time.now);
   }
 }
