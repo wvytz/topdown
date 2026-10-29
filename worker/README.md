@@ -91,3 +91,22 @@ Co-op ma osobną listę drużyn: `GET /coop-scores?limit=N` i `POST /coop-scores
 Kolejność wdrożenia — **najpierw migracja, potem worker**:
 1. `npx wrangler d1 execute tower-crawler-scores --remote --file=migrations/0004_coop_scores.sql` (bezpieczne do powtórzenia)
 2. `npx wrangler deploy`
+
+## Czat „Napisz do autora” i ukryta tablica współtwórców (krok 133) — wymaga migracji przed wdrożeniem
+
+Gra wysyła wiadomości testerów jako zgłoszenia `kind: "feedback"` na `POST /reports` (z imieniem w `client.name`). Wiadomości nie są kasowane po 30 dniach i mają własne limity (12 na godzinę, 40 na dobę z adresu).
+
+| Metoda i ścieżka | Kto | Działanie |
+|---|---|---|
+| `GET /inbox` | autor (w przeglądarce) | strona „Skrzynka autora”: wiadomości z gwiazdkami, współtwórcy, raporty F9; token wpisuje się na stronie |
+| `PATCH /reports/:id` ← `{ "stars": 0–3 }` | autor (token) | gwiazdki za wiadomość; suma trafia do tablicy współtwórców |
+| `GET /contributors` | autor (token) | ukryta tablica: `client_id, name, stars, feedback_count, report_count, first_at, last_at` |
+
+Wdrożenie (kolejność ważna — nowy worker zapisuje kolumnę `player_name`):
+
+1. `cd worker`
+2. `npx wrangler d1 execute tower-crawler-scores --remote --file=migrations/0005_feedback.sql` (jednorazowo)
+3. `npx wrangler deploy`
+4. Skrzynka: `https://<worker>/inbox`
+
+Stara gra działa z nowym workerem (zgłoszenia bez imienia), a nowa gra ze starym workerem wysyła wiadomości, tylko bez imienia i z 30-dniową retencją.

@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -4989,6 +4989,33 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 **Weryfikacja:** `npm run build`; scenariusz w przeglądarce (seed 1, piętro 2): Rusher wpuszczony do korytarza nad zasadzką podszedł pod kratę, stanął 11 px od niej i stał przez całą falę; po podniesieniu krat ruszył z prędkością 248 px/s (bazowo 138) i po ok. 0,45 s wrócił do 138. `npm run smoke` solo i `--coop` bez błędów.
 
 **Czeka na ocenę właściciela:** długość i siła zrywu, odległość od kraty, czy wrogowie z dalszych korytarzy mają dołączać (dziś tylko ci, którzy już ścigają albo widzą bohatera).
+
+## Krok 133 — Czat „Napisz do autora” i ukryta tablica współtwórców `#decyzja` `#feedback`
+
+**Skąd:** pomysł właściciela (29.10.2026): F9 jest ukryte (na laptopie to Fn+F9, w Firefoksie skrót czytnika, na telefonie go nie ma) i działa w jedną stronę. Właściciel chce czegoś „jak okienko w Messengerze”: Enter w grze i piszesz, co cię gryzie. Publiczne GitHub Issues i Discord odpadają (prywatność, za dużo). Do tego `#decyzja`: **ukryta tablica zasłużonych testerów** — kiedyś osiągnięcie albo lista w menu; punkty to gwiazdki przyznawane ręcznie przez autora, a ogólna liczba zgłoszeń jest zapisywana obok, tylko informacyjnie (nie jest wiążąca). Tester rozpoznawany anonimowym identyfikatorem przeglądarki (jak w F9) i imieniem z tablicy wyników.
+
+**Gra:**
+- **Enter w grze** (PC, solo i co-op) pauzuje i otwiera okienko „Napisz do autora”; po wysłaniu (Enter) okienko dziękuje i gra wraca z odliczaniem 3-2-1. Shift+Enter — nowa linia, Esc — zamknij.
+- **Pauza:** pozycja „💬 Napisz do autora” (przed „Menu główne”) — tak samo na padzie (A — wyślij, B — zamknij; pisze się z klawiatury) i na telefonie (stuknięcie otwiera pole z klawiaturą ekranową). Pozycja jest tylko wtedy, gdy gra zna adres workera (`VITE_SCORES_URL`).
+- Okienko to warstwa DOM (`diagnostics/FeedbackBox.ts`), bo tylko prawdziwe pole tekstowe pozwala wygodnie pisać, także na telefonie. Klawisze w okienku nie docierają do Phasera (inaczej P wznawiałoby grę, M wychodziło do menu).
+- Wiadomość: słowa testera, a pod kreską kontekst (piętro, bohater, HP, złoto, walka z bossem, PC/telefon, wersja) i podpis imieniem z tablicy wyników (`systems/Feedback.ts`). Bez dziennika i nagrania — to nie raport błędu.
+- Limity gry: 2–600 znaków, co najmniej 10 s odstępu, 12 wiadomości na sesję (`config/feedbackConfig.ts`). Zgłoszenia F9 też dostają imię gracza.
+
+**Worker (`worker/src/reports.js`, `index.js`, `inbox.js`):**
+- Wiadomości to zgłoszenia rodzaju `feedback` (koperta wersji 1 przewidziała go od kroku 57; nowe pole `client.name`). **Nie są kasowane po 30 dniach** (retencja dotyczy tylko raportów F9) i mają osobne limity z adresu: 12 na godzinę, 40 na dobę (raporty F9 bez zmian: 5 i 20).
+- Tabela `contributors`: na identyfikator przeglądarki — imię, liczba wiadomości, liczba raportów F9, suma gwiazdek, pierwsza i ostatnia data. Przy każdym zgłoszeniu licznik rośnie.
+- `PATCH /reports/:id {stars: 0–3}` (token autora) — gwiazdki za wiadomość; suma przeliczana w `contributors` (także po usunięciu wiadomości). `GET /contributors` (token) — ukryta tablica: najpierw gwiazdki, potem liczba wiadomości.
+- **Skrzynka autora: `GET /inbox`** — strona w workerze: token wpisuje się raz (zostaje w tej przeglądarce), zakładki Wiadomości (treść, kontekst, ★ 1–3, usuń), Współtwórcy, Raporty F9. Sama strona nic nie zdradza bez tokena; treść testerów wstawiana tylko jako tekst.
+- Lista `/reports` zwraca też początek treści (`preview`, 700 znaków), imię i gwiazdki.
+- Migracja `worker/migrations/0005_feedback.sql` (kolumny `player_name`, `stars`, tabela `contributors`) — **przed wdrożeniem workera**.
+
+**Testy:** `tests/systems/feedback.test.ts` (porządkowanie wiadomości, kontekst, imię w kopercie zgodne z walidacją workera), `tests/systems/pauseMenu.test.ts` (pozycja w pauzie), `tests/worker/reports.test.ts` i `index.test.ts` (osobne limity, imię, licznik współtwórcy, gwiazdki tylko z tokenem i 0–3, suma po usunięciu, cron nie rusza wiadomości, `/inbox` bez danych).
+
+**Weryfikacja:** `npm run build`; w przeglądarce (worker podstawiony przez Playwright): PC — Enter w grze otwiera okienko w pauzie, wpisane „P”, „M”, „N” zostają w polu (gra dalej w pauzie), Enter wysyła kopertę `feedback` z imieniem i kontekstem, okienko znika, gra wraca z odliczaniem; telefon (`mobile.html`) — stuknięcie pozycji w pauzie otwiera pole z fokusem, „Wyślij” wysyła. `npm run smoke` (piętra 1–2, trzej bohaterowie) bez błędów.
+
+**Wdrożenie (29.10.2026, zgoda właściciela):** migracja `0005_feedback.sql` na produkcyjnej D1, tabela `contributors` uzupełniona z dotychczasowych zgłoszeń (3 przeglądarki, 8 raportów F9), worker wdrożony; próbna wiadomość przyjęta (201, imię i licznik zapisane) i usunięta. Skrzynka: `https://tower-crawler-scores.wvytz.workers.dev/inbox`.
+
+**Na później:** osiągnięcie „Współtwórca TOP DOWN” albo lista zasłużonych w menu (gra zapyta worker o swoje gwiazdki), odpowiedzi autora i statusy widoczne dla testera („zrobione w wersji X”), kod testera do przeniesienia historii na inne urządzenie.
 
 ## Znane ograniczenia i backlog
 

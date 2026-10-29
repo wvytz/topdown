@@ -3,7 +3,7 @@ import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
 import { DiagnosticLog } from '@/systems/Diagnostics';
 import { buildEnvelope } from '@/systems/ReportEnvelope';
 import type { NormalizedReport, ReportRepo } from '../../worker/src/reports.js';
-import { REPORT_LIMITS, decideQuota, processReport, retentionCutoff, tokensEqual, validateReport } from '../../worker/src/reports.js';
+import { REPORT_LIMITS, decideQuota, parseStars, processReport, retentionCutoff, tokensEqual, validateReport } from '../../worker/src/reports.js';
 
 const valid = (over: Record<string, unknown> = {}) => ({
   v: 1,
@@ -17,8 +17,13 @@ const valid = (over: Record<string, unknown> = {}) => ({
 
 class MemoryRepo implements ReportRepo {
   rows: Array<NormalizedReport & { ipHash: string; textHash: string; createdAt: number }> = [];
-  async countByIp(ipHash: string, since: number) {
-    return this.rows.filter((r) => r.ipHash === ipHash && r.createdAt > since).length;
+  contributors = new Map<string, { name: string | null; feedback: number; reports: number }>();
+  async countByIp(ipHash: string, since: number, feedback: boolean) {
+    return this.rows.filter((r) => r.ipHash === ipHash && r.createdAt > since && (r.kind === 'feedback') === feedback).length;
+  }
+  async bumpContributor({ clientId, name, feedback }: { clientId: string; name: string | null; feedback: boolean; now: number }) {
+    const old = this.contributors.get(clientId) ?? { name: null, feedback: 0, reports: 0 };
+    this.contributors.set(clientId, { name: name ?? old.name, feedback: old.feedback + (feedback ? 1 : 0), reports: old.reports + (feedback ? 0 : 1) });
   }
   async countAll(since: number) {
     return this.rows.filter((r) => r.createdAt > since).length;
@@ -145,6 +150,23 @@ describe('worker: limity (krok 57)', () => {
     const res = await processReport({ body: valid({ text: 'r-extra' }), ipHash: 'ip-new', now: NOW, repo, limits });
     expect(res.status).toBe(503);
     expect(repo.rows).toHaveLength(5);
+  });
+
+  it('krok 133: wiadomości z czatu mają własne limity, imię gracza i licznik współtwórcy; gwiazdki 0–3', async () => {
+    expect(decideQuota({ ipHour: REPORT_LIMITS.perIpHour, ipDay: 0, globalDay: 0 }, REPORT_LIMITS, true)).toBeNull();
+    expect(decideQuota({ ipHour: REPORT_LIMITS.feedbackPerIpHour, ipDay: 0, globalDay: 0 }, REPORT_LIMITS, true)).toMatchObject({ status: 429 });
+    const repo = new MemoryRepo();
+    const fb = (text: string, client: Record<string, unknown> = { id: 'abc123def456', name: 'Wicio' }) => valid({ kind: 'feedback', text, client });
+    expect((await processReport({ body: fb('mapa!'), ipHash: 'ip1', now: NOW, repo })).status).toBe(201);
+    expect((await processReport({ body: valid(), ipHash: 'ip1', now: NOW, repo })).status).toBe(201);
+    expect((await processReport({ body: fb('anonim', {}), ipHash: 'ip1', now: NOW, repo })).status).toBe(201);
+    expect(repo.rows[0]).toMatchObject({ kind: 'feedback', playerName: 'Wicio' });
+    expect(repo.contributors.get('abc123def456')).toEqual({ name: 'Wicio', feedback: 1, reports: 1 });
+    expect(repo.contributors.has('anon')).toBe(false); // bez identyfikatora nie wiadomo, kto pisał
+    expect(validateReport(fb('x', { id: 'abc', name: 'a'.repeat(13) }))).toEqual({ ok: false, reason: 'bad player name' });
+    expect(validateReport(fb('x', { id: 'abc', name: '' })).ok).toBe(true);
+    expect([0, 3].map((n) => parseStars(n))).toEqual([0, 3]);
+    expect([-1, 4, 1.5, '2', null].map((n) => parseStars(n))).toEqual([null, null, null, null, null]);
   });
 
   it('retencja: granica to 30 dni wstecz; tokeny porównywane poprawnie', async () => {

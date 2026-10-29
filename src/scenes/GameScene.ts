@@ -129,6 +129,8 @@ import { createBoardHighscores } from '@/persistence/highscoreBoards';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
 import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
+import { FEEDBACK_CONFIG } from '@/config/feedbackConfig';
+import { feedbackUi } from '@/diagnostics/FeedbackBox';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
@@ -1303,6 +1305,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (!event.repeat) this.pauseGame('manual');
       });
     }
+    // Krok 133: Enter w grze — pauza z okienkiem „Napisz do autora” (gdy gra zna adres workera).
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      if (event.key === FEEDBACK_CONFIG.key && !event.repeat && feedbackUi.available) this.pauseGame('manual', true);
+    });
     // Pad (krok 95): Start — pauza; na ekranie śmierci A / Y / B jak R / C / M.
     bindPadMenu(this, (command) => {
       if (command === MenuCommand.Pause) this.pauseGame('manual');
@@ -1325,7 +1331,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   /** Wstrzymuje grę i pokazuje nakładkę; nic nie robi na ekranie śmierci, przy przejściu między piętrami i podczas wyboru nagrody. */
-  private pauseGame(reason: PauseReason): void {
+  private pauseGame(reason: PauseReason, openFeedback = false): void {
     if (this.gamePaused || this.isTransitioning || this.death || !this.player?.active || this.party.isDown) return;
     if (this.scene.isPaused() || this.scene.isActive(SceneKey.Pause)) return;
     this.gamePaused = true;
@@ -1337,6 +1343,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onSave: this.checkpoint && !this.saveLock.locked ? (slot) => this.saveToSlot(slot) : null,
       ...(this.checkpoint && this.saveLock.locked && { saveLocked: true }),
       onQuit: () => this.quitToMenu(),
+      ...(openFeedback && { openFeedback: true }),
     };
     this.scene.pause();
     this.scene.launch(SceneKey.Pause, data);

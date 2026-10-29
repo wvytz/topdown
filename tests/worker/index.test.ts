@@ -6,29 +6,59 @@ import { REPORT_LIMITS } from '../../worker/src/reports.js';
 type Row = Record<string, unknown>;
 function fakeDb() {
   const reports: Row[] = [];
+  const contributors = new Map<string, Row>();
   let nextId = 1;
   const db = {
     reports,
+    contributors,
     prepare(sql: string) {
       let args: unknown[] = [];
       const run = async () => {
         if (sql.startsWith('INSERT INTO reports')) {
-          const [created_at, ip_hash, schema_version, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, text_hash, size, text, attachments] = args;
+          const [created_at, ip_hash, schema_version, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, text_hash, size, text, attachments, player_name] = args;
           const id = nextId++;
-          reports.push({ id, created_at, ip_hash, schema_version, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, text_hash, size, text, attachments });
+          reports.push({ id, created_at, ip_hash, schema_version, kind, build, client_id, session_id, errors, warnings, floor, hero, seed, abnormal_prev, text_hash, size, text, attachments, player_name, stars: 0 });
           return { meta: { last_row_id: id } };
+        }
+        if (sql.startsWith('INSERT INTO contributors')) {
+          const [client_id, name, feedback_count, report_count, first_at, last_at] = args as [string, string | null, number, number, number, number];
+          const old = contributors.get(client_id);
+          contributors.set(
+            client_id,
+            old
+              ? { ...old, name: name ?? old.name, feedback_count: (old.feedback_count as number) + feedback_count, report_count: (old.report_count as number) + report_count, last_at }
+              : { client_id, name, feedback_count, report_count, stars: 0, first_at, last_at },
+          );
+        }
+        if (sql.startsWith('UPDATE reports SET stars')) {
+          const row = reports.find((r) => r.id === args[1]);
+          if (row) row.stars = args[0];
+        }
+        if (sql.startsWith('UPDATE contributors SET stars')) {
+          const c = contributors.get(args[1] as string);
+          if (c) c.stars = reports.filter((r) => r.client_id === args[0]).reduce((n, r) => n + (r.stars as number), 0);
         }
         if (sql.startsWith('DELETE FROM reports WHERE id')) {
           const i = reports.findIndex((r) => r.id === args[0]);
           if (i >= 0) reports.splice(i, 1);
         }
         if (sql.startsWith('DELETE FROM reports WHERE created_at')) {
-          for (let i = reports.length - 1; i >= 0; i--) if ((reports[i]!.created_at as number) < (args[0] as number)) reports.splice(i, 1);
+          const keepFeedback = sql.includes("kind <> 'feedback'");
+          for (let i = reports.length - 1; i >= 0; i--) {
+            const r = reports[i]!;
+            if ((r.created_at as number) < (args[0] as number) && !(keepFeedback && r.kind === 'feedback')) reports.splice(i, 1);
+          }
         }
         return { meta: {} };
       };
       const first = async () => {
-        if (sql.includes('COUNT(*)') && sql.includes('ip_hash')) return { n: reports.filter((r) => r.ip_hash === args[0] && (r.created_at as number) > (args[1] as number)).length };
+        if (sql.includes('COUNT(*)') && sql.includes('ip_hash')) {
+          return { n: reports.filter((r) => r.ip_hash === args[0] && (r.created_at as number) > (args[1] as number) && (r.kind === 'feedback' ? 1 : 0) === args[2]).length };
+        }
+        if (sql.startsWith('SELECT client_id FROM reports WHERE id')) {
+          const r = reports.find((row) => row.id === args[0]);
+          return r ? { client_id: r.client_id } : null;
+        }
         if (sql.includes('COUNT(*)')) return { n: reports.filter((r) => (r.created_at as number) > (args[0] as number)).length };
         if (sql.includes('SELECT 1 AS x')) return reports.some((r) => r.client_id === args[0] && r.text_hash === args[1] && (r.created_at as number) > (args[2] as number)) ? { x: 1 } : null;
         if (sql.startsWith('SELECT * FROM reports WHERE id')) return reports.find((r) => r.id === args[0]) ?? null;
@@ -37,7 +67,17 @@ function fakeDb() {
       const all = async () => {
         if (sql.includes('FROM reports') && sql.includes('ORDER BY id DESC')) {
           const limit = args[args.length - 1] as number;
-          return { results: [...reports].reverse().slice(0, limit).map(({ text: _t, attachments: _a, ip_hash: _i, text_hash: _h, ...meta }) => meta) };
+          const kind = sql.includes('kind = ?') ? args[0] : null;
+          return {
+            results: [...reports]
+              .reverse()
+              .filter((r) => kind === null || r.kind === kind)
+              .slice(0, limit)
+              .map(({ text, attachments: _a, ip_hash: _i, text_hash: _h, ...meta }) => ({ ...meta, preview: String(text).slice(0, 700) })),
+          };
+        }
+        if (sql.includes('FROM contributors')) {
+          return { results: [...contributors.values()].sort((a, b) => (b.stars as number) - (a.stars as number) || (b.feedback_count as number) - (a.feedback_count as number)) };
         }
         return { results: [] };
       };
@@ -123,7 +163,8 @@ describe('worker: trasy /reports (krok 57)', () => {
     expect(list.status).toBe(200);
     const rows = (await list.json()) as Row[];
     expect(rows).toHaveLength(1);
-    expect(rows[0]).not.toHaveProperty('text'); // lista bez ciężkiej treści
+    expect(rows[0]).not.toHaveProperty('text'); // lista bez ciężkiej treści, tylko początek
+    expect(rows[0]!.preview).toBe('pierwszy');
     const full = await worker.fetch(get('/reports/1', 'tajny'), envWith(db, 'tajny'));
     const detail = (await full.json()) as Row;
     expect(detail.text).toBe('pierwszy');
@@ -141,6 +182,71 @@ describe('worker: trasy /reports (krok 57)', () => {
     expect(db.reports.map((r) => r.id)).toEqual([2]);
     const unknown = await worker.fetch(new Request('https://w.example/nieznane'), envWith(db));
     expect(unknown.status).toBe(404);
+  });
+});
+
+describe('worker: czat „Napisz do autora” i współtwórcy (krok 133)', () => {
+  const feedback = (text: string, client = 'tester0001', name?: string) =>
+    post(body({ kind: 'feedback', text, client: { id: client, ...(name !== undefined ? { name } : {}) }, summary: { floor: 3 } }));
+  const author = (path: string, init: RequestInit = {}) =>
+    new Request(`https://w.example${path}`, { ...init, headers: { 'X-Reports-Token': 'tajny', 'Content-Type': 'application/json' } });
+
+  it('wiadomość zapisuje imię i liczy się do tablicy współtwórców; raport F9 liczy się osobno', async () => {
+    const db = fakeDb();
+    const env = envWith(db, 'tajny');
+    expect((await worker.fetch(feedback('Dodajcie mapę', 'tester0001', 'Wicio'), env)).status).toBe(201);
+    expect((await worker.fetch(feedback('I muzykę', 'tester0001'), env)).status).toBe(201);
+    expect((await worker.fetch(post(body({ client: { id: 'tester0001' } })), env)).status).toBe(201);
+    expect(db.reports[0]).toMatchObject({ kind: 'feedback', player_name: 'Wicio' });
+    expect(db.contributors.get('tester0001')).toMatchObject({ name: 'Wicio', feedback_count: 2, report_count: 1, stars: 0 });
+    // Złe imię = 400 (te same zasady co na tablicy wyników).
+    expect((await worker.fetch(feedback('x', 'tester0002', '<b>'), env)).status).toBe(400);
+  });
+
+  it('gwiazdki autora: PATCH tylko z tokenem, 0–3; suma w tablicy współtwórców; usunięcie wiadomości ją przelicza', async () => {
+    const db = fakeDb();
+    const env = envWith(db, 'tajny');
+    await worker.fetch(feedback('Pomysł A', 'tester0001', 'Ala'), env);
+    await worker.fetch(feedback('Pomysł B', 'tester0001'), env);
+    await worker.fetch(feedback('Pomysł C', 'tester0002', 'Olek'), env);
+    const rate = (id: number, stars: unknown) => worker.fetch(author(`/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ stars }) }), env);
+    expect((await worker.fetch(new Request('https://w.example/reports/1', { method: 'PATCH', body: '{"stars":3}' }), env)).status).toBe(404);
+    expect((await rate(1, 4)).status).toBe(400);
+    expect((await rate(1, 1.5)).status).toBe(400);
+    expect((await rate(99, 1)).status).toBe(404);
+    expect((await rate(1, 3)).status).toBe(200);
+    expect((await rate(2, 2)).status).toBe(200);
+    expect((await rate(3, 1)).status).toBe(200);
+    const board = (await (await worker.fetch(author('/contributors'), env)).json()) as Row[];
+    expect(board.map((r) => [r.name, r.stars])).toEqual([['Ala', 5], ['Olek', 1]]);
+    expect((await worker.fetch(new Request('https://w.example/contributors'), env)).status).toBe(404); // ukryta
+    await worker.fetch(author('/reports/2', { method: 'DELETE' }), env);
+    expect(db.contributors.get('tester0001')).toMatchObject({ stars: 3, feedback_count: 2 });
+    const list = (await (await worker.fetch(author('/reports?kind=feedback'), env)).json()) as Row[];
+    expect(list.map((r) => r.preview)).toEqual(['Pomysł C', 'Pomysł A']);
+  });
+
+  it('wiadomości mają własny limit z adresu — wyczerpany limit raportów F9 ich nie blokuje', async () => {
+    const db = fakeDb();
+    const env = envWith(db);
+    for (let i = 0; i < REPORT_LIMITS.perIpHour; i++) await worker.fetch(post(body({ text: `r${i}` })), env);
+    expect((await worker.fetch(post(body({ text: 'r-extra' })), env)).status).toBe(429);
+    for (let i = 0; i < REPORT_LIMITS.feedbackPerIpHour; i++) expect((await worker.fetch(feedback(`uwaga ${i}`), env)).status).toBe(201);
+    expect((await worker.fetch(feedback('za dużo'), env)).status).toBe(429);
+  });
+
+  it('cron nie usuwa wiadomości z czatu; skrzynka autora to strona HTML bez danych', async () => {
+    const db = fakeDb();
+    const old = Date.now() - 40 * 24 * 3600 * 1000;
+    db.reports.push({ id: 1, created_at: old, kind: 'diagnostic' }, { id: 2, created_at: old, kind: 'feedback' });
+    await worker.scheduled({}, envWith(db));
+    expect(db.reports.map((r) => r.id)).toEqual([2]);
+    const inbox = await worker.fetch(new Request('https://w.example/inbox'), envWith(db, 'tajny'));
+    expect(inbox.status).toBe(200);
+    expect(inbox.headers.get('Content-Type')).toContain('text/html');
+    const html = await inbox.text();
+    expect(html).toContain('Skrzynka autora');
+    expect(html).not.toContain('tajny');
   });
 });
 

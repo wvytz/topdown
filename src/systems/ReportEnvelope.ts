@@ -19,7 +19,8 @@ export interface ReportEnvelope {
   readonly v: number;
   readonly kind: ReportKind;
   readonly app: { readonly build: string };
-  readonly client: { readonly id: string; readonly sessionId: string };
+  /** `name` — imię z tablicy wyników (krok 133), do podpisu w skrzynce autora i tablicy współtwórców. */
+  readonly client: { readonly id: string; readonly sessionId: string; readonly name?: string };
   readonly summary: {
     readonly errors: number;
     readonly warnings: number;
@@ -40,6 +41,8 @@ export interface EnvelopeInput {
   readonly sessions: readonly DiagSession[];
   readonly reportText: string;
   readonly recording?: InputRecording | null;
+  /** Imię gracza (krok 133); puste albo niezgodne z zasadami tablicy wyników — pomijane. */
+  readonly playerName?: string | null;
 }
 
 const limits = DIAGNOSTICS.reports;
@@ -55,6 +58,9 @@ export function clipReportText(text: string, max: number = limits.maxTextChars):
 
 const safeId = (value: string, max: number): string => value.replace(/[^A-Za-z0-9-]/g, '').slice(0, max) || 'x';
 const safeWord = (value: string): string => value.replace(/[^\w-]/g, '').slice(0, 24);
+/** Te same zasady imienia co worker (`isPlayerName`) — złe imię odrzuciłoby całe zgłoszenie. */
+const isValidPlayerName = (name: string): boolean =>
+  name === name.trim() && !/\s{2,}/.test(name) && /^[\p{L}\p{N} _-]+$/u.test(name) && [...name].length <= 12;
 
 /** Składa kopertę: podsumowanie z bieżącej sesji (błędy, ostatni stan gry), tekst i nagranie w limitach workera. */
 export function buildEnvelope(input: EnvelopeInput): ReportEnvelope {
@@ -79,7 +85,11 @@ export function buildEnvelope(input: EnvelopeInput): ReportEnvelope {
     v: limits.version,
     kind: input.kind,
     app: { build: input.build.replace(/[^\w.+\- ]/g, '').slice(0, 40) },
-    client: { id: safeId(input.clientId, 64), sessionId: safeId(current?.id ?? 'unknown', 40) },
+    client: {
+      id: safeId(input.clientId, 64),
+      sessionId: safeId(current?.id ?? 'unknown', 40),
+      ...(input.playerName && isValidPlayerName(input.playerName) ? { name: input.playerName } : {}),
+    },
     summary: {
       errors: count('error'),
       warnings: count('warn'),

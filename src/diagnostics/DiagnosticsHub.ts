@@ -10,6 +10,8 @@ import type { DiagData, DiagLevel, DiagSession } from '@/systems/Diagnostics';
 import type { ReportKind, SendResult } from '@/systems/ReportEnvelope';
 import { SendThrottle, buildEnvelope } from '@/systems/ReportEnvelope';
 import { DiagnosticLog, describeError, endedAbnormally, formatReport } from '@/systems/Diagnostics';
+import { FEEDBACK_CONFIG } from '@/config/feedbackConfig';
+import { buildFeedbackText, normalizeFeedback } from '@/systems/Feedback';
 
 type StateProvider = () => DiagData;
 type Listener = (kind: string, level: DiagLevel, message: string) => void;
@@ -30,6 +32,10 @@ export class DiagnosticsHub {
   private recordings: InputRecording[];
   private reporting: { readonly sink: ReportSink; readonly clientId: string; readonly build: string } | null = null;
   private readonly throttle = new SendThrottle();
+  /** Czat „Napisz do autora” (krok 133) ma własny, luźniejszy limit — krótkie wiadomości, nie raporty. */
+  private readonly feedbackThrottle = new SendThrottle(FEEDBACK_CONFIG);
+  private playerName: () => string | null = () => null;
+  private platform = 'pc';
 
   constructor(
     storage: DiagnosticStorage,
@@ -155,6 +161,45 @@ export class DiagnosticsHub {
     this.reporting = sink ? { sink, clientId, build } : null;
   }
 
+  /** Imię z tablicy wyników i wersja gry (PC / telefon) — podpis zgłoszeń i kontekst wiadomości (krok 133). */
+  setIdentity(playerName: () => string | null, platform: string): void {
+    this.playerName = playerName;
+    this.platform = platform;
+  }
+
+  private currentPlayerName(): string | null {
+    try {
+      return this.playerName();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Wiadomość z czatu „Napisz do autora” (krok 133): słowa testera z kontekstem gry, bez dziennika i nagrania.
+   * Zwraca też `too-short`, gdy po uporządkowaniu nic nie zostało. Nigdy nie rzuca.
+   */
+  async sendFeedback(raw: string): Promise<SendResult | { readonly ok: false; readonly reason: 'too-short' }> {
+    try {
+      if (!this.reporting) return { ok: false, reason: 'unavailable' };
+      const checked = normalizeFeedback(raw);
+      if (!checked.ok) return checked;
+      const now = this.clock();
+      const wait = this.feedbackThrottle.waitMs(now);
+      if (wait !== null) return { ok: false, reason: 'throttled', ...(Number.isFinite(wait) ? { retryAfterS: Math.ceil(wait / 1000) } : {}) };
+      const playerName = this.currentPlayerName();
+      const text = buildFeedbackText(checked.message, { state: this.currentState(), platform: this.platform, build: this.reporting.build, playerName });
+      const sessions = [this.log.snapshot()];
+      const envelope = buildEnvelope({ kind: 'feedback', build: this.reporting.build, clientId: this.reporting.clientId, sessions, reportText: text, playerName });
+      const result = await this.reporting.sink.send(envelope);
+      if (result.ok) this.feedbackThrottle.record(now);
+      this.note('feedback-sent', { ok: result.ok, chars: checked.message.length, ...(result.ok ? {} : { reason: result.reason }) });
+      return result;
+    } catch {
+      return { ok: false, reason: 'network' };
+    }
+  }
+
   /** Czy poprzednia sesja urwała się bez zamknięcia (ustalone przy starcie) — powód zgłoszenia „wyrzuciło mnie”. */
   get previousEndedAbnormally(): boolean {
     return endedAbnormally(this.previous[this.previous.length - 1]);
@@ -179,7 +224,7 @@ export class DiagnosticsHub {
       const text = this.report();
       const sessions = [...this.previous, this.log.snapshot()].slice(-DIAGNOSTICS.maxSessions);
       const recording = withRecording ? (this.recordings[this.recordings.length - 1] ?? null) : null;
-      const envelope = buildEnvelope({ kind, build: this.reporting.build, clientId: this.reporting.clientId, sessions, reportText: text, recording });
+      const envelope = buildEnvelope({ kind, build: this.reporting.build, clientId: this.reporting.clientId, sessions, reportText: text, recording, playerName: this.currentPlayerName() });
       const result = await this.reporting.sink.send(envelope);
       if (result.ok && !automatic) this.throttle.record(now);
       this.note('report-sent', { ok: result.ok, kind, withRecording, automatic, ...(result.ok ? {} : { reason: result.reason }) });

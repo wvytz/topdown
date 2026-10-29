@@ -17,6 +17,7 @@ import { display } from '@/input/DisplayControls';
 import { PauseItem, PausePage, movePauseCursor, pageOf, pauseBack, pauseItems, slotOf } from '@/systems/pauseMenu';
 import type { PauseMenuOptions } from '@/systems/pauseMenu';
 import { ResumeCountdown } from '@/systems/ResumeCountdown';
+import { feedbackUi } from '@/diagnostics/FeedbackBox';
 
 export interface PauseSceneData {
   readonly reason: PauseReason;
@@ -28,6 +29,8 @@ export interface PauseSceneData {
   readonly saveLocked?: boolean;
   /** Wyjście do menu głównego — scena gry sama zamyka pauzę i HUD. */
   readonly onQuit: () => void;
+  /** Krok 133: pauza z Entera w grze — od razu okienko „Napisz do autora”, a po wysłaniu powrót do gry. */
+  readonly openFeedback?: boolean;
 }
 
 /** Wiersz strony: napis pozycji (dla głośności także − i +). */
@@ -35,6 +38,9 @@ interface PauseRow {
   readonly item: PauseItem;
   readonly text: Phaser.GameObjects.Text;
 }
+
+/** Tyle ms po zamknięciu okienka czatu kliknięcie obok listy nie wznawia gry. */
+const FEEDBACK_CLICK_GUARD_MS = 300;
 
 const COLORS = { item: '#e8e8f0', selected: '#f5c542', dim: '#80809a', hint: '#a0a0b8', ok: '#9be08a', error: '#ff7a6a' } as const;
 
@@ -70,6 +76,8 @@ export class PauseScene extends Phaser.Scene {
   private countdown: ResumeCountdown | null = null;
   private countdownLayer!: Phaser.GameObjects.Container;
   private countdownText!: Phaser.GameObjects.Text;
+  /** Chwila zamknięcia okienka czatu — kliknięcie, które je zamknęło, nie może jeszcze wznowić gry. */
+  private feedbackClosedAt = -Infinity;
 
   constructor() {
     super(SceneKey.Pause);
@@ -79,7 +87,7 @@ export class PauseScene extends Phaser.Scene {
     this.pauseData = data;
     this.resumed = false;
     this.mobile = currentPlatform() === 'mobile';
-    this.options = { canSave: data.onSave !== null, display: !this.mobile };
+    this.options = { canSave: data.onSave !== null, display: !this.mobile, feedback: feedbackUi.available };
     this.pendingPage = null;
     this.countdown = null;
     const { width, height } = this.scale;
@@ -105,8 +113,15 @@ export class PauseScene extends Phaser.Scene {
     bindPadMenu(this, (command) => this.onCommand(command));
     // Kliknięcie obok listy na stronie głównej wznawia grę (podstrony: nic — łatwo chybić przycisku głośności).
     this.input.on(Phaser.Input.Events.POINTER_UP, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (feedbackUi.isOpen || performance.now() - this.feedbackClosedAt < FEEDBACK_CLICK_GUARD_MS) return;
       if (over.length === 0 && this.page === PausePage.Main && !this.pendingPage && !this.countdown) this.resume();
     });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => feedbackUi.close());
+    if (data.openFeedback && this.options.feedback) {
+      this.cursor = PauseItem.Feedback;
+      this.refresh();
+      this.openFeedback(true);
+    }
     // Utrata fokusu w trakcie odliczania wraca do pauzy — gra nie może ruszyć, gdy gracz patrzy gdzie indziej.
     const { events } = this.game;
     const onFocusLost = (): void => this.cancelCountdown();
@@ -156,6 +171,12 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private onCommand(command: MenuCommand): void {
+    // Okienko czatu (krok 133): pad A — wyślij, B / Start — zamknij; reszta czeka. Klawiatura pisze w polu tekstowym.
+    if (feedbackUi.isOpen) {
+      if (command === MenuCommand.Confirm) feedbackUi.submit();
+      else if (command === MenuCommand.Back || command === MenuCommand.Pause) feedbackUi.close();
+      return;
+    }
     if (this.pendingPage) return;
     // W trakcie odliczania działa tylko powrót do pauzy.
     if (this.countdown) {
@@ -232,8 +253,26 @@ export class PauseScene extends Phaser.Scene {
       case PauseItem.Fullscreen:
         this.useDisplay(item);
         break;
+      case PauseItem.Feedback:
+        this.openFeedback(false);
+        break;
       default:
     }
+  }
+
+  /**
+   * Okienko „Napisz do autora” (krok 133). Otwarte Enterem z gry — po zamknięciu od razu wznawia (z odliczaniem),
+   * otwarte z menu pauzy — wraca do menu.
+   */
+  private openFeedback(resumeAfter: boolean): void {
+    if (feedbackUi.isOpen) return;
+    sound.play(SoundCue.UiMove);
+    feedbackUi.open(() => {
+      this.feedbackClosedAt = performance.now();
+      if (!this.scene.isActive()) return;
+      if (resumeAfter) this.resume();
+      else this.refresh();
+    });
   }
 
   /** Buduje stronę od nowa: tytuł, pozycje (dla głośności z − i +), ewentualny opis sterowania i podpowiedź. */
@@ -370,7 +409,7 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private quit(): void {
-    if (this.resumed) return;
+    if (this.resumed || feedbackUi.isOpen) return;
     this.resumed = true;
     this.pauseData.onQuit();
   }
@@ -402,7 +441,7 @@ export class PauseScene extends Phaser.Scene {
 
   /** „Wznów”: zamiast od razu oddać sterowanie — odliczanie nad widoczną planszą (krok 130). Drugie wołanie w trakcie wraca do pauzy. */
   private resume(): void {
-    if (this.resumed) return;
+    if (this.resumed || feedbackUi.isOpen) return;
     if (this.countdown) {
       this.cancelCountdown();
       return;
