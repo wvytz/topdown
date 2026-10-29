@@ -5013,6 +5013,8 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Weryfikacja:** `npm run build`; w przeglądarce (worker podstawiony przez Playwright): PC — Enter w grze otwiera okienko w pauzie, wpisane „P”, „M”, „N” zostają w polu (gra dalej w pauzie), Enter wysyła kopertę `feedback` z imieniem i kontekstem, okienko znika, gra wraca z odliczaniem; telefon (`mobile.html`) — stuknięcie pozycji w pauzie otwiera pole z fokusem, „Wyślij” wysyła. `npm run smoke` (piętra 1–2, trzej bohaterowie) bez błędów.
 
+**Wdrożenie (29.10.2026, zgoda właściciela):** migracja `0005_feedback.sql` na produkcyjnej D1, tabela `contributors` uzupełniona z dotychczasowych zgłoszeń (3 przeglądarki, 8 raportów F9), worker wdrożony; próbna wiadomość przyjęta (201, imię i licznik zapisane) i usunięta. Skrzynka: `https://tower-crawler-scores.wvytz.workers.dev/inbox`.
+
 **Na później:** osiągnięcie „Współtwórca TOP DOWN” albo lista zasłużonych w menu (gra zapyta worker o swoje gwiazdki), odpowiedzi autora i statusy widoczne dla testera („zrobione w wersji X”), kod testera do przeniesienia historii na inne urządzenie.
 
 ## Znane ograniczenia i backlog
