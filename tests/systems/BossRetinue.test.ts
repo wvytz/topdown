@@ -53,7 +53,7 @@ describe('świta bossa — miejsca wyjścia', () => {
   it('na podłodze areny, z dala od gracza, muru i od siebie', () => {
     const player = { x: 3, y: 3 };
     for (let seed = 1; seed <= 20; seed++) {
-      const picked = pickRetinueTiles(floor, ARENA, player, 3, 3, createRng(seed));
+      const picked = pickRetinueTiles(floor, ARENA, [player], 3, 3, createRng(seed));
       expect(picked).toHaveLength(3);
       for (const t of picked) {
         expect(tiles[t.y * W + t.x]).toBe(TileType.Floor);
@@ -65,9 +65,18 @@ describe('świta bossa — miejsca wyjścia', () => {
     }
   });
 
+  it('co-op (krok 131): z dala od obu bohaterów', () => {
+    const heroes = [{ x: 3, y: 3 }, { x: 9, y: 9 }];
+    for (let seed = 1; seed <= 20; seed++) {
+      for (const t of pickRetinueTiles(floor, ARENA, heroes, 2, 3, createRng(seed))) {
+        for (const h of heroes) expect(Math.max(Math.abs(t.x - h.x), Math.abs(t.y - h.y))).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
   it('deterministyczne dla seeda', () => {
-    const a = pickRetinueTiles(floor, ARENA, { x: 6, y: 6 }, 2, 3, createRng(7));
-    expect(pickRetinueTiles(floor, ARENA, { x: 6, y: 6 }, 2, 3, createRng(7))).toEqual(a);
+    const a = pickRetinueTiles(floor, ARENA, [{ x: 6, y: 6 }], 2, 3, createRng(7));
+    expect(pickRetinueTiles(floor, ARENA, [{ x: 6, y: 6 }], 2, 3, createRng(7))).toEqual(a);
   });
 });
 

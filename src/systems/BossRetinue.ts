@@ -32,12 +32,12 @@ export class RetinueSchedule {
 
 /**
  * Miejsca wyjścia świty: kafle podłogi areny (z kaflem odstępu od muru), co najmniej `minPlayerDistance`
- * kafli od gracza i 2 kafle od siebie; kolejność losowa z własnego strumienia RNG. Może zwrócić mniej niż `count`.
+ * kafli od każdego bohatera (w co-opie od obu, krok 131) i 2 kafle od siebie; kolejność losowa z własnego strumienia RNG. Może zwrócić mniej niż `count`.
  */
 export function pickRetinueTiles(
   floor: Pick<DungeonFloor, 'width' | 'tiles'>,
   arena: Room,
-  player: TilePoint,
+  players: readonly TilePoint[],
   count: number,
   minPlayerDistance: number,
   rng: Rng,
@@ -46,7 +46,7 @@ export function pickRetinueTiles(
   for (let y = arena.y + 1; y < arena.y + arena.height - 1; y++) {
     for (let x = arena.x + 1; x < arena.x + arena.width - 1; x++) {
       if (floor.tiles[y * floor.width + x] !== TileType.Floor) continue;
-      if (chebyshev({ x, y }, player) < minPlayerDistance) continue;
+      if (players.some((player) => chebyshev({ x, y }, player) < minPlayerDistance)) continue;
       candidates.push({ x, y });
     }
   }

@@ -5,7 +5,7 @@ import { TileType } from '@/core/dungeonTypes';
  * Wejścia do pokoju: kafle podłogi w pierścieniu tuż za jego obrysem (także narożniki).
  * Zamknięcie ich wszystkich odcina pokój od reszty piętra.
  */
-export function findRoomEntrances(floor: DungeonFloor, room: Room): TilePoint[] {
+export function findRoomEntrances(floor: Pick<DungeonFloor, 'width' | 'height' | 'tiles'>, room: Room): TilePoint[] {
   const entrances: TilePoint[] = [];
   const left = room.x - 1;
   const right = room.x + room.width;
