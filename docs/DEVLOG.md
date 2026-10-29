@@ -4941,6 +4941,36 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** długość (3 s), jasność nakładki, czy podpis „Przygotuj się…” jest potrzebny.
 
+## Krok 131 — Bossowie nie pojawiają się bohaterowi na twarzy `#ocena` `#boss` `#areny-bossow` `#coop`
+
+**Skąd:** karteczka testera (29.10.2026, przekazana przez właściciela), uwaga 2: „nasze pająki i inne bosy respią się bohaterowi na twarzy — nie może tak być”.
+
+**Przyczyna:**
+- Boss stawał zawsze na środku areny, a w duecie — 2,5 kafla po bokach środka (Król z lewej, Matka z prawej).
+- W arenach bossów i przy `&boss=1` bohater startuje 2 kafle od lewego muru areny, czyli ok. 3 kafle od środka. Król Pająków stawał wtedy pół kafla od niego (seed 7, piętro 2: 1,5 kafla między środkami ciał).
+- We wspinaczce Król w duecie mógł stać ok. 3,5 kafla od wejścia areny, gdy wejście było z lewej.
+- Świta liczyła odstęp tylko od jednego bohatera — w co-opie mogła wyjść tuż przy drugim.
+
+**Zmiana:**
+- Nowy czysty planer `dungeon/BossSpawnPlanner.ts` (`planBossSpawn`, `spawnKeepOuts`): wymarzone miejsce (środek, w duecie bok środka) zostaje, jeśli trzyma odstęp od wszystkich bohaterów, od wejść areny i od drugiego bossa duetu. W przeciwnym razie boss staje na najbliższym kaflu areny, który odstęp trzyma (ciało mieści się na arenie); gdy takiego nie ma — tam, gdzie brakuje go najmniej.
+- Liczby w `BOSS_SPAWN_SAFETY` (`config/bossConfig.ts`): 5 kafli od bohatera i od wejścia, 4 kafle między bossami duetu.
+- `BossFight` planuje start przy tworzeniu walki (`spawnPoint`); `BossEncounter` rozstawia duet: gospodarz omija miejsce partnera, partner — miejsce gospodarza. Partner wchodzący windą (sprzątaczki) startuje poza areną, więc gospodarz go nie omija.
+- Wyjście sprzątaczki z windy: bohater stojący przed drzwiami zostaje odsunięty poza jej ciało (+24 px), zanim się pojawi.
+- Świta: odstęp od **każdego** żywego bohatera (co-op) i 4 zamiast 3 kafli (`RETINUE_BASE.minPlayerDistanceTiles`).
+- Wspinaczka: boss pojedynczy nadal stoi na środku (wejścia są ok. 6 kafli od środka); trudność walki bez zmian.
+
+**Testy:** `tests/dungeon/BossSpawnPlanner.test.ts` (środek zostaje, gdy bohater daleko; areny — odsunięcie na 5 kafli; duet z dwoma bohaterami i wejściem; ciało na arenie; brak pełnego odstępu; determinizm), świta w co-opie w `tests/systems/BossRetinue.test.ts`; planer dopisany do `PURE_FILES`.
+
+**Weryfikacja w przeglądarce** (pozycje startu w kaflach):
+- duet, piętro 2, `&boss=1`: bohater (48,5; 13,5), Król (51,5; 9,5) — 5 kafli, wcześniej 1,5; Matka (55; 13,5);
+- to samo w co-opie: obaj bohaterowie co najmniej 5 kafli od obu bossów;
+- areny bossów, arena 2: Król 5 kafli od bohatera;
+- Grzybowy Pożeracz, piętro 3, `&boss=1`: 5,1 kafla (wcześniej ok. 4);
+- wspinaczka bez `&boss=1`: miejsca bez zmian.
+- `npm run build`, `npm run smoke` i `npm run smoke -- --coop`.
+
+**Czeka na ocenę właściciela:** czy 5 kafli wystarcza i czy boss odsunięty od środka areny w arenach nie przeszkadza.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5018,6 +5048,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **2. Do oceny przy okazji**
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
+- **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
 - **Lustrzana komnata (kroki 124–127):** `#lustrzana-komnata` piętra 7–8; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.

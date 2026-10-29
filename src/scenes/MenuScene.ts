@@ -49,7 +49,7 @@ interface Row {
 /**
  * Menu główne (krok 91) na tle ekranu startowego (SplashScene trzyma ostatnią klatkę wieży z popiołem).
  * Kontynuuj (autozapis), nowa wspinaczka, areny bossów, wybór piętra, wczytanie slotu i sterowanie.
- * ↑ ↓ / W S / mysz — wybór; Enter, kliknięcie — OK (spacja nie, krok 129); Esc — wróć.
+ * ↑ ↓ / W S / mysz — wybór; Enter, kliknięcie — OK (spacja nie, krok 130); Esc — wróć.
  */
 export class MenuScene extends Phaser.Scene {
   private startData!: FloorSceneData;

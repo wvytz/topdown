@@ -19,7 +19,7 @@ import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
-import { bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { BOSS_SPAWN_SAFETY, bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { withHpMultiplier } from '@/systems/CoopBalance';
 import {
   BOSS_LEAP_VISUAL,
@@ -46,6 +46,8 @@ import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { arenaCenter } from '@/dungeon/stairs';
+import { findRoomEntrances } from '@/dungeon/arenaGates';
+import { planBossSpawn, spawnKeepOuts } from '@/dungeon/BossSpawnPlanner';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import { Boss } from '@/entities/Boss';
@@ -110,6 +112,8 @@ export interface BossFightDeps {
   readonly bossId?: BossId;
   /** Duet: przesunięcie miejsca startu od środka areny (px). */
   readonly spawnOffset?: Vector2;
+  /** Duet: miejsce drugiego bossa (px) — boss staje od niego co najmniej `BOSS_SPAWN_SAFETY.minBossGapTiles`. */
+  readonly spawnAvoid?: Vector2;
   /** Duet: własne ziarno losowania bossa i świty (brak — ziarno piętra), by partner nie powtarzał gospodarza. */
   readonly seed?: number;
   /**
@@ -276,6 +280,8 @@ export class BossFight {
   escaped = false;
   /** Pełne HP bossa (wspólny pasek duetu liczy je także po jego śmierci). */
   readonly maxHp: number;
+  /** Miejsce startu bossa (px) — duet rozstawia według niego partnera. */
+  readonly spawnPoint: Vector2;
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];
@@ -287,9 +293,8 @@ export class BossFight {
     const definition = deps.arrival ? withoutEscape(scaled) : scaled;
     this.maxHp = definition.maxHp;
     this.spiderlingDefinition = definition.spiderling ?? null;
-    const center = arenaCenter(arena);
-    const offset = deps.spawnOffset ?? { x: 0, y: 0 };
-    const spawn = { x: center.x * TILE_SIZE + offset.x, y: center.y * TILE_SIZE + offset.y };
+    const spawn = this.planSpawn(arena, definition.radius);
+    this.spawnPoint = spawn;
     const seed = deps.seed ?? deps.floor.seed;
     const rng = createRng(deriveSeed(seed, BOSS_SEED_SALT));
     const boss = new Boss(deps.scene, spawn.x, spawn.y, definition, rng);
@@ -337,6 +342,23 @@ export class BossFight {
         this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius, i));
       });
     }
+  }
+
+  /**
+   * Miejsce startu bossa (krok 131, uwaga testera): środek areny (w duecie — bok środka), chyba że stoi za blisko
+   * wejścia areny, bohatera (areny bossów i `&boss=1` stawiają go na arenie) albo drugiego bossa duetu.
+   */
+  private planSpawn(arena: Room, bossRadius: number): Vector2 {
+    const { floor, party } = this.deps;
+    const center = arenaCenter(arena);
+    const offset = this.deps.spawnOffset ?? { x: 0, y: 0 };
+    const desired = { x: center.x + offset.x / TILE_SIZE, y: center.y + offset.y / TILE_SIZE };
+    const heroes = party.members.map((member) => ({ x: member.x / TILE_SIZE, y: member.y / TILE_SIZE }));
+    const keepOut = spawnKeepOuts(findRoomEntrances(floor, arena), heroes, BOSS_SPAWN_SAFETY);
+    const avoid = this.deps.spawnAvoid;
+    if (avoid) keepOut.push({ at: { x: avoid.x / TILE_SIZE, y: avoid.y / TILE_SIZE }, minTiles: BOSS_SPAWN_SAFETY.minBossGapTiles });
+    const at = planBossSpawn(floor, arena, desired, keepOut, bossRadius / TILE_SIZE);
+    return { x: at.x * TILE_SIZE, y: at.y * TILE_SIZE };
   }
 
   /**
@@ -541,6 +563,8 @@ export class BossFight {
     this.enteringUntil = now + arrival.enterMs;
     boss.health.takeDamage(arrivalWounds(boss.health.max, arrival));
     const door = this.elevator?.door ?? { x: boss.x, y: boss.y };
+    // Krok 131: bohater stojący przed windą odsuwa się, zanim boss z niej wyjdzie (nie pojawia się na twarzy).
+    this.pushPlayerOutOf(door, { x: door.x, y: door.y - boss.radius }, boss.radius + BOSS_SPAWN_SAFETY.arrivalClearPx);
     boss.setPosition(door.x, door.y - boss.radius).setAlpha(0).setVisible(true);
     this.deps.scene.tweens.add({ targets: boss, y: door.y, alpha: 1, duration: arrival.enterMs });
     if (this.elevator) {
@@ -771,9 +795,8 @@ export class BossFight {
     const alive = this.helpers.length + this.pendingHelpers.length;
     const count = this.retinue.due(now, alive, boss.isEnraged);
     if (count > 0) {
-      const player = this.focus();
-      const playerTile = { x: Math.floor(player.x / TILE_SIZE), y: Math.floor(player.y / TILE_SIZE) };
-      for (const tile of pickRetinueTiles(this.deps.floor, this.arena, playerTile, count, def.minPlayerDistanceTiles, this.retinueRng)) {
+      const heroTiles = this.deps.party.living.map((p) => ({ x: Math.floor(p.x / TILE_SIZE), y: Math.floor(p.y / TILE_SIZE) }));
+      for (const tile of pickRetinueTiles(this.deps.floor, this.arena, heroTiles, count, def.minPlayerDistanceTiles, this.retinueRng)) {
         const position = { x: (tile.x + 0.5) * TILE_SIZE, y: (tile.y + 0.5) * TILE_SIZE };
         const gfx = this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph);
         this.pendingHelpers.push({ at: now + def.telegraphMs, position, gfx });

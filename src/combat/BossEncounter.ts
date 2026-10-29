@@ -3,6 +3,7 @@ import { deriveSeed } from '@/core/random';
 import { TILE_SIZE } from '@/config/gameConfig';
 import type { BossFightDeps } from '@/combat/BossFight';
 import { BossFight } from '@/combat/BossFight';
+import { arenaCenter } from '@/dungeon/stairs';
 import type { BossDuetDefinition } from '@/systems/BossDuet';
 import { duetStatus, pushApart, shouldPartnerArrive } from '@/systems/BossDuet';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
@@ -38,10 +39,22 @@ export class BossEncounter {
     const offset = duet.spawnOffsetTiles * TILE_SIZE;
     const hpMultiplier = (deps.bossHpMultiplier ?? 1) * duet.hpMultiplier;
     const { spawnHelper, ...partnerDeps } = deps;
+    // Bezpieczny start (krok 131): gospodarz omija miejsce partnera, partner — miejsce, na którym stanął gospodarz.
+    // Partner wchodzący windą startuje poza areną, więc gospodarz go nie omija.
+    const center = arenaCenter(deps.floor.rooms[deps.floor.bossRoomId]!);
+    const partnerSpot = { x: center.x * TILE_SIZE + offset, y: center.y * TILE_SIZE };
+    const host = new BossFight({
+      ...deps,
+      onDefeated,
+      bossHpMultiplier: hpMultiplier,
+      spawnOffset: { x: -offset, y: 0 },
+      ...(!duet.arrival && { spawnAvoid: partnerSpot }),
+    });
     this.fights = [
-      new BossFight({ ...deps, onDefeated, bossHpMultiplier: hpMultiplier, spawnOffset: { x: -offset, y: 0 } }),
+      host,
       new BossFight({
         ...partnerDeps,
+        ...(!duet.arrival && { spawnAvoid: host.spawnPoint }),
         ...(duet.partnerRetinue && spawnHelper ? { spawnHelper } : {}),
         onDefeated,
         bossHpMultiplier: hpMultiplier,

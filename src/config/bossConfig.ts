@@ -25,7 +25,20 @@ const RETINUE_BASE = {
   count: 1,
   maxAlive: 2,
   telegraphMs: 1000,
-  minPlayerDistanceTiles: 3,
+  minPlayerDistanceTiles: 4,
+} as const;
+
+/**
+ * Bezpieczne miejsce startu bossa (krok 131, uwaga testera: pająki i inni bossowie pojawiali się bohaterowi
+ * na twarzy). Boss staje co najmniej tyle kafli od każdego bohatera i od wejść areny (we wspinaczce gracz wchodzi
+ * przez nie), a bossowie duetu — od siebie. Przy wyjściu z windy (sprzątaczka, krok 126) bohater stojący przed
+ * drzwiami zostaje odsunięty o `arrivalClearPx` poza ciało bossa.
+ */
+export const BOSS_SPAWN_SAFETY = {
+  minPlayerDistanceTiles: 5,
+  minEntranceDistanceTiles: 5,
+  minBossGapTiles: 4,
+  arrivalClearPx: 24,
 } as const;
 
 /**

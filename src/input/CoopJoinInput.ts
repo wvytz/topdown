@@ -14,7 +14,7 @@ export function bindCoopJoin(scene: Phaser.Scene, roster: CoopRoster, onChange: 
   let keyboardLeave = false;
   const onKey = (event: KeyboardEvent): void => {
     if (event.repeat) return;
-    // Bez spacji (krok 129): spacja nic nie zatwierdza w menu.
+    // Bez spacji (krok 130): spacja nic nie zatwierdza w menu.
     if (event.key === 'Enter') keyboardJoin = true;
     else if (event.key === 'Escape') keyboardLeave = true;
   };
