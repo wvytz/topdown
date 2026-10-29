@@ -9,6 +9,8 @@ import { ITEM_POOL } from '@/config/lootConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import type { EnemyManager } from '@/combat/EnemyManager';
 import { DungeonView } from '@/dungeon/DungeonView';
+import { GATE_WAIT_CONFIG } from '@/config/gateWaitConfig';
+import { type GateWait, gatePosts } from '@/systems/GateWait';
 import { findRoomEntrances, isDeepInsideRoom } from '@/dungeon/arenaGates';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { LightingOverlay } from '@/effects/LightingOverlay';
@@ -42,6 +44,8 @@ export interface AmbushDeps {
   readonly toast: (text: string) => void;
   /** Co-op (etap C3): przy zamknięciu krat ściąga partnera spoza pokoju do bohatera w środku. */
   readonly gather: (anchor: Player, room: Room) => void;
+  /** Wrogowie spoza pokoju czekają pod kratami, po ich podniesieniu ruszają zrywem (krok 132). */
+  readonly gateWait: GateWait<Enemy>;
 }
 
 /**
@@ -96,7 +100,8 @@ export class AmbushManager {
   }
 
   private seal(): void {
-    const { view, effects, scene } = this.deps;
+    const { view, effects, scene, floor, room, gateWait } = this.deps;
+    gateWait.seal(room, gatePosts(floor, room, this.gates, TILE_SIZE, GATE_WAIT_CONFIG.postOffsetTiles));
     for (const gate of this.gates) {
       view.sealGate(gate);
       const at = DungeonView.tileToWorldCenter(gate);
@@ -132,6 +137,7 @@ export class AmbushManager {
 
   private release(): void {
     for (const gate of this.gates) this.deps.view.releaseGate(gate);
+    this.deps.gateWait.release(this.deps.room, this.deps.scene.time.now);
     this.dreadTarget = 0;
     this.deps.toast('Upiory rozwiały się — nagroda jest twoja.');
   }

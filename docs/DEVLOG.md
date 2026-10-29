@@ -4971,6 +4971,25 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** czy 5 kafli wystarcza i czy boss odsunięty od środka areny w arenach nie przeszkadza.
 
+## Krok 132 — Wrogowie czekają za kratami `#ocena` `#zasadzka`
+
+**Skąd:** ocena właściciela (29.10.2026): w zasadzce z upiorami, po opuszczeniu krat, wróg z korytarza próbował atakować i przebić się przez kratę. Właściciel: wrogowie spoza zamkniętego pokoju mają stanąć tuż przy kracie i czekać, a po podniesieniu krat ruszyć na ułamek sekundy szybciej („nabuzowani i wygłodniali”).
+
+**Reguła (`systems/GateWait.ts`, liczby w `config/gateWaitConfig.ts`)** — wspólna dla zasadzki i areny bossa, bo obie opuszczają te same kraty:
+- Kraty opadają → pokój trafia do rejestru razem z miejscami czekania: środek kraty przesunięty o 0,85 kafla na zewnątrz (`gatePosts`; krata z murem za plecami nie ma miejsca).
+- Wróg spoza pokoju, którego cel stoi w środku, a który już ściga (albo widzi cel w zasięgu aggro), idzie do najbliższego miejsca czekania widocznego z jego pozycji i stoi przodem do celu. Nie atakuje (dotyczy też strzelców i szarży Tarczownika); zaczęty zamach przepada. Wróg bezczynny daleko od pokoju zostaje bezczynny.
+- Czekając, przebiera nogami w miejscu (animacja chodu) — widać, że się rwie.
+- Kraty się podnoszą → każdy czekający dostaje zryw: 450 ms z prędkością ×1,8, potem zwykły pościg.
+- Wyjątki: strzelcy w galeriach areny Strażnika Bram (krok 44 — ostrzał zza krat jest ich zadaniem) i Czyhacz w kryjówce. Upiory zasadzki i świta bossa są w środku, więc reguła ich nie dotyczy.
+
+**Phaser:** `EnemyPerception.holdAt` / `speedMultiplier` (wróg wykonuje rozkaz w `Enemy.waitAtGate`), `EnemyManager` pyta `GateWait` o rozkaz w każdej klatce, `AmbushManager` i `ArenaGates` zgłaszają opuszczenie i podniesienie krat.
+
+**Testy:** `tests/systems/gateWait.test.ts` — miejsca czekania po stronie korytarza, krata z murem za plecami, wróg w pokoju i wróg bezczynny nie czekają, wybór najbliższej kraty, powrót do pościgu, gdy cel wyjdzie, zryw tylko dla czekających i tylko przez `durationMs`, miejsca czekania aren na prawdziwych piętrach.
+
+**Weryfikacja:** `npm run build`; scenariusz w przeglądarce (seed 1, piętro 2): Rusher wpuszczony do korytarza nad zasadzką podszedł pod kratę, stanął 11 px od niej i stał przez całą falę; po podniesieniu krat ruszył z prędkością 248 px/s (bazowo 138) i po ok. 0,45 s wrócił do 138. `npm run smoke` solo i `--coop` bez błędów.
+
+**Czeka na ocenę właściciela:** długość i siła zrywu, odległość od kraty, czy wrogowie z dalszych korytarzy mają dołączać (dziś tylko ci, którzy już ścigają albo widzą bohatera).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5049,6 +5068,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **2. Do oceny przy okazji**
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
+- **Wrogowie za kratami (krok 132):** `#zasadzka` wróg spoza zamkniętego pokoju czeka pod kratą, po jej podniesieniu zryw (450 ms, ×1,8) — długość i siła zrywu czekają na test właściciela.
 - **Lustrzana komnata (kroki 124–127):** `#lustrzana-komnata` piętra 7–8; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.

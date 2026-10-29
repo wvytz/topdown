@@ -21,6 +21,7 @@ import { facingDirection } from '@/systems/Facing';
 import type { EnemySpawn } from '@/dungeon/EncounterPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { hasLineOfSight } from '@/dungeon/lineOfSight';
+import type { GateOrder, GateWait } from '@/systems/GateWait';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { CombatDecals } from '@/effects/CombatDecals';
 import type { EnemyAttackHandler } from '@/entities/Enemy';
@@ -70,6 +71,10 @@ export interface EnemyManagerDeps {
   readonly onEnemyKilled: (enemy: Enemy) => void;
   /** Wabik (totem łucznika, krok 98): wrogowie celują w niego zamiast w bohaterów; null — w najbliższego bohatera. */
   readonly aggroTarget?: () => Vector2 | null;
+  /** Wrogowie za kratami (krok 132): czekanie pod kratą zasadzki/areny i zryw po jej podniesieniu. */
+  readonly gateWait?: GateWait<Enemy>;
+  /** Wróg, którego kraty nie zatrzymują (np. strzelcy w galeriach areny — strzelają zza krat celowo). */
+  readonly ignoresGates?: (enemy: Enemy) => boolean;
   /** Elita pierwszy raz widzi gracza z bliska (krok 44: komunikat z podpowiedzią). */
   readonly onEliteSpotted?: (enemy: Enemy) => void;
 }
@@ -245,7 +250,7 @@ export class EnemyManager implements EnemyAttackHandler {
       if (den) this.updateDen(enemy, den, now);
       const target: Vector2 = lure ?? party.targetPointFor(enemy);
       const canSeeTarget = !party.isDown && hasLineOfSight(floor, enemy, target, TILE_SIZE);
-      enemy.tick({ target, canSeeTarget }, now, this);
+      enemy.tick({ target, canSeeTarget, ...this.gateOrder(enemy, target, canSeeTarget, now) }, now, this);
       this.updateFieryTrail(enemy, now);
       const nearest = party.nearestLiving(enemy);
       if (canSeeTarget && nearest && isElite(enemy.definition) && !this.spotted.has(enemy) && distance(enemy, nearest) <= ELITE_VISUAL.spotRange) {
@@ -254,6 +259,20 @@ export class EnemyManager implements EnemyAttackHandler {
       }
     }
     this.updateHellAttacks(now);
+  }
+
+  /** Rozkaz krat (krok 132); Czyhacz w kryjówce i wrogowie galerii — bez rozkazu. */
+  private gateOrder(enemy: Enemy, target: Vector2, canSeeTarget: boolean, now: number): GateOrder | null {
+    const { gateWait, ignoresGates } = this.deps;
+    if (!gateWait || enemy.isLurking || ignoresGates?.(enemy)) return null;
+    return gateWait.order(enemy, {
+      self: { x: enemy.x, y: enemy.y },
+      target,
+      alert: enemy.isAlert,
+      canSeeTarget,
+      aggroRange: enemy.definition.behaviour.aggroRange,
+      now,
+    });
   }
 
   /**
@@ -595,6 +614,7 @@ export class EnemyManager implements EnemyAttackHandler {
     sound.play(SoundCue.EnemyDeath, at);
     this.deps.decals.add('splat', enemy.x, enemy.y);
     this.enemies = this.enemies.filter((e) => e !== enemy);
+    this.deps.gateWait?.forget(enemy);
     this.deps.onEnemyKilled(enemy);
     this.broods.remove(enemy);
     // Czyhacz zabity jeszcze w kryjówce albo w chwili wywabienia — kryjówka i tak pęka.

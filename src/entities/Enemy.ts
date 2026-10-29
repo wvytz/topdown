@@ -10,7 +10,7 @@ import type {
   PounceAttackDefinition,
   ProjectileAttackDefinition,
 } from '@/core/combatTypes';
-import { AttackPhase, EliteAffix, EnemyAttackKind } from '@/core/combatTypes';
+import { AttackPhase, EliteAffix, EnemyAttackKind, EnemyState } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { EnemyBrain } from '@/ai/EnemyBrain';
 import { ENEMY_STATUS_RESISTANCE, ENEMY_VIEW_RULE } from '@/config/combatConfig';
@@ -67,6 +67,10 @@ interface PounceFlight {
 export interface EnemyPerception {
   readonly target: Vector2;
   readonly canSeeTarget: boolean;
+  /** Kraty odcięły cel (krok 132): wróg idzie tu i czeka, bez ataków. */
+  readonly holdAt?: Vector2 | null;
+  /** Mnożnik chodu, np. zryw po podniesieniu krat (krok 132). */
+  readonly speedMultiplier?: number;
 }
 
 const HIT_STUN_MS = 150;
@@ -159,6 +163,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Czyhacz jeszcze w kryjówce (także przy ostrzeżeniu) — nie celujemy w niego automatycznie. */
+  /** Wróg ściga albo atakuje (nie stoi bezczynnie). */
+  get isAlert(): boolean {
+    return this.brain.currentState !== EnemyState.Idle;
+  }
+
   get isLurking(): boolean {
     return this.lurk?.isHiding ?? false;
   }
@@ -274,7 +283,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.updatePounce(now, handler);
       return;
     }
-    if (this.charge && this.updateCharge(this.charge, perception, now, handler)) return;
+    // Pod kratą (krok 132) szarża nie rusza; rozpoczętą kończy.
+    const holdAt = perception.holdAt ?? null;
+    if (this.charge && (!holdAt || this.charge.isBusy(now)) && this.updateCharge(this.charge, perception, now, handler)) return;
     if (this.guardDown.isActive(now)) {
       // Opuszczona tarcza: stoi (odrzut z trafienia działa) i nie zaczyna ataku.
       if (!this.hitStun.isActive(now)) this.setVelocity(0, 0);
@@ -309,6 +320,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       return;
     }
 
+    if (holdAt) {
+      this.waitAtGate(holdAt, perception, now);
+      return;
+    }
+
     const decision = this.brain.think({
       self: { x: this.x, y: this.y },
       target: perception.target,
@@ -325,9 +341,31 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       if (this.pounce) return;
     }
 
-    const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
+    const speed = this.definition.moveSpeed * this.status.speedMultiplier(now) * (perception.speedMultiplier ?? 1);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
     this.updateAnimation(perception, decision.move, now);
+    this.updateTint(now);
+  }
+
+  /**
+   * Kraty odcięły cel (krok 132): wróg podchodzi pod kratę i stoi przodem do celu, przebierając nogami
+   * (animacja chodu w miejscu — „rwie się”). Nie atakuje; zaczęty zamach przepada.
+   */
+  private waitAtGate(post: Vector2, perception: EnemyPerception, now: number): void {
+    this.attackCycle.interrupt();
+    this.brain.alert(perception.target);
+    const dx = post.x - this.x;
+    const dy = post.y - this.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 1) {
+      this.setVelocity(0, 0);
+      this.animator.face({ x: perception.target.x - this.x, y: perception.target.y - this.y });
+    } else {
+      const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
+      this.setVelocity((dx / d) * speed, (dy / d) * speed);
+      this.animator.face({ x: dx, y: dy });
+    }
+    this.animator.play(this.visual.move);
     this.updateTint(now);
   }
 
