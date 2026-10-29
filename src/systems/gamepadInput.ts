@@ -170,7 +170,11 @@ export function combineMovement(a: Vector2, b: Vector2): Vector2 {
   return { x: clamp(a.x + b.x), y: clamp(a.y + b.y) };
 }
 
-/** Klawisz (`KeyboardEvent.key`) → komenda menu. Klawisze specyficzne dla ekranu (cyfry, Tab, R/C/M) obsługują sceny same. */
+/**
+ * Klawisz (`KeyboardEvent.key`) → komenda menu. Klawisze specyficzne dla ekranu (cyfry, Tab, R/C/M) obsługują sceny same.
+ * Spacja nic nie zatwierdza (krok 129, uwaga testera): to dash, więc wciśnięta w biegu przy otwarciu pauzy czy menu
+ * wybierała opcję — gracz stracił tak zapis gry.
+ */
 export function menuCommandFromKey(key: string): MenuCommand | null {
   switch (key) {
     case 'ArrowUp':
@@ -190,7 +194,6 @@ export function menuCommandFromKey(key: string): MenuCommand | null {
     case 'D':
       return MenuCommand.Right;
     case 'Enter':
-    case ' ':
       return MenuCommand.Confirm;
     case 'Escape':
     case 'Backspace':

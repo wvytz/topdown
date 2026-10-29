@@ -38,7 +38,7 @@ const MODE_ORDER: readonly RunMode[] = [RunMode.Tower, RunMode.BossRush];
 
 /**
  * Ekran wyboru bohatera (krok 38): karty z postacią, statystykami i opisem ataków.
- * Strzałki / A, D / 1, 2 lub najechanie myszą zmieniają wybór; Enter, Spacja lub kliknięcie zaczyna run.
+ * Strzałki / A, D / 1, 2 lub najechanie myszą zmieniają wybór; Enter lub kliknięcie zaczyna run.
  * Pod kartami wybór trybu (krok 90): wspinaczka albo areny bossów — ↑ ↓ / W, S / Tab albo kliknięcie zakładki.
  * Esc wraca do menu głównego (krok 91).
  */

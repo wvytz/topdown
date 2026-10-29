@@ -4907,6 +4907,19 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** czy mapy są ciekawsze i czy pętli nie jest za mało (do podkręcenia przez `extraConnectionRatio` albo `routing.loops.maxRoomsRatio`).
 
+## Krok 129 — Spacja nie zatwierdza wyborów w menu `#ocena`
+
+**Skąd:** karteczka testera (29.10.2026), uwaga 1: „spacja nie może służyć do zatwierdzania wyboru w menu — gracz stracił przez to zapis gry”. Spacja to dash, więc gracz wciska ją odruchowo w biegu; gdy w tej chwili otwierała się pauza albo menu, spacja wybierała podświetloną opcję.
+
+**Zmiana:**
+- `menuCommandFromKey` (`systems/gamepadInput.ts`) nie zamienia już spacji na `MenuCommand.Confirm`. Funkcja obsługuje klawiaturę w menu głównym, pauzie (z podstronami zapisu), wyborze bohatera i wyborze co-op, więc wszędzie tam zatwierdza tylko **Enter** (i kliknięcie, i A na padzie).
+- Dołączanie do co-opu z klawiatury (`input/CoopJoinInput.ts`): tylko Enter, bez spacji — ta sama zasada.
+- Bez zmian: spacja jako dash w grze, spacja w imieniu na ekranie śmierci, karty nagród (cyfry), dowolny klawisz na ekranie startowym (tylko pomija animację).
+
+**Testy:** `tests/systems/gamepadInput.test.ts` — spacja daje `null`, Enter zatwierdza. `npm run build`: 131 plików, 2162 testy.
+
+**Weryfikacja w przeglądarce:** w menu głównym trzy wciśnięcia spacji nic nie zmieniają, Enter przechodzi do wyboru bohatera.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
