@@ -1,4 +1,4 @@
-import type { AudioSettings, MusicTheme } from '@/core/audioTypes';
+import type { AudioSettings, MusicTheme, MusicThemeDefinition } from '@/core/audioTypes';
 import { LoopCue, SoundCue } from '@/core/audioTypes';
 import type { Vector2 } from '@/core/types';
 import {
@@ -6,7 +6,7 @@ import {
   LOOP_FADE_S,
   LOOP_RECIPES,
   MUSIC_DUCK,
-  MUSIC_THEMES,
+  MUSIC_PRESETS,
   SOUND_GATE_CONFIG,
   SOUND_GATE_RULES,
   SOUND_RECIPES,
@@ -17,7 +17,7 @@ import { MusicPlayer } from '@/audio/MusicPlayer';
 import { diag } from '@/diagnostics/DiagnosticsHub';
 import { AudioSettingsStorage } from '@/persistence/AudioSettingsStorage';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
-import { channelGains, stepVolume, toggleMute } from '@/systems/AudioSettings';
+import { channelGains, cyclePreset, stepVolume, toggleMute } from '@/systems/AudioSettings';
 import { renderSound } from '@/systems/SfxSynth';
 import { applySfxTone } from '@/systems/SfxTone';
 import { SoundGate } from '@/systems/SoundGate';
@@ -96,6 +96,12 @@ export class SoundBoard {
     this.update(stepVolume(this.settingsValue, channel, steps, AUDIO_SETTINGS_RULES));
   }
 
+  /** Następny zestaw muzyki (krok 139) — bieżący klimat przechodzi płynnie w nowy styl. */
+  cycleMusicPreset(step: 1 | -1): void {
+    this.update(cyclePreset(this.settingsValue, AUDIO_SETTINGS_RULES, step));
+    this.music?.play(this.themeDefinition());
+  }
+
   /** Środek słuchu (środek kamery); null — dźwięki bez stereo i bez wyciszania odległych. */
   setListener(listener: (() => Vector2) | null): void {
     this.listener = listener;
@@ -159,7 +165,11 @@ export class SoundBoard {
   /** Klimat muzyki (null — cisza). Ten sam klimat nie zaczyna utworu od nowa. */
   setMusic(theme: MusicTheme | null): void {
     this.theme = theme;
-    this.music?.play(theme ? MUSIC_THEMES[theme] : null);
+    this.music?.play(this.themeDefinition());
+  }
+
+  private themeDefinition(): MusicThemeDefinition | null {
+    return this.theme ? MUSIC_PRESETS[this.settingsValue.preset][this.theme] : null;
   }
 
   /** Walka z bossem — muzyka nabiera tempa. */
@@ -197,7 +207,7 @@ export class SoundBoard {
     this.applyGains();
     this.music = new MusicPlayer(ctx, this.musicBus);
     this.music.setIntense(this.intense);
-    this.music.play(this.theme ? MUSIC_THEMES[this.theme] : null);
+    this.music.play(this.themeDefinition());
     diag.note('audio-ready', { sampleRate: ctx.sampleRate, state: ctx.state });
   }
 

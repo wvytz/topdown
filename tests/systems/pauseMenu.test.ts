@@ -19,7 +19,7 @@ describe('menu pauzy', () => {
 
   it('ustawienia obrazu tylko na PC; każda podstrona kończy się „Wróć”', () => {
     expect(pauseItems(PausePage.Settings, pc)).toContain(PauseItem.Fullscreen);
-    expect(pauseItems(PausePage.Settings, { ...pc, display: false })).toEqual([PauseItem.Music, PauseItem.Sfx, PauseItem.Mute, PauseItem.Back]);
+    expect(pauseItems(PausePage.Settings, { ...pc, display: false })).toEqual([PauseItem.MusicPreset, PauseItem.Music, PauseItem.Sfx, PauseItem.Mute, PauseItem.Back]);
     for (const page of [PausePage.Save, PausePage.Settings, PausePage.Controls]) expect(pauseItems(page, pc).at(-1)).toBe(PauseItem.Back);
   });
 

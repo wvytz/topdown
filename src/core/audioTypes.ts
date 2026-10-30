@@ -101,6 +101,17 @@ export interface AudioSettings {
   readonly music: number;
   readonly sfx: number;
   readonly muted: boolean;
+  /** Zestaw muzyki wybrany na pauzie (krok 139). */
+  readonly preset: MusicPreset;
+}
+
+/**
+ * Zestaw muzyki (krok 139, pomysł właściciela): Lucent — spokojny ambient z kroku 116 (pad, bas, dzwonki),
+ * Horror — zapętlony minimalny house w klimacie horroru. Gracz przełącza go na pauzie.
+ */
+export enum MusicPreset {
+  Lucent = 'lucent',
+  Horror = 'horror',
 }
 
 /** Klimat muzyki: wieża (piętra 1–3) i zaświaty (cmentarzysko, piekło, palarnia). */
@@ -109,8 +120,11 @@ export enum MusicTheme {
   Underworld = 'underworld',
 }
 
-/** Instrumenty muzyki — każdy to inny głos w `audio/MusicPlayer`. */
-export type MusicVoice = 'pad' | 'bass' | 'bell' | 'drum';
+/** Instrumenty muzyki — każdy to inny głos w `audio/MusicPlayer`. Lucent: pad, bas, dzwonek i bęben-serce. */
+export type LucentVoice = 'pad' | 'bass' | 'bell' | 'drum';
+/** Horror (krok 139): stopa, hi-haty, klask, bas, krótki akord-„stab”, buczący dron i rzadki „ping” w pogłosie. */
+export type HorrorVoice = 'kick' | 'hat' | 'openHat' | 'clap' | 'bass' | 'stab' | 'drone' | 'ping';
+export type MusicVoice = LucentVoice | HorrorVoice;
 
 /** Nuta utworu: czas względem początku taktu (s), wysokość (MIDI), długość (s), głośność. */
 export interface MusicNote {
@@ -121,17 +135,24 @@ export interface MusicNote {
   readonly velocity: number;
 }
 
-/** Utwór składany w locie: tonacja, tempo, progresja akordów i gęstość melodii. */
-export interface MusicThemeDefinition {
+/** Wspólne pola utworów: tempo, tonacja i progresja akordów. */
+interface MusicThemeBase {
   readonly bpm: number;
   /** Prima tonacji (MIDI), np. 50 = D3. */
   readonly root: number;
   /** Stopnie skali w półtonach od primy. */
   readonly scale: readonly number[];
-  /** Progresja: każdy takt to akord zbudowany na danym stopniu skali (indeks w `scale`). */
+  /** Progresja: każdy takt stoi na akordzie zbudowanym na danym stopniu skali (indeks w `scale`). */
   readonly progression: readonly number[];
   /** Takty na akord. */
   readonly barsPerChord: number;
+  /** Seed wariacji — ten sam utwór przy każdym odsłuchu. */
+  readonly seed: number;
+}
+
+/** Lucent (krok 116): akordy padu i basu, nad nimi rzadkie dzwonki, puls bębna. */
+export interface LucentThemeDefinition extends MusicThemeBase {
+  readonly preset: MusicPreset.Lucent;
   /** Szansa nuty dzwonka na każdą ósemkę (0..1). */
   readonly bellDensity: number;
   /** O ile półtonów nad akordem grają dzwonki (krok 116a: oktawa niżej niż dotąd — mniej przenikliwie). */
@@ -142,6 +163,32 @@ export interface MusicThemeDefinition {
   readonly drumBeats: readonly number[];
   /** Bęben gra zawsze (zaświaty) albo tylko w walce z bossem. */
   readonly drumAlways: boolean;
-  /** Seed melodii — ten sam utwór przy każdym odsłuchu. */
-  readonly seed: number;
 }
+
+/**
+ * Horror (krok 139): pętla 4/4 w 16 krokach (szesnastkach) na takt,
+ * z akordem z progresji, frazami zakończonymi przełamaniem i wstępem bez klasku.
+ */
+export interface HorrorThemeDefinition extends MusicThemeBase {
+  readonly preset: MusicPreset.Horror;
+  /** Bas: 16 kroków taktu — przesunięcie w stopniach skali od akordu albo `null` (pauza). */
+  readonly bassSteps: readonly (number | null)[];
+  /** Kroki z otwartym hi-hatem (na „i” — offbeat house'u). */
+  readonly openHatSteps: readonly number[];
+  /** Kroki z klaskiem (zwykle 2 i 4 miara). */
+  readonly clapSteps: readonly number[];
+  /** Kroki z akordem-stabem (gra co drugi takt, w walce z bossem — w każdym). */
+  readonly stabSteps: readonly number[];
+  /** Interwał grozy w dronie (półtony nad primą akordu): 1 — mała sekunda, 6 — tryton. */
+  readonly droneTension: number;
+  /** Szansa „pingu” w takcie (0..1) i jego wysokość nad akordem (półtony). */
+  readonly pingChance: number;
+  readonly pingTranspose: number;
+  /** Fraza ma `phraseBars` taktów; ostatnie `breakBars` to przełamanie bez stopy, basu i klasku. */
+  readonly phraseBars: number;
+  readonly breakBars: number;
+  /** Pierwsze takty utworu: sama stopa, hi-haty i bas — klask i stab dochodzą później. */
+  readonly introBars: number;
+}
+
+export type MusicThemeDefinition = LucentThemeDefinition | HorrorThemeDefinition;
