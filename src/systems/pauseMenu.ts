@@ -23,6 +23,8 @@ export enum PauseItem {
   Slot2 = 'slot2',
   Slot3 = 'slot3',
   Music = 'music',
+  /** Styl muzyki: Lucent albo Horror (krok 139). */
+  MusicPreset = 'musicPreset',
   Sfx = 'sfx',
   Mute = 'mute',
   Fill = 'fill',
@@ -57,6 +59,7 @@ export function pauseItems(page: PausePage, options: PauseMenuOptions): readonly
       return [...SLOTS, PauseItem.Back];
     case PausePage.Settings:
       return [
+        PauseItem.MusicPreset,
         PauseItem.Music,
         PauseItem.Sfx,
         PauseItem.Mute,

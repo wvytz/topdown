@@ -9,7 +9,7 @@ import { MenuCommand } from '@/systems/gamepadInput';
 import { currentPlatform } from '@/core/platform';
 import { bindPadMenu } from '@/input/PadMenuInput';
 import { SoundCue, sound } from '@/audio/SoundBoard';
-import { AUDIO_TEXT, MUTE_KEY } from '@/config/audioConfig';
+import { AUDIO_TEXT, MUSIC_PRESET_NAMES, MUTE_KEY } from '@/config/audioConfig';
 import { menuCommandFromKey } from '@/systems/gamepadInput';
 import { volumeLabel } from '@/systems/AudioSettings';
 import { DISPLAY_CONFIG, DISPLAY_TEXT } from '@/config/displayConfig';
@@ -202,6 +202,7 @@ export class PauseScene extends Phaser.Scene {
       case MenuCommand.Left:
       case MenuCommand.Right:
         if (this.cursor === PauseItem.Music || this.cursor === PauseItem.Sfx) this.changeVolume(this.cursor, command === MenuCommand.Left ? -1 : 1);
+        if (this.cursor === PauseItem.MusicPreset) this.changePreset(command === MenuCommand.Left ? -1 : 1);
         break;
       case MenuCommand.Confirm:
         if (this.cursor !== null) this.activate(this.cursor);
@@ -248,6 +249,9 @@ export class PauseScene extends Phaser.Scene {
       case PauseItem.Sfx:
       case PauseItem.Mute:
         sound.toggleMute();
+        break;
+      case PauseItem.MusicPreset:
+        this.changePreset(1);
         break;
       case PauseItem.Fill:
       case PauseItem.Fullscreen:
@@ -388,6 +392,8 @@ export class PauseScene extends Phaser.Scene {
         const channel = item === PauseItem.Music ? 'music' : 'sfx';
         return `${AUDIO_TEXT[channel]} ${volumeLabel(settings[channel])}`;
       }
+      case PauseItem.MusicPreset:
+        return AUDIO_TEXT.preset(MUSIC_PRESET_NAMES[settings.preset]);
       case PauseItem.Mute:
         return T.mute(settings.muted);
       case PauseItem.Fill:
@@ -403,7 +409,7 @@ export class PauseScene extends Phaser.Scene {
     if (selected) return COLORS.selected;
     const slot = slotOf(item);
     if (slot !== null) return this.saves.load(slot) ? COLORS.item : COLORS.dim;
-    if ((item === PauseItem.Music || item === PauseItem.Sfx) && sound.settings.muted) return COLORS.dim;
+    if ((item === PauseItem.Music || item === PauseItem.Sfx || item === PauseItem.MusicPreset) && sound.settings.muted) return COLORS.dim;
     if (item === PauseItem.Mute && sound.settings.muted) return COLORS.error;
     return COLORS.item;
   }
@@ -430,6 +436,12 @@ export class PauseScene extends Phaser.Scene {
     void display.toggleFullscreen().then((ok) => {
       if (!ok && this.scene.isActive()) this.status.setText(DISPLAY_TEXT.fullscreenFailed).setColor(COLORS.error);
     });
+  }
+
+  /** Zmiana stylu muzyki (krok 139); ekran odświeża się przez `sound.watch`. */
+  private changePreset(step: 1 | -1): void {
+    sound.play(SoundCue.UiMove);
+    sound.cycleMusicPreset(step);
   }
 
   private changeVolume(item: PauseItem.Music | PauseItem.Sfx, steps: number): void {

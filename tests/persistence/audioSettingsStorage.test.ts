@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AUDIO_SETTINGS_RULES, AUDIO_STORAGE_KEY } from '@/config/audioConfig';
+import { MusicPreset } from '@/core/audioTypes';
 import type { KeyValueStorage } from '@/persistence/HighscoreStorage';
 import { AudioSettingsStorage } from '@/persistence/AudioSettingsStorage';
 
@@ -8,8 +9,8 @@ describe('AudioSettingsStorage (krok 116)', () => {
     const data = new Map<string, string>();
     const storage: KeyValueStorage = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) };
     expect(new AudioSettingsStorage(storage).load()).toEqual(AUDIO_SETTINGS_RULES.defaults);
-    new AudioSettingsStorage(storage).save({ music: 0.2, sfx: 0.9, muted: true });
-    expect(new AudioSettingsStorage(storage).load()).toEqual({ music: 0.2, sfx: 0.9, muted: true });
+    new AudioSettingsStorage(storage).save({ music: 0.2, sfx: 0.9, muted: true, preset: MusicPreset.Horror });
+    expect(new AudioSettingsStorage(storage).load()).toEqual({ music: 0.2, sfx: 0.9, muted: true, preset: MusicPreset.Horror });
   });
 
   it('zepsuty JSON i zablokowany magazyn nie psują gry', () => {
@@ -24,7 +25,7 @@ describe('AudioSettingsStorage (krok 116)', () => {
       },
     };
     const store = new AudioSettingsStorage(blocked);
-    store.save({ music: 0, sfx: 0.1, muted: false });
-    expect(store.load()).toEqual({ music: 0, sfx: 0.1, muted: false });
+    store.save({ music: 0, sfx: 0.1, muted: false, preset: MusicPreset.Lucent });
+    expect(store.load()).toEqual({ music: 0, sfx: 0.1, muted: false, preset: MusicPreset.Lucent });
   });
 });

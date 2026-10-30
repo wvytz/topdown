@@ -5081,6 +5081,38 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 **Testy i weryfikacja:** `tests/ai/DirtyWitch.test.ts` (piętro 8 i krąg 16, pasy bocianów i przejścia między nimi, kolejność uderzeń, pikowanie, kwiaty i pulsy, wir, druga faza w `BossBrain`, skalowanie, animacje), testy biomów (Bociani Ogród, pióra w Lustrzanej komnacie); `npm run build` (typy, 2254 testy, build). W przeglądarce (`?floor=8&boss=1&hero=archer`): wszystkie ataki, przejście w drugą fazę z rykiem i żukami, bez błędów w konsoli. `npm run smoke` i `npm run smoke -- --coop` — patrz niżej.
 
 **Do oceny właściciela:** wygląd wiedźmy i bocianów, czytelność pasów bocianów (dużo czerwonych kółek), trudność, czy noc w ogrodzie nie jest za ciemna.
+## Krok 139 — Muzyka: dwa style — Lucent i Horror (minimalny house) `#ocena` `#decyzja` `#dzwiek`
+
+**Skąd:** prośba właściciela (30.10.2026): „zmień ten ambient na prosty house'owy bit z kategorii horror minimal tech”, a potem `#decyzja`: „dodaj to jako drugi preset. Nazwij pierwszy Lucent, a ten — horror”.
+
+**Co powstało:**
+- **Nowy kompozytor** (`systems/MusicComposer.ts`, czysty TS): pętla 4/4 w 16 krokach na takt. Stopa na każdą ćwierćnutę, otwarty hi-hat na offbeat, klask na 2 i 4, toczący się bas na akordzie z progresji, krótki ciemny stab co drugi takt, pod spodem dron (prima + interwał grozy) i rzadki „ping” w echu (deterministyczny seed). Fraza 16 taktów kończy się 2-taktowym przełamaniem (bez stopy, basu i klasku); pierwsze 4 takty utworu bez klasku i staba — muzyka się rozkręca.
+- **Dwa klimaty tej samej pętli** (`MUSIC_THEMES`): wieża i menu — a-moll, 122 BPM, dron z małą sekundą; zaświaty — e frygijski, 118 BPM, dron z trytonem, gęstsze pingi, inny rytm basu.
+- **Walka z bossem** (`setMusicIntense`): szesnastkowe zamknięte hi-haty, stab w każdym takcie, częstsze pingi, bez przełamań.
+- **Nowe głosy odtwarzacza** (`audio/MusicPlayer.ts`): stopa (sinus z opadającą wysokością), hi-haty i klask (szum za filtrem), bas-piła z zamykającym się filtrem, stab z dwóch rozstrojonych pił, dron z dwóch sinusów, ping; stab i ping idą do echa (kropkowana ósemka ze sprzężeniem). Barwy i głośności w `MUSIC_MIX`.
+- **Dwa zestawy muzyki** (`MusicPreset`, `MUSIC_PRESETS`): **Lucent** — dawny ambient z kroku 116 (pad, bas, dzwonki, bęben-serce; bez zmian w brzmieniu) i **Horror** — nowy house. Pauza → „Dźwięk i obraz” → pierwsza pozycja „Styl muzyki: LUCENT / HORROR” (← →, Enter, klik albo stuknięcie; pad tak samo). Wybór zapisuje się w ustawieniach dźwięku (`AudioSettings.preset`, ten sam klucz w `localStorage`; stare zapisy bez pola dostają Lucent), a bieżący utwór przechodzi płynnie w nowy styl. Domyślnie Lucent.
+- Kanał muzyki, głośność z pauzy, N, wyciszenie na starcie i przyciszanie na pauzie — bez zmian (te same `SoundBoard` i szyna muzyki).
+
+**Decyzje:** dalej synteza w kodzie, bez plików audio. Hi-haty celowo ciche i krótkie (pamiątka po kroku 116a: zmęczenie ucha po 20 minutach).
+
+**Testy i weryfikacja:** `tests/systems/musicComposer.test.ts` (Horror: stopa i przełamanie, wstęp, tryb bossa, dron z interwałem grozy, pingi; Lucent: dawne testy bębna i oddechu dzwonków; każdy zestaw gra swoimi głosami; determinizm dla obu zestawów i klimatów), `tests/systems/audioSettings.test.ts` (zapis zestawu, zawijanie), `pauseMenu.test.ts`; `npm run build` (typy, 2221 testów, build). W przeglądarce: pauza pokazuje „Styl muzyki: LUCENT”, → zmienia na HORROR i zapisuje `preset: "horror"`, bez błędów w konsoli. W Chromium wyrenderowane próbki (OfflineAudioContext, prawdziwy `MusicPlayer`): wieża 40 s, zaświaty 40 s, boss 20 s — szczyt ok. 0,31 przed głośnością kanału, bez przesterowania, brak błędów w konsoli.
+
+**Do oceny:** czy klimat trafiony; tempo (122/118), głośność stopy względem efektów, czy pingi i dron nie męczą po dłuższej grze.
+
+## Krok 140 — Czytelny przycisk pauzy na telefonie `#ocena` `#mobile`
+
+**Skąd:** `#ocena` właściciela (30.10.2026): przy rozmowie z nowym testerem sam nie wiedział, gdzie jest pauza — dwie kreski „II” w małym kółku nic nie mówią. Pauza na telefonie jest ważna, bo prowadzi też do opcji i czatu „Napisz do autora”.
+
+**Co powstało:**
+- Przycisk pauzy w wersji mobilnej (`mobile/TouchScene.ts`, `drawPauseButton`) to teraz podłużna pigułka 92×32 px pod minimapą: ciemne tło, złota obwódka, rysowana ikonka ⏸ i podpis **PAUZA** (16 px, złoty) — widać ją od razu i odróżnia się od szarych kółek walki.
+- Strefa dotyku prostokątna (`onPauseButton`): wymiary × `hitSlop`, w pionie jeszcze +8 px.
+- Wymiary i położenie w `TOUCH_BUTTONS.pause` (`config/touchConfig.ts`), napis w `TOUCH_LABELS.pause`.
+
+**Decyzje:** podpis „PAUZA”, nie „STOP” ani „MENU” — „stop” brzmi jak koniec gry, a „menu” myli się z menu głównym. Wersja PC bez zmian (pauza pod Esc/P i padem Start).
+
+**Testy i weryfikacja:** `npm run build` (typy, 2221 testów, build). W Chromium z emulacją telefonu (Pixel 7 poziomo, `mobile.html`): przycisk widoczny pod minimapą, stuknięcie przy jego krawędzi otwiera pauzę.
+
+**Do oceny:** czy przycisk jest dość widoczny i nie zasłania minimapy na dużych piętrach.
 
 ## Znane ograniczenia i backlog
 
