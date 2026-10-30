@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
-import type { BeamHudData, BossHudData, UltimateHudData, HudItem, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
+import type { BeamHudData, BossBarData, BossHudData, BossPointerData, UltimateHudData, HudItem, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { ITEM_POOL } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
@@ -10,6 +10,7 @@ import { MINIMAP_CONFIG } from '@/config/minimapConfig';
 import type { MinimapExplorer } from '@/systems/Minimap';
 import { DeathScreen } from '@/effects/DeathScreen';
 import { currentPlatform } from '@/core/platform';
+import { BOSS_POINTER_CONFIG } from '@/config/gameConfig';
 
 const BAR_X = 16;
 const BAR_WIDTH = 200;
@@ -32,6 +33,9 @@ const ULT_SIZE = 24;
 const BOSS_BAR_WIDTH = 420;
 const BOSS_BAR_HEIGHT = 12;
 const BOSS_BAR_Y = 470;
+/** Duet (krok 136): dwa paski obok siebie w szerokości jednego, z przerwą. */
+const DUET_BAR_GAP = 20;
+const DUET_BAR_WIDTH = (BOSS_BAR_WIDTH - DUET_BAR_GAP) / 2;
 /** Plansza bossa (wejście na arenę, wściekłość): czas, pojawianie się i wygasanie. */
 const BANNER_MS = 3000;
 const BANNER_FADE_IN_MS = 300;
@@ -99,6 +103,9 @@ export class HudScene extends Phaser.Scene {
   private minimapMarks!: Phaser.GameObjects.Graphics;
   private minimapDrawn: { explorer: MinimapExplorer; version: number } | null = null;
   private bossNameText!: Phaser.GameObjects.Text;
+  /** Imiona nad paskami duetu (krok 136). */
+  private duetNameTexts: Phaser.GameObjects.Text[] = [];
+  private pointers!: Phaser.GameObjects.Graphics;
   private goldText!: Phaser.GameObjects.Text;
   private itemSlots: ItemSlot[] = [];
   /** Podpis ostatnio narysowanych slotów — przerysowujemy tylko przy zmianie. */
@@ -158,6 +165,13 @@ export class HudScene extends Phaser.Scene {
       .text(this.scale.width / 2, BOSS_BAR_Y - 22, '', { ...style, fontSize: '15px', color: '#ffb0a0' })
       .setOrigin(0.5, 0)
       .setVisible(false);
+    this.duetNameTexts = [0, 1].map((i) =>
+      this.add
+        .text(this.duetBarX(i) + DUET_BAR_WIDTH / 2, BOSS_BAR_Y - 20, '', { ...style, fontSize: '13px', color: '#ffb0a0' })
+        .setOrigin(0.5, 0)
+        .setVisible(false),
+    );
+    this.pointers = this.add.graphics();
 
     this.bannerTitle = this.add
       .text(this.scale.width / 2, BANNER_Y, '', { ...style, fontSize: '30px', color: '#f0d27a', strokeThickness: 6 })
@@ -231,6 +245,7 @@ export class HudScene extends Phaser.Scene {
     this.drawMinimap(hud.minimap, time);
     this.deathScreen.update(hud.death, time);
     this.drawBossBar(hud.boss);
+    this.drawBossPointers(hud.bossPointers, time);
     this.updateBanner(hud.boss);
     this.playerLabelText.setText(hud.playerLabel);
     this.drawPartner(hud.partner, time);
@@ -440,14 +455,65 @@ export class HudScene extends Phaser.Scene {
   }
 
   private drawBossBar(boss: BossHudData | null): void {
-    this.bossNameText.setVisible(boss !== null);
+    const members = boss?.members && boss.members.length > 1 ? boss.members : null;
+    this.bossNameText.setVisible(boss !== null && !members);
+    this.duetNameTexts.forEach((text, i) => text.setVisible(members?.[i] !== undefined));
     if (!boss) return;
+    if (members) {
+      members.forEach((member, i) => this.drawDuetBar(member, i));
+      return;
+    }
 
     const x = (this.scale.width - BOSS_BAR_WIDTH) / 2;
     const ratio = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
     this.bossNameText.setText(boss.enraged ? `${boss.name} — ${boss.enragedLabel}` : boss.name);
-    this.bars.fillStyle(0x000000, 0.6).fillRect(x - 2, BOSS_BAR_Y - 2, BOSS_BAR_WIDTH + 4, BOSS_BAR_HEIGHT + 4);
-    this.bars.fillStyle(0x3a1010, 1).fillRect(x, BOSS_BAR_Y, BOSS_BAR_WIDTH, BOSS_BAR_HEIGHT);
-    this.bars.fillStyle(boss.enraged ? 0xff5a36 : 0xc0392b, 1).fillRect(x, BOSS_BAR_Y, BOSS_BAR_WIDTH * ratio, BOSS_BAR_HEIGHT);
+    this.fillBossBar(x, BOSS_BAR_WIDTH, ratio, boss.enraged);
   }
+
+  /**
+   * Pasek jednego bossa duetu (krok 136): wściekły — pomarańczowe imię (okrzyk i tak ogłasza plansza),
+   * pokonany — pusty pasek i wyszarzone imię.
+   */
+  private drawDuetBar(member: BossBarData, index: number): void {
+    const text = this.duetNameTexts[index];
+    if (!text) return;
+    text.setText(member.name).setColor(member.defeated ? '#706060' : member.enraged ? '#ff8a5a' : '#ffb0a0');
+    const ratio = member.maxHp > 0 ? member.hp / member.maxHp : 0;
+    this.fillBossBar(this.duetBarX(index), DUET_BAR_WIDTH, ratio, member.enraged);
+  }
+
+  private fillBossBar(x: number, width: number, ratio: number, enraged: boolean): void {
+    this.bars.fillStyle(0x000000, 0.6).fillRect(x - 2, BOSS_BAR_Y - 2, width + 4, BOSS_BAR_HEIGHT + 4);
+    this.bars.fillStyle(0x3a1010, 1).fillRect(x, BOSS_BAR_Y, width, BOSS_BAR_HEIGHT);
+    this.bars.fillStyle(enraged ? 0xff5a36 : 0xc0392b, 1).fillRect(x, BOSS_BAR_Y, width * ratio, BOSS_BAR_HEIGHT);
+  }
+
+  private duetBarX(index: number): number {
+    return (this.scale.width - BOSS_BAR_WIDTH) / 2 + index * (DUET_BAR_WIDTH + DUET_BAR_GAP);
+  }
+
+  /** Strzałki do bossów poza kadrem (krok 136): grot przy krawędzi ekranu, pulsuje. */
+  private drawBossPointers(pointers: readonly BossPointerData[], time: number): void {
+    const g = this.pointers.clear();
+    if (pointers.length === 0) return;
+    const { lengthPx, widthPx, color, pulseMs, minAlpha } = BOSS_POINTER_CONFIG;
+    const pulse = 0.5 + 0.5 * Math.sin((time / pulseMs) * Math.PI * 2);
+    const alpha = minAlpha + (1 - minAlpha) * pulse;
+    for (const { x, y, angle } of pointers) {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      // Grot w stronę bossa, podstawa cofnięta o długość grotu.
+      const tip = { x: x + cos * lengthPx * 0.5, y: y + sin * lengthPx * 0.5 };
+      const bx = x - cos * lengthPx * 0.5;
+      const by = y - sin * lengthPx * 0.5;
+      const half = widthPx / 2;
+      g.fillStyle(0x000000, 0.7).fillTriangle(
+        tip.x + cos * 2, tip.y + sin * 2,
+        bx - sin * (half + 2) - cos * 2, by + cos * (half + 2) - sin * 2,
+        bx + sin * (half + 2) - cos * 2, by - cos * (half + 2) - sin * 2,
+      );
+      g.fillStyle(color, alpha).fillTriangle(tip.x, tip.y, bx - sin * half, by + cos * half, bx + sin * half, by - cos * half);
+    }
+  }
+
 }

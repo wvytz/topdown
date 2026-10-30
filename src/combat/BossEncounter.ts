@@ -93,6 +93,7 @@ export class BossEncounter {
     const members = this.fights.map((fight) => {
       const status = fight.getStatus();
       return {
+        name: fight.bossName,
         hp: fight.hp,
         maxHp: fight.maxHp,
         fighting: status !== null,
@@ -129,6 +130,11 @@ export class BossEncounter {
     if (!push) return;
     first!.nudge(push.a);
     second!.nudge(push.b);
+  }
+
+  /** Pozycje walczących bossów (krok 136: strzałki do bossów poza kadrem). */
+  get fightingPositions(): Vector2[] {
+    return this.fights.flatMap((fight) => (fight.isFighting && fight.position ? [fight.position] : []));
   }
 
   get minions(): readonly Spiderling[] {

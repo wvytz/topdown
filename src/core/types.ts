@@ -134,6 +134,8 @@ export interface HudData {
   readonly minimap: MinimapHudData | null;
   /** null, gdy walka z bossem nie trwa. */
   readonly boss: BossHudData | null;
+  /** Bossowie poza kadrem (krok 136): strzałki przy krawędzi ekranu. */
+  readonly bossPointers: readonly BossPointerData[];
   readonly gold: number;
   /** Run testowy z adresu (krok 41g) — wynik nie trafia na tablicę. */
   readonly practice: boolean;
@@ -230,6 +232,24 @@ export interface BossHudData {
   readonly hp: number;
   readonly maxHp: number;
   readonly enraged: boolean;
+  /** Duet (krok 136): osobny pasek każdego bossa; brak = jeden pasek. */
+  readonly members?: readonly BossBarData[];
+}
+
+/** Pasek jednego bossa duetu (krok 136). */
+export interface BossBarData {
+  readonly name: string;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly enraged: boolean;
+  readonly defeated: boolean;
+}
+
+/** Strzałka przy krawędzi ekranu do bossa poza kadrem (krok 136), w pikselach ekranu. */
+export interface BossPointerData {
+  readonly x: number;
+  readonly y: number;
+  readonly angle: number;
 }
 
 /** HUD czyta stan co klatkę z tego źródła (zamiast zdarzeń przy każdej zmianie). */

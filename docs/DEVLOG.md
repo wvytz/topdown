@@ -5030,6 +5030,20 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Na później:** ikonka może trafić na ekran wyboru, do plakatów i na kartę udostępniania (Open Graph).
 
+## Krok 136 — Paski HP duetu i strzałka do bossa poza kadrem `#ocena` `#boss` `#areny-bossow`
+
+**Skąd:** prośba właściciela (30.10.2026): „każdy z bossów pająków musi mieć swój własny pasek HP widoczny na ekranie. Poprawmy też minimalnie widoczność na arenach bossów — frustrujące, gdy boss zostanie daleko w narożniku i zatrzyma się na dłuższej animacji”.
+
+**Co powstało:**
+- **Osobne paski duetu.** `duetStatus` (`systems/BossDuet.ts`) oddaje oprócz sumy HP listę `members` (imię, HP, wściekłość, pokonany). HUD rysuje w duecie dwa paski obok siebie w szerokości dawnego jednego (2 × 200 px), z imieniem nad każdym: wściekły — pomarańczowe imię, pokonany — pusty pasek i wyszarzone imię. Plansza walki („Pajęczy duet”) bez zmian. Działa też dla sprzątaczek (krok 126): do wejścia blondynki jeden pasek, potem dwa.
+- **Strzałka do bossa poza kadrem.** Zamiast oddalać kamerę (pole widzenia zmienia balans, krok 118) HUD pokazuje przy krawędzi ekranu pulsujący czerwony grot w stronę każdego walczącego bossa, którego środek jest poza kadrem albo przy samym brzegu. Geometria w czystym `systems/OffscreenPointer.ts` (`edgePointer`), liczby w `BOSS_POINTER_CONFIG` (`config/gameConfig.ts`), pozycje walczących bossów — `BossEncounter.fightingPositions`. Działa we wszystkich walkach z bossem, solo i w co-opie, na PC i telefonie.
+
+**Decyzje:** najlżejsza poprawka widoczności — bez zmiany zoomu i kamery; boss „uśpiony” w windzie nie dostaje strzałki.
+
+**Testy i weryfikacja:** `tests/systems/offscreenPointer.test.ts` (w kadrze — brak, krawędź, skos), nowy test pasków w `tests/systems/bossDuet.test.ts`; `npm run build` (typy, 2211 testów, build). W przeglądarce (`?floor=2&boss=1`): dwa paski „Król Pająków” / „Matka Pająków”, po odsunięciu bossów poza kadr — dwie strzałki przy dolnej krawędzi w ich stronę.
+
+**Do oceny:** wielkość i miejsce strzałki (przy dolnej krawędzi zahacza o linię podpowiedzi sterowania), czy wystarcza, czy jednak lekko oddalić kamerę na arenie.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5106,6 +5120,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
 - **Wrogowie za kratami (krok 132):** `#zasadzka` wróg spoza zamkniętego pokoju czeka pod kratą, po jej podniesieniu zryw (450 ms, ×1,8) — długość i siła zrywu czekają na test właściciela.
@@ -5160,5 +5175,5 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
 
 **6. Drobne uwagi techniczne**
-- **Boss bez reguły widoku:** arena (11–13 kafli) jest wyższa niż widok w pionie (ok. 8,4 kafla), więc uderzenie może spaść poza kadrem. Ataki są obszarowe i z telegrafem; regułę można dodać, jeśli testy pokażą problem.
+- **Boss bez reguły widoku:** arena (11–13 kafli) jest wyższa niż widok w pionie (ok. 8,4 kafla), więc uderzenie może spaść poza kadrem. Ataki są obszarowe i z telegrafem. Od kroku 136 strzałka przy krawędzi ekranu pokazuje bossa poza kadrem; oddalenie kamery na arenie — tylko jeśli to nie wystarczy.
 - **Pozostałości testów w panelu przeglądarki:** wpisy „0 złota” na tablicy rekordów i dwa stare wpisy w konsoli z przeładowań HMR w kroku 18. Gra działa poprawnie.
