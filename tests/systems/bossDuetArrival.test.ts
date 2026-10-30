@@ -32,7 +32,7 @@ describe('wejście partnera duetu (krok 126)', () => {
 describe('sprzątaczki we wspinaczce (krok 126)', () => {
   it('na piętrze brunetki (w każdym kręgu) z windy wraca blondynka', () => {
     const loop = TOWER_CONFIG.floorsPerLoop;
-    for (const floor of [8, 8 + loop]) {
+    for (const floor of [7, 7 + loop]) {
       const duet = duetForFloor(floor, BOSS_DUETS, TOWER_CONFIG);
       expect(duet?.arrival).toBeDefined();
       expect(bossForFloor(floor).id).toBe(CLEANER_DARK.id);
@@ -46,7 +46,7 @@ describe('sprzątaczki we wspinaczce (krok 126)', () => {
   });
 
   it('na piętrze blondynki duetu nie ma', () => {
-    expect(duetForFloor(7, BOSS_DUETS, TOWER_CONFIG)).toBeNull();
+    expect(duetForFloor(6, BOSS_DUETS, TOWER_CONFIG)).toBeNull();
     expect(bossById(CLEANER_BLONDE.id)).toBe(CLEANER_BLONDE);
   });
 });

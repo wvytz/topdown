@@ -783,20 +783,20 @@ export const CLEANER_DARK = {
 /**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem.
  * Od kroku 127 (koncept sprzątaczek zaakceptowany przez właściciela): 2 — Król Pająków z Matką Pająków (duet
- * w Grzybni, `BOSS_DUETS`), 3 — Grzybowy Pożeracz (Cmentarzysko), 4–5 — Piekło, 6 — Baron Dymu,
- * 7–8 — sprzątaczki (Lustrzana komnata).
+ * w Grzybni, `BOSS_DUETS`), 3 — Grzybowy Pożeracz (Cmentarzysko), 4 — Piekło, 5 — Baron Dymu,
+ * 6–7 — sprzątaczki (Lustrzana komnata). Krok 134 (decyzja właściciela: „scalamy tarczowników, jeden wystarczy”):
+ * Piekło ma jedno piętro i jednego bossa z tarczą — Kata Otchłani; Strażnik Bram zostaje w kodzie poza wspinaczką.
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_KING,
   3: FUNGAL_DEVOURER,
-  4: GATE_WARDEN,
-  5: ABYSS_EXECUTIONER,
-  6: SMOKE_BARON,
-  7: CLEANER_BLONDE,
-  8: CLEANER_DARK,
+  4: ABYSS_EXECUTIONER,
+  5: SMOKE_BARON,
+  6: CLEANER_BLONDE,
+  7: CLEANER_DARK,
 };
 
-/** Wszyscy bossowie gry — partner duetu nie musi mieć własnego piętra (Matka Pająków od kroku 127). */
+/** Wszyscy bossowie gry — partner duetu nie musi mieć własnego piętra (Matka Pająków od kroku 127, Strażnik Bram poza wspinaczką od kroku 134). */
 const ALL_BOSSES: readonly BossDefinition[] = [
   FLOOR_GUARDIAN,
   SPIDER_QUEEN,
@@ -902,7 +902,7 @@ export const BOSS_DUETS: readonly BossDuetDefinition[] = [
     title: 'Pajęczy duet',
   },
   {
-    floorInLoop: 8,
+    floorInLoop: 7,
     partner: BossId.CleanerBlonde,
     spawnOffsetTiles: 0,
     bodyGapPx: 4,

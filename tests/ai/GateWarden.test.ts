@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import { ABYSS_EXECUTIONER, GATE_WARDEN, bossForFloor } from '@/config/bossConfig';
+import { TOWER_CONFIG } from '@/config/towerConfig';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import type { AttackPlanContext } from '@/ai/bossAttacks';
 import { planBossAttack } from '@/ai/bossAttacks';
@@ -12,8 +13,8 @@ import { ShieldGuard, fireRingRadius } from '@/systems/Shield';
 import { BOSS_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 
 describe('Strażnik Bram (krok 41e)', () => {
-  it('kończy piętro 4 (Piekło)', () => {
-    expect(bossForFloor(4).id).toBe(BossId.GateWarden);
+  it('od kroku 134 poza wspinaczką: Piekło ma jednego bossa z tarczą (Kata Otchłani)', () => {
+    for (let floor = 1; floor <= TOWER_CONFIG.floorsPerLoop; floor++) expect(bossForFloor(floor).id).not.toBe(BossId.GateWarden);
   });
 
   it('ma tarczę z przodu: stożek węższy niż pół okręgu (da się go obejść), obraca się wolniej niż gracz go okrąża', () => {
@@ -93,8 +94,8 @@ describe('Kat Otchłani (krok 41f)', () => {
     ...over,
   });
 
-  it('kończy piętro 5 i ma tarczę jak Strażnik Bram, ale rozgrzewaną promieniem', () => {
-    expect(bossForFloor(5).id).toBe(BossId.AbyssExecutioner);
+  it('kończy piętro 4 (jedyne piętro Piekła, krok 134) i ma tarczę jak Strażnik Bram, ale rozgrzewaną promieniem', () => {
+    expect(bossForFloor(4).id).toBe(BossId.AbyssExecutioner);
     expect(ABYSS_EXECUTIONER.shield.heat.ticks).toBeGreaterThan(0);
   });
 
