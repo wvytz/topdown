@@ -251,6 +251,8 @@ export const MIRROR_HALL_DRESSING: FloorDressingConfig = {
     'decal.shards': 2,
     'decal.slop': 1.5,
     'decal.suds': 1.2,
+    // Krok 137: pióra — sprzątaczki nie nadążają za ptakami Brudnej Wiedźmy z piętra wyżej.
+    'decal.feathers': 0.8,
   },
   longCrackChance: 0.004,
   // Posadzka wypolerowana: kurz pod murami rzadki.
@@ -268,6 +270,40 @@ export const MIRROR_HALL_DRESSING: FloorDressingConfig = {
     wallFaceChance: 0.6,
     wallFaceGroup: 'wallFace.mirror',
     decals: { group: 'decal.suds', chance: 0.22 },
+    trail: TRAIL,
+  },
+};
+
+/**
+ * Bociani Ogród (krok 137, `#brudna-wiedzma`): zarośnięty taras nocą — kępy trawy i kwiaty w szczelinach, pióra
+ * i błoto na posadzce, bluszcz i gniazda na licach. Ku arenie Brudnej Wiedźmy coraz więcej piór i gniazd.
+ */
+export const STORK_GARDEN_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalChance: 0.2,
+  decalGroupWeights: {
+    'decal.crack': 1.5,
+    'decal.grass': 4,
+    'decal.feathers': 2,
+    'decal.mud': 2,
+    'decal.flowers': 1,
+  },
+  longCrackChance: 0.006,
+  // Trawa wpełza spod murów (kafle `decal.dust*` w tym biomie).
+  dust: {
+    north: { chance: 0.7, group: 'decal.dustN' },
+    west: { chance: 0.6, group: 'decal.dustW' },
+    east: { chance: 0.6, group: 'decal.dustE' },
+  },
+  wallFace: { chance: 0.3, group: 'wallFace.garden' },
+  cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.15 },
+  nest: {
+    radiusTiles: 18,
+    cobwebChance: 0,
+    corridorCobwebChance: 0,
+    wallFaceChance: 0.6,
+    wallFaceGroup: 'wallFace.garden',
+    decals: { group: 'decal.feathers', chance: 0.25 },
     trail: TRAIL,
   },
 };

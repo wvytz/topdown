@@ -33,7 +33,6 @@ import {
   LARDER_VISUAL,
   SPIDERLING_DROP_VISUAL,
   THRONE_ROOM_VISUAL,
-  SPIDERLING_VISUAL,
   SPRITE_SHEETS,
   animationKey,
 } from '@/config/spriteConfig';
@@ -70,7 +69,7 @@ import { resolveDashSweep } from '@/systems/DashStrike';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot, shotTouches } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { CLEANER_FX_VISUAL } from '@/config/spriteConfig';
+import { CLEANER_FX_VISUAL, WITCH_FX_VISUAL, spiderlingVisual } from '@/config/spriteConfig';
 import { ShoutSchedule } from '@/systems/BossShouts';
 import { EscapeStage, escapeStage, shouldEscape } from '@/systems/BossEscape';
 import type { DuetArrival } from '@/systems/BossDuet';
@@ -746,6 +745,12 @@ export class BossFight {
       if (strike.look !== 'spores') continue;
       moved.set(strike.center, this.clampToward(strike.center, { x: player.x, y: player.y }, (p) => this.isArenaFloor(p)));
     }
+    // Kwiaty-oczy (krok 137) poza podłogą areny dosuwamy w stronę gracza — kwiat, nasiono i pierścienie pyłku razem.
+    for (const web of plan.webs) {
+      if (web.look !== 'flower') continue;
+      moved.set(web.to, this.clampToward(web.to, { x: player.x, y: player.y }, (p) => this.isArenaFloor(p)));
+    }
+    if (plan.kind === BossAttackKind.StorkFlight || plan.kind === BossAttackKind.BirdDive) sound.play(SoundCue.WingFlap, this.boss ?? player);
     const strikes = plan.strikes.map((strike) => ({ ...strike, center: moved.get(strike.center) ?? strike.center }));
     // Płat grzybów ze skoku i strąków wyrasta w faktycznym miejscu lądowania.
     const webs = plan.webs.map((web) => {
@@ -757,7 +762,8 @@ export class BossFight {
       const group = strikes.filter((other) => other.impactAt === strike.impactAt && other.telegraphStartAt === strike.telegraphStartAt);
       this.strikes.push({ strike, group, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
-    for (const burst of plan.bursts) {
+    for (const planned of plan.bursts) {
+      const burst = { ...planned, origin: moved.get(planned.origin) ?? planned.origin };
       this.bursts.push({ burst, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
     }
     for (const spawn of plan.spawns) this.spawns.push({ spawn, position: null, view: null });
@@ -768,6 +774,8 @@ export class BossFight {
         .setDepth(RENDER_DEPTH.projectile)
         .setVisible(false)
         .play(animationKey(sheet, animation));
+      // Bocian (krok 137) narysowany dziobem na wschód — obracamy go w kierunku lotu.
+      if (thrown.look === 'stork') sprite.setRotation(Math.atan2(thrown.to.y - thrown.from.y, thrown.to.x - thrown.from.x));
       this.throws.push({ thrown, sprite });
     }
     for (const shot of webs) this.throwWeb(shot);
@@ -1114,8 +1122,9 @@ export class BossFight {
         if (thrown.look === 'bucket' && this.boss) this.ropeGfx?.lineStyle(1, CLEANER_FX_VISUAL.bucket.rope, 0.9).lineBetween(this.boss.x, this.boss.y, sprite.x, sprite.y);
         return true;
       }
-      if (thrown.look === 'can' || thrown.look === 'spore' || thrown.look === 'bucket') {
-        // Puszka i strąk znikają w chwili uderzenia strefy (`strikes` rani w tej samej klatce).
+      if (thrown.look !== undefined) {
+        // Puszka, strąk, wiadro, ptaki i nasiono znikają w chwili uderzenia strefy (`strikes` rani w tej samej klatce);
+        // bocian przelatuje dalej poza pas, a w miejscu nasiona wyrasta kwiat (płat z `webs`).
         sprite.destroy();
         return false;
       }
@@ -1177,7 +1186,7 @@ export class BossFight {
         const target = { x: player.x, y: player.y };
         const wanted = { x: target.x + spawn.offset.x, y: target.y + spawn.offset.y };
         pending.position = this.clampToward(wanted, target, (p) => this.isArenaFloor(p));
-        pending.view = new CeilingFallView(scene, pending.position, SPIDERLING_VISUAL.sheet);
+        pending.view = new CeilingFallView(scene, pending.position, spiderlingVisual(definition.look).sheet, definition.look !== 'beetle');
       }
       if (now < spawn.at) {
         const t = (now - spawn.telegraphStartAt) / (spawn.at - spawn.telegraphStartAt);
@@ -1207,6 +1216,12 @@ export class BossFight {
       if (strike.look === 'smoke') this.playSmokeBurst(strike);
       else if (strike.look === 'water') this.playSplash(strike);
       else if (strike.look === 'tangle') this.playTangleBurst(strike);
+      else if (strike.look === 'feathers') {
+        // Pas bocianów (krok 137): tylko lekki błysk piór — stref jest kilkadziesiąt, bez huku i śladów.
+        const { color, radiusScale } = WITCH_FX_VISUAL.featherPuff;
+        effects.deathBurst(strike.center.x, strike.center.y, color, strike.radius * radiusScale);
+      } else if (strike.look === 'dive') effects.blast(strike.center.x, strike.center.y, strike.radius, group, WITCH_FX_VISUAL.dive);
+      else if (strike.look === 'whirl') effects.blast(strike.center.x, strike.center.y, strike.radius, group, WITCH_FX_VISUAL.whirl);
       else if (strike.look === 'spores') {
         // Strąk zarodników (krok 111): wybuch w kolorach soku, rozprysk soku; płat grzybów wyrasta w tej chwili.
         effects.blast(strike.center.x, strike.center.y, strike.radius, [], SPORE_BLAST_VISUAL);
@@ -1386,8 +1401,8 @@ export class BossFight {
           damage: burst.damage,
           knockback: burst.knockback,
           lifetimeMs: burst.lifetimeMs,
-          visual: BOSS_GLOB,
-          impactDecal: 'slime',
+          visual: burstVisual(burst),
+          ...(!burst.look && { impactDecal: 'slime' as const }),
         });
       }
       return false;
@@ -1713,7 +1728,15 @@ function withoutEscape(definition: BossDefinition): BossDefinition {
   return rest;
 }
 
+/** Pociski fali: kule szlamu, pyłek kwiatu-oka albo liście wiru (krok 137). */
+function burstVisual(burst: ProjectileBurst): { readonly texture: string; readonly animation: string } {
+  if (!burst.look) return BOSS_GLOB;
+  const { sheet, animation } = WITCH_FX_VISUAL[burst.look];
+  return { texture: SPRITE_SHEETS[sheet].key, animation: animationKey(sheet, animation) };
+}
+
 function thrownVisual(thrown: ThrownObject): { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number } {
+  if (thrown.look === 'stork' || thrown.look === 'bird' || thrown.look === 'seed') return WITCH_FX_VISUAL[thrown.look];
   if (thrown.look === 'can') return SMOKE_VISUAL.can;
   if (thrown.look === 'bucket') return CLEANER_FX_VISUAL.bucket;
   if (thrown.look === 'spore') return DEVOURER_FX_VISUAL.pod;

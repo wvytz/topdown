@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5061,6 +5061,26 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** wielkość i miejsce strzałki (przy dolnej krawędzi zahacza o linię podpowiedzi sterowania), czy wystarcza, czy jednak lekko oddalić kamerę na arenie.
 
+## Krok 137 — Brudna Wiedźma i Bociani Ogród `#decyzja` `#boss` `#brudna-wiedzma` `#bociani-ogrod`
+
+**Skąd:** szkic właściciela (30.10.2026, „WITCH?”): wyszczerzona wiedźma z długimi czarnymi włosami w pomarańczowo-czarnej sukni z zielonym obrąbkiem, z czerwonym kwiatem, wokół bociany, ptaszek i żuk. Pytanie: bohaterka czy boss? Moja rekomendacja — boss (bohaterka może się odblokować po jego pokonaniu, później), projekt w Claude Doc „Wiedźma — bohaterka czy boss?”. `#decyzja` Właściciel: boss, nazwa **Brudna Wiedźma**, nowe piętro na końcu kręgu, przejście z Lustrzanej komnaty uzasadnione fabułą — „oczyszczenie, złudna czystość, potem totalny mrok, a następnie portal i wędrówka przez jeszcze gorsze odmęty”.
+
+**Co powstało:**
+- **Piętro 8 — Bociani Ogród** (`BiomeId.StorkGarden`): zarośnięty taras na szczycie kręgu nocą. Krąg ma znów 8 pięter (`floorsPerLoop` 8). Kafle `tools/tower_ruins_tiles.py --biome stork_garden` (paleta `bociani_noc`: płyty w barwie mokrej ziemi — z dala od fioletu Czarodziejki i zieleni łucznika, sprawdzone metryką czytelności; mury z chłodnego kamienia, trawa w fugach i mech), lica: bluszcz, gniazda, mech; nakładki: kępy trawy, błoto z tropami ptaków, czerwone kwiatki, pióra. Noc `GARDEN_NIGHT` — najgęstszy mrok kręgu (0,94). Ku arenie więcej piór i gniazd, zielonkawa poświata. Wrogowie na razie z ruin (jak w Lustrzanej komnacie).
+- **Zapowiedź na piętrze 7:** pióra na lustrzanej posadzce (`decal.feathers` także w arkuszu Lustrzanej komnaty) i nowe okrzyki sprzątaczek „Znowu te ptaszyska!”, „Kto tu napierzył?!”.
+- **Brudna Wiedźma** (`DIRTY_WITCH`, „Pani Bocianich Gniazd”), ataki w czystym `ai/witchAttacks.ts` (wspólne pomocniki planów przeniesione do `ai/planHelpers.ts`):
+  - **klucz bocianów** — 3 równoległe pasy cieni (we wściekłości 4) w kierunku wiedźma → bohater, jeden przez bohatera, między pasami 44 px przejścia; potem bocian przelatuje pas i strefy uderzają po kolei pod nim;
+  - **pikowanie** — miejsca wokół bohatera (pierwsze na nim), w każde po kolei spada ptak z góry;
+  - **kwiat-oko** — nasiona lecą łukiem, wyrastają czerwone kwiaty z okiem i 3 razy pulsują pierścieniem 8 kul pyłku (kolejne pulsy obrócone o pół kroku), potem więdną;
+  - **wir sukni** — fala wokół niej i pierścień liści;
+  - **druga faza** (od połowy HP, nowe pole `enragedPattern` w `BossDefinition`, obsługa w `BossBrain`): dochodzi rój żuków-kamikaze (zachowanie pajączków, własny wygląd — `SpiderlingDefinition.look`, `spiderlingVisual`) i lot na bocianach (skok na miejsce bohatera); serie ataków jak u innych bossów we wściekłości. Nie mówi — chichocze i krzyczy krótko („Hi hi hi!”, „Lećcie, ptaszki!”, „Dziobać!”, „Kwitnij!”, „Bzzz!”).
+- **Grafika:** `tools/witch_sprites.py` — wiedźma (128×128, 8 kierunków: chód, czar, wir, lot na bocianach, chichot; śmierć — suknia opada, ptaki odlatują, zostaje kwiat), bocian w locie (obracany w kierunku lotu), pikujący ptak, kwiat-oko, pyłek, liść, nasiono, żuk i jego wybuch. **Dźwięk:** nowy `SoundCue.WingFlap` (trzepot skrzydeł) przy kluczu i pikowaniu.
+
+**Decyzje (moje, do oceny):** liczby ataków; kwiaty na razie nie do zniszczenia (więdną same po 3 pulsach); pas bocianów przy uderzeniu tylko lekko błyska (stref jest kilkadziesiąt — bez huku wybuchu); trzecia faza z koncepcji (żywa tarcza z ptaków) i odblokowanie wiedźmy jako bohaterki — osobne kroki; przejazd windą sprzątaczek na dach (z koncepcji) — na razie tylko w fabule, schody jak zwykle.
+
+**Testy i weryfikacja:** `tests/ai/DirtyWitch.test.ts` (piętro 8 i krąg 16, pasy bocianów i przejścia między nimi, kolejność uderzeń, pikowanie, kwiaty i pulsy, wir, druga faza w `BossBrain`, skalowanie, animacje), testy biomów (Bociani Ogród, pióra w Lustrzanej komnacie); `npm run build` (typy, 2254 testy, build). W przeglądarce (`?floor=8&boss=1&hero=archer`): wszystkie ataki, przejście w drugą fazę z rykiem i żukami, bez błędów w konsoli. `npm run smoke` i `npm run smoke -- --coop` — patrz niżej.
+
+**Do oceny właściciela:** wygląd wiedźmy i bocianów, czytelność pasów bocianów (dużo czerwonych kółek), trudność, czy noc w ogrodzie nie jest za ciemna.
 ## Krok 139 — Muzyka: dwa style — Lucent i Horror (minimalny house) `#ocena` `#decyzja` `#dzwiek`
 
 **Skąd:** prośba właściciela (30.10.2026): „zmień ten ambient na prosty house'owy bit z kategorii horror minimal tech”, a potem `#decyzja`: „dodaj to jako drugi preset. Nazwij pierwszy Lucent, a ten — horror”.

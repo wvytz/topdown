@@ -4,7 +4,7 @@ import type { DamageResult, Hit } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import type { SpiderlingDecision } from '@/ai/SpiderlingBrain';
 import { SpiderlingBrain } from '@/ai/SpiderlingBrain';
-import { SPIDERLING_VISUAL, SPRITE_SHEETS } from '@/config/spriteConfig';
+import { SPRITE_SHEETS, spiderlingVisual } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
 import { attachGroundShadow } from '@/effects/GroundShadow';
@@ -20,9 +20,13 @@ export class Spiderling extends Phaser.Physics.Arcade.Sprite implements MeleeTar
   private readonly health: Health;
   private readonly brain: SpiderlingBrain;
   private readonly animator: DirectionalAnimator;
+  /** Pajączek albo żuk z roju Brudnej Wiedźmy (krok 137). */
+  private readonly visual: ReturnType<typeof spiderlingVisual>;
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: SpiderlingDefinition, now: number) {
-    super(scene, x, y, SPRITE_SHEETS[SPIDERLING_VISUAL.sheet].key);
+    const visual = spiderlingVisual(definition.look);
+    super(scene, x, y, SPRITE_SHEETS[visual.sheet].key);
+    this.visual = visual;
     this.definition = definition;
     this.health = new Health(definition.maxHp);
     this.brain = new SpiderlingBrain(definition, now);
@@ -31,9 +35,9 @@ export class Spiderling extends Phaser.Physics.Arcade.Sprite implements MeleeTar
     scene.physics.add.existing(this);
     this.setCircle(definition.radius, this.width / 2 - definition.radius, this.height / 2 - definition.radius);
     this.setDepth(RENDER_DEPTH.enemy);
-    this.animator = new DirectionalAnimator(this, SPIDERLING_VISUAL.sheet);
-    attachGroundShadow(this, SPIDERLING_VISUAL.groundShadow);
-    this.animator.play(SPIDERLING_VISUAL.move);
+    this.animator = new DirectionalAnimator(this, visual.sheet);
+    attachGroundShadow(this, visual.groundShadow);
+    this.animator.play(visual.move);
   }
 
   get radius(): number {
@@ -55,10 +59,10 @@ export class Spiderling extends Phaser.Physics.Arcade.Sprite implements MeleeTar
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
     if (decision.primeStarted) {
       this.animator.face({ x: target.x - this.x, y: target.y - this.y });
-      this.animator.restart(SPIDERLING_VISUAL.prime, this.definition.primeMs);
+      this.animator.restart(this.visual.prime, this.definition.primeMs);
     } else if (decision.move.x !== 0 || decision.move.y !== 0) {
       this.animator.face(decision.move);
-      this.animator.play(SPIDERLING_VISUAL.move);
+      this.animator.play(this.visual.move);
     }
     return decision;
   }

@@ -2,7 +2,7 @@ import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { AreaStrike, SpiderlingDefinition } from '@/core/bossTypes';
 import type { Vector2 } from '@/core/types';
-import { SPIDERLING_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { SPRITE_SHEETS, animationKey, spiderlingVisual } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
 import type { CombatEffects } from '@/effects/CombatEffects';
@@ -74,7 +74,7 @@ export class SpiderlingSwarm {
       }
       this.deps.effects.blast(blast.center.x, blast.center.y, blast.radius);
       this.deps.decals.add('scorch', blast.center.x, blast.center.y);
-      this.playBurst(blast.center);
+      this.playBurst(blast.center, definition.look);
       for (const player of party.living) {
         if (!isCaughtByGroundArea(blast.center, blast.radius, player)) continue;
         const hit = { damage: blast.damage, knockback: knockbackFrom(blast.center, player, blast.knockback) };
@@ -94,9 +94,9 @@ export class SpiderlingSwarm {
     for (const { spiderling } of [...this.entries]) this.remove(spiderling, false);
   }
 
-  /** Arkusz wybuchu pajączka (bez kierunków), usuwany po ostatniej klatce. */
-  private playBurst(at: Vector2): void {
-    const { sheet, animation } = SPIDERLING_VISUAL.burst;
+  /** Arkusz wybuchu pajączka albo żuka (bez kierunków), usuwany po ostatniej klatce. */
+  private playBurst(at: Vector2, look: 'beetle' | undefined): void {
+    const { sheet, animation } = spiderlingVisual(look).burst;
     const sprite = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
     sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
     sprite.play(animationKey(sheet, animation));

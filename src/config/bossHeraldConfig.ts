@@ -41,6 +41,8 @@ export const BOSS_HERALD: Readonly<Record<BiomeId, BossHeraldConfig>> = {
   [BiomeId.SmokeDen]: { radiusTiles: 18, tint: { color: 0xb8b4a4, maxAlpha: 0.06 }, sparks: null },
   // Zimny, opalizujący blask polerowanej posadzki mocnieje ku arenie sprzątaczki.
   [BiomeId.MirrorHall]: { radiusTiles: 18, tint: { color: 0xbfe4ff, maxAlpha: 0.06 }, sparks: null },
+  // Chłodna, zielonkawa poświata księżyca gęstnieje ku gniazdom Brudnej Wiedźmy.
+  [BiomeId.StorkGarden]: { radiusTiles: 18, tint: { color: 0x9ad0a0, maxAlpha: 0.05 }, sparks: null },
   // Rozżarzone powietrze i iskry z posadzki.
   [BiomeId.Infernal]: {
     radiusTiles: 18,

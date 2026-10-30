@@ -343,6 +343,16 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'noise', freq: 900, freqEnd: 500, delay: 0.3, attack: 0.1, decay: 0.5, volume: 0.25, lowpass: 1200 },
     ],
   },
+  /** Trzepot skrzydeł (krok 137): trzy szybkie, miękkie uderzenia szumu i klekot dzioba. */
+  [SoundCue.WingFlap]: {
+    gain: 0.35,
+    layers: [
+      { wave: 'noise', freq: 1400, freqEnd: 600, attack: 0.01, decay: 0.09, volume: 0.5, lowpass: 1800 },
+      { wave: 'noise', freq: 1300, freqEnd: 550, delay: 0.11, attack: 0.01, decay: 0.09, volume: 0.45, lowpass: 1700 },
+      { wave: 'noise', freq: 1200, freqEnd: 500, delay: 0.22, attack: 0.01, decay: 0.1, volume: 0.4, lowpass: 1600 },
+      { wave: 'square', freq: 820, delay: 0.05, attack: 0.002, decay: 0.03, volume: 0.12, lowpass: 2400 },
+    ],
+  },
 };
 
 /**
@@ -405,6 +415,7 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.Shout]: { minGapMs: 600 },
   [SoundCue.Splash]: { minGapMs: 120 },
   [SoundCue.Elevator]: { minGapMs: 800 },
+  [SoundCue.WingFlap]: { minGapMs: 150 },
 };
 
 /**
@@ -511,6 +522,7 @@ export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
   [BiomeId.Infernal]: MusicTheme.Underworld,
   [BiomeId.SmokeDen]: MusicTheme.Underworld,
   [BiomeId.MirrorHall]: MusicTheme.Underworld,
+  [BiomeId.StorkGarden]: MusicTheme.Underworld,
 };
 
 /** Głośność głosów muzyki i ich barwa (odtwarzacz Web Audio). */
