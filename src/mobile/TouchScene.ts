@@ -90,7 +90,7 @@ export class TouchScene extends Phaser.Scene {
     this.gfx = this.add.graphics();
     const ids: readonly (ButtonId | 'pause')[] = ['attack', 'shoot', 'dash', 'interact', 'ultimate', 'pause'];
     for (const id of ids) {
-      const size = id === 'attack' ? '16px' : '13px';
+      const size = id === 'attack' || id === 'pause' ? '16px' : '13px';
       this.labels.set(id, this.add.text(0, 0, '', { ...STYLE, fontSize: size }).setOrigin(0.5).setVisible(false));
     }
     const page = document.getElementById('game') ?? document.body;
@@ -280,7 +280,10 @@ export class TouchScene extends Phaser.Scene {
 
   private onPauseButton(pointer: TouchPoint): boolean {
     const c = this.pauseCenter();
-    return Math.hypot(pointer.x - c.x, pointer.y - c.y) <= TOUCH_BUTTONS.pause.radius * TOUCH_BUTTONS.hitSlop * 1.3;
+    const { width, height } = TOUCH_BUTTONS.pause;
+    const slop = TOUCH_BUTTONS.hitSlop;
+    // Niski przycisk: w pionie strefa jeszcze o 8 px większa, żeby kciuk nie chybiał.
+    return Math.abs(pointer.x - c.x) <= (width / 2) * slop && Math.abs(pointer.y - c.y) <= (height / 2) * slop + 8;
   }
 
   /** Ekran śmierci na dotyku: imię (okno przeglądarki z klawiaturą telefonu) albo nowa wspinaczka / bohater / menu. */
@@ -339,10 +342,7 @@ export class TouchScene extends Phaser.Scene {
       label.setVisible(visible);
       if (!visible) continue;
       if (id === 'pause') {
-        const c = this.pauseCenter();
-        g.fillStyle(0x202030, BUTTON_ALPHA).fillCircle(c.x, c.y, TOUCH_BUTTONS.pause.radius);
-        g.lineStyle(2, 0xe8e8f0, 0.5).strokeCircle(c.x, c.y, TOUCH_BUTTONS.pause.radius);
-        label.setText(TOUCH_LABELS.pause).setPosition(c.x, c.y);
+        this.drawPauseButton(g, label);
         continue;
       }
       const c = this.buttonCenter(id);
@@ -361,6 +361,20 @@ export class TouchScene extends Phaser.Scene {
       // Przycisk ataku: obwódka zasięgu przeciągnięcia i gałka pod kciukiem.
       if (stick) this.drawStick(g, stick, TOUCH_STICK.radius + this.spec(id).radius * 0.5);
     }
+  }
+
+  /** Pauza: ciemna pigułka ze złotą obwódką, ikonka ⏸ i podpis — widać ją od razu, w przeciwieństwie do samego „II”. */
+  private drawPauseButton(g: Phaser.GameObjects.Graphics, label: Phaser.GameObjects.Text): void {
+    const c = this.pauseCenter();
+    const { width, height } = TOUCH_BUTTONS.pause;
+    const left = c.x - width / 2;
+    const top = c.y - height / 2;
+    g.fillStyle(0x1a1a24, 0.8).fillRoundedRect(left, top, width, height, height / 2);
+    g.lineStyle(2, 0xf1e2a9, 0.9).strokeRoundedRect(left, top, width, height, height / 2);
+    // Ikonka: dwie pionowe belki po lewej, podpis obok.
+    const iconX = left + 16;
+    g.fillStyle(0xf1e2a9, 1).fillRect(iconX - 5, c.y - 7, 4, 14).fillRect(iconX + 2, c.y - 7, 4, 14);
+    label.setText(TOUCH_LABELS.pause).setColor('#f1e2a9').setPosition(c.x + 9, c.y);
   }
 
   private drawStick(g: Phaser.GameObjects.Graphics, stick: Stick, radius: number): void {

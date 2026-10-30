@@ -5079,6 +5079,21 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** czy klimat trafiony; tempo (122/118), głośność stopy względem efektów, czy pingi i dron nie męczą po dłuższej grze.
 
+## Krok 140 — Czytelny przycisk pauzy na telefonie `#ocena` `#mobile`
+
+**Skąd:** `#ocena` właściciela (30.10.2026): przy rozmowie z nowym testerem sam nie wiedział, gdzie jest pauza — dwie kreski „II” w małym kółku nic nie mówią. Pauza na telefonie jest ważna, bo prowadzi też do opcji i czatu „Napisz do autora”.
+
+**Co powstało:**
+- Przycisk pauzy w wersji mobilnej (`mobile/TouchScene.ts`, `drawPauseButton`) to teraz podłużna pigułka 92×32 px pod minimapą: ciemne tło, złota obwódka, rysowana ikonka ⏸ i podpis **PAUZA** (16 px, złoty) — widać ją od razu i odróżnia się od szarych kółek walki.
+- Strefa dotyku prostokątna (`onPauseButton`): wymiary × `hitSlop`, w pionie jeszcze +8 px.
+- Wymiary i położenie w `TOUCH_BUTTONS.pause` (`config/touchConfig.ts`), napis w `TOUCH_LABELS.pause`.
+
+**Decyzje:** podpis „PAUZA”, nie „STOP” ani „MENU” — „stop” brzmi jak koniec gry, a „menu” myli się z menu głównym. Wersja PC bez zmian (pauza pod Esc/P i padem Start).
+
+**Testy i weryfikacja:** `npm run build` (typy, 2221 testów, build). W Chromium z emulacją telefonu (Pixel 7 poziomo, `mobile.html`): przycisk widoczny pod minimapą, stuknięcie przy jego krawędzi otwiera pauzę.
+
+**Do oceny:** czy przycisk jest dość widoczny i nie zasłania minimapy na dużych piętrach.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
