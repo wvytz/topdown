@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5136,6 +5136,20 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela i testera:** położenie i wielkość przycisków na prawdziwym telefonie, czułość gałki, czy cios od razu nie marnuje ataków.
 
+## Krok 142 — Ekran „Na Safari tej gry nie odpalisz” `#decyzja` `#przegladarki`
+
+**Skąd:** `#decyzja` właściciela (30.10.2026): gra nie wspiera Safari. Kto wejdzie z Safari, zamiast gry dostaje ekran: „Na Safari tej gry nie odpalisz. Zainstaluj Firefoxa, DuckDuckGo albo Brave'a… albo oddaj wszystkie swoje informacje Chrome'owi.”
+
+**Co powstało:**
+- `core/browserGate.ts` (czysty): `isPlainSafari` rozpoznaje samo Safari po user-agencie (`Version/… Safari/` bez znaczników innych przeglądarek: CriOS, FxiOS, EdgiOS, OPiOS, `Ddg/`, GSA, przeglądarki w aplikacjach, Chrome/Android). Na iPhonie każda przeglądarka działa na WebKicie i udaje Safari — bez tych wykluczeń odcięlibyśmy wszystkie iPhone'y. Brave na iPhonie ma user-agent Safari, ale wystawia `navigator.brave`, więc też przechodzi.
+- `browser/SafariGate.ts`: ekran w DOM nad stroną (ikonka gry, czerwony napis, przyciski Firefox / DuckDuckGo / Brave, mniejszy link do Chrome'a). Wywołany w `main.ts` i `mobile/main.mobile.ts` przed `startGame` — na Safari Phaser w ogóle nie startuje. Ekran przewija się, gdy telefon jest poziomo, i leży nad napisem „Obróć telefon”.
+- Furtka w adresie: `?safari=1` — ekran w każdej przeglądarce (podgląd), `?safari=0` — wpuszcza mimo Safari (test, obejście dla właściciela).
+
+**Decyzje:** wykrywanie po user-agencie, nie po silniku — inaczej padłyby iPhone'y z innymi przeglądarkami. Ryzyko: przeglądarka na iPhonie, która nie dopisuje znacznika do user-agenta (np. Firefox Focus, Arc), zostanie wzięta za Safari; wtedy dopisujemy jej znacznik do `NOT_SAFARI`.
+
+**Testy i weryfikacja:** `tests/core/browserGate.test.ts` (prawdziwe user-agenty Safari na Macu, iPhonie i iPadzie oraz Chrome/Firefox/Edge/DuckDuckGo/aplikacji Google na iPhonie, przeglądarek PC i Androida; furtka). `npm run build` (typy, 2230 testów, build). W Chromium: `?safari=1` na PC, user-agent iPhone'a z Safari na `mobile.html` pionowo i poziomo — ekran; user-agent Chrome na iPhonie i `?safari=0` — gra startuje. Zrzuty: `screens/krok142-safari-*.png`.
+
+**Do oceny:** treść i wygląd ekranu.
 ## Krok 143 — Złoto samo leci do bohatera, mniejsze i słabsze chmury trucizny `#ocena` `#decyzja` `#balans` `#feel`
 
 **Ocena właściciela (30.10.2026):** gra jest fajna, ale brakuje „feelu”. Trzy zarzuty: cofanie się po monety od wroga, który padł wcześniej; błąkanie po nieokreślonych lokacjach; plamy z wybuchających pułapek (trujące chmury) „za szybkie, za duże i biorą za dużo”. `#decyzja` kierunek: głównym zagrożeniem ma być **natłok mobów**, a nie bossowie i pułapki. Ten krok to szybkie wygrane; reszta planu (fale mobów, mniejsze piętra, strzałka do celu, lżejsi bossowie) jest w dokumencie-wizji i czeka na decyzje właściciela.
@@ -5248,6 +5262,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
