@@ -43,7 +43,9 @@ const VELOCITY_JUMP_PX_PER_S = 900;
  */
 export class BossBrain {
   private phase = BossPhase.Dormant;
-  private readonly pattern: AttackPattern;
+  private pattern: AttackPattern;
+  /** Druga faza (krok 137): wzór ataków podmieniony przy wejściu we wściekłość. */
+  private secondPhase = false;
   private nextAttackAt = Infinity;
   private currentAttack: BossAttackPlan | null = null;
   private nextLashAt = 0;
@@ -109,6 +111,10 @@ export class BossBrain {
     const enraged = input.hpRatio <= this.definition.enrage.hpThreshold;
     const stand = (newAttack: BossAttackPlan | null): BossDecision => ({ move: STOP, speed: 0, newAttack, enraged });
     if (this.phase === BossPhase.Dormant) return stand(null);
+    if (enraged && !this.secondPhase && this.definition.enragedPattern) {
+      this.secondPhase = true;
+      this.pattern = new AttackPattern(this.definition.enragedPattern, this.definition.patternOrder ?? PatternOrder.Fixed, this.rng);
+    }
 
     if (this.currentAttack && input.now < this.currentAttack.endsAt) return stand(null);
     this.currentAttack = null;

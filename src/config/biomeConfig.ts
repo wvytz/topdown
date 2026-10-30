@@ -3,9 +3,18 @@ import type { BreakableConfig, DartConfig, SpikeConfig } from '@/systems/Traps';
 import { floorInLoop } from '@/systems/TowerLoop';
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, MIRROR_HALL_DRESSING, SMOKE_DEN_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import {
+  FLOOR_DRESSING,
+  FUNGAL_GROVE_DRESSING,
+  GRAVEYARD_DRESSING,
+  INFERNAL_DRESSING,
+  MIRROR_HALL_DRESSING,
+  SMOKE_DEN_DRESSING,
+  SPIDER_LAIR_DRESSING,
+  STORK_GARDEN_DRESSING,
+} from '@/config/dressingConfig';
 import type { FogConfig, MirrorFloorConfig } from '@/config/lightingConfig';
-import { FUNGAL_FOG, GRAVEYARD_MIST, INFERNAL_HAZE, MIRROR_FLOOR, SMOKE_HAZE } from '@/config/lightingConfig';
+import { FUNGAL_FOG, GARDEN_NIGHT, GRAVEYARD_MIST, INFERNAL_HAZE, MIRROR_FLOOR, SMOKE_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { CeilingDropConfig } from '@/systems/CeilingDrops';
 import type { CocoonConfig } from '@/systems/Cocoons';
@@ -21,6 +30,7 @@ import {
   MIRROR_HALL_TILESET_ASSET,
   SMOKE_DEN_TILESET_ASSET,
   SPIDER_LAIR_TILESET_ASSET,
+  STORK_GARDEN_TILESET_ASSET,
   TILESET_ASSET,
 } from '@/config/tilesetConfig';
 
@@ -33,6 +43,7 @@ export enum BiomeId {
   Infernal = 'infernal',
   SmokeDen = 'smoke-den',
   MirrorHall = 'mirror-hall',
+  StorkGarden = 'stork-garden',
 }
 
 export interface BiomeDefinition {
@@ -302,12 +313,30 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     breakables: null,
     mirrorFloor: MIRROR_FLOOR,
   },
+  // Bociani Ogród (krok 137, `#brudna-wiedzma`): ostatnie piętro kręgu — po złudnej czystości Lustrzanej komnaty
+  // winda wywozi na zarośnięty taras nocą, „totalny mrok”. Wrogowie na razie z ruin (jak w Lustrzanej komnacie).
+  [BiomeId.StorkGarden]: {
+    id: BiomeId.StorkGarden,
+    name: 'Bociani Ogród',
+    tileset: STORK_GARDEN_TILESET_ASSET,
+    dressing: STORK_GARDEN_DRESSING,
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.TrashcanMan, [EnemyType.Kiter]: EnemyVariant.DemonMage, [EnemyType.Nester]: EnemyVariant.BroodSac, [EnemyType.Lurker]: EnemyVariant.StoneLurker },
+    ceilingDrops: null,
+    cocoons: null,
+    stickyWebs: null,
+    puffballs: null,
+    fog: GARDEN_NIGHT,
+    braziers: null,
+    traps: null,
+    breakables: null,
+  },
 };
 
 /**
- * Biom na piętrach pierwszego kręgu (od kroku 134: 1–7); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43).
+ * Biom na piętrach pierwszego kręgu (od kroku 137: 1–8); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43).
  * Każdy biom kończy się swoim bossem: 2 — Grzybnia (pajęczy duet), 3 — Cmentarzysko (Grzybowy Pożeracz),
- * 4 — Piekło (Kat Otchłani), 5 — Zadymiona palarnia (Baron Dymu), 6–7 — Lustrzana komnata (sprzątaczki).
+ * 4 — Piekło (Kat Otchłani), 5 — Zadymiona palarnia (Baron Dymu), 6–7 — Lustrzana komnata (sprzątaczki),
+ * 8 — Bociani Ogród (Brudna Wiedźma, krok 137).
  */
 export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   // Krok 127: pajęczy duet to jedno piętro — Grzybnia (tu był Król i ukryta komnata); Pajęcze leże czeka na nowe miejsce.
@@ -320,6 +349,8 @@ export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   // Krok 124: dwa piętra sprzątaczek (blondynka, potem brunetka); od kroku 134 na 6–7.
   6: BiomeId.MirrorHall,
   7: BiomeId.MirrorHall,
+  // Krok 137: Brudna Wiedźma zamyka krąg.
+  8: BiomeId.StorkGarden,
 };
 
 /** Biom piętra; po ostatnim piętrze kręgu kolejny krąg wieży powtarza biomy od nowa (krok 43). */
