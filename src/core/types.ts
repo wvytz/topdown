@@ -176,6 +176,8 @@ export interface MinimapHudData {
   readonly stairs: { readonly x: number; readonly y: number };
   /** Środek areny bossa; null po jego pokonaniu (znacznik znika). */
   readonly boss: { readonly x: number; readonly y: number } | null;
+  /** Podpowiedź drogi (krok 147): kafle od gracza do celu (arena, potem schody), bez kafla gracza. */
+  readonly route: readonly { readonly x: number; readonly y: number }[];
 }
 
 export interface RangedHudData {

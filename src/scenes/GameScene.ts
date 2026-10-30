@@ -53,6 +53,7 @@ import { autoPauseEnabled } from '@/systems/PauseClock';
 import type { PauseClock } from '@/systems/PauseClock';
 import type { PauseSceneData } from '@/scenes/PauseScene';
 import { MinimapExplorer } from '@/systems/Minimap';
+import { MinimapRoute } from '@/systems/MinimapRoute';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
 import { TrapManager } from '@/combat/TrapManager';
 import { AmbushManager } from '@/combat/AmbushManager';
@@ -270,6 +271,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private wallDogs: WallDogManager | null = null;
   private secretArea: SecretArea | null = null;
   private minimap: MinimapExplorer | null = null;
+  private minimapRoute: MinimapRoute | null = null;
   private gamePaused = false;
   private secretRoom: SecretRoomManager | null = null;
   private ambushRoomId: number | null = null;
@@ -377,6 +379,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
+    this.minimapRoute = null;
     this.gamePaused = false;
     this.herald = null;
     this.heroes = [];
@@ -427,6 +430,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Minimapa widzi piętro w przebraniu — ukryta komnata nie wyda się przed odsłonięciem.
     // Na arenach bossów jej nie ma (krok 97a): sama arena, nie ma czego szukać.
     this.minimap = this.bossRush ? null : new MinimapExplorer(shown, MINIMAP_CONFIG.revealRadius);
+    // Trasa liczona po piętrze w przebraniu — nie prowadzi przez ukrytą komnatę.
+    this.minimapRoute = this.bossRush ? null : new MinimapRoute(shown);
     const secret = this.secretArea ? { dressed: dress(this.dungeon), tiles: this.secretArea.tiles } : null;
     this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset, secret);
     this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
@@ -739,12 +744,23 @@ export class GameScene extends Phaser.Scene implements HudSource {
     for (const member of this.party.living) this.minimap.reveal(DungeonView.worldToTile(member.x, member.y));
     this.minimap.reveal(player);
     const arena = this.dungeon.rooms[this.dungeon.bossRoomId];
+    const bossArena = arena && !this.bossFight.isDefeated ? arena : null;
+    const boss = bossArena ? { x: bossArena.x + Math.floor(bossArena.width / 2), y: bossArena.y + Math.floor(bossArena.height / 2) } : null;
+    // Podpowiedź drogi: do areny, a po bossie do schodów; na arenie z żywym bossem znika (cel osiągnięty).
+    const inArena =
+      bossArena !== null &&
+      player.x >= bossArena.x &&
+      player.y >= bossArena.y &&
+      player.x < bossArena.x + bossArena.width &&
+      player.y < bossArena.y + bossArena.height;
+    const route = this.minimapRoute && !inArena ? this.minimapRoute.route(player, boss ?? this.dungeon.stairs, MINIMAP_CONFIG.route.maxTiles) : [];
     return {
       explorer: this.minimap,
       player,
       partner: this.partner ? DungeonView.worldToTile(this.partner.x, this.partner.y) : null,
       stairs: this.dungeon.stairs,
-      boss: arena && !this.bossFight.isDefeated ? { x: arena.x + Math.floor(arena.width / 2), y: arena.y + Math.floor(arena.height / 2) } : null,
+      boss,
+      route,
     };
   }
 
