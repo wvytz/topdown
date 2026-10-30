@@ -736,7 +736,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
   }
 
-  /** Odkrywa mgłę wokół gracza i oddaje dane minimapy; arena bossa znika ze znaczników po jego pokonaniu. */
+  /** Odkrywa mgłę wokół gracza i oddaje dane minimapy (null na arenie); arena bossa znika ze znaczników po jego pokonaniu. */
   private minimapData(): MinimapHudData | null {
     if (!this.minimap) return null;
     const player = DungeonView.worldToTile(this.player.x, this.player.y);
@@ -744,16 +744,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
     for (const member of this.party.living) this.minimap.reveal(DungeonView.worldToTile(member.x, member.y));
     this.minimap.reveal(player);
     const arena = this.dungeon.rooms[this.dungeon.bossRoomId];
-    const bossArena = arena && !this.bossFight.isDefeated ? arena : null;
-    const boss = bossArena ? { x: bossArena.x + Math.floor(bossArena.width / 2), y: bossArena.y + Math.floor(bossArena.height / 2) } : null;
-    // Podpowiedź drogi: do areny, a po bossie do schodów; na arenie z żywym bossem znika (cel osiągnięty).
-    const inArena =
-      bossArena !== null &&
-      player.x >= bossArena.x &&
-      player.y >= bossArena.y &&
-      player.x < bossArena.x + bossArena.width &&
-      player.y < bossArena.y + bossArena.height;
-    const route = this.minimapRoute && !inArena ? this.minimapRoute.route(player, boss ?? this.dungeon.stairs, MINIMAP_CONFIG.route.maxTiles) : [];
+    // Na arenie mapa chowa się zawsze, także we wspinaczce (krok 147, decyzja właściciela) — tu nie ma czego szukać.
+    if (arena && player.x >= arena.x && player.y >= arena.y && player.x < arena.x + arena.width && player.y < arena.y + arena.height) {
+      return null;
+    }
+    const boss = arena && !this.bossFight.isDefeated ? { x: arena.x + Math.floor(arena.width / 2), y: arena.y + Math.floor(arena.height / 2) } : null;
+    // Podpowiedź drogi: do areny, a po bossie do schodów.
+    const route = this.minimapRoute ? this.minimapRoute.route(player, boss ?? this.dungeon.stairs, MINIMAP_CONFIG.route.maxTiles) : [];
     return {
       explorer: this.minimap,
       player,

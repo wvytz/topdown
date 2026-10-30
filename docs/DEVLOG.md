@@ -5266,12 +5266,12 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Co powstało:**
 - `systems/MinimapRoute.ts` (czysty TS): pole odległości od celu (BFS po podłodze, 4 kierunki, liczone raz na cel) i trasa gracza po malejącej odległości, z pamięcią podręczną na kafel gracza; `visibleRoute` przycina trasę — przez odkryte kafle cała, we mgle tylko 5 pierwszych, wygasających kafli (kierunek, nie plan piętra).
-- Cel: środek areny bossa, a po jego pokonaniu — schody. Na arenie z żywym bossem podpowiedź znika. Trasa liczona po piętrze w przebraniu — nie zdradza ukrytej komnaty. Kraty i zamknięte schody nie blokują trasy.
+- Cel: środek areny bossa, a po jego pokonaniu — schody. `#decyzja` właściciela: na arenie mapa chowa się **zawsze** — także we wspinaczce, przed i po bossie (wcześniej znikała tylko w trybie aren). Trasa liczona po piętrze w przebraniu — nie zdradza ukrytej komnaty. Kraty i zamknięte schody nie blokują trasy.
 - HUD (`scenes/HudScene.ts`): blada smużka po kaflach trasy i jaśniejsze „iskry” co 4. kafel płynące od gracza w stronę celu (110 ms na kafel).
 - Półprzezroczystość: tło 0,55 → 0,18, podłoga 0,42, ściany 0,55 (było 1) — gra prześwituje spod mapy. Znaczniki gracza, schodów i bossa zostają pełne.
 - Liczby w `MINIMAP_CONFIG` (`floorAlpha`, `wallAlpha`, `route`). Wersja mobilna korzysta z tej samej sceny HUD.
 
-**Decyzje:** podpowiedź tylko na minimapie (bez strzałek w świecie gry) — „delikatnie”; błąkanie po piętrach jako rozgrywka to osobny wątek. Areny bossów nadal bez minimapy (odczytanie słów „pomimo usunięcia z areny”).
+**Decyzje:** podpowiedź tylko na minimapie (bez strzałek w świecie gry) — „delikatnie”; błąkanie po piętrach jako rozgrywka to osobny wątek. Na arenie mapa chowa się zawsze (właściciel: „Na arenie mapa się chowa zawsze”).
 
 **Testy i weryfikacja:** `tests/systems/minimapRoute.test.ts` (6 testów: trasa krok po kroku do schodów, omijanie ścian i najkrótsza droga, limit, cel nieosiągalny, determinizm, wygasanie we mgle). `npm run build` (typy, 2272 testy, build). Chromium: PC 960×540 (piętro 3) i `mobile.html` 844×390 (piętro 2) — mapa prześwituje, smużka prowadzi do areny.
 
