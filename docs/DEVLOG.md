@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5016,6 +5016,19 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 **Wdrożenie (29.10.2026, zgoda właściciela):** migracja `0005_feedback.sql` na produkcyjnej D1, tabela `contributors` uzupełniona z dotychczasowych zgłoszeń (3 przeglądarki, 8 raportów F9), worker wdrożony; próbna wiadomość przyjęta (201, imię i licznik zapisane) i usunięta. Skrzynka: `https://tower-crawler-scores.wvytz.workers.dev/inbox`.
 
 **Na później:** osiągnięcie „Współtwórca TOP DOWN” albo lista zasłużonych w menu (gra zapyta worker o swoje gwiazdki), odpowiedzi autora i statusy widoczne dla testera („zrobione w wersji X”), kod testera do przeniesienia historii na inne urządzenie.
+
+## Krok 135 — Ikonka gry: wieża, czarne słońce i zaświaty `#decyzja` `#ikonka`
+
+**Skąd:** prośba właściciela (30.10.2026) o ikonkę w motywie zniszczonej wieży z czarnym słońcem (ekran startowy, krok 60). Trzy propozycje w pikselach (A „Zaćmienie”, B „Czarne Słońce”, C „Góra i dół”) i na życzenie właściciela C2 — wersja C bez żółtej linii między światami. **Wybór właściciela: C2.**
+
+**Co powstało:**
+- Generator `tools/game_icon.py` (Pillow): rysunek 32×32 z palety `SPLASH_PALETTE` — wyszczerbiona wieża przed czarnym słońcem, pod spękaną ziemią jej czerwone odbicie w zaświatach z czerwonym słońcem (TOP i DOWN bez słów). Granicą światów jest ciemny pas gruzu z żarzącymi się pęknięciami.
+- Eksport do `public/icons/`: `favicon.svg` (ostre piksele, `crispEdges`), `favicon-32.png`, `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png`. PNG powiększane całkowicie (najbliższy sąsiad); przy 180 px margines powtarza skrajne piksele.
+- `index.html` i `mobile.html`: favicon SVG z zapasowym PNG i ikona dla iOS. Wersja na telefon dostała też `manifest.webmanifest` (ikony 192/512, pełny ekran, poziomo) — „Dodaj do ekranu głównego” pokazuje ikonkę gry.
+
+**Testy i weryfikacja:** `npm run build` (typy, 2205 testów, build); w `dist/` linki ikon mają ścieżki względne (`./icons/…`, działa pod `/topdown/` na Pages), pliki ikon i manifest są w buildzie. Podglądy 16/32/64/192 px ocenił właściciel.
+
+**Na później:** ikonka może trafić na ekran wyboru, do plakatów i na kartę udostępniania (Open Graph).
 
 ## Znane ograniczenia i backlog
 
