@@ -5114,6 +5114,28 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** czy przycisk jest dość widoczny i nie zasłania minimapy na dużych piętrach.
 
+## Krok 141 — Wygodniejsze sterowanie na telefonie `#ocena` `#mobile` `#sterowanie`
+
+**Skąd:** `#ocena` testera przekazana przez właściciela (30.10.2026): sterowanie na telefonie „bardzo ciężkie i niewygodne”; ma być naturalne dla gry zręcznościowej.
+
+**Co było nie tak (emulacja Pixel 7 poziomo):**
+- Płótno 16:9 na szerokim telefonie zostawia po bokach czarne pasy (ok. 90 px CSS), a przyciski były rysowane na płótnie — kciuk musiał sięgać daleko od krawędzi ekranu, a przyciski zasłaniały walkę. Rozmiar przycisków zależał od skali płótna (na mniejszym telefonie mniejsze).
+- Gałka ruchu stała tam, gdzie kciuk dotknął: po odjechaniu kciukiem daleko zawrócenie wymagało cofnięcia przez cały dawny środek.
+- Duże kółko ataku czekało 150 ms (przytrzymanie) albo na puszczenie (stuknięcie) — cios zawsze spóźniony.
+
+**Co powstało:**
+- **Przyciski i gałka przy krawędzi ekranu** (`systems/touchLayout.ts`, czysta geometria): pozycje i promienie w pikselach CSS ekranu, liczone od prawego dolnego rogu bezpiecznego obszaru (wcięcie, pasek „home”). Na szerokim telefonie przyciski leżą w czarnym pasie obok gry. Rysuje je nowa warstwa `mobile/TouchOverlay.ts` (przezroczyste płótno 2D na całym ekranie, bez łapania dotyku). Układ właściciela z kroku 96a zostaje: duże kółko w rogu, PPM wyżej po prawej, zryw po lewej, E nad zrywem, ultimate nad kółkiem.
+- **Gałka idzie za kciukiem** (`followStickOrigin`): mniejszy promień (44 px CSS), mniejsza martwa strefa (0,18); blada podpowiedź gałki w lewym dolnym rogu, gdy kciuk jej nie trzyma.
+- **Atak od razu:** dotknięcie dużego kółka to natychmiastowy cios z celowaniem samym w najbliższego wroga; przeciągnięcie przejmuje cel. PPM bez zmian (ładunki są cenne: przeciągnij albo stuknij).
+- Większe strefy dotyku (`hitSlop` 1,25), większy zryw.
+- Pauza (krok 140) i przyciski ekranu śmierci zostają na płótnie gry, pod minimapą.
+
+**Decyzje:** bez automatycznego ataku (gra zręcznościowa — o ciosach decyduje gracz) i bez dasha gestem (ryzyko przypadkowego zrywu przy szybkim ruchu kciuka); oba do rozważenia po teście.
+
+**Testy i weryfikacja:** `tests/systems/touchLayout.test.ts` (położenie od krawędzi ekranu, przyciski mieszczą się na 640×360 i nie nachodzą na siebie, strefa dotyku i najbliższy środek, gałka za kciukiem). `npm run build` (2232 testy). Chromium z emulacją Pixel 7: przyciski w czarnym pasie, gałka po cofnięciu kciuka o 60 px od razu zawraca, przeciągnięcie kółka i PPM celuje, zryw, pauza otwiera się, na pauzie przyciski znikają.
+
+**Do oceny właściciela i testera:** położenie i wielkość przycisków na prawdziwym telefonie, czułość gałki, czy cios od razu nie marnuje ataków.
+
 ## Krok 143 — Złoto samo leci do bohatera, mniejsze i słabsze chmury trucizny `#ocena` `#decyzja` `#balans` `#feel`
 
 **Ocena właściciela (30.10.2026):** gra jest fajna, ale brakuje „feelu”. Trzy zarzuty: cofanie się po monety od wroga, który padł wcześniej; błąkanie po nieokreślonych lokacjach; plamy z wybuchających pułapek (trujące chmury) „za szybkie, za duże i biorą za dużo”. `#decyzja` kierunek: głównym zagrożeniem ma być **natłok mobów**, a nie bossowie i pułapki. Ten krok to szybkie wygrane; reszta planu (fale mobów, mniejsze piętra, strzałka do celu, lżejsi bossowie) jest w dokumencie-wizji i czeka na decyzje właściciela.

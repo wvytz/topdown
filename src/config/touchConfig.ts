@@ -2,6 +2,7 @@
  * Sterowanie dotykowe wersji mobilnej (krok 96; przeniesione z gałęzi testowej, kroki „49–49d”).
  * Liczby do strojenia w testach właściciela na telefonie. Piksele płótna 960×540, chyba że opisano inaczej.
  */
+import type { CornerButtonSpec } from '@/systems/touchLayout';
 
 /** Wspomaganie celowania gałką: atak dociąga do wroga w wąskim stożku wokół kierunku kciuka. */
 export interface AimAssistConfig {
@@ -20,20 +21,28 @@ export const AIM_ASSIST_MIN_VISIBILITY = 0.5;
 /** Odległość punktu celowania od bohatera, gdy celowanie to sam kierunek (px świata). */
 export const TOUCH_AIM_POINT_DISTANCE = 64;
 
-/** Gałka ruchu: pojawia się tam, gdzie lewy kciuk dotknął ekranu. Przyciski ataku też działają jak gałki. */
+/**
+ * Gałka ruchu (krok 141: piksele CSS ekranu, nie płótna): pojawia się tam, gdzie lewy kciuk dotknął ekranu,
+ * i idzie za kciukiem, gdy ten wyjedzie poza promień (`followStickOrigin`).
+ */
 export const TOUCH_STICK = {
-  /** Promień gałki: wychylenie na brzeg = pełna siła. */
-  radius: 56,
+  /** Promień gałki (px CSS): wychylenie na brzeg = pełna siła. Mniejszy niż wcześniej — krótszy ruch kciuka. */
+  radius: 44,
   /** Martwa strefa (ułamek promienia): drobny ruch kciuka nie rusza postaci ani nie zmienia celu. */
-  deadzone: 0.25,
+  deadzone: 0.18,
   /** Lewa część ekranu (ułamek szerokości) to strefa gałki ruchu. */
   moveZoneWidth: 0.45,
+  /** Blada podpowiedź gałki, gdy kciuk jej nie trzyma: środek od lewego dolnego rogu ekranu (px CSS). */
+  restHint: { left: 96, bottom: 96 },
+  /** Gałki przycisków ataku: promień przeciągnięcia (px CSS). */
+  aimRadius: 52,
 } as const;
 
 /**
- * Przyciski ataku działają jak gałki (krok 96a): przeciągnięcie celuje ręcznie i atakuje, przytrzymanie bez
- * przeciągania po tylu ms atakuje z celowaniem samym, a krótkie stuknięcie to jeden atak w najbliższego wroga.
- * Dzięki temu pierwszy cios nie leci w starą stronę, zanim kciuk zdąży przesunąć się w bok.
+ * Przycisk PPM działa jak gałka (krok 96a): przeciągnięcie celuje ręcznie i strzela, przytrzymanie bez
+ * przeciągania po tylu ms strzela z celowaniem samym, a krótkie stuknięcie to jeden strzał w najbliższego wroga
+ * (ładunki strzału są cenne — strzał nie leci, zanim kciuk zdąży wybrać stronę).
+ * Duże kółko ataku od kroku 141 atakuje od razu przy dotknięciu (celuje samo), przeciągnięcie przejmuje cel.
  */
 export const TOUCH_SHOT_HOLD_MS = 150;
 
@@ -48,32 +57,30 @@ export const TOUCH_TAP_MAX_MS = 250;
 /** Jak długo (ms) kierunek z automatycznego celowania nie ustępuje kierunkowi ruchu — dłużej niż zamach kuli. */
 export const TOUCH_AUTO_AIM_HOLD_MS = 400;
 
-/** Okrągły przycisk: środek liczony od prawego dolnego rogu płótna i promień. */
-export interface TouchButtonSpec {
-  readonly right: number;
-  readonly bottom: number;
-  readonly radius: number;
-}
+/** Okrągły przycisk: środek od prawego dolnego rogu ekranu i promień (px CSS, krok 141). */
+export type TouchButtonSpec = CornerButtonSpec;
 
 /**
- * Układ prawej ręki (krok 96a, prośba właściciela): duże kółko ataku podstawowego (LPM) w rogu,
- * atak PPM wyżej i bardziej w prawo, dash po lewej od kółka, E nad dashem (tylko gdy coś zrobi).
- * Pauza — przycisk pod minimapą (od prawego górnego rogu).
+ * Układ prawej ręki (krok 96a, prośba właściciela; krok 141 — przy krawędzi ekranu, piksele CSS):
+ * duże kółko ataku podstawowego (LPM) w rogu, atak PPM wyżej i bardziej w prawo, dash po lewej od kółka,
+ * E nad dashem (tylko gdy coś zrobi), ultimate nad kółkiem.
+ * Na szerokim telefonie przyciski leżą w czarnym pasie obok płótna i nie zasłaniają walki.
+ * Pauza — przycisk pod minimapą, w pikselach płótna (od prawego górnego rogu płótna).
  */
 export const TOUCH_BUTTONS = {
-  attack: { right: 120, bottom: 110, radius: 54 },
-  shoot: { right: 52, bottom: 222, radius: 34 },
-  dash: { right: 232, bottom: 66, radius: 34 },
-  interact: { right: 232, bottom: 172, radius: 28 },
+  attack: { right: 92, bottom: 84, radius: 46 },
+  shoot: { right: 46, bottom: 190, radius: 34 },
+  dash: { right: 196, bottom: 54, radius: 36 },
+  interact: { right: 206, bottom: 140, radius: 28 },
   /** Ultimate (krok 98): nad dużym kółkiem, na lewo od PPM; widoczny zawsze, jasny, gdy pasek jest pełny. */
-  ultimate: { right: 150, bottom: 236, radius: 28 },
+  ultimate: { right: 128, bottom: 196, radius: 28 },
   /**
    * Pauza (krok 140, uwaga właściciela: same „II” były nieczytelne nawet dla niego): podłużny przycisk
-   * z ikonką i podpisem „PAUZA”, jaśniejszy od przycisków walki. Środek od prawego górnego rogu.
+   * z ikonką i podpisem „PAUZA”, jaśniejszy od przycisków walki. Środek od prawego górnego rogu płótna.
    */
   pause: { right: 54, top: 160, width: 92, height: 32 },
   /** Strefa dotyku jest trochę większa od rysunku — kciuk nie musi trafić idealnie. */
-  hitSlop: 1.2,
+  hitSlop: 1.25,
 } as const;
 
 /** Napisy na przyciskach; przyciski ataku zależą od broni bohatera. */
