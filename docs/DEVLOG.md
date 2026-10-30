@@ -5022,7 +5022,7 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 **Skąd:** decyzja właściciela (30.10.2026): „scalamy tarczowników, jeden wystarczy, tak samo jeden poziom z ich biomu”. Dwaj bossowie z tarczą (Strażnik Bram, Kat Otchłani) na dwóch piętrach Piekła to za dużo tego samego.
 
 **Zmiana:**
-- **Piekło ma jedno piętro (4)** i jednego bossa z tarczą — **Kata Otchłani**. Kat ma już wszystkie ciosy Strażnika (tarcza ze zbijaną osłoną, wirujący łańcuch, uderzenie tarczą, skok), a do tego hak, oddech palenisk, rozgrzewanie tarczy promieniem i pierścień ognia — jest „scalonym” tarczownikiem. Galerie z kultystami (Strażnik) nie przechodzą na Kata — na razie bez dokładania trudności (do decyzji właściciela).
+- **Piekło ma jedno piętro (4)** i jednego bossa z tarczą — **Kata Otchłani**. Kat ma już wszystkie ciosy Strażnika (tarcza ze zbijaną osłoną, wirujący łańcuch, uderzenie tarczą, skok), a do tego hak, oddech palenisk, rozgrzewanie tarczy promieniem i pierścień ognia — jest „scalonym” tarczownikiem. Galerie z kultystami (Strażnik) nie przechodzą na Kata — wybór właściciela na karcie decyzji (Kat bez galerii).
 - **Strażnik Bram** wypada ze wspinaczki i aren bossów; definicja, sprite'y i galerie zostają w kodzie (jak Pajęcze leże), gdyby miał wrócić.
 - **Krąg wieży: 8 → 7 pięter** (`TOWER_CONFIG.floorsPerLoop`): 1 ruiny, 2 Grzybnia (pajęczy duet), 3 Cmentarzysko, 4 Piekło (Kat), 5 Zadymiona palarnia (Baron Dymu), 6–7 Lustrzana komnata (sprzątaczki). Duet sprzątaczek (`BOSS_DUETS`) przeniesiony na `floorInLoop: 7`. Areny bossów idą za `BOSS_BY_FLOOR` — arena 4 to Kat, arena 5 Baron itd.
 - Paleniska: `heatBaseFloor` zostaje 5 — na piętrze 4 tempo bazowe, w kolejnych kręgach przyspieszają jak dotąd.
@@ -5119,7 +5119,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).
 - **Dźwięk (krok 116):** `#dzwiek` brzmienie efektów, muzyka wieży i zaświatów, proporcje głośności (60% / 70%), czy coś przeszkadza w co-opie — czeka na test właściciela; lista i licencje w `docs/AUDIO.md`.
 - **Tarczownik (kroki 99, 113):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę (bez tarczy), bomby go ranią; od kroku 113 obrót 35°/s, 1,6 s bez tarczy po każdym ciosie, HP ×1,8 — czeka na test właściciela.
-- **Jeden tarczownik (krok 134):** `#boss` `#decyzja` Kat Otchłani jedynym bossem Piekła (piętro 4), krąg 7 pięter; do decyzji: czy Kat ma dostać galerie z kultystami po Strażniku Bram.
+- **Jeden tarczownik (krok 134):** `#boss` `#decyzja` Kat Otchłani (bez galerii — wybór właściciela) jedynym bossem Piekła (piętro 4), krąg 7 pięter — czeka na test.
 - **Bossowie z tarczą (krok 113):** `#boss` `#balans` odbicia w losową stronę (30–80°), wolniejszy obrót, okno bez tarczy po ataku, mniej HP — czeka na test właściciela.
 - **Pajęczy duet (krok 112):** `#areny-bossow` Król i Matka Pająków naraz na arenie 3 — trudność, świta tylko Króla; potem decyzja o wspinaczce — czeka na test właściciela.
 - **Hitboxy i wybuchy (krok 110):** `#ocena` `#balans` strefy łapią ślad stóp (5 px), pociski tułów (8 px); nowy telegraf i wybuch w promieniu strefy (bomby kultystów, wybuch elity, ataki bossów) — czeka na test właściciela.
