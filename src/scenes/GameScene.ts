@@ -10,6 +10,7 @@ import type {
   HudData,
   HudItem,
   HudPartnerData,
+  BossPointerData,
   MinimapHudData,
   HudSceneData,
   HudSource,
@@ -35,7 +36,8 @@ import { itemFrames } from '@/config/spriteConfig';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
-import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH, STAIRS_SIZE, TILE_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { BOSS_POINTER_CONFIG, CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH, STAIRS_SIZE, TILE_SIZE, getDungeonConfigForFloor } from '@/config/gameConfig';
+import { edgePointer } from '@/systems/OffscreenPointer';
 import type { TilesetAsset } from '@/config/tilesetConfig';
 import type { BiomeDefinition } from '@/config/biomeConfig';
 import { biomeForFloor } from '@/config/biomeConfig';
@@ -682,6 +684,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       isPlayerDead: ready && this.party.isDown,
       minimap: ready ? this.minimapData() : null,
       boss: ready ? this.bossFight.getStatus() : null,
+      bossPointers: ready ? this.bossPointers() : [],
       gold: this.run.gold,
       practice: this.run.practice,
       bossRush: this.bossRush,
@@ -692,6 +695,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
       playerLabel: ready && this.partner ? `P1 · ${this.hero.name}` : '',
       partner: ready ? this.partnerHud() : null,
     };
+  }
+
+  /** Strzałki do walczących bossów poza kadrem (krok 136) — w pikselach ekranu HUD. */
+  private bossPointers(): BossPointerData[] {
+    const cam = this.cameras.main;
+    const view = cam.worldView;
+    const { marginPx, visibleInsetPx } = BOSS_POINTER_CONFIG;
+    return this.bossFight.fightingPositions.flatMap((at) => {
+      const screen = { x: (at.x - view.x) * cam.zoom, y: (at.y - view.y) * cam.zoom };
+      const pointer = edgePointer(screen, GAME_WIDTH, GAME_HEIGHT, marginPx, visibleInsetPx);
+      return pointer ? [pointer] : [];
+    });
   }
 
   /** Panel P2 w HUD (co-op, etap C5). */

@@ -5,6 +5,7 @@ import { TOWER_CONFIG } from '@/config/towerConfig';
 import { BOSS_DUETS, bossById, bossForFloor } from '@/config/bossConfig';
 
 const member = (over: Partial<DuetMember> = {}): DuetMember => ({
+  name: 'Boss',
   hp: 100,
   maxHp: 100,
   fighting: true,
@@ -51,6 +52,20 @@ describe('duet bossów (krok 114)', () => {
   it('wściekłość od pierwszego wściekłego, z jego okrzykiem', () => {
     const status = duetStatus([member(), member({ enraged: true, enragedLabel: 'Gniew Grzybni!' })], TEXT);
     expect(status).toMatchObject({ enraged: true, enragedLabel: 'Gniew Grzybni!' });
+  });
+
+  it('każdy boss ma własny pasek (krok 136): imię, HP, wściekłość, pokonany na zero', () => {
+    const status = duetStatus(
+      [
+        member({ name: 'Król Pająków', hp: 0, fighting: false, defeated: true }),
+        member({ name: 'Matka Pająków', hp: 70, maxHp: 150, enraged: true }),
+      ],
+      TEXT,
+    );
+    expect(status?.members).toEqual([
+      { name: 'Król Pająków', hp: 0, maxHp: 100, enraged: false, defeated: true },
+      { name: 'Matka Pająków', hp: 70, maxHp: 150, enraged: true, defeated: false },
+    ]);
   });
 });
 

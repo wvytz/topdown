@@ -73,6 +73,24 @@ export const CAMERA_CONFIG = {
 } as const;
 
 /**
+ * Strzałka do bossa poza kadrem (krok 136, prośba właściciela): zamiast oddalać kamerę (pole widzenia zmienia balans)
+ * HUD pokazuje przy krawędzi ekranu, gdzie stoi boss. Wartości w pikselach ekranu.
+ */
+export const BOSS_POINTER_CONFIG = {
+  /** Odstęp strzałki od krawędzi ekranu. */
+  marginPx: 30,
+  /** Boss liczy się jako widoczny, gdy jego środek jest co najmniej tyle od krawędzi (inaczej widać tylko skrawek). */
+  visibleInsetPx: 24,
+  /** Długość i szerokość grotu. */
+  lengthPx: 24,
+  widthPx: 14,
+  color: 0xff4a3a,
+  /** Pulsowanie przezroczystości (ms okresu, zakres alfy). */
+  pulseMs: 700,
+  minAlpha: 0.55,
+} as const;
+
+/**
  * Połowy boków prostokąta wokół gracza (px świata), który zawsze jest na ekranie:
  * widok kamery minus luz martwej strefy. Przy zoomie 2: 210 × 112,5 px.
  */

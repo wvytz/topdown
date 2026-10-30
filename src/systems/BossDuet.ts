@@ -62,8 +62,9 @@ export function duetForFloor(
   return duets.find((duet) => duet.floorInLoop === inLoop) ?? null;
 }
 
-/** Stan jednego bossa duetu dla wspólnego paska. */
+/** Stan jednego bossa duetu dla paska HUD. */
 export interface DuetMember {
+  readonly name: string;
   readonly hp: number;
   readonly maxHp: number;
   readonly fighting: boolean;
@@ -86,6 +87,14 @@ export function duetStatus(members: readonly DuetMember[], text: Pick<BossDuetDe
     hp: members.reduce((sum, m) => sum + (m.defeated ? 0 : Math.max(0, m.hp)), 0),
     maxHp: members.reduce((sum, m) => sum + m.maxHp, 0),
     enraged: enraged !== undefined,
+    // Krok 136 (prośba właściciela): każdy boss duetu ma też własny pasek.
+    members: members.map((m) => ({
+      name: m.name,
+      hp: m.defeated ? 0 : Math.max(0, m.hp),
+      maxHp: m.maxHp,
+      enraged: m.fighting && m.enraged,
+      defeated: m.defeated,
+    })),
   };
 }
 
