@@ -305,22 +305,21 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
 };
 
 /**
- * Biom na piętrach pierwszego kręgu (1–9; 8–9 — Lustrzana komnata, krok 124); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43). Każdy biom to jedno piętro zakończone swoim bossem
- * (decyzja właściciela po kroku 27): 2 — leże z Matką Pająków, 3 — Grzybnia z Królem Pająków,
- * 4 — Cmentarzysko (krok 32a, Grzybowy Pożeracz), 5–6 — Piekło (krok 41; dwa piętra, Kat Otchłani na końcu 6.;
- * do tego czasu Strażnik).
+ * Biom na piętrach pierwszego kręgu (od kroku 134: 1–7); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43).
+ * Każdy biom kończy się swoim bossem: 2 — Grzybnia (pajęczy duet), 3 — Cmentarzysko (Grzybowy Pożeracz),
+ * 4 — Piekło (Kat Otchłani), 5 — Zadymiona palarnia (Baron Dymu), 6–7 — Lustrzana komnata (sprzątaczki).
  */
 export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   // Krok 127: pajęczy duet to jedno piętro — Grzybnia (tu był Król i ukryta komnata); Pajęcze leże czeka na nowe miejsce.
   2: BiomeId.FungalGrove,
   3: BiomeId.Graveyard,
-  // Piekło ma dwa piętra (decyzja właściciela po kroku 41b): na drugim, „gorętszym”, paleniska buchają częściej.
+  // Krok 134 (decyzja właściciela): Piekło ma jedno piętro z jednym bossem z tarczą (Kat Otchłani);
+  // wcześniej dwa (krok 41b), na drugim, „gorętszym”, paleniska buchały częściej.
   4: BiomeId.Infernal,
-  5: BiomeId.Infernal,
-  6: BiomeId.SmokeDen,
-  // Krok 124: dwa piętra sprzątaczek (blondynka, potem brunetka); od kroku 127 na 7–8.
+  5: BiomeId.SmokeDen,
+  // Krok 124: dwa piętra sprzątaczek (blondynka, potem brunetka); od kroku 134 na 6–7.
+  6: BiomeId.MirrorHall,
   7: BiomeId.MirrorHall,
-  8: BiomeId.MirrorHall,
 };
 
 /** Biom piętra; po ostatnim piętrze kręgu kolejny krąg wieży powtarza biomy od nowa (krok 43). */

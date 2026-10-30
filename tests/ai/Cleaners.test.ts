@@ -25,8 +25,8 @@ describe('blond sprzątaczka (krok 125)', () => {
     ...over,
   });
 
-  it('kończy piętro 7 (Lustrzana komnata, piętro A); chlust i miotła we wzorze, wiadro poza nim', () => {
-    expect(bossForFloor(7).id).toBe(BossId.CleanerBlonde);
+  it('kończy piętro 6 (Lustrzana komnata, piętro A); chlust i miotła we wzorze, wiadro poza nim', () => {
+    expect(bossForFloor(6).id).toBe(BossId.CleanerBlonde);
     expect(CLEANER_BLONDE.pattern).toEqual(expect.arrayContaining([BossAttackKind.Spill, BossAttackKind.Cleave]));
     expect(CLEANER_BLONDE.hook.look).toBe('bucket');
     expect(CLEANER_BLONDE.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
@@ -215,8 +215,8 @@ describe('czarnowłosa sprzątaczka (krok 126)', () => {
     ...over,
   });
 
-  it('kończy piętro 8; miotła, plątanie i chlust we wzorze, bez wiadra i bez ucieczki', () => {
-    expect(bossForFloor(8).id).toBe(BossId.CleanerDark);
+  it('kończy piętro 7; miotła, plątanie i chlust we wzorze, bez wiadra i bez ucieczki', () => {
+    expect(bossForFloor(7).id).toBe(BossId.CleanerDark);
     expect(CLEANER_DARK.pattern).toEqual(expect.arrayContaining([BossAttackKind.Cleave, BossAttackKind.Tangle, BossAttackKind.Spill]));
     expect('hook' in CLEANER_DARK).toBe(false);
     expect('escape' in CLEANER_DARK).toBe(false);

@@ -28,7 +28,7 @@ describe('duet bossów (krok 114)', () => {
   });
 
   it('pozostałe areny bez duetu', () => {
-    for (const floor of [1, 3, 4, 5, 6, 7, 9]) expect(duetForFloor(floor, BOSS_DUETS, TOWER_CONFIG)).toBeNull();
+    for (const floor of [1, 3, 4, 5, 6, 8]) expect(duetForFloor(floor, BOSS_DUETS, TOWER_CONFIG)).toBeNull();
   });
 
   it('duet to utrudnienie: obaj bossowie z pełnym HP', () => {

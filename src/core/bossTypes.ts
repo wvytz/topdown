@@ -52,11 +52,11 @@ export enum BossId {
   SpiderQueen = 'spider-queen',
   SpiderKing = 'spider-king',
   FungalDevourer = 'fungal-devourer',
-  /** Piekło, pierwsze piętro (krok 41e; od kroku 127 piętro 4): Strażnik Bram — tarcza z przodu, wirujący łańcuch. */
+  /** Piekło (krok 41e; od kroku 134 poza wspinaczką — jeden boss z tarczą wystarczy): Strażnik Bram — tarcza z przodu, wirujący łańcuch. */
   GateWarden = 'gate-warden',
-  /** Piekło, drugie piętro (krok 41f; od kroku 127 piętro 5): Kat Otchłani — tarcza, hak, oddech palenisk, pierścień ognia. */
+  /** Piekło (krok 41f; od kroku 134 piętro 4, jedyne Piekła): Kat Otchłani — tarcza, hak, oddech palenisk, pierścień ognia. */
   AbyssExecutioner = 'abyss-executioner',
-  /** Palarnia (krok 83; od kroku 127 piętro 6): Baron Dymu — gruby z puszką i fajką, smuga dymu, czarny dog u boku. */
+  /** Palarnia (krok 83; od kroku 134 piętro 5): Baron Dymu — gruby z puszką i fajką, smuga dymu, czarny dog u boku. */
   SmokeBaron = 'smoke-baron',
   /** Lustrzana komnata, piętro A (krok 125): blond sprzątaczka — chlust i wiadro; przy 1/3 HP ucieka windą. */
   CleanerBlonde = 'cleaner-blonde',
