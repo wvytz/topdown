@@ -1,5 +1,5 @@
-import type { AudioSettings, MusicThemeDefinition, SoundRecipe, SynthLayer } from '@/core/audioTypes';
-import { LoopCue, MusicTheme, SoundCue } from '@/core/audioTypes';
+import type { AudioSettings, HorrorThemeDefinition, LucentThemeDefinition, MusicThemeDefinition, SoundRecipe, SynthLayer } from '@/core/audioTypes';
+import { LoopCue, MusicPreset, MusicTheme, SoundCue } from '@/core/audioTypes';
 import { BiomeId } from '@/config/biomeConfig';
 import type { AudioSettingsRules } from '@/systems/AudioSettings';
 import type { SoundGateConfig, SoundGateRule } from '@/systems/SoundGate';
@@ -14,8 +14,10 @@ import type { SoundSpaceConfig } from '@/systems/SoundSpace';
 /** Ustawienia na pierwsze uruchomienie i krok suwaka (10%). */
 export const AUDIO_SETTINGS_RULES: AudioSettingsRules = {
   /** Krok 120 (decyzja właściciela): gra startuje wyciszona; dźwięk włącza głośnik na ekranie startowym, N albo pauza. */
-  defaults: { music: 0.5, sfx: 0.7, muted: true } satisfies AudioSettings,
+  defaults: { music: 0.5, sfx: 0.7, muted: true, preset: MusicPreset.Lucent } satisfies AudioSettings,
   step: 0.1,
+  /** Krok 139: zestawy muzyki — Lucent (ambient z kroku 116) i Horror (minimalny house). */
+  presets: [MusicPreset.Lucent, MusicPreset.Horror],
 };
 
 /** Klucz ustawień w localStorage. */
@@ -406,13 +408,51 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
 };
 
 /**
- * Muzyka (krok 139, prośba właściciela: „prosty house'owy bit z kategorii horror minimal tech”; wcześniej ambient
- * z kroku 116). Dwa klimaty tej samej pętli 4/4 składanej w locie (`systems/MusicComposer`):
- * wieża — a-moll, 122 BPM, dron z małą sekundą; zaświaty — e frygijski, 118 BPM, dron z trytonem, gęstsze pingi.
- * W walce z bossem: szesnastkowe hi-haty, stab w każdym takcie, bez przełamań.
+ * Muzyka w dwóch zestawach (krok 139, pomysł właściciela), oba składane w locie (`systems/MusicComposer`),
+ * każdy w dwóch klimatach: wieża (piętra 1–3 i menu) i zaświaty. Zestaw gracz wybiera na pauzie.
+ *
+ * Lucent (krok 116): wieża — d-moll dorycki, spokojny, tajemniczy; zaświaty — e frygijski, niżej, wolniej,
+ * z pulsem serca. W walce z bossem oba dostają bęben, gęstsze dzwonki i drugi ton basu.
  */
-export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = {
+const LUCENT_THEMES: Readonly<Record<MusicTheme, LucentThemeDefinition>> = {
   [MusicTheme.Tower]: {
+    preset: MusicPreset.Lucent,
+    bpm: 72,
+    root: 50,
+    scale: [0, 2, 3, 5, 7, 9, 10],
+    progression: [0, 5, 3, 4],
+    barsPerChord: 2,
+    bellDensity: 0.16,
+    bellTranspose: 12,
+    bellRest: { every: 8, rest: 2 },
+    drumBeats: [0, 2],
+    drumAlways: false,
+    seed: 116,
+  },
+  [MusicTheme.Underworld]: {
+    preset: MusicPreset.Lucent,
+    bpm: 60,
+    root: 40,
+    scale: [0, 1, 3, 5, 7, 8, 10],
+    progression: [0, 1, 5, 0, 3, 1],
+    barsPerChord: 2,
+    bellDensity: 0.1,
+    bellTranspose: 12,
+    bellRest: { every: 8, rest: 3 },
+    drumBeats: [0, 0.4, 2],
+    drumAlways: true,
+    seed: 666,
+  },
+};
+
+/**
+ * Horror (krok 139, prośba właściciela: „prosty house'owy bit z kategorii horror minimal tech”): ta sama pętla 4/4
+ * w dwóch klimatach — wieża: a-moll, 122 BPM, dron z małą sekundą; zaświaty: e frygijski, 118 BPM, dron z trytonem,
+ * gęstsze pingi. W walce z bossem: szesnastkowe hi-haty, stab w każdym takcie, bez przełamań.
+ */
+const HORROR_THEMES: Readonly<Record<MusicTheme, HorrorThemeDefinition>> = {
+  [MusicTheme.Tower]: {
+    preset: MusicPreset.Horror,
     bpm: 122,
     root: 45,
     scale: [0, 2, 3, 5, 7, 8, 10],
@@ -431,6 +471,7 @@ export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = 
     seed: 139,
   },
   [MusicTheme.Underworld]: {
+    preset: MusicPreset.Horror,
     bpm: 118,
     root: 40,
     scale: [0, 1, 3, 5, 7, 8, 10],
@@ -450,6 +491,17 @@ export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = 
   },
 };
 
+export const MUSIC_PRESETS: Readonly<Record<MusicPreset, Readonly<Record<MusicTheme, MusicThemeDefinition>>>> = {
+  [MusicPreset.Lucent]: LUCENT_THEMES,
+  [MusicPreset.Horror]: HORROR_THEMES,
+};
+
+/** Nazwy zestawów na pauzie (kolejność przełączania — `AUDIO_SETTINGS_RULES.presets`). */
+export const MUSIC_PRESET_NAMES: Readonly<Record<MusicPreset, string>> = {
+  [MusicPreset.Lucent]: 'LUCENT',
+  [MusicPreset.Horror]: 'HORROR',
+};
+
 /** Klimat muzyki biomu: piętra 1–3 to wieża, cmentarzysko, piekło i palarnia i Lustrzana komnata — zaświaty. */
 export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
   [BiomeId.TowerRuins]: MusicTheme.Tower,
@@ -464,20 +516,30 @@ export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
 /** Głośność głosów muzyki i ich barwa (odtwarzacz Web Audio). */
 export const MUSIC_MIX = {
   master: 0.5,
-  // Krok 139: zestaw minimalnego house'u. Hi-haty ciche i krótkie — po kroku 116a pamiętamy o zmęczeniu ucha.
-  kick: { gain: 0.55, pitchFrom: 140, pitchTo: 45, pitchS: 0.09, decay: 0.32 },
-  hat: { gain: 0.05, highpass: 8000, decay: 0.035 },
-  openHat: { gain: 0.045, highpass: 7000, decay: 0.16 },
-  clap: { gain: 0.14, bandpass: 1300, q: 1.2, decay: 0.14, bursts: 3, burstGapS: 0.011 },
-  /** Bas: piła za filtrem, który zamyka się po każdym uderzeniu („pluck”). */
-  bass: { gain: 0.15, attack: 0.005, release: 0.08, filterFrom: 900, filterTo: 180, filterS: 0.12 },
-  /** Stab: dwie rozstrojone piły, krótko, ciemno, z echem. */
-  stab: { gain: 0.035, attack: 0.004, release: 0.18, lowpass: 1100, detuneCents: 9, echoSend: 0.6 },
-  /** Dron: dwa sinusy z lekkim rozstrojeniem — powolne dudnienie niepokoju. */
-  drone: { gain: 0.05, attack: 2.5, release: 2, lowpass: 500, detuneCents: 6 },
-  ping: { gain: 0.04, decay: 0.7, echoSend: 0.9 },
-  /** Echo staba i pingów: kropkowana ósemka (w ćwierćnutach), ze sprzężeniem i przyciemnieniem. */
-  echo: { beats: 0.75, feedback: 0.4, lowpass: 1600 },
+  lucent: {
+    // Krok 116a (ocena: „po 20 minutach lekki dyskomfort”): ciemniejszy pad, słabsze dudnienie rozstrojenia.
+    pad: { gain: 0.12, attack: 1.2, release: 1.5, lowpass: 700, detuneCents: 5 },
+    bass: { gain: 0.22, attack: 0.05, release: 0.4, lowpass: 400 },
+    /** Dzwonek: alikwot harmoniczny (2×, cicho) zamiast metalicznego 2,76× — mniej kłuje w uszy. */
+    bell: { gain: 0.07, attack: 0.01, release: 1.4, overtoneRatio: 2, overtoneLevel: 0.15, lowpass: 2500 },
+    drum: { gain: 0.5, pitchFrom: 110, pitchTo: 40, decay: 0.35 },
+  },
+  horror: {
+    // Krok 139: zestaw minimalnego house'u. Hi-haty ciche i krótkie — po kroku 116a pamiętamy o zmęczeniu ucha.
+    kick: { gain: 0.55, pitchFrom: 140, pitchTo: 45, pitchS: 0.09, decay: 0.32 },
+    hat: { gain: 0.05, highpass: 8000, decay: 0.035 },
+    openHat: { gain: 0.045, highpass: 7000, decay: 0.16 },
+    clap: { gain: 0.14, bandpass: 1300, q: 1.2, decay: 0.14, bursts: 3, burstGapS: 0.011 },
+    /** Bas: piła za filtrem, który zamyka się po każdym uderzeniu („pluck”). */
+    bass: { gain: 0.15, attack: 0.005, release: 0.08, filterFrom: 900, filterTo: 180, filterS: 0.12 },
+    /** Stab: dwie rozstrojone piły, krótko, ciemno, z echem. */
+    stab: { gain: 0.035, attack: 0.004, release: 0.18, lowpass: 1100, detuneCents: 9, echoSend: 0.6 },
+    /** Dron: dwa sinusy z lekkim rozstrojeniem — powolne dudnienie niepokoju. */
+    drone: { gain: 0.05, attack: 2.5, release: 2, lowpass: 500, detuneCents: 6 },
+    ping: { gain: 0.04, decay: 0.7, echoSend: 0.9 },
+    /** Echo staba i pingów: kropkowana ósemka (w ćwierćnutach), ze sprzężeniem i przyciemnieniem. */
+    echo: { beats: 0.75, feedback: 0.4, lowpass: 1600 },
+  },
   /** Ile sekund naprzód planujemy nuty (odtwarzacz budzi się co `tickMs`). */
   lookaheadS: 0.6,
   tickMs: 150,
@@ -488,6 +550,8 @@ export const MUSIC_MIX = {
 /** Teksty dźwięku na ekranie pauzy. */
 export const AUDIO_TEXT = {
   music: 'Muzyka',
+  /** Wybór zestawu muzyki (krok 139). */
+  preset: (name: string) => `Styl muzyki: ${name}`,
   sfx: 'Efekty',
 };
 

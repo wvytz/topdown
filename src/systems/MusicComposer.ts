@@ -1,10 +1,13 @@
-import type { MusicNote, MusicThemeDefinition } from '@/core/audioTypes';
+import type { HorrorThemeDefinition, LucentThemeDefinition, MusicNote, MusicThemeDefinition } from '@/core/audioTypes';
+import { MusicPreset } from '@/core/audioTypes';
 import { createRng, deriveSeed } from '@/core/random';
 
 const BEATS_PER_BAR = 4;
 /** Kroki sekwencera w takcie (szesnastki). */
 export const STEPS_PER_BAR = 16;
 const KICK_STEPS = [0, 4, 8, 12];
+/** Lucent: po tylu przejściach progresji melodia dzwonków zaczyna się od nowa — utwór ma rozpoznawalną pętlę. */
+const PROGRESSION_LOOPS_PER_CYCLE = 2;
 
 /** Długość taktu (s). */
 export function barDuration(theme: MusicThemeDefinition): number {
@@ -31,19 +34,64 @@ export function chordDegree(theme: MusicThemeDefinition, bar: number): number {
 }
 
 /** Ostatnie takty frazy to przełamanie (w walce z bossem go nie ma — muzyka nie odpuszcza). */
-export function isBreakdown(theme: MusicThemeDefinition, bar: number, intense: boolean): boolean {
+export function isBreakdown(theme: HorrorThemeDefinition, bar: number, intense: boolean): boolean {
   return !intense && bar % theme.phraseBars >= theme.phraseBars - theme.breakBars;
 }
 
+/** Nuty jednego taktu w stylu zestawu utworu. Czysta funkcja — odtwarzacz tylko zamienia nuty na dźwięk. */
+export function composeBar(theme: MusicThemeDefinition, bar: number, intense: boolean): MusicNote[] {
+  return theme.preset === MusicPreset.Horror ? composeHorrorBar(theme, bar, intense) : composeLucentBar(theme, bar, intense);
+}
+
 /**
- * Nuty jednego taktu (krok 139: minimalny house w klimacie horroru, wcześniej ambient z kroku 116).
+ * Lucent (krok 116). Utwór składa się w locie, ale deterministycznie: akordy z progresji (pad i bas),
+ * nad nimi rzadkie dzwonki z dźwięków akordu, a w walce z bossem (albo zawsze w zaświatach) puls bębna.
+ */
+export function composeLucentBar(theme: LucentThemeDefinition, bar: number, intense: boolean): MusicNote[] {
+  const beat = 60 / theme.bpm;
+  const barLength = barDuration(theme);
+  const degree = chordDegree(theme, bar);
+  const triad = [degree, degree + 2, degree + 4];
+  const notes: MusicNote[] = [];
+
+  if (bar % theme.barsPerChord === 0) {
+    for (const tone of triad) {
+      notes.push({ voice: 'pad', at: 0, midi: scaleDegreeMidi(theme, tone) + 12, duration: barLength * theme.barsPerChord, velocity: 0.5 });
+    }
+  }
+  notes.push({ voice: 'bass', at: 0, midi: scaleDegreeMidi(theme, degree) - 12, duration: barLength * 0.95, velocity: 0.6 });
+  if (intense) notes.push({ voice: 'bass', at: beat * 2, midi: scaleDegreeMidi(theme, degree) - 12, duration: beat * 1.5, velocity: 0.45 });
+
+  const cycle = theme.progression.length * theme.barsPerChord * PROGRESSION_LOOPS_PER_CYCLE;
+  const rng = createRng(deriveSeed(theme.seed, bar % cycle));
+  const resting = bar % theme.bellRest.every >= theme.bellRest.every - theme.bellRest.rest;
+  const density = resting ? 0 : intense ? Math.min(1, theme.bellDensity * 1.6) : theme.bellDensity;
+  for (let eighth = 0; eighth < BEATS_PER_BAR * 2; eighth++) {
+    if (!rng.chance(density)) continue;
+    const tone = triad[rng.int(0, triad.length - 1)] ?? degree;
+    notes.push({
+      voice: 'bell',
+      at: (eighth * beat) / 2,
+      midi: scaleDegreeMidi(theme, tone) + theme.bellTranspose,
+      duration: beat * 1.5,
+      velocity: 0.3 + rng.next() * 0.2,
+    });
+  }
+
+  if (theme.drumAlways || intense) {
+    for (const b of theme.drumBeats) notes.push({ voice: 'drum', at: b * beat, midi: 36, duration: beat * 0.8, velocity: intense ? 0.8 : 0.5 });
+  }
+  return notes;
+}
+
+/**
+ * Horror (krok 139): minimalny house w klimacie horroru.
  * Stopa na każdą ćwierćnutę, otwarty hi-hat na offbeat, klask na 2 i 4, toczący się bas z progresji,
  * krótki mroczny stab, pod spodem dron z interwałem grozy, a co jakiś czas „ping” w pogłosie.
  * Fraza kończy się przełamaniem (sam dron, hi-haty i stab), wstęp nie ma klasku ani staba.
  * W walce z bossem: szesnastkowe hi-haty, stab w każdym takcie, gęstsze pingi, bez przełamań.
- * Czysta funkcja — odtwarzacz tylko zamienia nuty na dźwięk.
  */
-export function composeBar(theme: MusicThemeDefinition, bar: number, intense: boolean): MusicNote[] {
+export function composeHorrorBar(theme: HorrorThemeDefinition, bar: number, intense: boolean): MusicNote[] {
   const step = stepDuration(theme);
   const degree = chordDegree(theme, bar);
   const chordRoot = scaleDegreeMidi(theme, degree);
