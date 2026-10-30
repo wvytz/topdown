@@ -651,6 +651,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (target) shooter?.afterShotHit(shot, target, creature !== null && !(creature instanceof LarderCocoon), time);
         return target;
       },
+      () => this.aimTargets(),
     );
     this.loot.update(time);
     this.shrine?.update(interactOf);

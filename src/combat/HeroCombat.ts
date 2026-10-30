@@ -3,6 +3,7 @@ import type { HeroId } from '@/core/heroTypes';
 import type { ItemId } from '@/core/lootTypes';
 import type { FloorModifierEffects } from '@/core/floorModifierTypes';
 import type { Vector2 } from '@/core/types';
+import { BARBARIAN_SHOT_HOMING } from '@/config/combatConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { ITEM_DEFINITIONS, ITEM_EFFECTS, STAT_LIMITS } from '@/config/lootConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
@@ -111,7 +112,7 @@ export class HeroCombat {
     if (turn.struck) this.resolveStrike(time);
     if (turn.shot) {
       const { x, y, combatConfig } = player;
-      playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, player.effects, undefined, player);
+      playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, player.effects, undefined, player, { homing: BARBARIAN_SHOT_HOMING });
       sound.play(SoundCue.ArrowShot, player);
     }
     if (turn.orb) this.fireOrb(turn.orb);

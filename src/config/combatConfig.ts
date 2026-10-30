@@ -10,6 +10,7 @@ import type {
 import { EnemyAttackKind, EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { EnemyVariantDefinition } from '@/systems/EnemyVariants';
 import type { EncounterConfig } from '@/dungeon/EncounterPlanner';
+import type { HomingConfig } from '@/systems/Homing';
 import { GUARANTEED_VIEW_HALF } from '@/config/gameConfig';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
@@ -40,6 +41,17 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
     rechargeMs: 1400,
     shotIntervalMs: 200,
   },
+};
+
+/**
+ * Krok 137 (decyzja właściciela: „strzały Barby powinny być auto naprowadzane”, bo bohaterowie dystansowi
+ * są najmocniejsi): strzał barbarzyńcy skręca do celu przed sobą. Skręt 480°/s przy 460 px/s to łuk
+ * o promieniu ok. 55 px — trafia biegnącego Kitera, ale nie zawraca do wrogów za plecami (stożek ±70°).
+ */
+export const BARBARIAN_SHOT_HOMING: HomingConfig = {
+  range: 200,
+  coneHalfDeg: 70,
+  turnRateDegPerSec: 480,
 };
 
 /**

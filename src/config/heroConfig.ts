@@ -19,7 +19,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
     tagline: 'Wręcz, ciężko i z bliska',
     attacks: [
       { input: 'LPM', text: 'cios mieczem łukiem przed sobą' },
-      { input: 'PPM', text: 'strzał (3 ładunki)' },
+      { input: 'PPM', text: 'strzał naprowadzany (3 ładunki)' },
       { input: 'R', text: 'Szał: furia ciosów, nietykalny' },
     ],
     stats: PLAYER_BASE_STATS,
