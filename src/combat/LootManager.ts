@@ -7,7 +7,7 @@ import { Pickup } from '@/entities/Pickup';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import { directionTo, distance } from '@/systems/CombatMath';
-import { splitGold } from '@/systems/Loot';
+import { goldArrives, goldHomingSpeed, splitGold } from '@/systems/Loot';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 
 export interface LootManagerDeps {
@@ -20,9 +20,13 @@ export interface LootManagerDeps {
   readonly onCollect: (drop: LootDrop, position: Vector2, collector: Player) => void;
 }
 
-/** Łupy na ziemi: rozsypanie, przyciąganie do gracza (magnes), zebranie. */
+/**
+ * Łupy na ziemi: rozsypanie, przyciąganie do gracza (magnes), zebranie.
+ * Złoto (krok 143) po rozsypaniu samo leci do najbliższego bohatera z każdej odległości, przez ściany.
+ */
 export class LootManager {
   private readonly group: Phaser.Physics.Arcade.Group;
+  private lastUpdate: number | null = null;
 
   constructor(private readonly deps: LootManagerDeps) {
     this.group = deps.scene.physics.add.group();
@@ -43,13 +47,17 @@ export class LootManager {
 
   update(now: number): void {
     const { party, canCollect, onCollect } = this.deps;
+    const deltaMs = this.lastUpdate === null ? 0 : now - this.lastUpdate;
+    this.lastUpdate = now;
     for (const child of [...this.group.getChildren()]) {
       if (!(child instanceof Pickup) || now < child.collectableAt) continue;
       const player = this.collectorFor(child, party, canCollect);
       if (!player) continue;
 
       const dist = distance(child, player);
-      if (dist <= PICKUP_CONFIG.collectRadius) {
+      if (child.drop.kind === PickupKind.Gold) {
+        this.homeGold(child, player, dist, now, deltaMs);
+      } else if (dist <= PICKUP_CONFIG.collectRadius) {
         onCollect(child.drop, { x: child.x, y: child.y }, player);
         child.destroy();
       } else if (dist <= PICKUP_CONFIG.magnetRadius) {
@@ -57,6 +65,21 @@ export class LootManager {
         child.setVelocity(dir.x * PICKUP_CONFIG.magnetSpeed, dir.y * PICKUP_CONFIG.magnetSpeed);
       }
     }
+  }
+
+  /** Moneta leci do bohatera coraz szybciej; w locie nie zderza się ze ścianami (inaczej utknęłaby za rogiem). */
+  private homeGold(coin: Pickup, player: Player, dist: number, now: number, deltaMs: number): void {
+    const speed = goldHomingSpeed(PICKUP_CONFIG.goldHoming, now - coin.collectableAt);
+    if (goldArrives(dist, speed, deltaMs, PICKUP_CONFIG.collectRadius)) {
+      this.deps.onCollect(coin.drop, { x: coin.x, y: coin.y }, player);
+      coin.destroy();
+      return;
+    }
+    const body = coin.body as Phaser.Physics.Arcade.Body;
+    body.checkCollision.none = true;
+    coin.setDrag(0, 0);
+    const dir = directionTo(coin, player);
+    coin.setVelocity(dir.x * speed, dir.y * speed);
   }
 
   /** Najbliższy żywy bohater, który może wziąć łup (solo: gracz, o ile żyje i może). */

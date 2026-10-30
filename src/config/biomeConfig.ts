@@ -172,22 +172,24 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     // Purchawki (krok 28c): 1–3 w zwykłym pokoju (biom „pełniejszy” od leża), bez kolizji. Podejście budzi
     // purchawkę — nabrzmiewa, a potem pęka trującą chmurą, która chwilę wisi i zamyka przejście.
     // Cios, strzał lub dash rozrywa ją od razu: z dystansu da się ją rozbroić, ale chmura i tak zostaje.
+    // Krok 143 (ocena właściciela: plamy „za szybkie, za duże i biorą za dużo”): rzadziej (0–2), chmura o 1/3
+    // mniejsza (30 zamiast 44 px), rośnie ponad 2 razy wolniej, wisi krócej i truje o połowę słabiej.
     puffballs: {
-      perRoom: { min: 1, max: 3 },
+      perRoom: { min: 0, max: 2 },
       wallMarginTiles: 1,
       centerClearTiles: 1,
       minSpacingTiles: 3,
       radius: 8,
       // Telegraf dłuższy niż u kokonu: uważny gracz wyjdzie chodem poza chmurę, zanim urośnie.
       triggerRadius: 22,
-      fuseMs: 500,
+      fuseMs: 700,
       cloud: {
-        startRadius: 20,
-        maxRadius: 44,
-        spreadMs: 400,
-        durationMs: 4000,
-        // Jak trucizna zarażonego pająka (2 co 0,5 s); po wyjściu truje jeszcze 1,5 s.
-        poison: { tickDamage: 2, tickMs: 500, durationMs: 1500 },
+        startRadius: 14,
+        maxRadius: 30,
+        spreadMs: 900,
+        durationMs: 3000,
+        // 1 co 0,5 s (połowa trucizny zarażonego pająka); po wyjściu truje jeszcze 0,5 s.
+        poison: { tickDamage: 1, tickMs: 500, durationMs: 500 },
       },
     },
     fog: FUNGAL_FOG,
@@ -259,21 +261,22 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     // Popielniczki (krok 84, prośba właściciela: dymne pułapki): 1–2 w zwykłym pokoju, bez kolizji. Podejście budzi
     // popielniczkę, po krótkim telegrafie buchają kłęby dymu (chmura kaszle: trucizna jak w Grzybni), która wisi
     // i zamyka przejście. Cios, strzał lub dash przewraca ją od razu — chmura i tak zostaje.
+    // Krok 143: chmura mniejsza, wolniejsza i słabsza jak przy purchawkach (popielniczek 0–2 na pokój).
     puffballs: {
       look: 'ashtray',
-      perRoom: { min: 1, max: 2 },
+      perRoom: { min: 0, max: 2 },
       wallMarginTiles: 1,
       centerClearTiles: 1,
       minSpacingTiles: 3,
       radius: 9,
       triggerRadius: 24,
-      fuseMs: 600,
+      fuseMs: 800,
       cloud: {
-        startRadius: 20,
-        maxRadius: 44,
-        spreadMs: 400,
-        durationMs: 4500,
-        poison: { tickDamage: 2, tickMs: 500, durationMs: 1500 },
+        startRadius: 14,
+        maxRadius: 30,
+        spreadMs: 900,
+        durationMs: 3500,
+        poison: { tickDamage: 1, tickMs: 500, durationMs: 500 },
       },
     },
     fog: SMOKE_HAZE,

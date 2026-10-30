@@ -71,7 +71,8 @@ describe('Zadymiona palarnia — popielniczki i śmieci (krok 84)', () => {
   it('popielniczka to purchawka z własnym wyglądem; chmura dymu ma promień jak w arkuszu', () => {
     const puff = BIOMES[BiomeId.SmokeDen].puffballs!;
     expect(puff.look).toBe('ashtray');
-    expect(puff.cloud.startRadius).toBe(20);
-    expect(puff.cloud.maxRadius).toBe(44);
+    // Krok 143: chmura jak u purchawek Grzybni (promienie klatek arkusza `smoke-cloud.png`).
+    expect(puff.cloud.startRadius).toBe(BIOMES[BiomeId.FungalGrove].puffballs!.cloud.startRadius);
+    expect(puff.cloud.maxRadius).toBe(BIOMES[BiomeId.FungalGrove].puffballs!.cloud.maxRadius);
   });
 });

@@ -3,10 +3,10 @@ import { EnemyType } from '@/core/combatTypes';
 import type { ItemDefinition, LootTable } from '@/core/lootTypes';
 import { ItemId, PickupKind } from '@/core/lootTypes';
 import { createRng } from '@/core/random';
-import { BOSS_LOOT, ENEMY_LOOT, ITEM_DEFINITIONS, ITEM_EFFECTS, ITEM_POOL, LOOT_SCALING } from '@/config/lootConfig';
+import { BOSS_LOOT, ENEMY_LOOT, ITEM_DEFINITIONS, ITEM_EFFECTS, ITEM_POOL, LOOT_SCALING, PICKUP_CONFIG } from '@/config/lootConfig';
 import { NO_WEAPON_EFFECTS, computeWeaponEffects } from '@/systems/WeaponEffects';
 import { scaleForFloor } from '@/systems/CombatMath';
-import { pickWeightedItem, rollLoot, splitGold } from '@/systems/Loot';
+import { goldArrives, goldHomingSpeed, pickWeightedItem, rollLoot, splitGold } from '@/systems/Loot';
 
 const NOTHING: LootTable = { gold: { min: 1, max: 1 }, goldChance: 0, healthChance: 0, healthAmount: 10, itemChance: 0 };
 const EVERYTHING: LootTable = { ...NOTHING, gold: { min: 2, max: 4 }, goldChance: 1, healthChance: 1, itemChance: 1 };
@@ -116,5 +116,39 @@ it('każdy przedmiot ma dodatnią wagę, nazwę i realne działanie (modyfikator
       }
       expect(table.gold.min).toBeLessThanOrEqual(table.gold.max);
     }
+  });
+});
+
+describe('złoto leci do bohatera (krok 143)', () => {
+  const homing = PICKUP_CONFIG.goldHoming;
+
+  it('przyspiesza od prędkości startowej do sufitu', () => {
+    expect(goldHomingSpeed(homing, 0)).toBe(homing.startSpeed);
+    expect(goldHomingSpeed(homing, -100)).toBe(homing.startSpeed);
+    expect(goldHomingSpeed(homing, 200)).toBeGreaterThan(homing.startSpeed);
+    expect(goldHomingSpeed(homing, 60_000)).toBe(homing.maxSpeed);
+  });
+
+  it('szybciej niż bohater — dogania biegnącego (najszybszy chód ok. 320 px/s z Butami)', () => {
+    expect(homing.maxSpeed).toBeGreaterThan(320 * 2);
+  });
+
+  it('moneta z drugiego końca dużego piętra dolatuje w ok. 1,5 s', () => {
+    // Odległość 800 px: całkujemy lot w krokach 1/60 s.
+    let dist = 800;
+    let t = 0;
+    while (dist > 0 && t < 5000) {
+      const speed = goldHomingSpeed(homing, t);
+      if (goldArrives(dist, speed, 1000 / 60, PICKUP_CONFIG.collectRadius)) break;
+      dist -= (speed * (1000 / 60)) / 1000;
+      t += 1000 / 60;
+    }
+    expect(t).toBeLessThan(1500);
+  });
+
+  it('szybka moneta przy niskim FPS nie przelatuje obok bohatera', () => {
+    expect(goldArrives(25, 900, 1000 / 30, PICKUP_CONFIG.collectRadius)).toBe(true);
+    expect(goldArrives(25, 100, 1000 / 60, PICKUP_CONFIG.collectRadius)).toBe(false);
+    expect(goldArrives(PICKUP_CONFIG.collectRadius, 0, 0, PICKUP_CONFIG.collectRadius)).toBe(true);
   });
 });

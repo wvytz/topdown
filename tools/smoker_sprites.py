@@ -300,8 +300,8 @@ def can_frame(k):
 ASH_DISH = (ok(.22, .030, 200), ok(.30, .040, 200), ok(.38, .045, 200), ok(.48, .045, 200), ok(.60, .040, 200))
 ASH = (ok(.50, .008, 85), ok(.66, .008, 85), ok(.78, .008, 85))
 CLOUD = 96
-# Promienie klatek rozrostu = poisonCloudRadius w grze (biomeConfig palarni: startRadius 20 → maxRadius 44).
-CLOUD_RADII = (20, 25, 30, 34, 39, 44, 44, 44)
+# Promienie klatek rozrostu = poisonCloudRadius w grze (biomeConfig palarni: startRadius 14 → maxRadius 30; krok 143 — mniejsza chmura).
+CLOUD_RADII = (14, 17, 20, 23, 27, 30, 30, 30)
 
 
 def ashtray_frame(f):
