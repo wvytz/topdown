@@ -46,7 +46,7 @@ Nazwa w kodzie: `SoundCue` w `core/audioTypes.ts`. Odsłuch w trybie dev z konso
 | `ambush` | zasadzka: światło gaśnie | |
 | `secret` | ukryta komnata się odsłania | |
 
-**Muzyka:** wieża (piętra 1–3 i menu) — d-moll dorycki, 72 BPM; zaświaty (piętra 4–7: Cmentarzysko, Piekło, Palarnia) — e frygijski, 60 BPM, z pulsem serca. W walce z bossem muzyka dostaje bęben, gęstsze dzwonki i mocniejszy bas. Na pauzie cichnie, po śmierci drużyny milknie.
+**Muzyka (krok 139):** prosty, zapętlony minimalny house w klimacie horroru (4/4, 16 kroków na takt): stopa na każdą ćwierćnutę, otwarty hi-hat na offbeat, klask na 2 i 4, toczący się bas, krótki ciemny stab z echem, pod spodem buczący dron z interwałem grozy i co jakiś czas odległy „ping”. Wieża (piętra 1–3 i menu) — a-moll, 122 BPM, dron z małą sekundą; zaświaty (piętra 4–7) — e frygijski, 118 BPM, dron z trytonem, gęstsze pingi. Fraza ma 16 taktów, ostatnie 2 to przełamanie bez stopy; pierwsze 4 takty utworu bez klasku i staba. W walce z bossem — szesnastkowe hi-haty, stab w każdym takcie, bez przełamań. Na pauzie cichnie, po śmierci drużyny milknie. (Do kroku 138: ambient z padem i dzwonkami, 72/60 BPM.)
 
 ## Co-op: bez podwójnego hałasu
 

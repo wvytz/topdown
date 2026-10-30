@@ -406,35 +406,46 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
 };
 
 /**
- * Muzyka: dwa klimaty składane w locie (`systems/MusicComposer`).
- * Wieża — d-moll dorycki, spokojny, tajemniczy; zaświaty — e frygijski, niżej, wolniej, z pulsem serca.
- * W walce z bossem oba dostają bęben, gęstsze dzwonki i drugi ton basu.
+ * Muzyka (krok 139, prośba właściciela: „prosty house'owy bit z kategorii horror minimal tech”; wcześniej ambient
+ * z kroku 116). Dwa klimaty tej samej pętli 4/4 składanej w locie (`systems/MusicComposer`):
+ * wieża — a-moll, 122 BPM, dron z małą sekundą; zaświaty — e frygijski, 118 BPM, dron z trytonem, gęstsze pingi.
+ * W walce z bossem: szesnastkowe hi-haty, stab w każdym takcie, bez przełamań.
  */
 export const MUSIC_THEMES: Readonly<Record<MusicTheme, MusicThemeDefinition>> = {
   [MusicTheme.Tower]: {
-    bpm: 72,
-    root: 50,
-    scale: [0, 2, 3, 5, 7, 9, 10],
-    progression: [0, 5, 3, 4],
-    barsPerChord: 2,
-    bellDensity: 0.16,
-    bellTranspose: 12,
-    bellRest: { every: 8, rest: 2 },
-    drumBeats: [0, 2],
-    drumAlways: false,
-    seed: 116,
+    bpm: 122,
+    root: 45,
+    scale: [0, 2, 3, 5, 7, 8, 10],
+    progression: [0, 0, 5, 3],
+    barsPerChord: 4,
+    bassSteps: [null, null, 0, null, null, null, 0, null, null, null, 0, null, null, null, 0, 7],
+    openHatSteps: [2, 6, 10, 14],
+    clapSteps: [4, 12],
+    stabSteps: [3, 10],
+    droneTension: 1,
+    pingChance: 0.3,
+    pingTranspose: 24,
+    phraseBars: 16,
+    breakBars: 2,
+    introBars: 4,
+    seed: 139,
   },
   [MusicTheme.Underworld]: {
-    bpm: 60,
+    bpm: 118,
     root: 40,
     scale: [0, 1, 3, 5, 7, 8, 10],
-    progression: [0, 1, 5, 0, 3, 1],
-    barsPerChord: 2,
-    bellDensity: 0.1,
-    bellTranspose: 12,
-    bellRest: { every: 8, rest: 3 },
-    drumBeats: [0, 0.4, 2],
-    drumAlways: true,
+    progression: [0, 0, 1, 0],
+    barsPerChord: 4,
+    bassSteps: [null, null, 0, null, null, 0, null, 1, null, null, 0, null, null, 0, null, null],
+    openHatSteps: [2, 6, 10, 14],
+    clapSteps: [4, 12],
+    stabSteps: [6, 14],
+    droneTension: 6,
+    pingChance: 0.45,
+    pingTranspose: 24,
+    phraseBars: 16,
+    breakBars: 2,
+    introBars: 4,
     seed: 666,
   },
 };
@@ -453,12 +464,20 @@ export const MUSIC_BY_BIOME: Readonly<Record<BiomeId, MusicTheme>> = {
 /** Głośność głosów muzyki i ich barwa (odtwarzacz Web Audio). */
 export const MUSIC_MIX = {
   master: 0.5,
-  // Krok 116a (ocena: „po 20 minutach lekki dyskomfort”): ciemniejszy pad, słabsze dudnienie rozstrojenia.
-  pad: { gain: 0.12, attack: 1.2, release: 1.5, lowpass: 700, detuneCents: 5 },
-  bass: { gain: 0.22, attack: 0.05, release: 0.4, lowpass: 400 },
-  /** Dzwonek: alikwot harmoniczny (2×, cicho) zamiast metalicznego 2,76× — mniej kłuje w uszy. */
-  bell: { gain: 0.07, attack: 0.01, release: 1.4, overtoneRatio: 2, overtoneLevel: 0.15, lowpass: 2500 },
-  drum: { gain: 0.5, pitchFrom: 110, pitchTo: 40, decay: 0.35 },
+  // Krok 139: zestaw minimalnego house'u. Hi-haty ciche i krótkie — po kroku 116a pamiętamy o zmęczeniu ucha.
+  kick: { gain: 0.55, pitchFrom: 140, pitchTo: 45, pitchS: 0.09, decay: 0.32 },
+  hat: { gain: 0.05, highpass: 8000, decay: 0.035 },
+  openHat: { gain: 0.045, highpass: 7000, decay: 0.16 },
+  clap: { gain: 0.14, bandpass: 1300, q: 1.2, decay: 0.14, bursts: 3, burstGapS: 0.011 },
+  /** Bas: piła za filtrem, który zamyka się po każdym uderzeniu („pluck”). */
+  bass: { gain: 0.15, attack: 0.005, release: 0.08, filterFrom: 900, filterTo: 180, filterS: 0.12 },
+  /** Stab: dwie rozstrojone piły, krótko, ciemno, z echem. */
+  stab: { gain: 0.035, attack: 0.004, release: 0.18, lowpass: 1100, detuneCents: 9, echoSend: 0.6 },
+  /** Dron: dwa sinusy z lekkim rozstrojeniem — powolne dudnienie niepokoju. */
+  drone: { gain: 0.05, attack: 2.5, release: 2, lowpass: 500, detuneCents: 6 },
+  ping: { gain: 0.04, decay: 0.7, echoSend: 0.9 },
+  /** Echo staba i pingów: kropkowana ósemka (w ćwierćnutach), ze sprzężeniem i przyciemnieniem. */
+  echo: { beats: 0.75, feedback: 0.4, lowpass: 1600 },
   /** Ile sekund naprzód planujemy nuty (odtwarzacz budzi się co `tickMs`). */
   lookaheadS: 0.6,
   tickMs: 150,

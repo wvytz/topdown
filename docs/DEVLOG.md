@@ -5061,6 +5061,23 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** wielkość i miejsce strzałki (przy dolnej krawędzi zahacza o linię podpowiedzi sterowania), czy wystarcza, czy jednak lekko oddalić kamerę na arenie.
 
+## Krok 139 — Muzyka: minimalny house w klimacie horroru `#ocena` `#dzwiek`
+
+**Skąd:** prośba właściciela (30.10.2026): „zmień ten ambient na prosty house'owy bit z kategorii horror minimal tech”.
+
+**Co powstało:**
+- **Nowy kompozytor** (`systems/MusicComposer.ts`, czysty TS): pętla 4/4 w 16 krokach na takt. Stopa na każdą ćwierćnutę, otwarty hi-hat na offbeat, klask na 2 i 4, toczący się bas na akordzie z progresji, krótki ciemny stab co drugi takt, pod spodem dron (prima + interwał grozy) i rzadki „ping” w echu (deterministyczny seed). Fraza 16 taktów kończy się 2-taktowym przełamaniem (bez stopy, basu i klasku); pierwsze 4 takty utworu bez klasku i staba — muzyka się rozkręca.
+- **Dwa klimaty tej samej pętli** (`MUSIC_THEMES`): wieża i menu — a-moll, 122 BPM, dron z małą sekundą; zaświaty — e frygijski, 118 BPM, dron z trytonem, gęstsze pingi, inny rytm basu.
+- **Walka z bossem** (`setMusicIntense`): szesnastkowe zamknięte hi-haty, stab w każdym takcie, częstsze pingi, bez przełamań.
+- **Nowe głosy odtwarzacza** (`audio/MusicPlayer.ts`): stopa (sinus z opadającą wysokością), hi-haty i klask (szum za filtrem), bas-piła z zamykającym się filtrem, stab z dwóch rozstrojonych pił, dron z dwóch sinusów, ping; stab i ping idą do echa (kropkowana ósemka ze sprzężeniem). Barwy i głośności w `MUSIC_MIX`.
+- Kanał muzyki, głośność z pauzy, N, wyciszenie na starcie i przyciszanie na pauzie — bez zmian (te same `SoundBoard` i szyna muzyki).
+
+**Decyzje:** dalej synteza w kodzie, bez plików audio. Hi-haty celowo ciche i krótkie (pamiątka po kroku 116a: zmęczenie ucha po 20 minutach).
+
+**Testy i weryfikacja:** `tests/systems/musicComposer.test.ts` przepisany (stopa i przełamanie, wstęp, tryb bossa, dron z interwałem grozy, pingi, determinizm i nuty w takcie dla obu klimatów); `npm run build` (typy, 2215 testów, build). W Chromium wyrenderowane próbki (OfflineAudioContext, prawdziwy `MusicPlayer`): wieża 40 s, zaświaty 40 s, boss 20 s — szczyt ok. 0,31 przed głośnością kanału, bez przesterowania, brak błędów w konsoli.
+
+**Do oceny:** czy klimat trafiony; tempo (122/118), głośność stopy względem efektów, czy pingi i dron nie męczą po dłuższej grze.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
