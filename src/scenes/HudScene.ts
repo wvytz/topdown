@@ -226,7 +226,7 @@ export class HudScene extends Phaser.Scene {
         .setText(hud.onStairs ? `${pressE()}, aby wspiąć się wyżej` : `Schody otwarte — stań na nich i ${pressE().toLowerCase()}, aby wspiąć się wyżej`)
         .setColor('#e0b84a');
     } else if (hud.boss) {
-      this.hintText.setText('Pokonaj bossa, aby otworzyć schody · unikaj czerwonych stref').setColor('#ffb0a0');
+      this.hintText.setText('Pokonaj bossa, aby otworzyć schody · unikaj stref ataku').setColor('#ffb0a0');
     } else {
       this.hintText.setText(`Wrogowie: ${hud.enemiesAlive} · znajdź komnatę bossa (zakratowane schody)`).setColor('#a0a0b0');
     }

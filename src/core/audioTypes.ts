@@ -44,6 +44,8 @@ export enum SoundCue {
   Splash = 'splash',
   /** Winda w murze areny: dzwonek i rozsuwane drzwi. */
   Elevator = 'elevator',
+  /** Rozbryzg szlamu (Król Szlamu, krok 152): mlaśnięcie i bulgot, niżej niż chlust wody. */
+  SludgeSplat = 'sludge-splat',
   /** Trzepot skrzydeł (Brudna Wiedźma, krok 137): klucz bocianów i pikujące ptaki. */
   WingFlap = 'wing-flap',
   // Świat i łupy

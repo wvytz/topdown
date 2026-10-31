@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5347,6 +5347,29 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** liczby (Iskrownik 8 obrażeń/0,8 s, fala 75%, Pożoga 12), wygląd (figury geometryczne — po akceptacji arkusze z generatora), czy limit 3 kopii dla Butów/Rękawic/Klepsydry/Kołczana/Kła/Odłamka nie jest za ciasny, czy karta rozwoju jest teraz jasna.
 
+## Krok 152 — Król Szlamu: szlam zamiast ognia, kałuże i szlam od ścian `#decyzja` `#krol-szlamu`
+
+**Prośba właściciela (31.10):** „całkowicie przebuduj pierwszego bossa (Sludge Kinga). Nie ma pluć ognistymi czy czerwonymi kręgami, tylko szlamem — ma zaszlamiać”. Z testów właściciela: najlepiej bić go, biegając w kółko. Plamy, flegmy i śluz mają zostawiać ślady, które lekko spowalniają; ściany areny pokrywają się śluzem, wszystko robi się bardziej fioletowe, a arena delikatnie się zwęża — wstęp do zwężającej się areny Kata Otchłani (pierścień ognia). Poziom detalu jak ogień z kroku 144.
+
+**Co się zmieniło (Strażnik Piętra, tytuł „Król Szlamu”):**
+- **Wygląd stref:** wszystkie strefy bossa mają `look: 'sludge'` (`BossDefinition.strikeLook`): fioletowy telegraf z liliowym, zaciskającym się pierścieniem zamiast czerwieni, a uderzenie to **rozbryzg szlamu** (arkusz z generatora, krople z grawitacją, mlaśnięcie `SoundCue.SludgeSplat`, słabszy wstrząs) zamiast kuli ognia. Pierścień przed falą kul — liliowy.
+- **Flegma (dawny ostrzał):** każda strefa to kluska flegmy lecąca łukiem z paszczy (400 ms), pierwsza tam, dokąd gracz biegnie (`barrage.lead`, 600 ms / do 110 px) — bieg w kółko już nie wystarcza.
+- **Kałuże szlamu** (`sludge.puddle`): po rozbryzgu wokół bossa (r 56), skoku (r 44), każdej flegmie (r 30) i każdej kuli z pierścienia, która rozbije się o mur (r 14). Rosną od połowy promienia, leżą 9 s, bąblują, przed zniknięciem zasychają w brąz. Ślad stóp w kałuży: **−20% prędkości** (teren — dash przechodzi). Najwyżej 18 naraz.
+- **Szlam od ścian** (`sludge.creep`, `systems/Sludge.ts`): od początku walki szlam pełznie od czterech ścian areny falistym brzegiem (do **48 px = 1,5 kafla** z każdej strony; arena 11–13 kafli traci ok. 3). Postęp — większy z: czas walki (pełny po 100 s) i utracone HP bossa (pełny przy 15% HP); pełznie najwyżej 6 px/s i się nie cofa. W szlamie **−30%** prędkości i napis „Szlam!”. Mury areny pokrywają się zaciekami spływającymi ku podłodze (mur południowy nad postaciami, jak warstwa `overhead`), a cała arena nabiera fioletu (do 20%). Po walce szlam zostaje jako ślad, fiolet schodzi.
+- Podpowiedź w HUD: „unikaj stref ataku” zamiast „czerwonych stref” (strefy nie są już tylko czerwone).
+
+**Zasada „rysunek = zasięg”:** próg głębokości liczony raz na piksel (`creepThreshold`) — piksel szlamu jest narysowany dokładnie wtedy, gdy `creepCoverage > 0`, czyli tam, gdzie spowalnia (test). Kałuże nie wychodzą poza promień (walidacja w generatorze), rozbryzg nie wychodzi poza strefę (`splashSpriteFor`).
+
+**Grafika — `tools/sludge_sprites.py` (nowy):** paleta STYLEGUIDE §4.5, cieniowanie pasmowe ze światłem z lewej-góry, fiolet → brąz Bayerem 4×4, połysk pojedynczymi pikselami. `sludge-phlegm.png` (flegma z nitkami śluzu, 4 kl.), `sludge-splash-{32,64,96,112}.png` (rozbryzg 8 kl.: kluska → korona i krople → błona pęka), `sludge-puddle-{14,30,44,56}.png` (11 kl.: rozrost, bąble w pętli, zasychanie), `sludge-bubble.png`. Szlam przy ścianach i na murach rysuje gra na płótnie (`effects/SludgeCreepView.ts`).
+
+**Pliki:** czyste — `systems/Sludge.ts`, `config/sludgeConfig.ts`, `core/bossTypes.ts` (`SludgeDefinition`, `strikeLook`, `barrage.lead`, `thrown.look`), `ai/bossAttacks.ts` (kałuże dokłada `planBossAttack`), `config/bossConfig.ts`; Phaser — `effects/SludgeEffects.ts` (`effects.sludge`), `effects/SludgeCreepView.ts`, `effects/AreaTelegraph.ts`, `combat/BossFight.ts`, `combat/ProjectileManager.ts` (`onLand`).
+
+**Testy:** `tests/systems/sludge.test.ts` (15: flegma i wyprzedzenie, kałuże po atakach, ryk bez kałuży, kałuża łapie ślad stóp, siła spowolnień, arkusze dla promieni, limit, rozbryzg w strefie, wzrost i fala szlamu, rysunek = zasięg, środek areny wolny); `BossBrain.test` — plucie przed flegmą kończy się w chwili rzutu. `npm run build` OK (2454 testy).
+
+**Weryfikacja w przeglądarce:** `?hero=barbarian&floor=1&boss=1&items=0&seed=5` — wszystkie cztery ataki, kałuże, bąble, „Szlam!” przy murze, pełny szlam (podgląd całej areny z ręcznie ustawioną głębokością). Bez błędów w konsoli. Zrzuty: `screens/krok152-krol-szlamu/` w plikach projektu.
+
+**Do oceny właściciela:** siła spowolnień (20% kałuża, 30% szlam przy ścianie), tempo i głębokość zwężania (1,5 kafla, 100 s), ile kałuż (18) i jak długo leżą (9 s), czy fiolet areny nie jest za mocny, czy kule z pierścienia mają zostawiać kałuże przy murach.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5483,6 +5506,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
+
+**Król Szlamu (krok 152)** `#krol-szlamu`: szlam zamiast ognia, kałuże i szlam od ścian — czeka na ocenę (siła spowolnień, tempo zwężania, fiolet). Kolejne kroki: ten sam poziom detalu dla ataków innych bossów; zwężanie areny u Kata Otchłani jako rozwinięcie.
 
 **Przemiany przedmiotów (krok 150)** `#przemiany`: zrobione — 3. kopia przemienia każdy przedmiot, karta rozwoju, limity 3 kopii. Czeka na ocenę: liczby, wygląd (figury geometryczne → arkusze z generatora), limity, czytelność karty.
 

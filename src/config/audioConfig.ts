@@ -334,6 +334,15 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'sine', freq: 260, freqEnd: 520, delay: 0.05, attack: 0.01, decay: 0.12, volume: 0.25, vibrato: { depth: 0.2, rate: 30 } },
     ],
   },
+  /** Rozbryzg szlamu (krok 152): ciężkie mlaśnięcie (ciemny szum) i niski bulgot z vibrato. */
+  [SoundCue.SludgeSplat]: {
+    gain: 0.42,
+    layers: [
+      { wave: 'noise', freq: 1800, freqEnd: 300, attack: 0.004, decay: 0.26, volume: 0.6, lowpass: 1600, curve: 1.6 },
+      { wave: 'sine', freq: 150, freqEnd: 70, attack: 0.005, decay: 0.2, volume: 0.45 },
+      { wave: 'sine', freq: 220, freqEnd: 360, delay: 0.08, attack: 0.01, decay: 0.14, volume: 0.22, vibrato: { depth: 0.3, rate: 26 } },
+    ],
+  },
   /** Winda: dzwonek „dzyń” i szum rozsuwanych drzwi. */
   [SoundCue.Elevator]: {
     gain: 0.35,
@@ -415,6 +424,7 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.Shout]: { minGapMs: 600 },
   [SoundCue.Splash]: { minGapMs: 120 },
   [SoundCue.Elevator]: { minGapMs: 800 },
+  [SoundCue.SludgeSplat]: { minGapMs: 110 },
   [SoundCue.WingFlap]: { minGapMs: 150 },
 };
 

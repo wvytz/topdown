@@ -51,10 +51,15 @@ const ENRAGE_FURY = {
   roar: { radius: 110, telegraphMs: 600, recoveryMs: 700, damage: 6, knockback: 420 },
 } as const;
 
-/** Pierwszy boss: „Strażnik Piętra”. Sekwencja: uderzenie → pierścień pocisków → ostrzał stref. */
+/**
+ * Pierwszy boss: „Strażnik Piętra”, od kroku 151 Król Szlamu (`#krol-szlamu`, prośba właściciela: „ma zaszlamiać”).
+ * Sekwencja: rozbryzg wokół siebie → pierścień kul szlamu → flegma → skok. Wszystko pluje szlamem zamiast ognia:
+ * fioletowe telegrafy, rozbryzgi i kałuże, które lekko spowalniają; od ścian pełznie szlam i zwęża arenę.
+ */
 export const FLOOR_GUARDIAN = {
   id: BossId.FloorGuardian,
   name: 'Strażnik Piętra',
+  title: 'Król Szlamu',
   radius: 26,
   color: 0xb5452a,
   maxHp: 380, // krok 145 (wolniejsze skalowanie bossów): 300 → 380
@@ -105,12 +110,33 @@ export const FLOOR_GUARDIAN = {
     recoveryMs: 300,
     damage: 14,
     knockback: 200,
+    // Krok 152: flegma leci łukiem z paszczy, pierwsza tam, dokąd gracz biegnie (bieg w kółko nie wystarcza).
+    thrown: { flightMs: 400, look: 'phlegm' },
+    lead: { ms: 600, maxPx: 110 },
   },
   enrage: {
     ...ENRAGE_FURY,
     hpThreshold: 0.5,
     telegraphMultiplier: 0.75,
     restMultiplier: 0.6,
+  },
+  strikeLook: 'sludge',
+  sludge: {
+    // Kałuże „spowalniają w delikatny sposób” (właściciel): 20%, tylko gdy stoisz w kałuży.
+    puddle: { startScale: 0.5, spreadMs: 420, durationMs: 9000, slow: { pct: 0.2, durationMs: 250 } },
+    // Promienie z SLUDGE_PUDDLE_RADII (arkusze tools/sludge_sprites.py).
+    puddleRadius: { [BossAttackKind.Slam]: 56, [BossAttackKind.Leap]: 44, [BossAttackKind.Barrage]: 30 },
+    globPuddleRadius: 14,
+    maxPuddles: 18,
+    // Szlam od ścian: do 1,5 kafla z każdej strony (arena 11–13 kafli traci ok. 3) — pełny po 100 s albo przy 15% HP.
+    creep: {
+      maxDepthPx: 48,
+      fullAfterMs: 100000,
+      hpLostForFull: 0.85,
+      growPxPerSec: 6,
+      wobble: { amp: 0.45, wavelengthPx: 72 },
+      slow: { pct: 0.3, durationMs: 250 },
+    },
   },
 } satisfies BossDefinition;
 
