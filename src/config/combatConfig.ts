@@ -16,7 +16,8 @@ import { TOWER_CONFIG } from '@/config/towerConfig';
 import { towerLoop } from '@/systems/TowerLoop';
 
 export const PLAYER_COMBAT: PlayerCombatConfig = {
-  meleeDamage: 12,
+  // Krok 145 (`#decyzja` właściciela „za mały damage”): obrażenia bohaterów ×1,25 — cios 12 → 15.
+  meleeDamage: 15,
   meleeRange: 52,
   meleeArcDeg: 110,
   attackCooldownMs: 320,
@@ -31,7 +32,7 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
   },
   // Strzał jest słabszy od ciosu wręcz: uzupełnienie walki (dobijanie, Kitery), nie zamiennik.
   ranged: {
-    damage: 7,
+    damage: 9,
     knockback: 90,
     projectileSpeed: 460,
     projectileLifetimeMs: 650,
@@ -52,7 +53,7 @@ export const ENEMY_DEFINITIONS: Readonly<Record<EnemyType, EnemyDefinition>> = {
     variant: EnemyVariant.TrashcanMan,
     radius: 11,
     color: 0xd9534f,
-    maxHp: 30,
+    maxHp: 33, // krok 145: cios bohatera 12 → 15, Rusher dalej pada od 3 ciosów
     moveSpeed: 115,
     behaviour: { aggroRange: 260 },
     attack: {
@@ -385,6 +386,16 @@ export const ENEMY_VIEW_RULE: EnemyViewRule = {
 export const ENEMY_SCALING: EnemyScalingConfig = {
   hpPerFloor: 0.15,
   damagePerFloor: 0.1,
+};
+
+/**
+ * Skalowanie bossów (krok 145, `#decyzja` właściciela: walki z bossami za długie, „przeskaluj HP”): HP rośnie
+ * o 6% na piętro zamiast 15% (wiedźma na piętrze 8 miała 2× bazowe HP, a obrażenia bohatera nie rosną).
+ * Bazowe HP w `bossConfig.ts` podniesione tak, by pierwsze piętra zostały równie trudne. Obrażenia jak u wrogów.
+ */
+export const BOSS_SCALING: EnemyScalingConfig = {
+  hpPerFloor: 0.06,
+  damagePerFloor: ENEMY_SCALING.damagePerFloor,
 };
 
 export const PROJECTILE_RADIUS = 4;

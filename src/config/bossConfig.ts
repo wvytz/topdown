@@ -57,7 +57,7 @@ export const FLOOR_GUARDIAN = {
   name: 'Strażnik Piętra',
   radius: 26,
   color: 0xb5452a,
-  maxHp: 300,
+  maxHp: 380, // krok 145 (wolniejsze skalowanie bossów): 300 → 380
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i czwarty cios — skok.
   moveSpeed: 65,
   sprint: { speed: 130, distance: 160 },
@@ -126,7 +126,7 @@ export const SPIDER_QUEEN = {
   enragedLabel: 'Królewski gniew!',
   radius: 28,
   color: 0x7a3a4a,
-  maxHp: 300,
+  maxHp: 335, // krok 145 (wolniejsze skalowanie bossów): 300 → 335
   // Krok 27 (feedback właściciela: dalej za łatwo): królowa poluje — z daleka sprintem dopada gracza
   // (wolniej niż gracz 200, ale spowolniony siecią nie ucieknie), z bliska podchodzi i smaga nogami.
   // Wzmocnienie bossów (prośba właściciela): chód 70 → 80, sprint 150 → 165 (gracz 200, spowolniony siecią 100).
@@ -242,7 +242,7 @@ export const SPIDER_KING = {
   enragedLabel: 'Gniew Grzybni!',
   radius: 34,
   color: 0x6a8a3a,
-  maxHp: 420,
+  maxHp: 465, // krok 145 (wolniejsze skalowanie bossów): 420 → 465
   // Ciężki, ale nie ślamazarny (wzmocnienie bossów, prośba właściciela): z daleka dobiega sprintem,
   // z bliska podchodzi na odległość kos. Sprint wolniejszy od gracza (200).
   moveSpeed: 66,
@@ -332,7 +332,7 @@ export const FUNGAL_DEVOURER = {
   enragedLabel: 'Głód!',
   radius: 28,
   color: 0x6a1e24,
-  maxHp: 460,
+  maxHp: 670, // krok 145 (wolniejsze skalowanie bossów): 460 → 670
   // Krok 111 (ocena właściciela: „zero wyzwania, za wolny, nie trafia”): szybszy chód i sprint (gracz ma 200),
   // krótsze przerwy i telegrafy; skok, zamach i wyrzut celują tam, dokąd gracz biegnie (`lead`).
   moveSpeed: 88,
@@ -456,7 +456,7 @@ export const GATE_WARDEN = {
   radius: 30,
   color: 0x8a2a1a,
   // Krok 113 (ocena właściciela: tarczownik „broken”, za dużo życia): 420 → 340.
-  maxHp: 340,
+  maxHp: 500, // krok 145 (wolniejsze skalowanie bossów): 340 → 500
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i trzeci cios — skok.
   moveSpeed: 72,
   sprint: { speed: 140, distance: 150 },
@@ -534,7 +534,7 @@ export const ABYSS_EXECUTIONER = {
   radius: 32,
   color: 0x6a1010,
   // Krok 113 (jak Strażnik Bram): 520 → 430.
-  maxHp: 430,
+  maxHp: 640, // krok 145 (wolniejsze skalowanie bossów): 430 → 640
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i czwarty cios — skok.
   moveSpeed: 76,
   sprint: { speed: 145, distance: 150 },
@@ -600,7 +600,7 @@ export const SMOKE_BARON = {
   enragedLabel: 'Pełen energii!',
   radius: 34,
   color: 0x8a8a80,
-  maxHp: 640,
+  maxHp: 760, // krok 145 (wolniejsze skalowanie bossów): 640 → 760
   moveSpeed: 62,
   sprint: { speed: 130, distance: 170 },
   engageDistance: 70,
@@ -685,7 +685,7 @@ export const CLEANER_BLONDE = {
   enragedLabel: 'Wściekła!',
   radius: 18,
   color: 0xe0c070,
-  maxHp: 600,
+  maxHp: 720, // krok 145 (wolniejsze skalowanie bossów): 600 → 720
   moveSpeed: 74,
   sprint: { speed: 150, distance: 170 },
   engageDistance: 54,
@@ -752,7 +752,7 @@ export const CLEANER_DARK = {
   enragedLabel: 'Wściekła!',
   radius: 17,
   color: 0x403848,
-  maxHp: 700,
+  maxHp: 660, // krok 145 (wolniejsze skalowanie bossów): 700 → 660
   moveSpeed: 78,
   sprint: { speed: 155, distance: 170 },
   engageDistance: 50,
@@ -799,7 +799,7 @@ export const DIRTY_WITCH = {
   enragedLabel: 'Chichocze!',
   radius: 18,
   color: 0xd86a2c,
-  maxHp: 760,
+  maxHp: 860, // krok 145 (wolniejsze skalowanie bossów): 760 → 860
   moveSpeed: 68,
   sprint: { speed: 140, distance: 190 },
   // Walczy stadem z dystansu: podchodzi tylko na średnią odległość.

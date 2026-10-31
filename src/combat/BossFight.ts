@@ -17,7 +17,7 @@ import type { BossHudData, Vector2 } from '@/core/types';
 import type { BossDefinition, BossDogDefinition, BossId } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
-import { ENEMY_SCALING } from '@/config/combatConfig';
+import { BOSS_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { BOSS_SPAWN_SAFETY, bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { withHpMultiplier } from '@/systems/CoopBalance';
@@ -287,7 +287,7 @@ export class BossFight {
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
     this.arena = arena;
 
-    const scaled = withHpMultiplier(scaleBossForFloor(this.baseDefinition(), deps.floorNumber, ENEMY_SCALING), deps.bossHpMultiplier ?? 1);
+    const scaled = withHpMultiplier(scaleBossForFloor(this.baseDefinition(), deps.floorNumber, BOSS_SCALING), deps.bossHpMultiplier ?? 1);
     // Wracający z windy boss już raz uciekł — tym razem walczy do końca.
     const definition = deps.arrival ? withoutEscape(scaled) : scaled;
     this.maxHp = definition.maxHp;

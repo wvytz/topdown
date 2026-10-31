@@ -5114,6 +5114,21 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** czy przycisk jest dość widoczny i nie zasłania minimapy na dużych piętrach.
 
+## Krok 145 — Przeliczenie balansu: mocniejsze ciosy bohaterów, wolniej rosnące HP bossów `#ocena` `#decyzja` `#balans` `#brudna-wiedzma`
+
+**Skąd:** `#ocena` Wicio po nagraniach walki z Brudną Wiedźmą (30.10.2026): „za mały damage, przeskaluj HP… wiem, że duża zmiana”. Rachunek: HP bossa rosło o 15% na piętro, obrażenia bohatera tylko z przedmiotami — wiedźma na piętrze 8 miała ok. 1560 HP (2× bazowe), samo bicie barbarzyńcą bez przedmiotów ok. 42 s, z unikami ok. 2 min; w drugim kręgu 2470 HP. `#decyzja` Na karcie wybrał „Cała gra: bossowie i bohaterowie”.
+
+**Co się zmieniło (tylko `src/config/`):**
+- Obrażenia bohaterów ×1,25: cios barbarzyńcy 12 → 15, jego strzał 7 → 9; kula Czarodziejki 14 → 18, fala 16 → 20, promień 8 → 10 na tik, Supernowa 70 → 88; strzała łucznika 8 → 10, mocna 14 → 18, salwa 7 → 9, totem 10 → 12. Szał bez zmian (mnożnik).
+- Nowe `BOSS_SCALING` (`combatConfig.ts`): HP bossów +6% na piętro zamiast +15%, obrażenia jak u wrogów (+10%). Używa go `BossFight`; czarny dog Barona też.
+- Bazowe HP bossów w górę, żeby pierwsze piętra zostały równie trudne: Strażnik Piętra 300 → 380, Król 420 → 465, Matka 300 → 335, Pożeracz 460 → 670, Kat 430 → 640, Strażnik Bram 340 → 500, Baron 640 → 760, blondynka 600 → 720, czarnowłosa 700 → 660, wiedźma 760 → 860.
+- Zwykli wrogowie: `ENEMY_SCALING` bez zmian; Rusher 30 → 33 HP, by dalej padał od 3 ciosów na piętrze 1. Reszta mobów ginie szybciej — ich liczbę i fale stroi wątek „Przebudować feel i trudność gry” (uzgodnione).
+- Siła ataków bossów bez zmian (nie łagodzimy).
+
+**Samo bicie barbarzyńcą bez przedmiotów (przed → po):** piętro 1: 8 → 8 s; 2–4: 16–22 → 15–18 s; Baron, blondynka: 28 → 20 s; piętro 7 i wiedźma: 42–46 → 26 s; wiedźma w drugim kręgu: 67 → 35 s.
+
+**Testy:** `tests/balance/balance.test.ts` — boss rośnie wolniej niż wrogowie, samo bicie bossa 5–35 s w pierwszym kręgu i ≤ 45 s w drugim; `npm run build`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
