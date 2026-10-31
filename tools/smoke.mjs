@@ -5,6 +5,7 @@
  *
  * Użycie:   npm run smoke -- [--floors 8] [--seeds 2] [--heroes all|barbarian|sorceress|archer] [--room-seconds 1.5] [--sweep-only] [--coop]
  *           --coop: co-op (krok 109) — drugi bohater (następny z listy) na podstawionym padzie, bot gra oboma i sprawdza wskrzeszanie.
+ *           --bot: bot-partner (krok 146, `?bot=1`) — P2 prowadzi AI gry; smoke sprawdza, czy bot wskrzesza powalonego P1.
  * Przeglądarka: domyślnie zainstalowany Chrome (kanał „chrome”); inna: SMOKE_CHROMIUM=<ścieżka do pliku wykonywalnego>.
  * Wymaga trybu dev (korzysta z `window.__game`). Kod wyjścia 1, gdy coś się wywróci.
  */
@@ -23,10 +24,11 @@ const SEEDS = Number(opt('seeds', 2));
 const HEROES = ['all', 'both'].includes(opt('heroes', 'all')) ? ['barbarian', 'sorceress', 'archer'] : [opt('heroes', 'barbarian')];
 const ROOM_MS = Number(opt('room-seconds', 1.5)) * 1000;
 const SWEEP_ONLY = args.includes('--sweep-only');
-const COOP = args.includes('--coop');
+const BOT = args.includes('--bot');
+const COOP = args.includes('--coop') && !BOT;
 const ALL_HEROES = ['barbarian', 'sorceress', 'archer'];
 const partnerOf = (hero) => ALL_HEROES[(ALL_HEROES.indexOf(hero) + 1) % ALL_HEROES.length];
-const label = (hero) => (COOP ? `${hero}+${partnerOf(hero)}` : hero);
+const label = (hero) => (COOP ? `${hero}+${partnerOf(hero)}` : BOT ? `${hero}+bot` : hero);
 const PORT = Number(opt('port', 5199));
 const URL = `http://127.0.0.1:${PORT}/`;
 
@@ -102,7 +104,7 @@ async function newSession(browser, hero) {
       ];
     });
   }
-  await page.goto(`${URL}?hero=${hero}&seed=1&floor=1${COOP ? `&coop=${partnerOf(hero)}` : ''}`);
+  await page.goto(`${URL}?hero=${hero}&seed=1&floor=1${COOP ? `&coop=${partnerOf(hero)}` : ''}${BOT ? '&bot=1' : ''}`);
   await page.waitForFunction(() => window.__game?.scene?.getScenes(true).some((s) => s.player && s.dungeon), null, { timeout: 30000 });
   return { page, errors };
 }
@@ -186,11 +188,34 @@ async function checkRevive(page, floor, errors) {
   if (!last.up) errors.push(`co-op: piętro ${floor} — P2 nie wstał po wskrzeszaniu (${Math.round(last.now - start.now)} ms gry, postęp ${last.progress}, odstęp ${last.dist} px)`);
 }
 
+/** Bot-partner (krok 146): powalony P1 wstaje, bo bot sam do niego podchodzi i przy nim stoi. */
+async function checkBotRevive(page, floor, errors) {
+  const down = await page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; if (!b) return false;
+    delete a.health.takeDamage; a.takeHit({ damage: 99999, knockback: { x: 0, y: 0 } }, g.time.now + 1e7);
+    b.body.reset(a.x + 70, a.y); return a.isDead && !g.party.isDown; })()`);
+  if (!down) {
+    errors.push(`bot: piętro ${floor} — powalenie P1 nie zadziałało`);
+    return;
+  }
+  const state = () =>
+    page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; const r = g.revives.get(a);
+      return { up: !a.isDead, now: g.time.now, progress: r ? r.progress : null, dist: Math.round(Math.hypot(a.x - b.x, a.y - b.y)), mode: g.partnerInput?.lastDecision?.mode ?? null }; })()`);
+  const start = await state();
+  let last = start;
+  for (let i = 0; i < 60 && !last.up && last.now - start.now < 9000; i++) {
+    await sleep(250);
+    last = await state();
+  }
+  if (!last.up) errors.push(`bot: piętro ${floor} — bot nie wskrzesił P1 (${Math.round(last.now - start.now)} ms gry, postęp ${last.progress}, odstęp ${last.dist} px, tryb ${last.mode})`);
+  else process.stdout.write(`  bot wskrzesił P1 na piętrze ${floor} po ${Math.round(last.now - start.now)} ms gry\n`);
+}
+
 /** Faza 2: pełna wspinaczka z botem — wszystkie pokoje, arena, boss, nagroda, schody klawiszem E. */
 async function climb(browser, hero, report) {
   const { page, errors } = await newSession(browser, hero);
   for (let floor = 1; floor <= FLOORS && errors.length === 0; floor++) {
     if (COOP) await checkRevive(page, floor, errors);
+    if (BOT) await checkBotRevive(page, floor, errors);
     const info = await page.evaluate(`(() => { const g = ${G}; return { floor: g.floorNumber, rooms: g.dungeon.rooms.map((r) => [r.x + (r.width >> 1), r.y + (r.height >> 1), r.kind]) }; })()`);
     for (const [x, y, kind] of info.rooms) {
       if (kind === 'boss') continue;

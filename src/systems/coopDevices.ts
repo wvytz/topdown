@@ -22,10 +22,15 @@ export interface PlayerDevices {
   readonly keyboard: boolean;
   readonly mouse: boolean;
   readonly pad: number | 'any' | null;
+  /** Bohatera prowadzi bot-partner (krok 146, ukryty tryb `?bot=1`) — żadne urządzenie. */
+  readonly bot?: true;
 }
 
 /** Gra solo: klawiatura, mysz i pierwszy pad naraz — zachowanie sprzed co-opu. */
 export const SOLO_DEVICES: PlayerDevices = { keyboard: true, mouse: true, pad: 'any' };
+
+/** Bot-partner (krok 146): bez klawiatury, myszy i pada — akcje daje mózg bota. */
+export const BOT_DEVICES: PlayerDevices = { keyboard: false, mouse: false, pad: null, bot: true };
 
 /** Co-op bez ekranu dołączania (tryb testowy `?coop=`): P1 — klawiatura z myszą, P2 — pierwszy pad. */
 export const DEFAULT_COOP_DEVICES: readonly PlayerDevices[] = [
