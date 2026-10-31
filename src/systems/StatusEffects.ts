@@ -1,4 +1,11 @@
-import type { BurnEffect, StatusApplication, StatusResistance } from '@/core/combatTypes';
+import type { BurnEffect, FreezeEffect, PyreEffect, StatusApplication, StatusResistance } from '@/core/combatTypes';
+
+/** Krok 150: co dzieje się przy śmierci celu — Pożoga (płonął) i pęknięcie lodu (był zamrożony). */
+export interface DeathEcho {
+  /** Podpalenie z Pożogą (przenosi się na sąsiadów razem z wybuchem). */
+  readonly pyre: (BurnEffect & { readonly pyre: PyreEffect }) | null;
+  readonly shatter: FreezeEffect | null;
+}
 
 /** Wynik nałożenia statusów — encja może zareagować (np. boss odkłada atak o czas ogłuszenia). */
 export interface StatusApplyResult {
@@ -54,13 +61,24 @@ export class StatusEffects {
   private stunImmuneUntil = -Infinity;
   private paralyzedUntil = -Infinity;
   private paralysisImmuneUntil = -Infinity;
+  /** Krok 150: Pożoga z ostatniego podpalenia, które ją niosło. */
+  private pyre: (BurnEffect & { readonly pyre: PyreEffect }) | null = null;
+  /** Krok 150: Zamrożenie — do kiedy cel jest zamrożony i jak pęknie. */
+  private frozenUntil = -Infinity;
+  private freeze: FreezeEffect | null = null;
 
   constructor(private readonly resistance: StatusResistance) {}
 
   apply(status: StatusApplication | undefined, now: number): StatusApplyResult {
     if (!status) return { stunnedMs: 0 };
 
-    if (status.burn) this.burn.apply(this.resistBurn(status.burn), now);
+    if (status.burn) {
+      this.burn.apply(this.resistBurn(status.burn), now);
+      const { pyre } = status.burn;
+      if (pyre) this.pyre = { ...status.burn, pyre };
+    }
+    // Zamrożenie: trafienie celu, który już był spowolniony (sprawdzane przed odświeżeniem spowolnienia).
+    const freeze = status.slow?.freeze && this.isSlowed(now) ? status.slow.freeze : null;
     if (status.poison) this.poison.apply(status.poison, now);
 
     if (status.slow && status.slow.pct > 0) {
@@ -75,6 +93,15 @@ export class StatusEffects {
       if (stunnedMs > 0) {
         this.stunUntil = now + stunnedMs;
         this.stunImmuneUntil = this.stunUntil + this.resistance.stunImmunityMs;
+      }
+    }
+    if (freeze && stunnedMs === 0 && now >= this.stunImmuneUntil) {
+      stunnedMs = Math.round(freeze.durationMs * this.resistance.stunMultiplier);
+      if (stunnedMs > 0) {
+        this.stunUntil = now + stunnedMs;
+        this.stunImmuneUntil = this.stunUntil + this.resistance.stunImmunityMs;
+        this.frozenUntil = this.stunUntil;
+        this.freeze = freeze;
       }
     }
     if (status.paralysis && status.paralysis.durationMs > 0 && now >= this.paralysisImmuneUntil && !this.isParalyzed(now)) {
@@ -124,5 +151,18 @@ export class StatusEffects {
 
   isStunned(now: number): boolean {
     return now < this.stunUntil;
+  }
+
+  /** Krok 150: zamrożony Lodowym odłamkiem (wygląda inaczej niż ogłuszony). */
+  isFrozen(now: number): boolean {
+    return now < this.frozenUntil;
+  }
+
+  /** Krok 150: Pożoga, gdy cel płonie, i pęknięcie, gdy jest zamrożony — sprawdzane w chwili śmierci. */
+  deathEcho(now: number): DeathEcho {
+    return {
+      pyre: this.isBurning(now) ? this.pyre : null,
+      shatter: this.isFrozen(now) ? this.freeze : null,
+    };
   }
 }

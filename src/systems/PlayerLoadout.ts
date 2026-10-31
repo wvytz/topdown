@@ -6,6 +6,8 @@ import { applyArcheryModifiers } from '@/systems/Archery';
 import { applySorceryModifiers } from '@/systems/Sorcery';
 import { attackCooldownMultiplier } from '@/systems/StatScaling';
 import { computeWeaponEffects } from '@/systems/WeaponEffects';
+import { capItemCopies, countItems, isEvolved } from '@/systems/ItemEvolution';
+import { ItemId as ItemIds } from '@/core/lootTypes';
 
 /** Finalne statystyki gracza po zastosowaniu przedmiotów. */
 export interface PlayerLoadout {
@@ -67,8 +69,22 @@ export function computeLoadout(
   limits: StatLimits,
   effectsConfig: ItemEffectsConfig,
   baseKit: HeroKit = MELEE_KIT,
+  /** Krok 150, Rozpęd: chwilowe tempo ataku ponad przedmioty (w tym samym limicie). */
+  extraAttackSpeedPct = 0,
 ): PlayerLoadout {
-  const mods = sumModifiers(itemIds, definitions);
+  // Krok 150: kopie ponad limit przedmiotu nic nie dają (karty i kapliczka ich nie proponują).
+  const items = capItemCopies(itemIds, effectsConfig.evolution);
+  const counts = countItems(items);
+  const evolved = (id: ItemId): boolean => isEvolved(counts.get(id) ?? 0, effectsConfig.evolution);
+  const summed = sumModifiers(items, definitions);
+  // Napompowane serce (krok 150, pomysł właściciela): przemieniająca kopia Serca daje podwójne HP.
+  const mods: StatModifiers = {
+    ...summed,
+    maxHp: summed.maxHp + (evolved(ItemIds.Heart) ? effectsConfig.evolution.heart.bonusMaxHp : 0),
+    attackSpeedPct: summed.attackSpeedPct + extraAttackSpeedPct,
+  };
+  const quiver = effectsConfig.evolution.quiver;
+  const bottomless = evolved(ItemIds.Quiver);
   const cooldownMultiplier = (pct: number): number => Math.max(limits.minCooldownMultiplier, 1 + pct);
   const speedMultiplier = Math.min(limits.maxMoveSpeedMultiplier, Math.max(0.1, 1 + mods.moveSpeedPct));
   const maxCharges = Math.min(
@@ -89,12 +105,39 @@ export function computeLoadout(
       dash: {
         ...baseCombat.dash,
         cooldownMs: Math.round(baseCombat.dash.cooldownMs * cooldownMultiplier(mods.dashCooldownPct)),
+        // Pętla czasu (Klepsydra ×3): 2 ładunki dasha.
+        ...(evolved(ItemIds.Hourglass) && { charges: effectsConfig.evolution.hourglass.dashCharges }),
       },
-      ranged: { ...baseCombat.ranged, maxCharges },
+      ranged: {
+        ...baseCombat.ranged,
+        maxCharges,
+        // Kołczan bez dna (×3): ładunki wracają szybciej.
+        rechargeMs: bottomless ? Math.round(baseCombat.ranged.rechargeMs * quiver.rechargeMultiplier) : baseCombat.ranged.rechargeMs,
+      },
     },
-    effects: computeWeaponEffects(itemIds, effectsConfig, baseStats.maxHp),
-    kit: applyKitModifiers(baseKit, mods, limits),
+    effects: computeWeaponEffects(items, effectsConfig, baseStats.maxHp),
+    kit: bottomlessKit(applyKitModifiers(baseKit, mods, limits), bottomless, quiver),
   };
+}
+
+/** Kołczan bez dna u Czarodziejki (+1 kula, szybszy powrót) i łucznika (szersza salwa). */
+function bottomlessKit(kit: HeroKit, on: boolean, quiver: ItemEffectsConfig['evolution']['quiver']): HeroKit {
+  if (!on) return kit;
+  switch (kit.kind) {
+    case 'melee':
+      return kit;
+    case 'sorcery': {
+      const { orbs } = kit.sorcery;
+      return {
+        kind: 'sorcery',
+        sorcery: { ...kit.sorcery, orbs: { ...orbs, maxOrbs: orbs.maxOrbs + quiver.extraOrbs, rechargeMs: Math.round(orbs.rechargeMs * quiver.rechargeMultiplier) } },
+      };
+    }
+    case 'archery': {
+      const { volley } = kit.archery;
+      return { kind: 'archery', archery: { ...kit.archery, volley: { ...volley, arrows: volley.arrows + quiver.extraVolleyArrows } } };
+    }
+  }
 }
 
 /** Loadout wybranego bohatera: jego bazowe statystyki i zestaw + przedmioty. */
@@ -104,6 +147,7 @@ export function computeHeroLoadout(
   definitions: Readonly<Record<ItemId, ItemDefinition>>,
   limits: StatLimits,
   effectsConfig: ItemEffectsConfig,
+  extraAttackSpeedPct = 0,
 ): PlayerLoadout {
-  return computeLoadout(hero.stats, hero.combat, itemIds, definitions, limits, effectsConfig, hero.kit);
+  return computeLoadout(hero.stats, hero.combat, itemIds, definitions, limits, effectsConfig, hero.kit, extraAttackSpeedPct);
 }

@@ -24,8 +24,14 @@ describe('usefulItemPool (krok 117)', () => {
     expect(ids).toContain(ItemId.Heart);
   });
 
-  it('o jedną kopię przed limitem przedmiot jeszcze wypada', () => {
-    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 5))).toContain(ItemId.Boots);
+  it('o jedną kopię przed limitem przedmiot jeszcze wypada (krok 150: Buty — limit 3 kopie)', () => {
+    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 2))).toContain(ItemId.Boots);
+    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 3))).not.toContain(ItemId.Boots);
+  });
+
+  it('krok 150: przedmioty bez limitu (Ostrze, Serce, Iskrownik) wypadają też po przemianie', () => {
+    const evolved = pool(HeroId.Barbarian, [...many(ItemId.Blade, 3), ...many(ItemId.Heart, 3), ...many(ItemId.ElectricArrow, 3)]);
+    expect(evolved).toEqual(expect.arrayContaining([ItemId.Blade, ItemId.Heart, ItemId.ElectricArrow]));
   });
 
   it('efekt bez dalszego przyrostu (kieł po 3 kopiach) też znika', () => {

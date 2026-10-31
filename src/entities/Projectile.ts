@@ -15,6 +15,9 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
   status: StatusApplication = {};
   /** Pociski gracza: ilu jeszcze wrogów może przebić (Szuriken). */
   pierceLeft = 0;
+  /** Krok 150, Rykoszet: ile jeszcze odbić od muru i o ile każde wydłuża lot. */
+  bouncesLeft = 0;
+  bounceLifetimeMs = 0;
   /** Pociski gracza: cele już trafione — przebity wróg nie dostaje drugi raz. */
   readonly hitTargets = new Set<object>();
   /** Kula Czarodziejki: trafienie leczy jak cios z Wampirzym kłem. */

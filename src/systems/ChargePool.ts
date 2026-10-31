@@ -10,7 +10,7 @@ export class ChargePool {
 
   constructor(
     private max: number,
-    private readonly rechargeMs: number,
+    private rechargeMs: number,
   ) {
     this.stored = max;
   }
@@ -25,6 +25,19 @@ export class ChargePool {
     const gained = Math.max(0, maxCharges - this.max);
     this.max = maxCharges;
     this.stored = Math.min(this.max, this.stored + gained);
+  }
+
+  /** Krok 150 (Kołczan bez dna): nowy czas ładowania; bieżący ładunek liczy się dalej od swojego początku. */
+  setRechargeMs(rechargeMs: number, now: number): void {
+    this.sync(now);
+    this.rechargeMs = rechargeMs;
+  }
+
+  /** Krok 150: przejmuje stan innej puli (nowy dash po zmianie przedmiotów), z limitem własnej pojemności. */
+  copyStateFrom(other: ChargePool, now: number): void {
+    other.sync(now);
+    this.stored = Math.min(this.max, other.stored);
+    this.rechargeStartedAt = other.rechargeStartedAt;
   }
 
   available(now: number): number {

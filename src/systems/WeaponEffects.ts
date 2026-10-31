@@ -1,6 +1,22 @@
-import type { StatusApplication, WeaponEffects } from '@/core/combatTypes';
+import type { EvolvedEffects, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import type { ItemEffectsConfig } from '@/core/lootTypes';
 import { ItemId } from '@/core/lootTypes';
+
+/** Krok 150: brak przemian i łańcucha pioruna. */
+export const NO_EVOLVED_EFFECTS: EvolvedEffects = {
+  chain: null,
+  sparker: null,
+  bladeWave: null,
+  levitation: false,
+  attackRamp: null,
+  dashCharges: 1,
+  ricochet: 0,
+  ricochetExtraLifetimeMs: 0,
+  twinShot: false,
+  twinSpreadDeg: 0,
+  bloodShieldMax: 0,
+  stormTrail: null,
+};
 
 export const NO_WEAPON_EFFECTS: WeaponEffects = {
   shotPierce: 0,
@@ -10,6 +26,7 @@ export const NO_WEAPON_EFFECTS: WeaponEffects = {
   meleeHealCooldownMs: 0,
   meleeHealMaxPerSec: 0,
   dashDamage: 0,
+  evolved: NO_EVOLVED_EFFECTS,
 };
 
 /** Wartość dla `stacks` kopii: pierwsza daje `base`, każda kolejna dodaje `perStack`. */
@@ -37,6 +54,10 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
   const electric = count(ItemId.ElectricArrow);
   const frost = count(ItemId.FrostShard);
   const fire = count(ItemId.FireFist);
+  const evo = config.evolution;
+  const evolved = (stacks: number): boolean => stacks >= evo.copies;
+  /** Kopie ponad przemieniającą (0 dla przemieniającej). */
+  const beyond = (stacks: number): number => Math.max(0, stacks - evo.copies);
 
   const shotStatus: StatusApplication = {
     ...(electric > 0 && {
@@ -46,6 +67,8 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
       slow: {
         pct: Math.min(config.frostShard.maxSlowPct, stacked(frost, config.frostShard.slowPct, config.frostShard.slowPctPerStack)),
         durationMs: config.frostShard.durationMs,
+        // Krok 150, Zamrożenie (×3): trafienie spowolnionego zamraża, zamrożony pęka przy śmierci.
+        ...(evolved(frost) && { freeze: { durationMs: evo.frost.freezeMs, shatterRadius: evo.frost.shatterRadius, shatterSlow: evo.frost.shatterSlow } }),
       },
     }),
   };
@@ -56,19 +79,63 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
         tickDamage: diminished(fire, config.fireFist.tickDamage, config.fireFist.tickDamagePerStack, config.fireFist.stackDecay),
         tickMs: config.fireFist.tickMs,
         durationMs: config.fireFist.durationMs,
+        // Krok 150, Pożoga (×3): płonący wróg wybucha przy śmierci.
+        ...(evolved(fire) && { pyre: { radius: evo.pyre.radius, damage: evo.pyre.damage + beyond(fire) * evo.pyre.damagePerStack } }),
       },
     }),
   };
 
   const fangs = count(ItemId.VampireFang);
+  const shuriken = count(ItemId.Shuriken);
+  const storm = count(ItemId.StormDash);
+  const dashDamage = stacked(storm, config.stormDash.damage, config.stormDash.damagePerStack);
+
+  const evolvedEffects: EvolvedEffects = {
+    chain:
+      electric > 0
+        ? {
+            targets: Math.min(evo.chain.maxTargets, electric * evo.chain.targetsPerCopy),
+            range: evo.chain.range,
+            damageFraction: evo.chain.damageFraction,
+          }
+        : null,
+    sparker: evolved(electric)
+      ? {
+          intervalMs: Math.max(evo.sparker.minIntervalMs, evo.sparker.intervalMs - beyond(electric) * evo.sparker.intervalStepMs),
+          range: evo.sparker.range,
+          damage: evo.sparker.damage,
+          chains: evo.sparker.chains,
+          chainRange: evo.sparker.chainRange,
+        }
+      : null,
+    bladeWave: evolved(count(ItemId.Blade)) ? { ...evo.bladeWave } : null,
+    levitation: evolved(count(ItemId.Boots)),
+    attackRamp: evolved(count(ItemId.Gloves)) ? { ...evo.attackRamp } : null,
+    dashCharges: evolved(count(ItemId.Hourglass)) ? evo.hourglass.dashCharges : 1,
+    ricochet: evolved(shuriken) ? Math.min(evo.ricochet.max, evo.ricochet.bounces + beyond(shuriken) * evo.ricochet.perStack) : 0,
+    ricochetExtraLifetimeMs: evolved(shuriken) ? evo.ricochet.extraLifetimeMs : 0,
+    twinShot: evolved(count(ItemId.Quiver)),
+    twinSpreadDeg: evolved(count(ItemId.Quiver)) ? evo.quiver.twinSpreadDeg : 0,
+    bloodShieldMax: evolved(fangs) ? Math.round(evo.bloodShield.maxBaseHpPct * baseMaxHp) : 0,
+    stormTrail: evolved(storm)
+      ? {
+          durationMs: evo.stormTrail.durationMs,
+          tickMs: evo.stormTrail.tickMs,
+          radius: evo.stormTrail.radius,
+          damage: Math.max(1, Math.round(dashDamage * evo.stormTrail.damageFraction)),
+          spacing: evo.stormTrail.spacing,
+        }
+      : null,
+  };
 
   return {
-    shotPierce: stacked(count(ItemId.Shuriken), config.shuriken.pierce, config.shuriken.piercePerStack),
+    shotPierce: stacked(shuriken, config.shuriken.pierce, config.shuriken.piercePerStack),
     shotStatus,
     meleeStatus,
     meleeHeal: diminished(fangs, config.vampireFang.heal, config.vampireFang.healPerStack, config.vampireFang.stackDecay),
     meleeHealCooldownMs: fangs > 0 ? config.vampireFang.cooldownMs : 0,
     meleeHealMaxPerSec: fangs > 0 ? config.vampireFang.maxHpPctPerSec * baseMaxHp : 0,
-    dashDamage: stacked(count(ItemId.StormDash), config.stormDash.damage, config.stormDash.damagePerStack),
+    dashDamage,
+    evolved: evolvedEffects,
   };
 }

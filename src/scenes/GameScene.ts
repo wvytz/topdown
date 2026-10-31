@@ -126,7 +126,7 @@ import { isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
-import { rollItemChoices } from '@/systems/RewardChoice';
+import { countItems, isEvolved, rollRewardChoices } from '@/systems/ItemEvolution';
 import { practiceRestart, withBotPracticeItems } from '@/scenes/practiceStart';
 import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
@@ -142,6 +142,7 @@ import { feedbackUi } from '@/diagnostics/FeedbackBox';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
 import { FLOOR_MODIFIER_CONFIG, FLOOR_MODIFIER_POOL } from '@/config/floorModifierConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
+import { drawBurstRing } from '@/effects/EvolutionEffects';
 import { HeroCombat, heroLoadout } from '@/combat/HeroCombat';
 import type { HeroStrikeTargets } from '@/combat/HeroCombat';
 import { COOP_CONFIG } from '@/config/coopConfig';
@@ -205,13 +206,17 @@ const LURKER_SEED_SALT = 0x1c4e;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
 /** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
 function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
-  return counts.map(({ id, count }) => ({
-    name: ITEM_DEFINITIONS[id].name,
-    count,
-    color: ITEM_DEFINITIONS[id].color,
-    frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
-    rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
-  }));
+  return counts.map(({ id, count }) => {
+    const evolved = isEvolved(count, ITEM_EFFECTS.evolution);
+    return {
+      name: evolved ? ITEM_EFFECTS.evolution.items[id].name : ITEM_DEFINITIONS[id].name,
+      count,
+      color: ITEM_DEFINITIONS[id].color,
+      frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
+      rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
+      evolved,
+    };
+  });
 }
 
 /** Co-op: schody czekają, aż drużyna stanie na nogi. */
@@ -293,7 +298,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private run = new RunState(NEW_RUN);
   private startHp: number | null = null;
   private toast: { text: string; at: number; durationMs: number } | null = null;
-  private itemNotice: { itemId: ItemId; at: number; tag: string } | null = null;
+  private itemNotice: { itemId: ItemId; at: number; tag: string; copies: number } | null = null;
   private floorModifier: FloorModifierDefinition | null = null;
   private floorEffects: FloorModifierEffects = NO_FLOOR_EFFECTS;
   private lighting!: LightingOverlay;
@@ -1289,6 +1294,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const combat = this.heroes.find((h) => h.player === hero);
     hero.applyLoadout(combat ? combat.loadout() : this.currentLoadout());
     this.showItemNotice(itemId, hero);
+    // Krok 150: przemiana — błysk wokół bohatera i dźwięk nagrody.
+    const evolution = ITEM_EFFECTS.evolution;
+    if ((countItems(this.itemsOf(hero)).get(itemId) ?? 0) === evolution.copies) {
+      drawBurstRing(this, hero, 26, 0xf5c542);
+      sound.play(SoundCue.ItemPickup, hero);
+      diag.note('item-evolved', { item: itemId, floor: this.floorNumber });
+    }
   }
 
   /** Balans co-opu (etap C6); solo — bez zmian. */
@@ -1490,18 +1502,24 @@ export class GameScene extends Phaser.Scene implements HudSource {
         onPicked?.();
         return;
       }
-      this.offerRewardTo(hero, rollItemChoices(this.usefulPoolFor(hero), BOSS_REWARD.choices, rng), offerNext);
+      // Krok 150: karta rozwoju — gdy bohater ma przedmiot w trakcie budowy (1–2 kopie), jedna karta to on.
+      const roll = rollRewardChoices(this.usefulPoolFor(hero), BOSS_REWARD.choices, rng, this.itemsOf(hero), ITEM_EFFECTS.evolution);
+      this.offerRewardTo(hero, roll.choices, offerNext, roll.development);
     };
     offerNext();
   }
 
   /** Krok 117: pula bez przedmiotów, które temu bohaterowi już nic nie dadzą (karty za bossa, kapliczka). */
+  private itemsOf(hero: Player): readonly ItemId[] {
+    return hero === this.player ? this.run.items : this.partnerItems;
+  }
+
   private usefulPoolFor(hero: Player): readonly ItemDefinition[] {
-    const items = hero === this.player ? this.run.items : this.partnerItems;
+    const items = this.itemsOf(hero);
     return usefulItemPool(ITEM_POOL, HERO_DEFINITIONS[this.heroIdOf(hero)], items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
   }
 
-  private offerRewardTo(hero: Player, choices: readonly ItemId[], onPicked: () => void): void {
+  private offerRewardTo(hero: Player, choices: readonly ItemId[], onPicked: () => void, development: ItemId | null = null): void {
     if (choices.length === 0) {
       onPicked();
       return;
@@ -1522,6 +1540,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const data: RewardSceneData = {
       choices,
       owned,
+      development,
       ...(tag && { picker: `${tag} — ${HERO_DEFINITIONS[this.heroIdOf(hero)].name} wybiera` }),
       ...(this.bossFight.escaped && { headline: ESCAPED_HEADLINE }),
       onPick: (itemId) => {
@@ -1540,15 +1559,25 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private showItemNotice(itemId: ItemId, hero: Player = this.player): void {
-    this.itemNotice = { itemId, at: this.time.now, tag: this.playerTag(hero) };
+    this.itemNotice = { itemId, at: this.time.now, tag: this.playerTag(hero), copies: countItems(this.itemsOf(hero)).get(itemId) ?? 1 };
   }
 
   private currentItemNotice(): HudItemNotice | null {
     if (!this.itemNotice) return null;
     const remainingMs = ITEM_NOTICE_MS - (this.time.now - this.itemNotice.at);
     const item = ITEM_DEFINITIONS[this.itemNotice.itemId];
-    const name = this.itemNotice.tag ? `${this.itemNotice.tag}: ${item.name}` : item.name;
-    return remainingMs > 0 ? { name, effect: item.effect, remainingMs } : null;
+    // Krok 150: przy przemianie napis mówi, w co zmienił się przedmiot.
+    const copies = this.itemNotice.copies;
+    const evolution = ITEM_EFFECTS.evolution;
+    const evolvedNow = copies === evolution.copies;
+    const evo = evolution.items[item.id];
+    const text = evolvedNow
+      ? { name: `PRZEMIANA: ${evo.name}`, effect: evo.effect }
+      : copies > evolution.copies
+        ? { name: `${evo.name} ×${copies}`, effect: evo.after ?? item.effect }
+        : { name: copies > 1 ? `${item.name} ${copies}/${evolution.copies}` : item.name, effect: item.effect };
+    const name = this.itemNotice.tag ? `${this.itemNotice.tag}: ${text.name}` : text.name;
+    return remainingMs > 0 ? { name, effect: text.effect, remainingMs } : null;
   }
 
   private currentToast(): HudToast | null {

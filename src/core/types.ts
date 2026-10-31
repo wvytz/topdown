@@ -212,6 +212,8 @@ export interface HudItem {
   readonly frame: string;
   /** Rzadszy przedmiot z efektem broni — złota ramka zamiast kościanej. */
   readonly rare: boolean;
+  /** Krok 150: przemieniony (3. kopia) — jasna ramka i gwiazdka. */
+  readonly evolved?: boolean;
 }
 
 /** Nazwa i efekt świeżo zdobytego przedmiotu — HUD pokazuje je pod ikonami i wygasza. */

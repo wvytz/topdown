@@ -3,6 +3,7 @@ import { EnemyType } from '@/core/combatTypes';
 import type { ItemDefinition, ItemEffectsConfig, LootScalingConfig, LootTable, StatLimits } from '@/core/lootTypes';
 import { ItemId, ItemKind } from '@/core/lootTypes';
 import type { ShrineConfig } from '@/systems/Shrine';
+import { ITEM_EVOLUTION } from '@/config/itemEvolutionConfig';
 
 /** Pula przedmiotów pasywnych (5 bazowych + 7 z efektem) — kumulują się w trakcie runu. */
 export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
@@ -67,7 +68,8 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
     id: ItemId.ElectricArrow,
     kind: ItemKind.Effect,
     name: 'Elektryczna strzała',
-    effect: 'strzał ogłusza (bossa krócej)',
+    // Krok 150: ogłuszenie nie działało na bossach — od 1. kopii piorun przeskakuje z trafionego na sąsiada.
+    effect: 'strzał razi piorunem sąsiada i ogłusza',
     color: 0xfff06a,
     weight: 3,
     modifiers: {},
@@ -132,6 +134,7 @@ export const ITEM_EFFECTS: ItemEffectsConfig = {
   vampireFang: { heal: 2, healPerStack: 1, stackDecay: 0.5, maxHpPctPerSec: 0.04, cooldownMs: 1000 },
   stormDash: { damage: 10, damagePerStack: 6 },
   frostShard: { slowPct: 0.4, slowPctPerStack: 0.1, maxSlowPct: 0.7, durationMs: 1500 },
+  evolution: ITEM_EVOLUTION,
 };
 
 export const ITEM_POOL: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS);

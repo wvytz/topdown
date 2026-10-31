@@ -49,6 +49,8 @@ const ITEM_SLOT_GAP = 4;
 const ITEM_SLOT_BORDER = 2;
 /** Ramka: kość = przedmiot bazowy, złoto = rzadszy z efektem broni. */
 const ITEM_FRAME_COMMON = 0x9c8f74;
+/** Krok 150: ramka przemienionego przedmiotu. */
+const ITEM_FRAME_EVOLVED = 0x9fe8ff;
 const ITEM_FRAME_RARE = 0xe7b140;
 /** Nazwa i efekt zdobytego przedmiotu — mniejsza złota czcionka pod ikonami. */
 const ITEM_NOTICE_Y = ITEM_SLOT_Y + ITEM_SLOT_SIZE + 6;
@@ -303,7 +305,7 @@ export class HudScene extends Phaser.Scene {
       if (item.count > 1) {
         this.partnerCounts.push(
           this.add
-            .text(cx + PARTNER_ITEM_SIZE / 2, y + PARTNER_ITEM_SIZE + 2, `×${item.count}`, { fontFamily: 'monospace', fontSize: '10px', color: '#e8e8f0', stroke: '#000000', strokeThickness: 3 })
+            .text(cx + PARTNER_ITEM_SIZE / 2, y + PARTNER_ITEM_SIZE + 2, item.evolved ? '★' : `×${item.count}`, { fontFamily: 'monospace', fontSize: '10px', color: '#e8e8f0', stroke: '#000000', strokeThickness: 3 })
             .setOrigin(1, 1),
         );
       }
@@ -389,9 +391,10 @@ export class HudScene extends Phaser.Scene {
       const item = items[i];
       for (const part of [slot.frame, slot.icon, slot.count]) part.setVisible(item !== undefined);
       if (!item) return;
-      slot.frame.setStrokeStyle(ITEM_SLOT_BORDER, item.rare ? ITEM_FRAME_RARE : ITEM_FRAME_COMMON);
+      // Krok 150: przemieniony przedmiot ma jasną ramkę i gwiazdkę zamiast licznika 3.
+      slot.frame.setStrokeStyle(ITEM_SLOT_BORDER, item.evolved ? ITEM_FRAME_EVOLVED : item.rare ? ITEM_FRAME_RARE : ITEM_FRAME_COMMON);
       slot.icon.setFrame(item.frame);
-      slot.count.setText(item.count > 1 ? `×${item.count}` : '');
+      slot.count.setText(item.evolved ? (item.count > 3 ? `★${item.count}` : '★') : item.count > 1 ? `×${item.count}` : '');
     });
   }
 

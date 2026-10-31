@@ -26,6 +26,10 @@ import { beamReach, crystalPoint, splashDamage } from '@/systems/Sorcery';
 import { Timer } from '@/systems/Timer';
 import type { AimTarget } from '@/systems/touchAim';
 import { applyRage } from '@/systems/Ultimate';
+import { AttackRamp } from '@/systems/AttackRamp';
+import { chainTargets } from '@/systems/ChainLightning';
+import { StormTrail } from '@/systems/StormTrail';
+import { HeroEvolutionView, drawBolt, ensureCrescentTexture } from '@/effects/EvolutionEffects';
 
 /**
  * Cele ataków bohatera w świecie (wrogowie, boss, kokony, purchawki, ukryta komnata, urny). Scena wie, co jest
@@ -75,6 +79,13 @@ export class HeroCombat {
   private beamGfx: Phaser.GameObjects.Graphics | null = null;
   /** Ostatni dash, który już zabrzmiał (krok 116). */
   private dashSoundFor = -1;
+  /** Krok 150: przemiany przedmiotów. */
+  private readonly ramp = new AttackRamp();
+  private rampStep = 0;
+  private attacksMade = 0;
+  private nextSparkAt = 0;
+  private readonly stormTrail = new StormTrail();
+  private readonly evolutionView: HeroEvolutionView;
 
   constructor(private readonly deps: HeroCombatDeps) {
     this.ultimates = new UltimateManager({
@@ -87,6 +98,8 @@ export class HeroCombat {
       onRageChanged: () => deps.player.applyLoadout(this.loadout()),
       floorNumber: deps.floorNumber,
     });
+    this.evolutionView = new HeroEvolutionView(deps.scene);
+    deps.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.evolutionView.destroy());
   }
 
   get player(): Player {
@@ -99,7 +112,9 @@ export class HeroCombat {
 
   /** Statystyki bohatera z przedmiotów, modyfikatora piętra i szału. */
   loadout(): PlayerLoadout {
-    return heroLoadout(this.deps.hero, this.deps.items(), this.deps.floorEffects, this.ultimates.isRaging(this.deps.scene.time.now));
+    const now = this.deps.scene.time.now;
+    const ramp = this.ramp.bonus(now, this.deps.player.effects.evolved.attackRamp);
+    return heroLoadout(this.deps.hero, this.deps.items(), this.deps.floorEffects, this.ultimates.isRaging(now), ramp);
   }
 
   /** Jedna klatka bohatera: ruch, ataki i ultimate z akcji gracza. */
@@ -112,13 +127,21 @@ export class HeroCombat {
     if (turn.struck) this.resolveStrike(time);
     if (turn.shot) {
       const { x, y, combatConfig } = player;
-      playerShots.fire({ x, y }, turn.shot, combatConfig.ranged, player.effects, undefined, player, { homing: BARBARIAN_SHOT_HOMING });
+      // Kołczan bez dna (krok 150): strzał z ładunku leci podwójnie, lekko rozchylony.
+      const { twinShot, twinSpreadDeg } = player.effects.evolved;
+      const base = Math.atan2(turn.shot.y, turn.shot.x);
+      const spread = Phaser.Math.DegToRad(twinSpreadDeg) / 2;
+      const angles = twinShot ? [base - spread, base + spread] : [base];
+      for (const angle of angles) {
+        playerShots.fire({ x, y }, { x: Math.cos(angle), y: Math.sin(angle) }, combatConfig.ranged, player.effects, undefined, player, { homing: BARBARIAN_SHOT_HOMING });
+      }
       sound.play(SoundCue.ArrowShot, player);
     }
     if (turn.orb) this.fireOrb(turn.orb);
     if (turn.ultimate) this.ultimates.use(turn.ultimate, time);
     if (turn.nova) this.castNova(time);
     if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.strong);
+    if (turn.struck || turn.orb || turn.arrow) this.afterMainAttack(time);
     if (turn.volley) this.fireVolley(turn.volley);
     this.updateBeam(turn.beam, turn.beamTicks, time);
     sound.hold(LoopCue.Beam, player, turn.beam && !player.isDead);
@@ -128,12 +151,105 @@ export class HeroCombat {
     }
     this.ultimates.update(time);
     this.resolveDashStrike(time);
+    this.updateEvolutions(time);
+  }
+
+  /**
+   * Krok 150: atak główny (cios, kula, strzała z łuku) — Rozpęd liczy serię, a co 3. atak z Falą ostrza
+   * wylatuje półksiężyc.
+   */
+  private afterMainAttack(now: number): void {
+    const { player } = this.deps;
+    const { attackRamp, bladeWave } = player.effects.evolved;
+    if (attackRamp) this.ramp.onAttack(now, attackRamp);
+    if (!bladeWave) return;
+    this.attacksMade++;
+    if (this.attacksMade % bladeWave.every !== 0) return;
+    const angle = player.getAimAngle();
+    const damage = Math.max(1, Math.round(this.mainAttackDamage() * bladeWave.damageFraction));
+    this.deps.playerShots.fire(
+      { x: player.x, y: player.y },
+      { x: Math.cos(angle), y: Math.sin(angle) },
+      { damage, knockback: bladeWave.knockback, projectileSpeed: bladeWave.speed, projectileLifetimeMs: bladeWave.lifetimeMs, projectileRadius: bladeWave.radius },
+      player.effects,
+      { texture: ensureCrescentTexture(this.deps.scene), status: player.effects.meleeStatus, vampiric: false, magic: true },
+      player,
+      { pierce: 99 },
+    );
+    sound.play(SoundCue.SwordSwing, player);
+  }
+
+  /** Obrażenia ataku głównego bohatera (podstawa fali ostrza). */
+  private mainAttackDamage(): number {
+    const { player } = this.deps;
+    return player.archeryConfig?.bow.damage ?? player.sorceryConfig?.orbs.damage ?? player.combatConfig.meleeDamage;
+  }
+
+  /** Krok 150: Rozpęd, Iskrownik, Ślad burzy i wygląd przemian — co klatkę. */
+  private updateEvolutions(now: number): void {
+    const { player } = this.deps;
+    const evolved = player.effects.evolved;
+    // Rozpęd: zmiana stopnia przelicza tempo ataku (bez zerowania ciosu ani dasha).
+    const step = this.ramp.step(now, evolved.attackRamp);
+    if (step !== this.rampStep) {
+      this.rampStep = step;
+      player.applyLoadout(this.loadout());
+    }
+    if (evolved.sparker && !player.isDead && now >= this.nextSparkAt) this.fireSparker(now, evolved.sparker);
+    if (evolved.stormTrail) {
+      this.stormTrail.track({ x: player.x, y: player.y + player.radius / 2 }, player.isDashing(now), now, evolved.stormTrail);
+      const points = this.stormTrail.strike(now, evolved.stormTrail);
+      if (points.length > 0) {
+        const hit = new Set<object>();
+        for (const point of points) this.deps.strikes.dash({ center: point.at, radius: evolved.stormTrail.radius, damage: evolved.stormTrail.damage, now }, hit, player);
+      }
+    }
+    this.evolutionView.draw(player, now, {
+      sparker: evolved.sparker !== null,
+      levitating: player.isLevitating,
+      shield: player.shieldHp,
+      shieldMax: evolved.bloodShieldMax,
+      trail: evolved.stormTrail ? this.stormTrail.alive : [],
+      dead: player.isDead,
+    });
+  }
+
+  /** Iskrownik (Elektryczna strzała ×3): piorun z kuli nad ramieniem w najbliższego wroga i dalej łańcuchem. */
+  private fireSparker(now: number, sparker: NonNullable<PlayerLoadout['effects']['evolved']['sparker']>): void {
+    const { player } = this.deps;
+    const targets = [...this.deps.aimTargets()];
+    const from = HeroEvolutionView.sparkerPoint(player, now);
+    const [first] = chainTargets(player, targets, 1, sparker.range);
+    if (!first) return;
+    this.nextSparkAt = now + sparker.intervalMs;
+    const chain = [first, ...chainTargets(first, targets, sparker.chains, sparker.chainRange, (t) => t === first)];
+    this.strikeChain(from, chain, sparker.damage, now);
+    sound.play(SoundCue.OrbSplash, from);
+  }
+
+  /** Piorun od `from` przez kolejne cele: każdy dostaje `damage` raz. */
+  private strikeChain(from: Vector2, chain: readonly { readonly x: number; readonly y: number; readonly radius: number }[], damage: number, now: number): void {
+    const hit = new Set<object>();
+    let at = from;
+    for (const target of chain) {
+      drawBolt(this.deps.scene, at, target);
+      this.deps.strikes.dash({ center: { x: target.x, y: target.y }, radius: Math.max(2, target.radius / 2), damage, now }, hit, this.deps.player);
+      at = target;
+    }
   }
 
   /** Trafienie pocisku tego bohatera: kieł leczy za stworzenie, kula i strzała mają rozprysk magii. */
   afterShotHit(shot: { readonly position: Vector2; readonly damage: number; readonly vampiric?: boolean; readonly magic?: boolean }, target: object, creature: boolean, now: number): void {
     if (creature && shot.vampiric) this.tryVampireHeal(now);
     if (shot.magic) this.orbSplash(shot.position, shot.damage, target, now);
+    // Elektryczna strzała (krok 150): piorun przeskakuje z trafionego stworzenia na najbliższych sąsiadów.
+    const chain = this.deps.player.effects.evolved.chain;
+    if (creature && chain && 'x' in target && 'y' in target) {
+      const origin = { x: Number(target.x), y: Number(target.y) };
+      const near = (t: Vector2): boolean => Math.hypot(t.x - origin.x, t.y - origin.y) < 1;
+      const jumps = chainTargets(origin, [...this.deps.aimTargets()], chain.targets, chain.range, near);
+      if (jumps.length > 0) this.strikeChain(origin, jumps, Math.max(1, Math.round(shot.damage * chain.damageFraction)), now);
+    }
   }
 
   /** Kula Czarodziejki wylatuje z kryształu; niesie wszystkie efekty broni z przedmiotów. */
@@ -301,10 +417,17 @@ export class HeroCombat {
   private tryVampireHeal(now: number): void {
     const { player, effects } = this.deps;
     const { meleeHeal, meleeHealCooldownMs, meleeHealMaxPerSec } = player.effects;
-    if (meleeHeal <= 0 || player.health.isFull || this.healCooldown.isActive(now)) return;
+    // Krwawa tarcza (krok 150): przy pełnym HP leczenie buduje tarczę, do limitu.
+    const shielding = player.health.isFull && player.shieldHp < player.effects.evolved.bloodShieldMax;
+    if (meleeHeal <= 0 || (player.health.isFull && !shielding) || this.healCooldown.isActive(now)) return;
     this.healCooldown.start(now, meleeHealCooldownMs);
     const heal = this.healBudget.take(meleeHeal, now, meleeHealMaxPerSec);
     if (heal <= 0) return;
+    if (shielding) {
+      const added = player.addBloodShield(heal);
+      if (added > 0) effects.floatingText(player.x, player.y - 14, `+${added}`, '#ff3a5a');
+      return;
+    }
     player.heal(heal);
     effects.floatingText(player.x, player.y - 14, `+${heal}`, '#ff6b8a');
   }
@@ -341,10 +464,10 @@ export class HeroCombat {
   }
 }
 
-/** Loadout bohatera: przedmioty, limity statystyk, modyfikator piętra i (barbarzyńca) szał. */
-export function heroLoadout(hero: HeroId, items: readonly ItemId[], floorEffects: FloorModifierEffects, raging: boolean): PlayerLoadout {
+/** Loadout bohatera: przedmioty, limity statystyk, modyfikator piętra, (barbarzyńca) szał i Rozpęd (krok 150). */
+export function heroLoadout(hero: HeroId, items: readonly ItemId[], floorEffects: FloorModifierEffects, raging: boolean, rampBonus = 0): PlayerLoadout {
   const definition = HERO_DEFINITIONS[hero];
-  const loadout = applyFloorToLoadout(computeHeroLoadout(definition, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS), floorEffects);
+  const loadout = applyFloorToLoadout(computeHeroLoadout(definition, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS, rampBonus), floorEffects);
   // Szał barbarzyńcy (krok 98) mnoży loadout na czas trwania.
   const { ultimate } = definition;
   return ultimate.kind === 'rage' && raging ? applyRage(loadout, ultimate) : loadout;

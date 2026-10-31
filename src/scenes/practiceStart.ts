@@ -4,6 +4,7 @@ import { PRACTICE_LOADOUT_CONFIG } from '@/config/practiceLoadoutConfig';
 import { applyPracticeLoadout, simulatePracticeLoadout, wantsPracticeLoadout } from '@/systems/PracticeLoadout';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { parseStartOverrides } from '@/systems/startOverrides';
+import { parseItemList } from '@/systems/ItemEvolution';
 
 /**
  * Szybki start testowy (krok 148): `?floor=N` (np. z `&boss=1`) daje zestaw z symulowanego przejścia pięter,
@@ -11,7 +12,8 @@ import { parseStartOverrides } from '@/systems/startOverrides';
  */
 export function withPracticeLoadout(data: FloorSceneData, practice: boolean): FloorSceneData {
   if (!practice || !wantsPracticeLoadout(window.location.search, PRACTICE_LOADOUT_CONFIG)) return data;
-  const { data: next, loadout } = applyPracticeLoadout(data, PRACTICE_LOADOUT_CONFIG);
+  const fixed = parseItemList(new URLSearchParams(window.location.search).get(PRACTICE_LOADOUT_CONFIG.urlParam));
+  const { data: next, loadout } = applyPracticeLoadout(data, PRACTICE_LOADOUT_CONFIG, fixed);
   if (loadout) diag.note('practice-loadout', { floor: data.floor, items: loadout.items.length, gold: loadout.gold, ...loadout.sources });
   return next;
 }

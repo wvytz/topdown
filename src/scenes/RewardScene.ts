@@ -3,7 +3,8 @@ import Phaser from 'phaser';
 import type { ItemId } from '@/core/lootTypes';
 import { ItemKind } from '@/core/lootTypes';
 import { SceneKey } from '@/core/types';
-import { BOSS_REWARD, ITEM_DEFINITIONS } from '@/config/lootConfig';
+import { BOSS_REWARD, ITEM_DEFINITIONS, ITEM_EFFECTS } from '@/config/lootConfig';
+import { describeRewardCard } from '@/systems/ItemEvolution';
 import { itemIconFrame } from '@/entities/Pickup';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
 import { MenuCommand } from '@/systems/gamepadInput';
@@ -18,10 +19,15 @@ export interface RewardSceneData {
   readonly picker?: string;
   /** Napis nad kartami zamiast „STRAŻNIK POKONANY” (np. sprzątaczka uciekła windą, krok 125). */
   readonly headline?: string;
+  /** Krok 150: karta rozwoju — przedmiot, który bohater już zbiera (wstążka na karcie). */
+  readonly development?: ItemId | null;
 }
 
 const CARD_WIDTH = 210;
-const CARD_HEIGHT = 250;
+const CARD_HEIGHT = 292;
+/** Krok 150: złoto karty przemiany i zieleń karty rozwoju. */
+const EVOLUTION_GOLD = 0xf5c542;
+const DEVELOPMENT_GREEN = 0x8affa0;
 const CARD_GAP = 28;
 const KEY_NAMES = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'] as const;
 const DIMMED_ALPHA = 0.35;
@@ -75,6 +81,14 @@ export class RewardScene extends Phaser.Scene {
     this.hintText = this.add
       .text(width / 2, 108, '…', { ...style, fontSize: '14px', color: '#8080a0' })
       .setOrigin(0.5);
+    // Krok 150: zasada przemian wprost pod kartami.
+    this.add
+      .text(width / 2, height / 2 + 40 + CARD_HEIGHT / 2 + 22, `${ITEM_EFFECTS.evolution.copies} kopie przedmiotu = PRZEMIANA w nową mechanikę  ·  zielona wstążka = przedmiot, który już zbierasz`, {
+        ...style,
+        fontSize: '12px',
+        color: '#b8b8c8',
+      })
+      .setOrigin(0.5);
     if (data.picker) this.add.text(width / 2, 136, data.picker, { ...style, fontSize: '16px', color: '#8affa0' }).setOrigin(0.5);
 
     const total = data.choices.length * CARD_WIDTH + (data.choices.length - 1) * CARD_GAP;
@@ -118,45 +132,52 @@ export class RewardScene extends Phaser.Scene {
   ): void {
     const item = ITEM_DEFINITIONS[itemId];
     const isEffect = item.kind === ItemKind.Effect;
-    const accent = isEffect ? 0xf5c542 : 0xa0a0b8;
     const owned = data.owned[itemId] ?? 0;
+    // Krok 150 (prośba właściciela i testera: karta rozwoju niejasna): karta mówi poziom, co da ta kopia
+    // i ile brakuje do przemiany; karta przemiany jest złota i opisuje nową mechanikę.
+    const info = describeRewardCard(item, owned, ITEM_EFFECTS.evolution);
+    const evolution = info.kind === 'evolution';
+    const development = data.development === itemId;
+    const accent = evolution ? EVOLUTION_GOLD : development ? DEVELOPMENT_GREEN : isEffect ? 0xd0a040 : 0xa0a0b8;
     const top = y - CARD_HEIGHT / 2;
+    const textStyle = (size: number, color: string, extra: Phaser.Types.GameObjects.Text.TextStyle = {}): Phaser.Types.GameObjects.Text.TextStyle => ({
+      ...style,
+      fontSize: `${size}px`,
+      color,
+      align: 'center',
+      wordWrap: { width: CARD_WIDTH - 22 },
+      ...extra,
+    });
 
     const card = this.add
-      .rectangle(x, y, CARD_WIDTH, CARD_HEIGHT, 0x1a1a24, 0.96)
-      .setStrokeStyle(2, accent)
+      .rectangle(x, y, CARD_WIDTH, CARD_HEIGHT, evolution ? 0x2a2414 : 0x1a1a24, 0.96)
+      .setStrokeStyle(evolution ? 3 : 2, accent)
       .setInteractive({ useHandCursor: true });
 
-    const parts = [
+    const parts: Phaser.GameObjects.GameObject[] = [
       card,
-      this.add.text(x, top + 16, `[${index + 1}]`, { ...style, fontSize: '13px', color: '#8080a0' }).setOrigin(0.5, 0),
-      this.add.image(x, top + 72, LOOT_ATLAS.key, itemIconFrame(itemId)).setScale(3),
-      this.add.text(x, top + 122, item.name, { ...style, fontSize: '17px', color: '#ffffff' }).setOrigin(0.5, 0),
+      this.add.text(x - CARD_WIDTH / 2 + 10, top + 10, `[${index + 1}]`, textStyle(13, '#8080a0')).setOrigin(0, 0),
+      this.add.image(x, top + 58, LOOT_ATLAS.key, itemIconFrame(itemId)).setScale(3),
+      this.add.text(x, top + 98, info.title, textStyle(17, evolution ? '#f5c542' : '#ffffff')).setOrigin(0.5, 0),
+      this.add.text(x, top + 120, info.subtitle, textStyle(12, evolution ? '#f5c542' : owned > 0 ? '#9fe0a0' : '#8080a0')).setOrigin(0.5, 0),
+      ...this.createPips(x, top + 150, info.pips, evolution),
+      this.add.text(x, top + 164, info.effect, textStyle(13, '#e0e0ec')).setOrigin(0.5, 0),
+      this.add.text(x, top + CARD_HEIGHT - 62, info.progress, textStyle(11, evolution ? '#f5c542' : '#b8b8c8')).setOrigin(0.5, 0),
       this.add
-        .text(x, top + 150, item.effect, {
-          ...style,
-          fontSize: '13px',
-          color: '#e0e0ec',
-          align: 'center',
-          wordWrap: { width: CARD_WIDTH - 24 },
-        })
-        .setOrigin(0.5, 0),
-      this.add
-        .text(x, top + CARD_HEIGHT - 50, isEffect ? 'efekt broni' : 'przedmiot bazowy', {
-          ...style,
-          fontSize: '12px',
-          color: isEffect ? '#f5c542' : '#a0a0b8',
-        })
-        .setOrigin(0.5, 0),
-      this.add
-        .text(x, top + CARD_HEIGHT - 30, owned > 0 ? `masz już: ×${owned} (wzmocni)` : 'nowy', {
-          ...style,
-          fontSize: '12px',
-          color: owned > 0 ? '#9fe0a0' : '#8080a0',
-        })
+        
+        .text(x, top + CARD_HEIGHT - 22, isEffect ? 'efekt broni' : 'przedmiot bazowy', textStyle(11, isEffect ? '#d0a040' : '#a0a0b8'))
         .setOrigin(0.5, 0),
     ];
-    for (const part of parts) part.setAlpha(DIMMED_ALPHA);
+    // Wstążka u góry karty: przemiana albo karta rozwoju (przedmiot, który już zbierasz).
+    const ribbon = evolution ? 'PRZEMIANA' : development ? 'KARTA ROZWOJU' : null;
+    if (ribbon) {
+      const ribbonColor = evolution ? EVOLUTION_GOLD : DEVELOPMENT_GREEN;
+      parts.push(
+        this.add.rectangle(x, top, 132, 18, 0x101018, 1).setStrokeStyle(2, ribbonColor),
+        this.add.text(x, top, ribbon, { ...style, fontSize: '12px', color: evolution ? '#f5c542' : '#8affa0' }).setOrigin(0.5),
+      );
+    }
+    for (const part of parts) (part as unknown as Phaser.GameObjects.Components.Alpha).setAlpha(DIMMED_ALPHA);
     this.cardObjects.push(...parts);
 
     this.cards.push({ frame: card, accent });
@@ -173,6 +194,17 @@ export class RewardScene extends Phaser.Scene {
     card.on(Phaser.Input.Events.POINTER_UP, () => {
       if (this.pressedCard === index) this.pick(itemId, data);
     });
+  }
+
+  /** Kropki postępu do przemiany: wypełnione = kopie po wzięciu tej karty. */
+  private createPips(x: number, y: number, pips: { readonly filled: number; readonly total: number }, evolution: boolean): Phaser.GameObjects.Arc[] {
+    const gap = 16;
+    const left = x - ((pips.total - 1) * gap) / 2;
+    return Array.from({ length: pips.total }, (_, i) =>
+      this.add
+        .circle(left + i * gap, y, 5, i < pips.filled ? (evolution ? EVOLUTION_GOLD : 0x9fe0a0) : 0x30303c)
+        .setStrokeStyle(1, i < pips.filled ? 0xffffff : 0x60607a),
+    );
   }
 
   private highlight(index: number, on: boolean): void {

@@ -26,7 +26,8 @@ import type { PracticeLoadoutConfig } from '@/config/practiceLoadoutConfig';
 import { hasAmbush } from '@/systems/Ambush';
 import { usefulItemPool } from '@/systems/ItemUsefulness';
 import { rollLoot, pickWeightedItem } from '@/systems/Loot';
-import { rollItemChoices } from '@/systems/RewardChoice';
+import type { RewardRoll } from '@/systems/ItemEvolution';
+import { countItems, rollRewardChoices } from '@/systems/ItemEvolution';
 import { makeOffering } from '@/systems/Shrine';
 
 /** Skąd przedmiot trafił do zestawu — do diagnostyki i testów. */
@@ -88,12 +89,25 @@ export function simulatePracticeLoadout(
     for (const drop of rollLoot(BOSS_LOOT, floor, LOOT_SCALING, ITEM_POOL, rng)) {
       if (drop.kind === PickupKind.Gold) gold += drop.amount;
     }
-    const cards = rollItemChoices(useful(), BOSS_REWARD.choices, rng);
-    grant(cards[rng.int(0, cards.length - 1)] ?? null, 'boss');
+    // Krok 150: karty z kartą rozwoju; gracz buduje przemianę — bierze kartę przemiany, zwykle też kartę rozwoju.
+    const roll = rollRewardChoices(useful(), BOSS_REWARD.choices, rng, items, ITEM_EFFECTS.evolution);
+    grant(pickLikeBuilder(roll, items, config, rng), 'boss');
     // Ukryta komnata za areną (krok 46/51): tylko w Grzybni, po bossie.
     if (biomeForFloor(floor).id === SECRET_ROOM_BIOME) grant(pickWeightedItem(ITEM_POOL, rng), 'secret');
   }
   return { items, gold, sources };
+}
+
+/**
+ * Wybór karty „przeciętnego” gracza po kroku 150: karta przemiany zawsze, karta rozwoju z szansą
+ * `developmentPickChance`, inaczej losowa karta.
+ */
+function pickLikeBuilder(roll: RewardRoll, owned: readonly ItemId[], config: PracticeLoadoutConfig, rng: Rng): ItemId | null {
+  const counts = countItems(owned);
+  const evolving = roll.choices.find((id) => (counts.get(id) ?? 0) === ITEM_EFFECTS.evolution.copies - 1);
+  if (evolving) return evolving;
+  if (roll.development && rng.chance(config.developmentPickChance)) return roll.development;
+  return roll.choices[rng.int(0, roll.choices.length - 1)] ?? null;
 }
 
 /** Liczba zabitych wrogów na piętrze: pokoje i wrogowie na pokój jak w generatorze, razy część zabitych. */
@@ -110,10 +124,16 @@ function floorKills(floor: number, config: PracticeLoadoutConfig, rng: Rng): num
  * Dane startu z zestawem (krok 148): run testowy wspinaczki od piętra N > 1 dostaje przedmioty i złoto
  * z symulacji pięter 1…N−1. W co-opie partner ma własny zestaw (osobny strumień). Inne starty bez zmian.
  */
-export function applyPracticeLoadout(data: FloorSceneData, config: PracticeLoadoutConfig): { data: FloorSceneData; loadout: PracticeLoadout | null } {
+export function applyPracticeLoadout(
+  data: FloorSceneData,
+  config: PracticeLoadoutConfig,
+  fixedItems: readonly ItemId[] | null = null,
+): { data: FloorSceneData; loadout: PracticeLoadout | null } {
   const mode = data.run.mode ?? RunMode.Tower;
-  if (data.run.practice !== true || mode !== RunMode.Tower || data.floor <= 1) return { data, loadout: null };
-  const own = simulatePracticeLoadout(data.runSeed, data.floor, HERO_DEFINITIONS[data.run.hero], config);
+  if (data.run.practice !== true || mode !== RunMode.Tower || (data.floor <= 1 && !fixedItems)) return { data, loadout: null };
+  const simulated = simulatePracticeLoadout(data.runSeed, data.floor, HERO_DEFINITIONS[data.run.hero], config);
+  // Krok 150: `?items=electric-arrow*3,…` — dokładnie ten zestaw (np. do obejrzenia przemiany na arenie).
+  const own = fixedItems ? { ...simulated, items: [...fixedItems] } : simulated;
   const run = { ...data.run, items: own.items, gold: own.gold };
   const partner = data.coop?.partner;
   if (!data.coop || !partner) return { data: { ...data, run }, loadout: own };

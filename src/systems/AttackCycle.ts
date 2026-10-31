@@ -18,6 +18,15 @@ export class AttackCycle {
     private readonly series?: AttackSeries,
   ) {}
 
+  /** Krok 150 (Rozpęd, szał): ten sam cykl z nowym tempem — trwający zamach i odnowienie liczą się dalej. */
+  withTiming(windupMs: number, cooldownMs: number): AttackCycle {
+    const next = new AttackCycle(windupMs, cooldownMs, this.series);
+    next.startedAt = this.startedAt;
+    next.released = this.released;
+    next.strike = this.strike;
+    return next;
+  }
+
   phase(now: number): AttackPhase {
     const elapsed = now - this.startedAt;
     if (elapsed < this.windupMs) return AttackPhase.Windup;

@@ -15,7 +15,8 @@ export type ShotSpec = Pick<RangedConfig, 'damage' | 'knockback' | 'projectileSp
 /** Wygląd pocisku z arkusza (kula Czarodziejki, strzała łucznika); brak = pocisk z atlasu łupów. */
 export interface ShotLook {
   readonly texture: string;
-  readonly animation: string;
+  /** Animacja z arkusza; brak = statyczna tekstura obrócona w kierunku lotu (fala ostrza, krok 150). */
+  readonly animation?: string;
   /** Statusy kuli: wszystkie efekty broni (strzał + cios), bo kule są jej bronią główną. */
   readonly status: StatusApplication;
   readonly vampiric: boolean;
@@ -28,6 +29,8 @@ export interface ShotLook {
 /** Dodatkowe zachowanie lotu (krok 146). */
 export interface ShotFlight {
   readonly homing?: HomingConfig;
+  /** Krok 150, fala ostrza: przebija tylu wrogów niezależnie od Szurikena. */
+  readonly pierce?: number;
 }
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. `owner` — strzelec (co-op: który bohater). */
@@ -48,7 +51,15 @@ export class PlayerShotManager {
   ) {
     this.group = scene.physics.add.group({ classType: Projectile });
     scene.physics.add.collider(this.group, walls, (shot) => {
-      if (shot instanceof Projectile) shot.destroy();
+      if (!(shot instanceof Projectile)) return;
+      // Rykoszet (krok 150, Szuriken ×3): odbicie od muru zamiast rozbicia; lot trwa trochę dłużej.
+      if (shot.bouncesLeft > 0) {
+        shot.bouncesLeft--;
+        shot.expiresAt += shot.bounceLifetimeMs;
+        if (shot.bouncesLeft === 0) shot.setBounce(0);
+        return;
+      }
+      shot.destroy();
     });
   }
 
@@ -58,7 +69,9 @@ export class PlayerShotManager {
     shot.knockback = config.knockback;
     shot.expiresAt = this.scene.time.now + config.projectileLifetimeMs;
     shot.status = look?.status ?? effects.shotStatus;
-    shot.pierceLeft = effects.shotPierce + (look?.extraPierce ?? 0);
+    shot.pierceLeft = flight?.pierce ?? effects.shotPierce + (look?.extraPierce ?? 0);
+    shot.bouncesLeft = effects.evolved.ricochet;
+    shot.bounceLifetimeMs = effects.evolved.ricochetExtraLifetimeMs;
     shot.vampiric = look?.vampiric ?? false;
     shot.magic = look?.magic ?? false;
     shot.homing = flight?.homing ?? null;
@@ -71,8 +84,10 @@ export class PlayerShotManager {
     shot.setCircle(r, shot.width / 2 - r, shot.height / 2 - r);
     const dir = normalize(direction);
     shot.setVelocity(dir.x * config.projectileSpeed, dir.y * config.projectileSpeed);
+    if (shot.bouncesLeft > 0) shot.setBounce(1);
     // Przebijający pocisk to gwiazdka „szurikena” obracana klatkami co 45° (bez obrotu o dowolny kąt).
-    if (look) shot.play(look.animation);
+    if (look?.animation) shot.play(look.animation);
+    else if (look) shot.setRotation(Math.atan2(dir.y, dir.x));
     else shot.play(lootAnimationKey(shot.pierceLeft > 0 ? 'shotPierce' : 'shot'));
   }
 

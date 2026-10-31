@@ -113,12 +113,32 @@ export interface BurnEffect {
   readonly tickDamage: number;
   readonly tickMs: number;
   readonly durationMs: number;
+  /** Krok 150, Pożoga (Ognista pięść ×3): wróg, który płonie w chwili śmierci, wybucha ogniem. */
+  readonly pyre?: PyreEffect;
+}
+
+/** Wybuch płonącego wroga przy śmierci (Pożoga): rani i podpala tylko wrogów w promieniu. */
+export interface PyreEffect {
+  readonly radius: number;
+  readonly damage: number;
+}
+
+/**
+ * Zamrożenie (krok 150, Lodowy odłamek ×3): trafienie celu, który już jest spowolniony, zamraża go na `durationMs`
+ * (jak ogłuszenie, z tą samą odpornością); zamrożony pęka przy śmierci i spowalnia sąsiadów.
+ */
+export interface FreezeEffect {
+  readonly durationMs: number;
+  readonly shatterRadius: number;
+  readonly shatterSlow: { readonly pct: number; readonly durationMs: number };
 }
 
 /** Spowolnienie: prędkość ruchu × (1 − pct). */
 export interface SlowEffect {
   readonly pct: number;
   readonly durationMs: number;
+  /** Krok 150: Zamrożenie z Lodowego odłamka. */
+  readonly freeze?: FreezeEffect;
 }
 
 /** Ogłuszenie: cel stoi i nie atakuje. Czas skraca odporność celu (boss). */
@@ -194,6 +214,72 @@ export interface WeaponEffects {
   readonly meleeHealMaxPerSec: number;
   /** Obrażenia zadawane wrogom, przez których gracz przelatuje dashem (0 = brak). */
   readonly dashDamage: number;
+  /** Krok 150: łańcuch piorunów i przemiany przedmiotów (3. kopia). */
+  readonly evolved: EvolvedEffects;
+}
+
+/** Łańcuch pioruna (Elektryczna strzała): z trafionego celu przeskakuje na `targets` najbliższych. */
+export interface ChainLightningEffect {
+  readonly targets: number;
+  readonly range: number;
+  readonly damageFraction: number;
+}
+
+/** Iskrownik (Elektryczna strzała ×3): kula przy ramieniu sama razi piorunem najbliższego wroga. */
+export interface SparkerEffect {
+  readonly intervalMs: number;
+  readonly range: number;
+  readonly damage: number;
+  readonly chains: number;
+  readonly chainRange: number;
+}
+
+/** Fala ostrza (Ostrze ×3): co `every`. atak wypuszcza falę przelatującą przez wrogów. */
+export interface BladeWaveEffect {
+  readonly every: number;
+  readonly damageFraction: number;
+  readonly speed: number;
+  readonly lifetimeMs: number;
+  readonly radius: number;
+  readonly knockback: number;
+}
+
+/** Rozpęd (Rękawice ×3): ciągły atak przyspiesza o `stepPct` co `stepEveryMs`, do `steps` stopni. */
+export interface AttackRampEffect {
+  readonly stepPct: number;
+  readonly steps: number;
+  readonly stepEveryMs: number;
+  readonly resetAfterMs: number;
+}
+
+/** Ślad burzy (Burzowy pęd ×3): dash zostawia ślad błyskawic raniący wrogów. */
+export interface StormTrailEffect {
+  readonly durationMs: number;
+  readonly tickMs: number;
+  readonly radius: number;
+  readonly damage: number;
+  readonly spacing: number;
+}
+
+/** Krok 150: efekty przemian przedmiotów (3. kopia) i łańcuch pioruna. Brak = null / 0 / false. */
+export interface EvolvedEffects {
+  readonly chain: ChainLightningEffect | null;
+  readonly sparker: SparkerEffect | null;
+  readonly bladeWave: BladeWaveEffect | null;
+  /** Buty lewitacji: podłoga (kałuże, ogień, kolce, pajęczyny, płyty pułapek) nie działa na bohatera. */
+  readonly levitation: boolean;
+  readonly attackRamp: AttackRampEffect | null;
+  /** Pętla czasu: ładunki dasha (1 = zwykły dash). */
+  readonly dashCharges: number;
+  /** Rykoszet: ile razy pocisk odbija się od ścian (0 = rozbija się). */
+  readonly ricochet: number;
+  readonly ricochetExtraLifetimeMs: number;
+  /** Kołczan bez dna: strzał z ładunku leci podwójnie. */
+  readonly twinShot: boolean;
+  readonly twinSpreadDeg: number;
+  /** Krwawa tarcza: najwyższa tarcza z leczenia przy pełnym HP (0 = brak). */
+  readonly bloodShieldMax: number;
+  readonly stormTrail: StormTrailEffect | null;
 }
 
 export interface DamageResult {
@@ -356,6 +442,8 @@ export interface DashConfig {
   readonly speed: number;
   readonly durationMs: number;
   readonly cooldownMs: number;
+  /** Krok 150, Pętla czasu (Klepsydra ×3): ładunki dasha; brak = 1. */
+  readonly charges?: number;
 }
 
 /** Atak dystansowy gracza (PPM): strzał z puli ładunków odnawiających się z czasem. */
