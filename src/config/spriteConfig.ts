@@ -362,6 +362,44 @@ export const SPRITE_SHEETS = {
     fps: 12,
     animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
   },
+  // Ogień (krok 144, tools/fire_sprites.py): kula wybuchu w dwóch rozmiarach i płomień na podłodze.
+  fireBurst32: {
+    key: 'sheet-fire-burst-32',
+    url: 'assets/sprites/fire-burst-32.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 256,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 18,
+    animations: { burst: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false } },
+  },
+  fireBurst64: {
+    key: 'sheet-fire-burst-64',
+    url: 'assets/sprites/fire-burst-64.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    sheetWidth: 512,
+    sheetHeight: 64,
+    directions: 1,
+    fps: 16,
+    animations: { burst: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false } },
+  },
+  fireFlame: {
+    key: 'sheet-fire-flame',
+    url: 'assets/sprites/fire-flame.png',
+    frameWidth: 16,
+    frameHeight: 24,
+    sheetWidth: 128,
+    sheetHeight: 24,
+    directions: 1,
+    fps: 10,
+    animations: {
+      ignite: { frames: [0, 1], loop: false },
+      burn: { frames: [2, 3, 4, 5], loop: true },
+      die: { frames: [6, 7], loop: false },
+    },
+  },
   beetleBurst: {
     key: 'sheet-beetle_burst',
     url: 'assets/sprites/beetle_burst.png',
@@ -1988,8 +2026,6 @@ export const WITCH_FX_VISUAL = {
   seed: { sheet: 'witchSeed', animation: 'fly', arcHeight: 40 },
   pollen: { sheet: 'witchPollen', animation: 'fly' },
   leaf: { sheet: 'witchLeaf', animation: 'fly' },
-  /** Pas bocianów: lekki biały błysk piór pod przelatującym ptakiem (bez dźwięku wybuchu — stref jest kilkadziesiąt). */
-  featherPuff: { color: 0xe8ecf0, radiusScale: 0.7 },
   dive: {
     frameMs: 60,
     frames: [

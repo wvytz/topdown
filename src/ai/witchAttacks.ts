@@ -12,7 +12,8 @@ import { EMPTY, required, telegraph, towardPoint } from '@/ai/planHelpers';
 /**
  * Klucz bocianów: równoległe pasy w kierunku wiedźma → bohater; jeden zawsze przez bohatera, kolejne co `laneGap`
  * w poprzek (przy parzystej liczbie dodatkowy pas po losowej stronie). Telegraf to od razu cały pas cieni, a po nim
- * bocian przelatuje pas — strefa uderza, gdy bocian jest nad nią (dalsze później).
+ * bocian przelatuje pas — strefa uderza, gdy bocian jest nad nią (dalsze później). Od kroku 144 bociany zrzucają żar:
+ * pas wybucha ogniem (`look: 'embers'`, tylko wygląd — obrażenia i zasięg bez zmian).
  */
 export function planStorkFlight(ctx: AttackPlanContext): BossAttackPlan {
   const def = required(ctx.definition.storkFlight, BossAttackKind.StorkFlight, ctx);
@@ -38,7 +39,7 @@ export function planStorkFlight(ctx: AttackPlanContext): BossAttackPlan {
         impactAt: flyAt + Math.round((def.flightMs * d) / def.length),
         damage: def.damage,
         knockback: def.knockback,
-        look: 'feathers',
+        look: 'embers',
       });
     }
     const end = { x: start.x + dir.x * def.length, y: start.y + dir.y * def.length };

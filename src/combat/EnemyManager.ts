@@ -142,7 +142,7 @@ export class EnemyManager implements EnemyAttackHandler {
     deps.scene.physics.add.collider(this.group, deps.walls);
     deps.scene.physics.add.collider(this.group, this.group);
     this.telegraphs = deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph);
-    this.fire = new FirePatchRenderer(deps.scene);
+    this.fire = new FirePatchRenderer(deps.scene, deps.effects.fire);
   }
 
   get aliveCount(): number {

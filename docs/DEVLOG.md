@@ -5169,6 +5169,26 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** tempo lotu złota (czy nie za szybkie — da się zwolnić w `goldHoming`), wielkość i siła chmur, czy „plamy z kokonów” to na pewno chmury purchawek i popielniczek. **Następnie:** etap 1 planu — fale słabszych mobów zamiast „1–2 wrogów na pokój” (po decyzji właściciela).
 
+## Krok 144 — Niszczący ogień: bociany zrzucają żar, wspólny system ognia `#ocena` `#ogien` `#brudna-wiedzma`
+
+**Skąd:** pytanie właściciela (30.10.2026) przy zrzucie ataku „Lećcie, ptaszki!”: czy ogranicza nas Phaser, czy własne startowe założenia — i prośba o „zajebiście dobry efekt palenia”, „niech zapłonie cała mapa”, „niech płomień będzie niszczący”. Odpowiedź: to nie silnik, tylko nasze placeholdery z początku projektu (półprzezroczyste koła z `Graphics`, 0,24 s, pod warstwą mroku — diagnoza z kroków 110 i 138).
+
+**Co powstało:**
+- **Generator ognia** `tools/fire_sprites.py` → `fire-burst-32.png`, `fire-burst-64.png` (kula ognia w 8 klatkach: błysk, kula z językami, kłęby, dym z żarem) i `fire-flame.png` (płomień na podłodze: zapłon, płonięcie w pętli, gaśnięcie). Ogień bez ciemnego obrysu (świeci), dym z ciemnym brzegiem; pełne piksele, rampy OKLCH.
+- **`effects/FireEffects.ts`** (obiekt `effects.fire`): kula ognia (arkusz i całkowita skala po promieniu strefy), płomienie zostające na podłodze 0,9–1,7 s, iskry (ADD) i dym (cząsteczki Phasera), poświata ADD nad mrokiem, **światło ognia wycierające mrok** (`LightingOverlay.render(…, flares)` — działa też przy „Mroku”, bo trwa chwilę), wstrząs kamery rosnący z promieniem. Pula obiektów i limity w `config/fireConfig.ts`: PC 140 płomieni / 320 cząsteczek, telefon 48 / 120 i połowa iskier. Huk najwyżej co 110 ms, płomienie tylko na podłodze (nie na murach).
+- **Czysta część** `systems/FireBurst.ts`: dobór arkusza, liczba i miejsca płomieni, światło, wstrząs, budżet puli, bramka huku, promień zaciskającego się pierścienia.
+- **Atak bocianów Brudnej Wiedźmy:** bociany zrzucają żar — pas wybucha ogniem pod przelatującym ptakiem, zostają płomienie i wypalone ślady (`look: 'embers'` zamiast `'feathers'`). Obrażenia, zasięgi i czasy bez zmian.
+- **Telegraf stref (wszystkie poza dymem Barona):** jasny pierścień zaciska się z 1,6× promienia do brzegu strefy i dotyka go dokładnie w chwili uderzenia.
+- **Wspólne wybuchy:** domyślny ognisty wybuch (`CombatEffects.blast` z `BLAST_VISUAL` — uderzenia bossów, m.in. Kata Otchłani, bomby kultystów, Wybuchowa elita, wybuchy pajączków) dostaje kulę ognia, płomienie, iskry i światło nad dotychczasowym pierścieniem zasięgu. Wybuchy w innych barwach (zarodniki, pióra pikowania, wir liści) bez zmian.
+- **Płonące plamy (krok 114):** płomienie z generatora stoją w plamie, migocząca poświata i światło nad mrokiem.
+- Warstwy: `fireGround` (płomienie, pod postaciami), `fireBurst` (kula i dym, nad wrogami, **pod bohaterem** — bohater zawsze widoczny), `fireGlow` i `fireEmbers` nad mrokiem.
+
+**Decyzje:** płomienie po wybuchu są **tylko wyglądem** — nie parzą, więc trudność walki się nie zmienia (`#decyzja` właściciela 31.10.2026: na razie nie parzą). Zamiast postFX (bloom/glow) poświata ADD ze stempla światła — tańsza na telefonie i działa też bez WebGL; postFX z przełącznikiem jakości zostaje na fazę „Akt I — oprawa”. Kokony leża zostają bez ognia (pękają jedwabiem, to nie wybuch).
+
+**Testy i weryfikacja:** `tests/systems/fireBurst.test.ts`, `tests/assets/fire.test.ts` (wymiary, pełne piksele, bez barw zarezerwowanych), kolejność warstw w `tests/config/renderLayers.test.ts`; `npm run build` (typy, 2289 testów, build). W Chromium (`?floor=8&boss=1&hero=archer&seed=7`, kroki `game.step()`): cały atak bocianów — 51 wybuchów, do 102 płomieni naraz na PC, 48 na `mobile.html`, pula wraca do zera, bez błędów w konsoli; Kat Otchłani (`?floor=4&boss=1`) i plamy ognia w Piekle. Koszt klatki w czasie ataku ok. +12% względem `main` (renderowanie programowe w kontenerze). `npm run smoke` nie przeszedł w kontenerze w 10 min (programowy WebGL) — **uruchomić przed wdrożeniem**. Zrzuty i GIF: `screens/krok144-ogien/`.
+
+**Do oceny:** siła poświaty i wstrząsu, czy pierścień telegrafu nie robi bałaganu w pasach bocianów, płynność na telefonie.
+
 ## Krok 145 — Przeliczenie balansu: mocniejsze ciosy bohaterów, wolniej rosnące HP bossów `#ocena` `#decyzja` `#balans` `#brudna-wiedzma`
 
 **Skąd:** `#ocena` Wicio po nagraniach walki z Brudną Wiedźmą (30.10.2026): „za mały damage, przeskaluj HP… wiem, że duża zmiana”. Rachunek: HP bossa rosło o 15% na piętro, obrażenia bohatera tylko z przedmiotami — wiedźma na piętrze 8 miała ok. 1560 HP (2× bazowe), samo bicie barbarzyńcą bez przedmiotów ok. 42 s, z unikami ok. 2 min; w drugim kręgu 2470 HP. `#decyzja` Na karcie wybrał „Cała gra: bossowie i bohaterowie”.
@@ -5321,6 +5341,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Naprowadzany strzał barbarzyńcy (krok 146):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
 - **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
 - **Mieszkanie gracza (krok 138):** `#mieszkanie-gracza` `#ocena` piętro 5 jako zagracone mieszkanie — gęstość śmieci, wygląd, nazwa biomu, ewentualni nowi wrogowie biomu.
+- **Ogień walki (krok 144):** `#ogien` `#ocena` bociany zrzucające żar, kule ognia, płomienie na podłodze, światło ognia w mroku, zaciskający się pierścień telegrafu — siła poświaty i wstrząsu (płomienie nie parzą — decyzja 31.10), wydajność na telefonie. Następnie: postFX z przełącznikiem jakości.
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.

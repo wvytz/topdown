@@ -1216,10 +1216,11 @@ export class BossFight {
       if (strike.look === 'smoke') this.playSmokeBurst(strike);
       else if (strike.look === 'water') this.playSplash(strike);
       else if (strike.look === 'tangle') this.playTangleBurst(strike);
-      else if (strike.look === 'feathers') {
-        // Pas bocianów (krok 137): tylko lekki błysk piór — stref jest kilkadziesiąt, bez huku i śladów.
-        const { color, radiusScale } = WITCH_FX_VISUAL.featherPuff;
-        effects.deathBurst(strike.center.x, strike.center.y, color, strike.radius * radiusScale);
+      else if (strike.look === 'embers') {
+        // Pas bocianów (krok 144): żar spada pod ptakiem — kula ognia, płomienie na podłodze i wypalony ślad.
+        // Stref jest kilkadziesiąt: huk i wstrząs FireEffects dławi sam, pula ogranicza płomienie.
+        effects.fire.burst(strike.center.x, strike.center.y, strike.radius);
+        this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       } else if (strike.look === 'dive') effects.blast(strike.center.x, strike.center.y, strike.radius, group, WITCH_FX_VISUAL.dive);
       else if (strike.look === 'whirl') effects.blast(strike.center.x, strike.center.y, strike.radius, group, WITCH_FX_VISUAL.whirl);
       else if (strike.look === 'spores') {

@@ -23,12 +23,16 @@ export const RENDER_DEPTH = {
   // Rozgrywka.
   telegraph: 5,
   groundFlash: 6,
+  /** Płomienie na podłodze po wybuchu (krok 144): nad błyskiem strefy, pod łupami i postaciami. */
+  fireGround: 6.5,
   shrine: 6,
   coin: 7,
   item: 8,
   deathBurst: 8,
   enemy: 9,
   boss: 9,
+  /** Kula ognia wybuchu (krok 144): nad wrogami, pod bohaterem — bohater zawsze widoczny w ogniu. */
+  fireBurst: 9.5,
   player: 10,
   aimMarker: 11,
   projectile: 11,
@@ -47,5 +51,8 @@ export const RENDER_DEPTH = {
   /** Ciepła poświata pochodni (mieszanie ADD) i same płomienie — świecą, więc nad mrokiem. */
   torchGlow: 15.5,
   torchFlame: 15.6,
+  /** Ogień walki (krok 144): poświata (ADD) i żar w powietrzu nad mrokiem — ogień świeci jak pochodnie. */
+  fireGlow: 15.7,
+  fireEmbers: 15.8,
   worldText: 20,
 } as const;

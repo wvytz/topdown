@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { FIRE_PATCH_VISUAL } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
+import type { FireEffects } from '@/effects/FireEffects';
 import { exposedArcs } from '@/systems/AreaOutline';
 import type { OutlineArc } from '@/systems/AreaOutline';
 import type { FirePatch, FirePatchField, FirePatchStage } from '@/systems/HellAttacks';
@@ -54,7 +55,11 @@ export class FirePatchRenderer {
   private pairs: (readonly [FirePatch, FirePatch])[] = [];
   private arcsVersion = -1;
 
-  constructor(private readonly scene: Phaser.Scene) {
+  /** `fire` — płomienie z generatora, poświata i światło nad mrokiem dla każdej plamy (krok 144). */
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly fire: FireEffects,
+  ) {
     this.stencil = scene.make.graphics({ x: 0, y: 0 }, false);
     this.charLayer = scene.add
       .renderTexture(0, 0, this.halfW * 2, this.halfH * 2)
@@ -75,7 +80,10 @@ export class FirePatchRenderer {
     this.flame.clear();
     this.charLayer.clear();
     this.bodyLayer.clear();
-    if (field.patches.length === 0) return;
+    if (field.patches.length === 0) {
+      this.fire.syncPatches([], 0);
+      return;
+    }
     if (field.version !== this.arcsVersion) this.updateArcs(field);
     const frame = Math.floor(now / v.frameMs);
     const looks = new Map<FirePatch, PatchLook>();
@@ -96,6 +104,10 @@ export class FirePatchRenderer {
       this.drawSparks(look, frame, dying);
     }
     for (const look of looks.values()) this.drawEdge(look, now);
+    this.fire.syncPatches(
+      [...looks.values()].map(({ patch, x, y, r, stage }) => ({ key: patch, x, y, r, dying: stage === 'dying' })),
+      frame,
+    );
   }
 
   /**

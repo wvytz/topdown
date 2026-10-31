@@ -29,6 +29,7 @@ import { FLOOR_SELECT_CONFIG, FLOOR_SELECT_TEXT } from '@/config/floorSelectConf
 import { BossProgress } from '@/persistence/BossProgress';
 import { startFloorInfo, unlocksFloor } from '@/systems/FloorSelect';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
+import { TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemDefinition, ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { ItemKind, PickupKind } from '@/core/lootTypes';
@@ -828,6 +829,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private setupCombat(): void {
     this.effects = new CombatEffects(this);
+    // Płomienie ognia walki stają tylko na podłodze (krok 144) — pas bocianów sięga za mury areny.
+    const { width, height, tiles } = this.dungeon;
+    this.effects.fire.setFloorCheck((x, y) => {
+      const tx = Math.floor(x / TILE_SIZE);
+      const ty = Math.floor(y / TILE_SIZE);
+      return tx >= 0 && ty >= 0 && tx < width && ty < height && tiles[ty * width + tx] !== TileType.Wall;
+    });
     const onPlayerHit = (): void => this.effects.playerHit();
 
     this.projectiles = new ProjectileManager(this, this.dungeonView.collisionLayer, this.party, onPlayerHit, this.combatDecals);
@@ -1803,7 +1811,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         : null;
     // Po fizyce: światło gracza i widoczność wrogów nie zostają klatkę za nim.
     const render = () => {
-      this.lighting.render(this.lightBearers(), this.pointLights());
+      this.lighting.render(this.lightBearers(), this.pointLights(), this.effects?.fire.activeLights() ?? []);
       hiding?.update();
     };
     render();
