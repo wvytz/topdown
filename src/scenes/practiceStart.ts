@@ -1,7 +1,8 @@
 import { diag } from '@/diagnostics/DiagnosticsHub';
 import type { FloorSceneData } from '@/core/types';
 import { PRACTICE_LOADOUT_CONFIG } from '@/config/practiceLoadoutConfig';
-import { applyPracticeLoadout, wantsPracticeLoadout } from '@/systems/PracticeLoadout';
+import { applyPracticeLoadout, simulatePracticeLoadout, wantsPracticeLoadout } from '@/systems/PracticeLoadout';
+import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { parseStartOverrides } from '@/systems/startOverrides';
 
 /**
@@ -28,4 +29,16 @@ export function practiceRestart(fresh: FloorSceneData, wasPractice: boolean): Fl
     { ...fresh, floor, runSeed: runSeed ?? fresh.runSeed, run: { ...fresh.run, practice: true }, ...(atBoss ? { atBoss } : {}) },
     true,
   );
+}
+
+/**
+ * Bot-partner (krok 149) dołącza dopiero w scenie gry, już po zestawie z `?floor=N` — dostaje wtedy własny
+ * zestaw z tej samej symulacji co partner w co-opie, żeby na arenie nie walczył z pustymi rękami.
+ */
+export function withBotPracticeItems(data: FloorSceneData, botJustAdded: boolean): FloorSceneData {
+  const partner = data.coop?.partner;
+  if (!botJustAdded || !data.coop || !partner || partner.items.length > 0) return data;
+  if (data.run.practice !== true || data.floor <= 1 || !wantsPracticeLoadout(window.location.search, PRACTICE_LOADOUT_CONFIG)) return data;
+  const items = simulatePracticeLoadout(data.runSeed, data.floor, HERO_DEFINITIONS[partner.hero], PRACTICE_LOADOUT_CONFIG, 1).items;
+  return { ...data, coop: { ...data.coop, partner: { ...partner, items } } };
 }

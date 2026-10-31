@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5294,6 +5294,24 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `tests/systems/PracticeLoadout.test.ts` — piętro 1 bez przedmiotów, determinizm, 1 karta na bossa i komnata tylko w Grzybni, średnio 14–24 przedmiotów na Wiedźmie, kapliczka, `applyPracticeLoadout` (run na tablicę, piętro 1 i areny bez zmian; partner w co-opie). `npm run build` (2280+ testów). Przeglądarka: `?hero=archer&floor=8&boss=1&seed=11` — 19 przedmiotów w HUD przy Wiedźmie; `&items=0` — pusto; śmierć i R — piętro 6 przy arenie, nowy seed i zestaw; `testy.html` buduje poprawne linki.
 
+## Krok 149 — Ukryty bot-partner: drugi bohater sterowany przez AI `#decyzja` `#coop` `#bot-partner`
+
+**Skąd:** `#decyzja` Wicio (31.10.2026) zapytał, czy Claude zagra z nim. Na żywo się nie da, więc propozycja: drugi gracz sterowany przez bota, który idzie za graczem, bije moby i wskrzesza. Wicio: „zajebisty pomysł”, ale **na razie jako ukryty tryb**.
+
+**Jak włączyć:** `?bot=1` w adresie (np. `https://wvytz.github.io/topdown/?bot=1` albo `?hero=archer&bot=1&floor=4&boss=1`). Bot dostaje następnego bohatera po bohaterze gracza; `?bot=sorceress` (barbarian, archer) wybiera mu bohatera, a gdy to ten sam co gracza — następnego (bohaterowie muszą być różni). Działa po menu i ekranie wyboru, z `?hero=` od razu, łączy się z `?floor=N&boss=1`. W menu go nie ma.
+
+**Co powstało:**
+- `ai/PartnerBotBrain.ts` (czysty): co klatkę obraz świata → te same akcje co z pada (`PlayerActions`), więc bohater bota gra według tych samych zasad co człowiek. Priorytety: 1) powalony gracz — idź i stój przy nim (wskrzeszanie z co-opu), bijąc po drodze, co ma w zasięgu; 2) gracz dalej niż 150 px — wracaj (dash doganiania od 190 px); 3) wróg widoczny, do 200 px od bota i 220 px od gracza — walcz; 4) spokój — trzymaj się do 44 px od gracza. Taktyka według broni: barbarzyńca podchodzi i tnie, strzela PPM z dystansu; Czarodziejka trzyma ~105 px, cofa się poniżej 60 px, promienia nie używa; łucznik trzyma ~125 px, salwa z ładunków. Ultimate przy 3+ wrogach w 120 px albo przy bossie w zasięgu.
+- `ai/botPath.ts` (czysty): droga po kaflach (BFS w 8 kierunkach bez ścinania rogów) i „naciągnięcie sznurka” z zapasem na szerokość ciała.
+- Teleport: bot dalej niż 230 px przez 1,6 s albo utknięty (chce iść, a stoi 2,2 s) staje obok gracza — wtedy smycz nie trzyma gracza w miejscu.
+- `systems/PartnerBot.ts` (czysty): `?bot=` → P2 z urządzeniami `BOT_DEVICES`, gracz na wszystkich urządzeniach jak solo. Tylko wspinaczka (jak co-op). Run z botem jest testowy — **nie trafia na żadną tablicę**. Balans co-opu działa (więcej HP wrogów, +1 wróg na pokój).
+- `input/BotPartnerInput.ts`: to samo gniazdo sterowania co klawiatura, pad i dotyk; zbiera dane z Phasera i oddaje decyzję mózgu.
+- Scena: HUD podpisuje partnera „BOT · …”, bot sam bierze pierwszą kartę za bossa (karty są losowe), „zmień bohatera” po śmierci prowadzi do zwykłego ekranu wyboru, teleport w dzienniku jako `bot-warp`. Liczby w `config/partnerBotConfig.ts`.
+
+**Testy:** `tests/ai/PartnerBotBrain.test.ts` (priorytety, taktyki, ultimate, dash, teleport), `tests/ai/botPath.test.ts`, `tests/systems/PartnerBot.test.ts`; `npm run build`. **Smoke:** nowa flaga `npm run smoke -- --bot` — na każdym piętrze smoke powala P1, a bot musi sam do niego dojść i go podnieść (u mnie 3,2–3,8 s gry na wskrzeszenie trwające 3 s). Ręcznie w przeglądarce: bot każdym bohaterem czyści pokoje przy stojącym graczu.
+
+**Znane ograniczenia (do oceny):** bot nie unika telegrafów i pocisków (pada częściej niż człowiek — wtedy gracz go podnosi), nie korzysta z kapliczki, schodów ani łupów celowo (łupy zbiera, gdy przejdzie obok), nie odpala promienia Czarodziejki. Przy okazji: w `gatherParty` (co-op, kraty) sprawdzenie podłogi traktuje pusty kafel kolizji jako mur, więc partner ląduje dokładnie na graczu zamiast obok (rozsuwa ich kolizja) — drobiazg, nie ruszałem. Napis „BOT · Barbarzyńca” w HUD nachodzi na HP (tak samo jak „P2 · Barbarzyńca”).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5377,6 +5395,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Mieszkanie gracza (krok 138):** `#mieszkanie-gracza` `#ocena` piętro 5 jako zagracone mieszkanie — gęstość śmieci, wygląd, nazwa biomu, ewentualni nowi wrogowie biomu.
 - **Ogień walki (krok 144):** `#ogien` `#ocena` bociany zrzucające żar, kule ognia, płomienie na podłodze, światło ognia w mroku, zaciskający się pierścień telegrafu — siła poświaty i wstrząsu (płomienie nie parzą — decyzja 31.10), wydajność na telefonie. Następnie: postFX z przełącznikiem jakości.
 - **Minimapa (krok 147):** `#minimapa` `#ocena` półprzezroczysta, smużka do areny/schodów, 5 kafli we mgle — czeka na test właściciela.
+- **Bot-partner (krok 149):** `#bot-partner` `#ocena` ukryty tryb `?bot=1` — czy bot pomaga, a nie przeszkadza (odstępy, teleport, kiedy bije); później: unikanie telegrafów, czy wejdzie do menu (np. „Graj z botem”).
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.

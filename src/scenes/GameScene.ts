@@ -66,7 +66,7 @@ import type { Enemy } from '@/entities/Enemy';
 import { BreakableManager } from '@/combat/BreakableManager';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
-import { HERO_DEFINITIONS } from '@/config/heroConfig';
+import { HERO_DEFINITIONS, HERO_ORDER, parseHeroId } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL } from '@/config/spriteConfig';
 import { sorceryOf } from '@/core/heroTypes';
@@ -108,6 +108,9 @@ import { dressFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
 import type { PlayerInput } from '@/input/playerInput';
 import { createPlayerInput } from '@/input/playerInput';
+import { BotPartnerInput } from '@/input/BotPartnerInput';
+import { isBotCoop, parseBotParam, withPartnerBot } from '@/systems/PartnerBot';
+import { PARTNER_BOT_CONFIG } from '@/config/partnerBotConfig';
 import { bindPadMenu } from '@/input/PadMenuInput';
 import { MenuCommand } from '@/systems/gamepadInput';
 import { GAMEPAD_CONFIG } from '@/config/gamepadConfig';
@@ -124,7 +127,7 @@ import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { rollItemChoices } from '@/systems/RewardChoice';
-import { practiceRestart } from '@/scenes/practiceStart';
+import { practiceRestart, withBotPracticeItems } from '@/scenes/practiceStart';
 import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
@@ -355,7 +358,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
     super(SceneKey.Game);
   }
 
-  init(data: FloorSceneData): void {
+  init(sceneData: FloorSceneData): void {
+    // Ukryty bot-partner (krok 149): `?bot=1` w adresie dokłada P2 sterowanego przez AI (też po menu i ekranie wyboru).
+    const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), HERO_ORDER);
+    const data = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;
     this.runSeed = data.runSeed;
@@ -468,7 +474,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupAmbush();
     this.createStairsPrompt();
     this.inputController = createPlayerInput(this, this.coop?.devices[0]);
-    this.partnerInput = this.coop && this.partner ? createPlayerInput(this, this.coop.devices[1]) : null;
+    this.partnerInput = this.coop && this.partner ? this.createPartnerInput(this.coop, this.partner) : null;
     this.setupCamera();
     this.setupDebugKeys();
     this.setupPause();
@@ -726,7 +732,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     for (const id of this.partnerItems) counts.set(id, (counts.get(id) ?? 0) + 1);
     const hero = HERO_DEFINITIONS[this.heroIdOf(partner)];
     return {
-      label: `P2 · ${hero.name}`,
+      label: `${this.playerTag(partner)} · ${hero.name}`,
       hp: Math.round(partner.health.value),
       maxHp: Math.round(partner.health.max),
       dashReadiness: partner.dashReadiness(now),
@@ -771,6 +777,39 @@ export class GameScene extends Phaser.Scene implements HudSource {
    * Drugi bohater (co-op, etap C2): obok pierwszego, gdy jest tam podłoga, inaczej na tym samym miejscu
    * (kolizja ciał ich rozsunie). Własne przedmioty i HP z poprzedniego piętra.
    */
+  /** Sterowanie P2: urządzenie drugiego gracza albo bot-partner (krok 149). */
+  private createPartnerInput(coop: CoopSceneData, partner: Player): PlayerInput {
+    if (!isBotCoop({ coop })) return createPlayerInput(this, coop.devices[1]);
+    return new BotPartnerInput(this, {
+      self: () => partner,
+      leader: () => this.player,
+      kit: HERO_DEFINITIONS[coop.partner.hero].kit.kind,
+      floor: () => this.dungeon,
+      warp: (to) => this.warpBot(partner, to),
+    });
+  }
+
+  /** Bot utknął albo został w tyle — staje obok gracza (krok 149). */
+  private warpBot(bot: Player, near: Vector2): void {
+    if (bot.isDead) return;
+    const isWalkable = (at: Vector2) => {
+      const tile = DungeonView.worldToTile(at.x, at.y);
+      return this.dungeon.tiles[tile.y * this.dungeon.width + tile.x] === TileType.Floor;
+    };
+    const to = spotBeside(near, COOP_CONFIG.partnerSpawnOffsetPx, isWalkable);
+    this.effects.impact(bot.x, bot.y, TILE_SIZE * 0.5);
+    bot.setPosition(to.x, to.y);
+    (bot.body as Phaser.Physics.Arcade.Body).updateFromGameObject();
+    this.effects.impact(to.x, to.y, TILE_SIZE * 0.5);
+    this.leashFrom = null;
+    diag.note('bot-warp', { floor: this.floorNumber });
+  }
+
+  /** P2 to bot-partner (krok 149). */
+  private get botPartner(): boolean {
+    return this.coop !== null && isBotCoop({ coop: this.coop });
+  }
+
   private spawnPartner(coop: CoopSceneData, at: Vector2): Player {
     const { partner } = coop;
     const offset = COOP_CONFIG.partnerSpawnOffsetPx;
@@ -1264,7 +1303,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Numer gracza do napisów w co-opie („P2”); solo — pusto. */
   private playerTag(hero: Player): string {
     if (!this.partner) return '';
-    return hero === this.player ? 'P1' : 'P2';
+    return hero === this.player ? 'P1' : this.botPartner ? PARTNER_BOT_CONFIG.tag : 'P2';
   }
 
   /**
@@ -1467,6 +1506,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onPicked();
       return;
     }
+    // Bot-partner (krok 149) bierze pierwszą kartę od razu — karty i tak są losowe.
+    const botPick = hero === this.partner && this.botPartner ? choices[0] : undefined;
+    if (botPick) {
+      this.grantItem(botPick, hero);
+      onPicked();
+      return;
+    }
 
     const owned: Partial<Record<ItemId, number>> = {};
     const items = hero === this.player ? this.run.items : this.partnerItems;
@@ -1633,7 +1679,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
       this.scene.stop(SceneKey.Hud);
       // Co-op (etap C5): zmiana bohaterów na ekranie co-opu — obaj dołączają i wybierają od nowa.
-      if (this.coop) {
+      // Bot-partner (krok 149): zwykły ekran wyboru — bot wraca sam z adresu.
+      if (this.coop && !this.botPartner) {
         const coop: CoopSelectData = { runSeed: freshSeed, practice: this.run.practice };
         this.scene.start(SceneKey.CoopSelect, coop);
         return;
