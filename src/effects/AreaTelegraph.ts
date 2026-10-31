@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { AreaStrike } from '@/core/bossTypes';
 import { AREA_TELEGRAPH_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
 import { FIRE_FX } from '@/config/fireConfig';
+import { SLUDGE_FX } from '@/config/sludgeConfig';
 import { exposedArcs } from '@/systems/AreaOutline';
 import { closingRingRadius } from '@/systems/FireBurst';
 import type { OutlineCircle } from '@/systems/AreaOutline';
@@ -26,22 +27,24 @@ export function drawZoneTelegraph(gfx: Phaser.GameObjects.Graphics, zone: Telegr
   const progress = Math.min(1, Math.max(0, (now - zone.telegraphStartAt) / span));
   // Smuga dymu Barona (krok 83) ma szary telegraf; reszta — czerwony.
   const smoke = zone.look === 'smoke';
-  const color = smoke ? SMOKE_VISUAL.telegraph.color : (zone.tint ?? v.color);
+  // Król Szlamu (krok 153): fioletowy telegraf szlamu zamiast czerwieni.
+  const sludge = zone.look === 'sludge' ? SLUDGE_FX.telegraph : null;
+  const color = smoke ? SMOKE_VISUAL.telegraph.color : sludge ? sludge.color : (zone.tint ?? v.color);
   const remaining = zone.impactAt - now;
   const blink = remaining <= v.warnMs && Math.floor(remaining / v.warnBlinkMs) % 2 === 0;
-  const edge = blink ? v.warnColor : smoke ? SMOKE_VISUAL.telegraph.edge : color;
+  const edge = blink ? v.warnColor : smoke ? SMOKE_VISUAL.telegraph.edge : sludge ? sludge.edge : color;
   const { x, y } = { x: Math.round(zone.center.x), y: Math.round(zone.center.y) };
   const r = Math.round(zone.radius);
 
-  gfx.fillStyle(color, smoke ? 0.14 : v.fillAlpha).fillCircle(x, y, r);
-  gfx.fillStyle(color, smoke ? SMOKE_VISUAL.telegraph.fillAlpha : v.progressAlpha).fillCircle(x, y, r * progress);
+  gfx.fillStyle(color, smoke ? 0.14 : (sludge?.fillAlpha ?? v.fillAlpha)).fillCircle(x, y, r);
+  gfx.fillStyle(color, smoke ? SMOKE_VISUAL.telegraph.fillAlpha : (sludge?.progressAlpha ?? v.progressAlpha)).fillCircle(x, y, r * progress);
 
   const arcs = group.length > 1 ? exposedArcs(zone, group, v.outlineSegments) : [{ start: 0, end: Math.PI * 2 }];
   // Pierścień zaciska się na brzeg i dotyka go w chwili uderzenia (krok 144) — widać, ile zostało czasu.
   const closing = smoke ? null : closingRingRadius(r, progress, FIRE_FX.closing.startScale, FIRE_FX.closing.fromProgress);
   if (closing !== null && closing > r + 1) {
     const c = FIRE_FX.closing;
-    gfx.lineStyle(c.width, c.color, c.alpha * Math.min(1, progress * 1.5));
+    gfx.lineStyle(c.width, sludge?.closing ?? c.color, c.alpha * Math.min(1, progress * 1.5));
     for (const arc of arcs) gfx.beginPath().arc(x, y, Math.round(closing), arc.start, arc.end).strokePath();
   }
   for (const arc of arcs) {

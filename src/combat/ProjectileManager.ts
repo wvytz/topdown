@@ -25,6 +25,8 @@ export interface ProjectileSpec {
   readonly visual?: { readonly texture: string; readonly animation: string };
   /** Ślad na podłodze, gdy pocisk rozbije się o ścianę albo wygaśnie (np. szlam bossa). */
   readonly impactDecal?: CombatDecalKind;
+  /** Wywołanie w miejscu końca lotu (ściana albo wygaśnięcie) — kula szlamu zostawia kałużę (krok 153). */
+  readonly onLand?: (at: Vector2) => void;
   /** Fala (nietoperz): trafia w całej szerokości półksiężyca zamiast w okręgu ciała. */
   readonly wave?: WaveShape;
   /** Status nakładany trafieniem (krok 28b: trucizna kuli zarodników grzybca). */
@@ -45,6 +47,7 @@ export class ProjectileManager {
   /** Kształt fal — trafienie liczymy sami (czysta funkcja), nie przez okrągłe ciało fizyczne. */
   private readonly waves = new WeakMap<Projectile, WaveShape>();
   private readonly hitCallbacks = new WeakMap<Projectile, (damage: number) => void>();
+  private readonly landCallbacks = new WeakMap<Projectile, (at: Vector2) => void>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -84,6 +87,7 @@ export class ProjectileManager {
     if (spec.impactDecal) this.impactDecals.set(projectile, spec.impactDecal);
     if (spec.wave) this.waves.set(projectile, spec.wave);
     if (spec.onHit) this.hitCallbacks.set(projectile, spec.onHit);
+    if (spec.onLand) this.landCallbacks.set(projectile, spec.onLand);
     const dir = normalize(spec.direction);
     projectile.setVelocity(dir.x * spec.speed, dir.y * spec.speed);
   }
@@ -109,6 +113,7 @@ export class ProjectileManager {
   private splash(projectile: Projectile): void {
     const kind = this.impactDecals.get(projectile);
     if (kind) this.decals?.add(kind, projectile.x, projectile.y);
+    this.landCallbacks.get(projectile)?.({ x: projectile.x, y: projectile.y });
     projectile.destroy();
   }
 

@@ -15,6 +15,7 @@ import type { Vector2 } from '@/core/types';
 import { isCaughtByGroundArea } from '@/systems/Hurtbox';
 import { EMPTY, required, telegraph, towardPoint } from '@/ai/planHelpers';
 import { planBirdDive, planFlowerEye, planStorkFlight, planWhirl } from '@/ai/witchAttacks';
+import { withSludgePuddles } from '@/systems/Sludge';
 
 export interface AttackPlanContext {
   readonly kind: BossAttackKind;
@@ -34,6 +35,11 @@ export interface AttackPlanContext {
 
 /** Buduje plan ataku (strefy, fale pocisków, czasy). Czysta funkcja — poza RNG nie ma stanu. */
 export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
+  // Król Szlamu (krok 153): każde plucie zostawia kałuże szlamu.
+  return withSludgePuddles(planAttackKind(ctx), ctx.definition.sludge);
+}
+
+function planAttackKind(ctx: AttackPlanContext): BossAttackPlan {
   switch (ctx.kind) {
     case BossAttackKind.Slam:
       return planSlam(ctx);
@@ -411,12 +417,14 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
   const zoneCount = barrage.zoneCount + (ctx.enraged ? 1 : 0);
 
   const strikes: AreaStrike[] = [];
+  // Krok 153 (flegma Króla Szlamu): pierwsza strefa tam, dokąd gracz biegnie — bieg w kółko nie wystarcza.
+  const aim = barrage.lead ? aimPoint(ctx, barrage.lead) : ctx.target;
   for (let i = 0; i < zoneCount; i++) {
     // Pierwsza strefa celuje dokładnie w gracza, kolejne losowo wokół niego.
     const angle = ctx.rng.next() * Math.PI * 2;
     const offset = i === 0 ? 0 : barrage.spread * (0.4 + 0.6 * ctx.rng.next());
     strikes.push({
-      center: { x: ctx.target.x + Math.cos(angle) * offset, y: ctx.target.y + Math.sin(angle) * offset },
+      center: { x: aim.x + Math.cos(angle) * offset, y: aim.y + Math.sin(angle) * offset },
       radius: barrage.zoneRadius,
       telegraphStartAt: ctx.now + i * barrage.intervalMs,
       impactAt: firstImpactAt + i * barrage.intervalMs,
@@ -427,10 +435,11 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
   const lastImpactAt = firstImpactAt + (zoneCount - 1) * barrage.intervalMs;
   // Puszki (Baron Dymu): każda strefa to puszka lecąca łukiem od bossa, lądująca w chwili uderzenia.
   const flightMs = barrage.thrown?.flightMs;
+  const look = barrage.thrown?.look ?? 'can';
   const throws: ThrownObject[] =
     flightMs === undefined
       ? []
-      : strikes.map((strike) => ({ look: 'can', from: ctx.self, to: strike.center, launchAt: strike.impactAt - flightMs, landAt: strike.impactAt }));
+      : strikes.map((strike) => ({ look, from: ctx.self, to: strike.center, launchAt: strike.impactAt - flightMs, landAt: strike.impactAt }));
   return { kind: BossAttackKind.Barrage, strikes, bursts: [], spawns: [], webs: [], leap: null, throws, endsAt: lastImpactAt + barrage.recoveryMs };
 }
 
@@ -648,7 +657,7 @@ export function webPatchRadius(web: WebShot, now: number): number {
 export function isInWebPatch(web: WebShot, point: Vector2, now: number): boolean {
   const r = webPatchRadius(web, now);
   if (r <= 0) return false;
-  if (web.look === 'mushrooms' || web.look === 'water') return isCaughtByGroundArea(web.to, r, point);
+  if (web.look === 'mushrooms' || web.look === 'water' || web.look === 'sludge') return isCaughtByGroundArea(web.to, r, point);
   return Math.hypot(point.x - web.to.x, point.y - web.to.y) <= r;
 }
 

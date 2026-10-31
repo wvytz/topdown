@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { AREA_TELEGRAPH_VISUAL, BLAST_VISUAL, NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
 import { FireEffects } from '@/effects/FireEffects';
+import { SludgeEffects } from '@/effects/SludgeEffects';
 import { exposedArcs } from '@/systems/AreaOutline';
 import type { OutlineCircle } from '@/systems/AreaOutline';
 
@@ -19,9 +20,12 @@ type BlastVisual = {
 export class CombatEffects {
   /** Ogień walki (krok 144): kule ognia, płomienie, iskry, poświata i światło nad mrokiem. */
   readonly fire: FireEffects;
+  /** Szlam Króla Szlamu (krok 153): rozbryzgi, krople i bąble. */
+  readonly sludge: SludgeEffects;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.fire = new FireEffects(scene);
+    this.sludge = new SludgeEffects(scene);
   }
 
   slash(x: number, y: number, angle: number, range: number, arcRadians: number): void {

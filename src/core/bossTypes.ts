@@ -171,8 +171,13 @@ export interface BarrageAttackDefinition extends BaseBossAttackDefinition {
   readonly spread: number;
   /** Odstęp między wybuchami kolejnych stref. */
   readonly intervalMs: number;
-  /** Strefy to lądujące puszki (Baron Dymu): każda leci łukiem od bossa przez `flightMs` przed uderzeniem. */
-  readonly thrown?: { readonly flightMs: number };
+  /**
+   * Strefy to rzucane przedmioty lecące łukiem od bossa przez `flightMs` przed uderzeniem: puszki Barona Dymu
+   * (domyślnie) albo flegma Króla Szlamu (`look: 'phlegm'`, krok 153).
+   */
+  readonly thrown?: { readonly flightMs: number; readonly look?: ThrownObject['look'] };
+  /** Pierwsza strefa tam, dokąd biegnie gracz (krok 153: kara za bieganie w kółko); brak = na gracza. */
+  readonly lead?: AimLead;
 }
 
 /**
@@ -595,6 +600,44 @@ export interface BossEscapeDefinition {
   readonly closeMs: number;
 }
 
+/**
+ * Kałuża szlamu (krok 153): rośnie od `startScale` promienia do pełnego przez `spreadMs` i leży `durationMs`.
+ * Bohater, którego ślad stóp dotyka kałuży, jest lekko spowolniony (teren — chroni dash).
+ */
+export interface SludgePuddleDefinition {
+  readonly startScale: number;
+  readonly spreadMs: number;
+  readonly durationMs: number;
+  readonly slow: { readonly pct: number; readonly durationMs: number };
+}
+
+/**
+ * Szlam od ścian (krok 153, pomysł właściciela — zapowiedź zwężającej się areny Kata Otchłani): od początku walki
+ * szlam pełznie od brzegów areny do środka. Postęp to większy z dwóch: czas walki (`fullAfterMs` do pełnego) i
+ * utracone HP bossa (`hpLostForFull` do pełnego). Pas ma najwyżej `maxDepthPx`, brzeg faluje o `wobble.amp` głębokości
+ * (fala o długości `wobble.wavelengthPx` wzdłuż ściany), a widoczny pas dogania cel najwyżej `growPxPerSec`.
+ * W pasie bohater jest spowolniony mocniej niż w kałuży — arena „zwęża się”, ale da się przez szlam przejść.
+ */
+export interface SludgeCreepDefinition {
+  readonly maxDepthPx: number;
+  readonly fullAfterMs: number;
+  readonly hpLostForFull: number;
+  readonly growPxPerSec: number;
+  readonly wobble: { readonly amp: number; readonly wavelengthPx: number };
+  readonly slow: { readonly pct: number; readonly durationMs: number };
+}
+
+export interface SludgeDefinition {
+  readonly puddle: SludgePuddleDefinition;
+  /** Promień kałuży po każdym ataku (px; brak = ten atak nie zostawia kałuży). Promienie z `SLUDGE_PUDDLE_RADII`. */
+  readonly puddleRadius: Readonly<Partial<Record<BossAttackKind, number>>>;
+  /** Kałuża tam, gdzie kula szlamu z pierścienia (Nova) rozbije się o mur albo opadnie. */
+  readonly globPuddleRadius: number;
+  /** Najwyżej tyle kałuż naraz — najstarsza znika. */
+  readonly maxPuddles: number;
+  readonly creep: SludgeCreepDefinition;
+}
+
 export interface BossEnrageConfig {
   /** Próg HP (0..1), poniżej którego boss wpada we wściekłość. */
   readonly hpThreshold: number;
@@ -711,6 +754,13 @@ export interface BossDefinition {
   /** Świta (krok 80): zwykli wrogowie biomu przywoływani w trakcie walki. */
   readonly retinue?: RetinueDefinition;
   readonly fireRing?: FireRingDefinition;
+  /**
+   * Wygląd stref bez własnego `look` (krok 153): Król Szlamu ma fioletowe telegrafy i rozbryzgi szlamu zamiast
+   * czerwieni i ognia. Brak = domyślny (czerwony telegraf, wybuch ognia).
+   */
+  readonly strikeLook?: AreaStrike['look'];
+  /** Szlam Króla Szlamu (krok 153): kałuże po każdym pluciu i szlam pełznący od ścian areny. */
+  readonly sludge?: SludgeDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;
   readonly enrage: BossEnrageConfig;
@@ -735,7 +785,7 @@ export interface AreaStrike {
   /** Trafienie unieruchamia (plątanie brunetki, krok 126). */
   readonly root?: RootEffect;
   /** Wygląd strefy: dym zamiast czerwonego telegrafu; `spores` — czerwony telegraf, wybuch w kolorach soku (krok 111). */
-  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle' | 'embers' | 'dive' | 'whirl';
+  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle' | 'embers' | 'dive' | 'whirl' | 'sludge';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -793,7 +843,7 @@ export interface WebShot {
    * (sprzątaczki, krok 125). Brak = sieć. Grzyby i kałuża łapią ślad stóp bohatera (jak strefy z kroku 110),
    * sieć i grzybnia — środek postaci.
    */
-  readonly look?: 'web' | 'mycelium' | 'mushrooms' | 'water' | 'flower';
+  readonly look?: 'web' | 'mycelium' | 'mushrooms' | 'water' | 'flower' | 'sludge';
   /** Dodatkowy status w płacie (trucizna grzybni). */
   readonly status?: StatusApplication;
 }
@@ -801,7 +851,7 @@ export interface WebShot {
 /** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
 export interface ThrownObject {
   /** Co leci: kokon Króla (domyślnie), puszka Barona, strąk Pożeracza, wiadro sprzątaczki; bocian, ptak i nasiono wiedźmy (krok 137). */
-  readonly look?: 'can' | 'spore' | 'bucket' | 'stork' | 'bird' | 'seed';
+  readonly look?: 'can' | 'spore' | 'bucket' | 'stork' | 'bird' | 'seed' | 'phlegm';
   readonly from: Vector2;
   readonly to: Vector2;
   readonly launchAt: number;

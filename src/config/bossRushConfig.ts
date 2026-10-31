@@ -25,7 +25,7 @@ export const BOSS_RUSH_TEXT = {
   startToast: 'Areny bossów — wynik trafi na tablicę aren',
   clearToast: 'Pokonaj pozostałych przeciwników!',
   teleportToast: 'Teleport na kolejną arenę…',
-  fightHint: 'Pokonaj bossa i jego pomocników · unikaj czerwonych stref',
+  fightHint: 'Pokonaj bossa i jego pomocników · unikaj stref ataku',
   arenaHint: 'po bossie i pomocnikach — nagroda i teleport na kolejną arenę',
   goldSuffix: '(tablica aren: arena, potem złoto)',
   /** R zaczyna areny od nowa tym samym bohaterem, C wraca do ekranu wyboru (z zaznaczonym trybem aren). */
