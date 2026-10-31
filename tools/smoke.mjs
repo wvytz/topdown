@@ -5,7 +5,7 @@
  *
  * Użycie:   npm run smoke -- [--floors 8] [--seeds 2] [--heroes all|barbarian|sorceress|archer] [--room-seconds 1.5] [--sweep-only] [--coop]
  *           --coop: co-op (krok 109) — drugi bohater (następny z listy) na podstawionym padzie, bot gra oboma i sprawdza wskrzeszanie.
- *           --bot: bot-partner (krok 146, `?bot=1`) — P2 prowadzi AI gry; smoke sprawdza, czy bot wskrzesza powalonego P1.
+ *           --bot: bot-partner (krok 149, `?bot=1`) — P2 prowadzi AI gry; smoke sprawdza, czy bot wskrzesza powalonego P1.
  * Przeglądarka: domyślnie zainstalowany Chrome (kanał „chrome”); inna: SMOKE_CHROMIUM=<ścieżka do pliku wykonywalnego>.
  * Wymaga trybu dev (korzysta z `window.__game`). Kod wyjścia 1, gdy coś się wywróci.
  */
@@ -188,7 +188,7 @@ async function checkRevive(page, floor, errors) {
   if (!last.up) errors.push(`co-op: piętro ${floor} — P2 nie wstał po wskrzeszaniu (${Math.round(last.now - start.now)} ms gry, postęp ${last.progress}, odstęp ${last.dist} px)`);
 }
 
-/** Bot-partner (krok 146): powalony P1 wstaje, bo bot sam do niego podchodzi i przy nim stoi. */
+/** Bot-partner (krok 149): powalony P1 wstaje, bo bot sam do niego podchodzi i przy nim stoi. */
 async function checkBotRevive(page, floor, errors) {
   const down = await page.evaluate(`(() => { const g = ${G}; const [a, b] = g.party.members; if (!b) return false;
     delete a.health.takeDamage; a.takeHit({ damage: 99999, knockback: { x: 0, y: 0 } }, g.time.now + 1e7);

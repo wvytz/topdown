@@ -15,7 +15,7 @@ export interface BotKitTactics {
 }
 
 /**
- * Bot-partner (krok 146, ukryty tryb `?bot=1`, pomysł właściciela): drugi bohater sterowany przez AI —
+ * Bot-partner (krok 149, ukryty tryb `?bot=1`, pomysł właściciela): drugi bohater sterowany przez AI —
  * idzie za graczem, bije wrogów i wskrzesza powalonego. Liczby do strojenia po testach właściciela.
  */
 export const PARTNER_BOT_CONFIG = {

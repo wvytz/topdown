@@ -211,29 +211,56 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
 };
 
 /**
- * Zadymiona palarnia (krok 84): podłoga zaśmiecona — puszki po energetykach, opakowania z kurczaka i pety
- * (nakładki bez kolizji, jak reszta dekoracji). Ku arenie Barona gęstnieją śmieci z kurczaka. Moje liczby, do oceny.
+ * Zadymiona palarnia (krok 84) — od kroku 137 zagracone, zadymione mieszkanie nałogowego gracza (prośba właściciela:
+ * „jakbyśmy chodzili po śmieciach”). Na wykładzinie prawie co drugi kafel ma śmieć: okruchy, pudełka po pizzy,
+ * puszki, pety, ubrania, pady, papiery; co kilkanaście kafli sterta 2×2 albo stos pudełek, a przez pokoje biegną kable
+ * (grupa długich pęknięć). Kurz i włosy pod ścianami, plakaty, półki i dziury po pięściach na tapecie.
+ * Ku arenie Barona gęstnieją pety. Moje liczby, do oceny.
  */
 export const SMOKE_DEN_DRESSING: FloorDressingConfig = {
   ...FLOOR_DRESSING,
-  decalChance: 0.18,
+  macroChance: 0.03,
+  // Krok 138a („brudne w każdym calu”): brud jest też na samych kaflach bazowych; nakładka na 60% kafli.
+  decalChance: 0.6,
   decalGroupWeights: {
-    'decal.crack': 2,
-    'decal.debris': 1,
+    // Grupy ruin narysowane po nowemu (tools/gamer_den_tiles.py): okruchy, kapsle, plamy coli, przypalenia, popcorn.
+    'decal.crack': 3,
+    'decal.debris': 2,
     'decal.stain': 1.5,
-    'decal.broken': 0.3,
-    // Puszki rozrzucone pojedynczo po wielu kaflach (feedback właściciela), nie w kupkach.
-    'decal.cans': 4,
-    'decal.kfc': 1.6,
-    'decal.butts': 2,
+    'decal.broken': 1,
+    'decal.rubble': 1,
+    // Krok 138b (uwaga właściciela: „atmosfera, nie detale”): bez rozpoznawalnych drobiazgów (pizza w kawałku,
+    // koszulki, pady, kubełki) — przeważa bezkształtna maź śmieci, tłuszcz, grzyb; puszki i pety przygaszone.
+    'decal.mush': 6,
+    'decal.grease': 3,
+    'decal.slime': 1.5,
+    'decal.mold': 2,
+    'decal.papers': 0.8,
+    'decal.cans': 1,
+    'decal.butts': 1.5,
+    'decal.bottles': 0.6,
   },
+  // Kable przez pokój.
+  longCrackChance: 0.02,
+  largeDecals: [
+    { chance: 0.035, group: 'decal.mound' },
+    { chance: 0.008, group: 'decal.boxes' },
+  ],
+  dust: {
+    // Pod licem kapie tłuszcz z muru (krok 138a) — prawie wszędzie.
+    north: { chance: 0.9, group: 'decal.dustN' },
+    west: { chance: 0.55, group: 'decal.dustW' },
+    east: { chance: 0.55, group: 'decal.dustE' },
+  },
+  wallFace: { chance: 0.3, group: 'wallFace.gamer' },
+  cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.45 },
   nest: {
     radiusTiles: 18,
     cobwebChance: 0,
     corridorCobwebChance: 0,
     wallFaceChance: 0,
-    wallFaceGroup: 'wallFace',
-    decals: { group: 'decal.kfc', chance: 0.18 },
+    wallFaceGroup: 'wallFace.gamer',
+    decals: { group: 'decal.butts', chance: 0.3 },
     trail: TRAIL,
   },
 };

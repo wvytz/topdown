@@ -53,6 +53,7 @@ import { autoPauseEnabled } from '@/systems/PauseClock';
 import type { PauseClock } from '@/systems/PauseClock';
 import type { PauseSceneData } from '@/scenes/PauseScene';
 import { MinimapExplorer } from '@/systems/Minimap';
+import { MinimapRoute } from '@/systems/MinimapRoute';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
 import { TrapManager } from '@/combat/TrapManager';
 import { AmbushManager } from '@/combat/AmbushManager';
@@ -126,6 +127,7 @@ import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { rollItemChoices } from '@/systems/RewardChoice';
+import { practiceRestart, withBotPracticeItems } from '@/scenes/practiceStart';
 import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
@@ -273,6 +275,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private wallDogs: WallDogManager | null = null;
   private secretArea: SecretArea | null = null;
   private minimap: MinimapExplorer | null = null;
+  private minimapRoute: MinimapRoute | null = null;
   private gamePaused = false;
   private secretRoom: SecretRoomManager | null = null;
   private ambushRoomId: number | null = null;
@@ -356,8 +359,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   init(sceneData: FloorSceneData): void {
-    // Ukryty bot-partner (krok 146): `?bot=1` w adresie dokłada P2 sterowanego przez AI (też po menu i ekranie wyboru).
-    const data = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), HERO_ORDER);
+    // Ukryty bot-partner (krok 149): `?bot=1` w adresie dokłada P2 sterowanego przez AI (też po menu i ekranie wyboru).
+    const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), HERO_ORDER);
+    const data = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;
     this.runSeed = data.runSeed;
@@ -382,6 +386,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
+    this.minimapRoute = null;
     this.gamePaused = false;
     this.herald = null;
     this.heroes = [];
@@ -432,6 +437,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Minimapa widzi piętro w przebraniu — ukryta komnata nie wyda się przed odsłonięciem.
     // Na arenach bossów jej nie ma (krok 97a): sama arena, nie ma czego szukać.
     this.minimap = this.bossRush ? null : new MinimapExplorer(shown, MINIMAP_CONFIG.revealRadius);
+    // Trasa liczona po piętrze w przebraniu — nie prowadzi przez ukrytą komnatę.
+    this.minimapRoute = this.bossRush ? null : new MinimapRoute(shown);
     const secret = this.secretArea ? { dressed: dress(this.dungeon), tiles: this.secretArea.tiles } : null;
     this.dungeonView = new DungeonView(this, this.dungeon, dressed, tileset, biome.tileset, secret);
     this.combatDecals = new CombatDecals(this, this.dungeon, biome.tileset, tileset, biome.dressing.combatDecals);
@@ -657,6 +664,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (target) shooter?.afterShotHit(shot, target, creature !== null && !(creature instanceof LarderCocoon), time);
         return target;
       },
+      () => this.aimTargets(),
     );
     this.loot.update(time);
     this.shrine?.update(interactOf);
@@ -735,7 +743,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
   }
 
-  /** Odkrywa mgłę wokół gracza i oddaje dane minimapy; arena bossa znika ze znaczników po jego pokonaniu. */
+  /** Odkrywa mgłę wokół gracza i oddaje dane minimapy (null na arenie); arena bossa znika ze znaczników po jego pokonaniu. */
   private minimapData(): MinimapHudData | null {
     if (!this.minimap) return null;
     const player = DungeonView.worldToTile(this.player.x, this.player.y);
@@ -743,12 +751,20 @@ export class GameScene extends Phaser.Scene implements HudSource {
     for (const member of this.party.living) this.minimap.reveal(DungeonView.worldToTile(member.x, member.y));
     this.minimap.reveal(player);
     const arena = this.dungeon.rooms[this.dungeon.bossRoomId];
+    // Na arenie mapa chowa się zawsze, także we wspinaczce (krok 147, decyzja właściciela) — tu nie ma czego szukać.
+    if (arena && player.x >= arena.x && player.y >= arena.y && player.x < arena.x + arena.width && player.y < arena.y + arena.height) {
+      return null;
+    }
+    const boss = arena && !this.bossFight.isDefeated ? { x: arena.x + Math.floor(arena.width / 2), y: arena.y + Math.floor(arena.height / 2) } : null;
+    // Podpowiedź drogi: do areny, a po bossie do schodów.
+    const route = this.minimapRoute ? this.minimapRoute.route(player, boss ?? this.dungeon.stairs, MINIMAP_CONFIG.route.maxTiles) : [];
     return {
       explorer: this.minimap,
       player,
       partner: this.partner ? DungeonView.worldToTile(this.partner.x, this.partner.y) : null,
       stairs: this.dungeon.stairs,
-      boss: arena && !this.bossFight.isDefeated ? { x: arena.x + Math.floor(arena.width / 2), y: arena.y + Math.floor(arena.height / 2) } : null,
+      boss,
+      route,
     };
   }
 
@@ -761,7 +777,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
    * Drugi bohater (co-op, etap C2): obok pierwszego, gdy jest tam podłoga, inaczej na tym samym miejscu
    * (kolizja ciał ich rozsunie). Własne przedmioty i HP z poprzedniego piętra.
    */
-  /** Sterowanie P2: urządzenie drugiego gracza albo bot-partner (krok 146). */
+  /** Sterowanie P2: urządzenie drugiego gracza albo bot-partner (krok 149). */
   private createPartnerInput(coop: CoopSceneData, partner: Player): PlayerInput {
     if (!isBotCoop({ coop })) return createPlayerInput(this, coop.devices[1]);
     return new BotPartnerInput(this, {
@@ -773,7 +789,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     });
   }
 
-  /** Bot utknął albo został w tyle — staje obok gracza (krok 146). */
+  /** Bot utknął albo został w tyle — staje obok gracza (krok 149). */
   private warpBot(bot: Player, near: Vector2): void {
     if (bot.isDead) return;
     const isWalkable = (at: Vector2) => {
@@ -789,7 +805,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     diag.note('bot-warp', { floor: this.floorNumber });
   }
 
-  /** P2 to bot-partner (krok 146). */
+  /** P2 to bot-partner (krok 149). */
   private get botPartner(): boolean {
     return this.coop !== null && isBotCoop({ coop: this.coop });
   }
@@ -866,6 +882,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private setupCombat(): void {
     this.effects = new CombatEffects(this);
+    // Płomienie ognia walki stają tylko na podłodze (krok 144) — pas bocianów sięga za mury areny.
+    const { width, height, tiles } = this.dungeon;
+    this.effects.fire.setFloorCheck((x, y) => {
+      const tx = Math.floor(x / TILE_SIZE);
+      const ty = Math.floor(y / TILE_SIZE);
+      return tx >= 0 && ty >= 0 && tx < width && ty < height && tiles[ty * width + tx] !== TileType.Wall;
+    });
     const onPlayerHit = (): void => this.effects.playerHit();
 
     this.projectiles = new ProjectileManager(this, this.dungeonView.collisionLayer, this.party, onPlayerHit, this.combatDecals);
@@ -1483,7 +1506,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onPicked();
       return;
     }
-    // Bot-partner (krok 146) bierze pierwszą kartę od razu — karty i tak są losowe.
+    // Bot-partner (krok 149) bierze pierwszą kartę od razu — karty i tak są losowe.
     const botPick = hero === this.partner && this.botPartner ? choices[0] : undefined;
     if (botPick) {
       this.grantItem(botPick, hero);
@@ -1648,14 +1671,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
         run: newRun(this.run.hero, coop !== null, this.run.mode, floor),
         ...(coop && { coop }),
       };
-      this.scene.restart(fresh);
+      // Run testowy z `?floor=` (krok 148): R wraca na to samo piętro / arenę z nowym zestawem.
+      this.scene.restart(this.run.mode === RunMode.Tower ? practiceRestart(fresh, this.run.practice) : fresh);
     });
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
     const changeHero = once(() => {
       const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
       this.scene.stop(SceneKey.Hud);
       // Co-op (etap C5): zmiana bohaterów na ekranie co-opu — obaj dołączają i wybierają od nowa.
-      // Bot-partner (krok 146): zwykły ekran wyboru — bot wraca sam z adresu.
+      // Bot-partner (krok 149): zwykły ekran wyboru — bot wraca sam z adresu.
       if (this.coop && !this.botPartner) {
         const coop: CoopSelectData = { runSeed: freshSeed, practice: this.run.practice };
         this.scene.start(SceneKey.CoopSelect, coop);
@@ -1849,7 +1873,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         : null;
     // Po fizyce: światło gracza i widoczność wrogów nie zostają klatkę za nim.
     const render = () => {
-      this.lighting.render(this.lightBearers(), this.pointLights());
+      this.lighting.render(this.lightBearers(), this.pointLights(), this.effects?.fire.activeLights() ?? []);
       hiding?.update();
     };
     render();

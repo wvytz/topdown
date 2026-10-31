@@ -3,6 +3,8 @@ import type { RangedConfig, StatusApplication, WeaponEffects } from '@/core/comb
 import type { Vector2 } from '@/core/types';
 import { Projectile } from '@/entities/Projectile';
 import { normalize } from '@/systems/CombatMath';
+import { steerVelocity, type HomingConfig } from '@/systems/Homing';
+import type { AimTarget } from '@/systems/touchAim';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { LOOT_ATLAS, lootAnimationKey } from '@/config/spriteConfig';
@@ -21,6 +23,11 @@ export interface ShotLook {
   readonly magic: boolean;
   /** Przebicia ponad Szurikena (mocna strzała łuku). */
   readonly extraPierce?: number;
+}
+
+/** Dodatkowe zachowanie lotu (krok 146). */
+export interface ShotFlight {
+  readonly homing?: HomingConfig;
 }
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. `owner` — strzelec (co-op: który bohater). */
@@ -45,7 +52,7 @@ export class PlayerShotManager {
     });
   }
 
-  fire(origin: Vector2, direction: Vector2, config: ShotSpec, effects: WeaponEffects, look?: ShotLook, owner?: object): void {
+  fire(origin: Vector2, direction: Vector2, config: ShotSpec, effects: WeaponEffects, look?: ShotLook, owner?: object, flight?: ShotFlight): void {
     const shot = new Projectile(this.scene, origin.x, origin.y, look?.texture ?? LOOT_ATLAS.key);
     shot.damage = config.damage;
     shot.knockback = config.knockback;
@@ -54,6 +61,7 @@ export class PlayerShotManager {
     shot.pierceLeft = effects.shotPierce + (look?.extraPierce ?? 0);
     shot.vampiric = look?.vampiric ?? false;
     shot.magic = look?.magic ?? false;
+    shot.homing = flight?.homing ?? null;
     shot.setDepth(RENDER_DEPTH.projectile);
     if (owner) this.owners.set(shot, owner);
 
@@ -68,12 +76,20 @@ export class PlayerShotManager {
     else shot.play(lootAnimationKey(shot.pierceLeft > 0 ? 'shotPierce' : 'shot'));
   }
 
-  update(now: number, resolve: PlayerShotResolver): void {
+  /** `homingTargets` — cele naprowadzanych strzałów (żywi, widoczni wrogowie i boss). */
+  update(now: number, resolve: PlayerShotResolver, homingTargets?: () => Iterable<AimTarget>): void {
+    const deltaMs = this.scene.game.loop.delta;
+    let targets: AimTarget[] | null = null;
     for (const child of [...this.group.getChildren()]) {
       if (!(child instanceof Projectile)) continue;
       if (now >= child.expiresAt) {
         child.destroy();
         continue;
+      }
+      if (child.homing && child.body && homingTargets) {
+        targets ??= [...homingTargets()];
+        const steered = steerVelocity({ x: child.x, y: child.y }, child.body.velocity, targets, child.homing, deltaMs);
+        child.setVelocity(steered.x, steered.y);
       }
       const velocity = child.body?.velocity ?? { x: 0, y: 0 };
       const target = resolve({

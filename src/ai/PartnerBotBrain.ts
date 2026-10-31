@@ -3,7 +3,7 @@ import type { MovementIntent, Vector2 } from '@/core/types';
 import type { BotKitTactics, PartnerBotConfig } from '@/config/partnerBotConfig';
 
 /**
- * Mózg bota-partnera (krok 146, ukryty tryb `?bot=1`) — czysta logika, bez Phasera.
+ * Mózg bota-partnera (krok 149, ukryty tryb `?bot=1`) — czysta logika, bez Phasera.
  * Co klatkę dostaje obraz świata (bot, gracz, cele) i zwraca te same akcje, które daje gracz z pada,
  * więc bohater bota walczy według tych samych zasad co człowiek.
  *

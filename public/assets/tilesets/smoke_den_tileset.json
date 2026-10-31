@@ -1,11 +1,11 @@
 {
  "version": 2,
  "biome": "smoke_den",
- "palette": "dymna_palarnia",
+ "palette": "mieszkanie_gracza",
  "image": "smoke_den_tileset.png",
  "tileSize": 32,
  "columns": 16,
- "rows": 10,
+ "rows": 14,
  "envShadowAlpha": 0.4,
  "tiles": {
   "floor_slab16_a": {
@@ -1229,10 +1229,445 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_h_a": {
+  "face_poster_a": {
    "frame": 147,
    "col": 3,
    "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 3
+  },
+  "face_poster_b": {
+   "frame": 148,
+   "col": 4,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 2
+  },
+  "face_socket": {
+   "frame": 149,
+   "col": 5,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 3
+  },
+  "face_shelf": {
+   "frame": 150,
+   "col": 6,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 3
+  },
+  "face_hole": {
+   "frame": 151,
+   "col": 7,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 2
+  },
+  "face_window": {
+   "frame": 152,
+   "col": 8,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 2
+  },
+  "face_calendar": {
+   "frame": 153,
+   "col": 9,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 1
+  },
+  "decal_pizza_a": {
+   "frame": 154,
+   "col": 10,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_pizza_b": {
+   "frame": 155,
+   "col": 11,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_slice": {
+   "frame": 156,
+   "col": 12,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_chips": {
+   "frame": 157,
+   "col": 13,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_noodles": {
+   "frame": 158,
+   "col": 14,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_socks": {
+   "frame": 159,
+   "col": 15,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_shirt": {
+   "frame": 160,
+   "col": 0,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_pad": {
+   "frame": 161,
+   "col": 1,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_pad_broken": {
+   "frame": 162,
+   "col": 2,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_headset": {
+   "frame": 163,
+   "col": 3,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_papers": {
+   "frame": 164,
+   "col": 4,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_bottle": {
+   "frame": 165,
+   "col": 5,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_grease": {
+   "frame": 166,
+   "col": 6,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_grease_b": {
+   "frame": 167,
+   "col": 7,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_slime": {
+   "frame": 168,
+   "col": 8,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mold": {
+   "frame": 169,
+   "col": 9,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mold_b": {
+   "frame": 170,
+   "col": 10,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mush_a": {
+   "frame": 171,
+   "col": 11,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mush_b": {
+   "frame": 172,
+   "col": 12,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mush_c": {
+   "frame": 173,
+   "col": 13,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mound_a_2x2": {
+   "frame": 174,
+   "col": 14,
+   "row": 10,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     174,
+     175
+    ],
+    [
+     190,
+     191
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mound_b_2x2": {
+   "frame": 176,
+   "col": 0,
+   "row": 11,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     176,
+     177
+    ],
+    [
+     192,
+     193
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mound_c_2x2": {
+   "frame": 178,
+   "col": 2,
+   "row": 11,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     178,
+     179
+    ],
+    [
+     194,
+     195
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trash_a_2x2": {
+   "frame": 180,
+   "col": 4,
+   "row": 11,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     180,
+     181
+    ],
+    [
+     196,
+     197
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trash_b_2x2": {
+   "frame": 182,
+   "col": 6,
+   "row": 11,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     182,
+     183
+    ],
+    [
+     198,
+     199
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_laundry_2x2": {
+   "frame": 184,
+   "col": 8,
+   "row": 11,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     184,
+     185
+    ],
+    [
+     200,
+     201
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_cables_2x2": {
+   "frame": 186,
+   "col": 10,
+   "row": 11,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     186,
+     187
+    ],
+    [
+     202,
+     203
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_boxes_2x1": {
+   "frame": 188,
+   "col": 12,
+   "row": 11,
+   "w": 2,
+   "h": 1,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     188,
+     189
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_keyboard_2x1": {
+   "frame": 204,
+   "col": 12,
+   "row": 12,
+   "w": 2,
+   "h": 1,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     204,
+     205
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_a": {
+   "frame": 206,
+   "col": 14,
+   "row": 12,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1240,9 +1675,9 @@
    "flipX": true
   },
   "decal_trail_h_b": {
-   "frame": 148,
-   "col": 4,
-   "row": 9,
+   "frame": 207,
+   "col": 15,
+   "row": 12,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1250,9 +1685,9 @@
    "flipX": true
   },
   "decal_trail_v_a": {
-   "frame": 149,
-   "col": 5,
-   "row": 9,
+   "frame": 208,
+   "col": 0,
+   "row": 13,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1260,9 +1695,9 @@
    "flipX": true
   },
   "decal_trail_v_b": {
-   "frame": 150,
-   "col": 6,
-   "row": 9,
+   "frame": 209,
+   "col": 1,
+   "row": 13,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1270,9 +1705,9 @@
    "flipX": true
   },
   "decal_trail_drops_a": {
-   "frame": 151,
-   "col": 7,
-   "row": 9,
+   "frame": 210,
+   "col": 2,
+   "row": 13,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1280,9 +1715,9 @@
    "flipX": true
   },
   "decal_trail_drops_b": {
-   "frame": 152,
-   "col": 8,
-   "row": 9,
+   "frame": 211,
+   "col": 3,
+   "row": 13,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1510,6 +1945,76 @@
   "decal.butts": [
    "decal_butts"
   ],
+  "wallFace.gamer": [
+   "face_poster_a",
+   "face_poster_b",
+   "face_socket",
+   "face_shelf",
+   "face_hole",
+   "face_window",
+   "face_calendar"
+  ],
+  "decal.pizza": [
+   "decal_pizza_a",
+   "decal_pizza_b",
+   "decal_slice"
+  ],
+  "decal.snacks": [
+   "decal_chips",
+   "decal_noodles"
+  ],
+  "decal.clothes": [
+   "decal_socks",
+   "decal_shirt"
+  ],
+  "decal.gear": [
+   "decal_pad",
+   "decal_pad_broken",
+   "decal_headset"
+  ],
+  "decal.papers": [
+   "decal_papers"
+  ],
+  "decal.bottles": [
+   "decal_bottle"
+  ],
+  "decal.grease": [
+   "decal_grease",
+   "decal_grease_b"
+  ],
+  "decal.slime": [
+   "decal_slime"
+  ],
+  "decal.mold": [
+   "decal_mold",
+   "decal_mold_b"
+  ],
+  "decal.mush": [
+   "decal_mush_a",
+   "decal_mush_b",
+   "decal_mush_c"
+  ],
+  "decal.mound": [
+   "decal_mound_a_2x2",
+   "decal_mound_b_2x2",
+   "decal_mound_c_2x2"
+  ],
+  "decal.heap": [
+   "decal_trash_a_2x2",
+   "decal_trash_b_2x2"
+  ],
+  "decal.laundry": [
+   "decal_laundry_2x2"
+  ],
+  "decal.cables": [
+   "decal_cables_2x2"
+  ],
+  "decal.boxes": [
+   "decal_boxes_2x1"
+  ],
+  "decal.keyboard": [
+   "decal_keyboard_2x1"
+  ],
   "decal.trailH": [
    "decal_trail_h_a",
    "decal_trail_h_b"
@@ -1526,14 +2031,14 @@
  "colors": {
   "ambient": "#020201",
   "ash": [
-   "#74716b",
-   "#595e63"
+   "#83807a",
+   "#62676c"
   ],
   "flame": [
-   "#a03317",
-   "#d36c00",
-   "#e7b140",
-   "#f1e2a9"
+   "#9a6418",
+   "#c5953b",
+   "#e4c87c",
+   "#f2e8c3"
   ],
   "outline": "#1b1a22"
  },

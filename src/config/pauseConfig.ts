@@ -95,10 +95,10 @@ export const PAUSE_CONFIG = {
   /** Wersja mobilna (krok 96): opis dotyku zamiast klawiszy; wszystko się stuka. */
   mobile: {
     controls: [
-      'Lewa część ekranu — gałka ruchu',
-      'Duże kółko — atak: przeciągnij w stronę celu',
-      'stuknij lub przytrzymaj — celuje sam',
-      'STRZAŁ / PROMIEŃ / SALWA (nad kółkiem) — tak samo',
+      'Lewa część ekranu — gałka ruchu (idzie za kciukiem)',
+      'Duże kółko — atak od razu, celuje sam',
+      'przeciągnij kółko w stronę celu — celujesz ty',
+      'STRZAŁ / PROMIEŃ / SALWA — przeciągnij lub stuknij',
       'ZRYW — dash · E — kapliczka, schody',
       'SZAŁ / NOVA / TOTEM — ultimate (gdy pasek mocy pełny)',
     ],

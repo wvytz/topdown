@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { canvasScale, startGame } from '@/bootstrap';
+import { showSafariGateIfNeeded } from '@/browser/SafariGate';
 import { setPlayerInputFactory } from '@/input/playerInput';
 import { TouchInput } from '@/mobile/TouchInput';
 import { TouchScene } from '@/mobile/TouchScene';
@@ -21,28 +22,32 @@ function visibleViewport(parent: HTMLElement): { width: number; height: number }
   };
 }
 
-startGame({
-  platform: 'mobile',
-  extraScenes: [TouchScene],
-  scaleFor: (viewport) => canvasScale(viewport, true),
-  viewport: visibleViewport,
-  // Po obrocie telefonu i wejściu w pełny ekran wymiary dochodzą z opóźnieniem — liczymy od razu i jeszcze raz chwilę później.
-  rescaleOn: (rescale) => {
-    const soon = (): void => {
-      rescale();
-      window.setTimeout(rescale, 300);
-    };
-    window.addEventListener('orientationchange', soon);
-    document.addEventListener('fullscreenchange', soon);
-    window.visualViewport?.addEventListener('resize', soon);
-  },
-  phaser: {
-    // Dotyk w menu: kilka palców naraz. Gałki w grze słuchają dotyku same, na całej stronie (TouchScene).
-    input: { activePointers: 4 },
-    // Płótno centruje CSS (#game: flex) — wyliczenia Phasera po obrocie telefonu potrafiły przesunąć płótno poza ekran.
-    autoCenter: Phaser.Scale.NO_CENTER,
-  },
-});
+// Na Safari (iPhone, iPad) zamiast gry ekran z innymi przeglądarkami (krok 142).
+const blocked = showSafariGateIfNeeded();
+if (!blocked) {
+  startGame({
+    platform: 'mobile',
+    extraScenes: [TouchScene],
+    scaleFor: (viewport) => canvasScale(viewport, true),
+    viewport: visibleViewport,
+    // Po obrocie telefonu i wejściu w pełny ekran wymiary dochodzą z opóźnieniem — liczymy od razu i jeszcze raz chwilę później.
+    rescaleOn: (rescale) => {
+      const soon = (): void => {
+        rescale();
+        window.setTimeout(rescale, 300);
+      };
+      window.addEventListener('orientationchange', soon);
+      document.addEventListener('fullscreenchange', soon);
+      window.visualViewport?.addEventListener('resize', soon);
+    },
+    phaser: {
+      // Dotyk w menu: kilka palców naraz. Gałki w grze słuchają dotyku same, na całej stronie (TouchScene).
+      input: { activePointers: 4 },
+      // Płótno centruje CSS (#game: flex) — wyliczenia Phasera po obrocie telefonu potrafiły przesunąć płótno poza ekran.
+      autoCenter: Phaser.Scale.NO_CENTER,
+    },
+  });
+}
 
 /**
  * Pierwszy dotyk prosi o pełny ekran w poziomie — bez paska przeglądarki gra jest większa.
@@ -57,4 +62,4 @@ function enterFullscreenOnTouch(): void {
     .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
     .catch(() => undefined);
 }
-window.addEventListener('touchend', enterFullscreenOnTouch);
+if (!blocked) window.addEventListener('touchend', enterFullscreenOnTouch);

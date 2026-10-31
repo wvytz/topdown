@@ -38,13 +38,19 @@ describe('Baron Dymu i dog: arkusze', () => {
 });
 
 describe('palarnia: śmieci na podłodze', () => {
-  it('kafle śmieci (puszki, KFC, pety) są w arkuszu i w konfiguracji dekorowania', async () => {
+  it('kafle śmieci (puszki, pety, maź, tłuszcz, hałdy) są w arkuszu i w konfiguracji dekorowania', async () => {
     const meta = loadTileset('smoke_den_tileset.json');
     const { SMOKE_DEN_DRESSING } = await import('@/config/dressingConfig');
-    for (const group of ['decal.cans', 'decal.kfc', 'decal.butts']) {
+    for (const group of ['decal.cans', 'decal.butts', 'decal.mush', 'decal.grease']) {
       expect(meta.groups[group]?.length, group).toBeGreaterThan(0);
       expect(SMOKE_DEN_DRESSING.decalGroupWeights[group], group).toBeGreaterThan(0);
     }
+    expect(SMOKE_DEN_DRESSING.largeDecals?.some((d) => d.group === 'decal.mound' && meta.groups[d.group]?.length)).toBe(true);
+  });
+
+  it('krok 138b: bez czerwono-białych kubełków KFC (czerwone akcenty odrzucone przez właściciela)', async () => {
+    const { SMOKE_DEN_DRESSING } = await import('@/config/dressingConfig');
+    expect(SMOKE_DEN_DRESSING.decalGroupWeights['decal.kfc'] ?? 0).toBe(0);
   });
 });
 

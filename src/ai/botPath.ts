@@ -4,7 +4,7 @@ import type { Vector2 } from '@/core/types';
 import { hasLineOfSight } from '@/dungeon/lineOfSight';
 
 /**
- * Droga bota-partnera po kaflach (krok 146) — czysta logika. BFS w 8 kierunkach bez ścinania rogów muru,
+ * Droga bota-partnera po kaflach (krok 149) — czysta logika. BFS w 8 kierunkach bez ścinania rogów muru,
  * potem „naciągnięcie sznurka”: bot idzie do najdalszego punktu drogi, który widzi po prostej.
  */
 

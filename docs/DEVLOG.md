@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#bot-partner` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5114,6 +5114,42 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** czy przycisk jest dość widoczny i nie zasłania minimapy na dużych piętrach.
 
+## Krok 141 — Wygodniejsze sterowanie na telefonie `#ocena` `#mobile` `#sterowanie`
+
+**Skąd:** `#ocena` testera przekazana przez właściciela (30.10.2026): sterowanie na telefonie „bardzo ciężkie i niewygodne”; ma być naturalne dla gry zręcznościowej.
+
+**Co było nie tak (emulacja Pixel 7 poziomo):**
+- Płótno 16:9 na szerokim telefonie zostawia po bokach czarne pasy (ok. 90 px CSS), a przyciski były rysowane na płótnie — kciuk musiał sięgać daleko od krawędzi ekranu, a przyciski zasłaniały walkę. Rozmiar przycisków zależał od skali płótna (na mniejszym telefonie mniejsze).
+- Gałka ruchu stała tam, gdzie kciuk dotknął: po odjechaniu kciukiem daleko zawrócenie wymagało cofnięcia przez cały dawny środek.
+- Duże kółko ataku czekało 150 ms (przytrzymanie) albo na puszczenie (stuknięcie) — cios zawsze spóźniony.
+
+**Co powstało:**
+- **Przyciski i gałka przy krawędzi ekranu** (`systems/touchLayout.ts`, czysta geometria): pozycje i promienie w pikselach CSS ekranu, liczone od prawego dolnego rogu bezpiecznego obszaru (wcięcie, pasek „home”). Na szerokim telefonie przyciski leżą w czarnym pasie obok gry. Rysuje je nowa warstwa `mobile/TouchOverlay.ts` (przezroczyste płótno 2D na całym ekranie, bez łapania dotyku). Układ właściciela z kroku 96a zostaje: duże kółko w rogu, PPM wyżej po prawej, zryw po lewej, E nad zrywem, ultimate nad kółkiem.
+- **Gałka idzie za kciukiem** (`followStickOrigin`): mniejszy promień (44 px CSS), mniejsza martwa strefa (0,18); blada podpowiedź gałki w lewym dolnym rogu, gdy kciuk jej nie trzyma.
+- **Atak od razu:** dotknięcie dużego kółka to natychmiastowy cios z celowaniem samym w najbliższego wroga; przeciągnięcie przejmuje cel. PPM bez zmian (ładunki są cenne: przeciągnij albo stuknij).
+- Większe strefy dotyku (`hitSlop` 1,25), większy zryw.
+- Pauza (krok 140) i przyciski ekranu śmierci zostają na płótnie gry, pod minimapą.
+
+**Decyzje:** bez automatycznego ataku (gra zręcznościowa — o ciosach decyduje gracz) i bez dasha gestem (ryzyko przypadkowego zrywu przy szybkim ruchu kciuka); oba do rozważenia po teście.
+
+**Testy i weryfikacja:** `tests/systems/touchLayout.test.ts` (położenie od krawędzi ekranu, przyciski mieszczą się na 640×360 i nie nachodzą na siebie, strefa dotyku i najbliższy środek, gałka za kciukiem). `npm run build` (2232 testy). Chromium z emulacją Pixel 7: przyciski w czarnym pasie, gałka po cofnięciu kciuka o 60 px od razu zawraca, przeciągnięcie kółka i PPM celuje, zryw, pauza otwiera się, na pauzie przyciski znikają.
+
+**Do oceny właściciela i testera:** położenie i wielkość przycisków na prawdziwym telefonie, czułość gałki, czy cios od razu nie marnuje ataków.
+
+## Krok 142 — Ekran „Na Safari tej gry nie odpalisz” `#decyzja` `#przegladarki`
+
+**Skąd:** `#decyzja` właściciela (30.10.2026): gra nie wspiera Safari. Kto wejdzie z Safari, zamiast gry dostaje ekran: „Na Safari tej gry nie odpalisz. Zainstaluj Firefoxa, DuckDuckGo albo Brave'a… albo oddaj wszystkie swoje informacje Chrome'owi.”
+
+**Co powstało:**
+- `core/browserGate.ts` (czysty): `isPlainSafari` rozpoznaje samo Safari po user-agencie (`Version/… Safari/` bez znaczników innych przeglądarek: CriOS, FxiOS, EdgiOS, OPiOS, `Ddg/`, GSA, przeglądarki w aplikacjach, Chrome/Android). Na iPhonie każda przeglądarka działa na WebKicie i udaje Safari — bez tych wykluczeń odcięlibyśmy wszystkie iPhone'y. Brave na iPhonie ma user-agent Safari, ale wystawia `navigator.brave`, więc też przechodzi.
+- `browser/SafariGate.ts`: ekran w DOM nad stroną (ikonka gry, czerwony napis, przyciski Firefox / DuckDuckGo / Brave, mniejszy link do Chrome'a). Wywołany w `main.ts` i `mobile/main.mobile.ts` przed `startGame` — na Safari Phaser w ogóle nie startuje. Ekran przewija się, gdy telefon jest poziomo, i leży nad napisem „Obróć telefon”.
+- Furtka w adresie: `?safari=1` — ekran w każdej przeglądarce (podgląd), `?safari=0` — wpuszcza mimo Safari (test, obejście dla właściciela).
+
+**Decyzje:** wykrywanie po user-agencie, nie po silniku — inaczej padłyby iPhone'y z innymi przeglądarkami. Ryzyko: przeglądarka na iPhonie, która nie dopisuje znacznika do user-agenta (np. Firefox Focus, Arc), zostanie wzięta za Safari; wtedy dopisujemy jej znacznik do `NOT_SAFARI`.
+
+**Testy i weryfikacja:** `tests/core/browserGate.test.ts` (prawdziwe user-agenty Safari na Macu, iPhonie i iPadzie oraz Chrome/Firefox/Edge/DuckDuckGo/aplikacji Google na iPhonie, przeglądarek PC i Androida; furtka). `npm run build` (typy, 2230 testów, build). W Chromium: `?safari=1` na PC, user-agent iPhone'a z Safari na `mobile.html` pionowo i poziomo — ekran; user-agent Chrome na iPhonie i `?safari=0` — gra startuje. Zrzuty: `screens/krok142-safari-*.png`.
+
+**Do oceny:** treść i wygląd ekranu.
 ## Krok 143 — Złoto samo leci do bohatera, mniejsze i słabsze chmury trucizny `#ocena` `#decyzja` `#balans` `#feel`
 
 **Ocena właściciela (30.10.2026):** gra jest fajna, ale brakuje „feelu”. Trzy zarzuty: cofanie się po monety od wroga, który padł wcześniej; błąkanie po nieokreślonych lokacjach; plamy z wybuchających pułapek (trujące chmury) „za szybkie, za duże i biorą za dużo”. `#decyzja` kierunek: głównym zagrożeniem ma być **natłok mobów**, a nie bossowie i pułapki. Ten krok to szybkie wygrane; reszta planu (fale mobów, mniejsze piętra, strzałka do celu, lżejsi bossowie) jest w dokumencie-wizji i czeka na decyzje właściciela.
@@ -5133,6 +5169,26 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** tempo lotu złota (czy nie za szybkie — da się zwolnić w `goldHoming`), wielkość i siła chmur, czy „plamy z kokonów” to na pewno chmury purchawek i popielniczek. **Następnie:** etap 1 planu — fale słabszych mobów zamiast „1–2 wrogów na pokój” (po decyzji właściciela).
 
+## Krok 144 — Niszczący ogień: bociany zrzucają żar, wspólny system ognia `#ocena` `#ogien` `#brudna-wiedzma`
+
+**Skąd:** pytanie właściciela (30.10.2026) przy zrzucie ataku „Lećcie, ptaszki!”: czy ogranicza nas Phaser, czy własne startowe założenia — i prośba o „zajebiście dobry efekt palenia”, „niech zapłonie cała mapa”, „niech płomień będzie niszczący”. Odpowiedź: to nie silnik, tylko nasze placeholdery z początku projektu (półprzezroczyste koła z `Graphics`, 0,24 s, pod warstwą mroku — diagnoza z kroków 110 i 138).
+
+**Co powstało:**
+- **Generator ognia** `tools/fire_sprites.py` → `fire-burst-32.png`, `fire-burst-64.png` (kula ognia w 8 klatkach: błysk, kula z językami, kłęby, dym z żarem) i `fire-flame.png` (płomień na podłodze: zapłon, płonięcie w pętli, gaśnięcie). Ogień bez ciemnego obrysu (świeci), dym z ciemnym brzegiem; pełne piksele, rampy OKLCH.
+- **`effects/FireEffects.ts`** (obiekt `effects.fire`): kula ognia (arkusz i całkowita skala po promieniu strefy), płomienie zostające na podłodze 0,9–1,7 s, iskry (ADD) i dym (cząsteczki Phasera), poświata ADD nad mrokiem, **światło ognia wycierające mrok** (`LightingOverlay.render(…, flares)` — działa też przy „Mroku”, bo trwa chwilę), wstrząs kamery rosnący z promieniem. Pula obiektów i limity w `config/fireConfig.ts`: PC 140 płomieni / 320 cząsteczek, telefon 48 / 120 i połowa iskier. Huk najwyżej co 110 ms, płomienie tylko na podłodze (nie na murach).
+- **Czysta część** `systems/FireBurst.ts`: dobór arkusza, liczba i miejsca płomieni, światło, wstrząs, budżet puli, bramka huku, promień zaciskającego się pierścienia.
+- **Atak bocianów Brudnej Wiedźmy:** bociany zrzucają żar — pas wybucha ogniem pod przelatującym ptakiem, zostają płomienie i wypalone ślady (`look: 'embers'` zamiast `'feathers'`). Obrażenia, zasięgi i czasy bez zmian.
+- **Telegraf stref (wszystkie poza dymem Barona):** jasny pierścień zaciska się z 1,6× promienia do brzegu strefy i dotyka go dokładnie w chwili uderzenia.
+- **Wspólne wybuchy:** domyślny ognisty wybuch (`CombatEffects.blast` z `BLAST_VISUAL` — uderzenia bossów, m.in. Kata Otchłani, bomby kultystów, Wybuchowa elita, wybuchy pajączków) dostaje kulę ognia, płomienie, iskry i światło nad dotychczasowym pierścieniem zasięgu. Wybuchy w innych barwach (zarodniki, pióra pikowania, wir liści) bez zmian.
+- **Płonące plamy (krok 114):** płomienie z generatora stoją w plamie, migocząca poświata i światło nad mrokiem.
+- Warstwy: `fireGround` (płomienie, pod postaciami), `fireBurst` (kula i dym, nad wrogami, **pod bohaterem** — bohater zawsze widoczny), `fireGlow` i `fireEmbers` nad mrokiem.
+
+**Decyzje:** płomienie po wybuchu są **tylko wyglądem** — nie parzą, więc trudność walki się nie zmienia (`#decyzja` właściciela 31.10.2026: na razie nie parzą). Zamiast postFX (bloom/glow) poświata ADD ze stempla światła — tańsza na telefonie i działa też bez WebGL; postFX z przełącznikiem jakości zostaje na fazę „Akt I — oprawa”. Kokony leża zostają bez ognia (pękają jedwabiem, to nie wybuch).
+
+**Testy i weryfikacja:** `tests/systems/fireBurst.test.ts`, `tests/assets/fire.test.ts` (wymiary, pełne piksele, bez barw zarezerwowanych), kolejność warstw w `tests/config/renderLayers.test.ts`; `npm run build` (typy, 2289 testów, build). W Chromium (`?floor=8&boss=1&hero=archer&seed=7`, kroki `game.step()`): cały atak bocianów — 51 wybuchów, do 102 płomieni naraz na PC, 48 na `mobile.html`, pula wraca do zera, bez błędów w konsoli; Kat Otchłani (`?floor=4&boss=1`) i plamy ognia w Piekle. Koszt klatki w czasie ataku ok. +12% względem `main` (renderowanie programowe w kontenerze). `npm run smoke` nie przeszedł w kontenerze w 10 min (programowy WebGL) — **uruchomić przed wdrożeniem**. Zrzuty i GIF: `screens/krok144-ogien/`.
+
+**Do oceny:** siła poświaty i wstrząsu, czy pierścień telegrafu nie robi bałaganu w pasach bocianów, płynność na telefonie.
+
 ## Krok 145 — Przeliczenie balansu: mocniejsze ciosy bohaterów, wolniej rosnące HP bossów `#ocena` `#decyzja` `#balans` `#brudna-wiedzma`
 
 **Skąd:** `#ocena` Wicio po nagraniach walki z Brudną Wiedźmą (30.10.2026): „za mały damage, przeskaluj HP… wiem, że duża zmiana”. Rachunek: HP bossa rosło o 15% na piętro, obrażenia bohatera tylko z przedmiotami — wiedźma na piętrze 8 miała ok. 1560 HP (2× bazowe), samo bicie barbarzyńcą bez przedmiotów ok. 42 s, z unikami ok. 2 min; w drugim kręgu 2470 HP. `#decyzja` Na karcie wybrał „Cała gra: bossowie i bohaterowie”.
@@ -5148,7 +5204,97 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `tests/balance/balance.test.ts` — boss rośnie wolniej niż wrogowie, samo bicie bossa 5–35 s w pierwszym kręgu i ≤ 45 s w drugim; `npm run build`.
 
-## Krok 146 — Ukryty bot-partner: drugi bohater sterowany przez AI `#decyzja` `#coop` `#bot-partner`
+## Krok 146 — Naprowadzany strzał barbarzyńcy `#decyzja` `#balans`
+
+**Skąd:** decyzja właściciela (30.10.2026): „Strzały Barby powinny być auto naprowadzane, jako że ataki dystansowe są moim zdaniem najbardziej broken” — barbarzyńca jako jedyny walczy wręcz, więc jego strzał ma nadrabiać celnością.
+
+**Co powstało:**
+- **Czyste naprowadzanie** `systems/Homing.ts`: `pickHomingTarget` wybiera cel w stożku przed pociskiem (do którego trzeba skręcić najmniej; duży boss łapie się z szerszego kąta dzięki promieniowi), `steerVelocity` obraca prędkość o najwyżej `skręt × dt`, bez zmiany szybkości.
+- **Liczby** w `BARBARIAN_SHOT_HOMING` (`config/combatConfig.ts`): zasięg wypatrywania 200 px, stożek ±70°, skręt 480°/s (łuk o promieniu ok. 55 px przy 460 px/s). Strzał nie zawraca do wrogów za plecami.
+- **Phaser:** `PlayerShotManager.fire` przyjmuje opcjonalny `ShotFlight` (`homing`), `update` skręca naprowadzane pociski co klatkę; cele to te same, co przy celowaniu na dotyku (`aimTargets`: żywi, widoczni w świetle wrogowie bez czyhacza w kryjówce oraz boss z pomocnikami). Naprowadzany jest tylko strzał barbarzyńcy (PPM) — kule Czarodziejki i strzały łucznika lecą prosto. Działa solo, w co-opie i na telefonie.
+- Karta wyboru bohatera: „PPM — strzał naprowadzany (3 ładunki)”.
+
+**Decyzje:** obrażenia, ładunki i zasięg strzału bez zmian — zmienia się tylko celność. Nie dotykałem łucznika i Czarodziejki; jeśli dalej są za mocni, osobny krok.
+
+**Testy i weryfikacja:** `tests/systems/homing.test.ts` (wybór celu, cele za plecami i poza zasięgiem, duży cel na brzegu stożka, limit skrętu, symulacja trafienia celu 40 px obok osi); `npm run build` (typy, testy, build). W przeglądarce (`?hero=barbarian&seed=1&floor=1`): strzał wystrzelony prosto 35 px nad wrogiem skręca (prędkość z 460/0 do 371/272) i trafia za 7 obrażeń; strzał bez naprowadzania z tego samego miejsca przelatuje obok.
+
+**Do oceny:** siła skrętu (480°/s) i stożek (±70°) — czy strzał nie jest teraz za „magiczny”.
+
+## Krok 138 — Piętro 5: zagracone mieszkanie nałogowego gracza `#ocena` `#zadymiona-palarnia` `#mieszkanie-gracza`
+
+**Ocena właściciela (30.10.2026, zrzut piętra 5):** „Musimy zmienić ten biom. Jest totalnie basicowy i bez klimatu. Zrób dużo sprite'ów, wzorując się na zagraconym, zaśmieconym mieszkaniu bezrobotnego nałogowego gracza, ale niech to się zlewa. Jakbyśmy chodzili po śmieciach.”
+
+**Co powstało (bez zmian w zasadach gry — tylko arkusz kafli i dekorowanie):**
+- **Generator** `tools/gamer_den_tiles.py` (dodatek `gamer` biomu `smoke_den` w `tools/tower_ruins_tiles.py`, paleta `mieszkanie_gracza` z nową rampą `junk`). Podmienia rysowanie kafli wspólnych i dopisuje nowe; `python tools/tower_ruins_tiles.py --biome smoke_den`.
+- **Podłoga:** w pokojach stara wykładzina (szum pętelek bez fug, zbite placki, przetarcia, łączenia pasów) zasłana spłaszczonymi strzępami w tonach wykładziny; w korytarzach panele; rzadko dywan „PRL” 2×2 (romby z medalionem albo pasy, frędzle, plamy, przypalenie).
+- **Mury:** tynk „wielkiej płyty” na wierzchu, na licu wyblakła tapeta w pasy z drewnianą listwą i zaciekami nikotyny; nadproże to drewniana futryna; pochodnie to kinkiety z brudnym abażurem, żarówka mruga (co 4. klatka przygasa), światło ciepłe, brudnożółte.
+- **Lica (`wallFace.gamer`, 30% prostych odcinków):** plakat gry (miecz i czerwony księżyc), plakat z potworem, gniazdko z wtyczkami, półka z pudełkami gier i figurką, dziura po pięści, okno z żaluzją, kalendarz ze skreślonymi dniami.
+- **Śmieci (połowa kafli podłogi):** pudełka po pizzy (zamknięte i otwarte ze skórkami), kawałek pizzy, chipsy z okruchami, przewrócona zupka chińska, skarpety, koszulki, pad (cały i rozbity), słuchawki, papiery i paragony, butelki (plastik, szkło), puszki energetyków i kubełki z kurczaka z kroku 84, pety. Grupy ruin narysowane po nowemu: okruchy i włosy, kapsle i sreberka, plamy coli i ślady kubka, przypalenia od petów, dziura w wykładzinie, popcorn, kłęby kurzu pod ścianami; **długie pęknięcia to kable z wtyczką**.
+- **Duże nakładki:** sterty śmieci 2×2 (dwie), pranie 2×2, splątane kable z listwą 2×2, stos pudełek po pizzy 2×1, klawiatura z wybitymi klawiszami 2×1.
+- **„Ma się zlewać”:** śmieci mają przygaszone barwy, obrys w najciemniejszym tonie wykładziny i cień w tonie fugi (nie czarny obrys postaci) — postacie z ciemnym obrysem nadal odcinają się od tła. Jasność podłogi jak w palarni.
+- **Dekorowanie** (`SMOKE_DEN_DRESSING`): nakładka na 50% kafli, kable 3%, sterty i stosy 0,6–2%, dywan 3% bloków 2×2, kurz pod ścianami 55–70%, pajęczyny 45%; ku arenie Barona gęstnieją pety. Moje liczby, do oceny.
+- Wrogowie, Baron, popielniczki, psy w ścianach, dym i mgła bez zmian. Nazwa biomu w grze bez zmian („Zadymiona palarnia”) — do decyzji właściciela.
+
+**Weryfikacja:** `npm run build` zielony. Przeglądarka (Playwright, `?seed=7|12&floor=5`, Czarodziejka i barbarzyńca): pokoje, korytarze, lica i lampy z nowego arkusza, czarny dog i kultysta czytelni na zaśmieconej podłodze, bez błędów w konsoli. Zrzuty: `screens/krok138-mieszkanie-gracza.png` w plikach projektu.
+
+**Czeka na ocenę właściciela:** gęstość śmieci (czy nie za dużo dla czytelności walki), wygląd sterty i dywanów, nazwa biomu, czy wymienić też wrogów (dog, kultysta) i kryjówkę czyhacza (beczka) na coś „mieszkaniowego”.
+
+### Krok 138a — Brud w każdym calu `#ocena` `#mieszkanie-gracza`
+
+**Uwaga właściciela (30.10.2026):** „Dodać zagęszczenia, żeby podłoga wyglądała na brudną — skarpetki, tłuszcz, śluz, grzyb. Ściany też muszą być brudne w każdym calu; z każdej cegły ma się lać tłuszcz jak z okapu nad kuchenką gazową.”
+
+- **Podłoga:** każdy kafel bazowy (wykładzina, panele, dywan) dostaje warstwę brudu (`grime`): zbite ciemne skupiska, tłuste plamki z połyskiem, kropki grzyba, lepkie smugi. Nowe nakładki: kałuże tłuszczu (2), śluz, grzyb (2); nakładka na 60% kafli (było 50%).
+- **Mury:** wierzch zakopcony (plamy sadzy i tłuszczu, smugi ściekające ku licu); krawędź muru to tłusty, błyszczący nawis, a z niego na tapetę cieknie tłuszcz — zacieki różnej długości z kroplą i połyskiem, przesiąknięty pas pod krawędzią, brud na listwie. Dalsza masa muru zakopcona. Pod licem (90% kafli przy murze) tłuszcz kapie na podłogę i zbiera się w kałużki. Futryny też zatłuszczone.
+- Paleta `mieszkanie_gracza`: rampy tłuszczu, śluzu i grzybu w `junk`.
+- Skarpety zostały nakładką — wbudowane w kafel bazowy powtarzały się jak wzór.
+
+**Weryfikacja:** `npm run build` zielony; Playwright `?seed=7|12&floor=5` — postacie dalej czytelne. Zrzuty `screens/krok138a-*.png`.
+
+### Krok 138b — Atmosfera zamiast detali `#ocena` `#decyzja` `#mieszkanie-gracza`
+
+**Uwaga właściciela (30.10.2026):** „Nie podobają mi się czerwone akcenty — sugerują, że coś tu się dzieje. Kawałek pizzy, rozdarta koszulka — nie. Zróbmy ogólny śmietnik. W tej rozdzielczości i tak nie zrobimy detali. Atmosfera, nie detale.”
+
+- **Bez czerwieni i jaskrawych barw:** w palecie `mieszkanie_gracza` przygaszone sos, przyciski, puszki (granat i czerwona kreska), chipsy, szkło, plakaty, dywany (bordo → brudny brąz). Tłuszcz ciemniejszy i mniej żółty (wcześniej kałużki przypominały monety). Biel papierów i petów przyciemniona.
+- **Bezkształtna maź zamiast przedmiotów:** nowe kupki śmieci `decal.mush` (3) i hałdy 2×2 `decal.mound` (3) z grudek przygaszonych barw, oświetlone od północy, ciemne przy ziemi. Dekorowanie: maź, tłuszcz, grzyb i śluz przeważają; bez kawałków pizzy, koszulek, padów, zupek, chipsów i kubełków KFC; z dużych nakładek tylko hałdy (3,5%) i rzadki stos pudełek. Kafle detali zostają w arkuszu (nieużywane).
+- Test `tests/assets/smoker.test.ts` dostosowany do decyzji: zamiast KFC sprawdza maź, tłuszcz i hałdy, osobny test pilnuje braku kubełków KFC.
+
+**Weryfikacja:** `npm run build` zielony (2212 testów); Playwright `?seed=7|12&floor=5`. Zrzuty `screens/krok138b-*.png`.
+
+## Krok 147 — Półprzezroczysta minimapa z podpowiedzią drogi `#ocena` `#minimapa`
+
+**Skąd:** `#ocena` właściciela (30.10.2026): minimapa to „jedna z największych bolączek” — we wspinaczce i pozostałych trybach (na arenach bossów zostaje schowana, krok 97a) ma być przezroczysta i delikatnie sugerować, w którą stronę iść.
+
+**Co powstało:**
+- `systems/MinimapRoute.ts` (czysty TS): pole odległości od celu (BFS po podłodze, 4 kierunki, liczone raz na cel) i trasa gracza po malejącej odległości, z pamięcią podręczną na kafel gracza; `visibleRoute` przycina trasę — przez odkryte kafle cała, we mgle tylko 5 pierwszych, wygasających kafli (kierunek, nie plan piętra).
+- Cel: środek areny bossa, a po jego pokonaniu — schody. `#decyzja` właściciela: na arenie mapa chowa się **zawsze** — także we wspinaczce, przed i po bossie (wcześniej znikała tylko w trybie aren). Trasa liczona po piętrze w przebraniu — nie zdradza ukrytej komnaty. Kraty i zamknięte schody nie blokują trasy.
+- HUD (`scenes/HudScene.ts`): blada smużka po kaflach trasy i jaśniejsze „iskry” co 4. kafel płynące od gracza w stronę celu (110 ms na kafel).
+- Półprzezroczystość: tło 0,55 → 0,18, podłoga 0,42, ściany 0,55 (było 1) — gra prześwituje spod mapy. Znaczniki gracza, schodów i bossa zostają pełne.
+- Liczby w `MINIMAP_CONFIG` (`floorAlpha`, `wallAlpha`, `route`). Wersja mobilna korzysta z tej samej sceny HUD.
+
+**Decyzje:** podpowiedź tylko na minimapie (bez strzałek w świecie gry) — „delikatnie”; błąkanie po piętrach jako rozgrywka to osobny wątek. Na arenie mapa chowa się zawsze (właściciel: „Na arenie mapa się chowa zawsze”).
+
+**Testy i weryfikacja:** `tests/systems/minimapRoute.test.ts` (6 testów: trasa krok po kroku do schodów, omijanie ścian i najkrótsza droga, limit, cel nieosiągalny, determinizm, wygasanie we mgle). `npm run build` (typy, 2272 testy, build). Chromium: PC 960×540 (piętro 3) i `mobile.html` 844×390 (piętro 2) — mapa prześwituje, smużka prowadzi do areny.
+
+**Do oceny:** przezroczystość (czy mapa jest jeszcze czytelna w jasnych biomach), jasność smużki i liczba kafli we mgle (5).
+
+## Krok 148 — Szybki start testowy na arenę bossa z typowym zestawem przedmiotów `#decyzja` `#narzedzia` `#areny-bossow`
+
+**Skąd:** Wicio (31.10.2026): „łatwo wskakiwać do wersji testowej… zrespić się na arenie Wiedźmy z taką ilością przedmiotów, jaką bym zdobył plus minus w trakcie normalnej rozgrywki”. Dotąd `?floor=8&boss=1` stawiało bohatera przy arenie z pustymi rękami.
+
+**Co powstało:**
+- `systems/PracticeLoadout.ts` (czysty TS): `simulatePracticeLoadout` symuluje przejście pięter 1…N−1 na prawdziwych tabelach i funkcjach gry — wrogowie z `ENEMY_LOOT` przez `rollLoot` (pokoje i wrogowie na pokój z configu piętra, Kiter/Rusher wg `kiterChance`), zasadzki z harmonogramu seeda runu (`hasAmbush`), kapliczka (`makeOffering`, pula przydatnych przedmiotów), złoto bossa i 1 z 3 kart za bossa (`rollItemChoices`, wybór losowy), ukryta komnata w Grzybni. Ten sam seed = ten sam zestaw. `applyPracticeLoadout` dokłada zestaw do danych startu tylko w runie testowym wspinaczki od piętra > 1; w co-opie partner dostaje własny zestaw.
+- `config/practiceLoadoutConfig.ts`: założenia o „przeciętnym” graczu — zabija 85% wrogów, w kapliczce składa ofiarę w 60% przypadków (gdy ma złoto), parametr `?items=0` wyłącza zestaw.
+- `scenes/practiceStart.ts`: wspólne dla startu z adresu (`BootScene`) i ekranu wyboru bohatera. `?boss=1` przechodzi teraz też przez menu i wybór bohatera (`HeroSelectData.atBoss`).
+- **R po śmierci w runie testowym z `?floor=`** wraca na to samo piętro (i arenę) z nowym seedem i nowym zestawem — szybkie powtórki walki. Dotąd R zaczynało od piętra 1.
+- `public/testy.html` (na Pages: `/topdown/testy.html`): lista linków do aren 8 bossów, wybór bohatera, kręgu wieży i „bez przedmiotów”.
+
+**Ile wychodzi (średnio z 300 seedów, barbarzyńca):** piętro 3 — 5,6 przedmiotu i ok. 60 złota, piętro 5 — 11 i 140, piętro 8 (Wiedźma) — 19,5 i 340, piętro 16 (Wiedźma w II kręgu) — 43 i 1190. Przykład łucznika na Wiedźmie: 19 przedmiotów, 145 HP, 308 złota.
+
+**Decyzje (do oceny Wicia):** wybór karty za bossa losowy (prawdziwy gracz wybiera lepiej); HP pełne; modyfikatory pięter pominięte; zestaw domyślnie przy każdym `?floor=N` w runie testowym (stary start — `&items=0`).
+
+**Testy:** `tests/systems/PracticeLoadout.test.ts` — piętro 1 bez przedmiotów, determinizm, 1 karta na bossa i komnata tylko w Grzybni, średnio 14–24 przedmiotów na Wiedźmie, kapliczka, `applyPracticeLoadout` (run na tablicę, piętro 1 i areny bez zmian; partner w co-opie). `npm run build` (2280+ testów). Przeglądarka: `?hero=archer&floor=8&boss=1&seed=11` — 19 przedmiotów w HUD przy Wiedźmie; `&items=0` — pusto; śmierć i R — piętro 6 przy arenie, nowy seed i zestaw; `testy.html` buduje poprawne linki.
+
+## Krok 149 — Ukryty bot-partner: drugi bohater sterowany przez AI `#decyzja` `#coop` `#bot-partner`
 
 **Skąd:** `#decyzja` Wicio (31.10.2026) zapytał, czy Claude zagra z nim. Na żywo się nie da, więc propozycja: drugi gracz sterowany przez bota, który idzie za graczem, bije moby i wskrzesza. Wicio: „zajebisty pomysł”, ale **na razie jako ukryty tryb**.
 
@@ -5244,7 +5390,12 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Bot-partner (krok 146):** `#bot-partner` `#ocena` ukryty tryb `?bot=1` — czy bot pomaga, a nie przeszkadza (odstępy, teleport, kiedy bije); później: unikanie telegrafów, czy wejdzie do menu (np. „Graj z botem”).
+- **Naprowadzany strzał barbarzyńcy (krok 146):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
+- **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
+- **Mieszkanie gracza (krok 138):** `#mieszkanie-gracza` `#ocena` piętro 5 jako zagracone mieszkanie — gęstość śmieci, wygląd, nazwa biomu, ewentualni nowi wrogowie biomu.
+- **Ogień walki (krok 144):** `#ogien` `#ocena` bociany zrzucające żar, kule ognia, płomienie na podłodze, światło ognia w mroku, zaciskający się pierścień telegrafu — siła poświaty i wstrząsu (płomienie nie parzą — decyzja 31.10), wydajność na telefonie. Następnie: postFX z przełącznikiem jakości.
+- **Minimapa (krok 147):** `#minimapa` `#ocena` półprzezroczysta, smużka do areny/schodów, 5 kafli we mgle — czeka na test właściciela.
+- **Bot-partner (krok 149):** `#bot-partner` `#ocena` ukryty tryb `?bot=1` — czy bot pomaga, a nie przeszkadza (odstępy, teleport, kiedy bije); później: unikanie telegrafów, czy wejdzie do menu (np. „Graj z botem”).
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
@@ -5268,7 +5419,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ekran śmierci (kroki 63–65):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
 - **Ekran startowy (krok 60):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
-- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (także na Pages jako run testowy bez zapisu wyniku, `systems/startOverrides.ts`, krok 41g). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
+- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (także na Pages jako run testowy bez zapisu wyniku, `systems/startOverrides.ts`, krok 41g). Np. `?seed=3&floor=2` = piętro z „Mrokiem”. Od kroku 148 taki run dostaje typowy zestaw przedmiotów (`&items=0` — bez), R po śmierci wraca na to samo piętro, a `testy.html` zbiera linki do aren bossów. `#ocena` czy liczba przedmiotów (ok. 19 na Wiedźmie) odpowiada normalnej grze.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 

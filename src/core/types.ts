@@ -55,6 +55,8 @@ export interface HeroSelectData {
   readonly practice?: boolean;
   /** Tryb zaznaczony na starcie (krok 90); brak = wspinaczka. */
   readonly mode?: RunMode;
+  /** `?boss=1` z adresu (krok 148): po wyborze bohatera start przy arenie bossa. */
+  readonly atBoss?: boolean;
 }
 
 /** Ekran co-opu (etap C5): tylko wspinaczka od piętra 1. */
@@ -176,6 +178,8 @@ export interface MinimapHudData {
   readonly stairs: { readonly x: number; readonly y: number };
   /** Środek areny bossa; null po jego pokonaniu (znacznik znika). */
   readonly boss: { readonly x: number; readonly y: number } | null;
+  /** Podpowiedź drogi (krok 147): kafle od gracza do celu (arena, potem schody), bez kafla gracza. */
+  readonly route: readonly { readonly x: number; readonly y: number }[];
 }
 
 export interface RangedHudData {

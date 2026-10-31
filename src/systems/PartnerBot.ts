@@ -5,7 +5,7 @@ import { BOT_DEVICES, SOLO_DEVICES } from '@/systems/coopDevices';
 import { freshCoop, partnerHero } from '@/systems/Coop';
 
 /**
- * Ukryty tryb bota-partnera (krok 146, pomysł właściciela): `?bot=1` dokłada drugiego bohatera sterowanego
+ * Ukryty tryb bota-partnera (krok 149, pomysł właściciela): `?bot=1` dokłada drugiego bohatera sterowanego
  * przez AI; `?bot=archer` (sorceress, barbarian) wybiera mu bohatera. W menu go nie ma. Czysta logika.
  */
 

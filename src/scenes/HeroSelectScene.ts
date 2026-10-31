@@ -13,6 +13,7 @@ import { newRun } from '@/systems/RunState';
 import { RunMode } from '@/core/runMode';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import { nextRunMode } from '@/systems/BossRush';
+import { withPracticeLoadout } from '@/scenes/practiceStart';
 import { openMainMenu } from '@/scenes/BootScene';
 import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { startFloorInfo } from '@/systems/FloorSelect';
@@ -270,11 +271,16 @@ export class HeroSelectScene extends Phaser.Scene {
     sound.play(SoundCue.UiConfirm);
     const hero = this.cards[this.selected]!.hero;
     this.lastHero.save(hero);
-    const start: FloorSceneData = {
-      runSeed: this.selectData.runSeed,
-      floor: this.selectData.floor,
-      run: newRun(hero, this.selectData.practice ?? false, this.mode, this.selectData.floor),
-    };
+    // Run testowy z adresu (krok 148): zestaw przedmiotów z symulowanego przejścia i ewentualnie start przy bossie.
+    const start = withPracticeLoadout(
+      {
+        runSeed: this.selectData.runSeed,
+        floor: this.selectData.floor,
+        run: newRun(hero, this.selectData.practice ?? false, this.mode, this.selectData.floor),
+        ...(this.mode === RunMode.Tower && this.selectData.atBoss ? { atBoss: true } : {}),
+      },
+      this.selectData.practice ?? false,
+    );
     this.cameras.main.fadeOut(L.fadeMs, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(SceneKey.Game, start));
   }

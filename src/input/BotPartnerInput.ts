@@ -10,7 +10,7 @@ import { hasLineOfSight } from '@/dungeon/lineOfSight';
 import { PARTNER_BOT_CONFIG } from '@/config/partnerBotConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 
-/** Co scena gry daje botowi-partnerowi (krok 146). */
+/** Co scena gry daje botowi-partnerowi (krok 149). */
 export interface BotPartnerDeps {
   /** Bohater bota. */
   readonly self: () => Player;
@@ -23,7 +23,7 @@ export interface BotPartnerDeps {
 }
 
 /**
- * Źródło sterowania P2 z mózgu bota (krok 146) — to samo gniazdo co klawiatura, pad i dotyk.
+ * Źródło sterowania P2 z mózgu bota (krok 149) — to samo gniazdo co klawiatura, pad i dotyk.
  * Tu tylko zbieramy obraz świata z Phasera; decyzje podejmuje czysty `PartnerBotBrain`.
  */
 export class BotPartnerInput implements PlayerInput {

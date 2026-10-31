@@ -70,8 +70,11 @@ export class LightingOverlay {
     }
   }
 
-  /** `players` — bohaterowie z własnym kręgiem światła (co-op, etap C2: dwóch; solo — jeden). */
-  render(players: readonly { readonly x: number; readonly y: number }[], lights: readonly PointLight[]): void {
+  /**
+   * `players` — bohaterowie z własnym kręgiem światła (co-op, etap C2: dwóch; solo — jeden).
+   * `flares` — światło ognia walki (krok 144): rozjaśnia mrok zawsze, także przy „Mroku”, bo trwa chwilę.
+   */
+  render(players: readonly { readonly x: number; readonly y: number }[], lights: readonly PointLight[], flares: readonly PointLight[] = []): void {
     // Warstwa trzyma się kadru kamery (przycięta do granic świata jak kamera), a nie środka bohatera.
     const camera = this.scene.cameras.main;
     const view = { x: camera.worldView.centerX, y: camera.worldView.centerY };
@@ -84,9 +87,8 @@ export class LightingOverlay {
       rt.erase(this.playerKey, Math.round(player.x) - ox - this.playerHalf, Math.round(player.y) - oy - this.playerHalf);
     }
     this.renderDread(players, ox, oy);
-    if (!this.torchesLightUp) return;
     const area = { x: ox, y: oy, width: this.halfW * 2, height: this.halfH * 2 };
-    for (const light of lights) {
+    for (const light of this.torchesLightUp ? [...lights, ...flares] : flares) {
       if (!lightTouchesView(light, light.radius, area)) continue;
       const half = Math.ceil(light.radius);
       rt.erase(torchLightKey(this.scene, light.radius), Math.round(light.x) - ox - half, Math.round(light.y) - oy - half);
