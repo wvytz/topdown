@@ -5277,6 +5277,23 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** przezroczystość (czy mapa jest jeszcze czytelna w jasnych biomach), jasność smużki i liczba kafli we mgle (5).
 
+## Krok 148 — Szybki start testowy na arenę bossa z typowym zestawem przedmiotów `#decyzja` `#narzedzia` `#areny-bossow`
+
+**Skąd:** Wicio (31.10.2026): „łatwo wskakiwać do wersji testowej… zrespić się na arenie Wiedźmy z taką ilością przedmiotów, jaką bym zdobył plus minus w trakcie normalnej rozgrywki”. Dotąd `?floor=8&boss=1` stawiało bohatera przy arenie z pustymi rękami.
+
+**Co powstało:**
+- `systems/PracticeLoadout.ts` (czysty TS): `simulatePracticeLoadout` symuluje przejście pięter 1…N−1 na prawdziwych tabelach i funkcjach gry — wrogowie z `ENEMY_LOOT` przez `rollLoot` (pokoje i wrogowie na pokój z configu piętra, Kiter/Rusher wg `kiterChance`), zasadzki z harmonogramu seeda runu (`hasAmbush`), kapliczka (`makeOffering`, pula przydatnych przedmiotów), złoto bossa i 1 z 3 kart za bossa (`rollItemChoices`, wybór losowy), ukryta komnata w Grzybni. Ten sam seed = ten sam zestaw. `applyPracticeLoadout` dokłada zestaw do danych startu tylko w runie testowym wspinaczki od piętra > 1; w co-opie partner dostaje własny zestaw.
+- `config/practiceLoadoutConfig.ts`: założenia o „przeciętnym” graczu — zabija 85% wrogów, w kapliczce składa ofiarę w 60% przypadków (gdy ma złoto), parametr `?items=0` wyłącza zestaw.
+- `scenes/practiceStart.ts`: wspólne dla startu z adresu (`BootScene`) i ekranu wyboru bohatera. `?boss=1` przechodzi teraz też przez menu i wybór bohatera (`HeroSelectData.atBoss`).
+- **R po śmierci w runie testowym z `?floor=`** wraca na to samo piętro (i arenę) z nowym seedem i nowym zestawem — szybkie powtórki walki. Dotąd R zaczynało od piętra 1.
+- `public/testy.html` (na Pages: `/topdown/testy.html`): lista linków do aren 8 bossów, wybór bohatera, kręgu wieży i „bez przedmiotów”.
+
+**Ile wychodzi (średnio z 300 seedów, barbarzyńca):** piętro 3 — 5,6 przedmiotu i ok. 60 złota, piętro 5 — 11 i 140, piętro 8 (Wiedźma) — 19,5 i 340, piętro 16 (Wiedźma w II kręgu) — 43 i 1190. Przykład łucznika na Wiedźmie: 19 przedmiotów, 145 HP, 308 złota.
+
+**Decyzje (do oceny Wicia):** wybór karty za bossa losowy (prawdziwy gracz wybiera lepiej); HP pełne; modyfikatory pięter pominięte; zestaw domyślnie przy każdym `?floor=N` w runie testowym (stary start — `&items=0`).
+
+**Testy:** `tests/systems/PracticeLoadout.test.ts` — piętro 1 bez przedmiotów, determinizm, 1 karta na bossa i komnata tylko w Grzybni, średnio 14–24 przedmiotów na Wiedźmie, kapliczka, `applyPracticeLoadout` (run na tablicę, piętro 1 i areny bez zmian; partner w co-opie). `npm run build` (2280+ testów). Przeglądarka: `?hero=archer&floor=8&boss=1&seed=11` — 19 przedmiotów w HUD przy Wiedźmie; `&items=0` — pusto; śmierć i R — piętro 6 przy arenie, nowy seed i zestaw; `testy.html` buduje poprawne linki.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5383,7 +5400,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ekran śmierci (kroki 63–65):** `#ekran-smierci` styl Dark Souls / Castlevanii, czerwień spływająca przez litery (prędkość 18 px/s); tempo (napis po 0,6–2,2 s, tablica po 2,6 s), siła przyciemnienia (85%), wielkość napisu.
 - **Ekran startowy (krok 60):** `#ekran-startowy` motyw TOP / DOWN z samotną wieżą **zaakceptowany**; do dostrojenia ewentualnie długość (ok. 4,3 s), siła wstrząsu, czytelność wieży w mroku — do oceny w teście właściciela.
 - **Mrok:** krok 30 — wrogowie widoczni dopiero w świetle („Mrok” i mgła Grzybni). Zaakceptowane po teście właściciela.
-- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (także na Pages jako run testowy bez zapisu wyniku, `systems/startOverrides.ts`, krok 41g). Np. `?seed=3&floor=2` = piętro z „Mrokiem”.
+- **Narzędzie dev:** `?seed=N&floor=M` w adresie startuje run od danego seeda i piętra (także na Pages jako run testowy bez zapisu wyniku, `systems/startOverrides.ts`, krok 41g). Np. `?seed=3&floor=2` = piętro z „Mrokiem”. Od kroku 148 taki run dostaje typowy zestaw przedmiotów (`&items=0` — bez), R po śmierci wraca na to samo piętro, a `testy.html` zbiera linki do aren bossów. `#ocena` czy liczba przedmiotów (ok. 19 na Wiedźmie) odpowiada normalnej grze.
 - **Gęstość dekoracji:** detale lica (10%) i pajęczyny (35%).
 - **Jaskrawsza krew** (feedback właściciela po kroku 24): posoka Matki Pająków i plamy mogłyby być bardziej jaskrawe — detal na później.
 
