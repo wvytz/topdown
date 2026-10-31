@@ -55,7 +55,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       kind: 'sorcery',
       sorcery: {
         orbs: {
-          damage: 14,
+          damage: 18,
           knockback: 120,
           speed: 360,
           lifetimeMs: 750,
@@ -64,7 +64,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
           // Krok 97: seria 3 kul, przy ostatniej fala; potem wszystkie wracają po 0,6 s (wcześniej po jednej co 1,5 s).
           rechargeMs: 900,
           reloadMs: 600,
-          nova: { radius: 56, damage: 16, knockback: 240 },
+          nova: { radius: 56, damage: 20, knockback: 240 },
           // Rzut trwa 4 klatki animacji; kula wylatuje w ostatniej (3/4 czasu rzutu).
           castWindupMs: 240,
           castCooldownMs: 320,
@@ -80,7 +80,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
         beam: {
           range: 170,
           halfWidth: 5,
-          damagePerTick: 8,
+          damagePerTick: 10,
           tickMs: 200,
           knockback: 25,
           moveSpeedMultiplier: 0.6,
@@ -92,7 +92,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       },
     },
     // Krok 98 (pomysł właściciela: tarcza i „gigawybuch”): wielka fala wokół niej, potem 3 s tarczy.
-    ultimate: { kind: 'supernova', name: 'Supernowa', radius: 130, damage: 70, knockback: 420, shieldMs: 3000 },
+    ultimate: { kind: 'supernova', name: 'Supernowa', radius: 130, damage: 88, knockback: 420, shieldMs: 3000 },
   },
   [HeroId.Archer]: {
     id: HeroId.Archer,
@@ -110,7 +110,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       // Ładunki salwy (PPM): Kołczan dokłada kolejne; każda strzała wachlarza zadaje `damage`.
       // Krok 88: 8 → 7, tyle co strzał barbarzyńcy.
       ranged: {
-        damage: 7,
+        damage: 9,
         knockback: 110,
         projectileSpeed: 480,
         projectileLifetimeMs: 550,
@@ -127,10 +127,11 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
           // Krok 97 (prośba właściciela po raporcie testera): bez naciągania — przytrzymanie LPM strzela w kółko
           // co 0,34 s; co 3. strzała serii mocna i przebija. Ok. 29 obrażeń/s w jeden cel (cios barbarzyńcy 12/0,32 s
           // ≈ 37/s, ale wręcz i łukiem); wcześniej pełne naciągnięcie 14 co 1,3 s ≈ 11/s.
-          damage: 8,
+          // Krok 145: obrażenia bohaterów ×1,25 (8/14 → 10/18, ok. 37/s; cios barbarzyńcy 15/0,32 s ≈ 47/s).
+          damage: 10,
           knockback: 110,
           speed: 520,
-          strongDamage: 14,
+          strongDamage: 18,
           strongKnockback: 200,
           strongSpeed: 620,
           strongPierce: 1,
@@ -152,7 +153,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       durationMs: 7000,
       shotIntervalMs: 400,
       range: 240,
-      damage: 10,
+      damage: 12,
       knockback: 80,
       speed: 520,
       lifetimeMs: 600,

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { EnemyType } from '@/core/combatTypes';
-import { ENEMY_SCALING, ENEMY_DEFINITIONS, ENEMY_STATUS_RESISTANCE, PLAYER_COMBAT, getEncounterConfigForFloor } from '@/config/combatConfig';
-import { FLOOR_GUARDIAN, scaleBossForFloor } from '@/config/bossConfig';
+import { BOSS_SCALING, ENEMY_SCALING, ENEMY_DEFINITIONS, ENEMY_STATUS_RESISTANCE, PLAYER_COMBAT, getEncounterConfigForFloor } from '@/config/combatConfig';
+import { FLOOR_GUARDIAN, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { TOWER_CONFIG } from '@/config/towerConfig';
 import { getDungeonConfigForFloor } from '@/config/gameConfig';
 import { BOSS_LOOT, ENEMY_LOOT, ITEM_EFFECTS, LOOT_SCALING, SHRINE_CONFIG } from '@/config/lootConfig';
 import { scaleForFloor } from '@/systems/CombatMath';
@@ -110,5 +111,24 @@ describe('balans: przedmioty z efektem', () => {
     const burnDps = (fire.tickDamage * 1000) / fire.tickMs;
     const meleeDps = (PLAYER_COMBAT.meleeDamage * 1000) / PLAYER_COMBAT.attackCooldownMs;
     expect(burnDps).toBeLessThan(meleeDps / 2);
+  });
+});
+
+describe('balans bossów (krok 145): wolniejsze skalowanie HP i mocniejsze ciosy', () => {
+  // Ciągłe bicie barbarzyńcy bez przedmiotów: cios co `attackCooldownMs`.
+  const dps = (PLAYER_COMBAT.meleeDamage * 1000) / PLAYER_COMBAT.attackCooldownMs;
+  const seconds = (floor: number): number => scaleBossForFloor(bossForFloor(floor), floor, BOSS_SCALING).maxHp / dps;
+
+  it('HP bossa rośnie z piętrem wolniej niż HP zwykłych wrogów', () => {
+    expect(BOSS_SCALING.hpPerFloor).toBeLessThan(ENEMY_SCALING.hpPerFloor);
+    expect(BOSS_SCALING.damagePerFloor).toBe(ENEMY_SCALING.damagePerFloor);
+  });
+
+  it('samo bicie bossa w pierwszym kręgu trwa 5–35 s, a w drugim najwyżej 45 s', () => {
+    for (let floor = 1; floor <= TOWER_CONFIG.floorsPerLoop; floor++) {
+      expect(seconds(floor), `piętro ${floor}`).toBeGreaterThanOrEqual(5);
+      expect(seconds(floor), `piętro ${floor}`).toBeLessThanOrEqual(35);
+      expect(seconds(floor + TOWER_CONFIG.floorsPerLoop), `piętro ${floor + TOWER_CONFIG.floorsPerLoop}`).toBeLessThanOrEqual(45);
+    }
   });
 });
