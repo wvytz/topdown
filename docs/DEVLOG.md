@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5114,6 +5114,61 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** czy przycisk jest dość widoczny i nie zasłania minimapy na dużych piętrach.
 
+## Krok 141 — Wygodniejsze sterowanie na telefonie `#ocena` `#mobile` `#sterowanie`
+
+**Skąd:** `#ocena` testera przekazana przez właściciela (30.10.2026): sterowanie na telefonie „bardzo ciężkie i niewygodne”; ma być naturalne dla gry zręcznościowej.
+
+**Co było nie tak (emulacja Pixel 7 poziomo):**
+- Płótno 16:9 na szerokim telefonie zostawia po bokach czarne pasy (ok. 90 px CSS), a przyciski były rysowane na płótnie — kciuk musiał sięgać daleko od krawędzi ekranu, a przyciski zasłaniały walkę. Rozmiar przycisków zależał od skali płótna (na mniejszym telefonie mniejsze).
+- Gałka ruchu stała tam, gdzie kciuk dotknął: po odjechaniu kciukiem daleko zawrócenie wymagało cofnięcia przez cały dawny środek.
+- Duże kółko ataku czekało 150 ms (przytrzymanie) albo na puszczenie (stuknięcie) — cios zawsze spóźniony.
+
+**Co powstało:**
+- **Przyciski i gałka przy krawędzi ekranu** (`systems/touchLayout.ts`, czysta geometria): pozycje i promienie w pikselach CSS ekranu, liczone od prawego dolnego rogu bezpiecznego obszaru (wcięcie, pasek „home”). Na szerokim telefonie przyciski leżą w czarnym pasie obok gry. Rysuje je nowa warstwa `mobile/TouchOverlay.ts` (przezroczyste płótno 2D na całym ekranie, bez łapania dotyku). Układ właściciela z kroku 96a zostaje: duże kółko w rogu, PPM wyżej po prawej, zryw po lewej, E nad zrywem, ultimate nad kółkiem.
+- **Gałka idzie za kciukiem** (`followStickOrigin`): mniejszy promień (44 px CSS), mniejsza martwa strefa (0,18); blada podpowiedź gałki w lewym dolnym rogu, gdy kciuk jej nie trzyma.
+- **Atak od razu:** dotknięcie dużego kółka to natychmiastowy cios z celowaniem samym w najbliższego wroga; przeciągnięcie przejmuje cel. PPM bez zmian (ładunki są cenne: przeciągnij albo stuknij).
+- Większe strefy dotyku (`hitSlop` 1,25), większy zryw.
+- Pauza (krok 140) i przyciski ekranu śmierci zostają na płótnie gry, pod minimapą.
+
+**Decyzje:** bez automatycznego ataku (gra zręcznościowa — o ciosach decyduje gracz) i bez dasha gestem (ryzyko przypadkowego zrywu przy szybkim ruchu kciuka); oba do rozważenia po teście.
+
+**Testy i weryfikacja:** `tests/systems/touchLayout.test.ts` (położenie od krawędzi ekranu, przyciski mieszczą się na 640×360 i nie nachodzą na siebie, strefa dotyku i najbliższy środek, gałka za kciukiem). `npm run build` (2232 testy). Chromium z emulacją Pixel 7: przyciski w czarnym pasie, gałka po cofnięciu kciuka o 60 px od razu zawraca, przeciągnięcie kółka i PPM celuje, zryw, pauza otwiera się, na pauzie przyciski znikają.
+
+**Do oceny właściciela i testera:** położenie i wielkość przycisków na prawdziwym telefonie, czułość gałki, czy cios od razu nie marnuje ataków.
+
+## Krok 142 — Ekran „Na Safari tej gry nie odpalisz” `#decyzja` `#przegladarki`
+
+**Skąd:** `#decyzja` właściciela (30.10.2026): gra nie wspiera Safari. Kto wejdzie z Safari, zamiast gry dostaje ekran: „Na Safari tej gry nie odpalisz. Zainstaluj Firefoxa, DuckDuckGo albo Brave'a… albo oddaj wszystkie swoje informacje Chrome'owi.”
+
+**Co powstało:**
+- `core/browserGate.ts` (czysty): `isPlainSafari` rozpoznaje samo Safari po user-agencie (`Version/… Safari/` bez znaczników innych przeglądarek: CriOS, FxiOS, EdgiOS, OPiOS, `Ddg/`, GSA, przeglądarki w aplikacjach, Chrome/Android). Na iPhonie każda przeglądarka działa na WebKicie i udaje Safari — bez tych wykluczeń odcięlibyśmy wszystkie iPhone'y. Brave na iPhonie ma user-agent Safari, ale wystawia `navigator.brave`, więc też przechodzi.
+- `browser/SafariGate.ts`: ekran w DOM nad stroną (ikonka gry, czerwony napis, przyciski Firefox / DuckDuckGo / Brave, mniejszy link do Chrome'a). Wywołany w `main.ts` i `mobile/main.mobile.ts` przed `startGame` — na Safari Phaser w ogóle nie startuje. Ekran przewija się, gdy telefon jest poziomo, i leży nad napisem „Obróć telefon”.
+- Furtka w adresie: `?safari=1` — ekran w każdej przeglądarce (podgląd), `?safari=0` — wpuszcza mimo Safari (test, obejście dla właściciela).
+
+**Decyzje:** wykrywanie po user-agencie, nie po silniku — inaczej padłyby iPhone'y z innymi przeglądarkami. Ryzyko: przeglądarka na iPhonie, która nie dopisuje znacznika do user-agenta (np. Firefox Focus, Arc), zostanie wzięta za Safari; wtedy dopisujemy jej znacznik do `NOT_SAFARI`.
+
+**Testy i weryfikacja:** `tests/core/browserGate.test.ts` (prawdziwe user-agenty Safari na Macu, iPhonie i iPadzie oraz Chrome/Firefox/Edge/DuckDuckGo/aplikacji Google na iPhonie, przeglądarek PC i Androida; furtka). `npm run build` (typy, 2230 testów, build). W Chromium: `?safari=1` na PC, user-agent iPhone'a z Safari na `mobile.html` pionowo i poziomo — ekran; user-agent Chrome na iPhonie i `?safari=0` — gra startuje. Zrzuty: `screens/krok142-safari-*.png`.
+
+**Do oceny:** treść i wygląd ekranu.
+## Krok 143 — Złoto samo leci do bohatera, mniejsze i słabsze chmury trucizny `#ocena` `#decyzja` `#balans` `#feel`
+
+**Ocena właściciela (30.10.2026):** gra jest fajna, ale brakuje „feelu”. Trzy zarzuty: cofanie się po monety od wroga, który padł wcześniej; błąkanie po nieokreślonych lokacjach; plamy z wybuchających pułapek (trujące chmury) „za szybkie, za duże i biorą za dużo”. `#decyzja` kierunek: głównym zagrożeniem ma być **natłok mobów**, a nie bossowie i pułapki. Ten krok to szybkie wygrane; reszta planu (fale mobów, mniejsze piętra, strzałka do celu, lżejsi bossowie) jest w dokumencie-wizji i czeka na decyzje właściciela.
+
+**Co powstało:**
+- **Złoto leci samo** (`LootManager.homeGold`, czysto: `goldHomingSpeed`, `goldArrives` w `systems/Loot.ts`, liczby w `PICKUP_CONFIG.goldHoming`): po 0,3 s rozsypania każda moneta leci do najbliższego żywego bohatera z dowolnej odległości, przez ściany (w locie bez kolizji), od 160 px/s z przyspieszeniem 1600 px/s² do 900 px/s. Moneta z 340 px wpada w ok. 1 s. Przy niskim FPS moneta nie krąży wokół celu (zebranie, gdy przeleciałaby bohatera w jednej klatce). Mikstury i przedmioty bez zmian (magnes 80 px) — to decyzja gracza. Co-op: złoto do wspólnej sakiewki, leci do bliższego.
+- **Chmury purchawek (Grzybnia) i popielniczek (Palarnia)** (`biomeConfig`): 0–2 na pokój (było 1–3 i 1–2), promień 14 → 30 px (było 20 → 44; pole −54%), rozrost 0,9 s (było 0,4 s), zapalnik 0,7 / 0,8 s (było 0,5 / 0,6), chmura wisi 3 / 3,5 s (było 4 / 4,5), trucizna 1 co 0,5 s (było 2) i 0,5 s po wyjściu (było 1,5 s). Pole chmur na pokój spada średnio o ok. 75%.
+- **Arkusze chmur** `poison-cloud.png` i `smoke-cloud.png` wygenerowane na nowo (`CLOUD_RADII` w `tools/grove_enemies.py` i `tools/smoker_sprites.py`) — rysunek dalej równa się zasięgowi trucizny; pozostałe arkusze tych generatorów bajt w bajt bez zmian.
+
+**Pomiary przed zmianą** (szczegóły w dokumencie-wizji):
+- Generator, 60 pięter × piętra 1–7: piętro rośnie z 7 do 13 pokojów i z 558 do 1100 kafli podłogi, a wrogów z 7,5 do 16,2. Pełne przejście to 23 → 52 s samego marszu najkrótszą trasą, ok. 3 s marszu na jednego wroga na każdym piętrze; z boku drogi do areny leży 2–6 pokojów.
+- Bot-gracz (Playwright, nieśmiertelny, walczy w każdym pokoju i 45 s z bossem; obrażenia przypisane po stosie wywołań): 3 bohaterów, 31 przejść pięter 1–7, 61 min walki. W pokojach 3,5 HP/s, w arenie 6,4 HP/s (Grzybnia 7,9, Cmentarzysko 10,1). W pokojach 91% obrażeń to wrogowie, chmury 2% ogółem, ale 11% w Grzybni; paleniska 3%. Bot wygrał 13 z 31 walk z bossem w 45 s. Bot nie unika telegrafów — liczby to kierunek. Skrypt nie trafił do repozytorium (jednorazowy pomiar).
+
+**Testy:** `tests/systems/loot.test.ts` (przyspieszenie i sufit, moneta z 800 px w < 1,5 s, brak przelotu przy 30 FPS), `tests/systems/puffballs.test.ts` (0–2 na pokój: 50–80% pokojów ma purchawkę; telegraf, dash i strzał dalej wystarczają), `tests/dungeon/WallDogPlanner.test.ts` (chmura popielniczki = chmura purchawki), test zgodności arkusza z promieniem chmury. `npm run build` zielony.
+
+**Weryfikacja:** Playwright (Chromium, dev, `?hero=archer&seed=3&floor=2`): 9 złota wyrzucone 340 px od bohatera, za ścianą — po ok. 1 s w sakiewce, mikstura została na ziemi; bez błędów w konsoli. `npm run smoke -- --floors 7 --seeds 1` (3 bohaterów) bez błędów.
+
+**Czeka na ocenę właściciela:** tempo lotu złota (czy nie za szybkie — da się zwolnić w `goldHoming`), wielkość i siła chmur, czy „plamy z kokonów” to na pewno chmury purchawek i popielniczek. **Następnie:** etap 1 planu — fale słabszych mobów zamiast „1–2 wrogów na pokój” (po decyzji właściciela).
+
 ## Krok 145 — Przeliczenie balansu: mocniejsze ciosy bohaterów, wolniej rosnące HP bossów `#ocena` `#decyzja` `#balans` `#brudna-wiedzma`
 
 **Skąd:** `#ocena` Wicio po nagraniach walki z Brudną Wiedźmą (30.10.2026): „za mały damage, przeskaluj HP… wiem, że duża zmiana”. Rachunek: HP bossa rosło o 15% na piętro, obrażenia bohatera tylko z przedmiotami — wiedźma na piętrze 8 miała ok. 1560 HP (2× bazowe), samo bicie barbarzyńcą bez przedmiotów ok. 42 s, z unikami ok. 2 min; w drugim kręgu 2470 HP. `#decyzja` Na karcie wybrał „Cała gra: bossowie i bohaterowie”.
@@ -5198,6 +5253,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - kolejność: najpierw zwykłe zombie (32b), potem Lord;
 - właściciel: commit i push po każdym kroku („wrzucaj wszystko na GitHuba i lecimy dalej”).
 
+**Nowy kierunek po kroku 143 — natłok mobów i zero błąkania** `#decyzja` `#feel`: wizja i plan w dokumencie „TOP DOWN — czym ma być gra” (Claude Docs, 30.10.2026). Etap 0 (złoto samo leci, słabsze chmury) zrobiony w kroku 143. Czekają na decyzje właściciela: etap 1 — fale słabszych mobów zamiast „1–2 wrogów na pokój” (limit ok. 25 żywych, pomiar na telefonie), etap 2 — piętra maks. 8–9 pokojów i strzałka do najbliższej walki/areny, etap 3 — krótsze trwałe plamy bossów i mniej obrażeń w zamian za świtę w falach.
+
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:
   - arkusz kafli (fiolet, zieleń, biel);
@@ -5222,6 +5279,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **2. Do oceny przy okazji**
 - **Naprowadzany strzał barbarzyńcy (krok 146):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
+- **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.

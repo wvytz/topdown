@@ -27,7 +27,7 @@ describe('Purchawki — tylko w Grzybni (krok 28c)', () => {
     expect(BIOMES[BiomeId.SpiderLair].puffballs).toBeNull();
   });
 
-  it('rozmieszczenie: podłoga zwykłych pokojów, odstępy, limit na pokój, każdy pokój coś ma', () => {
+  it('rozmieszczenie: podłoga zwykłych pokojów, odstępy, limit na pokój, część pokojów bez purchawek', () => {
     const floors = sampleFloors([3], 40);
     let rooms = 0;
     let withPuffballs = 0;
@@ -44,8 +44,9 @@ describe('Purchawki — tylko w Grzybni (krok 28c)', () => {
         if (inRoom > 0) withPuffballs++;
       }
     });
-    // perRoom.min = 1: prawie każdy pokój ma purchawkę (poza bardzo małymi, gdzie nie ma miejsca).
-    expect(withPuffballs / rooms).toBeGreaterThan(0.9);
+    // Krok 143: perRoom 0–2 — mniej więcej co trzeci pokój jest bez purchawek (wcześniej prawie każdy miał 1–3).
+    expect(withPuffballs / rooms).toBeGreaterThan(0.5);
+    expect(withPuffballs / rooms).toBeLessThan(0.8);
   });
 });
 

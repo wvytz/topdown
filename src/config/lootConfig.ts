@@ -252,7 +252,7 @@ export const HIGHSCORE_BOARDS = {
 export type HighscoreBoardId = keyof typeof HIGHSCORE_BOARDS;
 
 export const PICKUP_CONFIG = {
-  /** Z tej odległości łupy same lecą do gracza. */
+  /** Z tej odległości mikstury i przedmioty same lecą do gracza. */
   magnetRadius: 80,
   magnetSpeed: 340,
   /** Odległość zebrania (środek–środek). */
@@ -262,6 +262,11 @@ export const PICKUP_CONFIG = {
   scatterSpeed: 120,
   /** Ile monet maksymalnie wypada z jednej kwoty złota. */
   maxCoinsPerDrop: 5,
+  /**
+   * Krok 143 (ocena właściciela: „dlaczego mam się cofać po coiny?”): złoto po rozsypaniu samo leci do najbliższego
+   * żywego bohatera z każdej odległości i przez ściany, coraz szybciej. Mikstury i przedmioty zostają na ziemi.
+   */
+  goldHoming: { startSpeed: 160, acceleration: 1600, maxSpeed: 900 },
 } as const;
 
 /** Ukryta komnata za areną (krok 46): widać ją z 2 kafli; 4–6 kokonów, jeden z losowym przedmiotem. */
