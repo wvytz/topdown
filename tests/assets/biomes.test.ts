@@ -48,18 +48,17 @@ function groupPixels(meta: TilesetMeta, sheet: RgbaImage, group: string): Rgba[]
 }
 
 describe('biomy: wybór piętra', () => {
-  it('biomy: 2 Grzybnia (pajęczy duet), 3 Cmentarzysko, 4 Piekło, 5 palarnia, 6–7 Lustrzana komnata, 8 Bociani Ogród, 1 ruiny; potem kolejny krąg (kroki 43, 83, 124, 127, 134, 137)', () => {
+  it('biomy: 2 Grzybnia (pajęczy duet), 3 Cmentarzysko, 4 Piekło, 5 palarnia, 6 Lustrzana komnata, 7 Bociani Ogród, 1 ruiny; potem kolejny krąg (kroki 43, 83, 124, 127, 134, 137, 154)', () => {
     expect(biomeForFloor(2).id).toBe(BiomeId.FungalGrove);
     expect(biomeForFloor(3).id).toBe(BiomeId.Graveyard);
     expect(biomeForFloor(4).id).toBe(BiomeId.Infernal);
     expect(biomeForFloor(5).id).toBe(BiomeId.SmokeDen);
     expect(biomeForFloor(6).id).toBe(BiomeId.MirrorHall);
-    expect(biomeForFloor(7).id).toBe(BiomeId.MirrorHall);
-    expect(biomeForFloor(8).id).toBe(BiomeId.StorkGarden);
-    for (const floor of [1, 9, 17]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
-    expect(biomeForFloor(10).id).toBe(BiomeId.FungalGrove);
-    expect(biomeForFloor(15).id).toBe(BiomeId.MirrorHall);
-    expect(biomeForFloor(16).id).toBe(BiomeId.StorkGarden);
+    expect(biomeForFloor(7).id).toBe(BiomeId.StorkGarden);
+    for (const floor of [1, 8, 15]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
+    expect(biomeForFloor(9).id).toBe(BiomeId.FungalGrove);
+    expect(biomeForFloor(13).id).toBe(BiomeId.MirrorHall);
+    expect(biomeForFloor(14).id).toBe(BiomeId.StorkGarden);
   });
 
   it('każdy biom ma własne klucze tekstur i animacji pochodni', () => {

@@ -23,11 +23,11 @@ describe('Brudna Wiedźma (krok 137)', () => {
     ...over,
   });
 
-  it('zamyka krąg: piętro 8 (Bociani Ogród), krąg ma 8 pięter, w kolejnym kręgu znów na 16', () => {
-    expect(TOWER_CONFIG.floorsPerLoop).toBe(8);
-    expect(bossForFloor(8).id).toBe(BossId.DirtyWitch);
-    expect(bossForFloor(16).id).toBe(BossId.DirtyWitch);
-    expect(bossForFloor(7).id).toBe(BossId.CleanerDark);
+  it('zamyka krąg: piętro 7 (Bociani Ogród, od kroku 154), krąg ma 7 pięter, w kolejnym kręgu znów na 14', () => {
+    expect(TOWER_CONFIG.floorsPerLoop).toBe(7);
+    expect(bossForFloor(7).id).toBe(BossId.DirtyWitch);
+    expect(bossForFloor(14).id).toBe(BossId.DirtyWitch);
+    expect(bossForFloor(6).id).toBe(BossId.CleanerDark);
   });
 
   describe('klucz bocianów', () => {

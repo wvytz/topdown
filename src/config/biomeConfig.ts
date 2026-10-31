@@ -336,10 +336,10 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
 };
 
 /**
- * Biom na piętrach pierwszego kręgu (od kroku 137: 1–8); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43).
+ * Biom na piętrach pierwszego kręgu (od kroku 154: 1–7); piętro 1 to ruiny. Kolejne kręgi powtarzają ten układ (krok 43).
  * Każdy biom kończy się swoim bossem: 2 — Grzybnia (pajęczy duet), 3 — Cmentarzysko (Grzybowy Pożeracz),
- * 4 — Piekło (Kat Otchłani), 5 — Zadymiona palarnia (Baron Dymu), 6–7 — Lustrzana komnata (sprzątaczki),
- * 8 — Bociani Ogród (Brudna Wiedźma, krok 137).
+ * 4 — Piekło (Kat Otchłani), 5 — Zadymiona palarnia (Baron Dymu), 6 — Lustrzana komnata (sprzątaczki, od kroku 154 jedno piętro),
+ * 7 — Bociani Ogród (Brudna Wiedźma, krok 137).
  */
 export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   // Krok 127: pajęczy duet to jedno piętro — Grzybnia (tu był Król i ukryta komnata); Pajęcze leże czeka na nowe miejsce.
@@ -349,11 +349,11 @@ export const BIOME_BY_FLOOR: Readonly<Record<number, BiomeId>> = {
   // wcześniej dwa (krok 41b), na drugim, „gorętszym”, paleniska buchały częściej.
   4: BiomeId.Infernal,
   5: BiomeId.SmokeDen,
-  // Krok 124: dwa piętra sprzątaczek (blondynka, potem brunetka); od kroku 134 na 6–7.
+  // Krok 124: dwa piętra sprzątaczek (blondynka, potem brunetka); od kroku 154 (decyzja właściciela) jedno piętro —
+  // najpierw blondynka, po jej ucieczce brunetka, potem powrót blondynki.
   6: BiomeId.MirrorHall,
-  7: BiomeId.MirrorHall,
-  // Krok 137: Brudna Wiedźma zamyka krąg.
-  8: BiomeId.StorkGarden,
+  // Krok 137: Brudna Wiedźma zamyka krąg (od kroku 154 na 7).
+  7: BiomeId.StorkGarden,
 };
 
 /** Biom piętra; po ostatnim piętrze kręgu kolejny krąg wieży powtarza biomy od nowa (krok 43). */

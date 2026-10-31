@@ -798,7 +798,8 @@ export const CLEANER_DARK = {
     lead: { ms: 500, maxPx: 100 },
   },
   spill: { ...CLEANER_BLONDE.spill, count: 1 },
-  shouts: CLEANER_SHOUTS,
+  // `arrive` — wyjście z windy po ucieczce blondynki (krok 154).
+  shouts: { ...CLEANER_SHOUTS, arrive: 'Teraz ja posprzątam!' },
   enrage: {
     ...ENRAGE_FURY,
     hpThreshold: 0.5,
@@ -896,17 +897,19 @@ export const DIRTY_WITCH = {
  * w Grzybni, `BOSS_DUETS`), 3 — Grzybowy Pożeracz (Cmentarzysko), 4 — Piekło, 5 — Baron Dymu,
  * 6–7 — sprzątaczki (Lustrzana komnata). Krok 134 (decyzja właściciela: „scalamy tarczowników, jeden wystarczy”):
  * Piekło ma jedno piętro i jednego bossa z tarczą — Kata Otchłani; Strażnik Bram zostaje w kodzie poza wspinaczką.
- * Krok 137: 8 — Brudna Wiedźma (Bociani Ogród) zamyka krąg.
+ * Krok 137: 8 — Brudna Wiedźma (Bociani Ogród) zamyka krąg. Krok 154 (decyzja właściciela po przeglądzie balansu:
+ * piętro blondynki było najłatwiejsze od piętra 2): 6 — obie sprzątaczki na jednym piętrze, 7 — Brudna Wiedźma.
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_KING,
   3: FUNGAL_DEVOURER,
   4: ABYSS_EXECUTIONER,
   5: SMOKE_BARON,
-  6: CLEANER_BLONDE,
-  7: CLEANER_DARK,
-  // Krok 137 (`#brudna-wiedzma`): po sprzątaczkach Bociani Ogród zamyka krąg.
-  8: DIRTY_WITCH,
+  // Krok 154 (decyzja właściciela): sprzątaczki na jednym piętrze — gospodarzem jest brunetka, blondynka otwiera walkę
+  // (`BOSS_DUETS`). CLEANER_BLONDE nie ma już własnego piętra.
+  6: CLEANER_DARK,
+  // Krok 137 (`#brudna-wiedzma`): po sprzątaczkach Bociani Ogród zamyka krąg (od kroku 154 na 7).
+  7: DIRTY_WITCH,
 };
 
 /** Wszyscy bossowie gry — partner duetu nie musi mieć własnego piętra (Matka Pająków od kroku 127, Strażnik Bram poza wspinaczką od kroku 134). */
@@ -1004,8 +1007,8 @@ export const BOSS_STATUS_RESISTANCE: StatusResistance = {
  * Duety bossów — we wspinaczce i w arenach bossów tak samo.
  * - Pajęczy duet (krok 114, pomysł właściciela; od kroku 127 także we wspinaczce): w Grzybni Król Pająków
  *   i Matka Pająków walczą naraz, każde z pełnym HP. Zwolnione piętro dostała Lustrzana komnata.
- * - Sprzątaczki (krok 126, `#sprzataczki`): na piętrze brunetki w połowie jej HP z windy w północnym murze wraca
- *   blondynka, która uciekła piętro niżej — z 1/3 HP (tyle, z ilu uciekła).
+ * - Sprzątaczki (krok 126, `#sprzataczki`; od kroku 154 jedno piętro): walkę zaczyna blondynka i przy 2/3 HP ucieka
+ *   windą w północnym murze; z windy wychodzi brunetka, a w połowie jej HP wraca blondynka z 1/3 HP.
  */
 export const BOSS_DUETS: readonly BossDuetDefinition[] = [
   {
@@ -1020,7 +1023,7 @@ export const BOSS_DUETS: readonly BossDuetDefinition[] = [
     title: 'Pajęczy duet',
   },
   {
-    floorInLoop: 7,
+    floorInLoop: 6,
     partner: BossId.CleanerBlonde,
     spawnOffsetTiles: 0,
     bodyGapPx: 4,
@@ -1030,5 +1033,8 @@ export const BOSS_DUETS: readonly BossDuetDefinition[] = [
     name: 'Sprzątaczki',
     title: 'Wielkie sprzątanie',
     arrival: { hostHpRatio: 0.5, partnerHpRatio: 1 / 3, enterMs: 700 },
+    // Krok 154: najpierw sama blondynka; przy 2/3 HP ucieka windą, a z windy wychodzi brunetka. Próg 2/3, nie 1/3
+    // jak dawniej na jej piętrze — inaczej trzy fazy byłyby dłuższe niż walka z Wiedźmą piętro wyżej.
+    opener: { boss: BossId.CleanerBlonde, escapeHpRatio: 2 / 3, hostEnterMs: 700 },
   },
 ];
