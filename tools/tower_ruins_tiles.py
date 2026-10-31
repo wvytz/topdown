@@ -28,6 +28,8 @@ from dataclasses import dataclass
 
 from PIL import Image, ImageDraw, ImageFont
 
+import gamer_den_tiles
+
 T = 32
 FACE = 8  # wysokość lica ściany (południowa, widoczna strona) w pikselach
 COLUMNS = 16
@@ -136,6 +138,8 @@ class Palette:
     # Bociani Ogród (krok 137): trawa w szczelinach i bluszcz (3: cień, źdźbło, jasne) oraz kwiaty (3: czerwień, jasna, środek).
     grass: tuple = ()
     bloom: tuple = ()
+    # Mieszkanie gracza (krok 138): karton, jedzenie, ubrania, plastik, drewno, dywan — indeksy w tools/gamer_den_tiles.py.
+    junk: tuple = ()
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
@@ -326,6 +330,42 @@ PALETTES = {
         litter=oks((.27, .090, 258), (.39, .130, 258), (.54, .140, 252), (.50, .008, 250), (.78, .008, 250),
                    (.40, .150, 28), (.52, .190, 28), (.90, .030, 90), (.38, .070, 70), (.82, .150, 95)),
     ),
+    # Mieszkanie nałogowego gracza (krok 138, prośba właściciela): piętro 5 zamiast kamiennej palarni. Wykładzina
+    # w szarobrązowej oliwce (jasność jak w palarni — czytelność postaci), tynk „wielkiej płyty”, tapeta w wyblakłą
+    # musztardę. Śmieci przygaszone, żeby zlewały się z podłogą; żarówki w kinkietach dają ciepłe, brudne światło.
+    'mieszkanie_gracza': Palette(
+        key='mieszkanie_gracza', label='Mieszkanie gracza (wykładzina, tapeta, śmieci)',
+        floor=oks((.30, .020, 70), (.37, .022, 72), (.435, .026, 75), (.475, .028, 78), (.515, .030, 80), (.56, .030, 82)),
+        floor_alt=ok(.41, .024, 66),
+        wall_top=oks((.17, .010, 80), (.25, .012, 80), (.36, .014, 82), (.42, .016, 84), (.50, .016, 86), (.58, .016, 88)),
+        wall_block_alt=ok(.34, .014, 78),
+        wall_face=oks((.22, .028, 85), (.31, .042, 88), (.37, .048, 90)),
+        wall_fade=oks((.12, .010, 80), (.17, .012, 80), (.20, .012, 82)),
+        deep=oks((.08, .008, 80), (.10, .008, 80)),
+        # Cola, kawa i nikotyna.
+        stain=oks((.33, .050, 58), (.38, .060, 62)),
+        # Kłęby kurzu.
+        ash=oks((.60, .010, 85), (.51, .010, 250)),
+        # Żarówka w kinkiecie: ciepła, brudna żółć (poświata gry bierze barwę z tej rampy).
+        flame=oks((.55, .110, 70), (.70, .120, 80), (.84, .100, 90), (.93, .050, 95)),
+        # Krok 138b (uwaga właściciela: czerwone akcenty „sugerują, że coś się dzieje”): wszystkie barwy śmieci przygaszone.
+        litter=oks((.27, .030, 250), (.36, .035, 250), (.48, .035, 250), (.46, .008, 250), (.66, .008, 250),
+                   (.36, .040, 45), (.44, .045, 50), (.60, .020, 90), (.38, .050, 70), (.58, .050, 90)),
+        junk=oks((.42, .045, 65), (.53, .055, 70), (.63, .055, 75), (.46, .070, 70),          # karton, tłuszcz
+                 (.38, .040, 45), (.46, .045, 50), (.66, .050, 85), (.56, .050, 65),          # sos, salami, ser, skórka
+                 (.32, .010, 260), (.42, .012, 260), (.52, .012, 260),                        # szara tkanina
+                 (.33, .020, 250), (.41, .025, 250), (.63, .015, 90), (.54, .015, 90),         # dżins, biel
+                 (.18, .008, 270), (.26, .010, 270), (.38, .012, 270),                         # czarny plastik
+                 (.40, .020, 60), (.44, .020, 120), (.40, .020, 250), (.55, .030, 90),         # przyciski
+                 (.44, .045, 60), (.54, .050, 65), (.75, .008, 250),                           # chipsy, folia
+                 (.30, .030, 110), (.40, .035, 110), (.62, .020, 220),                         # szkło, plastik
+                 (.58, .030, 215), (.45, .030, 200),                                           # ekran, plakat
+                 (.30, .040, 55), (.40, .050, 60), (.50, .050, 65),                            # drewno
+                 (.34, .025, 55), (.40, .030, 60), (.52, .030, 75), (.30, .015, 250),          # dywan
+                 (.32, .045, 62), (.41, .060, 68), (.56, .070, 78),                            # tłuszcz: cień, bursztyn, połysk
+                 (.40, .050, 115), (.50, .065, 110), (.64, .070, 105),                         # śluz
+                 (.27, .035, 155), (.37, .045, 145), (.58, .040, 130)),                        # grzyb: plama, nalot, meszek
+    ),
     # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): posadzka jak wypolerowany kryształ — najjaśniejsza w wieży,
     # chłodny błękit z opalizującymi refleksami; mury najbrudniejsze i najbardziej zniszczone (zgnilizna, zacieki brudnej wody).
     'lustro_opal': Palette(
@@ -422,8 +462,9 @@ BIOMES = {
     # Piekło (krok 41a): krwisty, demoniczny biom z paleniskami; czerwień i pomarańcz z prośby właściciela,
     # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
     'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
-    # Zadymiona palarnia (krok 83): piętro Barona Dymu; kafle bez dodatków (jak ruiny), inna paleta.
-    'smoke_den': {'palette': 'dymna_palarnia', 'extras': ('smoke',), 'reserved_hues': True},
+    # Zadymiona palarnia (krok 83): piętro Barona Dymu. Od kroku 137 (prośba właściciela) zagracone, zadymione
+    # mieszkanie nałogowego gracza: dodatek `gamer` podmienia kafle wspólne (tools/gamer_den_tiles.py).
+    'smoke_den': {'palette': 'mieszkanie_gracza', 'extras': ('smoke', 'gamer'), 'reserved_hues': True},
     # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): piętra dwóch Sprzątaczek; błyszcząca posadzka, mury w ruinie.
     'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror', 'feathers'), 'reserved_hues': True},
     # Bociani Ogród (krok 137): taras Brudnej Wiedźmy nocą; zieleń trawy z założenia, więc bez rezerwy barw (jak leże).
@@ -2097,7 +2138,10 @@ class Entry:
     flip_x: bool = False
 
 
-WALL_COMMON = (7, 11, 13, 14)  # ~82% widocznych ścian na wygenerowanych mapach (pomiar, krok 16)
+WALL_COMMON = (7, 11, 13, 14)
+# Narzędzia generatora dla modułu mieszkania gracza (krok 138).
+GAMER_KIT = dataclasses.make_dataclass('GamerKit', ['Img', 'outline', 'T', 'FACE', 'CLR', 'flame_base_y'])(
+    Img, outline, T, FACE, CLR, TORCH_FLAME_BASE_Y)  # ~82% widocznych ścian na wygenerowanych mapach (pomiar, krok 16)
 
 
 def manifest():
@@ -2228,6 +2272,9 @@ def manifest():
         # Pióra (krok 137): w ogrodzie i jako zapowiedź Brudnej Wiedźmy w Lustrzanej komnacie.
         for kind in ('feathers_a', 'feathers_b'):
             m.append(Entry(f'decal_{kind}', feather_decal(kind), 'floorDecal', group='decal.feathers', weight=1, flip_x=True))
+    if 'gamer' in BIOMES[BIOME]['extras']:
+        # Mieszkanie gracza (krok 138): wykładzina, panele, tapeta, lampy i śmieci zamiast kamienia ruin.
+        m = gamer_den_tiles.apply(m, Entry, GAMER_KIT)
     # Ślady wleczenia i krwi ku arenie bossa (krok 54): na samym końcu (first-fit), nic się nie przesuwa.
     for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
                         ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):

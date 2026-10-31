@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5200,6 +5200,46 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** siła skrętu (480°/s) i stożek (±70°) — czy strzał nie jest teraz za „magiczny”.
 
+## Krok 138 — Piętro 5: zagracone mieszkanie nałogowego gracza `#ocena` `#zadymiona-palarnia` `#mieszkanie-gracza`
+
+**Ocena właściciela (30.10.2026, zrzut piętra 5):** „Musimy zmienić ten biom. Jest totalnie basicowy i bez klimatu. Zrób dużo sprite'ów, wzorując się na zagraconym, zaśmieconym mieszkaniu bezrobotnego nałogowego gracza, ale niech to się zlewa. Jakbyśmy chodzili po śmieciach.”
+
+**Co powstało (bez zmian w zasadach gry — tylko arkusz kafli i dekorowanie):**
+- **Generator** `tools/gamer_den_tiles.py` (dodatek `gamer` biomu `smoke_den` w `tools/tower_ruins_tiles.py`, paleta `mieszkanie_gracza` z nową rampą `junk`). Podmienia rysowanie kafli wspólnych i dopisuje nowe; `python tools/tower_ruins_tiles.py --biome smoke_den`.
+- **Podłoga:** w pokojach stara wykładzina (szum pętelek bez fug, zbite placki, przetarcia, łączenia pasów) zasłana spłaszczonymi strzępami w tonach wykładziny; w korytarzach panele; rzadko dywan „PRL” 2×2 (romby z medalionem albo pasy, frędzle, plamy, przypalenie).
+- **Mury:** tynk „wielkiej płyty” na wierzchu, na licu wyblakła tapeta w pasy z drewnianą listwą i zaciekami nikotyny; nadproże to drewniana futryna; pochodnie to kinkiety z brudnym abażurem, żarówka mruga (co 4. klatka przygasa), światło ciepłe, brudnożółte.
+- **Lica (`wallFace.gamer`, 30% prostych odcinków):** plakat gry (miecz i czerwony księżyc), plakat z potworem, gniazdko z wtyczkami, półka z pudełkami gier i figurką, dziura po pięści, okno z żaluzją, kalendarz ze skreślonymi dniami.
+- **Śmieci (połowa kafli podłogi):** pudełka po pizzy (zamknięte i otwarte ze skórkami), kawałek pizzy, chipsy z okruchami, przewrócona zupka chińska, skarpety, koszulki, pad (cały i rozbity), słuchawki, papiery i paragony, butelki (plastik, szkło), puszki energetyków i kubełki z kurczaka z kroku 84, pety. Grupy ruin narysowane po nowemu: okruchy i włosy, kapsle i sreberka, plamy coli i ślady kubka, przypalenia od petów, dziura w wykładzinie, popcorn, kłęby kurzu pod ścianami; **długie pęknięcia to kable z wtyczką**.
+- **Duże nakładki:** sterty śmieci 2×2 (dwie), pranie 2×2, splątane kable z listwą 2×2, stos pudełek po pizzy 2×1, klawiatura z wybitymi klawiszami 2×1.
+- **„Ma się zlewać”:** śmieci mają przygaszone barwy, obrys w najciemniejszym tonie wykładziny i cień w tonie fugi (nie czarny obrys postaci) — postacie z ciemnym obrysem nadal odcinają się od tła. Jasność podłogi jak w palarni.
+- **Dekorowanie** (`SMOKE_DEN_DRESSING`): nakładka na 50% kafli, kable 3%, sterty i stosy 0,6–2%, dywan 3% bloków 2×2, kurz pod ścianami 55–70%, pajęczyny 45%; ku arenie Barona gęstnieją pety. Moje liczby, do oceny.
+- Wrogowie, Baron, popielniczki, psy w ścianach, dym i mgła bez zmian. Nazwa biomu w grze bez zmian („Zadymiona palarnia”) — do decyzji właściciela.
+
+**Weryfikacja:** `npm run build` zielony. Przeglądarka (Playwright, `?seed=7|12&floor=5`, Czarodziejka i barbarzyńca): pokoje, korytarze, lica i lampy z nowego arkusza, czarny dog i kultysta czytelni na zaśmieconej podłodze, bez błędów w konsoli. Zrzuty: `screens/krok138-mieszkanie-gracza.png` w plikach projektu.
+
+**Czeka na ocenę właściciela:** gęstość śmieci (czy nie za dużo dla czytelności walki), wygląd sterty i dywanów, nazwa biomu, czy wymienić też wrogów (dog, kultysta) i kryjówkę czyhacza (beczka) na coś „mieszkaniowego”.
+
+### Krok 138a — Brud w każdym calu `#ocena` `#mieszkanie-gracza`
+
+**Uwaga właściciela (30.10.2026):** „Dodać zagęszczenia, żeby podłoga wyglądała na brudną — skarpetki, tłuszcz, śluz, grzyb. Ściany też muszą być brudne w każdym calu; z każdej cegły ma się lać tłuszcz jak z okapu nad kuchenką gazową.”
+
+- **Podłoga:** każdy kafel bazowy (wykładzina, panele, dywan) dostaje warstwę brudu (`grime`): zbite ciemne skupiska, tłuste plamki z połyskiem, kropki grzyba, lepkie smugi. Nowe nakładki: kałuże tłuszczu (2), śluz, grzyb (2); nakładka na 60% kafli (było 50%).
+- **Mury:** wierzch zakopcony (plamy sadzy i tłuszczu, smugi ściekające ku licu); krawędź muru to tłusty, błyszczący nawis, a z niego na tapetę cieknie tłuszcz — zacieki różnej długości z kroplą i połyskiem, przesiąknięty pas pod krawędzią, brud na listwie. Dalsza masa muru zakopcona. Pod licem (90% kafli przy murze) tłuszcz kapie na podłogę i zbiera się w kałużki. Futryny też zatłuszczone.
+- Paleta `mieszkanie_gracza`: rampy tłuszczu, śluzu i grzybu w `junk`.
+- Skarpety zostały nakładką — wbudowane w kafel bazowy powtarzały się jak wzór.
+
+**Weryfikacja:** `npm run build` zielony; Playwright `?seed=7|12&floor=5` — postacie dalej czytelne. Zrzuty `screens/krok138a-*.png`.
+
+### Krok 138b — Atmosfera zamiast detali `#ocena` `#decyzja` `#mieszkanie-gracza`
+
+**Uwaga właściciela (30.10.2026):** „Nie podobają mi się czerwone akcenty — sugerują, że coś tu się dzieje. Kawałek pizzy, rozdarta koszulka — nie. Zróbmy ogólny śmietnik. W tej rozdzielczości i tak nie zrobimy detali. Atmosfera, nie detale.”
+
+- **Bez czerwieni i jaskrawych barw:** w palecie `mieszkanie_gracza` przygaszone sos, przyciski, puszki (granat i czerwona kreska), chipsy, szkło, plakaty, dywany (bordo → brudny brąz). Tłuszcz ciemniejszy i mniej żółty (wcześniej kałużki przypominały monety). Biel papierów i petów przyciemniona.
+- **Bezkształtna maź zamiast przedmiotów:** nowe kupki śmieci `decal.mush` (3) i hałdy 2×2 `decal.mound` (3) z grudek przygaszonych barw, oświetlone od północy, ciemne przy ziemi. Dekorowanie: maź, tłuszcz, grzyb i śluz przeważają; bez kawałków pizzy, koszulek, padów, zupek, chipsów i kubełków KFC; z dużych nakładek tylko hałdy (3,5%) i rzadki stos pudełek. Kafle detali zostają w arkuszu (nieużywane).
+- Test `tests/assets/smoker.test.ts` dostosowany do decyzji: zamiast KFC sprawdza maź, tłuszcz i hałdy, osobny test pilnuje braku kubełków KFC.
+
+**Weryfikacja:** `npm run build` zielony (2212 testów); Playwright `?seed=7|12&floor=5`. Zrzuty `screens/krok138b-*.png`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5280,6 +5320,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **2. Do oceny przy okazji**
 - **Naprowadzany strzał barbarzyńcy (krok 146):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
 - **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
+- **Mieszkanie gracza (krok 138):** `#mieszkanie-gracza` `#ocena` piętro 5 jako zagracone mieszkanie — gęstość śmieci, wygląd, nazwa biomu, ewentualni nowi wrogowie biomu.
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
