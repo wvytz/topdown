@@ -34,6 +34,16 @@ describe('RENDER_DEPTH — kolejność rysowania', () => {
     expect(RENDER_DEPTH.torchFlame).toBeLessThan(RENDER_DEPTH.worldText);
   });
 
+  it('ogień walki (krok 144): płomienie na podłodze pod postaciami, kula pod bohaterem, poświata i iskry nad mrokiem', () => {
+    expect(RENDER_DEPTH.fireGround).toBeGreaterThan(RENDER_DEPTH.groundFlash);
+    expect(RENDER_DEPTH.fireGround).toBeLessThan(RENDER_DEPTH.enemy);
+    expect(RENDER_DEPTH.fireBurst).toBeGreaterThan(RENDER_DEPTH.enemy);
+    expect(RENDER_DEPTH.fireBurst).toBeLessThan(RENDER_DEPTH.player);
+    expect(RENDER_DEPTH.fireGlow).toBeGreaterThan(RENDER_DEPTH.darkness);
+    expect(RENDER_DEPTH.fireEmbers).toBeGreaterThan(RENDER_DEPTH.fireGlow);
+    expect(RENDER_DEPTH.fireEmbers).toBeLessThan(RENDER_DEPTH.worldText);
+  });
+
   it('mury nad postaciami: nad wszystkim z rozgrywki, pod mrokiem i napisami', () => {
     const gameplay = [RENDER_DEPTH.enemy, RENDER_DEPTH.boss, RENDER_DEPTH.player, RENDER_DEPTH.projectile, RENDER_DEPTH.slash];
     for (const depth of gameplay) expect(RENDER_DEPTH.overhead).toBeGreaterThan(depth);

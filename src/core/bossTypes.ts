@@ -735,7 +735,7 @@ export interface AreaStrike {
   /** Trafienie unieruchamia (plątanie brunetki, krok 126). */
   readonly root?: RootEffect;
   /** Wygląd strefy: dym zamiast czerwonego telegrafu; `spores` — czerwony telegraf, wybuch w kolorach soku (krok 111). */
-  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle' | 'feathers' | 'dive' | 'whirl';
+  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle' | 'embers' | 'dive' | 'whirl';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */

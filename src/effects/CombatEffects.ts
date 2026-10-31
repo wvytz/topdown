@@ -2,6 +2,7 @@ import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { AREA_TELEGRAPH_VISUAL, BLAST_VISUAL, NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
+import { FireEffects } from '@/effects/FireEffects';
 import { exposedArcs } from '@/systems/AreaOutline';
 import type { OutlineCircle } from '@/systems/AreaOutline';
 
@@ -16,7 +17,12 @@ type BlastVisual = {
 
 /** Krótkie, czysto wizualne efekty walki (bez wpływu na logikę). */
 export class CombatEffects {
-  constructor(private readonly scene: Phaser.Scene) {}
+  /** Ogień walki (krok 144): kule ognia, płomienie, iskry, poświata i światło nad mrokiem. */
+  readonly fire: FireEffects;
+
+  constructor(private readonly scene: Phaser.Scene) {
+    this.fire = new FireEffects(scene);
+  }
 
   slash(x: number, y: number, angle: number, range: number, arcRadians: number): void {
     const g = this.scene.add.graphics().setDepth(RENDER_DEPTH.slash);
@@ -48,7 +54,8 @@ export class CombatEffects {
    * Wybuch strefy obrażeń (krok 110): klatki skokowo co `frameMs` — biały błysk do samego brzegu, ogień,
    * pierścień fali i iskry. Wszystko w promieniu `radius`, czyli dokładnie tam, gdzie wybuch rani.
    * `group` — strefy tego samego ataku (hak, smuga): pierścień tylko na zewnętrznym brzegu ich sumy.
-   * `v` — paleta wybuchu (krok 111: strąki zarodników Pożeracza wybuchają sokiem).
+   * `v` — paleta wybuchu (krok 111: strąki zarodników Pożeracza wybuchają sokiem). Domyślna paleta to ogień:
+   * od kroku 144 nad pierścieniem wybucha też kula ognia z płomieniami (`FireEffects`).
    */
   blast(x: number, y: number, radius: number, group: readonly OutlineCircle[] = [], v: BlastVisual = BLAST_VISUAL): void {
     // Wybuch zawsze rani — dźwięk razem z obrazem (krok 116).
@@ -82,6 +89,8 @@ export class CombatEffects {
       }
     };
     draw(0);
+    // Ogniste wybuchy (domyślna paleta) dostają prawdziwy ogień nad pierścieniem zasięgu (krok 144).
+    if (v === BLAST_VISUAL) this.fire.burst(x, y, radius, { sound: false });
     let index = 0;
     this.scene.time.addEvent({
       delay: v.frameMs,
