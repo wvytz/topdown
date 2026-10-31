@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5260,6 +5260,23 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Weryfikacja:** `npm run build` zielony (2212 testów); Playwright `?seed=7|12&floor=5`. Zrzuty `screens/krok138b-*.png`.
 
+## Krok 147 — Półprzezroczysta minimapa z podpowiedzią drogi `#ocena` `#minimapa`
+
+**Skąd:** `#ocena` właściciela (30.10.2026): minimapa to „jedna z największych bolączek” — we wspinaczce i pozostałych trybach (na arenach bossów zostaje schowana, krok 97a) ma być przezroczysta i delikatnie sugerować, w którą stronę iść.
+
+**Co powstało:**
+- `systems/MinimapRoute.ts` (czysty TS): pole odległości od celu (BFS po podłodze, 4 kierunki, liczone raz na cel) i trasa gracza po malejącej odległości, z pamięcią podręczną na kafel gracza; `visibleRoute` przycina trasę — przez odkryte kafle cała, we mgle tylko 5 pierwszych, wygasających kafli (kierunek, nie plan piętra).
+- Cel: środek areny bossa, a po jego pokonaniu — schody. `#decyzja` właściciela: na arenie mapa chowa się **zawsze** — także we wspinaczce, przed i po bossie (wcześniej znikała tylko w trybie aren). Trasa liczona po piętrze w przebraniu — nie zdradza ukrytej komnaty. Kraty i zamknięte schody nie blokują trasy.
+- HUD (`scenes/HudScene.ts`): blada smużka po kaflach trasy i jaśniejsze „iskry” co 4. kafel płynące od gracza w stronę celu (110 ms na kafel).
+- Półprzezroczystość: tło 0,55 → 0,18, podłoga 0,42, ściany 0,55 (było 1) — gra prześwituje spod mapy. Znaczniki gracza, schodów i bossa zostają pełne.
+- Liczby w `MINIMAP_CONFIG` (`floorAlpha`, `wallAlpha`, `route`). Wersja mobilna korzysta z tej samej sceny HUD.
+
+**Decyzje:** podpowiedź tylko na minimapie (bez strzałek w świecie gry) — „delikatnie”; błąkanie po piętrach jako rozgrywka to osobny wątek. Na arenie mapa chowa się zawsze (właściciel: „Na arenie mapa się chowa zawsze”).
+
+**Testy i weryfikacja:** `tests/systems/minimapRoute.test.ts` (6 testów: trasa krok po kroku do schodów, omijanie ścian i najkrótsza droga, limit, cel nieosiągalny, determinizm, wygasanie we mgle). `npm run build` (typy, 2272 testy, build). Chromium: PC 960×540 (piętro 3) i `mobile.html` 844×390 (piętro 2) — mapa prześwituje, smużka prowadzi do areny.
+
+**Do oceny:** przezroczystość (czy mapa jest jeszcze czytelna w jasnych biomach), jasność smużki i liczba kafli we mgle (5).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5342,6 +5359,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
 - **Mieszkanie gracza (krok 138):** `#mieszkanie-gracza` `#ocena` piętro 5 jako zagracone mieszkanie — gęstość śmieci, wygląd, nazwa biomu, ewentualni nowi wrogowie biomu.
 - **Ogień walki (krok 144):** `#ogien` `#ocena` bociany zrzucające żar, kule ognia, płomienie na podłodze, światło ognia w mroku, zaciskający się pierścień telegrafu — siła poświaty i wstrząsu (płomienie nie parzą — decyzja 31.10), wydajność na telefonie. Następnie: postFX z przełącznikiem jakości.
+- **Minimapa (krok 147):** `#minimapa` `#ocena` półprzezroczysta, smużka do areny/schodów, 5 kafli we mgle — czeka na test właściciela.
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.

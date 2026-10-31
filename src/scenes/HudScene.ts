@@ -8,6 +8,7 @@ import { ITEM_POOL } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
 import { MINIMAP_CONFIG } from '@/config/minimapConfig';
 import type { MinimapExplorer } from '@/systems/Minimap';
+import { visibleRoute } from '@/systems/MinimapRoute';
 import { DeathScreen } from '@/effects/DeathScreen';
 import { currentPlatform } from '@/core/platform';
 import { BOSS_POINTER_CONFIG } from '@/config/gameConfig';
@@ -333,12 +334,21 @@ export class HudScene extends Phaser.Scene {
         for (let x = 0; x < width; x++) {
           if (!explorer.isRevealed(x, y)) continue;
           const wall = explorer.floor.tiles[y * width + x] === 0;
-          g.fillStyle(wall ? cfg.colors.wall : cfg.colors.floor, 1).fillRect(originX + x * cfg.tilePx, originY + y * cfg.tilePx, cfg.tilePx, cfg.tilePx);
+          g.fillStyle(wall ? cfg.colors.wall : cfg.colors.floor, wall ? cfg.wallAlpha : cfg.floorAlpha).fillRect(originX + x * cfg.tilePx, originY + y * cfg.tilePx, cfg.tilePx, cfg.tilePx);
         }
       }
     }
 
     const marks = this.minimapMarks;
+    // Podpowiedź drogi (krok 147): blada smużka i iskry płynące od gracza w stronę celu.
+    const route = cfg.route;
+    const sparkPhase = Math.floor(time / route.sparkStepMs) % route.sparkEvery;
+    visibleRoute(map.route, (x, y) => explorer.isRevealed(x, y), route.fogLeadTiles).forEach(({ tile, fade }, i) => {
+      const spark = (i + route.sparkEvery - sparkPhase) % route.sparkEvery === 0;
+      marks
+        .fillStyle(route.color, (spark ? route.sparkAlpha : route.trailAlpha) * fade)
+        .fillRect(originX + tile.x * cfg.tilePx, originY + tile.y * cfg.tilePx, cfg.tilePx, cfg.tilePx);
+    });
     const dot = (p: { x: number; y: number }, color: number, size: number) =>
       marks.fillStyle(color, 1).fillRect(originX + (p.x + 0.5) * cfg.tilePx - size / 2, originY + (p.y + 0.5) * cfg.tilePx - size / 2, size, size);
     if (explorer.isRevealed(map.stairs.x, map.stairs.y)) dot(map.stairs, cfg.colors.stairs, cfg.playerPx);
