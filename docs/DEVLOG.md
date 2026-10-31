@@ -5184,6 +5184,22 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `tests/balance/balance.test.ts` — boss rośnie wolniej niż wrogowie, samo bicie bossa 5–35 s w pierwszym kręgu i ≤ 45 s w drugim; `npm run build`.
 
+## Krok 146 — Naprowadzany strzał barbarzyńcy `#decyzja` `#balans`
+
+**Skąd:** decyzja właściciela (30.10.2026): „Strzały Barby powinny być auto naprowadzane, jako że ataki dystansowe są moim zdaniem najbardziej broken” — barbarzyńca jako jedyny walczy wręcz, więc jego strzał ma nadrabiać celnością.
+
+**Co powstało:**
+- **Czyste naprowadzanie** `systems/Homing.ts`: `pickHomingTarget` wybiera cel w stożku przed pociskiem (do którego trzeba skręcić najmniej; duży boss łapie się z szerszego kąta dzięki promieniowi), `steerVelocity` obraca prędkość o najwyżej `skręt × dt`, bez zmiany szybkości.
+- **Liczby** w `BARBARIAN_SHOT_HOMING` (`config/combatConfig.ts`): zasięg wypatrywania 200 px, stożek ±70°, skręt 480°/s (łuk o promieniu ok. 55 px przy 460 px/s). Strzał nie zawraca do wrogów za plecami.
+- **Phaser:** `PlayerShotManager.fire` przyjmuje opcjonalny `ShotFlight` (`homing`), `update` skręca naprowadzane pociski co klatkę; cele to te same, co przy celowaniu na dotyku (`aimTargets`: żywi, widoczni w świetle wrogowie bez czyhacza w kryjówce oraz boss z pomocnikami). Naprowadzany jest tylko strzał barbarzyńcy (PPM) — kule Czarodziejki i strzały łucznika lecą prosto. Działa solo, w co-opie i na telefonie.
+- Karta wyboru bohatera: „PPM — strzał naprowadzany (3 ładunki)”.
+
+**Decyzje:** obrażenia, ładunki i zasięg strzału bez zmian — zmienia się tylko celność. Nie dotykałem łucznika i Czarodziejki; jeśli dalej są za mocni, osobny krok.
+
+**Testy i weryfikacja:** `tests/systems/homing.test.ts` (wybór celu, cele za plecami i poza zasięgiem, duży cel na brzegu stożka, limit skrętu, symulacja trafienia celu 40 px obok osi); `npm run build` (typy, testy, build). W przeglądarce (`?hero=barbarian&seed=1&floor=1`): strzał wystrzelony prosto 35 px nad wrogiem skręca (prędkość z 460/0 do 371/272) i trafia za 7 obrażeń; strzał bez naprowadzania z tego samego miejsca przelatuje obok.
+
+**Do oceny:** siła skrętu (480°/s) i stożek (±70°) — czy strzał nie jest teraz za „magiczny”.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5262,6 +5278,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Naprowadzany strzał barbarzyńcy (krok 146):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
 - **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
