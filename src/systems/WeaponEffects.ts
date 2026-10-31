@@ -7,7 +7,6 @@ export const NO_EVOLVED_EFFECTS: EvolvedEffects = {
   chain: null,
   sparker: null,
   bladeWave: null,
-  levitation: false,
   attackRamp: null,
   dashCharges: 1,
   ricochet: 0,
@@ -109,7 +108,6 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
         }
       : null,
     bladeWave: evolved(count(ItemId.Blade)) ? { ...evo.bladeWave } : null,
-    levitation: evolved(count(ItemId.Boots)),
     attackRamp: evolved(count(ItemId.Gloves)) ? { ...evo.attackRamp } : null,
     dashCharges: evolved(count(ItemId.Hourglass)) ? evo.hourglass.dashCharges : 1,
     ricochet: evolved(shuriken) ? Math.min(evo.ricochet.max, evo.ricochet.bounces + beyond(shuriken) * evo.ricochet.perStack) : 0,

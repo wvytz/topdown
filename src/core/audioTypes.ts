@@ -22,6 +22,8 @@ export enum SoundCue {
   HeroHurt = 'hero-hurt',
   HeroDeath = 'hero-death',
   HeroRevive = 'hero-revive',
+  /** Bohaterowie odbijają się od siebie jak bańki żelu (krok 152, co-op). */
+  HeroBubble = 'hero-bubble',
   // Wrogowie i bossowie
   EnemyHit = 'enemy-hit',
   EnemyDeath = 'enemy-death',

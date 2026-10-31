@@ -1,3 +1,4 @@
+import type { EnemyRouteConfig } from '@/ai/enemyRoute';
 import type {
   BroodAttackDefinition,
   EnemyDefinition,
@@ -394,6 +395,12 @@ export const ENEMY_VIEW_RULE: EnemyViewRule = {
   margin: 16,
   retreatSlack: 8,
 };
+
+/**
+ * Droga wrogów wokół rogów muru (krok 152, zgłoszenie właściciela: moby blokowały się na narożnikach): gdy prosta
+ * do celu zahacza bokiem ciała o mur, wróg idzie drogą po kaflach; przelicza ją najwyżej co `refreshMs`.
+ */
+export const ENEMY_ROUTE: EnemyRouteConfig = { refreshMs: 250, reuseGoalPx: 16 };
 
 export const ENEMY_SCALING: EnemyScalingConfig = {
   hpPerFloor: 0.15,

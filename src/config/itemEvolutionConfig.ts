@@ -23,12 +23,9 @@ export const ITEM_EVOLUTION: ItemEvolutionConfig = {
       effect: 'ta kopia daje +40 maks. HP zamiast +20',
       after: '+20 maks. HP',
     },
-    // Decyzja właściciela: omijamy wszystko, co leży na podłodze; trujące opary w powietrzu dalej ranią.
-    [ItemId.Boots]: {
-      name: 'Buty lewitacji',
-      effect: 'unosisz się: kałuże, ogień, kolce, pajęczyny i płyty pułapek cię nie dotyczą (trujące opary tak)',
-      maxCopies: 3,
-    },
+    // Buty: lewitacja z kroku 150 cofnięta w kroku 151 (`#decyzja` właściciela: „niedopuszczalne” — wyłączała
+    // pułapki i plamy pięciu bossów). Przemiana Butów czeka na nowy pomysł; do tego czasu działają jak przed
+    // krokiem 150 (+10% prędkości za kopię, do limitu STAT_LIMITS.maxMoveSpeedMultiplier).
     [ItemId.Gloves]: {
       name: 'Rozpęd',
       effect: 'ciągły atak przyspiesza o kolejne +24%; przerwa w ataku zeruje rozpęd',
@@ -101,8 +98,6 @@ export const EVOLUTION_VISUAL = {
   sparker: { offsetY: -20, orbitX: 9, orbitY: 3, periodMs: 1400, radius: 3, glowRadius: 6, color: 0xfff06a, glow: 0x6ec6ff },
   /** Fala ostrza: półksiężyc w teksturze 20×20. */
   crescent: { key: 'evo-crescent', size: 20, color: 0xe8f4ff, edge: 0x8fc8ff },
-  /** Lewitacja: świetlista elipsa pod stopami, pulsuje. */
-  levitation: { offsetY: 12, width: 22, height: 8, color: 0x9fe8ff, alpha: 0.7, pulseMs: 900 },
   /** Krwawa tarcza: pierścień wokół bohatera, grubszy przy pełnej tarczy. */
   bloodShield: { radius: 15, color: 0xff3a5a, alpha: 0.7 },
   /** Ślad burzy: migoczące odcinki między punktami śladu. */

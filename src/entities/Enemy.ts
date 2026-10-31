@@ -71,6 +71,8 @@ export interface EnemyPerception {
   readonly holdAt?: Vector2 | null;
   /** Mnożnik chodu, np. zryw po podniesieniu krat (krok 132). */
   readonly speedMultiplier?: number;
+  /** Krok 152: droga omijająca rogi muru (punkt pośredni do celu). */
+  readonly route?: ((from: Vector2, goal: Vector2) => Vector2) | undefined;
 }
 
 const HIT_STUN_MS = 150;
@@ -329,6 +331,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       self: { x: this.x, y: this.y },
       target: perception.target,
       canSeeTarget: perception.canSeeTarget,
+      ...(perception.route && { route: perception.route }),
       attackPhase: this.attackCycle.phase(now),
     });
 
@@ -362,8 +365,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.animator.face({ x: perception.target.x - this.x, y: perception.target.y - this.y });
     } else {
       const speed = this.definition.moveSpeed * this.status.speedMultiplier(now);
-      this.setVelocity((dx / d) * speed, (dy / d) * speed);
-      this.animator.face({ x: dx, y: dy });
+      // Krok 152: pod kratę też drogą wokół rogów.
+      const step = perception.route ? perception.route({ x: this.x, y: this.y }, post) : post;
+      const sx = step.x - this.x;
+      const sy = step.y - this.y;
+      const sd = Math.hypot(sx, sy) || 1;
+      this.setVelocity((sx / sd) * speed, (sy / sd) * speed);
+      this.animator.face({ x: sx, y: sy });
     }
     this.animator.play(this.visual.move);
     this.updateTint(now);

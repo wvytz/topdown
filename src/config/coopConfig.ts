@@ -1,6 +1,7 @@
 import { PAD_BUTTON } from '@/config/gamepadConfig';
 import type { ReviveConfig } from '@/systems/Revive';
 import type { CoopBalanceConfig } from '@/systems/CoopBalance';
+import type { HeroBubbleConfig } from '@/systems/HeroBubble';
 
 /**
  * Lokalny co-op (krok 101, decyzja właściciela): dwóch graczy na jednym ekranie. Liczby balansu co-opu
@@ -27,6 +28,11 @@ export const COOP_CONFIG = {
    * ten wstaje z 40% HP i 1,5 s nietykalności. Run kończy się, gdy padną obaj.
    */
   revive: { radiusPx: 30, durationMs: 3000, decaySlowdown: 3, hpFraction: 0.4 } satisfies ReviveConfig,
+  /**
+   * Bohaterowie jak bańki żelu (krok 152, pomysł właściciela) zamiast twardej kolizji: mogą lekko na siebie najść,
+   * sprężyna ich rozpycha (do 90 px/s — mniej niż chód, więc w korytarzu da się przecisnąć).
+   */
+  bubble: { paddingPx: 2, stiffness: 9, maxPushSpeed: 90, bounceGapMs: 450 } satisfies HeroBubbleConfig,
   /** Nietykalność po wstaniu (ms). */
   reviveInvulnerabilityMs: 1500,
   /**

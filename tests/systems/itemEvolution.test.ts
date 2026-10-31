@@ -19,6 +19,7 @@ import {
   countItems,
   describeRewardCard,
   developmentCandidates,
+  isItemEvolved,
   parseItemList,
   rollRewardChoices,
 } from '@/systems/ItemEvolution';
@@ -33,10 +34,13 @@ const fx = (items: ItemId[]) => computeWeaponEffects(items, ITEM_EFFECTS).evolve
 const loadout = (items: ItemId[]) => computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
 
 describe('przemiany przedmiotów (krok 150)', () => {
-  it('każdy przedmiot ma przemianę z nazwą i opisem; przemiana przy 3. kopii', () => {
+  it('każdy przedmiot poza Butami ma przemianę z nazwą i opisem; przemiana przy 3. kopii', () => {
     expect(ITEM_EVOLUTION.copies).toBe(3);
-    for (const id of ALL_ITEM_IDS) {
+    // Krok 151: lewitacja cofnięta — Buty czekają na nową przemianę.
+    expect(ITEM_EVOLUTION.items[ItemId.Boots]).toBeUndefined();
+    for (const id of ALL_ITEM_IDS.filter((item) => item !== ItemId.Boots)) {
       const evo = ITEM_EVOLUTION.items[id];
+      if (!evo) throw new Error(`brak przemiany: ${id}`);
       expect(evo.name.length).toBeGreaterThan(0);
       expect(evo.effect.length).toBeGreaterThan(0);
       // Przedmiot bez limitu musi mówić, co dają kopie po przemianie.
@@ -50,8 +54,6 @@ describe('przemiany przedmiotów (krok 150)', () => {
     expect(fx(many(ItemId.ElectricArrow, 3)).sparker).not.toBeNull();
     expect(fx(many(ItemId.Blade, 2)).bladeWave).toBeNull();
     expect(fx(many(ItemId.Blade, 3)).bladeWave).not.toBeNull();
-    expect(fx(many(ItemId.Boots, 2)).levitation).toBe(false);
-    expect(fx(many(ItemId.Boots, 3)).levitation).toBe(true);
     expect(fx(many(ItemId.Gloves, 3)).attackRamp).not.toBeNull();
     expect(fx(many(ItemId.Hourglass, 3)).dashCharges).toBe(2);
     expect(fx(many(ItemId.Shuriken, 3)).ricochet).toBe(ITEM_EVOLUTION.ricochet.bounces);
@@ -78,13 +80,26 @@ describe('przemiany przedmiotów (krok 150)', () => {
     expect(hp(4) - hp(3)).toBe(20);
   });
 
-  it('limity kopii: Buty, Rękawice, Klepsydra, Kołczan, Kieł i Odłamek kończą się na 3', () => {
-    for (const id of [ItemId.Boots, ItemId.Gloves, ItemId.Hourglass, ItemId.Quiver, ItemId.VampireFang, ItemId.FrostShard]) {
+  it('limity kopii: Rękawice, Klepsydra, Kołczan, Kieł i Odłamek kończą się na 3', () => {
+    for (const id of [ItemId.Gloves, ItemId.Hourglass, ItemId.Quiver, ItemId.VampireFang, ItemId.FrostShard]) {
       expect(capItemCopies(many(id, 7), ITEM_EVOLUTION)).toHaveLength(3);
       expect(JSON.stringify(loadout(many(id, 7)))).toBe(JSON.stringify(loadout(many(id, 3))));
     }
     expect(capItemCopies(many(ItemId.Blade, 7), ITEM_EVOLUTION)).toHaveLength(7);
-    expect(loadout(many(ItemId.Boots, 9)).stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * 1.3));
+    // Krok 151: Buty znów bez limitu kopii — rosną do limitu prędkości (+60%) jak przed krokiem 150.
+    expect(capItemCopies(many(ItemId.Boots, 7), ITEM_EVOLUTION)).toHaveLength(7);
+    expect(loadout(many(ItemId.Boots, 9)).stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * STAT_LIMITS.maxMoveSpeedMultiplier));
+  });
+
+  it('krok 151: Buty bez przemiany — zwykła karta, bez karty rozwoju i bez przemiany w statystykach', () => {
+    const boots = ITEM_DEFINITIONS[ItemId.Boots];
+    const third = describeRewardCard(boots, 2, ITEM_EVOLUTION);
+    expect(third.kind).toBe('growth');
+    expect(third.title).toBe(boots.name);
+    expect(third.pips.total).toBe(0);
+    expect(developmentCandidates([boots], countItems(many(ItemId.Boots, 2)), ITEM_EVOLUTION)).toEqual([]);
+    expect(isItemEvolved(ItemId.Boots, 5, ITEM_EVOLUTION)).toBe(false);
+    expect(isItemEvolved(ItemId.Blade, 3, ITEM_EVOLUTION)).toBe(true);
   });
 
   it('Pętla czasu: dash z 2 ładunkami; Kołczan bez dna skraca ładowanie strzału', () => {
@@ -118,10 +133,10 @@ describe('karta nagrody i karta rozwoju (krok 150)', () => {
     const evolution = describeRewardCard(blade, 2, ITEM_EVOLUTION);
     expect(evolution.kind).toBe('evolution');
     expect(evolution.title).toBe('Fala ostrza');
-    expect(evolution.effect).toBe(ITEM_EVOLUTION.items[ItemId.Blade].effect);
+    expect(evolution.effect).toBe(ITEM_EVOLUTION.items[ItemId.Blade]?.effect);
     const after = describeRewardCard(blade, 3, ITEM_EVOLUTION);
     expect(after.kind).toBe('evolved');
-    expect(after.effect).toBe(ITEM_EVOLUTION.items[ItemId.Blade].after);
+    expect(after.effect).toBe(ITEM_EVOLUTION.items[ItemId.Blade]?.after);
   });
 
   it('karta rozwoju: zawsze jedna karta przedmiotu w trakcie budowy', () => {

@@ -126,7 +126,7 @@ import { isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
-import { countItems, isEvolved, rollRewardChoices } from '@/systems/ItemEvolution';
+import { countItems, isItemEvolved, rollRewardChoices } from '@/systems/ItemEvolution';
 import { practiceRestart, withBotPracticeItems } from '@/scenes/practiceStart';
 import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
@@ -146,6 +146,8 @@ import { drawBurstRing } from '@/effects/EvolutionEffects';
 import { HeroCombat, heroLoadout } from '@/combat/HeroCombat';
 import type { HeroStrikeTargets } from '@/combat/HeroCombat';
 import { COOP_CONFIG } from '@/config/coopConfig';
+import { BubbleContact, bubblePush } from '@/systems/HeroBubble';
+import { drawBubbleRipple } from '@/effects/HeroBubbleEffects';
 import { leashPair, leashSpan, partyFocus } from '@/systems/CoopCamera';
 import { freshCoop } from '@/systems/Coop';
 import { BossHeraldEffects } from '@/effects/BossHerald';
@@ -207,9 +209,10 @@ const STAIRS_PROMPT = '[E] Wejdź wyżej';
 /** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
 function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
   return counts.map(({ id, count }) => {
-    const evolved = isEvolved(count, ITEM_EFFECTS.evolution);
+    const evolution = ITEM_EFFECTS.evolution.items[id];
+    const evolved = isItemEvolved(id, count, ITEM_EFFECTS.evolution);
     return {
-      name: evolved ? ITEM_EFFECTS.evolution.items[id].name : ITEM_DEFINITIONS[id].name,
+      name: evolved && evolution ? evolution.name : ITEM_DEFINITIONS[id].name,
       count,
       color: ITEM_DEFINITIONS[id].color,
       frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
@@ -264,6 +267,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private partnerActions: PlayerActions | null = null;
   /** Wskrzeszanie powalonych bohaterów (co-op, etap C4). */
   private readonly revives = new Map<Player, ReviveProgress>();
+  /** Krok 152: zetknięcia „żelowych” baniek bohaterów (co-op). */
+  private readonly bubbleContact = new BubbleContact();
   private reviveGfx: Phaser.GameObjects.Graphics | null = null;
   private lastReviveAt = 0;
   /** Pozycje bohaterów z poprzedniej klatki — smycz cofa tego, kto się oddala. */
@@ -637,6 +642,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const partner = partnerHero.player;
       this.partnerActions = this.partnerInput.getActions({ origin: { x: partner.x, y: partner.y }, targets: () => this.aimTargets() });
       partnerHero.tick(this.partnerActions, time);
+      this.updateHeroBubble(this.player, partner, time);
     }
     const interactOf = (hero: Player) => (hero === this.player ? actions.interact : (this.partnerActions?.interact ?? false));
     this.enemies.update(time);
@@ -815,6 +821,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return this.coop !== null && isBotCoop({ coop: this.coop });
   }
 
+  /**
+   * Krok 152 (pomysł właściciela): bohaterowie jak bańki żelu — mogą lekko na siebie najść, sprężyna ich rozpycha
+   * (dodatek do chodu w następnej klatce, więc mury dalej trzymają). Nowe zetknięcie „plumka” i puszcza kółko.
+   */
+  private updateHeroBubble(a: Player, b: Player, now: number): void {
+    const config = COOP_CONFIG.bubble;
+    const { push, overlap } = a.isDead || b.isDead ? { push: { x: 0, y: 0 }, overlap: 0 } : bubblePush(a, b, config);
+    a.setBubblePush(push);
+    b.setBubblePush({ x: -push.x, y: -push.y });
+    if (this.bubbleContact.update(overlap, now, config)) {
+      const at = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      drawBubbleRipple(this, at);
+      sound.play(SoundCue.HeroBubble, at);
+    }
+  }
+
   private spawnPartner(coop: CoopSceneData, at: Vector2): Player {
     const { partner } = coop;
     const offset = COOP_CONFIG.partnerSpawnOffsetPx;
@@ -822,7 +844,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const side = [offset, -offset].map((dx) => ({ x: at.x + dx, y: at.y })).find((p) => !(walls.getTileAtWorldXY(p.x, p.y)?.collides ?? false)) ?? at;
     const player = new Player(this, side.x, side.y, partner.hero, heroLoadout(partner.hero, partner.items, this.floorEffects, false), partner.hp);
     this.physics.add.collider(player, walls);
-    this.physics.add.collider(player, this.player);
+    // Krok 152: bez twardej kolizji między bohaterami — odpycha ich „żelowa” bańka (`updateHeroBubble`).
     return player;
   }
 
@@ -1072,6 +1094,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           effects: this.effects,
           playerShots: this.playerShots,
           walls: this.dungeonView.collisionLayer,
+          floor: this.dungeon,
           strikes: this.heroStrikes(),
           aimTargets: () => this.aimTargets(),
         }),
@@ -1569,9 +1592,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Krok 150: przy przemianie napis mówi, w co zmienił się przedmiot.
     const copies = this.itemNotice.copies;
     const evolution = ITEM_EFFECTS.evolution;
-    const evolvedNow = copies === evolution.copies;
     const evo = evolution.items[item.id];
-    const text = evolvedNow
+    const evolvedNow = copies === evolution.copies;
+    const text = !evo
+      ? { name: copies > 1 ? `${item.name} ×${copies}` : item.name, effect: item.effect }
+      : evolvedNow
       ? { name: `PRZEMIANA: ${evo.name}`, effect: evo.effect }
       : copies > evolution.copies
         ? { name: `${evo.name} ×${copies}`, effect: evo.after ?? item.effect }

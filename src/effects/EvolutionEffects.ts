@@ -5,7 +5,7 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 import type { StormTrailPoint } from '@/systems/StormTrail';
 
 /**
- * Wygląd przemian przedmiotów (krok 150): pioruny, kula Iskrownika, lewitacja, Krwawa tarcza, ślad burzy.
+ * Wygląd przemian przedmiotów (krok 150): pioruny, kula Iskrownika, Krwawa tarcza, ślad burzy.
  * Czysto wizualne (Math.random tylko do zygzaków) — zasady liczą systemy i `HeroCombat`.
  */
 
@@ -59,7 +59,7 @@ export function ensureCrescentTexture(scene: Phaser.Scene): string {
   return key;
 }
 
-/** Stałe dodatki bohatera z przemian: kula Iskrownika, lewitacja, Krwawa tarcza, ślad burzy. */
+/** Stałe dodatki bohatera z przemian: kula Iskrownika, Krwawa tarcza, ślad burzy. */
 export class HeroEvolutionView {
   private readonly under: Phaser.GameObjects.Graphics;
   private readonly over: Phaser.GameObjects.Graphics;
@@ -79,16 +79,11 @@ export class HeroEvolutionView {
   draw(
     hero: Vector2,
     now: number,
-    state: { readonly sparker: boolean; readonly levitating: boolean; readonly shield: number; readonly shieldMax: number; readonly trail: readonly StormTrailPoint[]; readonly dead: boolean },
+    state: { readonly sparker: boolean; readonly shield: number; readonly shieldMax: number; readonly trail: readonly StormTrailPoint[]; readonly dead: boolean },
   ): void {
     this.under.clear();
     this.over.clear();
     if (state.dead) return;
-    if (state.levitating) {
-      const { offsetY, width, height, color, alpha, pulseMs } = EVOLUTION_VISUAL.levitation;
-      const pulse = 0.75 + 0.25 * Math.sin(((now % pulseMs) / pulseMs) * Math.PI * 2);
-      this.under.fillStyle(color, alpha * pulse).fillEllipse(hero.x, hero.y + offsetY, width * pulse, height);
-    }
     if (state.trail.length > 0) {
       const { color, core, width } = EVOLUTION_VISUAL.stormTrail;
       const flicker = Math.random() < 0.5 ? 1 : 0.6;

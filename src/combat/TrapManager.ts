@@ -126,8 +126,7 @@ export class TrapManager {
       if (state.phase !== SpikePhase.Up) continue;
       const cycle = spikeCycleIndex(config.timing, offset, now);
       const group = live.plate.group;
-      // Buty lewitacji (krok 150): kolce nie sięgają unoszącego się bohatera.
-      for (const player of party.living.filter((hero) => !hero.isLevitating)) {
+      for (const player of party.living) {
         const playerTile = DungeonView.worldToTile(player.x, player.y);
         const hits = this.playerHitCycle.get(player) ?? new Map<number, number>();
         if (playerTile.x !== live.plate.tile.x || playerTile.y !== live.plate.tile.y || hits.get(group) === cycle) continue;
@@ -154,8 +153,7 @@ export class TrapManager {
     const darts = this.deps.darts;
     if (!darts) return;
     const { party, projectiles } = this.deps;
-    // Buty lewitacji (krok 150): unoszący się bohater nie naciska płyty.
-    const tiles = party.living.filter((player) => !player.isLevitating).map((player) => DungeonView.worldToTile(player.x, player.y));
+    const tiles = party.living.map((player) => DungeonView.worldToTile(player.x, player.y));
     for (const live of this.darts) {
       // Płytę naciska którykolwiek żywy bohater.
       const onPlate = tiles.some((tile) => tile.x === live.trap.plate.x && tile.y === live.trap.plate.y);

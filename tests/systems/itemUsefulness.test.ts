@@ -24,9 +24,9 @@ describe('usefulItemPool (krok 117)', () => {
     expect(ids).toContain(ItemId.Heart);
   });
 
-  it('o jedną kopię przed limitem przedmiot jeszcze wypada (krok 150: Buty — limit 3 kopie)', () => {
-    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 2))).toContain(ItemId.Boots);
-    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 3))).not.toContain(ItemId.Boots);
+  it('o jedną kopię przed limitem przedmiot jeszcze wypada (krok 151: Buty znów do limitu prędkości)', () => {
+    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 5))).toContain(ItemId.Boots);
+    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 6))).not.toContain(ItemId.Boots);
   });
 
   it('krok 150: przedmioty bez limitu (Ostrze, Serce, Iskrownik) wypadają też po przemianie', () => {
