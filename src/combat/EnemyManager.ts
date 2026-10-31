@@ -361,10 +361,7 @@ export class EnemyManager implements EnemyAttackHandler {
     const living = this.deps.party.living;
     // Bez żywych bohaterów i tak usuwamy wygasłe plamy.
     if (living.length === 0) this.firePatches.update(null, now);
-    // Buty lewitacji (krok 150): płonące plamy na podłodze nie parzą unoszącego się bohatera.
-    const grounded = living.filter((player) => !player.isLevitating);
-    if (grounded.length === 0) this.firePatches.update(null, now);
-    for (const player of grounded) {
+    for (const player of living) {
       const damage = this.firePatches.update(player, now);
       if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit(player);
     }

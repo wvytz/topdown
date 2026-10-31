@@ -227,11 +227,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (archery) this.bow?.setConfig(archery.bow);
   }
 
-  /** Krok 150, Buty lewitacji: podłoga (kałuże, ogień, kolce, pajęczyny, płyty pułapek) nie działa. */
-  get isLevitating(): boolean {
-    return this.weaponEffects.evolved.levitation && !this.isDead;
-  }
-
   /** Krok 150, Krwawa tarcza: bieżąca tarcza (HP, które trafienie zbije przed zdrowiem). */
   get shieldHp(): number {
     return this.bloodShield;
@@ -292,7 +287,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * bo to podłoże, nie atak — chroni przed nim tylko dash.
    */
   applyTerrainSlow(slow: NonNullable<StatusApplication['slow']>, now: number): boolean {
-    if (this.isDead || this.dash.isDashing(now) || this.isLevitating) return false;
+    if (this.isDead || this.dash.isDashing(now)) return false;
     this.status.apply({ slow }, now);
     return true;
   }
@@ -302,7 +297,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * po nim bohater sunie dalej. Zwraca true, gdy poślizg właśnie się zaczął (napis „Ślisko!”).
    */
   applyTerrainSlip(slip: SlipEffect, now: number): boolean {
-    if (this.isDead || this.isLevitating) return false;
+    if (this.isDead) return false;
     const started = !this.isSlipping(now);
     this.slip = slip;
     this.slipUntil = now + slip.durationMs;
@@ -583,16 +578,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * — jak lepkie pajęczyny.
    */
   applyTerrainStatus(status: StatusApplication, now: number): boolean {
-    if (this.isDead || this.dash.isDashing(now) || this.isLevitating) return false;
-    this.status.apply(status, now);
-    return true;
-  }
-
-  /**
-   * Krok 150: status z oparów w powietrzu (chmury purchawek i popielniczek) — jak teren, ale lewitacja nie chroni
-   * (decyzja właściciela: „jeżeli unosi się z tego trucizna, ma przyjmować obrażenia”).
-   */
-  applyAirborneStatus(status: StatusApplication, now: number): boolean {
     if (this.isDead || this.dash.isDashing(now)) return false;
     this.status.apply(status, now);
     return true;

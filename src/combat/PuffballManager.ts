@@ -143,7 +143,7 @@ export class PuffballManager {
         scene.tweens.add({ targets: cloud.sprite, alpha: 0, duration: fadeMs });
       }
       for (const player of party.living) {
-        if (isInPoisonCloud(config.cloud, cloud.center, cloud.burstAt, player, now)) player.applyAirborneStatus({ poison: config.cloud.poison }, now);
+        if (isInPoisonCloud(config.cloud, cloud.center, cloud.burstAt, player, now)) player.applyTerrainStatus({ poison: config.cloud.poison }, now);
       }
       return true;
     });

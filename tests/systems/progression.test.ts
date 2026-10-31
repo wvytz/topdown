@@ -33,10 +33,10 @@ describe('computeLoadout', () => {
   it('limity: cooldowny nie spadają poniżej minimum, prędkość nie przekracza maksimum', () => {
     const many = <T>(item: T, n: number): T[] => Array.from({ length: n }, () => item);
     const stacked = loadout([...many(ItemId.Gloves, 20), ...many(ItemId.Hourglass, 20), ...many(ItemId.Boots, 20)]);
-    // Krok 150: Rękawice, Klepsydra i Buty mają limit 3 kopii (dalsze nic nie dają).
+    // Krok 150: Rękawice i Klepsydra mają limit 3 kopii (dalsze nic nie dają); Buty od kroku 151 znów do limitu prędkości.
     expect(stacked.combat.attackCooldownMs).toBe(Math.round(PLAYER_COMBAT.attackCooldownMs / 1.36));
     expect(stacked.combat.dash.cooldownMs).toBe(Math.round(PLAYER_COMBAT.dash.cooldownMs * STAT_LIMITS.minCooldownMultiplier));
-    expect(stacked.stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * 1.3));
+    expect(stacked.stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * STAT_LIMITS.maxMoveSpeedMultiplier));
     expect(stacked.stats.moveSpeed).toBeLessThanOrEqual(PLAYER_BASE_STATS.moveSpeed * STAT_LIMITS.maxMoveSpeedMultiplier);
   });
 

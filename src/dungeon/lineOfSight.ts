@@ -6,7 +6,7 @@ import type { Vector2 } from '@/core/types';
  * Czy odcinek między dwoma punktami (w px) nie przecina ściany.
  * Próbkujemy co 1/4 kafla — wystarczająco dokładnie przy naszych prędkościach i rozmiarach.
  */
-export function hasLineOfSight(floor: DungeonFloor, from: Vector2, to: Vector2, tileSize: number): boolean {
+export function hasLineOfSight(floor: Pick<DungeonFloor, 'width' | 'height' | 'tiles'>, from: Vector2, to: Vector2, tileSize: number): boolean {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / (tileSize / 4)));

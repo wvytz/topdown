@@ -126,7 +126,7 @@ import { isDeepInsideRoom } from '@/dungeon/arenaGates';
 import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
-import { countItems, isEvolved, rollRewardChoices } from '@/systems/ItemEvolution';
+import { countItems, isItemEvolved, rollRewardChoices } from '@/systems/ItemEvolution';
 import { practiceRestart, withBotPracticeItems } from '@/scenes/practiceStart';
 import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
@@ -207,9 +207,10 @@ const STAIRS_PROMPT = '[E] Wejdź wyżej';
 /** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
 function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
   return counts.map(({ id, count }) => {
-    const evolved = isEvolved(count, ITEM_EFFECTS.evolution);
+    const evolution = ITEM_EFFECTS.evolution.items[id];
+    const evolved = isItemEvolved(id, count, ITEM_EFFECTS.evolution);
     return {
-      name: evolved ? ITEM_EFFECTS.evolution.items[id].name : ITEM_DEFINITIONS[id].name,
+      name: evolved && evolution ? evolution.name : ITEM_DEFINITIONS[id].name,
       count,
       color: ITEM_DEFINITIONS[id].color,
       frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
@@ -1072,6 +1073,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           effects: this.effects,
           playerShots: this.playerShots,
           walls: this.dungeonView.collisionLayer,
+          floor: this.dungeon,
           strikes: this.heroStrikes(),
           aimTargets: () => this.aimTargets(),
         }),
@@ -1569,9 +1571,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Krok 150: przy przemianie napis mówi, w co zmienił się przedmiot.
     const copies = this.itemNotice.copies;
     const evolution = ITEM_EFFECTS.evolution;
-    const evolvedNow = copies === evolution.copies;
     const evo = evolution.items[item.id];
-    const text = evolvedNow
+    const evolvedNow = copies === evolution.copies;
+    const text = !evo
+      ? { name: copies > 1 ? `${item.name} ×${copies}` : item.name, effect: item.effect }
+      : evolvedNow
       ? { name: `PRZEMIANA: ${evo.name}`, effect: evo.effect }
       : copies > evolution.copies
         ? { name: `${evo.name} ×${copies}`, effect: evo.after ?? item.effect }
