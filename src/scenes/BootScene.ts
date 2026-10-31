@@ -10,6 +10,7 @@ import { registerTorchAnimation } from '@/world/Torches';
 import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { newRun } from '@/systems/RunState';
 import { parseStartOverrides } from '@/systems/startOverrides';
+import { withPracticeLoadout } from '@/scenes/practiceStart';
 import { DEFAULT_HERO, HERO_ORDER, parseHeroId } from '@/config/heroConfig';
 import { freshCoop, partnerHero } from '@/systems/Coop';
 import { BOSS_RUSH_CONFIG } from '@/config/bossRushConfig';
@@ -60,13 +61,16 @@ export class BootScene extends Phaser.Scene {
     // Tylko wspinaczka (decyzja właściciela); do czasu tablicy co-op (etap C7) run jest testowy.
     const coopWanted = heroParam() !== null && mode === RunMode.Tower ? parseHeroId(new URLSearchParams(window.location.search).get('coop')) : null;
     const coop = coopWanted ? freshCoop(partnerHero(hero, coopWanted, HERO_ORDER)) : undefined;
-    const startData: FloorSceneData = {
-      runSeed: Date.now() >>> 0,
-      floor: 1,
-      run: newRun(hero, practice || coop !== undefined, mode),
-      ...overrides,
-      ...(coop && { coop }),
-    };
+    const startData = withPracticeLoadout(
+      {
+        runSeed: Date.now() >>> 0,
+        floor: 1,
+        run: newRun(hero, practice || coop !== undefined, mode),
+        ...overrides,
+        ...(coop && { coop }),
+      },
+      practice,
+    );
     if (this.scene.isActive(SceneKey.Splash)) {
       this.registry.set(BOOT_START_DATA_KEY, startData);
       this.scene.stop();

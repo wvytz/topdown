@@ -311,6 +311,7 @@ export class MenuScene extends Phaser.Scene {
       floor,
       practice: this.startData.run.practice ?? false,
       ...(mode === RunMode.Tower ? {} : { mode }),
+      ...(mode === RunMode.Tower && this.startData.atBoss ? { atBoss: true } : {}),
     };
     this.leave(() => this.scene.start(SceneKey.Select, select));
   }

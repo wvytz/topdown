@@ -55,6 +55,8 @@ export interface HeroSelectData {
   readonly practice?: boolean;
   /** Tryb zaznaczony na starcie (krok 90); brak = wspinaczka. */
   readonly mode?: RunMode;
+  /** `?boss=1` z adresu (krok 148): po wyborze bohatera start przy arenie bossa. */
+  readonly atBoss?: boolean;
 }
 
 /** Ekran co-opu (etap C5): tylko wspinaczka od piętra 1. */

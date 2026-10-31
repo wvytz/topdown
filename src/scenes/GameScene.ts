@@ -124,6 +124,7 @@ import { Player } from '@/entities/Player';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { rollItemChoices } from '@/systems/RewardChoice';
+import { practiceRestart } from '@/scenes/practiceStart';
 import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
@@ -1624,7 +1625,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
         run: newRun(this.run.hero, coop !== null, this.run.mode, floor),
         ...(coop && { coop }),
       };
-      this.scene.restart(fresh);
+      // Run testowy z `?floor=` (krok 148): R wraca na to samo piętro / arenę z nowym zestawem.
+      this.scene.restart(this.run.mode === RunMode.Tower ? practiceRestart(fresh, this.run.practice) : fresh);
     });
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
     const changeHero = once(() => {
