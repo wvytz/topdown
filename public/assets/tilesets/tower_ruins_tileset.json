@@ -5,7 +5,7 @@
  "image": "tower_ruins_tileset.png",
  "tileSize": 32,
  "columns": 16,
- "rows": 10,
+ "rows": 11,
  "envShadowAlpha": 0.4,
  "tiles": {
   "floor_slab16_a": {
@@ -449,7 +449,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 18
   },
   "wall_07_chunk": {
    "frame": 51,
@@ -458,7 +458,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 12
   },
   "wall_11_b": {
    "frame": 52,
@@ -476,7 +476,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 18
   },
   "wall_11_chunk": {
    "frame": 54,
@@ -485,7 +485,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 12
   },
   "wall_13_b": {
    "frame": 55,
@@ -503,7 +503,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 18
   },
   "wall_13_chunk": {
    "frame": 57,
@@ -512,7 +512,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 12
   },
   "wall_14_b": {
    "frame": 58,
@@ -530,7 +530,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 6
+   "weight": 18
   },
   "wall_14_chunk": {
    "frame": 60,
@@ -539,7 +539,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 12
   },
   "wall_15_b": {
    "frame": 61,
@@ -557,7 +557,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 4
+   "weight": 12
   },
   "wall_15_chunk": {
    "frame": 63,
@@ -566,7 +566,7 @@
    "w": 1,
    "h": 1,
    "layer": "wall",
-   "weight": 3
+   "weight": 9
   },
   "wall_15_ash": {
    "frame": 64,
@@ -1149,7 +1149,7 @@
    "h": 1,
    "layer": "prop"
   },
-  "decal_trail_h_a": {
+  "decal_wreck_scrap_a": {
    "frame": 139,
    "col": 11,
    "row": 8,
@@ -1159,7 +1159,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_h_b": {
+  "decal_wreck_scrap_b": {
    "frame": 140,
    "col": 12,
    "row": 8,
@@ -1169,7 +1169,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_v_a": {
+  "decal_wreck_scrap_c": {
    "frame": 141,
    "col": 13,
    "row": 8,
@@ -1179,7 +1179,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_v_b": {
+  "decal_wreck_char_a": {
    "frame": 142,
    "col": 14,
    "row": 8,
@@ -1189,7 +1189,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_drops_a": {
+  "decal_wreck_char_b": {
    "frame": 143,
    "col": 15,
    "row": 8,
@@ -1199,10 +1199,253 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_drops_b": {
+  "decal_wreck_glass": {
    "frame": 144,
    "col": 0,
    "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_rags_a": {
+   "frame": 145,
+   "col": 1,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_rags_b": {
+   "frame": 146,
+   "col": 2,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_camp": {
+   "frame": 147,
+   "col": 3,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_papers": {
+   "frame": 148,
+   "col": 4,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_bones_a": {
+   "frame": 149,
+   "col": 5,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_bones_b": {
+   "frame": 150,
+   "col": 6,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_debris": {
+   "frame": 151,
+   "col": 7,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_collapse_2x2": {
+   "frame": 152,
+   "col": 8,
+   "row": 9,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     152,
+     153
+    ],
+    [
+     168,
+     169
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_beam_2x1": {
+   "frame": 154,
+   "col": 10,
+   "row": 9,
+   "w": 2,
+   "h": 1,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     154,
+     155
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_remains_2x1": {
+   "frame": 156,
+   "col": 12,
+   "row": 9,
+   "w": 2,
+   "h": 1,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     156,
+     157
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_wreck_pipe_2x1": {
+   "frame": 158,
+   "col": 14,
+   "row": 9,
+   "w": 2,
+   "h": 1,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     158,
+     159
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "face_wreck_rebar": {
+   "frame": 160,
+   "col": 0,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 3
+  },
+  "face_wreck_soot": {
+   "frame": 161,
+   "col": 1,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 3
+  },
+  "face_wreck_boards": {
+   "frame": 162,
+   "col": 2,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 2
+  },
+  "face_wreck_tally": {
+   "frame": 163,
+   "col": 3,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 1
+  },
+  "face_wreck_pipe": {
+   "frame": 164,
+   "col": 4,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "wallDecor",
+   "weight": 2
+  },
+  "decal_trail_h_a": {
+   "frame": 165,
+   "col": 5,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_b": {
+   "frame": 166,
+   "col": 6,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_a": {
+   "frame": 167,
+   "col": 7,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_b": {
+   "frame": 170,
+   "col": 10,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_a": {
+   "frame": 171,
+   "col": 11,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_b": {
+   "frame": 172,
+   "col": 12,
+   "row": 10,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1415,6 +1658,54 @@
    "rubble_a",
    "rubble_b",
    "bones"
+  ],
+  "decal.scrap": [
+   "decal_wreck_scrap_a",
+   "decal_wreck_scrap_b",
+   "decal_wreck_scrap_c"
+  ],
+  "decal.char": [
+   "decal_wreck_char_a",
+   "decal_wreck_char_b"
+  ],
+  "decal.glass": [
+   "decal_wreck_glass"
+  ],
+  "decal.rags": [
+   "decal_wreck_rags_a",
+   "decal_wreck_rags_b"
+  ],
+  "decal.camp": [
+   "decal_wreck_camp"
+  ],
+  "decal.papers": [
+   "decal_wreck_papers"
+  ],
+  "decal.bones": [
+   "decal_wreck_bones_a",
+   "decal_wreck_bones_b"
+  ],
+  "decal.wreckDebris": [
+   "decal_wreck_debris"
+  ],
+  "decal.collapse": [
+   "decal_wreck_collapse_2x2"
+  ],
+  "decal.beam": [
+   "decal_wreck_beam_2x1"
+  ],
+  "decal.remains": [
+   "decal_wreck_remains_2x1"
+  ],
+  "decal.pipe": [
+   "decal_wreck_pipe_2x1"
+  ],
+  "wallFace.wreck": [
+   "face_wreck_rebar",
+   "face_wreck_soot",
+   "face_wreck_boards",
+   "face_wreck_tally",
+   "face_wreck_pipe"
   ],
   "decal.trailH": [
    "decal_trail_h_a",
