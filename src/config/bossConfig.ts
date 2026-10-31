@@ -57,7 +57,7 @@ export const FLOOR_GUARDIAN = {
   name: 'Strażnik Piętra',
   radius: 26,
   color: 0xb5452a,
-  maxHp: 300,
+  maxHp: 380, // krok 145 (wolniejsze skalowanie bossów): 300 → 380
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i czwarty cios — skok.
   moveSpeed: 65,
   sprint: { speed: 130, distance: 160 },
@@ -126,7 +126,7 @@ export const SPIDER_QUEEN = {
   enragedLabel: 'Królewski gniew!',
   radius: 28,
   color: 0x7a3a4a,
-  maxHp: 300,
+  maxHp: 335, // krok 145 (wolniejsze skalowanie bossów): 300 → 335
   // Krok 27 (feedback właściciela: dalej za łatwo): królowa poluje — z daleka sprintem dopada gracza
   // (wolniej niż gracz 200, ale spowolniony siecią nie ucieknie), z bliska podchodzi i smaga nogami.
   // Wzmocnienie bossów (prośba właściciela): chód 70 → 80, sprint 150 → 165 (gracz 200, spowolniony siecią 100).
@@ -242,7 +242,7 @@ export const SPIDER_KING = {
   enragedLabel: 'Gniew Grzybni!',
   radius: 34,
   color: 0x6a8a3a,
-  maxHp: 420,
+  maxHp: 465, // krok 145 (wolniejsze skalowanie bossów): 420 → 465
   // Ciężki, ale nie ślamazarny (wzmocnienie bossów, prośba właściciela): z daleka dobiega sprintem,
   // z bliska podchodzi na odległość kos. Sprint wolniejszy od gracza (200).
   moveSpeed: 66,
@@ -332,7 +332,7 @@ export const FUNGAL_DEVOURER = {
   enragedLabel: 'Głód!',
   radius: 28,
   color: 0x6a1e24,
-  maxHp: 460,
+  maxHp: 670, // krok 145 (wolniejsze skalowanie bossów): 460 → 670
   // Krok 111 (ocena właściciela: „zero wyzwania, za wolny, nie trafia”): szybszy chód i sprint (gracz ma 200),
   // krótsze przerwy i telegrafy; skok, zamach i wyrzut celują tam, dokąd gracz biegnie (`lead`).
   moveSpeed: 88,
@@ -456,7 +456,7 @@ export const GATE_WARDEN = {
   radius: 30,
   color: 0x8a2a1a,
   // Krok 113 (ocena właściciela: tarczownik „broken”, za dużo życia): 420 → 340.
-  maxHp: 340,
+  maxHp: 500, // krok 145 (wolniejsze skalowanie bossów): 340 → 500
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i trzeci cios — skok.
   moveSpeed: 72,
   sprint: { speed: 140, distance: 150 },
@@ -534,7 +534,7 @@ export const ABYSS_EXECUTIONER = {
   radius: 32,
   color: 0x6a1010,
   // Krok 113 (jak Strażnik Bram): 520 → 430.
-  maxHp: 430,
+  maxHp: 640, // krok 145 (wolniejsze skalowanie bossów): 430 → 640
   // Wzmocnienie bossów (prośba właściciela): szybszy chód, sprint z daleka (gracz ma 200) i czwarty cios — skok.
   moveSpeed: 76,
   sprint: { speed: 145, distance: 150 },
@@ -600,7 +600,7 @@ export const SMOKE_BARON = {
   enragedLabel: 'Pełen energii!',
   radius: 34,
   color: 0x8a8a80,
-  maxHp: 640,
+  maxHp: 760, // krok 145 (wolniejsze skalowanie bossów): 640 → 760
   moveSpeed: 62,
   sprint: { speed: 130, distance: 170 },
   engageDistance: 70,
@@ -655,7 +655,8 @@ export const SMOKE_BARON = {
 
 /** Okrzyki sprzątaczek (krok 125, teksty z konceptu zaakceptowanego przez właściciela; łatwo je zmienić). */
 const CLEANER_SHOUTS = {
-  idle: ['Nie chodź po mokrym!', 'Uwaga, ślisko!', 'Dopiero co myłam!', 'Wycieraj buty!', 'Kto tu nabłocił?!'],
+  // Krok 137: dwa ostatnie — zapowiedź Brudnej Wiedźmy z piętra wyżej (pióra na posadzce).
+  idle: ['Nie chodź po mokrym!', 'Uwaga, ślisko!', 'Dopiero co myłam!', 'Wycieraj buty!', 'Kto tu nabłocił?!', 'Znowu te ptaszyska!', 'Kto tu napierzył?!'],
   attacks: {
     [BossAttackKind.Spill]: ['Nie chodź po mokrym!', 'Uwaga, ślisko!'],
     [BossAttackKind.Hook]: ['Do wiadra z tobą!'],
@@ -684,7 +685,7 @@ export const CLEANER_BLONDE = {
   enragedLabel: 'Wściekła!',
   radius: 18,
   color: 0xe0c070,
-  maxHp: 600,
+  maxHp: 720, // krok 145 (wolniejsze skalowanie bossów): 600 → 720
   moveSpeed: 74,
   sprint: { speed: 150, distance: 170 },
   engageDistance: 54,
@@ -751,7 +752,7 @@ export const CLEANER_DARK = {
   enragedLabel: 'Wściekła!',
   radius: 17,
   color: 0x403848,
-  maxHp: 700,
+  maxHp: 660, // krok 145 (wolniejsze skalowanie bossów): 700 → 660
   moveSpeed: 78,
   sprint: { speed: 155, distance: 170 },
   engageDistance: 50,
@@ -781,11 +782,95 @@ export const CLEANER_DARK = {
 } satisfies BossDefinition;
 
 /**
+ * Brudna Wiedźma (krok 137, szkic i nazwa właściciela `#brudna-wiedzma`): boss Bocianiego Ogrodu, ostatniego piętra
+ * kręgu — po wypucowanej Lustrzanej komnacie totalny mrok i brud. Długie czarne włosy, wyszczerz, pomarańczowo-czarna
+ * suknia z zielonym obrąbkiem, czerwony kwiat z okiem; nie mówi, tylko chichocze. Walczy stadem:
+ * - klucz bocianów: pasy cieni przez arenę, między nimi przejście; potem bociany przelatują jak włócznie;
+ * - pikowanie: ptaszek znaczy miejsca wokół bohatera, w każde pikuje ptak;
+ * - kwiat-oko: rzucone nasiona wyrastają w kwiaty, które pulsują pierścieniami pyłku;
+ * - wir sukni: fala przy niej i pierścień liści — kara za stanie obok;
+ * - od połowy HP (druga faza): rój żuków-kamikaze i lot na bocianach (skok na miejsce bohatera).
+ * Trzecia faza z koncepcji (żywa tarcza z ptaków) — osobny krok. Liczby moje, do strojenia w teście właściciela.
+ */
+export const DIRTY_WITCH = {
+  id: BossId.DirtyWitch,
+  name: 'Brudna Wiedźma',
+  title: 'Pani Bocianich Gniazd',
+  enragedLabel: 'Chichocze!',
+  radius: 18,
+  color: 0xd86a2c,
+  maxHp: 860, // krok 145 (wolniejsze skalowanie bossów): 760 → 860
+  moveSpeed: 68,
+  sprint: { speed: 140, distance: 190 },
+  // Walczy stadem z dystansu: podchodzi tylko na średnią odległość.
+  engageDistance: 110,
+  openingDelayMs: 1300,
+  restBetweenAttacksMs: 1150,
+  pattern: [BossAttackKind.StorkFlight, BossAttackKind.BirdDive, BossAttackKind.FlowerEye, BossAttackKind.Whirl],
+  enragedPattern: [
+    BossAttackKind.StorkFlight,
+    BossAttackKind.BirdDive,
+    BossAttackKind.FlowerEye,
+    BossAttackKind.Whirl,
+    BossAttackKind.Brood,
+    BossAttackKind.Leap,
+  ],
+  patternOrder: PatternOrder.Shuffled,
+  retinue: { ...RETINUE_BASE, type: EnemyType.Rusher, everyMs: 20000, enragedEveryMs: 15000 },
+  // Pasy co 72 px przy promieniu 14: między pasami 44 px przejścia.
+  storkFlight: { telegraphMs: 900, recoveryMs: 500, damage: 14, knockback: 200, lanes: 3, laneGap: 72, length: 380, step: 22, radius: 14, flightMs: 700 },
+  birdDive: { telegraphMs: 850, recoveryMs: 450, damage: 12, knockback: 160, zoneCount: 4, zoneRadius: 30, spread: 100, intervalMs: 280, diveMs: 260, diveHeight: 110 },
+  flowerEye: {
+    telegraphMs: 600,
+    recoveryMs: 500,
+    damage: 9,
+    knockback: 100,
+    count: 2,
+    distance: { min: 70, max: 120 },
+    flightMs: 450,
+    pulses: 3,
+    firstPulseMs: 700,
+    pulseIntervalMs: 1100,
+    pulseTelegraphMs: 500,
+    projectileCount: 8,
+    projectileSpeed: 120,
+    projectileLifetimeMs: 1600,
+    flower: { startRadius: 8, maxRadius: 18, spreadMs: 400, lingerMs: 500 },
+  },
+  whirl: { telegraphMs: 700, recoveryMs: 650, damage: 16, knockback: 300, radius: 70, projectileCount: 12, projectileSpeed: 150, projectileLifetimeMs: 1300 },
+  // Druga faza: rój żuków (jak wylęg Matki Pająków, mniej naraz) i lot na bocianach.
+  brood: { count: 3, maxAlive: 6, birthMs: 667, ringRadius: 70, ringJitterDeg: 20, dropIntervalMs: 180, fallMs: 600, recoveryMs: 400 },
+  spiderling: { ...SPIDER_QUEEN.spiderling, look: 'beetle' },
+  leap: { telegraphMs: 700, flightMs: 650, radius: 60, damage: 16, knockback: 300, recoveryMs: 700, lead: { ms: 400, maxPx: 90 } },
+  shouts: {
+    idle: ['Hi hi hi!', 'Hihihi…', 'Za czysto tu!', 'Ptaszki moje!', 'Nabłocę wam!'],
+    attacks: {
+      [BossAttackKind.StorkFlight]: ['Lećcie, ptaszki!'],
+      [BossAttackKind.BirdDive]: ['Dziobać!'],
+      [BossAttackKind.FlowerEye]: ['Kwitnij!'],
+      [BossAttackKind.Whirl]: ['Hi hi hi!'],
+      [BossAttackKind.Brood]: ['Bzzz!'],
+      [BossAttackKind.Leap]: ['Hop!'],
+      [BossAttackKind.Roar]: ['HAHAHA!'],
+    },
+    everyMs: { min: 6000, max: 10000 },
+    minGapMs: 2000,
+  },
+  enrage: {
+    ...ENRAGE_FURY,
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
  * Boss na konkretnych piętrach; pozostałe piętra mają Strażnika. Każdy biom kończy się swoim bossem.
  * Od kroku 127 (koncept sprzątaczek zaakceptowany przez właściciela): 2 — Król Pająków z Matką Pająków (duet
  * w Grzybni, `BOSS_DUETS`), 3 — Grzybowy Pożeracz (Cmentarzysko), 4 — Piekło, 5 — Baron Dymu,
  * 6–7 — sprzątaczki (Lustrzana komnata). Krok 134 (decyzja właściciela: „scalamy tarczowników, jeden wystarczy”):
  * Piekło ma jedno piętro i jednego bossa z tarczą — Kata Otchłani; Strażnik Bram zostaje w kodzie poza wspinaczką.
+ * Krok 137: 8 — Brudna Wiedźma (Bociani Ogród) zamyka krąg.
  */
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_KING,
@@ -794,6 +879,8 @@ export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   5: SMOKE_BARON,
   6: CLEANER_BLONDE,
   7: CLEANER_DARK,
+  // Krok 137 (`#brudna-wiedzma`): po sprzątaczkach Bociani Ogród zamyka krąg.
+  8: DIRTY_WITCH,
 };
 
 /** Wszyscy bossowie gry — partner duetu nie musi mieć własnego piętra (Matka Pająków od kroku 127, Strażnik Bram poza wspinaczką od kroku 134). */
@@ -807,6 +894,7 @@ const ALL_BOSSES: readonly BossDefinition[] = [
   SMOKE_BARON,
   CLEANER_BLONDE,
   CLEANER_DARK,
+  DIRTY_WITCH,
 ];
 
 /** Definicja bossa po identyfikatorze (partner duetu). */
@@ -855,6 +943,10 @@ export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: numb
     ...(boss.sporeVolley && { sporeVolley: dmg(boss.sporeVolley) }),
     ...(boss.spill && { spill: dmg(boss.spill) }),
     ...(boss.tangle && { tangle: dmg(boss.tangle) }),
+    ...(boss.storkFlight && { storkFlight: dmg(boss.storkFlight) }),
+    ...(boss.birdDive && { birdDive: dmg(boss.birdDive) }),
+    ...(boss.flowerEye && { flowerEye: dmg(boss.flowerEye) }),
+    ...(boss.whirl && { whirl: dmg(boss.whirl) }),
     ...(boss.dog && {
       dog: {
         ...boss.dog,

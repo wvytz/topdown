@@ -150,6 +150,26 @@ export const INFERNAL_HAZE: FogConfig = {
 };
 
 /**
+ * Noc w Bocianim Ogrodzie (krok 137): po jasnej Lustrzanej komnacie „totalny mrok” — głęboka, zielonkawa granatowa
+ * noc, nisko snująca się mgła znad mokrej trawy i wolno opadające pyłki. Najciemniejszy biom kręgu.
+ */
+export const GARDEN_NIGHT: FogConfig = {
+  color: 0x0c1418,
+  profile: { fullLightRadius: 68, edgeRadius: 176, maxDarkness: 0.94 },
+  wisps: {
+    maxParticles: 10,
+    frequencyMs: 800,
+    lifespanMs: { min: 10000, max: 16000 },
+    speed: { min: 2, max: 7 },
+    scale: { min: 1.4, max: 3 },
+    width: 52,
+    height: 10,
+    alpha: 0.09,
+  },
+  motes: { ...LIGHTING.motes, maxParticles: 20, frequencyMs: 260, speed: { min: 1, max: 3 }, gravityY: 0.6 },
+};
+
+/**
  * Dym palarni (krok 83): jasnoszara, gęsta mgła ograniczająca widok (nie mrok) — w dymie widać dalej niż w żarze piekła,
  * ale kłęby przesuwają się po ekranie i zasłaniają wrogów. Dużo powolnych smug dymu, bez iskier.
  */

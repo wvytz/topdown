@@ -48,16 +48,18 @@ function groupPixels(meta: TilesetMeta, sheet: RgbaImage, group: string): Rgba[]
 }
 
 describe('biomy: wybór piętra', () => {
-  it('biomy: 2 Grzybnia (pajęczy duet), 3 Cmentarzysko, 4 Piekło, 5 palarnia, 6–7 Lustrzana komnata, 1 ruiny; potem kolejny krąg (kroki 43, 83, 124, 127, 134)', () => {
+  it('biomy: 2 Grzybnia (pajęczy duet), 3 Cmentarzysko, 4 Piekło, 5 palarnia, 6–7 Lustrzana komnata, 8 Bociani Ogród, 1 ruiny; potem kolejny krąg (kroki 43, 83, 124, 127, 134, 137)', () => {
     expect(biomeForFloor(2).id).toBe(BiomeId.FungalGrove);
     expect(biomeForFloor(3).id).toBe(BiomeId.Graveyard);
     expect(biomeForFloor(4).id).toBe(BiomeId.Infernal);
     expect(biomeForFloor(5).id).toBe(BiomeId.SmokeDen);
     expect(biomeForFloor(6).id).toBe(BiomeId.MirrorHall);
     expect(biomeForFloor(7).id).toBe(BiomeId.MirrorHall);
-    for (const floor of [1, 8, 15]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
-    expect(biomeForFloor(9).id).toBe(BiomeId.FungalGrove);
-    expect(biomeForFloor(14).id).toBe(BiomeId.MirrorHall);
+    expect(biomeForFloor(8).id).toBe(BiomeId.StorkGarden);
+    for (const floor of [1, 9, 17]) expect(biomeForFloor(floor).id).toBe(BiomeId.TowerRuins);
+    expect(biomeForFloor(10).id).toBe(BiomeId.FungalGrove);
+    expect(biomeForFloor(15).id).toBe(BiomeId.MirrorHall);
+    expect(biomeForFloor(16).id).toBe(BiomeId.StorkGarden);
   });
 
   it('każdy biom ma własne klucze tekstur i animacji pochodni', () => {
@@ -106,6 +108,27 @@ describe('Lustrzana komnata (krok 124)', () => {
     expect(r.alphaNear).toBeGreaterThan(r.alphaFar);
     expect(r.alphaNear).toBeLessThanOrEqual(0.5);
     expect(Object.values(BIOMES).filter((b) => b.mirrorFloor).map((b) => b.id)).toEqual([BiomeId.MirrorHall]);
+  });
+});
+
+describe('Bociani Ogród (krok 137)', () => {
+  const garden = BIOMES[BiomeId.StorkGarden];
+  const meta = loadTileset(fileOf(garden.tileset.jsonUrl));
+
+  it('noc: najgęstszy mrok kręgu, własne lica i nakładki; ku arenie pióra', () => {
+    const others = Object.values(BIOMES).filter((b) => b.fog && b.id !== BiomeId.StorkGarden);
+    for (const other of others) expect(garden.fog!.profile.maxDarkness).toBeGreaterThanOrEqual(other.fog!.profile.maxDarkness);
+    expect(garden.dressing.wallFace.group).toBe('wallFace.garden');
+    for (const group of ['decal.grass', 'decal.mud', 'decal.flowers', 'decal.feathers', 'wallFace.garden']) {
+      expect(meta.groups[group]?.length, group).toBeGreaterThan(0);
+    }
+    expect(garden.dressing.nest?.decals?.group).toBe('decal.feathers');
+  });
+
+  it('zapowiedź piętro niżej: pióra na posadzce Lustrzanej komnaty', () => {
+    const hall = BIOMES[BiomeId.MirrorHall];
+    expect(hall.dressing.decalGroupWeights['decal.feathers']).toBeGreaterThan(0);
+    expect(loadTileset(fileOf(hall.tileset.jsonUrl)).groups['decal.feathers']?.length).toBeGreaterThan(0);
   });
 });
 

@@ -59,6 +59,20 @@ export const MIRROR_HALL_TILESET_ASSET: TilesetAsset = {
   version: 2,
 };
 
+/**
+ * Bociani Ogród (krok 137): `python tools/tower_ruins_tiles.py --biome stork_garden`. Zarośnięty taras na szczycie
+ * kręgu nocą: omszałe płyty, trawa w szczelinach, bluszcz i gniazda na murach, pióra i błoto na posadzce.
+ */
+export const STORK_GARDEN_TILESET_ASSET: TilesetAsset = {
+  imageKey: 'tex-tileset-stork-garden',
+  jsonKey: 'json-tileset-stork-garden',
+  sheetKey: 'sheet-tileset-stork-garden',
+  imageUrl: 'assets/tilesets/stork_garden_tileset.png',
+  jsonUrl: 'assets/tilesets/stork_garden_tileset.json',
+  torchAnimation: 'torch-flame-stork-garden',
+  version: 2,
+};
+
 /** Cmentarzysko (krok 32a): `python tools/tower_ruins_tiles.py --biome graveyard`. Pochodnie to świece w uchwytach. */
 export const GRAVEYARD_TILESET_ASSET: TilesetAsset = {
   imageKey: 'tex-tileset-graveyard',

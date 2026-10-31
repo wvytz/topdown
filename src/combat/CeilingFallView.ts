@@ -29,6 +29,8 @@ export class CeilingFallView {
     scene: Phaser.Scene,
     private readonly at: Vector2,
     sheetId: SpriteSheetId,
+    /** Nić, na której zjeżdża (pająki); żuk wiedźmy (krok 137) spada bez nici. */
+    private readonly withThread = true,
   ) {
     const sheet = SPRITE_SHEETS[sheetId];
     const frame = sheetFrameIndex(FALLING_ROW, 0, sheet.sheetWidth / sheet.frameWidth);
@@ -55,6 +57,7 @@ export class CeilingFallView {
     }
     const height = Math.round(FALL_HEIGHT * (1 - Math.min(1, Math.max(0, fall))));
     this.faller.setVisible(true).setPosition(Math.round(x), Math.round(y - height));
+    if (!this.withThread) return;
     this.thread
       .lineStyle(1, THREAD_COLOR, 0.8)
       .lineBetween(Math.round(x), Math.round(y - height - FALL_HEIGHT), Math.round(x), Math.round(y - height));

@@ -44,6 +44,14 @@ export enum BossAttackKind {
   Spill = 'spill',
   /** Plątanie (brunetka, krok 126): pod bohaterem wyrasta czarne włosie miotły — kto stoi w strefie, nie może chodzić. */
   Tangle = 'tangle',
+  /** Klucz bocianów (Brudna Wiedźma, krok 137): cienie ptaków w pasach przez arenę, potem bociany przelatują jak włócznie. */
+  StorkFlight = 'stork-flight',
+  /** Pikowanie (Brudna Wiedźma): ptaszek znaczy miejsca wokół bohatera, potem w każde pikuje ptak. */
+  BirdDive = 'bird-dive',
+  /** Kwiat-oko (Brudna Wiedźma): rzucone nasiona wyrastają w czerwone kwiaty, które pulsują pierścieniami pyłku. */
+  FlowerEye = 'flower-eye',
+  /** Wir sukni (Brudna Wiedźma): obrót wokół siebie — fala przy niej i pierścień liści. */
+  Whirl = 'whirl',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -62,6 +70,8 @@ export enum BossId {
   CleanerBlonde = 'cleaner-blonde',
   /** Lustrzana komnata, piętro B (krok 126): brunetka — miotła, plątanie i chlust; w połowie walki wraca blondynka. */
   CleanerDark = 'cleaner-dark',
+  /** Bociani Ogród (krok 137, szkic właściciela `#brudna-wiedzma`): Brudna Wiedźma — bociany, ptaki, kwiaty-oczy i żuki. */
+  DirtyWitch = 'dirty-witch',
 }
 
 /** Kolejność ataków ze wzoru (krok 31). */
@@ -344,6 +354,8 @@ export interface SpiderlingDefinition {
   readonly blastRadius: number;
   readonly damage: number;
   readonly knockback: number;
+  /** Wygląd: pajączek (domyślnie) albo żuk z roju Brudnej Wiedźmy (krok 137). */
+  readonly look?: 'beetle';
 }
 
 /**
@@ -476,6 +488,64 @@ export interface SpillAttackDefinition extends BaseBossAttackDefinition {
   readonly fanDeg: number;
   readonly puddle: { readonly startRadius: number; readonly maxRadius: number; readonly spreadMs: number; readonly durationMs: number };
   readonly slip: SlipEffect;
+}
+
+/**
+ * Klucz bocianów (Brudna Wiedźma, krok 137): `lanes` równoległych pasów (we wściekłości o jeden więcej) w kierunku
+ * wiedźma → bohater, środkowy przez bohatera, co `laneGap` px w poprzek — między pasami jest przejście. Pas to ciąg
+ * stref co `step` px na długości `length`; po telegrafie bocian przelatuje pas w `flightMs` i każda strefa uderza,
+ * gdy bocian nad nią przelatuje.
+ */
+export interface StorkFlightDefinition extends BaseBossAttackDefinition {
+  readonly lanes: number;
+  readonly laneGap: number;
+  readonly length: number;
+  readonly step: number;
+  readonly radius: number;
+  readonly flightMs: number;
+}
+
+/**
+ * Pikowanie (Brudna Wiedźma, krok 137): ptaszek z ramienia znaczy `zoneCount` miejsc (we wściekłości o jedno więcej) —
+ * pierwsze na bohaterze, kolejne wokół niego najwyżej `spread` px; co `intervalMs` w kolejne miejsce pikuje ptak
+ * (widać go `diveMs` przed uderzeniem).
+ */
+export interface BirdDiveDefinition extends BaseBossAttackDefinition {
+  readonly zoneCount: number;
+  readonly zoneRadius: number;
+  readonly spread: number;
+  readonly intervalMs: number;
+  readonly diveMs: number;
+  /** Z jakiej wysokości nad miejscem spada ptak (px, tylko wygląd). */
+  readonly diveHeight: number;
+}
+
+/**
+ * Kwiat-oko (Brudna Wiedźma, krok 137): wiedźma rzuca `count` nasion (we wściekłości o jedno więcej) w odległości
+ * `distance` od bohatera; nasiono leci `flightMs` i wyrasta w kwiat, który po `firstPulseMs` co `pulseIntervalMs`
+ * wypuszcza pierścień `projectileCount` kul pyłku (`pulses` razy, każdy zapowiada `pulseTelegraphMs`), a potem więdnie.
+ */
+export interface FlowerEyeDefinition extends BaseBossAttackDefinition {
+  readonly count: number;
+  readonly distance: { readonly min: number; readonly max: number };
+  readonly flightMs: number;
+  readonly pulses: number;
+  readonly firstPulseMs: number;
+  readonly pulseIntervalMs: number;
+  readonly pulseTelegraphMs: number;
+  readonly projectileCount: number;
+  readonly projectileSpeed: number;
+  readonly projectileLifetimeMs: number;
+  /** Kwiat na ziemi (tylko wygląd): promień po wyrośnięciu i czas rozrostu. */
+  readonly flower: { readonly startRadius: number; readonly maxRadius: number; readonly spreadMs: number; readonly lingerMs: number };
+}
+
+/** Wir sukni (Brudna Wiedźma, krok 137): po telegrafie fala `radius` wokół wiedźmy i pierścień liści z jej sukni. */
+export interface WhirlAttackDefinition extends BaseBossAttackDefinition {
+  readonly radius: number;
+  readonly projectileCount: number;
+  readonly projectileSpeed: number;
+  readonly projectileLifetimeMs: number;
 }
 
 /**
@@ -616,6 +686,16 @@ export interface BossDefinition {
   readonly spill?: SpillAttackDefinition;
   /** Plątanie miotłą (brunetka, krok 126). */
   readonly tangle?: TangleAttackDefinition;
+  /** Klucz bocianów, pikowanie, kwiat-oko i wir sukni (Brudna Wiedźma, krok 137). */
+  readonly storkFlight?: StorkFlightDefinition;
+  readonly birdDive?: BirdDiveDefinition;
+  readonly flowerEye?: FlowerEyeDefinition;
+  readonly whirl?: WhirlAttackDefinition;
+  /**
+   * Druga faza (krok 137): od wejścia we wściekłość ataki biorą się z tego wzoru zamiast z `pattern`
+   * (ta sama kolejność `patternOrder`). Brak = cały czas `pattern`.
+   */
+  readonly enragedPattern?: readonly BossAttackKind[];
   /** Okrzyki z napisami (sprzątaczki, krok 125). */
   readonly shouts?: BossShoutDefinition;
   /** Ucieczka windą zamiast śmierci (blond sprzątaczka, krok 125). */
@@ -655,7 +735,7 @@ export interface AreaStrike {
   /** Trafienie unieruchamia (plątanie brunetki, krok 126). */
   readonly root?: RootEffect;
   /** Wygląd strefy: dym zamiast czerwonego telegrafu; `spores` — czerwony telegraf, wybuch w kolorach soku (krok 111). */
-  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle';
+  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle' | 'feathers' | 'dive' | 'whirl';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -670,6 +750,8 @@ export interface ProjectileBurst {
   readonly lifetimeMs: number;
   readonly telegraphStartAt: number;
   readonly fireAt: number;
+  /** Wygląd pocisków: pyłek kwiatu-oka albo liście z wiru sukni (krok 137); brak = kule szlamu. */
+  readonly look?: 'pollen' | 'leaf';
 }
 
 /**
@@ -711,15 +793,15 @@ export interface WebShot {
    * (sprzątaczki, krok 125). Brak = sieć. Grzyby i kałuża łapią ślad stóp bohatera (jak strefy z kroku 110),
    * sieć i grzybnia — środek postaci.
    */
-  readonly look?: 'web' | 'mycelium' | 'mushrooms' | 'water';
+  readonly look?: 'web' | 'mycelium' | 'mushrooms' | 'water' | 'flower';
   /** Dodatkowy status w płacie (trucizna grzybni). */
   readonly status?: StatusApplication;
 }
 
 /** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
 export interface ThrownObject {
-  /** Co leci: kokon Króla (domyślnie), puszka Barona, strąk zarodników Pożeracza albo wiadro sprzątaczki. */
-  readonly look?: 'can' | 'spore' | 'bucket';
+  /** Co leci: kokon Króla (domyślnie), puszka Barona, strąk Pożeracza, wiadro sprzątaczki; bocian, ptak i nasiono wiedźmy (krok 137). */
+  readonly look?: 'can' | 'spore' | 'bucket' | 'stork' | 'bird' | 'seed';
   readonly from: Vector2;
   readonly to: Vector2;
   readonly launchAt: number;
