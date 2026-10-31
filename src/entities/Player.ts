@@ -94,6 +94,8 @@ const AIM_MARKER_DISTANCE = 22;
 /** Widok + ciało fizyczne gracza. Zasady (HP, cooldowny, dash) delegowane do czystych systemów. */
 export class Player extends Phaser.Physics.Arcade.Sprite {
   readonly health: Health;
+  /** Krok 152: odpychanie bańki partnera (co-op), px/s. */
+  private bubblePush: Vector2 = { x: 0, y: 0 };
   readonly radius = PLAYER_SIZE / 2;
 
   private stats: PlayerStats;
@@ -379,6 +381,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.ultimateConfig;
   }
 
+  /**
+   * Krok 152: odpychanie „żelowej” bańki partnera (px/s), doliczane do chodu w następnym `tick` —
+   * nie w dashu, odrzucie ani paraliżu, i nie kumuluje się (scena ustawia je co klatkę).
+   */
+  setBubblePush(push: Vector2): void {
+    this.bubblePush = push;
+  }
+
   /** Ruch, dash i ataki w tej klatce; trafienia rozstrzyga scena na podstawie wyniku. */
   tick(actions: PlayerActions, now: number): PlayerTickResult {
     this.aimAngle = angleTo(this, actions.aim);
@@ -436,7 +446,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const velocity = this.dash.velocity();
       this.setVelocity(velocity.x, velocity.y);
     } else if (rooted && !this.knockbackStun.isActive(now)) {
-      this.setVelocity(0, 0);
+      this.setVelocity(this.bubblePush.x, this.bubblePush.y);
     } else if (!this.knockbackStun.isActive(now)) {
       const velocity = computeVelocity(actions.move, this.stats);
       // Promień spowalnia Czarodziejkę (decyzja właściciela).
@@ -449,7 +459,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             ? archery.bow.moveSpeedMultiplier
             : 1;
       const slow = this.status.speedMultiplier(now) * channel;
-      const desired = { x: velocity.x * slow, y: velocity.y * slow };
+      const desired = { x: velocity.x * slow + this.bubblePush.x, y: velocity.y * slow + this.bubblePush.y };
       const body = this.body as Phaser.Physics.Arcade.Body;
       // Na mokrym (krok 125) prędkość dąży do zamierzonej powoli — bohater sunie i skręca z bezwładnością.
       const sliding = this.slip && this.isSlipping(now) ? slideVelocity(body.velocity, desired, now - (this.lastMoveAt ?? now), this.slip.traction) : desired;

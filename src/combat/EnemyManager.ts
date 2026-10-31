@@ -3,7 +3,8 @@ import Phaser from 'phaser';
 import type { BroodAttackDefinition, Hit, LobAttackDefinition, MeleeAttackDefinition, PounceAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Vector2 } from '@/core/types';
-import { ENEMY_DEFINITIONS, ENEMY_SCALING, ENEMY_VARIANTS } from '@/config/combatConfig';
+import { ENEMY_DEFINITIONS, ENEMY_ROUTE, ENEMY_SCALING, ENEMY_VARIANTS } from '@/config/combatConfig';
+import { EnemyRoute } from '@/ai/enemyRoute';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { ENEMY_PROJECTILE_VISUALS, LOB_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
@@ -132,6 +133,8 @@ export class EnemyManager implements EnemyAttackHandler {
   /** Ognista elita: miejsce ostatniego kawałka smugi żaru. */
   private readonly trailFrom = new WeakMap<Enemy, Vector2>();
   private readonly spotted = new WeakSet<Enemy>();
+  /** Krok 152: droga każdego wroga wokół rogów muru. */
+  private readonly routes = new WeakMap<Enemy, EnemyRoute>();
   /** Gniazdownicy i ich czerwie (krok 122). */
   private readonly broods = new BroodLedger<Enemy, Enemy>();
   /** Czyhacze w kryjówkach (krok 123) i ich doskoki w locie. */
@@ -253,7 +256,7 @@ export class EnemyManager implements EnemyAttackHandler {
       if (den) this.updateDen(enemy, den, now);
       const target: Vector2 = lure ?? party.targetPointFor(enemy);
       const canSeeTarget = !party.isDown && hasLineOfSight(floor, enemy, target, TILE_SIZE);
-      enemy.tick({ target, canSeeTarget, ...this.gateOrder(enemy, target, canSeeTarget, now) }, now, this);
+      enemy.tick({ target, canSeeTarget, route: this.routeFor(enemy, now), ...this.gateOrder(enemy, target, canSeeTarget, now) }, now, this);
       this.updateFieryTrail(enemy, now);
       const nearest = party.nearestLiving(enemy);
       if (canSeeTarget && nearest && isElite(enemy.definition) && !this.spotted.has(enemy) && distance(enemy, nearest) <= ELITE_VISUAL.spotRange) {
@@ -262,6 +265,20 @@ export class EnemyManager implements EnemyAttackHandler {
       }
     }
     this.updateHellAttacks(now);
+  }
+
+  /**
+   * Krok 152: droga wokół rogów muru — po jednej na wroga. Przenikający (upiory w fazie) idą prosto, jak dotąd.
+   */
+  private routeFor(enemy: Enemy, now: number): ((from: Vector2, goal: Vector2) => Vector2) | undefined {
+    if (enemy.definition.phasing) return undefined;
+    let route = this.routes.get(enemy);
+    if (!route) {
+      route = new EnemyRoute(this.deps.floor, TILE_SIZE, enemy.radius, ENEMY_ROUTE);
+      this.routes.set(enemy, route);
+    }
+    const planner = route;
+    return (from, goal) => planner.next(from, goal, now);
   }
 
   /** Rozkaz krat (krok 132); Czyhacz w kryjówce i wrogowie galerii — bez rozkazu. */

@@ -146,6 +146,8 @@ import { drawBurstRing } from '@/effects/EvolutionEffects';
 import { HeroCombat, heroLoadout } from '@/combat/HeroCombat';
 import type { HeroStrikeTargets } from '@/combat/HeroCombat';
 import { COOP_CONFIG } from '@/config/coopConfig';
+import { BubbleContact, bubblePush } from '@/systems/HeroBubble';
+import { drawBubbleRipple } from '@/effects/HeroBubbleEffects';
 import { leashPair, leashSpan, partyFocus } from '@/systems/CoopCamera';
 import { freshCoop } from '@/systems/Coop';
 import { BossHeraldEffects } from '@/effects/BossHerald';
@@ -265,6 +267,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private partnerActions: PlayerActions | null = null;
   /** Wskrzeszanie powalonych bohaterów (co-op, etap C4). */
   private readonly revives = new Map<Player, ReviveProgress>();
+  /** Krok 152: zetknięcia „żelowych” baniek bohaterów (co-op). */
+  private readonly bubbleContact = new BubbleContact();
   private reviveGfx: Phaser.GameObjects.Graphics | null = null;
   private lastReviveAt = 0;
   /** Pozycje bohaterów z poprzedniej klatki — smycz cofa tego, kto się oddala. */
@@ -638,6 +642,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const partner = partnerHero.player;
       this.partnerActions = this.partnerInput.getActions({ origin: { x: partner.x, y: partner.y }, targets: () => this.aimTargets() });
       partnerHero.tick(this.partnerActions, time);
+      this.updateHeroBubble(this.player, partner, time);
     }
     const interactOf = (hero: Player) => (hero === this.player ? actions.interact : (this.partnerActions?.interact ?? false));
     this.enemies.update(time);
@@ -816,6 +821,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return this.coop !== null && isBotCoop({ coop: this.coop });
   }
 
+  /**
+   * Krok 152 (pomysł właściciela): bohaterowie jak bańki żelu — mogą lekko na siebie najść, sprężyna ich rozpycha
+   * (dodatek do chodu w następnej klatce, więc mury dalej trzymają). Nowe zetknięcie „plumka” i puszcza kółko.
+   */
+  private updateHeroBubble(a: Player, b: Player, now: number): void {
+    const config = COOP_CONFIG.bubble;
+    const { push, overlap } = a.isDead || b.isDead ? { push: { x: 0, y: 0 }, overlap: 0 } : bubblePush(a, b, config);
+    a.setBubblePush(push);
+    b.setBubblePush({ x: -push.x, y: -push.y });
+    if (this.bubbleContact.update(overlap, now, config)) {
+      const at = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      drawBubbleRipple(this, at);
+      sound.play(SoundCue.HeroBubble, at);
+    }
+  }
+
   private spawnPartner(coop: CoopSceneData, at: Vector2): Player {
     const { partner } = coop;
     const offset = COOP_CONFIG.partnerSpawnOffsetPx;
@@ -823,7 +844,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const side = [offset, -offset].map((dx) => ({ x: at.x + dx, y: at.y })).find((p) => !(walls.getTileAtWorldXY(p.x, p.y)?.collides ?? false)) ?? at;
     const player = new Player(this, side.x, side.y, partner.hero, heroLoadout(partner.hero, partner.items, this.floorEffects, false), partner.hp);
     this.physics.add.collider(player, walls);
-    this.physics.add.collider(player, this.player);
+    // Krok 152: bez twardej kolizji między bohaterami — odpycha ich „żelowa” bańka (`updateHeroBubble`).
     return player;
   }
 

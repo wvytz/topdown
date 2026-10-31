@@ -8,6 +8,8 @@ export interface BrainInput {
   readonly target: Vector2;
   readonly canSeeTarget: boolean;
   readonly attackPhase: AttackPhase;
+  /** Krok 152: punkt pośredni drogi omijającej rogi muru (bez — prosto do celu). */
+  readonly route?: (from: Vector2, goal: Vector2) => Vector2;
 }
 
 export interface BrainDecision {
@@ -67,19 +69,19 @@ export class EnemyBrain {
       case EnemyState.Idle:
         return { state: this.state, move: STOP, startAttack: false };
       case EnemyState.Chase: {
-        const move = this.chase(input.self); // może przełączyć stan na IDLE
+        const move = this.chase(input.self, input.route); // może przełączyć stan na IDLE
         return { state: this.state, move, startAttack: false };
       }
       case EnemyState.Attack:
         return {
           state: this.state,
-          move: this.positionForAttack(input.self, input.target, dist),
+          move: this.positionForAttack(input.self, input.target, dist, input.route),
           startAttack: input.attackPhase === AttackPhase.Ready,
         };
     }
   }
 
-  private chase(self: Vector2): MovementIntent {
+  private chase(self: Vector2, route?: BrainInput['route']): MovementIntent {
     if (!this.lastKnownTarget) {
       this.state = EnemyState.Idle;
       return STOP;
@@ -89,15 +91,15 @@ export class EnemyBrain {
       this.state = EnemyState.Idle;
       return STOP;
     }
-    return directionTo(self, this.lastKnownTarget);
+    return directionTo(self, route ? route(self, this.lastKnownTarget) : this.lastKnownTarget);
   }
 
-  private positionForAttack(self: Vector2, target: Vector2, dist: number): MovementIntent {
+  private positionForAttack(self: Vector2, target: Vector2, dist: number, route?: BrainInput['route']): MovementIntent {
     const kiting = this.behaviour.kiting;
     if (!kiting) return STOP;
     const toward = directionTo(self, target);
     if (dist < kiting.retreatRange) return this.retreatWithinView(self, target, { x: -toward.x, y: -toward.y });
-    if (dist > kiting.preferredRange) return toward;
+    if (dist > kiting.preferredRange) return route ? directionTo(self, route(self, target)) : toward;
     return STOP;
   }
 
