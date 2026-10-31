@@ -25,7 +25,7 @@ export interface ProjectileSpec {
   readonly visual?: { readonly texture: string; readonly animation: string };
   /** Ślad na podłodze, gdy pocisk rozbije się o ścianę albo wygaśnie (np. szlam bossa). */
   readonly impactDecal?: CombatDecalKind;
-  /** Wywołanie w miejscu końca lotu (ściana albo wygaśnięcie) — kula szlamu zostawia kałużę (krok 152). */
+  /** Wywołanie w miejscu końca lotu (ściana albo wygaśnięcie) — kula szlamu zostawia kałużę (krok 153). */
   readonly onLand?: (at: Vector2) => void;
   /** Fala (nietoperz): trafia w całej szerokości półksiężyca zamiast w okręgu ciała. */
   readonly wave?: WaveShape;

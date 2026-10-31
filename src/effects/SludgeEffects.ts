@@ -17,7 +17,7 @@ const SPLASH_DEPTH = RENDER_DEPTH.fireGround - 0.1;
 const BUBBLE_DEPTH = RENDER_DEPTH.floorHazard + 0.05;
 
 /**
- * Szlam walki (krok 152, `#krol-szlamu`): rozbryzg z generatora (`tools/sludge_sprites.py`) w zasięgu strefy,
+ * Szlam walki (krok 153, `#krol-szlamu`): rozbryzg z generatora (`tools/sludge_sprites.py`) w zasięgu strefy,
  * krople szlamu opadające z grawitacją, bąble pękające na kałużach i na szlamie przy ścianach, mlaśnięcie
  * i lekki wstrząs. Odpowiednik `FireEffects`, z pulą i limitem zależnym od wersji. Czysto wizualne: Math.random wolno.
  */

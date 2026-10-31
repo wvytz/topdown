@@ -55,7 +55,7 @@ interface CreepLayer {
 }
 
 /**
- * Szlam pełznący od ścian areny Króla Szlamu (krok 152, `#krol-szlamu`). Podłoga: pas w zasięgu z `systems/Sludge.ts`
+ * Szlam pełznący od ścian areny Króla Szlamu (krok 153, `#krol-szlamu`). Podłoga: pas w zasięgu z `systems/Sludge.ts`
  * (próg głębokości liczony raz na piksel — rysunek to dokładny zasięg spowolnienia), ciemny wał na brzegu, brąz
  * ditheringiem Bayera, żyłki i połysk pojedynczymi pikselami. Mury: zacieki spływające z lica ku podłodze areny
  * (mury z podłogą od północy — nad postaciami, jak warstwa `overhead`). Cała arena nabiera fioletu.

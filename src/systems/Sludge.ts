@@ -4,7 +4,7 @@ import type { Vector2 } from '@/core/types';
 import { heroGroundPoint } from '@/systems/Hurtbox';
 
 /**
- * Szlam Króla Szlamu (krok 152, `#krol-szlamu`): kałuże po pluciu i szlam pełznący od ścian areny.
+ * Szlam Króla Szlamu (krok 153, `#krol-szlamu`): kałuże po pluciu i szlam pełznący od ścian areny.
  * Czyste funkcje — warstwa Phasera rysuje dokładnie to, co tu liczy się jako zasięg.
  */
 

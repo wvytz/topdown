@@ -35,7 +35,7 @@ export interface AttackPlanContext {
 
 /** Buduje plan ataku (strefy, fale pocisków, czasy). Czysta funkcja — poza RNG nie ma stanu. */
 export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
-  // Król Szlamu (krok 152): każde plucie zostawia kałuże szlamu.
+  // Król Szlamu (krok 153): każde plucie zostawia kałuże szlamu.
   return withSludgePuddles(planAttackKind(ctx), ctx.definition.sludge);
 }
 
@@ -417,7 +417,7 @@ function planBarrage(ctx: AttackPlanContext): BossAttackPlan {
   const zoneCount = barrage.zoneCount + (ctx.enraged ? 1 : 0);
 
   const strikes: AreaStrike[] = [];
-  // Krok 152 (flegma Króla Szlamu): pierwsza strefa tam, dokąd gracz biegnie — bieg w kółko nie wystarcza.
+  // Krok 153 (flegma Króla Szlamu): pierwsza strefa tam, dokąd gracz biegnie — bieg w kółko nie wystarcza.
   const aim = barrage.lead ? aimPoint(ctx, barrage.lead) : ctx.target;
   for (let i = 0; i < zoneCount; i++) {
     // Pierwsza strefa celuje dokładnie w gracza, kolejne losowo wokół niego.

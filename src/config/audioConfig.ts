@@ -334,7 +334,7 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'sine', freq: 260, freqEnd: 520, delay: 0.05, attack: 0.01, decay: 0.12, volume: 0.25, vibrato: { depth: 0.2, rate: 30 } },
     ],
   },
-  /** Rozbryzg szlamu (krok 152): ciężkie mlaśnięcie (ciemny szum) i niski bulgot z vibrato. */
+  /** Rozbryzg szlamu (krok 153): ciężkie mlaśnięcie (ciemny szum) i niski bulgot z vibrato. */
   [SoundCue.SludgeSplat]: {
     gain: 0.42,
     layers: [

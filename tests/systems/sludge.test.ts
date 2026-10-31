@@ -22,7 +22,7 @@ import {
 const sludge = FLOOR_GUARDIAN.sludge;
 const creep = sludge.creep;
 
-describe('Król Szlamu (krok 152)', () => {
+describe('Król Szlamu (krok 153)', () => {
   const ctx = (kind: BossAttackKind, over: Partial<AttackPlanContext> = {}): AttackPlanContext => ({
     kind,
     definition: FLOOR_GUARDIAN,
@@ -115,7 +115,7 @@ describe('Król Szlamu (krok 152)', () => {
   });
 });
 
-describe('szlam od ścian (krok 152)', () => {
+describe('szlam od ścian (krok 153)', () => {
   const arena = { left: 0, top: 0, right: 384, bottom: 384 };
 
   it('rośnie z czasem walki albo z utraconym HP — liczy się szybszy', () => {

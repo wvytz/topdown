@@ -20,7 +20,7 @@ type BlastVisual = {
 export class CombatEffects {
   /** Ogień walki (krok 144): kule ognia, płomienie, iskry, poświata i światło nad mrokiem. */
   readonly fire: FireEffects;
-  /** Szlam Króla Szlamu (krok 152): rozbryzgi, krople i bąble. */
+  /** Szlam Króla Szlamu (krok 153): rozbryzgi, krople i bąble. */
   readonly sludge: SludgeEffects;
 
   constructor(private readonly scene: Phaser.Scene) {

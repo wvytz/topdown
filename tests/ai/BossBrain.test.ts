@@ -106,7 +106,7 @@ describe('planBossAttack', () => {
   it('attackLeadTimeMs: czas do pierwszego wystrzału lub wybuchu (pod animację ataku)', () => {
     expect(attackLeadTimeMs(plan(BossAttackKind.Nova), 1000)).toBe(BOSS.nova.telegraphMs);
     expect(attackLeadTimeMs(plan(BossAttackKind.Slam), 1000)).toBe(BOSS.slam.telegraphMs);
-    // Krok 152: flegma wylatuje z paszczy przed uderzeniem — plucie kończy się w chwili rzutu.
+    // Krok 153: flegma wylatuje z paszczy przed uderzeniem — plucie kończy się w chwili rzutu.
     expect(attackLeadTimeMs(plan(BossAttackKind.Barrage), 1000)).toBe(BOSS.barrage.telegraphMs - (BOSS.barrage.thrown?.flightMs ?? 0));
     expect(attackLeadTimeMs(plan(BossAttackKind.Nova, true), 1000)).toBe(
       Math.round(BOSS.nova.telegraphMs * BOSS.enrage.telegraphMultiplier),

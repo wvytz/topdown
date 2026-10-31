@@ -173,10 +173,10 @@ export interface BarrageAttackDefinition extends BaseBossAttackDefinition {
   readonly intervalMs: number;
   /**
    * Strefy to rzucane przedmioty lecące łukiem od bossa przez `flightMs` przed uderzeniem: puszki Barona Dymu
-   * (domyślnie) albo flegma Króla Szlamu (`look: 'phlegm'`, krok 152).
+   * (domyślnie) albo flegma Króla Szlamu (`look: 'phlegm'`, krok 153).
    */
   readonly thrown?: { readonly flightMs: number; readonly look?: ThrownObject['look'] };
-  /** Pierwsza strefa tam, dokąd biegnie gracz (krok 152: kara za bieganie w kółko); brak = na gracza. */
+  /** Pierwsza strefa tam, dokąd biegnie gracz (krok 153: kara za bieganie w kółko); brak = na gracza. */
   readonly lead?: AimLead;
 }
 
@@ -601,7 +601,7 @@ export interface BossEscapeDefinition {
 }
 
 /**
- * Kałuża szlamu (krok 152): rośnie od `startScale` promienia do pełnego przez `spreadMs` i leży `durationMs`.
+ * Kałuża szlamu (krok 153): rośnie od `startScale` promienia do pełnego przez `spreadMs` i leży `durationMs`.
  * Bohater, którego ślad stóp dotyka kałuży, jest lekko spowolniony (teren — chroni dash).
  */
 export interface SludgePuddleDefinition {
@@ -612,7 +612,7 @@ export interface SludgePuddleDefinition {
 }
 
 /**
- * Szlam od ścian (krok 152, pomysł właściciela — zapowiedź zwężającej się areny Kata Otchłani): od początku walki
+ * Szlam od ścian (krok 153, pomysł właściciela — zapowiedź zwężającej się areny Kata Otchłani): od początku walki
  * szlam pełznie od brzegów areny do środka. Postęp to większy z dwóch: czas walki (`fullAfterMs` do pełnego) i
  * utracone HP bossa (`hpLostForFull` do pełnego). Pas ma najwyżej `maxDepthPx`, brzeg faluje o `wobble.amp` głębokości
  * (fala o długości `wobble.wavelengthPx` wzdłuż ściany), a widoczny pas dogania cel najwyżej `growPxPerSec`.
@@ -755,11 +755,11 @@ export interface BossDefinition {
   readonly retinue?: RetinueDefinition;
   readonly fireRing?: FireRingDefinition;
   /**
-   * Wygląd stref bez własnego `look` (krok 152): Król Szlamu ma fioletowe telegrafy i rozbryzgi szlamu zamiast
+   * Wygląd stref bez własnego `look` (krok 153): Król Szlamu ma fioletowe telegrafy i rozbryzgi szlamu zamiast
    * czerwieni i ognia. Brak = domyślny (czerwony telegraf, wybuch ognia).
    */
   readonly strikeLook?: AreaStrike['look'];
-  /** Szlam Króla Szlamu (krok 152): kałuże po każdym pluciu i szlam pełznący od ścian areny. */
+  /** Szlam Króla Szlamu (krok 153): kałuże po każdym pluciu i szlam pełznący od ścian areny. */
   readonly sludge?: SludgeDefinition;
   /** Pajączki z wylęgu (wymagane razem z `brood`). */
   readonly spiderling?: SpiderlingDefinition;

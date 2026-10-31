@@ -110,7 +110,7 @@ export const FLOOR_GUARDIAN = {
     recoveryMs: 300,
     damage: 14,
     knockback: 200,
-    // Krok 152: flegma leci łukiem z paszczy, pierwsza tam, dokąd gracz biegnie (bieg w kółko nie wystarcza).
+    // Krok 153: flegma leci łukiem z paszczy, pierwsza tam, dokąd gracz biegnie (bieg w kółko nie wystarcza).
     thrown: { flightMs: 400, look: 'phlegm' },
     lead: { ms: 600, maxPx: 110 },
   },

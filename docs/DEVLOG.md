@@ -5347,7 +5347,7 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** liczby (Iskrownik 8 obrażeń/0,8 s, fala 75%, Pożoga 12), wygląd (figury geometryczne — po akceptacji arkusze z generatora), czy limit 3 kopii dla Butów/Rękawic/Klepsydry/Kołczana/Kła/Odłamka nie jest za ciasny, czy karta rozwoju jest teraz jasna.
 
-## Krok 152 — Król Szlamu: szlam zamiast ognia, kałuże i szlam od ścian `#decyzja` `#krol-szlamu`
+## Krok 153 — Król Szlamu: szlam zamiast ognia, kałuże i szlam od ścian `#decyzja` `#krol-szlamu`
 
 **Prośba właściciela (31.10):** „całkowicie przebuduj pierwszego bossa (Sludge Kinga). Nie ma pluć ognistymi czy czerwonymi kręgami, tylko szlamem — ma zaszlamiać”. Z testów właściciela: najlepiej bić go, biegając w kółko. Plamy, flegmy i śluz mają zostawiać ślady, które lekko spowalniają; ściany areny pokrywają się śluzem, wszystko robi się bardziej fioletowe, a arena delikatnie się zwęża — wstęp do zwężającej się areny Kata Otchłani (pierścień ognia). Poziom detalu jak ogień z kroku 144.
 
@@ -5366,7 +5366,7 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `tests/systems/sludge.test.ts` (15: flegma i wyprzedzenie, kałuże po atakach, ryk bez kałuży, kałuża łapie ślad stóp, siła spowolnień, arkusze dla promieni, limit, rozbryzg w strefie, wzrost i fala szlamu, rysunek = zasięg, środek areny wolny); `BossBrain.test` — plucie przed flegmą kończy się w chwili rzutu. `npm run build` OK (2454 testy).
 
-**Weryfikacja w przeglądarce:** `?hero=barbarian&floor=1&boss=1&items=0&seed=5` — wszystkie cztery ataki, kałuże, bąble, „Szlam!” przy murze, pełny szlam (podgląd całej areny z ręcznie ustawioną głębokością). Bez błędów w konsoli. Zrzuty: `screens/krok152-krol-szlamu/` w plikach projektu.
+**Weryfikacja w przeglądarce:** `?hero=barbarian&floor=1&boss=1&items=0&seed=5` — wszystkie cztery ataki, kałuże, bąble, „Szlam!” przy murze, pełny szlam (podgląd całej areny z ręcznie ustawioną głębokością). Bez błędów w konsoli. Zrzuty: `screens/krok153-krol-szlamu/` w plikach projektu.
 
 **Do oceny właściciela:** siła spowolnień (20% kałuża, 30% szlam przy ścianie), tempo i głębokość zwężania (1,5 kafla, 100 s), ile kałuż (18) i jak długo leżą (9 s), czy fiolet areny nie jest za mocny, czy kule z pierścienia mają zostawiać kałuże przy murach.
 
@@ -5507,7 +5507,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
-**Król Szlamu (krok 152)** `#krol-szlamu`: szlam zamiast ognia, kałuże i szlam od ścian — czeka na ocenę (siła spowolnień, tempo zwężania, fiolet). Kolejne kroki: ten sam poziom detalu dla ataków innych bossów; zwężanie areny u Kata Otchłani jako rozwinięcie.
+**Król Szlamu (krok 153)** `#krol-szlamu`: szlam zamiast ognia, kałuże i szlam od ścian — czeka na ocenę (siła spowolnień, tempo zwężania, fiolet). Kolejne kroki: ten sam poziom detalu dla ataków innych bossów; zwężanie areny u Kata Otchłani jako rozwinięcie.
 
 **Przemiany przedmiotów (krok 150)** `#przemiany`: zrobione — 3. kopia przemienia każdy przedmiot, karta rozwoju, limity 3 kopii. Czeka na ocenę: liczby, wygląd (figury geometryczne → arkusze z generatora), limity, czytelność karty.
 

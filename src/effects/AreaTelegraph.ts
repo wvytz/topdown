@@ -27,7 +27,7 @@ export function drawZoneTelegraph(gfx: Phaser.GameObjects.Graphics, zone: Telegr
   const progress = Math.min(1, Math.max(0, (now - zone.telegraphStartAt) / span));
   // Smuga dymu Barona (krok 83) ma szary telegraf; reszta — czerwony.
   const smoke = zone.look === 'smoke';
-  // Król Szlamu (krok 152): fioletowy telegraf szlamu zamiast czerwieni.
+  // Król Szlamu (krok 153): fioletowy telegraf szlamu zamiast czerwieni.
   const sludge = zone.look === 'sludge' ? SLUDGE_FX.telegraph : null;
   const color = smoke ? SMOKE_VISUAL.telegraph.color : sludge ? sludge.color : (zone.tint ?? v.color);
   const remaining = zone.impactAt - now;

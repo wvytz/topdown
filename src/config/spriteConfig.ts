@@ -400,7 +400,7 @@ export const SPRITE_SHEETS = {
       die: { frames: [6, 7], loop: false },
     },
   },
-  // Szlam Króla Szlamu (krok 152, tools/sludge_sprites.py): flegma, rozbryzg, kałuże o stałych promieniach, bąbel.
+  // Szlam Króla Szlamu (krok 153, tools/sludge_sprites.py): flegma, rozbryzg, kałuże o stałych promieniach, bąbel.
   sludgePhlegm: {
     key: 'sheet-sludge-phlegm',
     url: 'assets/sprites/sludge-phlegm.png',

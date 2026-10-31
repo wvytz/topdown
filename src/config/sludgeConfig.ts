@@ -23,7 +23,7 @@ export function sludgePuddleSheet(radius: number): SpriteSheetId {
 }
 
 /**
- * Szlam Króla Szlamu (krok 152, `#krol-szlamu`): wygląd telegrafów, rozbryzgów, bąbli i szlamu na ścianach areny.
+ * Szlam Króla Szlamu (krok 153, `#krol-szlamu`): wygląd telegrafów, rozbryzgów, bąbli i szlamu na ścianach areny.
  * Czysto wizualne — zasięgi liczy `systems/Sludge.ts`. Paleta ze STYLEGUIDE §4.5.
  */
 export const SLUDGE_FX = {

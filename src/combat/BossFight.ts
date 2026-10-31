@@ -276,7 +276,7 @@ export class BossFight {
   /** Duet z wejściem (krok 126): boss jeszcze poza areną / chwila wychodzenia z windy (nietykalny). */
   private dormant = false;
   private enteringUntil = -Infinity;
-  /** Szlam od ścian areny (Król Szlamu, krok 152): widok, głębokość pasa (px), początek walki, ostatnia klatka. */
+  /** Szlam od ścian areny (Król Szlamu, krok 153): widok, głębokość pasa (px), początek walki, ostatnia klatka. */
   private readonly creepView: SludgeCreepView | null;
   private creepDepth = 0;
   private creepStartAt: number | null = null;
@@ -762,7 +762,7 @@ export class BossFight {
       moved.set(web.to, this.clampToward(web.to, { x: player.x, y: player.y }, (p) => this.isArenaFloor(p)));
     }
     if (plan.kind === BossAttackKind.StorkFlight || plan.kind === BossAttackKind.BirdDive) sound.play(SoundCue.WingFlap, this.boss ?? player);
-    // Król Szlamu (krok 152): strefy bez własnego wyglądu dostają wygląd bossa (szlam zamiast czerwieni i ognia).
+    // Król Szlamu (krok 153): strefy bez własnego wyglądu dostają wygląd bossa (szlam zamiast czerwieni i ognia).
     const strikeLook = this.boss?.definition.strikeLook;
     const strikes = plan.strikes.map((strike) => ({
       ...strike,
@@ -1081,7 +1081,7 @@ export class BossFight {
   }
 
   /**
-   * Szlam od ścian (krok 152): pas rośnie z czasem walki i utraconym HP, przerysowuje się, puszcza bąble i spowalnia
+   * Szlam od ścian (krok 153): pas rośnie z czasem walki i utraconym HP, przerysowuje się, puszcza bąble i spowalnia
    * bohatera, którego ślad stóp jest w szlamie (teren — dash przechodzi). Przed walką i po niej nie rośnie.
    */
   private updateCreep(boss: Boss, now: number): void {
@@ -1279,7 +1279,7 @@ export class BossFight {
       else if (strike.look === 'water') this.playSplash(strike);
       else if (strike.look === 'tangle') this.playTangleBurst(strike);
       else if (strike.look === 'sludge') {
-        // Król Szlamu (krok 152): rozbryzg szlamu w zasięgu strefy; kałużę rozlewa płat z planu.
+        // Król Szlamu (krok 153): rozbryzg szlamu w zasięgu strefy; kałużę rozlewa płat z planu.
         effects.sludge.splash(strike.center.x, strike.center.y, strike.radius);
         this.deps.decals.add('slime', strike.center.x, strike.center.y);
       }
@@ -1638,7 +1638,7 @@ export class BossFight {
     this.pendingFeast = null;
     this.pendingRelease = null;
     this.clearSpawns();
-    // Szlam zostaje na podłodze i murach, fiolet schodzi (krok 152).
+    // Szlam zostaje na podłodze i murach, fiolet schodzi (krok 153).
     this.creepView?.settle();
     // Śmierć w locie: zwłoki na ziemi, w miejscu lądowania.
     this.finishLeap(boss);
@@ -1816,7 +1816,7 @@ function burstVisual(burst: ProjectileBurst): { readonly texture: string; readon
   return { texture: SPRITE_SHEETS[sheet].key, animation: animationKey(sheet, animation) };
 }
 
-/** Wygląd płatu na ziemi: kałuża szlamu bierze arkusz o swoim promieniu (krok 152), reszta z `BOSS_PATCH_VISUALS`. */
+/** Wygląd płatu na ziemi: kałuża szlamu bierze arkusz o swoim promieniu (krok 153), reszta z `BOSS_PATCH_VISUALS`. */
 function patchVisual(shot: WebShot): { readonly sheet: SpriteSheetId; readonly grow: string; readonly shimmer: string; readonly wither?: string; readonly witherMs?: number } {
   if (shot.look === 'sludge') return { sheet: sludgePuddleSheet(shot.maxRadius), grow: 'grow', shimmer: 'shimmer', wither: 'wither', witherMs: 500 };
   return BOSS_PATCH_VISUALS[shot.look ?? 'web'];
@@ -1846,7 +1846,7 @@ function drawBurstTelegraph(gfx: Phaser.GameObjects.Graphics, burst: ProjectileB
     0,
     1,
   );
-  // Król Szlamu (krok 152): liliowy pierścień szlamu zamiast pomarańczowego.
+  // Król Szlamu (krok 153): liliowy pierścień szlamu zamiast pomarańczowego.
   const ring = sludge ? SLUDGE_FX.burstRing : { color: 0xffa040, width: 3 };
   gfx.lineStyle(ring.width, ring.color, 0.3 + 0.6 * progress).strokeCircle(burst.origin.x, burst.origin.y, 30 + 20 * progress);
 }

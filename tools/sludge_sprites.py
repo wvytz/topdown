@@ -1,5 +1,5 @@
 """
-Generator szlamu Króla Szlamu (krok 152, `#krol-szlamu`): flegma w locie, rozbryzg przy uderzeniu, kałuże szlamu
+Generator szlamu Króla Szlamu (krok 153, `#krol-szlamu`): flegma w locie, rozbryzg przy uderzeniu, kałuże szlamu
 na podłodze i bąble. Poziom detalu jak ogień z kroku 144: pasmowe cieniowanie ze światłem z lewej-góry, fiolet
 przechodzi w brąz ditheringiem Bayera 4×4 (STYLEGUIDE §4.5 i §5 — szlam to substancja amorficzna), połysk
 pojedynczymi pikselami, ciemny obrys najciemniejszym tonem fioletu.
