@@ -4,11 +4,11 @@ import { floorInLoop } from '@/systems/TowerLoop';
 import { EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
 import {
-  FLOOR_DRESSING,
   FUNGAL_GROVE_DRESSING,
   GRAVEYARD_DRESSING,
   INFERNAL_DRESSING,
   MIRROR_HALL_DRESSING,
+  RUINS_DRESSING,
   SMOKE_DEN_DRESSING,
   SPIDER_LAIR_DRESSING,
   STORK_GARDEN_DRESSING,
@@ -80,7 +80,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     id: BiomeId.TowerRuins,
     name: 'Ruiny wieży',
     tileset: TILESET_ASSET,
-    dressing: FLOOR_DRESSING,
+    dressing: RUINS_DRESSING,
     enemyVariants: { [EnemyType.Rusher]: EnemyVariant.TrashcanMan, [EnemyType.Kiter]: EnemyVariant.DemonMage, [EnemyType.Nester]: EnemyVariant.BroodSac, [EnemyType.Lurker]: EnemyVariant.StoneLurker },
     ceilingDrops: null,
     cocoons: null,
