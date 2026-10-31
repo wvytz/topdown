@@ -1,9 +1,11 @@
-import type { AudioSettings } from '@/core/audioTypes';
+import type { AudioSettings, MusicPreset } from '@/core/audioTypes';
 
 /** Krok suwaka głośności i wartości domyślne. */
 export interface AudioSettingsRules {
   readonly defaults: AudioSettings;
   readonly step: number;
+  /** Zestawy muzyki w kolejności przełączania na pauzie (krok 139). */
+  readonly presets: readonly MusicPreset[];
 }
 
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
@@ -11,7 +13,7 @@ const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
 const round = (value: number): number => Math.round(value * 100) / 100;
 
 /** Ustawienia z magazynu: nieznane lub zepsute pola zastępują wartości domyślne. */
-export function parseAudioSettings(raw: unknown, defaults: AudioSettings): AudioSettings {
+export function parseAudioSettings(raw: unknown, defaults: AudioSettings, presets: readonly MusicPreset[] = [defaults.preset]): AudioSettings {
   if (typeof raw !== 'object' || raw === null) return defaults;
   const data = raw as Record<string, unknown>;
   const volume = (value: unknown, fallback: number): number =>
@@ -20,12 +22,21 @@ export function parseAudioSettings(raw: unknown, defaults: AudioSettings): Audio
     music: volume(data.music, defaults.music),
     sfx: volume(data.sfx, defaults.sfx),
     muted: typeof data.muted === 'boolean' ? data.muted : defaults.muted,
+    preset: presets.find((preset) => preset === data.preset) ?? defaults.preset,
   };
 }
 
 /** Zmiana głośności muzyki albo efektów o `steps` kroków (ujemne — ciszej). Zmiana głośności zdejmuje wyciszenie. */
 export function stepVolume(settings: AudioSettings, channel: 'music' | 'sfx', steps: number, rules: AudioSettingsRules): AudioSettings {
   return { ...settings, [channel]: round(clamp01(settings[channel] + steps * rules.step)), muted: false };
+}
+
+/** Następny (albo poprzedni, `step` -1) zestaw muzyki, z zawijaniem. */
+export function cyclePreset(settings: AudioSettings, rules: AudioSettingsRules, step: 1 | -1): AudioSettings {
+  const { presets } = rules;
+  const index = Math.max(0, presets.indexOf(settings.preset));
+  const next = presets[(index + step + presets.length) % presets.length] ?? settings.preset;
+  return { ...settings, preset: next };
 }
 
 export function toggleMute(settings: AudioSettings): AudioSettings {

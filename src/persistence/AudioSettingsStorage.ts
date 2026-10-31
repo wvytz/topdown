@@ -13,7 +13,7 @@ export class AudioSettingsStorage {
     if (!this.storage) return this.memory;
     try {
       const raw = this.storage.getItem(AUDIO_STORAGE_KEY);
-      return raw === null ? this.memory : parseAudioSettings(JSON.parse(raw), AUDIO_SETTINGS_RULES.defaults);
+      return raw === null ? this.memory : parseAudioSettings(JSON.parse(raw), AUDIO_SETTINGS_RULES.defaults, AUDIO_SETTINGS_RULES.presets);
     } catch {
       return this.memory;
     }

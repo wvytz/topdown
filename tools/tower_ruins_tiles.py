@@ -133,6 +133,9 @@ class Palette:
     # (czerwień, krem, tłuszcz, frytki). Puste w innych biomach.
     # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): opalizujące refleksy na polerowanej posadzce. Puste w innych biomach.
     opal: tuple = ()  # 4: róż, błękit, liliowy, blada żółć
+    # Bociani Ogród (krok 137): trawa w szczelinach i bluszcz (3: cień, źdźbło, jasne) oraz kwiaty (3: czerwień, jasna, środek).
+    grass: tuple = ()
+    bloom: tuple = ()
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
@@ -339,6 +342,24 @@ PALETTES = {
         ash=oks((.58, .016, 95), (.48, .016, 90)),
         opal=oks((.86, .075, 350), (.87, .070, 200), (.82, .080, 300), (.90, .075, 95)),
     ),
+    # Bociani Ogród (krok 137, `#brudna-wiedzma`): zarośnięty taras nocą — po jasnej Lustrzanej komnacie „totalny mrok”.
+    # Omszałe płyty w kolorze mokrej ziemi (barwa z dala od fioletu Czarodziejki i zieleni łucznika), mury z ciemnego,
+    # chłodnego kamienia w bluszczu; noc robi mgła. Plamy to błoto, jasne — pióra i pyłek.
+    'bociani_noc': Palette(
+        key='bociani_noc', label='Bociani Ogród (noc, mech i błoto)',
+        floor=oks((.30, .026, 80), (.37, .030, 82), (.455, .034, 85), (.50, .036, 88), (.545, .036, 90), (.59, .034, 92)),
+        floor_alt=ok(.43, .036, 100),
+        wall_top=oks((.12, .016, 200), (.19, .020, 195), (.28, .024, 185), (.34, .026, 178), (.41, .026, 170), (.48, .024, 162)),
+        wall_block_alt=ok(.30, .030, 155),
+        wall_face=oks((.08, .014, 205), (.12, .018, 200), (.16, .020, 195)),
+        wall_fade=oks((.07, .012, 205), (.10, .014, 200), (.13, .016, 195)),
+        deep=oks((.05, .010, 205), (.07, .012, 205)),
+        stain=oks((.24, .032, 65), (.31, .038, 68)),
+        ash=oks((.62, .030, 130), (.50, .030, 135)),
+        bone=oks((.74, .010, 250), (.84, .010, 250), (.92, .008, 250)),
+        grass=oks((.30, .075, 145), (.40, .095, 140), (.52, .105, 132)),
+        bloom=oks((.46, .170, 28), (.58, .180, 34), (.84, .120, 85)),
+    ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
     # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
     # A: krwawy bazalt — prawie czarna, chłodna skała z nutą czerwieni; czerwień niesie krew i żar.
@@ -404,7 +425,9 @@ BIOMES = {
     # Zadymiona palarnia (krok 83): piętro Barona Dymu; kafle bez dodatków (jak ruiny), inna paleta.
     'smoke_den': {'palette': 'dymna_palarnia', 'extras': ('smoke',), 'reserved_hues': True},
     # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): piętra dwóch Sprzątaczek; błyszcząca posadzka, mury w ruinie.
-    'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror',), 'reserved_hues': True},
+    'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror', 'feathers'), 'reserved_hues': True},
+    # Bociani Ogród (krok 137): taras Brudnej Wiedźmy nocą; zieleń trawy z założenia, więc bez rezerwy barw (jak leże).
+    'stork_garden': {'palette': 'bociani_noc', 'extras': ('garden', 'feathers'), 'reserved_hues': False},
 }
 
 
@@ -1827,6 +1850,116 @@ def overgrow_mirror(e, img, p, r):
                         img.put(x, y, p.stain[0])
 
 
+def feather_decal(kind):
+    """Pióra (krok 137): białe pióra z czarną końcówką i stosiną — w Bocianim Ogrodzie i, jako zapowiedź Brudnej
+    Wiedźmy, na posadzce Lustrzanej komnacie („przeklęte ptaszyska”)."""
+    def gen(p, r):
+        img, B = Img(T, T), p.bone
+        for _ in range(3 if kind == 'feathers_a' else 2):
+            cx, cy = r.uniform(8, 24), r.uniform(8, 24)
+            a = r.uniform(0, math.pi)
+            dx, dy = math.cos(a), math.sin(a)
+            n = r.randint(7, 10)
+            for i in range(-n // 2, n // 2 + 1):
+                x, y = cx + dx * i, cy + dy * i
+                w = 1.6 * (1 - abs(i) / (n / 2 + 1)) + .4
+                for j in (-1, 1):
+                    for k in range(int(w) + 1):
+                        img.put(int(x - dy * j * k), int(y + dx * j * k), B[2] if j < 0 else B[1])
+                img.put(int(x), int(y), B[0])  # stosina
+            img.put(int(cx + dx * (n // 2 + 1)), int(cy + dy * (n // 2 + 1)), p.deep[1])  # czarna końcówka
+            img.put(int(cx + dx * (n // 2)), int(cy + dy * (n // 2)), p.deep[1])
+        return img
+    return gen
+
+
+def garden_decal(kind):
+    """Nakładki Bocianiego Ogrodu: kępy trawy, błoto z tropami ptaków, drobne czerwone kwiaty."""
+    def gen(p, r):
+        img, G, S, Bl = Img(T, T), p.grass, p.stain, p.bloom
+        if kind.startswith('grass'):  # kępy źdźbeł z szczelin
+            for _ in range(3 if kind == 'grass_a' else 2):
+                cx, cy = r.randint(6, 26), r.randint(10, 28)
+                for i in range(r.randint(4, 7)):
+                    lean = r.uniform(-.6, .6)
+                    h = r.randint(3, 7)
+                    for k in range(h):
+                        img.put(int(cx + i - 3 + lean * k), cy - k, G[2] if k == h - 1 else G[1] if k > 1 else G[0])
+        elif kind.startswith('mud'):  # błoto i trójpalczaste tropy ptaków
+            cx, cy, rad = 16 + r.randint(-3, 3), 16 + r.randint(-3, 3), 6.5 if kind == 'mud_a' else 5
+            for y in range(T):
+                for x in range(T):
+                    a = math.atan2(y - cy, x - cx)
+                    reach = rad * (1 + .18 * math.sin(3 * a + cx))
+                    d = math.hypot(x + .5 - cx, (y + .5 - cy) * 1.25)
+                    if d < reach:
+                        img.put(x, y, S[0] if d > reach - 1.2 else S[1])
+            for _ in range(3):
+                tx, ty = r.randint(4, 27), r.randint(4, 27)
+                for dx, dy in ((0, 0), (0, -1), (0, -2), (-1, -3), (1, -3), (-2, -3), (2, -3)):
+                    img.put(tx + dx, ty + dy, S[0])
+        elif kind.startswith('flowers'):  # drobne czerwone kwiaty z jasnym środkiem
+            for _ in range(r.randint(3, 5)):
+                cx, cy = r.randint(5, 27), r.randint(5, 27)
+                img.put(cx, cy + 2, G[0])
+                img.put(cx, cy + 1, G[1])
+                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    img.put(cx + dx, cy + dy, Bl[r.randint(0, 1)])
+                img.put(cx, cy, Bl[2])
+        return img
+    return gen
+
+
+def garden_face(kind):
+    """Lica murów Bocianiego Ogrodu: zwisający bluszcz, gniazdo z gałązek na krawędzi muru, mech w spoinach."""
+    def gen(p, r):
+        img, G, W = Img(T, T), p.grass, p.wall_top
+        fy = T - FACE
+        if kind == 'ivy':
+            for _ in range(r.randint(3, 5)):
+                x = r.randrange(2, T - 2)
+                for y in range(fy - 3, fy + r.randint(3, FACE)):
+                    if r.random() < .25:
+                        x += r.choice((-1, 1))
+                    img.put(x, y, G[0])
+                    if y % 2 == 0:
+                        img.put(x + r.choice((-1, 1)), y, G[1] if r.random() < .7 else G[2])
+        elif kind == 'nest':  # gniazdo z gałązek na krawędzi muru, w nim jasne jajo
+            cx, cy = 16 + r.randint(-4, 4), fy - 2
+            for i in range(26):
+                a = r.uniform(0, math.tau)
+                d = r.uniform(4, 8)
+                x0, y0 = cx + math.cos(a) * d, cy + math.sin(a) * d * .5
+                for k in range(4):
+                    img.put(int(x0 + math.cos(a + 1.6) * k), int(y0 + math.sin(a + 1.6) * k * .5), p.stain[k % 2])
+            for dx, dy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                img.put(cx + dx, cy + dy, p.bone[2] if dy else p.bone[1])
+        elif kind == 'moss':
+            for y in range(fy - 4, T):
+                for x in range(T):
+                    if r.random() < (.35 if y < fy + 2 else .12):
+                        img.put(x, y, G[0] if r.random() < .6 else G[1])
+        return img
+    return gen
+
+
+def overgrow_garden(e, img, p, r):
+    """Bociani Ogród: trawa i mech w fugach posadzki, mech na wierzchu murów."""
+    G, F = p.grass, p.floor
+    if e.layer == 'floorBase':
+        for _ in range(e.w * e.h * r.randint(10, 16)):
+            x, y = r.randrange(img.w), r.randrange(img.h)
+            if img.get(x, y) in (F[0], F[1]):
+                img.put(x, y, G[0] if r.random() < .7 else G[1])
+    elif e.layer == 'wall':
+        wt = p.wall_top
+        face_top = T - FACE if img.get(4, T - 1) == p.outline else T
+        for y in range(face_top):
+            for x in range(T):
+                if img.get(x, y) == wt[1] and r.random() < .35:
+                    img.put(x, y, G[0])
+
+
 def arch(p, r):
     """Nadproże łuku nad przejściem szerokości 2 kafli: wierzch muru i lico z łukowatą dolną krawędzią.
     Rysowane nad postaciami (overheadDecor) — przejście pod nim zostaje czytelne."""
@@ -2084,6 +2217,17 @@ def manifest():
         # Najbardziej zniszczone mury w wieży: pęknięte i wyszczerbione warianty 8× częściej (Grzybnia 4×).
         m = [dataclasses.replace(e, weight=e.weight * 8)
              if e.layer == 'wall' and e.name.endswith(('_crack', '_chunk')) else e for e in m]
+    if 'garden' in BIOMES[BIOME]['extras']:
+        # Bociani Ogród (krok 137): bluszcz, gniazda i mech na licach; trawa, błoto i kwiaty na posadzce.
+        for kind, weight in (('ivy', 4), ('nest', 2), ('moss', 2)):
+            m.append(Entry(f'face_{kind}', garden_face(kind), 'wallDecor', group='wallFace.garden', weight=weight))
+        for kind, group in (('grass_a', 'decal.grass'), ('grass_b', 'decal.grass'), ('mud_a', 'decal.mud'),
+                            ('mud_b', 'decal.mud'), ('flowers_a', 'decal.flowers'), ('flowers_b', 'decal.flowers')):
+            m.append(Entry(f'decal_{kind}', garden_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+    if 'feathers' in BIOMES[BIOME]['extras']:
+        # Pióra (krok 137): w ogrodzie i jako zapowiedź Brudnej Wiedźmy w Lustrzanej komnacie.
+        for kind in ('feathers_a', 'feathers_b'):
+            m.append(Entry(f'decal_{kind}', feather_decal(kind), 'floorDecal', group='decal.feathers', weight=1, flip_x=True))
     # Ślady wleczenia i krwi ku arenie bossa (krok 54): na samym końcu (first-fit), nic się nie przesuwa.
     for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
                         ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):
@@ -2107,6 +2251,8 @@ def render_tiles(p):
             overgrow_infernal(e, img, p, random.Random(seed_of(e.name + '/porost')))
         if 'mirror' in BIOMES[BIOME]['extras']:  # Lustrzana komnata: połysk posadzki, brud murów
             overgrow_mirror(e, img, p, random.Random(seed_of(e.name + '/porost')))
+        if 'garden' in BIOMES[BIOME]['extras']:  # Bociani Ogród: trawa w fugach, mech na murach
+            overgrow_garden(e, img, p, random.Random(seed_of(e.name + '/porost')))
         tiles[e.name] = img
     return tiles
 
@@ -2387,6 +2533,7 @@ METRIC_CAST = {
     'graveyard': ('barbarian_sword', 'zombie', 'sower'),
     'infernal': ('barbarian_sword', 'sorceress', 'hellhound', 'cultist'),
     'mirror_hall': ('barbarian_sword', 'sorceress', 'archer', 'cleaner_blonde', 'cleaner_dark'),
+    'stork_garden': ('barbarian_sword', 'sorceress', 'archer'),
 }
 
 

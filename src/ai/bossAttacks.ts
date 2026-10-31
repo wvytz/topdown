@@ -13,6 +13,8 @@ import { BossAttackKind } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import type { Vector2 } from '@/core/types';
 import { isCaughtByGroundArea } from '@/systems/Hurtbox';
+import { EMPTY, required, telegraph, towardPoint } from '@/ai/planHelpers';
+import { planBirdDive, planFlowerEye, planStorkFlight, planWhirl } from '@/ai/witchAttacks';
 
 export interface AttackPlanContext {
   readonly kind: BossAttackKind;
@@ -71,12 +73,19 @@ export function planBossAttack(ctx: AttackPlanContext): BossAttackPlan {
       return planSpill(ctx);
     case BossAttackKind.Tangle:
       return planTangle(ctx);
+    case BossAttackKind.StorkFlight:
+      return planStorkFlight(ctx);
+    case BossAttackKind.BirdDive:
+      return planBirdDive(ctx);
+    case BossAttackKind.FlowerEye:
+      return planFlowerEye(ctx);
+    case BossAttackKind.Whirl:
+      return planWhirl(ctx);
     case BossAttackKind.Feast:
       throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }
 }
 
-const EMPTY = { strikes: [], bursts: [], spawns: [], webs: [], leap: null, throws: [] } as const;
 /** Lot wiadra na sznurze (czysto wizualny, kończy się z uderzeniem stref haka). */
 const BUCKET_FLIGHT_MS = 220;
 
@@ -349,16 +358,6 @@ export function planFeast(definition: BossDefinition, larder: Vector2, now: numb
   return { kind: BossAttackKind.Feast, ...EMPTY, feast: { target: larder, at }, endsAt: at };
 }
 
-/** Atak z `pattern` bez definicji to błąd konfiguracji bossa. */
-function required<T>(value: T | undefined, kind: BossAttackKind, ctx: AttackPlanContext): T {
-  if (value === undefined) throw new Error(`Boss „${ctx.definition.name}”: atak ${kind} bez definicji.`);
-  return value;
-}
-
-function telegraph(ctx: AttackPlanContext, baseMs: number): number {
-  return Math.round(baseMs * (ctx.enraged ? ctx.definition.enrage.telegraphMultiplier : 1));
-}
-
 /** Ryk wściekłości: fala wokół bossa po stałym telegrafie (wściekłość go nie skraca — to jej zapowiedź). */
 function planRoar(ctx: AttackPlanContext): BossAttackPlan {
   const roar = ctx.definition.enrage.roar;
@@ -513,13 +512,6 @@ function planLash(ctx: AttackPlanContext): BossAttackPlan {
 /** Kierunek boss → gracz (jednostkowy); gracz w miejscu bossa: w dół. */
 function towardTarget(ctx: AttackPlanContext): { x: number; y: number } {
   return towardPoint(ctx.self, ctx.target);
-}
-
-function towardPoint(from: Vector2, to: Vector2): { x: number; y: number } {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const len = Math.hypot(dx, dy);
-  return len === 0 ? { x: 0, y: 1 } : { x: dx / len, y: dy / len };
 }
 
 /**

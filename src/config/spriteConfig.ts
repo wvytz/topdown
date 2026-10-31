@@ -249,6 +249,130 @@ export const SPRITE_SHEETS = {
   cleanerBlondeDeath: cleanerDeathSheet('blonde'),
   cleanerDark: cleanerSheet('dark'),
   cleanerDarkDeath: cleanerDeathSheet('dark'),
+  // Brudna Wiedźma (krok 137, tools/witch_sprites.py): 128×128, 8 kierunków; 0–3 chód, 4–7 czar, 8–11 wir sukni,
+  // 12–15 lot na bocianach, 16–19 chichot. Śmierć: 8 klatek (suknia opada, ptaki odlatują, zostaje kwiat).
+  dirtyWitch: {
+    key: 'sheet-dirty-witch',
+    url: 'assets/sprites/dirty-witch_walk-cast-whirl-fly-laugh.png',
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 2560,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      cast: { frames: [4, 5, 6, 7], loop: false },
+      whirl: { frames: [8, 9, 10, 11], loop: false },
+      fly: { frames: [12, 13, 14, 15], loop: true },
+      laugh: { frames: [16, 17, 18, 19], loop: false },
+    },
+  },
+  dirtyWitchDeath: {
+    key: 'sheet-dirty-witch-death',
+    url: 'assets/sprites/dirty-witch_death.png',
+    frameWidth: 128,
+    frameHeight: 128,
+    sheetWidth: 1024,
+    sheetHeight: 1024,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: { die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false } },
+  },
+  // Żuk z roju wiedźmy (krok 137): jak pajączek — 0–3 bieg, 4–7 zapłon (pokrywy się rozchylają i świecą).
+  beetle: {
+    key: 'sheet-beetle',
+    url: 'assets/sprites/beetle_walk-prime.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      run: { frames: [0, 1, 2, 3], loop: true },
+      prime: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Efekty wiedźmy (krok 137): bocian w locie (obracany w kierunku lotu), pikujący ptak, kwiat-oko (0–5 rośnie,
+  // 6–7 oko się rozgląda), pyłek, liść, nasiono, wybuch żuka.
+  stork: {
+    key: 'sheet-stork',
+    url: 'assets/sprites/stork.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 192,
+    sheetHeight: 48,
+    directions: 1,
+    fps: 10,
+    animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
+  },
+  diveBird: {
+    key: 'sheet-dive-bird',
+    url: 'assets/sprites/dive-bird.png',
+    frameWidth: 24,
+    frameHeight: 24,
+    sheetWidth: 96,
+    sheetHeight: 24,
+    directions: 1,
+    fps: 12,
+    animations: { dive: { frames: [0, 1, 2, 3], loop: false } },
+  },
+  flowerEye: {
+    key: 'sheet-flower-eye',
+    url: 'assets/sprites/flower-eye.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 48,
+    directions: 1,
+    fps: 8,
+    animations: { grow: { frames: [0, 1, 2, 3, 4, 5], loop: false }, shimmer: { frames: [6, 7], loop: true } },
+  },
+  witchPollen: {
+    key: 'sheet-witch-pollen',
+    url: 'assets/sprites/witch-pollen.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 10,
+    animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
+  },
+  witchLeaf: {
+    key: 'sheet-witch-leaf',
+    url: 'assets/sprites/witch-leaf.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 12,
+    animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
+  },
+  witchSeed: {
+    key: 'sheet-witch-seed',
+    url: 'assets/sprites/witch-seed.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 12,
+    animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
+  },
+  beetleBurst: {
+    key: 'sheet-beetle_burst',
+    url: 'assets/sprites/beetle_burst.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 192,
+    sheetHeight: 48,
+    directions: 1,
+    fps: 12,
+    animations: { burst: { frames: [0, 1, 2, 3], loop: false } },
+  },
   // Plątanie brunetki (krok 126): czarne włosie oplata stopy — 0–3 wyrasta, 4–5 trzyma (pętla), 6–7 pęka.
   broomTangle: {
     key: 'sheet-broom-tangle',
@@ -1498,6 +1622,22 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     deathDecal: 'splat',
     death: { sheet: 'cleanerDarkDeath', animation: 'die', keepCorpse: true },
   },
+  // Brudna Wiedźma (krok 137): czar (bociany, ptaki, kwiat, rój), wir sukni, lot na bocianach, chichot (ryk wściekłości).
+  [BossId.DirtyWitch]: {
+    sheet: 'dirtyWitch',
+    move: 'walk',
+    attacks: {
+      [BossAttackKind.StorkFlight]: 'cast',
+      [BossAttackKind.BirdDive]: 'cast',
+      [BossAttackKind.FlowerEye]: 'cast',
+      [BossAttackKind.Brood]: 'cast',
+      [BossAttackKind.Whirl]: 'whirl',
+      [BossAttackKind.Leap]: 'fly',
+      [BossAttackKind.Roar]: 'laugh',
+    },
+    deathDecal: 'splat',
+    death: { sheet: 'dirtyWitchDeath', animation: 'die', keepCorpse: true },
+  },
   // Strażnik Bram (krok 41e): wirowanie łańcuchem (slam) i uderzenie tarczą (cleave).
   [BossId.GateWarden]: {
     sheet: 'gateWarden',
@@ -1708,6 +1848,20 @@ export const SPIDERLING_VISUAL = {
   groundShadow: { width: 14, height: 8, offsetX: 1, offsetY: 3 },
 } as const satisfies EnemyVisual & { readonly prime: string; readonly burst: { readonly sheet: SpriteSheetId; readonly animation: string } };
 
+/** Żuk z roju Brudnej Wiedźmy (krok 137): zachowanie pajączka, inny wygląd. */
+export const BEETLE_VISUAL = {
+  sheet: 'beetle',
+  move: 'run',
+  prime: 'prime',
+  burst: { sheet: 'beetleBurst', animation: 'burst' },
+  groundShadow: { width: 14, height: 8, offsetX: 0, offsetY: 3 },
+} as const satisfies EnemyVisual & { readonly prime: string; readonly burst: { readonly sheet: SpriteSheetId; readonly animation: string } };
+
+/** Wygląd pajączka-kamikaze wg `SpiderlingDefinition.look`. */
+export function spiderlingVisual(look: 'beetle' | undefined): typeof SPIDERLING_VISUAL | typeof BEETLE_VISUAL {
+  return look === 'beetle' ? BEETLE_VISUAL : SPIDERLING_VISUAL;
+}
+
 /** Kokon: spoczynek, telegraf, rozdarcie; ostatnia klatka rozdarcia (strzępy) zostaje na podłodze. */
 export const COCOON_VISUAL = {
   sheet: 'cocoon',
@@ -1807,8 +1961,10 @@ export const BOSS_PATCH_VISUALS = {
   mushrooms: { sheet: 'mushroomTrail', grow: 'grow', shimmer: 'shimmer', wither: 'wither', witherMs: 600 },
   // Kałuża mydlin sprzątaczek (krok 125).
   water: { sheet: 'soapPuddle', grow: 'grow', shimmer: 'shimmer' },
+  // Kwiat-oko Brudnej Wiedźmy (krok 137): tylko wygląd, pierścienie pyłku strzela BossFight.
+  flower: { sheet: 'flowerEye', grow: 'grow', shimmer: 'shimmer' },
 } as const satisfies Record<
-  'web' | 'mycelium' | 'mushrooms' | 'water',
+  'web' | 'mycelium' | 'mushrooms' | 'water' | 'flower',
   { readonly sheet: SpriteSheetId; readonly grow: string; readonly shimmer: string; readonly wither?: string; readonly witherMs?: number }
 >;
 
@@ -1821,6 +1977,44 @@ export const DEVOURER_FX_VISUAL = {
   /** Zarodniki z grzbietu: co `everyMs` jedna kropka soku unosi się o `rise` px i gaśnie. */
   motes: { everyMs: 140, enragedEveryMs: 70, spread: 22, rise: 26, lifeMs: 900, colors: [0x5fe0d0, 0x9ef2e6, 0x2f9a94] },
 } as const satisfies { readonly pod: { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number }; readonly motes: unknown };
+
+/**
+ * Brudna Wiedźma w walce (krok 137): bocian i ptak lecą prosto (bez łuku, bocian obrócony w kierunku lotu), nasiono
+ * łukiem; pociski pyłku i liści; pióra przy uderzeniu ptaka, zielony wybuch wiru. Czysto wizualne.
+ */
+export const WITCH_FX_VISUAL = {
+  stork: { sheet: 'stork', animation: 'fly', arcHeight: 0 },
+  bird: { sheet: 'diveBird', animation: 'dive', arcHeight: 0 },
+  seed: { sheet: 'witchSeed', animation: 'fly', arcHeight: 40 },
+  pollen: { sheet: 'witchPollen', animation: 'fly' },
+  leaf: { sheet: 'witchLeaf', animation: 'fly' },
+  /** Pas bocianów: lekki biały błysk piór pod przelatującym ptakiem (bez dźwięku wybuchu — stref jest kilkadziesiąt). */
+  featherPuff: { color: 0xe8ecf0, radiusScale: 0.7 },
+  dive: {
+    frameMs: 60,
+    frames: [
+      { fill: 0xf4f6f8, fillAlpha: 0.55, ring: 0xffffff, ringWidth: 3, ringAlpha: 1, sparks: 0 },
+      { fill: 0xd8dde4, fillAlpha: 0.45, ring: 0xf4f6f8, ringWidth: 2, ringAlpha: 0.9, sparks: 10 },
+      { fill: 0x8a95a0, fillAlpha: 0.25, ring: 0xd8dde4, ringWidth: 1, ringAlpha: 0.7, sparks: 7 },
+      { fill: 0x1f1626, fillAlpha: 0.15, ring: 0x8a95a0, ringWidth: 1, ringAlpha: 0.45, sparks: 4 },
+    ],
+    sparkColor: 0xffffff,
+    sparkSize: 2,
+    sparkReach: 0.92,
+  },
+  whirl: {
+    frameMs: 60,
+    frames: [
+      { fill: 0xe8ffd8, fillAlpha: 0.5, ring: 0xffffff, ringWidth: 3, ringAlpha: 1, sparks: 0 },
+      { fill: 0x6cc050, fillAlpha: 0.45, ring: 0xe8ffd8, ringWidth: 3, ringAlpha: 0.95, sparks: 12 },
+      { fill: 0x2f7a3a, fillAlpha: 0.3, ring: 0x6cc050, ringWidth: 2, ringAlpha: 0.8, sparks: 9 },
+      { fill: 0x1f1626, fillAlpha: 0.2, ring: 0x2f7a3a, ringWidth: 1, ringAlpha: 0.55, sparks: 5 },
+    ],
+    sparkColor: 0xff9a3c,
+    sparkSize: 2,
+    sparkReach: 0.92,
+  },
+} as const;
 
 /** Kokon rzucany przez Króla Pająków (krok 29): spoczynkowe klatki kokonu leża, lot łukiem. */
 export const KING_COCOON_VISUAL = {

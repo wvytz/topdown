@@ -1,4 +1,4 @@
-/** Naprowadzanie pocisku gracza (krok 137): strzał barbarzyńcy skręca do najbliższego celu przed sobą. */
+/** Naprowadzanie pocisku gracza (krok 146): strzał barbarzyńcy skręca do najbliższego celu przed sobą. */
 import type { Vector2 } from '@/core/types';
 import { wrapAngle } from '@/systems/CombatMath';
 import type { AimTarget } from '@/systems/touchAim';

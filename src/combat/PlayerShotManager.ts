@@ -25,7 +25,7 @@ export interface ShotLook {
   readonly extraPierce?: number;
 }
 
-/** Dodatkowe zachowanie lotu (krok 137). */
+/** Dodatkowe zachowanie lotu (krok 146). */
 export interface ShotFlight {
   readonly homing?: HomingConfig;
 }

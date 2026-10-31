@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5061,7 +5061,75 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** wielkość i miejsce strzałki (przy dolnej krawędzi zahacza o linię podpowiedzi sterowania), czy wystarcza, czy jednak lekko oddalić kamerę na arenie.
 
-## Krok 137 — Naprowadzany strzał barbarzyńcy `#decyzja` `#balans`
+## Krok 137 — Brudna Wiedźma i Bociani Ogród `#decyzja` `#boss` `#brudna-wiedzma` `#bociani-ogrod`
+
+**Skąd:** szkic właściciela (30.10.2026, „WITCH?”): wyszczerzona wiedźma z długimi czarnymi włosami w pomarańczowo-czarnej sukni z zielonym obrąbkiem, z czerwonym kwiatem, wokół bociany, ptaszek i żuk. Pytanie: bohaterka czy boss? Moja rekomendacja — boss (bohaterka może się odblokować po jego pokonaniu, później), projekt w Claude Doc „Wiedźma — bohaterka czy boss?”. `#decyzja` Właściciel: boss, nazwa **Brudna Wiedźma**, nowe piętro na końcu kręgu, przejście z Lustrzanej komnaty uzasadnione fabułą — „oczyszczenie, złudna czystość, potem totalny mrok, a następnie portal i wędrówka przez jeszcze gorsze odmęty”.
+
+**Co powstało:**
+- **Piętro 8 — Bociani Ogród** (`BiomeId.StorkGarden`): zarośnięty taras na szczycie kręgu nocą. Krąg ma znów 8 pięter (`floorsPerLoop` 8). Kafle `tools/tower_ruins_tiles.py --biome stork_garden` (paleta `bociani_noc`: płyty w barwie mokrej ziemi — z dala od fioletu Czarodziejki i zieleni łucznika, sprawdzone metryką czytelności; mury z chłodnego kamienia, trawa w fugach i mech), lica: bluszcz, gniazda, mech; nakładki: kępy trawy, błoto z tropami ptaków, czerwone kwiatki, pióra. Noc `GARDEN_NIGHT` — najgęstszy mrok kręgu (0,94). Ku arenie więcej piór i gniazd, zielonkawa poświata. Wrogowie na razie z ruin (jak w Lustrzanej komnacie).
+- **Zapowiedź na piętrze 7:** pióra na lustrzanej posadzce (`decal.feathers` także w arkuszu Lustrzanej komnaty) i nowe okrzyki sprzątaczek „Znowu te ptaszyska!”, „Kto tu napierzył?!”.
+- **Brudna Wiedźma** (`DIRTY_WITCH`, „Pani Bocianich Gniazd”), ataki w czystym `ai/witchAttacks.ts` (wspólne pomocniki planów przeniesione do `ai/planHelpers.ts`):
+  - **klucz bocianów** — 3 równoległe pasy cieni (we wściekłości 4) w kierunku wiedźma → bohater, jeden przez bohatera, między pasami 44 px przejścia; potem bocian przelatuje pas i strefy uderzają po kolei pod nim;
+  - **pikowanie** — miejsca wokół bohatera (pierwsze na nim), w każde po kolei spada ptak z góry;
+  - **kwiat-oko** — nasiona lecą łukiem, wyrastają czerwone kwiaty z okiem i 3 razy pulsują pierścieniem 8 kul pyłku (kolejne pulsy obrócone o pół kroku), potem więdną;
+  - **wir sukni** — fala wokół niej i pierścień liści;
+  - **druga faza** (od połowy HP, nowe pole `enragedPattern` w `BossDefinition`, obsługa w `BossBrain`): dochodzi rój żuków-kamikaze (zachowanie pajączków, własny wygląd — `SpiderlingDefinition.look`, `spiderlingVisual`) i lot na bocianach (skok na miejsce bohatera); serie ataków jak u innych bossów we wściekłości. Nie mówi — chichocze i krzyczy krótko („Hi hi hi!”, „Lećcie, ptaszki!”, „Dziobać!”, „Kwitnij!”, „Bzzz!”).
+- **Grafika:** `tools/witch_sprites.py` — wiedźma (128×128, 8 kierunków: chód, czar, wir, lot na bocianach, chichot; śmierć — suknia opada, ptaki odlatują, zostaje kwiat), bocian w locie (obracany w kierunku lotu), pikujący ptak, kwiat-oko, pyłek, liść, nasiono, żuk i jego wybuch. **Dźwięk:** nowy `SoundCue.WingFlap` (trzepot skrzydeł) przy kluczu i pikowaniu.
+
+**Decyzje (moje, do oceny):** liczby ataków; kwiaty na razie nie do zniszczenia (więdną same po 3 pulsach); pas bocianów przy uderzeniu tylko lekko błyska (stref jest kilkadziesiąt — bez huku wybuchu); trzecia faza z koncepcji (żywa tarcza z ptaków) i odblokowanie wiedźmy jako bohaterki — osobne kroki; przejazd windą sprzątaczek na dach (z koncepcji) — na razie tylko w fabule, schody jak zwykle.
+
+**Testy i weryfikacja:** `tests/ai/DirtyWitch.test.ts` (piętro 8 i krąg 16, pasy bocianów i przejścia między nimi, kolejność uderzeń, pikowanie, kwiaty i pulsy, wir, druga faza w `BossBrain`, skalowanie, animacje), testy biomów (Bociani Ogród, pióra w Lustrzanej komnacie); `npm run build` (typy, 2254 testy, build). W przeglądarce (`?floor=8&boss=1&hero=archer`): wszystkie ataki, przejście w drugą fazę z rykiem i żukami, bez błędów w konsoli. `npm run smoke` i `npm run smoke -- --coop` — patrz niżej.
+
+**Do oceny właściciela:** wygląd wiedźmy i bocianów, czytelność pasów bocianów (dużo czerwonych kółek), trudność, czy noc w ogrodzie nie jest za ciemna.
+## Krok 139 — Muzyka: dwa style — Lucent i Horror (minimalny house) `#ocena` `#decyzja` `#dzwiek`
+
+**Skąd:** prośba właściciela (30.10.2026): „zmień ten ambient na prosty house'owy bit z kategorii horror minimal tech”, a potem `#decyzja`: „dodaj to jako drugi preset. Nazwij pierwszy Lucent, a ten — horror”.
+
+**Co powstało:**
+- **Nowy kompozytor** (`systems/MusicComposer.ts`, czysty TS): pętla 4/4 w 16 krokach na takt. Stopa na każdą ćwierćnutę, otwarty hi-hat na offbeat, klask na 2 i 4, toczący się bas na akordzie z progresji, krótki ciemny stab co drugi takt, pod spodem dron (prima + interwał grozy) i rzadki „ping” w echu (deterministyczny seed). Fraza 16 taktów kończy się 2-taktowym przełamaniem (bez stopy, basu i klasku); pierwsze 4 takty utworu bez klasku i staba — muzyka się rozkręca.
+- **Dwa klimaty tej samej pętli** (`MUSIC_THEMES`): wieża i menu — a-moll, 122 BPM, dron z małą sekundą; zaświaty — e frygijski, 118 BPM, dron z trytonem, gęstsze pingi, inny rytm basu.
+- **Walka z bossem** (`setMusicIntense`): szesnastkowe zamknięte hi-haty, stab w każdym takcie, częstsze pingi, bez przełamań.
+- **Nowe głosy odtwarzacza** (`audio/MusicPlayer.ts`): stopa (sinus z opadającą wysokością), hi-haty i klask (szum za filtrem), bas-piła z zamykającym się filtrem, stab z dwóch rozstrojonych pił, dron z dwóch sinusów, ping; stab i ping idą do echa (kropkowana ósemka ze sprzężeniem). Barwy i głośności w `MUSIC_MIX`.
+- **Dwa zestawy muzyki** (`MusicPreset`, `MUSIC_PRESETS`): **Lucent** — dawny ambient z kroku 116 (pad, bas, dzwonki, bęben-serce; bez zmian w brzmieniu) i **Horror** — nowy house. Pauza → „Dźwięk i obraz” → pierwsza pozycja „Styl muzyki: LUCENT / HORROR” (← →, Enter, klik albo stuknięcie; pad tak samo). Wybór zapisuje się w ustawieniach dźwięku (`AudioSettings.preset`, ten sam klucz w `localStorage`; stare zapisy bez pola dostają Lucent), a bieżący utwór przechodzi płynnie w nowy styl. Domyślnie Lucent.
+- Kanał muzyki, głośność z pauzy, N, wyciszenie na starcie i przyciszanie na pauzie — bez zmian (te same `SoundBoard` i szyna muzyki).
+
+**Decyzje:** dalej synteza w kodzie, bez plików audio. Hi-haty celowo ciche i krótkie (pamiątka po kroku 116a: zmęczenie ucha po 20 minutach).
+
+**Testy i weryfikacja:** `tests/systems/musicComposer.test.ts` (Horror: stopa i przełamanie, wstęp, tryb bossa, dron z interwałem grozy, pingi; Lucent: dawne testy bębna i oddechu dzwonków; każdy zestaw gra swoimi głosami; determinizm dla obu zestawów i klimatów), `tests/systems/audioSettings.test.ts` (zapis zestawu, zawijanie), `pauseMenu.test.ts`; `npm run build` (typy, 2221 testów, build). W przeglądarce: pauza pokazuje „Styl muzyki: LUCENT”, → zmienia na HORROR i zapisuje `preset: "horror"`, bez błędów w konsoli. W Chromium wyrenderowane próbki (OfflineAudioContext, prawdziwy `MusicPlayer`): wieża 40 s, zaświaty 40 s, boss 20 s — szczyt ok. 0,31 przed głośnością kanału, bez przesterowania, brak błędów w konsoli.
+
+**Do oceny:** czy klimat trafiony; tempo (122/118), głośność stopy względem efektów, czy pingi i dron nie męczą po dłuższej grze.
+
+## Krok 140 — Czytelny przycisk pauzy na telefonie `#ocena` `#mobile`
+
+**Skąd:** `#ocena` właściciela (30.10.2026): przy rozmowie z nowym testerem sam nie wiedział, gdzie jest pauza — dwie kreski „II” w małym kółku nic nie mówią. Pauza na telefonie jest ważna, bo prowadzi też do opcji i czatu „Napisz do autora”.
+
+**Co powstało:**
+- Przycisk pauzy w wersji mobilnej (`mobile/TouchScene.ts`, `drawPauseButton`) to teraz podłużna pigułka 92×32 px pod minimapą: ciemne tło, złota obwódka, rysowana ikonka ⏸ i podpis **PAUZA** (16 px, złoty) — widać ją od razu i odróżnia się od szarych kółek walki.
+- Strefa dotyku prostokątna (`onPauseButton`): wymiary × `hitSlop`, w pionie jeszcze +8 px.
+- Wymiary i położenie w `TOUCH_BUTTONS.pause` (`config/touchConfig.ts`), napis w `TOUCH_LABELS.pause`.
+
+**Decyzje:** podpis „PAUZA”, nie „STOP” ani „MENU” — „stop” brzmi jak koniec gry, a „menu” myli się z menu głównym. Wersja PC bez zmian (pauza pod Esc/P i padem Start).
+
+**Testy i weryfikacja:** `npm run build` (typy, 2221 testów, build). W Chromium z emulacją telefonu (Pixel 7 poziomo, `mobile.html`): przycisk widoczny pod minimapą, stuknięcie przy jego krawędzi otwiera pauzę.
+
+**Do oceny:** czy przycisk jest dość widoczny i nie zasłania minimapy na dużych piętrach.
+
+## Krok 145 — Przeliczenie balansu: mocniejsze ciosy bohaterów, wolniej rosnące HP bossów `#ocena` `#decyzja` `#balans` `#brudna-wiedzma`
+
+**Skąd:** `#ocena` Wicio po nagraniach walki z Brudną Wiedźmą (30.10.2026): „za mały damage, przeskaluj HP… wiem, że duża zmiana”. Rachunek: HP bossa rosło o 15% na piętro, obrażenia bohatera tylko z przedmiotami — wiedźma na piętrze 8 miała ok. 1560 HP (2× bazowe), samo bicie barbarzyńcą bez przedmiotów ok. 42 s, z unikami ok. 2 min; w drugim kręgu 2470 HP. `#decyzja` Na karcie wybrał „Cała gra: bossowie i bohaterowie”.
+
+**Co się zmieniło (tylko `src/config/`):**
+- Obrażenia bohaterów ×1,25: cios barbarzyńcy 12 → 15, jego strzał 7 → 9; kula Czarodziejki 14 → 18, fala 16 → 20, promień 8 → 10 na tik, Supernowa 70 → 88; strzała łucznika 8 → 10, mocna 14 → 18, salwa 7 → 9, totem 10 → 12. Szał bez zmian (mnożnik).
+- Nowe `BOSS_SCALING` (`combatConfig.ts`): HP bossów +6% na piętro zamiast +15%, obrażenia jak u wrogów (+10%). Używa go `BossFight`; czarny dog Barona też.
+- Bazowe HP bossów w górę, żeby pierwsze piętra zostały równie trudne: Strażnik Piętra 300 → 380, Król 420 → 465, Matka 300 → 335, Pożeracz 460 → 670, Kat 430 → 640, Strażnik Bram 340 → 500, Baron 640 → 760, blondynka 600 → 720, czarnowłosa 700 → 660, wiedźma 760 → 860.
+- Zwykli wrogowie: `ENEMY_SCALING` bez zmian; Rusher 30 → 33 HP, by dalej padał od 3 ciosów na piętrze 1. Reszta mobów ginie szybciej — ich liczbę i fale stroi wątek „Przebudować feel i trudność gry” (uzgodnione).
+- Siła ataków bossów bez zmian (nie łagodzimy).
+
+**Samo bicie barbarzyńcą bez przedmiotów (przed → po):** piętro 1: 8 → 8 s; 2–4: 16–22 → 15–18 s; Baron, blondynka: 28 → 20 s; piętro 7 i wiedźma: 42–46 → 26 s; wiedźma w drugim kręgu: 67 → 35 s.
+
+**Testy:** `tests/balance/balance.test.ts` — boss rośnie wolniej niż wrogowie, samo bicie bossa 5–35 s w pierwszym kręgu i ≤ 45 s w drugim; `npm run build`.
+
+## Krok 146 — Naprowadzany strzał barbarzyńcy `#decyzja` `#balans`
 
 **Skąd:** decyzja właściciela (30.10.2026): „Strzały Barby powinny być auto naprowadzane, jako że ataki dystansowe są moim zdaniem najbardziej broken” — barbarzyńca jako jedyny walczy wręcz, więc jego strzał ma nadrabiać celnością.
 
@@ -5153,7 +5221,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
-- **Naprowadzany strzał barbarzyńcy (krok 137):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
+- **Naprowadzany strzał barbarzyńcy (krok 146):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
 - **Paski duetu i strzałka do bossa (krok 136):** `#boss` `#ocena` dwa paski HP w duecie, strzałka do bossa poza kadrem — czeka na test właściciela.
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.

@@ -38,7 +38,7 @@ export const PAUSE_CONFIG = {
   hints: {
     main: '↑ ↓ wybór · Enter — OK · Esc — wznów',
     sub: '↑ ↓ wybór · Enter — OK · Esc — wróć',
-    settings: '← → głośność · Enter — zmień · Esc — wróć',
+    settings: '← → głośność i styl · Enter — zmień · Esc — wróć',
   },
   /** Układ (y w pikselach płótna 960×540). */
   layout: {

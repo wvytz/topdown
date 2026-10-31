@@ -46,7 +46,7 @@ Nazwa w kodzie: `SoundCue` w `core/audioTypes.ts`. Odsłuch w trybie dev z konso
 | `ambush` | zasadzka: światło gaśnie | |
 | `secret` | ukryta komnata się odsłania | |
 
-**Muzyka:** wieża (piętra 1–3 i menu) — d-moll dorycki, 72 BPM; zaświaty (piętra 4–7: Cmentarzysko, Piekło, Palarnia) — e frygijski, 60 BPM, z pulsem serca. W walce z bossem muzyka dostaje bęben, gęstsze dzwonki i mocniejszy bas. Na pauzie cichnie, po śmierci drużyny milknie.
+**Muzyka — dwa style do wyboru na pauzie (krok 139):** **Lucent** — ambient z kroku 116: wieża (piętra 1–3 i menu) — d-moll dorycki, 72 BPM; zaświaty (piętra 4–7) — e frygijski, 60 BPM, z pulsem serca; w walce z bossem bęben, gęstsze dzwonki i mocniejszy bas. **Horror** — prosty, zapętlony minimalny house w klimacie horroru (4/4, 16 kroków na takt): stopa na każdą ćwierćnutę, otwarty hi-hat na offbeat, klask na 2 i 4, toczący się bas, krótki ciemny stab z echem, pod spodem buczący dron z interwałem grozy i co jakiś czas odległy „ping”. Wieża (piętra 1–3 i menu) — a-moll, 122 BPM, dron z małą sekundą; zaświaty (piętra 4–7) — e frygijski, 118 BPM, dron z trytonem, gęstsze pingi. Fraza ma 16 taktów, ostatnie 2 to przełamanie bez stopy; pierwsze 4 takty utworu bez klasku i staba. W walce z bossem — szesnastkowe hi-haty, stab w każdym takcie, bez przełamań. Na pauzie cichnie, po śmierci drużyny milknie.
 
 ## Co-op: bez podwójnego hałasu
 
@@ -56,6 +56,6 @@ Nazwa w kodzie: `SoundCue` w `core/audioTypes.ts`. Odsłuch w trybie dev z konso
 ## Ustawienia gracza
 
 - **Domyślnie wyciszone (krok 120):** gra startuje bez dźwięku; głośnik w prawym górnym rogu ekranu startowego (`effects/SpeakerButton.ts`) włącza go i wycisza. To samo ustawienie co N i pauza, zapamiętane w przeglądarce.
-- **Pauza → „Dźwięk i obraz”:** „Muzyka − 50% +”, „Efekty − 70% +” i „Dźwięk: WŁĄCZONY / WYCISZONY” — klik/stuknięcie, strzałki albo pad (↑ ↓ wybór, ← → głośność, A — wycisz). Zapis w `localStorage` (`tower-crawler.audio.v1`).
+- **Pauza → „Dźwięk i obraz”:** „Styl muzyki: LUCENT / HORROR” (krok 139, domyślnie Lucent), „Muzyka − 50% +”, „Efekty − 70% +” i „Dźwięk: WŁĄCZONY / WYCISZONY” — klik/stuknięcie, strzałki albo pad (↑ ↓ wybór, ← → głośność, A — wycisz). Zapis w `localStorage` (`tower-crawler.audio.v1`).
 - **N** — wycisz / włącz dźwięk (w grze, w menu i na pauzie; nie na ekranie wpisywania imienia).
 - Przeglądarka włącza dźwięk dopiero po pierwszym geście gracza (klawisz, kliknięcie, dotyk albo przycisk pada w menu).

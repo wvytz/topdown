@@ -11,7 +11,8 @@ import { enemyDefinitionFor } from '@/systems/EnemyVariants';
 import { Lurk, LurkEvent, LurkPhase } from '@/systems/Lurk';
 
 /** Lustrzana komnata (krok 124) ma na razie wrogów z ruin — własnych jeszcze nie ma (decyzja właściciela otwarta). */
-const OWN_ENEMY_BIOMES = Object.values(BIOMES).filter((b) => b.id !== BiomeId.MirrorHall);
+// Lustrzana komnata i Bociani Ogród (krok 137) mają na razie wrogów z ruin.
+const OWN_ENEMY_BIOMES = Object.values(BIOMES).filter((b) => b.id !== BiomeId.MirrorHall && b.id !== BiomeId.StorkGarden);
 
 const den = { x: 100, y: 100 };
 const near = { x: 100, y: 100 + LURKER_CONFIG.triggerRange - 1 };

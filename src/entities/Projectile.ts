@@ -21,7 +21,7 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
   vampiric = false;
   /** Magia Czarodziejki — trafia też bezcielesnych (krok 49b). */
   magic = false;
-  /** Strzał barbarzyńcy skręca do celu (krok 137); null — leci prosto. */
+  /** Strzał barbarzyńcy skręca do celu (krok 146); null — leci prosto. */
   homing: HomingConfig | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string = TextureKey.Projectile) {

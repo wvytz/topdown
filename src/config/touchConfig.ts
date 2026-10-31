@@ -58,7 +58,7 @@ export interface TouchButtonSpec {
 /**
  * Układ prawej ręki (krok 96a, prośba właściciela): duże kółko ataku podstawowego (LPM) w rogu,
  * atak PPM wyżej i bardziej w prawo, dash po lewej od kółka, E nad dashem (tylko gdy coś zrobi).
- * Pauza — mały przycisk pod minimapą (od prawego górnego rogu).
+ * Pauza — przycisk pod minimapą (od prawego górnego rogu).
  */
 export const TOUCH_BUTTONS = {
   attack: { right: 120, bottom: 110, radius: 54 },
@@ -67,7 +67,11 @@ export const TOUCH_BUTTONS = {
   interact: { right: 232, bottom: 172, radius: 28 },
   /** Ultimate (krok 98): nad dużym kółkiem, na lewo od PPM; widoczny zawsze, jasny, gdy pasek jest pełny. */
   ultimate: { right: 150, bottom: 236, radius: 28 },
-  pause: { right: 40, top: 160, radius: 20 },
+  /**
+   * Pauza (krok 140, uwaga właściciela: same „II” były nieczytelne nawet dla niego): podłużny przycisk
+   * z ikonką i podpisem „PAUZA”, jaśniejszy od przycisków walki. Środek od prawego górnego rogu.
+   */
+  pause: { right: 54, top: 160, width: 92, height: 32 },
   /** Strefa dotyku jest trochę większa od rysunku — kciuk nie musi trafić idealnie. */
   hitSlop: 1.2,
 } as const;
@@ -79,7 +83,7 @@ export const TOUCH_LABELS = {
   dash: 'ZRYW',
   interact: 'E',
   ultimate: { melee: 'SZAŁ', sorcery: 'NOVA', archery: 'TOTEM' },
-  pause: 'II',
+  pause: 'PAUZA',
 } as const;
 
 /** Przyciski ekranu śmierci na dotyku: pod napisem „R — nowa wspinaczka”. */
