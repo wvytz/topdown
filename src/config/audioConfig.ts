@@ -326,6 +326,14 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'square', freq: 1100, freqEnd: 760, delay: 0.13, attack: 0.01, decay: 0.18, volume: 0.45, duty: 0.35, lowpass: 2400, vibrato: { depth: 0.05, rate: 18 } },
     ],
   },
+  /** Bańka żelu (krok 152): miękkie „plup” — sinus w górę z bulgotem, bardzo cicho. */
+  [SoundCue.HeroBubble]: {
+    gain: 0.22,
+    layers: [
+      { wave: 'sine', freq: 240, freqEnd: 520, attack: 0.005, decay: 0.09, volume: 0.6, vibrato: { depth: 0.12, rate: 26 } },
+      { wave: 'sine', freq: 620, freqEnd: 380, delay: 0.05, attack: 0.005, decay: 0.07, volume: 0.25 },
+    ],
+  },
   /** Chlust wody: szum opadający od jasnego do ciemnego i krótki bulgot. */
   [SoundCue.Splash]: {
     gain: 0.4,
@@ -414,6 +422,7 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.Secret]: { minGapMs: 1000 },
   [SoundCue.Shout]: { minGapMs: 600 },
   [SoundCue.Splash]: { minGapMs: 120 },
+  [SoundCue.HeroBubble]: { minGapMs: 300 },
   [SoundCue.Elevator]: { minGapMs: 800 },
   [SoundCue.WingFlap]: { minGapMs: 150 },
 };

@@ -6,7 +6,7 @@ import { applyArcheryModifiers } from '@/systems/Archery';
 import { applySorceryModifiers } from '@/systems/Sorcery';
 import { attackCooldownMultiplier } from '@/systems/StatScaling';
 import { computeWeaponEffects } from '@/systems/WeaponEffects';
-import { capItemCopies, countItems, isEvolved } from '@/systems/ItemEvolution';
+import { capItemCopies, countItems, isItemEvolved } from '@/systems/ItemEvolution';
 import { ItemId as ItemIds } from '@/core/lootTypes';
 
 /** Finalne statystyki gracza po zastosowaniu przedmiotów. */
@@ -75,7 +75,7 @@ export function computeLoadout(
   // Krok 150: kopie ponad limit przedmiotu nic nie dają (karty i kapliczka ich nie proponują).
   const items = capItemCopies(itemIds, effectsConfig.evolution);
   const counts = countItems(items);
-  const evolved = (id: ItemId): boolean => isEvolved(counts.get(id) ?? 0, effectsConfig.evolution);
+  const evolved = (id: ItemId): boolean => isItemEvolved(id, counts.get(id) ?? 0, effectsConfig.evolution);
   const summed = sumModifiers(items, definitions);
   // Napompowane serce (krok 150, pomysł właściciela): przemieniająca kopia Serca daje podwójne HP.
   const mods: StatModifiers = {

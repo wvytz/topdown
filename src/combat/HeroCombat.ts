@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
+import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { HeroId } from '@/core/heroTypes';
 import type { ItemId } from '@/core/lootTypes';
 import type { FloorModifierEffects } from '@/core/floorModifierTypes';
 import type { Vector2 } from '@/core/types';
 import { BARBARIAN_SHOT_HOMING } from '@/config/combatConfig';
+import { TILE_SIZE } from '@/config/gameConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { ITEM_DEFINITIONS, ITEM_EFFECTS, STAT_LIMITS } from '@/config/lootConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
@@ -27,7 +29,7 @@ import { Timer } from '@/systems/Timer';
 import type { AimTarget } from '@/systems/touchAim';
 import { applyRage } from '@/systems/Ultimate';
 import { AttackRamp } from '@/systems/AttackRamp';
-import { chainTargets } from '@/systems/ChainLightning';
+import { chainTargets, sparkLinkRule } from '@/systems/ChainLightning';
 import { StormTrail } from '@/systems/StormTrail';
 import { HeroEvolutionView, drawBolt, ensureCrescentTexture } from '@/effects/EvolutionEffects';
 
@@ -55,6 +57,8 @@ export interface HeroCombatDeps {
   readonly effects: CombatEffects;
   readonly playerShots: PlayerShotManager;
   readonly walls: Phaser.Tilemaps.TilemapLayer;
+  /** Plansza piętra — piorun Elektrycznej strzały i Iskrownika nie przechodzi przez ściany (krok 151). */
+  readonly floor: DungeonFloor;
   readonly strikes: HeroStrikeTargets;
   /** Cele totemu: żywi, widoczni wrogowie i boss z pomocnikami. */
   readonly aimTargets: () => Iterable<AimTarget>;
@@ -206,7 +210,6 @@ export class HeroCombat {
     }
     this.evolutionView.draw(player, now, {
       sparker: evolved.sparker !== null,
-      levitating: player.isLevitating,
       shield: player.shieldHp,
       shieldMax: evolved.bloodShieldMax,
       trail: evolved.stormTrail ? this.stormTrail.alive : [],
@@ -219,10 +222,11 @@ export class HeroCombat {
     const { player } = this.deps;
     const targets = [...this.deps.aimTargets()];
     const from = HeroEvolutionView.sparkerPoint(player, now);
-    const [first] = chainTargets(player, targets, 1, sparker.range);
+    const canLink = sparkLinkRule(this.deps.floor, player, TILE_SIZE);
+    const [first] = chainTargets(player, targets, 1, sparker.range, undefined, canLink);
     if (!first) return;
     this.nextSparkAt = now + sparker.intervalMs;
-    const chain = [first, ...chainTargets(first, targets, sparker.chains, sparker.chainRange, (t) => t === first)];
+    const chain = [first, ...chainTargets(first, targets, sparker.chains, sparker.chainRange, (t) => t === first, canLink)];
     this.strikeChain(from, chain, sparker.damage, now);
     sound.play(SoundCue.OrbSplash, from);
   }
@@ -247,7 +251,7 @@ export class HeroCombat {
     if (creature && chain && 'x' in target && 'y' in target) {
       const origin = { x: Number(target.x), y: Number(target.y) };
       const near = (t: Vector2): boolean => Math.hypot(t.x - origin.x, t.y - origin.y) < 1;
-      const jumps = chainTargets(origin, [...this.deps.aimTargets()], chain.targets, chain.range, near);
+      const jumps = chainTargets(origin, [...this.deps.aimTargets()], chain.targets, chain.range, near, sparkLinkRule(this.deps.floor, this.deps.player, TILE_SIZE));
       if (jumps.length > 0) this.strikeChain(origin, jumps, Math.max(1, Math.round(shot.damage * chain.damageFraction)), now);
     }
   }

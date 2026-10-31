@@ -5347,6 +5347,34 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** liczby (Iskrownik 8 obrażeń/0,8 s, fala 75%, Pożoga 12), wygląd (figury geometryczne — po akceptacji arkusze z generatora), czy limit 3 kopii dla Butów/Rękawic/Klepsydry/Kołczana/Kła/Odłamka nie jest za ciasny, czy karta rozwoju jest teraz jasna.
 
+## Krok 151 — Przegląd buildu: Iskrownik bez strzałów przez ściany, Buty bez lewitacji `#decyzja` `#przemiany`
+
+**Skąd:** Wicio (31.10.2026) poprosił o przegląd konfliktów postaci i mechanik po kroku 150. Przegląd kodu i pomiar botem znalazły m.in.: Iskrownik razi przez ściany, a lewitacja wyłącza mechaniki bossów. `#decyzja` Wicio: „Na pewno popraw punkt pierwszy. Buty lewitacji w takim układzie są po prostu niedopuszczalne… Musimy cofnąć tę zmianę. Musimy wymyślić im coś nowego.”
+
+**Iskrownik i Elektryczna strzała (`systems/ChainLightning.ts`):** piorun nie sprawdzał linii wzroku — w zasięgu 160 px razi wrogów w sąsiednim pokoju i za kratą zasadzki (oni wtedy czekają bez ataków, krok 132), czyli darmowe zabicia. Teraz `sparkLinkRule`: każdy przeskok wymaga linii wzroku, a gdy bohater stoi w pokoju — cel musi być w tym samym pokoju (w korytarzu wystarcza linia wzroku). `chainTargets` dostał predykat `canLink`; ta sama reguła działa dla łańcucha Elektrycznej strzały. `hasLineOfSight` przyjmuje teraz sam kształt planszy (`width`, `height`, `tiles`).
+
+**Buty (cofnięcie lewitacji z kroku 150):** lewitacja wyłączała pułapki ruin i plamy pięciu bossów (sieci Matki, grzybnia Króla, kałuże sprzątaczek, ślad Pożeracza, kwiaty Wiedźmy), a opis „ogień cię nie dotyczy” był nieprawdziwy (pierścień Kata i paleniska parzyły). Usunięte: `isLevitating`, `applyAirborneStatus` (chmury znów przez `applyTerrainStatus`), wyjątki w `TrapManager` i płonących plamach, elipsa pod stopami. Buty działają jak przed krokiem 150: +10% prędkości za kopię do limitu +60%, **bez limitu 3 kopii i bez przemiany**. `ItemEvolutionConfig.items` jest teraz częściowy (`Partial`): przedmiot bez wpisu nie ma przemiany — karta bez kropek z dopiskiem „przemiana w przygotowaniu”, nie jest kartą rozwoju, HUD bez gwiazdki (`hasEvolution`, `isItemEvolved`).
+
+**Testy:** nowe `tests/systems/chainLightning.test.ts` (pokój pod punktem, ściana, przejście i krata, korytarz, łańcuch przez mur); `itemEvolution.test.ts` (Buty bez przemiany: karta, karta rozwoju, statystyki, brak limitu), poprawione `itemUsefulness` i `progression` (Buty znów do 6 kopii). `npm run build` OK.
+
+**Weryfikacja w przeglądarce:** piętro 1, łucznik z `electric-arrow*3`, bohater postawiony 132 px od Rushera, ale za murem: na `main` Iskrownik zabił go w 6 s (33 → 0 HP), po zmianie — 0 obrażeń. W tym samym pokoju Iskrownik dalej bije (83 → 19 HP w 6 s). Smoke solo (3 bohaterów, piętra 1–3) i z botem (piętra 1–3) — OK, bez błędów.
+
+**Pomiar botem (przy przeglądzie):** bot-partner z zestawami na Brudnej Wiedźmie (P1 stoi, wszyscy nieśmiertelni, 150 s). Łucznik i Czarodziejka-bot prawie nie biją latającej Wiedźmy (walczy tylko z wrogami do 220 px od gracza), więc porównanie siły bohaterów botem jest na razie niewiarygodne; sam Iskrownik zbił jej ok. 50% HP.
+
+## Krok 152 — Wrogowie omijają rogi, bohaterowie odbijają się jak bańki żelu `#ocena` `#coop`
+
+**Skąd:** Wicio (31.10.2026): „sprawdź jeszcze, czy moby nie blokują się na narożnikach… i przemyśl przechodzenie przez siebie graczy — lekkie odbicie, jakbyśmy wchodzili w bańkę wody albo żelu”.
+
+**Wrogowie na rogach (diagnoza):** wróg szedł do celu (albo do ostatniego miejsca, gdzie widział bohatera) zawsze po prostej. Linia wzroku liczy się od środka, a ciało ma promień ok. 11 px, więc bokiem zahaczało o róg muru; gdy cel leżał prawie prostopadle za murem, wróg stał. Symulacja na prawdziwych piętrach (ruch po osiach jak w Arcade, 377 pościgów na 3–7 kafli): po prostej utyka 5,6%, z nową drogą 0,8% (pozostałe to cele poza zasięgiem w 4 s).
+
+**Poprawka (`ai/enemyRoute.ts`, czysta):** `EnemyRoute` — gdy prosta dla ciała o promieniu wroga (`clearPath` z `ai/botPath.ts`) jest wolna, wróg idzie prosto jak dotąd; gdy zahacza o mur, idzie do najdalszego widocznego punktu drogi po kaflach (BFS bota-partnera, bez ścinania rogów), przeliczanej najwyżej co 250 ms (`ENEMY_ROUTE` w `combatConfig`). Działa w pościgu, przy podchodzeniu Kitera i przy dojściu pod kratę (krok 132). Bez zmiany zasad: wróg dalej goni tylko do ostatniego miejsca, gdzie widział bohatera, i nie szuka go po całym piętrze. Upiory w fazie przenikania idą prosto.
+
+**Bańki żelu (`systems/HeroBubble.ts`, czysta):** w co-opie (i z botem) bohaterowie nie zderzają się już twardo. Każdy ma bańkę o 2 px większą od ciała; gdy bańki na siebie nachodzą, sprężyna rozpycha ich (9 px/s za każdy px nachodzenia, najwyżej 90 px/s — mniej niż chód każdego bohatera, więc w wąskim korytarzu da się przecisnąć obok partnera, czując opór). Odpychanie dolicza się do chodu w następnej klatce (`Player.setBubblePush`) — nie w dashu, odrzucie ani paraliżu, więc mury dalej trzymają. Nowe zetknięcie puszcza jasne kółko jak na wodzie (`effects/HeroBubbleEffects.ts`) i ciche „plup” (`SoundCue.HeroBubble`, synteza), najwyżej co 450 ms. Liczby w `COOP_CONFIG.bubble`. Gry solo to nie zmienia.
+
+**Testy:** `tests/ai/enemyRoute.test.ts` (wróg utyka po prostej i dochodzi z drogą; prosta wolna — cel bez zmian; prawdziwe piętra: wyjście z pokoju i pościgi), `tests/systems/heroBubble.test.ts` (odpychanie, limit poniżej chodu, „plup” tylko przy nowym zetknięciu). `npm run build` OK.
+
+**Weryfikacja w przeglądarce:** co-op barbarzyńca + łucznik, partner postawiony 6 px od gracza — rozsuwają się w ok. 0,3 s, jedno kółko na wodzie. Smoke co-op, z botem i solo (3 bohaterów, piętra 1–3) — OK, bez błędów; bot wskrzesza jak dotąd (3,3–3,9 s).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5425,6 +5453,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
   - Zgodnie z zasadą „nie łagodzimy trudności” — zmiana tylko uszczelnia exploit, nie osłabia bossa.
 
 **2. Do oceny przy okazji**
+- **Bańki żelu i rogi (krok 152):** `#coop` `#ocena` siła i opór przy przeciskaniu się obok partnera (90 px/s), kółko na wodzie i „plup”; czy wrogowie dalej gdzieś utykają (zgłoszenia z F9: `enemy`/pozycja).
 - **Naprowadzany strzał barbarzyńcy (krok 146):** `#balans` skręt 480°/s, stożek ±70°, zasięg 200 px — czeka na test właściciela; otwarte: czy osłabić łucznika i Czarodziejkę.
 - **Ekran blokady Safari (krok 142):** `#przegladarki` treść i wygląd; czy jakaś przeglądarka na iPhonie nie trafia przez pomyłkę na ekran (furtka `?safari=0`).
 - **Mieszkanie gracza (krok 138):** `#mieszkanie-gracza` `#ocena` piętro 5 jako zagracone mieszkanie — gęstość śmieci, wygląd, nazwa biomu, ewentualni nowi wrogowie biomu.
@@ -5470,7 +5499,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **4. Odłożone — tylko za zgodą właściciela**
 - **Kolidujące rekwizyty** (kolumny, przewrócona kolumna): zmieniają linię wzroku Kiterów, czyli rozgrywkę.
 - **Ozdobna obwódka areny bossa** i **przejścia materiałów** (dual-grid).
-- **Wyszukiwanie drogi wrogów:** idą do celu po prostej i mogą zahaczać o rogi.
+- **Wyszukiwanie drogi wrogów:** od kroku 152 wrogowie omijają rogi drogą po kaflach (tylko do ostatniego miejsca, gdzie widzieli bohatera); szukanie bohatera po całym piętrze — dalej tylko za zgodą właściciela.
 - **Imię gracza na tablicy rekordów:** zrobione (wspólna lista wyników). Do rozważenia: zmiana zapamiętanego imienia z poziomu gry i filtr wulgaryzmów.
 - **Co-op (od kroku 101, osobna gałąź):** `#coop` lokalny, wspólny ekran ze smyczą; decyzje właściciela w kroku 101. Zrobione: C0 (drużyna zamiast gracza, krok 101), C1 (urządzenia graczy i dołączanie, krok 102), C2 (drugi bohater, kamera ze smyczą, światło dla obu, krok 103; test: `?hero=barbarian&coop=archer`), C3 (kraty, zasadzki, pająki z sufitu dla dwóch, krok 104), C4 (powalenie i wskrzeszanie, łupy, kapliczka, karty i schody dla każdego, krok 105), C5 (menu co-op, ekran dołączania z różnymi bohaterami, HUD dla dwóch, krok 106), C6 (HP ×1,4 wrogów, ×1,7 bossów, +1 wróg na pokój, krok 107), C7 (tablica co-op, worker `/coop-scores` do wdrożenia, zapis z partnerem, krok 108), C8 (smoke z dwoma botami, wersja testowa `/coop/`, krok 109). Krok 119: powalone ciało bez kolizji i smyczy (wskrzeszanie działa za każdym razem, ciała nie da się przepchnąć). Co-op czeka na test właściciela; do strojenia: mnożniki HP, 40% HP po wskrzeszeniu, mikstura dla podnoszącego, karty bossa po kolei.
 - **Pad (krok 114):** `#sterowanie` nowy układ (X/B ataki, A dash, Y — E, RB ultimate) i samo celowanie przy ataku bez prawej gałki — czeka na test właściciela; otwarte: czy pad z samym celowaniem zostaje na wspólnej tablicy.
@@ -5485,6 +5514,11 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
 **Przemiany przedmiotów (krok 150)** `#przemiany`: zrobione — 3. kopia przemienia każdy przedmiot, karta rozwoju, limity 3 kopii. Czeka na ocenę: liczby, wygląd (figury geometryczne → arkusze z generatora), limity, czytelność karty.
+
+**Po przeglądzie buildu (krok 151)** `#przemiany` `#decyzja` — do omówienia z właścicielem („pamiętaj o kolejnych punktach”):
+- **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); pomysł do wymyślenia razem z właścicielem. Do tego czasu Buty bez przemiany.
+- **Fala ostrza i Rozpęd u Czarodziejki:** liczą tylko kule, nie promień, a Rozpęd zeruje się w przerwie na powrót kul; łucznik strzela bez przerwy, więc ma Rozpęd zawsze na maksa. Propozycja: promień liczy się co 0,5 s jako atak (wniosek z kodu, niezmierzone).
+- **Bot-partner:** goni bossa poza 220 px od gracza (łucznik i Czarodziejka prawie nie biją latającej Wiedźmy), wybiera kartę przemiany/rozwoju zamiast pierwszej; potem rzetelny pomiar siły 3 bohaterów botem.
 
 **5. Odrzucone:** ewolucje przedmiotów **zmieniające sterowanie** (decyzja właściciela). Od kroku 150 przemiany przy 3. kopii — bez nowych przycisków.
 

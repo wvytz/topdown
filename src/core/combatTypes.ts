@@ -266,8 +266,6 @@ export interface EvolvedEffects {
   readonly chain: ChainLightningEffect | null;
   readonly sparker: SparkerEffect | null;
   readonly bladeWave: BladeWaveEffect | null;
-  /** Buty lewitacji: podłoga (kałuże, ogień, kolce, pajęczyny, płyty pułapek) nie działa na bohatera. */
-  readonly levitation: boolean;
   readonly attackRamp: AttackRampEffect | null;
   /** Pętla czasu: ładunki dasha (1 = zwykły dash). */
   readonly dashCharges: number;

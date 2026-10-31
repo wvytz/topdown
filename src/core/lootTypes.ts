@@ -158,7 +158,8 @@ export interface ItemEvolutionText {
 export interface ItemEvolutionConfig {
   /** Kopia, która przemienia przedmiot. */
   readonly copies: number;
-  readonly items: Readonly<Record<ItemId, ItemEvolutionText>>;
+  /** Przedmiot bez wpisu nie ma (jeszcze) przemiany — krok 151: Buty czekają na nowy pomysł. */
+  readonly items: Readonly<Partial<Record<ItemId, ItemEvolutionText>>>;
   /** Napompowane serce: przemieniająca kopia daje tyle maks. HP więcej (razem 2× zwykłej kopii). */
   readonly heart: { readonly bonusMaxHp: number };
   /** Elektryczna strzała (kopie 1–2 i dalej): łańcuch pioruna z trafionego celu. */

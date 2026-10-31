@@ -21,9 +21,19 @@ export function capItemCopies(items: readonly ItemId[], config: ItemEvolutionCon
   return items.filter((id) => {
     const count = (seen.get(id) ?? 0) + 1;
     seen.set(id, count);
-    const max = config.items[id].maxCopies;
+    const max = config.items[id]?.maxCopies;
     return max === undefined || count <= max;
   });
+}
+
+/** Czy przedmiot w ogóle ma przemianę (krok 151: Buty — jeszcze nie). */
+export function hasEvolution(id: ItemId, config: ItemEvolutionConfig): boolean {
+  return config.items[id] !== undefined;
+}
+
+/** Czy ten przedmiot jest przemieniony: ma przemianę i bohater ma co najmniej `config.copies` kopii. */
+export function isItemEvolved(id: ItemId, count: number, config: ItemEvolutionConfig): boolean {
+  return hasEvolution(id, config) && isEvolved(count, config);
 }
 
 /** Czy przedmiot jest przemieniony (bohater ma co najmniej `config.copies` kopii). */
@@ -55,6 +65,17 @@ export interface RewardCardInfo {
 export function describeRewardCard(item: ItemDefinition, owned: number, config: ItemEvolutionConfig): RewardCardInfo {
   const evolution = config.items[item.id];
   const after = owned + 1;
+  if (!evolution) {
+    // Przedmiot bez przemiany (krok 151): zwykła karta, bez kropek postępu.
+    return {
+      kind: owned === 0 ? 'new' : 'growth',
+      title: item.name,
+      subtitle: owned === 0 ? 'nowy przedmiot' : `masz ×${owned} — wzmacnia`,
+      effect: item.effect,
+      pips: { filled: 0, total: 0 },
+      progress: 'przemiana w przygotowaniu',
+    };
+  }
   const total = config.copies;
   const pips = { filled: Math.min(total, after), total };
   if (after < total) {
@@ -96,7 +117,7 @@ export function developmentCandidates(
 ): ItemDefinition[] {
   return pool.filter((item) => {
     const count = owned.get(item.id) ?? 0;
-    return count > 0 && count < config.copies;
+    return hasEvolution(item.id, config) && count > 0 && count < config.copies;
   });
 }
 
