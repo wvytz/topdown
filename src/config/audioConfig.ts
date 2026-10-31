@@ -370,6 +370,22 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'square', freq: 820, delay: 0.05, attack: 0.002, decay: 0.03, volume: 0.12, lowpass: 2400 },
     ],
   },
+  /** Spłoszone grzyby (krok 156): cichy, miękki wydech szumu i szklisty dzwoneczek zarodników. */
+  [SoundCue.SporePuff]: {
+    gain: 0.22,
+    layers: [
+      { wave: 'noise', freq: 900, freqEnd: 300, attack: 0.02, decay: 0.22, volume: 0.5, lowpass: 1200 },
+      { wave: 'sine', freq: 1760, freqEnd: 2350, delay: 0.04, attack: 0.005, decay: 0.18, volume: 0.18 },
+    ],
+  },
+  /** Zdmuchnięty znicz (krok 156): krótki syk i ciche puknięcie. */
+  [SoundCue.CandleSnuff]: {
+    gain: 0.25,
+    layers: [
+      { wave: 'noise', freq: 3200, freqEnd: 1200, attack: 0.005, decay: 0.16, volume: 0.45, lowpass: 4200 },
+      { wave: 'sine', freq: 300, freqEnd: 180, attack: 0.002, decay: 0.06, volume: 0.25 },
+    ],
+  },
 };
 
 /**
@@ -435,6 +451,8 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.Elevator]: { minGapMs: 800 },
   [SoundCue.SludgeSplat]: { minGapMs: 110 },
   [SoundCue.WingFlap]: { minGapMs: 150 },
+  [SoundCue.SporePuff]: { minGapMs: 160 },
+  [SoundCue.CandleSnuff]: { minGapMs: 120 },
 };
 
 /**

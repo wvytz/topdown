@@ -50,6 +50,10 @@ export enum SoundCue {
   SludgeSplat = 'sludge-splat',
   /** Trzepot skrzydeł (Brudna Wiedźma, krok 137): klucz bocianów i pikujące ptaki. */
   WingFlap = 'wing-flap',
+  /** Spłoszona kępa świecących grzybów (krok 156): miękkie „pff” zarodników. */
+  SporePuff = 'spore-puff',
+  /** Zdmuchnięty znicz (krok 156): krótki syk gasnącego knota. */
+  CandleSnuff = 'candle-snuff',
   // Świat i łupy
   Coin = 'coin',
   Heal = 'heal',

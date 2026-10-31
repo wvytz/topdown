@@ -11,6 +11,8 @@ export const RENDER_DEPTH = {
   combatDecal: 1.5,
   /** Lepkie pajęczyny na podłodze (krok 23e): element rozgrywki, nad śladami walki, pod cieniami. */
   floorHazard: 1.6,
+  /** Żywe otoczenie na posadzce (krok 156): kępy grzybów, lampy, znicze — pod cieniami murów. */
+  ambientProp: 1.7,
   envShadow: 2,
   /** Cień pod chodzącą postacią (rysowany przez silnik, STYLEGUIDE §6). */
   actorShadow: 2.5,
@@ -27,6 +29,8 @@ export const RENDER_DEPTH = {
   fireGround: 6.5,
   shrine: 6,
   coin: 7,
+  /** Kruki na posadzce (krok 156): nad monetami, pod przedmiotami i postaciami. */
+  ambientCritter: 7.5,
   item: 8,
   deathBurst: 8,
   enemy: 9,
@@ -42,6 +46,8 @@ export const RENDER_DEPTH = {
   overhead: 13,
   /** Łuki nad przejściami i pajęczyny — dekoracje nad postaciami, bez kolizji. */
   overheadDecor: 13.2,
+  /** Odlatujące kruki (krok 156): nad murami i postaciami, pod mrokiem. */
+  ambientFlyer: 13.4,
   /** Pyłki w powietrzu: pod warstwą mroku (gasną na krawędziach), pod poświatą pochodni. */
   motes: 14,
   /** Dryfujące obłoczki mgły (Grzybnia, krok 28a): nad postaciami, pod warstwą mgły. */
@@ -51,6 +57,8 @@ export const RENDER_DEPTH = {
   /** Ciepła poświata pochodni (mieszanie ADD) i same płomienie — świecą, więc nad mrokiem. */
   torchGlow: 15.5,
   torchFlame: 15.6,
+  /** Świecące drobiazgi żywego otoczenia (krok 156): ćmy, zarodniki, błędne ogniki — świecą nad mrokiem. */
+  ambientGlow: 15.65,
   /** Ogień walki (krok 144): poświata (ADD) i żar w powietrzu nad mrokiem — ogień świeci jak pochodnie. */
   fireGlow: 15.7,
   fireEmbers: 15.8,

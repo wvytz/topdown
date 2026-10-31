@@ -153,6 +153,9 @@ import { freshCoop } from '@/systems/Coop';
 import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
 import { MirrorFloor } from '@/effects/MirrorFloor';
+import { AmbientLifeView } from '@/effects/AmbientLifeView';
+import { planAmbient } from '@/dungeon/AmbientPlanner';
+import { AMBIENT_CONFIG } from '@/config/ambientConfig';
 import { BossStallDetector, LimitWatch, StuckDetector, floorConnectivityIssues, reachable } from '@/systems/AnomalyDetectors';
 import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
 import { sanityIssues } from '@/systems/Diagnostics';
@@ -230,6 +233,7 @@ const AMBUSH_ROOM_SEED_SALT = 0xa3b0;
 const AMBUSH_SEED_SALT = 0xa3b1;
 const DART_SEED_SALT = 0xda27;
 const BREAKABLE_SEED_SALT = 0xb7ea;
+const AMBIENT_SEED_SALT = 0x11fe;
 const TOAST_DURATION_MS = 2500;
 /** Napis nad kartami, gdy boss uciekł windą zamiast zginąć (blond sprzątaczka, krok 125). */
 const ESCAPED_HEADLINE = 'SPRZĄTACZKA UCIEKŁA!';
@@ -310,6 +314,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Biom piętra: arkusz kafli, dekorowanie, warianty wrogów. */
   private biome!: BiomeDefinition;
   private torches!: Torches;
+  /** Żywe otoczenie Grzybni i Cmentarzyska (krok 156); null — biom bez niego albo areny bossów. */
+  private ambient: AmbientLifeView | null = null;
   private combatDecals!: CombatDecals;
   private death: DeathSummary | null = null;
   /**
@@ -412,6 +418,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.ambush = null;
     this.ambushGhosts = new Set();
     this.lurkerDens = [];
+    this.ambient = null;
     this.traps = null;
     this.breakables = null;
   }
@@ -492,6 +499,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupLighting(biome.tileset, tileset, torchSpots);
     // Lustrzana komnata (krok 124): odbicia postaci i błyski polerowanej posadzki.
     if (biome.mirrorFloor) new MirrorFloor(this, this.dungeon, biome.mirrorFloor);
+    this.setupAmbientLife(biome);
 
     if (!this.scene.isActive(SceneKey.Hud)) {
       const hudData: HudSceneData = { source: this };
@@ -1920,7 +1928,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         ? new EnemyVisibility({
             profile,
             revealStrength: LIGHTING.enemyReveal.revealStrength,
-            lights: () => (torchesLightUp ? this.pointLights() : []),
+            lights: () => (torchesLightUp ? this.pointLights(AMBIENT_CONFIG.revealsEnemies) : []),
             players: () => this.lightBearers(),
             actors: () => this.hideableEnemies(),
           })
@@ -1944,8 +1952,23 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   /** Światła piętra: pochodnie i paleniska (krok 41b). */
-  private pointLights(): PointLight[] {
-    return [...this.torches.lights, ...(this.braziers?.lights ?? [])];
+  private pointLights(withAmbient = true): PointLight[] {
+    return [...this.torches.lights, ...(this.braziers?.lights ?? []), ...(withAmbient ? (this.ambient?.lights ?? []) : [])];
+  }
+
+  /**
+   * Żywe otoczenie (krok 156): kępy grzybów, lampy i ćmy w Grzybni; znicze, ogniki i kruki na Cmentarzysku. Własny
+   * strumień RNG; omija kapliczkę i kryjówki Czyhaczy. W arenach bossów — bez niego (jak inne rekwizyty biomu).
+   */
+  private setupAmbientLife(biome: BiomeDefinition): void {
+    if (this.bossRush || !biome.ambient) return;
+    const shrine = planShrineLocation(this.dungeon, createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)));
+    const avoid = [...this.lurkerDens, ...(shrine ? [shrine] : [])];
+    const spots = planAmbient(this.dungeon, biome.ambient, createRng(deriveSeed(this.dungeon.seed, AMBIENT_SEED_SALT)), avoid);
+    this.ambient = new AmbientLifeView(this, this.dungeon, spots, biome.ambient, () =>
+      this.party.living.map((hero) => ({ x: hero.x, y: hero.y, dashing: hero.isDashing(this.time.now) })),
+      this.floorEffects.visionRadius === null,
+    );
   }
 
   /** Wrogowie ukrywani poza światłem: zwykli wrogowie i wszystkie pajączki (bez bossa). */
