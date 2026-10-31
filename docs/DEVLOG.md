@@ -5398,6 +5398,25 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** siła spowolnień (20% kałuża, 30% szlam przy ścianie), tempo i głębokość zwężania (1,5 kafla, 100 s), ile kałuż (18) i jak długo leżą (9 s), czy fiolet areny nie jest za mocny, czy kule z pierścienia mają zostawiać kałuże przy murach.
 
+## Krok 154 — Sprzątaczki na jednym piętrze, krąg ma 7 pięter `#decyzja` `#balans` `#sprzataczki` `#lustrzana-komnata`
+
+**Skąd:** przegląd balansu z 31.10 (raport „TOP DOWN — stan projektu i balans”, Claude Docs). Piętro 6 (sama blondynka) wyszło najwyraźniejszym dołkiem trudności: blondynka uciekała przy 1/3 HP, więc trzeba było zbić tylko ok. 624 HP (Baron Dymu piętro niżej — ok. 940), a pokoje Lustrzanej komnaty mają moby z ruin bez zagrożeń biomu, zaraz po najcięższej Palarni. Do tego biom powtarzał się na dwóch piętrach. Właściciel wybrał na karcie: „Tak, jedno piętro”, potem „wdrażać”.
+
+**Co się zmieniło:**
+- **Krąg wieży: 7 pięter** (`TOWER_CONFIG.floorsPerLoop`): 1 Ruiny, 2 Grzybnia, 3 Cmentarzysko, 4 Piekło, 5 Palarnia, **6 Lustrzana komnata**, **7 Bociani Ogród**. Od piętra 8 kolejny krąg. To ten sam ruch co pająki (krok 127) i Piekło (krok 134).
+- **Jedna walka w trzech fazach** (`BOSS_DUETS` z nowym polem `opener`, `systems/BossDuet.ts`, `combat/BossEncounter.ts`): walkę zaczyna sama blondynka (ze świtą); przy **2/3 HP** ucieka windą („Sprzątaj sobie sam!”). Z tej samej windy wychodzi brunetka z pełnym HP („Teraz ja posprzątam!”, plansza z imieniem), a w połowie jej HP blondynka wraca z 1/3 HP („Znowu ty?!”) — jak dawniej na piętrze 7. Nagroda i kraty dopiero po obu.
+- Próg ucieczki **2/3 zamiast 1/3**: przy 1/3 trzy fazy dałyby ok. 1800 HP na piętrze 6 wobec ok. 1170 Wiedźmy na 7. Teraz ok. 312 + 858 + 312 ≈ 1480 (test pilnuje, by nie przekroczyć 4/3 Wiedźmy). Wiedźma na piętrze 7 ma o 6% HP mniej niż na 8 (skalowanie z piętrem).
+- Trzy walki dzielą **jedną windę** (`BossFightDeps.sharedElevator`) — jeden sprite drzwi zamiast trzech nałożonych. Pasek HP: blondynka, potem brunetka, potem dwa paski duetu. Arena między ucieczką blondynki a wyjściem brunetki liczy się jako walka (zapis zablokowany, kraty w dół).
+- `testy.html`: jedna pozycja „Sprzątaczki”, przykład `floor=7` = Wiedźma. Areny bossów mają 7 aren w kręgu.
+
+**Uwaga:** zapisy i „wybór piętra” pamiętają numer piętra — stary punkt kontrolny z piętra 7 lub 8 otworzy teraz Wiedźmę albo piętro 1 drugiego kręgu.
+
+**Testy:** `bossDuetArrival.test` (blondynka otwiera i ucieka przy 2/3, brunetka wchodzi z pełnym HP po odjeździe, blondynka bez własnego piętra, trzy fazy ≤ 4/3 Wiedźmy), poprawione `bossDuet`, `DirtyWitch`, `Cleaners`, `biomes` pod krąg 7 pięter. `npm run build` OK (2476 testów).
+
+**Weryfikacja w przeglądarce:** `?hero=archer&floor=6&boss=1&seed=3&items=0` — blondynka 936 HP, po zbiciu do 2/3 ucieka, brunetka wychodzi z windy (858 HP, plansza „Twarda Miotła”), w połowie jej HP wraca blondynka z 312 HP, po obu walka wygrana. Bez błędów w konsoli. Smoke wszystkimi bohaterami.
+
+**Do oceny właściciela:** długość całej walki (trzy fazy), czy blondynka ma uciekać przy 2/3, czy pasek duetu ma liczyć powracającą blondynkę od 1/3, a nie od pełnego HP.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5487,7 +5506,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
 - **Wrogowie za kratami (krok 132):** `#zasadzka` wróg spoza zamkniętego pokoju czeka pod kratą, po jej podniesieniu zryw (450 ms, ×1,8) — długość i siła zrywu czekają na test właściciela.
-- **Lustrzana komnata (kroki 124–127):** `#lustrzana-komnata` piętra 7–8; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
+- **Lustrzana komnata (kroki 124–127, od kroku 154 jedno piętro 6):** `#lustrzana-komnata`; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).

@@ -123,6 +123,10 @@ export interface BossFightDeps {
    * w północnym murze, ranny. Bez ucieczki (już raz uciekł).
    */
   readonly arrival?: DuetArrival;
+  /** Jedno piętro sprzątaczek (krok 154): próg ucieczki windą zamiast tego z definicji bossa. */
+  readonly escapeHpRatio?: number;
+  /** Jedno piętro sprzątaczek (krok 154): winda wspólna z innym bossem areny (te same drzwi, jeden sprite). */
+  readonly sharedElevator?: Phaser.GameObjects.Sprite;
 }
 
 /** Bohater, który atakuje bossa (pozycja i czy żyje). */
@@ -298,7 +302,7 @@ export class BossFight {
 
     const scaled = withHpMultiplier(scaleBossForFloor(this.baseDefinition(), deps.floorNumber, BOSS_SCALING), deps.bossHpMultiplier ?? 1);
     // Wracający z windy boss już raz uciekł — tym razem walczy do końca.
-    const definition = deps.arrival ? withoutEscape(scaled) : scaled;
+    const definition = deps.arrival ? withoutEscape(scaled) : withEscapeRatio(scaled, deps.escapeHpRatio);
     this.maxHp = definition.maxHp;
     this.spiderlingDefinition = definition.spiderling ?? null;
     const spawn = this.planSpawn(arena, definition.radius);
@@ -314,7 +318,7 @@ export class BossFight {
     this.shouts = definition.shouts ? new ShoutSchedule(definition.shouts, createRng(deriveSeed(seed, SHOUT_SEED_SALT))) : null;
     this.creepView = definition.sludge ? new SludgeCreepView(deps.scene, deps.floor, arena, definition.sludge.creep) : null;
     this.ropeGfx = definition.hook?.look === 'bucket' ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.projectile) : null;
-    this.elevator = definition.escape || deps.arrival ? this.buildElevator(arena, definition.radius) : null;
+    this.elevator = definition.escape || deps.arrival ? this.buildElevator(arena, definition.radius, deps.sharedElevator) : null;
     if (deps.arrival) {
       this.dormant = true;
       boss.setVisible(false);
@@ -374,7 +378,12 @@ export class BossFight {
    * Winda w północnym murze areny (krok 125): stoi zamknięta od początku walki (gracz może się domyślić, dokąd boss
    * ucieknie). Bez miejsca w murze — drzwi „niewidoczne” na środku górnej krawędzi areny.
    */
-  private buildElevator(arena: Room, bossRadius: number): { readonly sprite: Phaser.GameObjects.Sprite; readonly door: Vector2 } {
+  private buildElevator(
+    arena: Room,
+    bossRadius: number,
+    shared?: Phaser.GameObjects.Sprite,
+  ): { readonly sprite: Phaser.GameObjects.Sprite; readonly door: Vector2 } {
+    if (shared) return { sprite: shared, door: { x: shared.x, y: shared.y + bossRadius + 2 } };
     const tile = planElevator(this.deps.floor, arena, ELEVATOR_ENTRANCE_CLEAR) ?? { x: arena.x + Math.floor(arena.width / 2) - 1, y: arena.y - 1 };
     const x = (tile.x + 1) * TILE_SIZE;
     const wallBottom = (tile.y + 1) * TILE_SIZE;
@@ -554,6 +563,11 @@ export class BossFight {
   /** Uciekająca do windy albo dopiero z niej wychodząca sprzątaczka jest nietykalna. */
   private untouchable(boss: Boss): boolean {
     return boss.isFleeing || this.dormant || this.lastNow < this.enteringUntil;
+  }
+
+  /** Sprite windy areny (krok 154: kolejni bossowie piętra sprzątaczek korzystają z tych samych drzwi). */
+  get elevatorSprite(): Phaser.GameObjects.Sprite | undefined {
+    return this.elevator?.sprite;
   }
 
   /** Partner duetu jeszcze nie wszedł na arenę (krok 126). */
@@ -1807,6 +1821,12 @@ export class BossFight {
 function withoutEscape(definition: BossDefinition): BossDefinition {
   const { escape: _escape, ...rest } = definition;
   return rest;
+}
+
+/** Próg ucieczki windą nadpisany przez walkę (krok 154: blondynka na początku piętra sprzątaczek ucieka wcześniej). */
+function withEscapeRatio(definition: BossDefinition, hpRatio: number | undefined): BossDefinition {
+  if (hpRatio === undefined || !definition.escape) return definition;
+  return { ...definition, escape: { ...definition.escape, hpRatio } };
 }
 
 /** Pociski fali: kule szlamu, pyłek kwiatu-oka albo liście wiru (krok 137). */

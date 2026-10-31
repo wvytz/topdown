@@ -5,7 +5,7 @@ import type { BossFightDeps } from '@/combat/BossFight';
 import { BossFight } from '@/combat/BossFight';
 import { arenaCenter } from '@/dungeon/stairs';
 import type { BossDuetDefinition } from '@/systems/BossDuet';
-import { duetStatus, pushApart, shouldPartnerArrive } from '@/systems/BossDuet';
+import { duetStatus, hostArrivalAfterOpener, pushApart, shouldPartnerArrive } from '@/systems/BossDuet';
 import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
 import type { DashSweep } from '@/systems/DashStrike';
@@ -13,6 +13,7 @@ import type { PlayerShot } from '@/systems/ShotResolver';
 import type { Spiderling } from '@/entities/Spiderling';
 
 const DUET_SEED_SALT = 0xd0e7;
+const OPENER_SEED_SALT = 0x0be7;
 
 type Attacker = Vector2 & { readonly isDead: boolean; readonly radius: number };
 
@@ -23,6 +24,10 @@ type Attacker = Vector2 & { readonly isDead: boolean; readonly radius: number };
 export class BossEncounter {
   private readonly fights: BossFight[];
   private readonly duet: BossDuetDefinition | null;
+  /** Duet: gospodarz areny i partner; piętro sprzątaczek (krok 154) — także boss otwierający walkę. */
+  private readonly host: BossFight | null = null;
+  private readonly partner: BossFight | null = null;
+  private readonly opener: BossFight | null = null;
 
   constructor(deps: BossFightDeps, duet: BossDuetDefinition | null) {
     this.duet = duet;
@@ -30,8 +35,8 @@ export class BossEncounter {
       this.fights = [new BossFight(deps)];
       return;
     }
-    let remaining = 2;
-    // Łup, kraty i nagroda dopiero po drugim bossie — w miejscu jego śmierci.
+    let remaining = duet.opener ? 3 : 2;
+    // Łup, kraty i nagroda dopiero po ostatnim bossie — w miejscu jego śmierci (ucieczka otwierającego się nie liczy).
     const onDefeated = (position: Vector2): void => {
       remaining -= 1;
       if (remaining === 0) deps.onDefeated(position);
@@ -39,6 +44,18 @@ export class BossEncounter {
     const offset = duet.spawnOffsetTiles * TILE_SIZE;
     const hpMultiplier = (deps.bossHpMultiplier ?? 1) * duet.hpMultiplier;
     const { spawnHelper, ...partnerDeps } = deps;
+    // Krok 154: otwierający boss walczy sam od środka areny (ze świtą), potem gospodarz i partner wchodzą jego windą.
+    const opener = duet.opener
+      ? new BossFight({
+          ...deps,
+          onDefeated,
+          bossHpMultiplier: hpMultiplier,
+          bossId: duet.opener.boss,
+          escapeHpRatio: duet.opener.escapeHpRatio,
+          seed: deriveSeed(deps.floor.seed, OPENER_SEED_SALT),
+        })
+      : null;
+    const sharedElevator = opener?.elevatorSprite;
     // Bezpieczny start (krok 131): gospodarz omija miejsce partnera, partner — miejsce, na którym stanął gospodarz.
     // Partner wchodzący windą startuje poza areną, więc gospodarz go nie omija.
     const center = arenaCenter(deps.floor.rooms[deps.floor.bossRoomId]!);
@@ -49,31 +66,37 @@ export class BossEncounter {
       bossHpMultiplier: hpMultiplier,
       spawnOffset: { x: -offset, y: 0 },
       ...(!duet.arrival && { spawnAvoid: partnerSpot }),
+      ...(duet.opener && { arrival: hostArrivalAfterOpener(duet.opener) }),
+      ...(sharedElevator && { sharedElevator }),
     });
-    this.fights = [
-      host,
-      new BossFight({
-        ...partnerDeps,
-        ...(!duet.arrival && { spawnAvoid: host.spawnPoint }),
-        ...(duet.partnerRetinue && spawnHelper ? { spawnHelper } : {}),
-        onDefeated,
-        bossHpMultiplier: hpMultiplier,
-        bossId: duet.partner,
-        spawnOffset: { x: offset, y: 0 },
-        seed: deriveSeed(deps.floor.seed, DUET_SEED_SALT),
-        ...(duet.arrival && { arrival: duet.arrival }),
-      }),
-    ];
+    const partnerElevator = sharedElevator ?? host.elevatorSprite;
+    const partner = new BossFight({
+      ...partnerDeps,
+      ...(!duet.arrival && { spawnAvoid: host.spawnPoint }),
+      ...(duet.partnerRetinue && spawnHelper ? { spawnHelper } : {}),
+      onDefeated,
+      bossHpMultiplier: hpMultiplier,
+      bossId: duet.partner,
+      spawnOffset: { x: offset, y: 0 },
+      seed: deriveSeed(deps.floor.seed, DUET_SEED_SALT),
+      ...(duet.arrival && { arrival: duet.arrival }),
+      ...(partnerElevator && { sharedElevator: partnerElevator }),
+    });
+    this.host = host;
+    this.partner = partner;
+    this.opener = opener;
+    this.fights = opener ? [opener, host, partner] : [host, partner];
   }
 
   /** Napis areny w HUD: imię bossa albo nazwa duetu (duet z wejściem partnera nie zdradza go zawczasu). */
   get name(): string {
-    if (this.duet?.arrival) return this.fights[0]!.bossName;
+    if (this.duet?.arrival) return (this.opener ?? this.fights[0]!).bossName;
     return this.duet?.name ?? this.fights[0]!.bossName;
   }
 
   get isFighting(): boolean {
-    return this.fights.some((fight) => fight.isFighting);
+    // Krok 154: po ucieczce otwierającej blondynki walka trwa, choć brunetka dopiero wychodzi z windy.
+    return this.fights.some((fight) => fight.isFighting) || (Boolean(this.opener?.isDefeated) && !this.isDefeated);
   }
 
   get isDefeated(): boolean {
@@ -82,15 +105,18 @@ export class BossEncounter {
 
   /** Boss nie zginął, tylko uciekł windą (blond sprzątaczka, krok 125) — napis nad kartami nagrody. */
   get escaped(): boolean {
-    return this.fights.some((fight) => fight.escaped);
+    // Krok 154: ucieczka otwierającej blondynki nie kończy walki — napis tylko, gdy uciekli wszyscy.
+    return this.fights.every((fight) => fight.escaped);
   }
 
   getStatus(): BossHudData | null {
     const [first] = this.fights;
-    if (!this.duet) return first!.getStatus();
+    if (!this.duet || !this.host || !this.partner) return first!.getStatus();
+    // Krok 154: pasek otwierającej blondynki, dopóki nie ucieknie; potem — gospodarza, gdy wyjdzie z windy.
+    if (this.opener && !this.opener.isDefeated) return this.opener.getStatus();
     // Partner, który jeszcze nie wszedł (krok 126): pasek gospodarza, dopóki nie wyjdzie z windy.
-    if (this.fights.some((fight) => fight.isDormant)) return first!.getStatus();
-    const members = this.fights.map((fight) => {
+    if (this.host.isDormant || this.partner.isDormant) return this.host.getStatus();
+    const members = [this.host, this.partner].map((fight) => {
       const status = fight.getStatus();
       return {
         name: fight.bossName,
@@ -113,16 +139,19 @@ export class BossEncounter {
 
   /** Duet z wejściem (krok 126): przy progu HP gospodarza partner wychodzi z windy. */
   private callPartner(now: number): void {
+    const { host, partner, opener } = this;
+    // Krok 154: brunetka wychodzi z windy, gdy otwierająca blondynka odjechała (albo padła).
+    if (opener && host?.isDormant && opener.isDefeated) host.arrive(now);
     const arrival = this.duet?.arrival;
-    const [host, partner] = this.fights;
-    if (!arrival || !host || !partner?.isDormant) return;
+    if (!arrival || !host || !partner?.isDormant || host.isDormant) return;
     const hostState = { hp: host.hp, maxHp: host.maxHp, fighting: host.isFighting, defeated: host.isDefeated || host.hp <= 0 };
     if (shouldPartnerArrive(hostState, arrival)) partner.arrive(now);
   }
 
   /** Bossowie duetu nie stoją jeden w drugim (pajęczy skok przelatuje nad partnerem, rozpychają się po lądowaniu). */
   private separate(): void {
-    const [first, second] = this.fights;
+    const first = this.host;
+    const second = this.partner;
     const a = first?.grounded;
     const b = second?.grounded;
     if (!this.duet || !a || !b) return;

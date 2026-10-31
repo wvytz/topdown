@@ -26,6 +26,25 @@ export interface BossDuetDefinition {
   readonly title: string;
   /** Partner dochodzi w trakcie walki zamiast od początku (blondynka z windy, krok 126). */
   readonly arrival?: DuetArrival;
+  /**
+   * Jedno piętro sprzątaczek (krok 154, decyzja właściciela): najpierw na arenie walczy sam `boss` i przy
+   * `escapeHpRatio` HP ucieka windą; wtedy z tej windy wychodzi gospodarz (pełne HP), a dalej duet jak zwykle.
+   */
+  readonly opener?: DuetOpener;
+}
+
+/** Boss otwierający walkę duetu, zanim wejdzie gospodarz (krok 154). */
+export interface DuetOpener {
+  readonly boss: BossId;
+  /** Ucieka windą przy tym ułamku HP (nadpisuje próg z definicji bossa). */
+  readonly escapeHpRatio: number;
+  /** Gospodarz wychodzi z windy przez tyle ms (nietykalny). */
+  readonly hostEnterMs: number;
+}
+
+/** Wejście gospodarza po otwierającym bossie (krok 154): pełne HP, z windy, gdy otwierający uciekł albo padł. */
+export function hostArrivalAfterOpener(opener: DuetOpener): DuetArrival {
+  return { hostHpRatio: 0, partnerHpRatio: 1, enterMs: opener.hostEnterMs };
 }
 
 /**
