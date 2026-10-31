@@ -51,3 +51,24 @@ export function splitGold(amount: number, maxCoins: number): number[] {
   const remainder = amount % coins;
   return Array.from({ length: coins }, (_, i) => base + (i < remainder ? 1 : 0));
 }
+
+/** Lot złota do bohatera (krok 143): prędkość startowa, przyspieszenie (px/s²) i sufit (px/s). */
+export interface GoldHomingConfig {
+  readonly startSpeed: number;
+  readonly acceleration: number;
+  readonly maxSpeed: number;
+}
+
+/** Prędkość monety po `elapsedMs` lotu: rośnie liniowo od startowej do sufitu. */
+export function goldHomingSpeed(config: GoldHomingConfig, elapsedMs: number): number {
+  const t = Math.max(0, elapsedMs) / 1000;
+  return Math.min(config.maxSpeed, config.startSpeed + config.acceleration * t);
+}
+
+/**
+ * Czy moneta dolatuje w tej klatce: jest w zasięgu zebrania albo przeleciałaby bohatera w jednym kroku
+ * (szybka moneta przy niskim FPS nie krąży wokół celu).
+ */
+export function goldArrives(distance: number, speed: number, deltaMs: number, collectRadius: number): boolean {
+  return distance <= Math.max(collectRadius, (speed * Math.max(0, deltaMs)) / 1000);
+}

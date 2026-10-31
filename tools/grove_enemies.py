@@ -15,7 +15,7 @@ Arkusze (STYLEGUIDE §2, §8, §10; wiersze = 8 kierunków N..NW z obrotu, obrys
   puffball.png              32x32, bez kierunków (krok 28c): purchawka; 0–1 spoczynek (pory dymią), 2–3 nabrzmiewa
                             i drży (telegraf), 4–7 pęka; klatka 7 to sflaczała skórka zostająca na podłodze
   poison-cloud.png          96x96, bez kierunków (krok 28c): trująca chmura purchawki; 0–5 rozrost
-                            (promień 20→44 px = hitbox chmury), 6–7 kłębienie
+                            (promień 14→30 px = hitbox chmury), 6–7 kłębienie
 
 Zarażony pająk to pająk leża porośnięty grzybem: na odwłoku kościste kapelusze zamiast białych pręg,
 oczy w cyjanie bioluminescencji. Grzybiec: rdzawy kapelusz z bladymi łatkami i jasnym rondem blaszek
@@ -226,8 +226,8 @@ def puffball_frame(f):
 
 # ---------------- trująca chmura purchawki (96x96, krok 28c) ----------------
 CLOUD = 96
-# Promienie klatek rozrostu = poisonCloudRadius w grze (biomeConfig Grzybni: startRadius 20 → maxRadius 44).
-CLOUD_RADII = (20, 25, 30, 34, 39, 44, 44, 44)
+# Promienie klatek rozrostu = poisonCloudRadius w grze (biomeConfig Grzybni: startRadius 14 → maxRadius 30; krok 143 — mniejsza chmura).
+CLOUD_RADII = (14, 17, 20, 23, 27, 30, 30, 30)
 
 
 def poison_cloud_frame(f):
