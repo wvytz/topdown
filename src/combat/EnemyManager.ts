@@ -48,6 +48,9 @@ import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { Lurk, LurkEvent, LurkPhase } from '@/systems/Lurk';
 import { LURKER_CONFIG } from '@/config/lurkerConfig';
 import { LurkHideout } from '@/effects/LurkHideout';
+import type { DeathEcho } from '@/systems/StatusEffects';
+import { drawBurstRing } from '@/effects/EvolutionEffects';
+import { EVOLUTION_VISUAL } from '@/config/itemEvolutionConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
 
 export interface EnemyManagerDeps {
@@ -358,7 +361,10 @@ export class EnemyManager implements EnemyAttackHandler {
     const living = this.deps.party.living;
     // Bez żywych bohaterów i tak usuwamy wygasłe plamy.
     if (living.length === 0) this.firePatches.update(null, now);
-    for (const player of living) {
+    // Buty lewitacji (krok 150): płonące plamy na podłodze nie parzą unoszącego się bohatera.
+    const grounded = living.filter((player) => !player.isLevitating);
+    if (grounded.length === 0) this.firePatches.update(null, now);
+    for (const player of grounded) {
       const damage = this.firePatches.update(player, now);
       if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit(player);
     }
@@ -597,6 +603,31 @@ export class EnemyManager implements EnemyAttackHandler {
     });
   }
 
+  /**
+   * Krok 150: Pożoga (Ognista pięść ×3) — płonący wróg wybucha i podpala sąsiadów (łańcuch w tłumie);
+   * pęknięcie lodu (Lodowy odłamek ×3) — zamrożony spowalnia sąsiadów. Tylko wrogowie, nigdy bohaterowie.
+   */
+  private deathEchoes(at: Vector2, echo: DeathEcho, now: number): void {
+    if (echo.pyre) {
+      const { radius, damage } = echo.pyre.pyre;
+      this.deps.effects.fire.burst(at.x, at.y, radius);
+      drawBurstRing(this.deps.scene, at, radius, EVOLUTION_VISUAL.pyreColor);
+      for (const other of [...this.enemies]) {
+        if (other.isDead || distance(at, other) > radius + other.radius) continue;
+        const result = other.takeHit({ damage, knockback: knockbackFrom(at, other, 120), status: { burn: echo.pyre }, magic: true }, now, at);
+        if (result.died) this.kill(other);
+      }
+    }
+    if (echo.shatter) {
+      const { shatterRadius, shatterSlow } = echo.shatter;
+      drawBurstRing(this.deps.scene, at, shatterRadius, EVOLUTION_VISUAL.shatterColor);
+      for (const other of this.enemies) {
+        if (other.isDead || distance(at, other) > shatterRadius + other.radius) continue;
+        other.status.apply({ slow: shatterSlow }, now);
+      }
+    }
+  }
+
   private kill(enemy: Enemy): void {
     // Ten sam wróg może paść dwa razy w jednej klatce (np. cios trafił gniazdo i jego czerwia).
     if (!this.enemies.includes(enemy)) return;
@@ -610,12 +641,14 @@ export class EnemyManager implements EnemyAttackHandler {
       const { delayMs, damage } = ELITE_CONFIG.volatile;
       this.blasts.push({ at, startAt: now, detonateAt: now + delayMs, damage: this.hazardDamage(damage) });
     }
+    const echo = enemy.status.deathEcho(now);
     this.deps.effects.deathBurst(enemy.x, enemy.y, enemy.definition.color, enemy.radius);
     sound.play(SoundCue.EnemyDeath, at);
     this.deps.decals.add('splat', enemy.x, enemy.y);
     this.enemies = this.enemies.filter((e) => e !== enemy);
     this.deps.gateWait?.forget(enemy);
     this.deps.onEnemyKilled(enemy);
+    this.deathEchoes(at, echo, now);
     this.broods.remove(enemy);
     // Czyhacz zabity jeszcze w kryjówce albo w chwili wywabienia — kryjówka i tak pęka.
     const den = this.dens.get(enemy);

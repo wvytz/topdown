@@ -65,9 +65,12 @@ describe('przedmioty u Czarodziejki', () => {
     expect(orbs.maxOrbs).toBe(base.maxOrbs + 1);
   });
 
-  it('liczba kul ma ten sam limit co ładunki strzału', () => {
-    const quivers = Array.from({ length: 20 }, () => ItemId.Quiver);
-    expect(sorceryOf(loadout(quivers).kit)!.orbs.maxOrbs).toBe(STAT_LIMITS.maxRangedCharges);
+  it('krok 150: Kołczan ma limit 3 kopii, a Kołczan bez dna dokłada kulę ponad limit ładunków i szybszy powrót', () => {
+    const quivers = (n: number) => Array.from({ length: n }, () => ItemId.Quiver);
+    const evolved = sorceryOf(loadout(quivers(20)).kit)!.orbs;
+    expect(evolved.maxOrbs).toBe(Math.min(STAT_LIMITS.maxRangedCharges, base.maxOrbs + 3) + ITEM_EFFECTS.evolution.quiver.extraOrbs);
+    expect(evolved.rechargeMs).toBe(Math.round(base.rechargeMs * ITEM_EFFECTS.evolution.quiver.rechargeMultiplier));
+    expect(sorceryOf(loadout(quivers(2)).kit)!.orbs.rechargeMs).toBe(base.rechargeMs);
   });
 
   it('modyfikator piętra wydłuża odnawianie kul i blokadę promienia', () => {

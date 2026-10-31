@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5312,6 +5312,41 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Znane ograniczenia (do oceny):** bot nie unika telegrafów i pocisków (pada częściej niż człowiek — wtedy gracz go podnosi), nie korzysta z kapliczki, schodów ani łupów celowo (łupy zbiera, gdy przejdzie obok), nie odpala promienia Czarodziejki. Przy okazji: w `gatherParty` (co-op, kraty) sprawdzenie podłogi traktuje pusty kafel kolizji jako mur, więc partner ląduje dokładnie na graczu zamiast obok (rozsuwa ich kolizja) — drobiazg, nie ruszałem. Napis „BOT · Barbarzyńca” w HUD nachodzi na HP (tak samo jak „P2 · Barbarzyńca”).
 
+## Krok 150 — Przemiany przedmiotów: 3. kopia zmienia mechanikę `#decyzja` `#przemiany`
+
+**Skąd:** `#decyzja` Wicio (31.10.2026): „Elektryczna strzała nie daje nic”; przedmioty mają po 3 zdobyciach zmieniać mechanikę. Po dokumencie z propozycjami („TOP DOWN — rozwój przedmiotów”) wybrał: **trzy kopie to przemiana dla wszystkich przedmiotów**; Elektryczna strzała → Iskrownik („trzecie ramię”), Ostrze → **fala ostrza** (nie krytyk), Buty → lewitacja (**omijamy wszystko, co leży na podłodze, także płyty pułapek; trujące opary w powietrzu dalej ranią**), Serce → **Napompowane serce** (podwójne HP z przemieniającej kopii). Karta rozwoju „ok, ale niejasna” (też uwaga testera) — rozbudowana.
+
+**Pomiar przed zmianą (symulacja szybkiego startu, krok 148, 500 runów, losowe karty):** do piętra 9 konkretny przedmiot z efektem ×3 miało ok. 11% runów (Ostrze 74%, Buty 55%). Po zmianie (karta rozwoju + gracz, który buduje przemianę) przemianę do piętra 9 ma ponad 90% runów (test).
+
+**Zasada (`config/itemEvolutionConfig.ts`, `systems/ItemEvolution.ts`):** kopie 1–2 wzmacniają liczbę jak dotąd, 3. kopia przemienia przedmiot. Przemiany działają same albo na tych samych przyciskach — pad, telefon i co-op bez nowego sterowania (dawne odrzucenie „ewolucji zmieniających sterowanie” nadal obowiązuje). Część przedmiotów ma **limit 3 kopii** — dalsze kopie nic nie dają, więc karty i kapliczka ich nie proponują (mechanizm z kroku 117).
+
+| Przedmiot | Przemiana (3. kopia) | Po przemianie |
+| --- | --- | --- |
+| Elektryczna strzała | **Iskrownik:** kula nad ramieniem sama razi piorunem najbliższego wroga (160 px) co 0,8 s, 8 obrażeń, łańcuch na 2 kolejnych; bije bossa pełną siłą. Od 1. kopii trafiony strzał przeskakuje piorunem na sąsiada (40% obrażeń, 60 px; 2. kopia — 2 sąsiadów), ogłuszenie zostaje | −0,1 s odstępu za kopię (do 0,5 s) |
+| Ostrze | **Fala ostrza:** co 3. atak (cios, kula, strzała z łuku) półksiężyc 75% obrażeń ataku, ok. 135 px, przez wszystkich wrogów | +3 obrażeń, bez limitu |
+| Serce | **Napompowane serce:** przemieniająca kopia daje +40 maks. HP zamiast +20 | +20 HP, bez limitu |
+| Buty | **Buty lewitacji:** kałuże i płaty bossów (sieci, grzybnia, mokra posadzka, kwiaty), płonące plamy, kolce, pajęczyny i płyty strzałek nie działają; chmury purchawek i popielniczek (opary) — dalej tak. Pod stopami świetlista elipsa | limit 3 (+30% prędkości; było do +60%) |
+| Rękawice | **Rozpęd:** ciągły atak co 0,6 s +8% tempa (3 stopnie), przerwa 0,7 s zeruje; razem z Rękawicami do limitu +60% | limit 3 (+36%) |
+| Klepsydra | **Pętla czasu:** dash ma 2 ładunki | limit 3 |
+| Szuriken | **Rykoszet:** pocisk odbija się od murów 2 razy (+0,25 s lotu za odbicie) | +1 przebicie i +1 odbicie (do 4) |
+| Ognista pięść | **Pożoga:** płonący wróg wybucha przy śmierci (32 px, 12 obrażeń, kula ognia z kroku 144) i podpala sąsiadów — łańcuchy w tłumie; tylko wrogowie | +3 obrażeń wybuchu, mocniejsze podpalenie |
+| Kołczan | **Kołczan bez dna:** ładunki wracają 2× szybciej; barbarzyńca — strzał PPM podwójny, łucznik — salwa 5 strzał, Czarodziejka — +1 kula ponad limit i szybszy powrót kul | limit 3 |
+| Wampirzy kieł | **Krwawa tarcza:** leczenie przy pełnym HP buduje tarczę do 15% bazowego HP (czerwony pierścień), trafienie zbija ją przed zdrowiem | limit 3 |
+| Burzowy pęd | **Ślad burzy:** dash zostawia na 1,5 s ślad błyskawic, co 0,25 s 35% obrażeń dasha | +6 obrażeń dasha i śladu |
+| Lodowy odłamek | **Zamrożenie:** trafienie już spowolnionego wroga zamraża go na 1 s (odporność jak przy ogłuszeniu, boss 0,4 s); zamrożony pęka przy śmierci i spowalnia sąsiadów | limit 3 |
+
+**Karta nagrody i karta rozwoju (`scenes/RewardScene.ts`, `rollRewardChoices`):** gdy bohater ma przedmiot w trakcie budowy (1–2 kopie), jedna z 3 kart zawsze jest takim przedmiotem (bliższy przemiany — podwójna waga), na losowym miejscu, z zieloną wstążką **KARTA ROZWOJU**. Każda karta pokazuje kropki postępu ●●○, co da ta kopia i „jeszcze N do przemiany: <nazwa>”. Karta 3. kopii jest złota, ze wstążką **PRZEMIANA**, nazwą i opisem nowej mechaniki. Pod kartami zasada wprost: „3 kopie przedmiotu = PRZEMIANA”. HUD: przemieniony przedmiot ma jasnoniebieską ramkę i gwiazdkę; napis po zdobyciu „Buty 2/3”, „PRZEMIANA: Buty lewitacji — …”, błysk i dźwięk.
+
+**Przy okazji (poprawka):** nowy loadout (przedmiot, szał, Rozpęd) już nie zeruje trwającego ciosu ani odnowienia dasha (`AttackCycle.withTiming`, `DashController.reconfigured`) — wcześniej włączenie szału dawało świeży dash.
+
+**Szybki start testowy:** symulacja (krok 148) wybiera karty jak gracz budujący przemianę (karta przemiany zawsze, karta rozwoju w 70%). Nowe `?items=` z listą: np. `?hero=archer&floor=4&boss=1&items=electric-arrow*3,blade*3,boots*3` — dokładnie ten zestaw na arenie bossa (`?items=0` jak dotąd: puste ręce).
+
+**Pliki:** czyste — `config/itemEvolutionConfig.ts`, `systems/ItemEvolution.ts`, `systems/ChainLightning.ts`, `systems/AttackRamp.ts`, `systems/StormTrail.ts`, zmiany w `WeaponEffects`, `PlayerLoadout`, `StatusEffects` (Pożoga, Zamrożenie, `deathEcho`), `DashController` (ładunki), `ChargePool`, `AttackCycle`, `Timer`, `PracticeLoadout`; Phaser — `effects/EvolutionEffects.ts` (pioruny, kula Iskrownika, lewitacja, tarcza, ślad, tekstura półksiężyca — figury geometryczne do czasu arkuszy z generatora), `HeroCombat`, `PlayerShotManager` (rykoszet, fala), `EnemyManager` (wybuchy przy śmierci), `Player` (lewitacja, tarcza, `applyAirborneStatus` dla oparów), `TrapManager`, `RewardScene`, `HudScene`, `GameScene`.
+
+**Testy:** `tests/systems/itemEvolution.test.ts` (20: progi przemian, limity, Napompowane serce, karta i karta rozwoju, `?items=`, symulacja, Zamrożenie i Pożoga w statusach, dash z ładunkami, Rozpęd, łańcuch, ślad); poprawione testy limitów Rękawic, Butów i Kołczana. `npm run build` OK. **Smoke:** solo 3 bohaterami (4 piętra), co-op (3 piętra), bot — OK. W przeglądarce: arena Kata Otchłani z 12 przemianami każdym bohaterem — bez błędów; Iskrownik razi bossa, elipsa lewitacji, gwiazdki w HUD.
+
+**Do oceny właściciela:** liczby (Iskrownik 8 obrażeń/0,8 s, fala 75%, Pożoga 12), wygląd (figury geometryczne — po akceptacji arkusze z generatora), czy limit 3 kopii dla Butów/Rękawic/Klepsydry/Kołczana/Kła/Odłamka nie jest za ciasny, czy karta rozwoju jest teraz jasna.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5449,7 +5484,9 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
-**5. Odrzucone:** ewolucje przedmiotów (decyzja właściciela). Wzmacnianie kolejnymi kopiami zostaje.
+**Przemiany przedmiotów (krok 150)** `#przemiany`: zrobione — 3. kopia przemienia każdy przedmiot, karta rozwoju, limity 3 kopii. Czeka na ocenę: liczby, wygląd (figury geometryczne → arkusze z generatora), limity, czytelność karty.
+
+**5. Odrzucone:** ewolucje przedmiotów **zmieniające sterowanie** (decyzja właściciela). Od kroku 150 przemiany przy 3. kopii — bez nowych przycisków.
 
 **6. Drobne uwagi techniczne**
 - **Boss bez reguły widoku:** arena (11–13 kafli) jest wyższa niż widok w pionie (ok. 8,4 kafla), więc uderzenie może spaść poza kadrem. Ataki są obszarowe i z telegrafem. Od kroku 136 strzałka przy krawędzi ekranu pokazuje bossa poza kadrem; oddalenie kamery na arenie — tylko jeśli to nie wystarczy.

@@ -111,6 +111,8 @@ export interface ItemEffectsConfig {
     readonly cooldownMs: number;
   };
   readonly stormDash: { readonly damage: number; readonly damagePerStack: number };
+  /** Krok 150: przemiany przedmiotów (3. kopia), limity kopii i łańcuch pioruna. */
+  readonly evolution: ItemEvolutionConfig;
   readonly frostShard: {
     readonly slowPct: number;
     readonly slowPctPerStack: number;
@@ -135,4 +137,55 @@ export interface RunSnapshot {
   readonly fromSave?: boolean;
   /** Wybór piętra (krok 91): piętro startowe — R po śmierci zaczyna od niego. */
   readonly startFloor?: number;
+}
+
+/** Krok 150: opis przemiany przedmiotu na kartach i w HUD. */
+export interface ItemEvolutionText {
+  /** Nazwa po przemianie, np. „Iskrownik”. */
+  readonly name: string;
+  /** Co daje przemiana — tekst karty „PRZEMIANA”. */
+  readonly effect: string;
+  /** Co dają kopie po przemianie; brak = przedmiot ma limit `maxCopies`. */
+  readonly after?: string;
+  /** Limit kopii: dalsze nic nie dają, więc karty i kapliczka ich nie proponują. */
+  readonly maxCopies?: number;
+}
+
+/**
+ * Krok 150 (decyzja właściciela): 3. kopia przedmiotu to przemiana — nowa mechanika zamiast samej liczby.
+ * Liczby w `config/itemEvolutionConfig.ts`.
+ */
+export interface ItemEvolutionConfig {
+  /** Kopia, która przemienia przedmiot. */
+  readonly copies: number;
+  readonly items: Readonly<Record<ItemId, ItemEvolutionText>>;
+  /** Napompowane serce: przemieniająca kopia daje tyle maks. HP więcej (razem 2× zwykłej kopii). */
+  readonly heart: { readonly bonusMaxHp: number };
+  /** Elektryczna strzała (kopie 1–2 i dalej): łańcuch pioruna z trafionego celu. */
+  readonly chain: { readonly range: number; readonly damageFraction: number; readonly targetsPerCopy: number; readonly maxTargets: number };
+  readonly sparker: {
+    readonly intervalMs: number;
+    readonly intervalStepMs: number;
+    readonly minIntervalMs: number;
+    readonly range: number;
+    readonly damage: number;
+    readonly chains: number;
+    readonly chainRange: number;
+  };
+  readonly bladeWave: {
+    readonly every: number;
+    readonly damageFraction: number;
+    readonly speed: number;
+    readonly lifetimeMs: number;
+    readonly radius: number;
+    readonly knockback: number;
+  };
+  readonly attackRamp: { readonly stepPct: number; readonly steps: number; readonly stepEveryMs: number; readonly resetAfterMs: number };
+  readonly hourglass: { readonly dashCharges: number };
+  readonly ricochet: { readonly bounces: number; readonly perStack: number; readonly max: number; readonly extraLifetimeMs: number };
+  readonly pyre: { readonly radius: number; readonly damage: number; readonly damagePerStack: number };
+  readonly quiver: { readonly rechargeMultiplier: number; readonly twinSpreadDeg: number; readonly extraOrbs: number; readonly extraVolleyArrows: number };
+  readonly bloodShield: { readonly maxBaseHpPct: number };
+  readonly stormTrail: { readonly durationMs: number; readonly tickMs: number; readonly radius: number; readonly damageFraction: number; readonly spacing: number };
+  readonly frost: { readonly freezeMs: number; readonly shatterRadius: number; readonly shatterSlow: { readonly pct: number; readonly durationMs: number } };
 }

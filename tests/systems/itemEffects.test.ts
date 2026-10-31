@@ -51,6 +51,8 @@ describe('pula przedmiotów', () => {
 describe('computeWeaponEffects', () => {
   it('bez przedmiotów z efektem — brak efektów', () => {
     expect(computeWeaponEffects([ItemId.Blade, ItemId.Heart], ITEM_EFFECTS)).toEqual(NO_WEAPON_EFFECTS);
+    // Krok 150: dwie kopie Ostrza to jeszcze nie przemiana.
+    expect(computeWeaponEffects([ItemId.Blade, ItemId.Blade], ITEM_EFFECTS)).toEqual(NO_WEAPON_EFFECTS);
   });
 
   it('każdy przedmiot daje swój efekt', () => {

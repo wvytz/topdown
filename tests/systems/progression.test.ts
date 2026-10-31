@@ -33,17 +33,20 @@ describe('computeLoadout', () => {
   it('limity: cooldowny nie spadają poniżej minimum, prędkość nie przekracza maksimum', () => {
     const many = <T>(item: T, n: number): T[] => Array.from({ length: n }, () => item);
     const stacked = loadout([...many(ItemId.Gloves, 20), ...many(ItemId.Hourglass, 20), ...many(ItemId.Boots, 20)]);
-    expect(stacked.combat.attackCooldownMs).toBe(Math.round(PLAYER_COMBAT.attackCooldownMs / (1 + STAT_LIMITS.maxAttackSpeedBonus)));
+    // Krok 150: Rękawice, Klepsydra i Buty mają limit 3 kopii (dalsze nic nie dają).
+    expect(stacked.combat.attackCooldownMs).toBe(Math.round(PLAYER_COMBAT.attackCooldownMs / 1.36));
     expect(stacked.combat.dash.cooldownMs).toBe(Math.round(PLAYER_COMBAT.dash.cooldownMs * STAT_LIMITS.minCooldownMultiplier));
-    expect(stacked.stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * STAT_LIMITS.maxMoveSpeedMultiplier));
+    expect(stacked.stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * 1.3));
+    expect(stacked.stats.moveSpeed).toBeLessThanOrEqual(PLAYER_BASE_STATS.moveSpeed * STAT_LIMITS.maxMoveSpeedMultiplier);
   });
 
   it('krok 117: każda kopia Rękawic dodaje tyle samo tempa ataku (bez przyspieszania przyrostów)', () => {
     const many = <T>(item: T, n: number): T[] => Array.from({ length: n }, () => item);
     const rate = (n: number) => PLAYER_COMBAT.attackCooldownMs / loadout(many(ItemId.Gloves, n)).combat.attackCooldownMs;
-    const gains = [1, 2, 3, 4, 5].map((n) => rate(n) - rate(n - 1));
+    const gains = [1, 2, 3].map((n) => rate(n) - rate(n - 1));
     for (const gain of gains) expect(gain).toBeCloseTo(0.12, 1);
-    expect(rate(6)).toBeCloseTo(rate(5), 5);
+    // Krok 150: limit 3 kopie — czwarta nic nie dodaje.
+    expect(rate(4)).toBeCloseTo(rate(3), 5);
   });
 
   it('nie zmienia obiektów bazowych', () => {

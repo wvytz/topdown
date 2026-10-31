@@ -10,10 +10,15 @@ export interface PracticeLoadoutConfig {
   readonly killShare: number;
   readonly quietRooms: number;
   readonly shrineChance: number;
+  /** Krok 150: szansa, że gracz bierze kartę rozwoju (przedmiot, który już zbiera). */
+  readonly developmentPickChance: number;
 }
 
 export const PRACTICE_LOADOUT_CONFIG: PracticeLoadoutConfig = {
-  /** Parametr adresu: `?items=0` wyłącza zestaw (stary start „z pustymi rękami”). */
+  /**
+   * Parametr adresu: `?items=0` wyłącza zestaw (stary start „z pustymi rękami”); krok 150: `?items=blade*3,boots*3`
+   * daje dokładnie te przedmioty (podgląd przemian).
+   */
   urlParam: 'items',
   offValue: '0',
   /** Część wrogów piętra, których gracz zabija (resztę omija w drodze do schodów). */
@@ -25,4 +30,6 @@ export const PRACTICE_LOADOUT_CONFIG: PracticeLoadoutConfig = {
    * więc część graczy ją omija; 0 = nigdy.
    */
   shrineChance: 0.6,
+  /** Krok 150: karta przemiany jest brana zawsze, karta rozwoju zwykle — gracz buduje przemianę. */
+  developmentPickChance: 0.7,
 };

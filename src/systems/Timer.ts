@@ -8,6 +8,12 @@ export class Timer {
     this.endsAt = now + durationMs;
   }
 
+  /** Krok 150: ten sam stan co `other` (np. dash przeniesiony do nowej konfiguracji). */
+  copyFrom(other: Timer): void {
+    this.startedAt = other.startedAt;
+    this.endsAt = other.endsAt;
+  }
+
   isActive(now: number): boolean {
     return now < this.endsAt;
   }

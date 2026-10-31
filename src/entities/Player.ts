@@ -107,6 +107,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Plątanie brunetki (krok 126): bez ruchu i dasha, ataki wolno. */
   private readonly root = new RootState();
   private lastMoveAt: number | null = null;
+  /** Krok 150: Krwawa tarcza (Wampirzy kieł ×3). */
+  private bloodShield = 0;
   private attackCycle: AttackCycle;
   private dash: DashController;
   private shotCharges: ChargePool;
@@ -200,11 +202,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** Podmiana statystyk po zdobyciu przedmiotu. Wzrost maks. HP leczy o tę samą wartość. */
   applyLoadout(loadout: PlayerLoadout): void {
+    const now = this.scene.time.now;
     this.stats = loadout.stats;
-    this.attackCycle = new AttackCycle(0, loadout.combat.attackCooldownMs);
-    this.dash = new DashController(loadout.combat.dash);
+    // Krok 150: nowy loadout (przedmiot, szał, Rozpęd) nie zeruje trwającego ciosu ani odnowienia dasha.
+    this.attackCycle = this.attackCycle.withTiming(0, loadout.combat.attackCooldownMs);
+    this.dash = this.dash.reconfigured(loadout.combat.dash, now);
     // Ładunki zachowujemy przy zdobyciu przedmiotu; Kołczan dokłada nowe, od razu naładowane.
-    this.shotCharges.resize(loadout.combat.ranged.maxCharges, this.scene.time.now);
+    this.shotCharges.resize(loadout.combat.ranged.maxCharges, now);
+    this.shotCharges.setRechargeMs(loadout.combat.ranged.rechargeMs, now);
+    this.bloodShield = Math.min(this.bloodShield, loadout.effects.evolved.bloodShieldMax);
     this.combat = loadout.combat;
     this.weaponEffects = loadout.effects;
     this.health.setMax(loadout.stats.maxHp);
@@ -214,11 +220,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const { orbs, beam } = sorcery;
       this.orbPool?.setTiming(orbs.rechargeMs, orbs.reloadMs);
       this.orbPool?.resize(orbs.maxOrbs, this.scene.time.now);
-      this.castCycle = new AttackCycle(orbs.castWindupMs, orbs.castCooldownMs);
+      this.castCycle = this.castCycle?.withTiming(orbs.castWindupMs, orbs.castCooldownMs) ?? new AttackCycle(orbs.castWindupMs, orbs.castCooldownMs);
       this.beam?.setConfig(beam);
     }
     const archery = archeryOf(loadout.kit);
     if (archery) this.bow?.setConfig(archery.bow);
+  }
+
+  /** Krok 150, Buty lewitacji: podłoga (kałuże, ogień, kolce, pajęczyny, płyty pułapek) nie działa. */
+  get isLevitating(): boolean {
+    return this.weaponEffects.evolved.levitation && !this.isDead;
+  }
+
+  /** Krok 150, Krwawa tarcza: bieżąca tarcza (HP, które trafienie zbije przed zdrowiem). */
+  get shieldHp(): number {
+    return this.bloodShield;
+  }
+
+  /** Krwawa tarcza: dokłada leczenie ponad pełne HP, do limitu z kłów. Zwraca, ile weszło. */
+  addBloodShield(amount: number): number {
+    const max = this.weaponEffects.evolved.bloodShieldMax;
+    const added = Math.max(0, Math.min(amount, max - this.bloodShield));
+    this.bloodShield += added;
+    return added;
   }
 
   /** Zestaw Czarodziejki po przedmiotach; null = inny bohater. */
@@ -268,7 +292,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * bo to podłoże, nie atak — chroni przed nim tylko dash.
    */
   applyTerrainSlow(slow: NonNullable<StatusApplication['slow']>, now: number): boolean {
-    if (this.isDead || this.dash.isDashing(now)) return false;
+    if (this.isDead || this.dash.isDashing(now) || this.isLevitating) return false;
     this.status.apply({ slow }, now);
     return true;
   }
@@ -278,7 +302,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * po nim bohater sunie dalej. Zwraca true, gdy poślizg właśnie się zaczął (napis „Ślisko!”).
    */
   applyTerrainSlip(slip: SlipEffect, now: number): boolean {
-    if (this.isDead) return false;
+    if (this.isDead || this.isLevitating) return false;
     const started = !this.isSlipping(now);
     this.slip = slip;
     this.slipUntil = now + slip.durationMs;
@@ -531,7 +555,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   takeHit(hit: Hit, now: number): boolean {
     if (this.isDead || this.isInvulnerable(now)) return false;
 
-    this.health.takeDamage(hit.damage);
+    // Krwawa tarcza (krok 150) zbija obrażenia przed zdrowiem.
+    const absorbed = Math.min(this.bloodShield, hit.damage);
+    this.bloodShield -= absorbed;
+    this.health.takeDamage(hit.damage - absorbed);
     this.invulnerability.start(now, this.combat.invulnerabilityMs);
     this.knockbackStun.start(now, KNOCKBACK_STUN_MS);
     this.setVelocity(hit.knockback.x, hit.knockback.y);
@@ -556,12 +583,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * — jak lepkie pajęczyny.
    */
   applyTerrainStatus(status: StatusApplication, now: number): boolean {
+    if (this.isDead || this.dash.isDashing(now) || this.isLevitating) return false;
+    this.status.apply(status, now);
+    return true;
+  }
+
+  /**
+   * Krok 150: status z oparów w powietrzu (chmury purchawek i popielniczek) — jak teren, ale lewitacja nie chroni
+   * (decyzja właściciela: „jeżeli unosi się z tego trucizna, ma przyjmować obrażenia”).
+   */
+  applyAirborneStatus(status: StatusApplication, now: number): boolean {
     if (this.isDead || this.dash.isDashing(now)) return false;
     this.status.apply(status, now);
     return true;
   }
 
   private die(): void {
+    this.bloodShield = 0;
     sound.play(SoundCue.HeroDeath, this);
     this.setVelocity(0, 0);
     this.setBodyCollision(false);
