@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOP DOWN — szybki start testowy</title>
+<!-- Krok 148: lista linków do aren bossów z zestawem przedmiotów z symulowanego przejścia (run testowy, bez tablicy). -->
+<style>
+  :root { color-scheme: dark; --bg: #120d0e; --card: #1f1718; --line: #3a2a2b; --text: #eadfd6; --dim: #9c8c84; --accent: #e0573c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; letter-spacing: 0.08em; margin: 0 0 4px; }
+  p { color: var(--dim); margin: 0 0 18px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .row span { color: var(--dim); min-width: 84px; }
+  button { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; font: inherit; cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--accent); color: #fff; background: #3a1c17; }
+  ol { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 8px; }
+  a.boss { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; color: var(--text); text-decoration: none; }
+  a.boss:hover { border-color: var(--accent); }
+  a.boss b { font-weight: 600; }
+  a.boss small { color: var(--dim); white-space: nowrap; }
+  footer { margin-top: 24px; color: var(--dim); font-size: 13px; }
+  code { color: var(--text); }
+</style>
+</head>
+<body>
+<main>
+  <h1>SZYBKI START TESTOWY</h1>
+  <p>Start przy arenie bossa z przedmiotami i złotem, jakie zwykle zbiera się po drodze. Run testowy — wynik nie trafia na tablicę. Po śmierci <b>R</b> wraca na tę samą arenę z nowym zestawem.</p>
+
+  <div class="row" id="heroes"><span>Bohater</span>
+    <button data-hero="barbarian" aria-pressed="true">Barbarzyńca</button>
+    <button data-hero="sorceress">Czarodziejka</button>
+    <button data-hero="archer">Łucznik</button>
+  </div>
+  <div class="row" id="items"><span>Przedmioty</span>
+    <button data-items="auto" aria-pressed="true">jak w normalnym przejściu</button>
+    <button data-items="0">bez przedmiotów</button>
+  </div>
+  <div class="row" id="loop"><span>Krąg wieży</span>
+    <button data-loop="0" aria-pressed="true">I (piętra 1–8)</button>
+    <button data-loop="1">II (piętra 9–16)</button>
+  </div>
+
+  <ol id="bosses"></ol>
+  <footer>Ręcznie: <code>?hero=archer&amp;floor=7&amp;boss=1</code>, dodaj <code>&amp;items=0</code> dla pustych rąk, <code>&amp;seed=N</code> dla tego samego zestawu.</footer>
+</main>
+<script>
+  // Bossowie pięter 1–8 (BIOME_BY_FLOOR / bossConfig, krok 137); kolejny krąg powtarza ich ze statystykami wyżej.
+  const BOSSES = [
+    'Strażnik Piętra — ruiny',
+    'Król i Matka Pająków — Grzybnia',
+    'Grzybowy Pożeracz — Cmentarzysko',
+    'Kat Otchłani — Piekło',
+    'Baron Dymu — Zadymiona palarnia',
+    'Sprzątaczki — Lustrzana komnata',
+    'Brudna Wiedźma — Bociani Ogród',
+  ];
+  const state = { hero: 'barbarian', items: 'auto', loop: 0 };
+  const groups = { heroes: 'hero', items: 'items', loop: 'loop' };
+  for (const [id, key] of Object.entries(groups)) {
+    const group = document.getElementById(id);
+    group.addEventListener('click', (event) => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      for (const other of group.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
+      state[key] = key === 'loop' ? Number(button.dataset.loop) : button.dataset[key];
+      render();
+    });
+  }
+  function render() {
+    const list = document.getElementById('bosses');
+    list.replaceChildren(...BOSSES.map((name, i) => {
+      const floor = state.loop * BOSSES.length + i + 1;
+      const params = new URLSearchParams({ hero: state.hero, floor: String(floor), boss: '1' });
+      if (state.items === '0') params.set('items', '0');
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.className = 'boss';
+      a.href = './?' + params.toString();
+      a.innerHTML = '<b></b><small></small>';
+      a.querySelector('b').textContent = name;
+      a.querySelector('small').textContent = 'piętro ' + floor;
+      li.append(a);
+      return li;
+    }));
+  }
+  render();
+</script>
+</body>
+</html>
