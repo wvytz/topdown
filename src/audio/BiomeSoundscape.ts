@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { BiomeSoundscape as BiomeSoundscapeConfig } from '@/config/soundscapeConfig';
 import { SOUNDSCAPE_CONFIG } from '@/config/soundscapeConfig';
 import { sound } from '@/audio/SoundBoard';
+import type { SoundscapePick } from '@/systems/Soundscape';
 import { pickSoundscape } from '@/systems/Soundscape';
 
 /**
@@ -16,6 +17,8 @@ export class BiomeSoundscape {
     private readonly scene: Phaser.Scene,
     private readonly scape: BiomeSoundscapeConfig,
     private readonly quiet: () => boolean,
+    /** Obraz do odgłosu (krok 159) — wołany po zagraniu odgłosu z miejscem źródła w świecie. */
+    private readonly onPlay: (pick: SoundscapePick, x: number, y: number) => void = () => {},
   ) {
     this.nextAt = scene.time.now + SOUNDSCAPE_CONFIG.firstDelayMs + Math.random() * scape.intervalMs.max * 0.5;
     scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
@@ -38,5 +41,6 @@ export class BiomeSoundscape {
     if (this.quiet()) return;
     const mid = this.scene.cameras.main.midPoint;
     sound.play(pick.cue, { x: mid.x + pick.dx, y: mid.y + pick.dy });
+    this.onPlay(pick, mid.x + pick.dx, mid.y + pick.dy);
   }
 }

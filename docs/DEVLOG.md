@@ -5514,6 +5514,23 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** czy tło jest słyszalne, ale nie męczy (częstość, głośność), czy telefon w mieszkaniu i dzwon na Cmentarzysku budują nastrój, czy coś brzmi źle — przepisy łatwo stroić.
 
+## Krok 159 — Obraz do odgłosów biomów `#dzwiek` `#zywe-otoczenie` `#pieklo` `#ruiny` `#cmentarzysko`
+
+**Po co:** spójność dźwięku i obrazu (prośba właściciela: „wszystko spójne i połączone ze sobą”) — część odgłosów tła z kroku 158 widać:
+- **Piekło — dudnienie:** lekkie drżenie kadru (380 ms, siła 0,0018 — słabsze niż zapowiedź bossa) i 6 strużek pyłu z drobinami żaru sypiących się z sufitu w kadrze.
+- **Ruiny — osypujący się gruz:** 2 strużki kurzu w barwie piaskowca po stronie, z której doszedł dźwięk (przyciągnięte do kadru).
+- **Cmentarzysko — krakanie:** kruk (ten sam arkusz, co w kroku 156) przelatuje przez górę kadru od strony krakania.
+
+**Decyzje:** obraz pojawia się razem z odgłosem, więc też milknie w walce z bossem; czysto wizualne (Math.random), bez wpływu na rozgrywkę. Przy wyciszonej grze obraz zostaje (gra startuje wyciszona — drżenie i pył i tak budują nastrój).
+
+**Pliki:** `config/soundscapeConfig.ts` (`SoundscapeEcho`, `SOUNDSCAPE_ECHO`, pole `echo` w odgłosach), `systems/Soundscape.ts` (wybór zwraca `echo`), `effects/SoundscapeEchoes.ts` (nowy), `audio/BiomeSoundscape.ts` (wywołanie `onPlay`), `scenes/GameScene.ts`.
+
+**Testy:** `tests/systems/soundscape.test.ts` (+1: które odgłosy mają obraz, wybór zwraca `echo` albo null). `npm run build` OK; smoke solo, co-op i bot.
+
+**Weryfikacja w przeglądarce:** `?seed=3&floor=3|4|1` z ręcznie wywołanym odgłosem — przelot kruka, pył po dudnieniu, strużka kurzu w ruinach; bez błędów w konsoli.
+
+**Do oceny właściciela:** czy drżenie przy dudnieniu nie przeszkadza (zwłaszcza na telefonie), czy pył jest dość widoczny.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

@@ -1,4 +1,4 @@
-import type { BiomeSoundscape, SoundscapeConfig } from '@/config/soundscapeConfig';
+import type { BiomeSoundscape, SoundscapeConfig, SoundscapeEcho } from '@/config/soundscapeConfig';
 import type { SoundCue } from '@/core/audioTypes';
 
 /**
@@ -7,6 +7,8 @@ import type { SoundCue } from '@/core/audioTypes';
  */
 export interface SoundscapePick {
   readonly cue: SoundCue;
+  /** Obraz do odgłosu (krok 159); null — tylko dźwięk. */
+  readonly echo: SoundscapeEcho | null;
   /** Przesunięcie źródła od środka kadru (px). */
   readonly dx: number;
   readonly dy: number;
@@ -26,18 +28,19 @@ export function pickSoundscape(scape: BiomeSoundscape, config: SoundscapeConfig,
   const total = scape.entries.reduce((sum, e) => sum + Math.max(0, e.weight), 0);
   if (total <= 0) return null;
   let left = clamp01(rolls.pick) * total;
-  let cue = scape.entries[scape.entries.length - 1]!.cue;
+  let chosen = scape.entries[scape.entries.length - 1]!;
   for (const entry of scape.entries) {
     left -= Math.max(0, entry.weight);
     if (left < 0) {
-      cue = entry.cue;
+      chosen = entry;
       break;
     }
   }
   const angle = clamp01(rolls.angle) * Math.PI * 2;
   const radius = lerp(config.distancePx.min, config.distancePx.max, clamp01(rolls.distance));
   return {
-    cue,
+    cue: chosen.cue,
+    echo: chosen.echo ?? null,
     dx: Math.cos(angle) * radius,
     dy: Math.sin(angle) * radius,
     nextInMs: Math.round(lerp(scape.intervalMs.min, scape.intervalMs.max, clamp01(rolls.interval))),
