@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5417,6 +5417,26 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** długość całej walki (trzy fazy), czy blondynka ma uciekać przy 2/3, czy pasek duetu ma liczyć powracającą blondynkę od 1/3, a nie od pełnego HP.
 
+## Krok 155 — Ruiny po apokalipsie: śmieci i zniszczenie na piętrze 1 `#decyzja` `#ruiny` `#lore`
+
+**Skąd:** prośba właściciela (31.10): „Dodaj większego zaśmiecenia, zniszczenia pierwszego poziomu… jesteśmy w apokaliptycznym świecie, a ta wieża to ostatnie miejsce, gdzie utrzymała się jakakolwiek cywilizacja”. Doprecyzowanie lore `#decyzja`: **zaczynamy w zniszczonej cywilizacji, a im wyżej, tym więcej jej resztek** — piętro 1 jest najbardziej zrujnowane.
+
+**Co powstało:**
+- **Generator** `tools/ruins_wreck_tiles.py` — dodatek `wreck` biomu `tower_ruins` (jak `gamer` w mieszkaniu gracza) i rampa `Palette.wreck` w palecie piaskowca: rdza, ciepła sadza, stare drewno, wyblakła tkanina, szkło, papier. Bez fioletu (szlam Króla Szlamu) i zieleni (magia).
+  - Nakładki 1×1: pręty zbrojeniowe i śruby, pogięta blacha z nitami, zerwany łańcuch, wypalone plamy ze zwęgloną deską, rozbite szkło, łachman, porzucony but z bandażem, wygasłe ognisko uciekinierów, ulotki, kości poległych, okruchy tynku i rdzy.
+  - Duże nakładki: zawalony strop 2×2, zwęglona belka 2×1, szczątki uciekiniera pod łachmanem z nożem 2×1, pęknięta rura z rdzawą kałużą 2×1.
+  - Lica murów (`wallFace.wreck`): odsłonięte zbrojenie, sadza aż na wierzch muru, wyłom zabity deskami, kreski odliczania dni ze strzałką w górę, rdzewiejąca rura z zaciekiem. Pęknięte i wyszczerbione mury ruin losują się 3× częściej.
+  - Rzeczy mają obrys najciemniejszym tonem posadzki (nie czarnym obrysem postaci) i cień w tonie fugi — leżą w warstwie podłogi, postacie dalej się odcinają.
+- **Rozkład** `RUINS_DRESSING` (`config/dressingConfig.ts`), tylko dla ruin: nakładka na 50% kafli (było 10%), duże nakładki, więcej kurzu pod ścianami, detal lica na 30% muru. `FLOOR_DRESSING` zostaje bez zmian jako baza innych biomów. Wyłomy i gruz z kroku 19b zostają rzadkie — przy większej wadze wyglądały jak ciemne, włochate kule.
+
+**Decyzje:** wszystko to nakładki warstw kafli (tilemapa) — bez kolizji, bez zmiany linii wzroku Kiterów i bez kosztu wydajności (te same warstwy, ten sam rysunek). Sadza celowo płaska i ciepła: pierwsza wersja z postrzępionym brzegiem wyglądała jak pająk. Pierwsza blacha była zbyt podobna do glinianej urny — przygaszona i mniejsza.
+
+**Testy:** istniejące testy arkuszy (`assets/biomes`, `assets/tileset`: kompletność grup, kolory, czytelność postaci na podłodze) obejmują nowe grupy przez `RUINS_DRESSING`. `npm run build` OK (2520 testów).
+
+**Weryfikacja w przeglądarce:** `?seed=1&floor=1`, `?seed=4&floor=1`, `?seed=7&floor=1` — porównanie przed/po (zrzuty w `/mnt/project-files/screens/krok155-ruiny/`), bez błędów w konsoli.
+
+**Do oceny właściciela:** `#ruiny` `#ocena` gęstość śmieci (50% kafli), czy kości i szczątki nie mylą się z łupami, czy zniszczenie ma rosnąć jeszcze bardziej. Następnie: malejące zniszczenie na kolejnych piętrach zgodnie z lore (piętra 2–7 mają własne motywy — do omówienia).
+
 ## Krok 156 — Żywe otoczenie Grzybni i Cmentarzyska `#zywe-otoczenie` `#grzybnia` `#cmentarzysko`
 
 **Prośba właściciela (31.10):** „dodajmy sobie lepsze animacje też do drugiego biomu i do trzeciego biomu”, z pytaniem, czy trzymać się stałych warunków, czy dodać „interaktywne, bardziej zmienne warunki”. Lore (decyzja właściciela): na dole zniszczona cywilizacja, wyżej coraz więcej jej resztek — piętra 2–3 mniej zrujnowane niż piętro 1. Poziom detalu jak ogień (krok 144) i szlam (krok 153). Areny sprzątaczek i Wiedźmy robi osobny wątek.
@@ -5582,6 +5602,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
+
+**Ruiny po apokalipsie (krok 155)** `#ruiny` `#lore`: śmieci i zniszczenie na piętrze 1 — czeka na ocenę (gęstość, kości vs łupy). Lore: im wyżej, tym mniej ruiny i więcej resztek cywilizacji.
 
 **Żywe otoczenie (krok 156)** `#zywe-otoczenie`: Grzybnia (kępy grzybów, lampy, ćmy) i Cmentarzysko (znicze, kruki, ogniki) — czeka na ocenę: gęstość, odsłanianie wrogów przez światła, gaszenie zniczy dashem. Dalej: ten sam pomysł dla Piekła i Palarni, interaktywne warunki dla Lustrzanej komnaty i Bocianiego Ogrodu (osobny wątek).
 

@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 
 import gamer_den_tiles
+import ruins_wreck_tiles
 
 T = 32
 FACE = 8  # wysokość lica ściany (południowa, widoczna strona) w pikselach
@@ -140,6 +141,9 @@ class Palette:
     bloom: tuple = ()
     # Mieszkanie gracza (krok 138): karton, jedzenie, ubrania, plastik, drewno, dywan — indeksy w tools/gamer_den_tiles.py.
     junk: tuple = ()
+    # Ruiny po apokalipsie (krok 155): rdza, zwęglenie, stare drewno, wyblakła tkanina, szkło, papier —
+    # indeksy w tools/ruins_wreck_tiles.py. Puste w innych biomach.
+    wreck: tuple = ()
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
@@ -205,6 +209,12 @@ PALETTES = {
         deep=oks((.14, .012, 270), (.17, .012, 270)),
         stain=oks((.36, .050, 20), (.41, .050, 22)),
         ash=oks((.55, .016, 65), (.49, .014, 250)),
+        wreck=oks((.30, .035, 40), (.37, .045, 45), (.45, .050, 55),     # rdza (przygaszona — nie jak glina urn)
+                  (.30, .016, 55), (.36, .016, 60), (.43, .014, 70),     # sadza, węgiel, popiół (ciepłe, płaskie)
+                  (.30, .030, 60), (.39, .038, 65), (.48, .042, 72),     # stare drewno
+                  (.33, .022, 230), (.41, .024, 225), (.50, .022, 220),  # wyblakła tkanina
+                  (.60, .018, 210), (.76, .014, 200),                    # szkło
+                  (.68, .028, 85)),                                      # zżółkły papier
     ),
     # Pajęcze leże (krok 23a, poprawka właściciela): fiolet, zieleń i biel — mroczne leże w starej wieży.
     # Zasady biomu inne niż w ruinach: fioletowy kamień, zielona posoka i upiorny zielony ogień, białe nici i jaja.
@@ -453,7 +463,8 @@ DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 # `reserved_hues`: czy podłoga omija barwy zarezerwowane (fiolet wrogów, zieleń magii). W leżu nie —
 # decyzja właściciela: ten biom ma być fioletowo-zielony.
 BIOMES = {
-    'tower_ruins': {'palette': 'piaskowiec', 'extras': (), 'reserved_hues': True},
+    # Od kroku 155 (prośba właściciela: świat po apokalipsie) z dodatkiem `wreck` — śmieci i zniszczenie.
+    'tower_ruins': {'palette': 'piaskowiec', 'extras': ('wreck',), 'reserved_hues': True},
     'spider_lair': {'palette': 'pajeczy', 'extras': ('spider',), 'reserved_hues': False},
     # Grzybnia (krok 28a): dalszy ciąg leża (jaja, nici, pancerzyki) porośnięty grzybem; fiolet z wyboru właściciela.
     'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
@@ -2141,7 +2152,9 @@ class Entry:
 WALL_COMMON = (7, 11, 13, 14)
 # Narzędzia generatora dla modułu mieszkania gracza (krok 138).
 GAMER_KIT = dataclasses.make_dataclass('GamerKit', ['Img', 'outline', 'T', 'FACE', 'CLR', 'flame_base_y'])(
-    Img, outline, T, FACE, CLR, TORCH_FLAME_BASE_Y)  # ~82% widocznych ścian na wygenerowanych mapach (pomiar, krok 16)
+    Img, outline, T, FACE, CLR, TORCH_FLAME_BASE_Y)
+# Narzędzia generatora dla modułu ruin po apokalipsie (krok 155) — definiowane niżej, zestaw składa manifest().
+WRECK_KIT_TYPE = dataclasses.make_dataclass('WreckKit', ['Img', 'outline', 'T', 'FACE', 'CLR', 'crack', 'pebble'])  # ~82% widocznych ścian na wygenerowanych mapach (pomiar, krok 16)
 
 
 def manifest():
@@ -2275,6 +2288,9 @@ def manifest():
     if 'gamer' in BIOMES[BIOME]['extras']:
         # Mieszkanie gracza (krok 138): wykładzina, panele, tapeta, lampy i śmieci zamiast kamienia ruin.
         m = gamer_den_tiles.apply(m, Entry, GAMER_KIT)
+    if 'wreck' in BIOMES[BIOME]['extras']:
+        # Ruiny po apokalipsie (krok 155): złom, sadza, łachmany, kości, zawalony strop; dopisane na końcu (first-fit).
+        m = ruins_wreck_tiles.apply(m, Entry, WRECK_KIT_TYPE(Img, outline, T, FACE, CLR, crack, pebble))
     # Ślady wleczenia i krwi ku arenie bossa (krok 54): na samym końcu (first-fit), nic się nie przesuwa.
     for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
                         ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):

@@ -135,6 +135,44 @@ export const FLOOR_DRESSING: FloorDressingConfig = {
 };
 
 /**
+ * Ruiny wieży po apokalipsie (krok 155, prośba właściciela: „pamiętaj, że jesteśmy w apokaliptycznym świecie,
+ * a wieża to ostatnie miejsce, gdzie utrzymała się cywilizacja”). Parter nosi ślady oblężenia i koczowania
+ * uciekinierów: złom i pręty, wypalone plamy, szkło, łachmany, ogniska, ulotki, kości; co kilkadziesiąt kafli
+ * zawalony strop, zwęglona belka, szczątki albo pęknięta rura (tools/ruins_wreck_tiles.py). Mury częściej
+ * spękane (generator), na licach zbrojenie, sadza, zabite deskami wyłomy, kreski odliczania.
+ * Wszystko to nakładki bez kolizji. `FLOOR_DRESSING` zostaje bazą innych biomów — bez zmian. Moje liczby, do oceny.
+ */
+export const RUINS_DRESSING: FloorDressingConfig = {
+  ...FLOOR_DRESSING,
+  decalChance: 0.5,
+  decalGroupWeights: {
+    // Wyłomy i gruz zostają rzadkie (krok 19b): z bliska wyglądają jak ciemne, włochate kule.
+    ...FLOOR_DRESSING.decalGroupWeights,
+    'decal.scrap': 2.5,
+    'decal.char': 1.5,
+    'decal.glass': 1.2,
+    'decal.rags': 1,
+    'decal.camp': 0.35,
+    'decal.papers': 1,
+    'decal.bones': 0.8,
+    'decal.wreckDebris': 3,
+  },
+  longCrackChance: 0.02,
+  largeDecals: [
+    { chance: 0.018, group: 'decal.collapse' },
+    { chance: 0.014, group: 'decal.beam' },
+    { chance: 0.006, group: 'decal.remains' },
+    { chance: 0.006, group: 'decal.pipe' },
+  ],
+  dust: {
+    north: { chance: 0.55, group: 'decal.dustN' },
+    west: { chance: 0.4, group: 'decal.dustW' },
+    east: { chance: 0.4, group: 'decal.dustE' },
+  },
+  wallFace: { chance: 0.3, group: 'wallFace.wreck' },
+};
+
+/**
  * Pajęcze leże (krok 23a): więcej pajęczyn w narożnikach (nad postaciami), jaja i zwisające nici na licu,
  * wyblakłe pancerzyki na podłodze. Celowo bez pajęczyn i kokonów na podłodze — te będą elementami
  * rozgrywki (kroki 23d–e) i gracz nie może ich mylić z dekoracją.
