@@ -62,6 +62,35 @@ export enum SoundCue {
   RoachScatter = 'roach-scatter',
   /** Kopnięta puszka (krok 157): blaszany brzęk, także przy odbiciu od muru. */
   CanKick = 'can-kick',
+  // Odgłosy biomów (krok 158, `config/soundscapeConfig.ts`) — ciche tło spoza kadru.
+  /** Wiatr hula przez wyłomy (ruiny, Cmentarzysko, Ogród). */
+  AmbWind = 'amb-wind',
+  /** Coś się osypuje gdzieś w ruinach. */
+  AmbRubble = 'amb-rubble',
+  /** Daleki stuk blachy. */
+  AmbMetal = 'amb-metal',
+  /** Kapanie z echem. */
+  AmbDrip = 'amb-drip',
+  /** Chrobot pajęczych nóg w ciemności. */
+  AmbChitter = 'amb-chitter',
+  /** Krakanie kruka. */
+  AmbCrow = 'amb-crow',
+  /** Daleki dzwon cmentarny. */
+  AmbBell = 'amb-bell',
+  /** Dudnienie spod posadzki Piekła. */
+  AmbRumble = 'amb-rumble',
+  /** Brzęk łańcuchów. */
+  AmbChains = 'amb-chains',
+  /** Buczenie lodówki (w mieszkaniu jest prąd). */
+  AmbFridge = 'amb-fridge',
+  /** Telefon, którego nikt nie odbiera. */
+  AmbPhone = 'amb-phone',
+  /** Gong windy w Lustrzanej komnacie. */
+  AmbChime = 'amb-chime',
+  /** Pohukiwanie sowy w Bocianim Ogrodzie. */
+  AmbOwl = 'amb-owl',
+  /** Świerszcze w nocnym Ogrodzie. */
+  AmbCrickets = 'amb-crickets',
   // Świat i łupy
   Coin = 'coin',
   Heal = 'heal',

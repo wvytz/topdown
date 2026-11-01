@@ -5493,6 +5493,27 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** gęstość szczelin i ekranów, czy komunikat z wieżą jest czytelny, czy kopane puszki i karaluchy nie rozpraszają w walce, siła światła ekranów w dymie.
 
+## Krok 158 — Odgłosy biomów `#dzwiek` `#zywe-otoczenie` `#lore`
+
+**Po co:** dodatek wspólny dla wszystkich biomów (zgoda właściciela na pomysły „klimatu biomów”, nacisk na spójność). Każde piętro ma teraz własne, ciche tło dźwiękowe — co 6–16 s gdzieś **poza kadrem** coś się odzywa, a stereo z `SOUND_SPACE` mówi, z której strony. Odgłosy prowadzą tę samą linię lore co grafika: na dole wiatr i osypujący się gruz, wyżej coraz więcej śladów cywilizacji.
+
+**Biomy:**
+- **Ruiny (1):** wiatr w wyłomach, osypujący się gruz, daleki stuk blachy.
+- **Pajęcze leże / Grzybnia (2):** kapanie z echem, chrobot pajęczych nóg, w Grzybni też powiew.
+- **Cmentarzysko (3):** krakanie kruka (te same kruki, co w kroku 156), daleki dzwon, wiatr.
+- **Piekło (4):** dudnienie spod posadzki, brzęk łańcuchów (łańcuchy wiszą na licach murów).
+- **Mieszkanie gracza (5):** buczenie lodówki, **telefon, którego nikt nie odbiera**, kapiący kran — jest prąd, ale nie ma ludzi.
+- **Lustrzana komnata (6):** gong windy (tej samej, którą ucieka sprzątaczka), kapanie.
+- **Bociani Ogród (7):** sowa, świerszcze, wiatr.
+
+**Decyzje:** tło nie zagłusza walki — każdy odgłos ma `gain` ≤ 0,2, bramkę 1,5 s, dochodzi z 200–380 px (dalej = ciszej), a **w walce z bossem biom milknie** (`silentInBossFight`) — telegrafy bossów zostają czytelne. Pierwszy odgłos najwcześniej 4 s po wejściu na piętro. Pauza wstrzymuje odliczanie (czas sceny). Synteza w kodzie, jak reszta dźwięków (bez plików z zewnątrz).
+
+**Pliki:** czyste — `config/soundscapeConfig.ts` (nowy: odgłosy, wagi i przerwy dla każdego biomu), `systems/Soundscape.ts` (nowy: wybór odgłosu, kierunku i przerwy z podanych liczb 0..1), `config/audioConfig.ts` (14 przepisów), `core/audioTypes.ts`; Phaser — `audio/BiomeSoundscape.ts` (nowy), `scenes/GameScene.ts` (jedna linia).
+
+**Testy:** `tests/systems/soundscape.test.ts` (4: każdy biom ma odgłosy z przepisem, bramką i cichym `gain`; losowanie według wag i przerwa z zakresu; źródło poza kadrem; pusty zestaw). Poziomy sprawdzone renderem `SfxSynth` (szczyty ok. 0,03–0,19 — ciszej niż efekty walki); długie odgłosy (wiatr, dzwon, dudnienie, lodówka) skrócone do 2 s — limit testu `sfxSynth`. `npm run build` OK.
+
+**Do oceny właściciela:** czy tło jest słyszalne, ale nie męczy (częstość, głośność), czy telefon w mieszkaniu i dzwon na Cmentarzysku budują nastrój, czy coś brzmi źle — przepisy łatwo stroić.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
