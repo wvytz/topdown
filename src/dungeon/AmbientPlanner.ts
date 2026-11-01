@@ -1,4 +1,4 @@
-import type { BiomeAmbientConfig, GraveyardAmbientConfig, GroveAmbientConfig } from '@/config/ambientConfig';
+import type { BiomeAmbientConfig, DenAmbientConfig, GraveyardAmbientConfig, GroveAmbientConfig, InfernalAmbientConfig } from '@/config/ambientConfig';
 import { AmbientKind } from '@/config/ambientConfig';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
@@ -24,6 +24,11 @@ export const AMBIENT_VARIANTS: Readonly<Record<AmbientKind, number>> = {
   [AmbientKind.Candle]: 3,
   [AmbientKind.Wisp]: 1,
   [AmbientKind.Raven]: 1,
+  [AmbientKind.LavaVent]: 3,
+  [AmbientKind.CinderBeetle]: 1,
+  [AmbientKind.Screen]: 3,
+  [AmbientKind.Roach]: 1,
+  [AmbientKind.Can]: 1,
 };
 
 /** Losowań kafla na jeden rekwizyt, zanim się poddamy (mały pokój). */
@@ -47,6 +52,8 @@ export function planAmbient(floor: DungeonFloor, config: BiomeAmbientConfig, rng
     const taken: TilePoint[] = [];
     if (config.grove) spots.push(...planGroveRoom(floor, room, config.grove, rng, blocked, taken));
     if (config.graveyard) spots.push(...planGraveyardRoom(floor, room, config.graveyard, rng, blocked, taken));
+    if (config.infernal) spots.push(...planInfernalRoom(floor, room, config.infernal, rng, blocked, taken));
+    if (config.den) spots.push(...planDenRoom(floor, room, config.den, rng, blocked, taken));
   }
   return spots;
 }
@@ -105,6 +112,68 @@ function planGraveyardRoom(
       if (!tile) break;
       spots.push(spot(AmbientKind.Raven, tile, room, 0, true, 0));
     }
+  }
+  return spots;
+}
+
+/** Piekło (krok 157): szczeliny w głębi posadzki, chrząszcze w pobliżu (grzeją się przy żarze). */
+function planInfernalRoom(
+  floor: DungeonFloor,
+  room: Room,
+  config: InfernalAmbientConfig,
+  rng: Rng,
+  blocked: readonly TilePoint[],
+  taken: TilePoint[],
+): AmbientSpot[] {
+  const spots: AmbientSpot[] = [];
+  const inner = (t: TilePoint) => !isWallSpot(floor, room, t, 1);
+  const vents = rng.int(config.ventsPerRoom.min, config.ventsPerRoom.max);
+  for (let i = 0; i < vents; i++) {
+    const tile = pickTile(floor, room, rng, 2, inner, blocked, taken, config.minSpacingTiles);
+    if (!tile) break;
+    spots.push(spot(AmbientKind.LavaVent, tile, room, rng.int(0, AMBIENT_VARIANTS[AmbientKind.LavaVent] - 1), true, 0));
+  }
+  if (rng.chance(config.beetles.roomChance)) {
+    const count = rng.int(config.beetles.count.min, config.beetles.count.max);
+    for (let i = 0; i < count; i++) {
+      const tile = pickTile(floor, room, rng, 2, inner, blocked, taken, 1);
+      if (!tile) break;
+      spots.push(spot(AmbientKind.CinderBeetle, tile, room, 0, true, 0));
+    }
+  }
+  return spots;
+}
+
+/** Mieszkanie gracza (krok 157): ekrany pod murami, karaluchy i puszki w głębi pokoju. */
+function planDenRoom(
+  floor: DungeonFloor,
+  room: Room,
+  config: DenAmbientConfig,
+  rng: Rng,
+  blocked: readonly TilePoint[],
+  taken: TilePoint[],
+): AmbientSpot[] {
+  const spots: AmbientSpot[] = [];
+  const nearWall = (t: TilePoint) => isWallSpot(floor, room, t, config.wallReachTiles);
+  const inner = (t: TilePoint) => !isWallSpot(floor, room, t, 1);
+  const screens = rng.int(config.screensPerRoom.min, config.screensPerRoom.max);
+  for (let i = 0; i < screens; i++) {
+    const tile = pickTile(floor, room, rng, 1, nearWall, blocked, taken, config.minSpacingTiles);
+    if (!tile) break;
+    const variant = rng.int(0, AMBIENT_VARIANTS[AmbientKind.Screen] - 1);
+    spots.push(spot(AmbientKind.Screen, tile, room, variant, rng.chance(config.litChance), 0));
+  }
+  if (rng.chance(config.roaches.roomChance)) {
+    const count = rng.int(config.roaches.count.min, config.roaches.count.max);
+    // Karaluchy trzymają się razem: wszystkie na jednym kaflu (rozrzut w pikselach daje widok).
+    const tile = pickTile(floor, room, rng, 2, inner, blocked, taken, 1);
+    if (tile) for (let i = 0; i < count; i++) spots.push(spot(AmbientKind.Roach, tile, room, 0, true, 0));
+  }
+  const cans = rng.int(config.cans.perRoom.min, config.cans.perRoom.max);
+  for (let i = 0; i < cans; i++) {
+    const tile = pickTile(floor, room, rng, 2, inner, blocked, taken, 2);
+    if (!tile) break;
+    spots.push(spot(AmbientKind.Can, tile, room, 0, true, 0));
   }
   return spots;
 }

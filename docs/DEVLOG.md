@@ -5465,6 +5465,55 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** gęstość (kępy 2–4 na pokój, znicze 1–3, kruki co trzeci pokój), czy światła mają odsłaniać wrogów we mgle (`revealsEnemies`), czy dash ma gasić znicze, wygląd kruków i ogników, siła poświaty.
 
+## Krok 157 — Żywe otoczenie Piekła i mieszkania gracza `#zywe-otoczenie` `#pieklo` `#mieszkanie-gracza` `#lore`
+
+**Prośba właściciela (01.11):** „nadaj klimatu naszym biomom”, pełna zgoda na wdrażanie kolejnych pomysłów i nacisk na spójność („wszystko ma być spójne i połączone ze sobą”). Piętro 1 zrobił krok 155, piętra 2–3 krok 156, areny 6–7 osobny wątek — ten krok bierze piętra 4 i 5 i rozszerza system żywego otoczenia z kroku 156 (bez drugiego, równoległego systemu).
+
+**Lore:** im wyżej, tym więcej resztek cywilizacji. W Piekle żyje tylko żar; w mieszkaniu gracza (piętro 5) jest jeszcze prąd — ekrany świecą, a na zmianę z grą leci **komunikat ratunkowy z wieżą i strzałką w górę** — ten sam znak „do wieży”, co kreski i strzałka na murach parteru (krok 155).
+
+**Co powstało — rekwizyty bez kolizji, bez obrażeń:**
+- **Piekło (piętro 4):**
+  - **Oddychające szczeliny z żarem** (1–3 na pokój, w głębi posadzki): fala żaru biegnie od jeziorka w środku ku końcom szczeliny. Bohater wchodzi w promień 24 px → szczelina robi wydech: rozwiera się, tryska snopem iskier (`SoundCue.VentBreath`), potem stygnie do ciemnej skorupy i po 2,2 s wraca. Z widocznych szczelin co chwilę wzlatuje pojedyncza iskra.
+  - **Żużlowe chrząszcze** (prawie co drugi pokój, 1–3): żar świeci przez pęknięcia pancerza (małe światło 10 px); bohater bliżej niż 40 px (dash: 70 px) — uciekają wachlarzem, odbijają się od murów i przystają dalej.
+- **Mieszkanie gracza (piętro 5):**
+  - **Ekrany** (1–2 na pokój pod murami; telewizor CRT z antenką, monitor z klawiaturą, laptop z kablem): zimne, błękitne światło (jedyne zimne na ciepłym, nikotynowym piętrze — prąd, nie ogień), na ekranie mała gra, co kilka sekund komunikat z wieżą. Przejście obok → śnieg zakłóceń (`SoundCue.TvStatic`), ekran gaśnie do czuwania z mrugającą diodą i budzi się po 1,5 s. 20% ekranów jest martwych.
+  - **Karaluchy** (co drugi pokój, gromadka 2–5): pierzchają spod nóg (`SoundCue.RoachScatter`) i chowają się w szparach pod murem — na dobre.
+  - **Puszki** (0–2 na pokój): wejście bohatera kopie puszkę (dash — mocniej), toczy się, hamuje i odbija od murów z brzękiem (`SoundCue.CanKick`).
+- **Światła** szczelin, chrząszczy i ekranów działają jak pochodnie (rozwiewają mgłę Piekła i dym palarni, odsłaniają wrogów — `revealsEnemies`); przy „Mroku” bez poświat.
+
+**Decyzje:** te same reguły co w kroku 156 (tylko pokój startowy i zwykłe, bez aren bossów, omijanie schodów/startu/kapliczki/kryjówek, własny strumień RNG, liczenie tylko blisko kadru). Szczeliny nie parzą — pułapkami Piekła zostają paleniska; trudność bez zmian.
+
+**Grafika — `tools/ambient_upper_sprites.py` (nowy, korzysta z pomocników `ambient_sprites.py`):** `hell-vent.png` (3 kształty × 10 klatek: puls, wydech z iskrami, skorupa), `hell-beetle.png`, `den-screen.png` (3 urządzenia × 10 klatek: gra, komunikat, śnieg, czuwanie), `den-roach.png`, `den-can.png`. Barwy z palet `pieklo_bazalt` i `mieszkanie_gracza`.
+
+**Pliki:** czyste — `config/ambientConfig.ts` (`INFERNAL_AMBIENT`, `DEN_AMBIENT`, `ScuttlerConfig`), `dungeon/AmbientPlanner.ts` (`planInfernalRoom`, `planDenRoom`), `systems/AmbientCritters.ts` (nowy: ucieczka stworków, toczenie puszki), `config/biomeConfig.ts`; Phaser — `effects/AmbientLifeView.ts` (rekwizyty świecące z tabel, iskry), `effects/AmbientCritterView.ts` (nowy), `config/spriteConfig.ts`, `config/audioConfig.ts` + `core/audioTypes.ts` (4 dźwięki).
+
+**Testy:** `tests/dungeon/AmbientPlannerUpper.test.ts` (4: podłoga pokoju, ekrany pod murem / reszta w głębi, gęstość i martwe ekrany, determinizm), `tests/systems/ambientCritters.test.ts` (6: ucieczka i przystanek, dash z dalszej odległości, karaluch chowa się / chrząszcz zostaje, kopnięcie tylko przy wejściu, dash mocniej i hamowanie, odbicie z brzękiem); zaktualizowany test biomów z żywym otoczeniem. `npm run build` OK (2591 testów). Smoke piętra 1–5: solo (3 bohaterów), co-op i bot — bez błędów.
+
+**Weryfikacja w przeglądarce:** `?seed=3&floor=4`, `?seed=5&floor=4`, `?seed=3&floor=5`, `?seed=8&floor=5` — szczeliny z poświatą, ekran gaśnie do czuwania po przejściu, bez błędów w konsoli. Zrzuty: `screens/krok157-pieklo-mieszkanie/` w plikach projektu.
+
+**Do oceny właściciela:** gęstość szczelin i ekranów, czy komunikat z wieżą jest czytelny, czy kopane puszki i karaluchy nie rozpraszają w walce, siła światła ekranów w dymie.
+
+## Krok 158 — Odgłosy biomów `#dzwiek` `#zywe-otoczenie` `#lore`
+
+**Po co:** dodatek wspólny dla wszystkich biomów (zgoda właściciela na pomysły „klimatu biomów”, nacisk na spójność). Każde piętro ma teraz własne, ciche tło dźwiękowe — co 6–16 s gdzieś **poza kadrem** coś się odzywa, a stereo z `SOUND_SPACE` mówi, z której strony. Odgłosy prowadzą tę samą linię lore co grafika: na dole wiatr i osypujący się gruz, wyżej coraz więcej śladów cywilizacji.
+
+**Biomy:**
+- **Ruiny (1):** wiatr w wyłomach, osypujący się gruz, daleki stuk blachy.
+- **Pajęcze leże / Grzybnia (2):** kapanie z echem, chrobot pajęczych nóg, w Grzybni też powiew.
+- **Cmentarzysko (3):** krakanie kruka (te same kruki, co w kroku 156), daleki dzwon, wiatr.
+- **Piekło (4):** dudnienie spod posadzki, brzęk łańcuchów (łańcuchy wiszą na licach murów).
+- **Mieszkanie gracza (5):** buczenie lodówki, **telefon, którego nikt nie odbiera**, kapiący kran — jest prąd, ale nie ma ludzi.
+- **Lustrzana komnata (6):** gong windy (tej samej, którą ucieka sprzątaczka), kapanie.
+- **Bociani Ogród (7):** sowa, świerszcze, wiatr.
+
+**Decyzje:** tło nie zagłusza walki — każdy odgłos ma `gain` ≤ 0,2, bramkę 1,5 s, dochodzi z 200–380 px (dalej = ciszej), a **w walce z bossem biom milknie** (`silentInBossFight`) — telegrafy bossów zostają czytelne. Pierwszy odgłos najwcześniej 4 s po wejściu na piętro. Pauza wstrzymuje odliczanie (czas sceny). Synteza w kodzie, jak reszta dźwięków (bez plików z zewnątrz).
+
+**Pliki:** czyste — `config/soundscapeConfig.ts` (nowy: odgłosy, wagi i przerwy dla każdego biomu), `systems/Soundscape.ts` (nowy: wybór odgłosu, kierunku i przerwy z podanych liczb 0..1), `config/audioConfig.ts` (14 przepisów), `core/audioTypes.ts`; Phaser — `audio/BiomeSoundscape.ts` (nowy), `scenes/GameScene.ts` (jedna linia).
+
+**Testy:** `tests/systems/soundscape.test.ts` (4: każdy biom ma odgłosy z przepisem, bramką i cichym `gain`; losowanie według wag i przerwa z zakresu; źródło poza kadrem; pusty zestaw). Poziomy sprawdzone renderem `SfxSynth` (szczyty ok. 0,03–0,19 — ciszej niż efekty walki); długie odgłosy (wiatr, dzwon, dudnienie, lodówka) skrócone do 2 s — limit testu `sfxSynth`. `npm run build` OK.
+
+**Do oceny właściciela:** czy tło jest słyszalne, ale nie męczy (częstość, głośność), czy telefon w mieszkaniu i dzwon na Cmentarzysku budują nastrój, czy coś brzmi źle — przepisy łatwo stroić.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5605,7 +5654,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Ruiny po apokalipsie (krok 155)** `#ruiny` `#lore`: śmieci i zniszczenie na piętrze 1 — czeka na ocenę (gęstość, kości vs łupy). Lore: im wyżej, tym mniej ruiny i więcej resztek cywilizacji.
 
-**Żywe otoczenie (krok 156)** `#zywe-otoczenie`: Grzybnia (kępy grzybów, lampy, ćmy) i Cmentarzysko (znicze, kruki, ogniki) — czeka na ocenę: gęstość, odsłanianie wrogów przez światła, gaszenie zniczy dashem. Dalej: ten sam pomysł dla Piekła i Palarni, interaktywne warunki dla Lustrzanej komnaty i Bocianiego Ogrodu (osobny wątek).
+**Żywe otoczenie (krok 156)** `#zywe-otoczenie`: Grzybnia (kępy grzybów, lampy, ćmy) i Cmentarzysko (znicze, kruki, ogniki) — czeka na ocenę: gęstość, odsłanianie wrogów przez światła, gaszenie zniczy dashem. Krok 157: Piekło (szczeliny, chrząszcze) i mieszkanie gracza (ekrany z komunikatem „do wieży”, karaluchy, puszki) — czeka na ocenę: gęstość, czytelność komunikatu, czy puszki i karaluchy nie rozpraszają. Dalej: interaktywne warunki dla Lustrzanej komnaty i Bocianiego Ogrodu (osobny wątek).
 
 **Król Szlamu (krok 153)** `#krol-szlamu`: szlam zamiast ognia, kałuże i szlam od ścian — czeka na ocenę (siła spowolnień, tempo zwężania, fiolet). Kolejne kroki: ten sam poziom detalu dla ataków innych bossów; zwężanie areny u Kata Otchłani jako rozwinięcie.
 

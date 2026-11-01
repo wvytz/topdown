@@ -386,6 +386,176 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'sine', freq: 300, freqEnd: 180, attack: 0.002, decay: 0.06, volume: 0.25 },
     ],
   },
+  /** Wydech szczeliny Piekła (krok 157): niski, ciepły szum i kilka trzasków iskier. */
+  [SoundCue.VentBreath]: {
+    gain: 0.26,
+    layers: [
+      { wave: 'noise', freq: 500, freqEnd: 180, attack: 0.04, decay: 0.38, volume: 0.55, lowpass: 700 },
+      { wave: 'noise', freq: 4200, freqEnd: 3000, delay: 0.06, attack: 0.002, decay: 0.03, volume: 0.22, lowpass: 6000 },
+      { wave: 'noise', freq: 3800, freqEnd: 2600, delay: 0.15, attack: 0.002, decay: 0.025, volume: 0.18, lowpass: 6000 },
+    ],
+  },
+  /** Zakłócenia ekranu (krok 157): krótki biały szum z wysokim piskiem kineskopu. */
+  [SoundCue.TvStatic]: {
+    gain: 0.18,
+    layers: [
+      { wave: 'noise', freq: 5000, freqEnd: 4000, attack: 0.005, decay: 0.28, volume: 0.5, lowpass: 8000 },
+      { wave: 'sine', freq: 7800, attack: 0.005, decay: 0.3, volume: 0.06 },
+    ],
+  },
+  /** Karaluchy (krok 157): suchy chrobot — kilka bardzo krótkich trzasków. */
+  [SoundCue.RoachScatter]: {
+    gain: 0.14,
+    layers: [
+      { wave: 'noise', freq: 6000, freqEnd: 5000, attack: 0.001, decay: 0.015, volume: 0.4, lowpass: 9000 },
+      { wave: 'noise', freq: 6000, freqEnd: 5000, delay: 0.04, attack: 0.001, decay: 0.015, volume: 0.35, lowpass: 9000 },
+      { wave: 'noise', freq: 6000, freqEnd: 5000, delay: 0.09, attack: 0.001, decay: 0.015, volume: 0.3, lowpass: 9000 },
+    ],
+  },
+  /** Puszka (krok 157): blaszany brzęk — dwa niezestrojone, szybko gasnące tony i stuk. */
+  [SoundCue.CanKick]: {
+    gain: 0.2,
+    layers: [
+      { wave: 'triangle', freq: 1320, freqEnd: 1240, attack: 0.001, decay: 0.14, volume: 0.3 },
+      { wave: 'triangle', freq: 1870, freqEnd: 1800, attack: 0.001, decay: 0.09, volume: 0.2 },
+      { wave: 'noise', freq: 2500, freqEnd: 1500, attack: 0.001, decay: 0.03, volume: 0.3, lowpass: 5000 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbWind]: {
+    gain: 0.16,
+    layers: [
+      { wave: 'noise', freq: 300, freqEnd: 520, attack: 0.6, decay: 1.3, volume: 0.5, lowpass: 600, curve: 1 },
+      { wave: 'noise', freq: 900, freqEnd: 400, delay: 0.3, attack: 0.5, decay: 1.1, volume: 0.25, lowpass: 1200, curve: 1 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbRubble]: {
+    gain: 0.16,
+    layers: [
+      { wave: 'sine', freq: 90, freqEnd: 50, attack: 0.005, decay: 0.25, volume: 0.5 },
+      { wave: 'noise', freq: 1500, delay: 0, attack: 0.002, decay: 0.07, volume: 0.5, lowpass: 1800 },
+      { wave: 'noise', freq: 1500, delay: 0.09, attack: 0.002, decay: 0.07, volume: 0.4, lowpass: 1800 },
+      { wave: 'noise', freq: 1500, delay: 0.2, attack: 0.002, decay: 0.07, volume: 0.35, lowpass: 1800 },
+      { wave: 'noise', freq: 1500, delay: 0.26, attack: 0.002, decay: 0.07, volume: 0.25, lowpass: 1800 },
+      { wave: 'noise', freq: 1500, delay: 0.41, attack: 0.002, decay: 0.07, volume: 0.2, lowpass: 1800 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbMetal]: {
+    gain: 0.18,
+    layers: [
+      { wave: 'triangle', freq: 310, freqEnd: 300, attack: 0.002, decay: 1.2, volume: 0.3, lowpass: 2000, curve: 2 },
+      { wave: 'triangle', freq: 787, attack: 0.002, decay: 0.8, volume: 0.12, curve: 2 },
+      { wave: 'triangle', freq: 305, delay: 0.5, attack: 0.002, decay: 0.8, volume: 0.15, lowpass: 2000, curve: 2 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbDrip]: {
+    gain: 0.2,
+    layers: [
+      { wave: 'sine', freq: 1400, freqEnd: 700, attack: 0.002, decay: 0.08, volume: 0.45 },
+      { wave: 'sine', freq: 1400, freqEnd: 700, delay: 0.18, attack: 0.002, decay: 0.08, volume: 0.16 },
+      { wave: 'sine', freq: 1400, freqEnd: 700, delay: 0.36, attack: 0.002, decay: 0.08, volume: 0.07 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbChitter]: {
+    gain: 0.16,
+    layers: [
+      { wave: 'square', freq: 3200, delay: 0, attack: 0.001, decay: 0.012, volume: 0.25, duty: 0.2, lowpass: 5000 },
+      { wave: 'square', freq: 3200, delay: 0.05, attack: 0.001, decay: 0.012, volume: 0.25, duty: 0.2, lowpass: 5000 },
+      { wave: 'square', freq: 3200, delay: 0.09, attack: 0.001, decay: 0.012, volume: 0.25, duty: 0.2, lowpass: 5000 },
+      { wave: 'square', freq: 3200, delay: 0.16, attack: 0.001, decay: 0.012, volume: 0.25, duty: 0.2, lowpass: 5000 },
+      { wave: 'square', freq: 3200, delay: 0.2, attack: 0.001, decay: 0.012, volume: 0.25, duty: 0.2, lowpass: 5000 },
+      { wave: 'square', freq: 3200, delay: 0.27, attack: 0.001, decay: 0.012, volume: 0.25, duty: 0.2, lowpass: 5000 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbCrow]: {
+    gain: 0.2,
+    layers: [
+      { wave: 'saw', freq: 820, freqEnd: 620, attack: 0.02, decay: 0.28, volume: 0.35, lowpass: 1600, vibrato: { depth: 0.03, rate: 30 } },
+      { wave: 'saw', freq: 800, freqEnd: 600, delay: 0.42, attack: 0.02, decay: 0.3, volume: 0.3, lowpass: 1500, vibrato: { depth: 0.03, rate: 30 } },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbBell]: {
+    gain: 0.14,
+    layers: [
+      { wave: 'sine', freq: 196, attack: 0.005, decay: 1.9, volume: 0.35, curve: 1.5 },
+      { wave: 'sine', freq: 466, attack: 0.005, decay: 1.6, volume: 0.15, curve: 1.5 },
+      { wave: 'sine', freq: 784, attack: 0.005, decay: 1, volume: 0.08, curve: 2 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbRumble]: {
+    gain: 0.2,
+    layers: [
+      { wave: 'sine', freq: 48, freqEnd: 38, attack: 0.4, decay: 1.5, volume: 0.6, curve: 1 },
+      { wave: 'noise', freq: 120, attack: 0.5, decay: 1.4, volume: 0.4, lowpass: 180, curve: 1 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbChains]: {
+    gain: 0.18,
+    layers: [
+      { wave: 'noise', freq: 5000, delay: 0, attack: 0.002, decay: 0.04, volume: 0.25, lowpass: 7000 },
+      { wave: 'noise', freq: 5000, delay: 0.07, attack: 0.002, decay: 0.04, volume: 0.25, lowpass: 7000 },
+      { wave: 'noise', freq: 5000, delay: 0.15, attack: 0.002, decay: 0.04, volume: 0.25, lowpass: 7000 },
+      { wave: 'noise', freq: 5000, delay: 0.2, attack: 0.002, decay: 0.04, volume: 0.25, lowpass: 7000 },
+      { wave: 'noise', freq: 5000, delay: 0.31, attack: 0.002, decay: 0.04, volume: 0.25, lowpass: 7000 },
+      { wave: 'noise', freq: 5000, delay: 0.38, attack: 0.002, decay: 0.04, volume: 0.25, lowpass: 7000 },
+      { wave: 'triangle', freq: 2400, delay: 0.07, attack: 0.002, decay: 0.15, volume: 0.06, curve: 2 },
+      { wave: 'triangle', freq: 2650, delay: 0.31, attack: 0.002, decay: 0.15, volume: 0.05, curve: 2 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbFridge]: {
+    gain: 0.12,
+    layers: [
+      { wave: 'saw', freq: 60, attack: 0.3, decay: 1.6, volume: 0.35, lowpass: 240, curve: 1 },
+      { wave: 'saw', freq: 120, attack: 0.3, decay: 1.6, volume: 0.15, lowpass: 300, curve: 1 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbPhone]: {
+    gain: 0.2,
+    layers: [
+      { wave: 'square', freq: 440, delay: 0, attack: 0.01, decay: 0.4, volume: 0.2, lowpass: 900, curve: 1 },
+      { wave: 'square', freq: 480, delay: 0, attack: 0.01, decay: 0.4, volume: 0.2, lowpass: 900, curve: 1 },
+      { wave: 'square', freq: 440, delay: 0.6, attack: 0.01, decay: 0.4, volume: 0.2, lowpass: 900, curve: 1 },
+      { wave: 'square', freq: 480, delay: 0.6, attack: 0.01, decay: 0.4, volume: 0.2, lowpass: 900, curve: 1 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbChime]: {
+    gain: 0.12,
+    layers: [
+      { wave: 'sine', freq: 1319, attack: 0.003, decay: 1.2, volume: 0.25, curve: 1.5 },
+      { wave: 'sine', freq: 1047, delay: 0.35, attack: 0.003, decay: 1.4, volume: 0.25, curve: 1.5 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbOwl]: {
+    gain: 0.14,
+    layers: [
+      { wave: 'sine', freq: 380, freqEnd: 340, attack: 0.05, decay: 0.35, volume: 0.4, lowpass: 800 },
+      { wave: 'sine', freq: 400, freqEnd: 330, delay: 0.55, attack: 0.06, decay: 0.6, volume: 0.35, lowpass: 800 },
+    ],
+  },
+  /** Odgłos biomu (krok 158). */
+  [SoundCue.AmbCrickets]: {
+    gain: 0.2,
+    layers: [
+      { wave: 'square', freq: 4400, delay: 0, attack: 0.004, decay: 0.07, volume: 0.3, lowpass: 6000 },
+      { wave: 'square', freq: 4400, delay: 0.12, attack: 0.004, decay: 0.07, volume: 0.3, lowpass: 6000 },
+      { wave: 'square', freq: 4400, delay: 0.24, attack: 0.004, decay: 0.07, volume: 0.3, lowpass: 6000 },
+      { wave: 'square', freq: 4400, delay: 0.6, attack: 0.004, decay: 0.07, volume: 0.3, lowpass: 6000 },
+      { wave: 'square', freq: 4400, delay: 0.72, attack: 0.004, decay: 0.07, volume: 0.3, lowpass: 6000 },
+      { wave: 'square', freq: 4400, delay: 0.84, attack: 0.004, decay: 0.07, volume: 0.3, lowpass: 6000 },
+    ],
+  },
 };
 
 /**
@@ -453,6 +623,24 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.WingFlap]: { minGapMs: 150 },
   [SoundCue.SporePuff]: { minGapMs: 160 },
   [SoundCue.CandleSnuff]: { minGapMs: 120 },
+  [SoundCue.VentBreath]: { minGapMs: 200 },
+  [SoundCue.TvStatic]: { minGapMs: 200 },
+  [SoundCue.RoachScatter]: { minGapMs: 250 },
+  [SoundCue.CanKick]: { minGapMs: 90 },
+  [SoundCue.AmbWind]: { minGapMs: 1500 },
+  [SoundCue.AmbRubble]: { minGapMs: 1500 },
+  [SoundCue.AmbMetal]: { minGapMs: 1500 },
+  [SoundCue.AmbDrip]: { minGapMs: 1500 },
+  [SoundCue.AmbChitter]: { minGapMs: 1500 },
+  [SoundCue.AmbCrow]: { minGapMs: 1500 },
+  [SoundCue.AmbBell]: { minGapMs: 1500 },
+  [SoundCue.AmbRumble]: { minGapMs: 1500 },
+  [SoundCue.AmbChains]: { minGapMs: 1500 },
+  [SoundCue.AmbFridge]: { minGapMs: 1500 },
+  [SoundCue.AmbPhone]: { minGapMs: 1500 },
+  [SoundCue.AmbChime]: { minGapMs: 1500 },
+  [SoundCue.AmbOwl]: { minGapMs: 1500 },
+  [SoundCue.AmbCrickets]: { minGapMs: 1500 },
 };
 
 /**

@@ -11,6 +11,7 @@ import { sound } from '@/audio/SoundBoard';
 import type { AmbientSpot } from '@/dungeon/AmbientPlanner';
 import type { PointLight } from '@/effects/LightingOverlay';
 import { torchLightKey } from '@/effects/LightingOverlay';
+import { AmbientCritterView } from '@/effects/AmbientCritterView';
 import type { AmbientThreat, GlowState, RavenState, WispState } from '@/systems/AmbientLife';
 import {
   GlowPhase,
@@ -41,8 +42,10 @@ interface MutableLight extends PointLight {
   radius: number;
 }
 
+type GlowKind = AmbientKind.Glowcap | AmbientKind.OvergrownLamp | AmbientKind.Candle | AmbientKind.LavaVent | AmbientKind.Screen;
+
 interface GlowProp {
-  readonly kind: AmbientKind.Glowcap | AmbientKind.OvergrownLamp | AmbientKind.Candle;
+  readonly kind: GlowKind;
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly sheet: SpriteSheetId;
   readonly variant: number;
@@ -73,20 +76,42 @@ interface Wisp {
 }
 
 const SPORE_TEXTURE = 'tex-ambient-spore';
-const SHADOW_TEXTURE = 'tex-ambient-shadow';
+export const SHADOW_TEXTURE = 'tex-ambient-shadow';
 /** Kolory zarodników i poświaty Grzybni (rampa światła grzybów) oraz poświaty zniczy i ogników. */
 const SPORE_TINTS = [0x44d4e2, 0xb6f2f1, 0x0099bb];
 const GROVE_GLOW_TINT = 0x0099bb;
 const CANDLE_GLOW_TINT = 0xc4524a;
 const WISP_GLOW_TINT = 0x7fd08a;
+/** Piekło: żar szczelin; mieszkanie gracza: zimny błękit ekranów (jedyne zimne światło na piętrze — prąd, nie ogień). */
+const VENT_GLOW_TINT = 0xd95f19;
+const SCREEN_GLOW_TINT = 0x5fb4cf;
+const SPARK_TINTS = [0xf5ae4b, 0xd95f19, 0xf7dba1];
 /** Siła poświaty ADD (pochodnie mają 0,16). */
 const GLOW_ALPHA = 0.14;
 /** Gdzie świeci rekwizyt względem środka kafla (px): kępa — kapelusze, lampa — klosz, znicze — szkło. */
-const LIGHT_OFFSET: Readonly<Record<GlowProp['kind'], { readonly x: number; readonly y: number }>> = {
+const LIGHT_OFFSET: Readonly<Record<GlowKind, { readonly x: number; readonly y: number }>> = {
   [AmbientKind.Glowcap]: { x: 0, y: -2 },
   [AmbientKind.OvergrownLamp]: { x: -1, y: 4 },
   [AmbientKind.Candle]: { x: 0, y: 5 },
+  [AmbientKind.LavaVent]: { x: 0, y: 1 },
+  [AmbientKind.Screen]: { x: 0, y: 2 },
 };
+const GLOW_SHEET: Readonly<Record<GlowKind, SpriteSheetId>> = {
+  [AmbientKind.Glowcap]: 'groveGlowcap',
+  [AmbientKind.OvergrownLamp]: 'groveLamp',
+  [AmbientKind.Candle]: 'graveCandle',
+  [AmbientKind.LavaVent]: 'hellVent',
+  [AmbientKind.Screen]: 'denScreen',
+};
+const GLOW_TINT: Readonly<Record<GlowKind, number>> = {
+  [AmbientKind.Glowcap]: GROVE_GLOW_TINT,
+  [AmbientKind.OvergrownLamp]: GROVE_GLOW_TINT,
+  [AmbientKind.Candle]: CANDLE_GLOW_TINT,
+  [AmbientKind.LavaVent]: VENT_GLOW_TINT,
+  [AmbientKind.Screen]: SCREEN_GLOW_TINT,
+};
+/** Rekwizyty, które wolno odbić w poziomie (lampa i ekrany mają stronę — światło z lewej, przyciski z prawej). */
+const FLIPPABLE: ReadonlySet<AmbientKind> = new Set([AmbientKind.Glowcap, AmbientKind.Candle, AmbientKind.LavaVent]);
 
 /**
  * Żywe otoczenie biomów 2–3 (krok 156): rysuje i animuje rekwizyty z planu (`dungeon/AmbientPlanner`), a o ich
@@ -98,7 +123,11 @@ export class AmbientLifeView {
   private readonly ravens: Raven[] = [];
   private readonly wisps: Wisp[] = [];
   private readonly spores: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private readonly sparks: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  /** Chrząszcze, karaluchy i puszki (krok 157). */
+  private readonly critters: AmbientCritterView;
   private nextDriftAt = 0;
+  private nextSparkAt = 0;
   private lastTime = 0;
 
   constructor(
@@ -118,7 +147,13 @@ export class AmbientLifeView {
         case AmbientKind.Glowcap:
         case AmbientKind.OvergrownLamp:
         case AmbientKind.Candle:
+        case AmbientKind.LavaVent:
+        case AmbientKind.Screen:
           this.props.push(this.createProp(spot, x, y));
+          break;
+        case AmbientKind.CinderBeetle:
+        case AmbientKind.Roach:
+        case AmbientKind.Can:
           break;
         case AmbientKind.Raven:
           this.ravens.push(this.createRaven(x + Phaser.Math.Between(-6, 6), y + Phaser.Math.Between(-4, 4)));
@@ -129,6 +164,21 @@ export class AmbientLifeView {
           break;
         }
       }
+    }
+    this.critters = new AmbientCritterView(scene, floor, spots, config, glowEnabled);
+    if (config.infernal) {
+      const s = config.infernal.sparks;
+      this.sparks = scene.add
+        .particles(0, 0, SPORE_TEXTURE, {
+          lifespan: { min: s.lifespanMs.min, max: s.lifespanMs.max },
+          speedX: { min: -10, max: 10 },
+          speedY: { min: -s.riseSpeed.max, max: -s.riseSpeed.min },
+          tint: SPARK_TINTS,
+          alpha: { start: 1, end: 0 },
+          maxAliveParticles: s.maxParticles,
+          emitting: false,
+        })
+        .setDepth(RENDER_DEPTH.ambientGlow);
     }
     if (config.grove) {
       const s = config.grove.spores;
@@ -153,21 +203,21 @@ export class AmbientLifeView {
     const lights: PointLight[] = [];
     for (const prop of this.props) if (prop.light.radius > 0) lights.push(prop.light);
     for (const wisp of this.wisps) if (wisp.sprite.visible) lights.push(wisp.light);
+    lights.push(...this.critters.lights);
     return lights;
   }
 
   private createProp(spot: AmbientSpot, x: number, y: number): GlowProp {
-    const kind = spot.kind as GlowProp['kind'];
-    const grove = this.config.grove;
+    const kind = spot.kind as GlowKind;
     const graveyard = this.config.graveyard;
-    const sheet: SpriteSheetId = kind === AmbientKind.Glowcap ? 'groveGlowcap' : kind === AmbientKind.OvergrownLamp ? 'groveLamp' : 'graveCandle';
-    const config = kind === AmbientKind.Glowcap ? grove!.glowcap : kind === AmbientKind.OvergrownLamp ? grove!.lamp : graveyard!.candle;
+    const sheet = GLOW_SHEET[kind];
+    const config = glowConfig(this.config, kind);
     const sprite = this.scene.add.sprite(x, y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.ambientProp);
-    // Odbicie w poziomie — kępy i znicze nie wyglądają jak spod jednej sztancy (światło z góry, wolno flipX).
-    if (kind !== AmbientKind.OvergrownLamp && Math.random() < 0.5) sprite.setFlipX(true);
+    // Odbicie w poziomie — kępy, znicze i szczeliny nie wyglądają jak spod jednej sztancy (światło z góry, wolno flipX).
+    if (FLIPPABLE.has(kind) && Math.random() < 0.5) sprite.setFlipX(true);
     const offset = LIGHT_OFFSET[kind];
     const light: MutableLight = { x: x + (sprite.flipX ? -offset.x : offset.x), y: y + offset.y, radius: 0 };
-    const tint = kind === AmbientKind.Candle ? CANDLE_GLOW_TINT : GROVE_GLOW_TINT;
+    const tint = GLOW_TINT[kind];
     const glow = this.scene.add
       .image(light.x, light.y, torchLightKey(this.scene, config.lightRadius))
       .setBlendMode(Phaser.BlendModes.ADD)
@@ -255,6 +305,8 @@ export class AmbientLifeView {
       this.updateWisp(wisp, time, dt, heroes);
     }
     this.driftSpores(time, near);
+    this.driftSparks(time, near);
+    this.critters.update(time, dt, heroes, near);
   }
 
   // ---------------- kępy, lampy, znicze ----------------
@@ -293,6 +345,15 @@ export class AmbientLifeView {
       return;
     }
     prop.sprite.play(animationKey(prop.sheet, 'flinch', prop.variant));
+    if (prop.kind === AmbientKind.LavaVent) {
+      this.sparks?.emitParticleAt(prop.light.x, prop.light.y - 2, this.config.infernal?.sparks.burst ?? 0);
+      sound.play(SoundCue.VentBreath, prop.sprite);
+      return;
+    }
+    if (prop.kind === AmbientKind.Screen) {
+      sound.play(SoundCue.TvStatic, prop.sprite);
+      return;
+    }
     this.spores?.emitParticleAt(prop.light.x, prop.light.y, this.config.grove?.spores.burst ?? 0);
     sound.play(SoundCue.SporePuff, prop.sprite);
   }
@@ -390,15 +451,43 @@ export class AmbientLifeView {
     const grove = this.config.grove;
     if (!spores || !grove || time < this.nextDriftAt) return;
     this.nextDriftAt = time + grove.spores.driftIntervalMs;
-    const calm = this.props.filter((p) => p.kind !== AmbientKind.Candle && p.state.phase === GlowPhase.Calm && near(p.sprite.x, p.sprite.y));
+    const calm = this.props.filter((p) => (p.kind === AmbientKind.Glowcap || p.kind === AmbientKind.OvergrownLamp) && p.state.phase === GlowPhase.Calm && near(p.sprite.x, p.sprite.y));
     const prop = calm[Math.floor(Math.random() * calm.length)];
     if (!prop) return;
     spores.emitParticleAt(prop.light.x + Phaser.Math.Between(-6, 6), prop.light.y + Phaser.Math.Between(-3, 3), 1);
   }
+
+  /** Piekło (krok 157): co chwilę iskra wzlatuje z losowej, spokojnej szczeliny w kadrze. */
+  private driftSparks(time: number, near: (x: number, y: number) => boolean): void {
+    const sparks = this.sparks;
+    const infernal = this.config.infernal;
+    if (!sparks || !infernal || time < this.nextSparkAt) return;
+    this.nextSparkAt = time + infernal.sparks.driftIntervalMs;
+    const calm = this.props.filter((p) => p.kind === AmbientKind.LavaVent && p.state.phase === GlowPhase.Calm && near(p.sprite.x, p.sprite.y));
+    const prop = calm[Math.floor(Math.random() * calm.length)];
+    if (!prop) return;
+    sparks.emitParticleAt(prop.light.x + Phaser.Math.Between(-8, 8), prop.light.y + Phaser.Math.Between(-3, 3), 1);
+  }
+}
+
+/** Liczby rekwizytu świecącego z zestawu biomu. */
+function glowConfig(config: BiomeAmbientConfig, kind: GlowKind): GlowPropConfig {
+  switch (kind) {
+    case AmbientKind.Glowcap:
+      return config.grove!.glowcap;
+    case AmbientKind.OvergrownLamp:
+      return config.grove!.lamp;
+    case AmbientKind.Candle:
+      return config.graveyard!.candle;
+    case AmbientKind.LavaVent:
+      return config.infernal!.vent;
+    case AmbientKind.Screen:
+      return config.den!.screen;
+  }
 }
 
 /** Najbliższy bohater (co-op: każdy płoszy). */
-function threatFor(heroes: readonly AmbientHero[], x: number, y: number): AmbientThreat | null {
+export function threatFor(heroes: readonly AmbientHero[], x: number, y: number): AmbientThreat | null {
   let best: AmbientThreat | null = null;
   for (const hero of heroes) {
     const distance = Math.hypot(hero.x - x, hero.y - y);

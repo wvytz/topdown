@@ -154,6 +154,8 @@ import { BossHeraldEffects } from '@/effects/BossHerald';
 import { DustMotes } from '@/effects/DustMotes';
 import { MirrorFloor } from '@/effects/MirrorFloor';
 import { AmbientLifeView } from '@/effects/AmbientLifeView';
+import { BiomeSoundscape } from '@/audio/BiomeSoundscape';
+import { SOUNDSCAPES, SOUNDSCAPE_CONFIG } from '@/config/soundscapeConfig';
 import { planAmbient } from '@/dungeon/AmbientPlanner';
 import { AMBIENT_CONFIG } from '@/config/ambientConfig';
 import { BossStallDetector, LimitWatch, StuckDetector, floorConnectivityIssues, reachable } from '@/systems/AnomalyDetectors';
@@ -314,7 +316,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Biom piętra: arkusz kafli, dekorowanie, warianty wrogów. */
   private biome!: BiomeDefinition;
   private torches!: Torches;
-  /** Żywe otoczenie Grzybni i Cmentarzyska (krok 156); null — biom bez niego albo areny bossów. */
+  /** Żywe otoczenie biomów 2–5 (kroki 156–157); null — biom bez niego albo areny bossów. */
   private ambient: AmbientLifeView | null = null;
   private combatDecals!: CombatDecals;
   private death: DeathSummary | null = null;
@@ -500,6 +502,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Lustrzana komnata (krok 124): odbicia postaci i błyski polerowanej posadzki.
     if (biome.mirrorFloor) new MirrorFloor(this, this.dungeon, biome.mirrorFloor);
     this.setupAmbientLife(biome);
+    // Krok 158: ciche odgłosy biomu spoza kadru; w walce z bossem milkną.
+    new BiomeSoundscape(this, SOUNDSCAPES[biome.id], () => SOUNDSCAPE_CONFIG.silentInBossFight && (this.bossFight?.isFighting ?? false));
 
     if (!this.scene.isActive(SceneKey.Hud)) {
       const hudData: HudSceneData = { source: this };
