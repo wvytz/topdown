@@ -5552,6 +5552,8 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Weryfikacja w przeglądarce:** `?seed=3&floor=6` — mury gruzu walą się w fazach 1 i 2, odsłaniają wózek i butle, lustra pękają, wiadra się przewracają, pasy mokrej posadzki ślizgają bohatera; poślizg z ogłuszeniem i przejście przez lustro sprawdzone przy obniżonych progach (tylko test). `?floor=7` — płyty pękają i odpadają, upadek, podmuchy, żywopłoty rosną i więdną, słupy z gniazdami. Bez błędów w konsoli. Zrzuty: `screens/krok157-areny/` w plikach projektu.
 
+**Poprawka po smoke co-op:** raz na kilka przebiegów bohater nie wchodził na schody po walce ze sprzątaczkami — mokra posadzka dalej ślizgała po zwycięstwie. Teraz po wygranej posadzka od razu schnie, a chmury chloru się rozwiewają.
+
 **Do oceny właściciela:** tempo mycia i siła poślizgu, jak często sprzątaczka sama wpada w poślizg (próg 120 px/s — przy domyślnych liczbach rzadko, głównie przez kałużę z wiadra), wygląd rekwizytów (rysowane w kodzie, do generatora), siła upadku (15% HP) i wiatru, częstotliwość żywopłotów, czy gniazda mają być łatwiejsze do zniszczenia.
 
 ## Znane ograniczenia i backlog
