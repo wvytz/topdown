@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BiomeId } from '@/config/biomeConfig';
-import { SOUNDSCAPES, SOUNDSCAPE_CONFIG } from '@/config/soundscapeConfig';
+import { SOUNDSCAPES, SOUNDSCAPE_CONFIG, SoundscapeEcho } from '@/config/soundscapeConfig';
 import { SOUND_GATE_RULES, SOUND_RECIPES } from '@/config/audioConfig';
 import { pickSoundscape } from '@/systems/Soundscape';
 
@@ -45,5 +45,17 @@ describe('odgłosy biomów (krok 158)', () => {
 
   it('bez odgłosów (same zerowe wagi) — nic', () => {
     expect(pickSoundscape({ intervalMs: { min: 1000, max: 2000 }, entries: [] }, SOUNDSCAPE_CONFIG, rolls(0.5))).toBeNull();
+  });
+});
+
+describe('obraz do odgłosów (krok 159)', () => {
+  it('dudnienie Piekła, gruz ruin i kruk Cmentarzyska mają obraz; reszta odgłosów — tylko dźwięk', () => {
+    const echoes = Object.values(SOUNDSCAPES).flatMap((s) => s.entries.filter((e) => e.echo).map((e) => e.echo));
+    expect(new Set(echoes)).toEqual(new Set([SoundscapeEcho.Quake, SoundscapeEcho.Dust, SoundscapeEcho.Flyover]));
+    const crow = SOUNDSCAPES[BiomeId.Graveyard].entries.findIndex((e) => e.echo === SoundscapeEcho.Flyover);
+    const scape = { ...SOUNDSCAPES[BiomeId.Graveyard], entries: [SOUNDSCAPES[BiomeId.Graveyard].entries[crow]!] };
+    expect(pickSoundscape(scape, SOUNDSCAPE_CONFIG, rolls(0.5))!.echo).toBe(SoundscapeEcho.Flyover);
+    const bell = { ...scape, entries: [{ cue: SOUNDSCAPES[BiomeId.Graveyard].entries[1]!.cue, weight: 1 }] };
+    expect(pickSoundscape(bell, SOUNDSCAPE_CONFIG, rolls(0.5))!.echo).toBeNull();
   });
 });

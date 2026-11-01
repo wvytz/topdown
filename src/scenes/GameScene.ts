@@ -155,6 +155,7 @@ import { DustMotes } from '@/effects/DustMotes';
 import { MirrorFloor } from '@/effects/MirrorFloor';
 import { AmbientLifeView } from '@/effects/AmbientLifeView';
 import { BiomeSoundscape } from '@/audio/BiomeSoundscape';
+import { SoundscapeEchoes } from '@/effects/SoundscapeEchoes';
 import { SOUNDSCAPES, SOUNDSCAPE_CONFIG } from '@/config/soundscapeConfig';
 import { planAmbient } from '@/dungeon/AmbientPlanner';
 import { AMBIENT_CONFIG } from '@/config/ambientConfig';
@@ -503,7 +504,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (biome.mirrorFloor) new MirrorFloor(this, this.dungeon, biome.mirrorFloor);
     this.setupAmbientLife(biome);
     // Krok 158: ciche odgłosy biomu spoza kadru; w walce z bossem milkną.
-    new BiomeSoundscape(this, SOUNDSCAPES[biome.id], () => SOUNDSCAPE_CONFIG.silentInBossFight && (this.bossFight?.isFighting ?? false));
+    // Krok 159: część odgłosów widać — drżenie i pył w Piekle, kurz w ruinach, przelot kruka na Cmentarzysku.
+    const echoes = new SoundscapeEchoes(this);
+    new BiomeSoundscape(
+      this,
+      SOUNDSCAPES[biome.id],
+      () => SOUNDSCAPE_CONFIG.silentInBossFight && (this.bossFight?.isFighting ?? false),
+      (pick, x, y) => echoes.play(pick, x, y),
+    );
 
     if (!this.scene.isActive(SceneKey.Hud)) {
       const hudData: HudSceneData = { source: this };
