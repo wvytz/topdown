@@ -64,6 +64,9 @@ import { GATE_WAIT_CONFIG } from '@/config/gateWaitConfig';
 import { GateWait } from '@/systems/GateWait';
 import type { Enemy } from '@/entities/Enemy';
 import { BreakableManager } from '@/combat/BreakableManager';
+import { ArenaConditionManager } from '@/combat/ArenaConditionManager';
+import type { ArenaLayout } from '@/core/arenaConditionTypes';
+import { planArenaLayout, withWallTiles } from '@/dungeon/ArenaConditionPlanner';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS, HERO_ORDER, parseHeroId } from '@/config/heroConfig';
@@ -105,6 +108,7 @@ import { DungeonView } from '@/dungeon/DungeonView';
 import { assignLurkers, assignNesters, planEncounters } from '@/dungeon/EncounterPlanner';
 import { isStairsTile } from '@/dungeon/stairs';
 import { dressFloor } from '@/dungeon/FloorDressing';
+import type { DressedFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
 import type { PlayerInput } from '@/input/playerInput';
 import { createPlayerInput } from '@/input/playerInput';
@@ -199,6 +203,9 @@ const SHRINE_SEED_SALT = 0x5419;
 const REWARD_SEED_SALT = 0x4e3a;
 /** Dekorowanie piętra (czysto wizualne). */
 const DRESSING_SEED_SALT = 0xd2e5;
+/** Zmienne warunki areny (krok 160): rozmieszczenie rekwizytów i losowanie w walce. */
+const ARENA_LAYOUT_SEED_SALT = 0xa7e1;
+const ARENA_RUNTIME_SEED_SALT = 0xa7e2;
 const TORCH_SEED_SALT = 0x7042;
 const CEILING_DROP_SEED_SALT = 0xce11;
 const COCOON_SEED_SALT = 0xc0c0;
@@ -303,6 +310,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private lurkerDens: TilePoint[] = [];
   private traps: TrapManager | null = null;
   private breakables: BreakableManager | null = null;
+  /** Zmienne warunki areny (krok 160); null — biom bez nich. */
+  private arenaConditions: ArenaConditionManager | null = null;
+  private arenaLayout: ArenaLayout | null = null;
+  /** Obraz piętra w kolejnych fazach walącego się muru (krok 160): [0] — z gruzem, [1] — bez wschodniego, [2] — bez gruzu. */
+  private rubbleDressings: DressedFloor[] = [];
   private braziers: BrazierManager | null = null;
   private loot!: LootManager;
   private lootRng!: Rng;
@@ -424,6 +436,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.ambient = null;
     this.traps = null;
     this.breakables = null;
+    this.arenaConditions = null;
   }
 
   create(): void {
@@ -447,6 +460,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.ambushRoomId = plan.roomId;
       }
     }
+    // Zmienne warunki areny (krok 160): rekwizyty i grube mury z gruzu stoją od początku piętra.
+    const arenaConfig = biome.arenaConditions ?? null;
+    const floorWithoutRubble = this.dungeon;
+    this.arenaLayout = arenaConfig
+      ? planArenaLayout(this.dungeon, this.dungeon.rooms[this.dungeon.bossRoomId]!, arenaConfig, createRng(deriveSeed(this.dungeon.seed, ARENA_LAYOUT_SEED_SALT)))
+      : null;
+    const rubble = this.arenaLayout?.rubble ?? [];
+    if (rubble.length > 0) this.dungeon = withWallTiles(this.dungeon, rubble);
     this.secretArea = this.bossRush ? null : secretArea(this.dungeon);
     const shown = this.secretArea ? disguiseFloor(this.dungeon, this.secretArea) : this.dungeon;
     // Pochodnie przed dekorowaniem: detale lica muru omijają kafle z uchwytem.
@@ -454,6 +475,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const dress = (floor: DungeonFloor) =>
       dressFloor(floor, tileset, biome.dressing, deriveSeed(this.dungeon.seed, DRESSING_SEED_SALT), { torches: torchSpots });
     const dressed = dress(shown);
+    this.rubbleDressings =
+      rubble.length > 0
+        ? [dressed, dress(withWallTiles(floorWithoutRubble, rubble.filter((r) => r.phase >= 2))), dress(floorWithoutRubble)]
+        : [];
     // Minimapa widzi piętro w przebraniu — ukryta komnata nie wyda się przed odsłonięciem.
     // Na arenach bossów jej nie ma (krok 97a): sama arena, nie ma czego szukać.
     this.minimap = this.bossRush ? null : new MinimapExplorer(shown, MINIMAP_CONFIG.revealRadius);
@@ -677,6 +702,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.breakables?.update();
     this.braziers?.update(time);
     this.bossFight.update(time);
+    this.arenaConditions?.update(time);
     this.updateSaveLock();
     this.herald?.update(time);
     this.arenaGates.update();
@@ -691,7 +717,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Krok 93: kieł leczy tylko za trafienie wroga lub bossa, nie kokonu (też spiżarni), purchawki czy urny.
         const creature = this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot, attacker);
         const target =
-          creature ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? null;
+          creature ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? this.arenaConditions?.resolvePlayerShot(shot) ?? null;
         if (target) shooter?.afterShotHit(shot, target, creature !== null && !(creature instanceof LarderCocoon), time);
         return target;
       },
@@ -902,6 +928,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.puffballs?.resolvePlayerMelee(swing);
         this.secretRoom?.resolvePlayerMelee(swing);
         this.breakables?.resolvePlayerMelee(swing);
+        this.arenaConditions?.resolvePlayerMelee(swing);
         return creatureHits;
       },
       beam: (beam, attacker) => {
@@ -911,6 +938,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.puffballs?.resolvePlayerBeam(beam);
         this.secretRoom?.resolvePlayerBeam(beam);
         this.breakables?.resolvePlayerBeam(beam);
+        this.arenaConditions?.resolvePlayerBeam(beam);
       },
       splash: (strike, attacker) => {
         this.enemies.resolveSplash(strike);
@@ -923,6 +951,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.puffballs?.resolveDashSweep(sweep, alreadyHit);
         this.secretRoom?.resolveDashSweep(sweep, alreadyHit);
         this.breakables?.resolveDashSweep(sweep, alreadyHit);
+        this.arenaConditions?.resolveDashSweep(sweep, alreadyHit);
       },
     };
   }
@@ -1071,6 +1100,29 @@ export class GameScene extends Phaser.Scene implements HudSource {
         })
       : null;
 
+    // Zmienne warunki areny (krok 160) — przed walką: lustra i słupy stają, zanim boss wybierze miejsce startu.
+    const arenaConfig = this.biome.arenaConditions ?? null;
+    this.arenaConditions =
+      arenaConfig && this.arenaLayout
+        ? new ArenaConditionManager({
+            scene: this,
+            floor: this.dungeon,
+            arena: this.dungeon.rooms[this.dungeon.bossRoomId]!,
+            view: this.dungeonView,
+            config: arenaConfig,
+            layout: this.arenaLayout,
+            party: this.party,
+            encounter: () => this.bossFight,
+            effects: this.effects,
+            rubbleDressings: this.rubbleDressings,
+            rng: createRng(deriveSeed(this.dungeon.seed, ARENA_RUNTIME_SEED_SALT)),
+            onPlayerHit,
+          })
+        : null;
+    const arenaConditions = this.arenaConditions;
+    this.playerShots.setTileHook(arenaConditions ? (shot, tile) => arenaConditions.onPlayerShotTile(shot, tile) : null);
+    this.projectiles.setReflector(arenaConditions ? (shot, tile) => arenaConditions.reflectsEnemyShot(shot, tile) : null);
+
     // Duet bossów (krok 114; od kroku 127 także we wspinaczce): pająki w Grzybni, sprzątaczki na piętrze brunetki.
     const duet = duetForFloor(this.floorNumber, BOSS_DUETS, TOWER_CONFIG);
     this.bossFight = new BossEncounter({
@@ -1098,6 +1150,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (!this.party.isDown) this.offerBossReward();
       },
       aggroTarget: () => this.aggroTarget(),
+      ...(arenaConditions && {
+        arenaHooks: { adjustPlan: (plan) => arenaConditions.adjustPlan(plan), onStrikeImpact: (strike) => arenaConditions.onStrikeImpact(strike) },
+      }),
     }, duet);
 
     // Walka bohaterów (ataki, kieł, ultimate R z kroku 98) — po jednym na gracza.

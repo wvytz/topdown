@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5513,7 +5513,6 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 **Testy:** `tests/systems/soundscape.test.ts` (4: każdy biom ma odgłosy z przepisem, bramką i cichym `gain`; losowanie według wag i przerwa z zakresu; źródło poza kadrem; pusty zestaw). Poziomy sprawdzone renderem `SfxSynth` (szczyty ok. 0,03–0,19 — ciszej niż efekty walki); długie odgłosy (wiatr, dzwon, dudnienie, lodówka) skrócone do 2 s — limit testu `sfxSynth`. `npm run build` OK.
 
 **Do oceny właściciela:** czy tło jest słyszalne, ale nie męczy (częstość, głośność), czy telefon w mieszkaniu i dzwon na Cmentarzysku budują nastrój, czy coś brzmi źle — przepisy łatwo stroić.
-
 ## Krok 159 — Obraz do odgłosów biomów `#dzwiek` `#zywe-otoczenie` `#pieklo` `#ruiny` `#cmentarzysko`
 
 **Po co:** spójność dźwięku i obrazu (prośba właściciela: „wszystko spójne i połączone ze sobą”) — część odgłosów tła z kroku 158 widać:
@@ -5530,6 +5529,30 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 **Weryfikacja w przeglądarce:** `?seed=3&floor=3|4|1` z ręcznie wywołanym odgłosem — przelot kruka, pył po dudnieniu, strużka kurzu w ruinach; bez błędów w konsoli.
 
 **Do oceny właściciela:** czy drżenie przy dudnieniu nie przeszkadza (zwłaszcza na telefonie), czy pył jest dość widoczny.
+
+## Krok 160 — Zmienne warunki aren sprzątaczek i Wiedźmy `#decyzja` `#lustrzana-komnata` `#sprzataczki` `#brudna-wiedzma` `#areny-zmienne`
+
+**Prośba właściciela (31.10):** wypolerowana arena sprzątaczek i ogród Wiedźmy są zbyt stałe — „czy powinniśmy trzymać się stałej grubości ścian? Może dodajmy jakieś interaktywne, bardziej zmienne warunki”. Po 6 propozycjach z makietami (`projekty/areny-zmienne/` w plikach projektu) decyzja: „Wdrażaj wszystko… żeby nie było za dużo kolizji, żeby nie było konfliktów. Musimy utrzymać spójność gry” `#decyzja`.
+
+**Lustrzana komnata (piętro 6) — trzy warunki:**
+- **A1 „Uwaga, ślisko!”:** sprzątaczki co 6,5 s (we wściekłości 4,5 s) myją pas posadzki w rzędzie bohatera (2 kafle, mop jedzie 0,7 s, mokre 5 s, schnie 1,2 s, najwyżej 2 pasy). Na mokrym wszyscy się ślizgają (poślizg jak lód). Żółte znaki „ślisko” stają na brzegach pasa. Sprzątaczka pędząca po mokrym (≥120 px/s, czyli szarża, nie chód) wpada w poślizg ×1,2 przez 0,65 s; jeśli uderzy w mur — „Bęc!”, ogłuszona na 3,5 s. 2 wiadra: trafione przewracają się i rozlewają kałużę (r 46 px, 9 s) — gracz sam robi pułapkę na szarżę.
+- **A3 „Komnata się sypie”:** arena zaczyna z grubymi murami gruzu po bokach (2 kafle). Gdy blondynka ucieka windą (faza 1), wali się wschodni mur, a gdy przychodzi czarnowłosa (faza 2) — zachodni (fala od środka, 70 ms na kafel). Arena rośnie w trakcie walki. W gruzie wschodnim stoją 2 butle chloru i wózek: trafiona butla wypuszcza zieloną chmurę (r 56 px, 5 s), która truje bohatera i rani sprzątaczki (12 co 0,5 s). U innych bossów z tym biomem jedna faza (wściekłość) zrzuca oba mury.
+- **A2 „Lustra”:** 2 lustra na stojakach (para symetryczna, z dala od środka i murów). Odbijają pociski bohatera i wrogów; po 4 trafieniach pękają w odłamki (r 40 px, 12 s, spowolnienie). Sprzątaczka, która dotknie lustra, wychodzi z drugiego („Przez lustro!”, co 7 s).
+
+**Bociani Ogród (piętro 7) — trzy warunki:**
+- **B3 „Taras nad przepaścią”:** jeden bok areny bez wejścia (najpierw południe) to taras z balustradą nad przepaścią. Płyty pękają pod pikującymi ptakami i lądowaniem Wiedźmy, po 1 s odpadają (najwyżej 12% podłogi, nigdy przy wejściu i schodach). Wejście w dziurę = upadek: 15% maks. HP i powrót na najbliższą całą płytę; dash przelatuje nad dziurą. Co 9 s (we wściekłości 6,5 s) podmuch wiatru (0,8 s ostrzeżenia, 1,3 s pchania ku przepaści). Po walce dziury zarastają gałęziami.
+- **B2 „Żywopłot”:** co 10 s (7 s) Wiedźma wyrasta 3-kaflowy żywopłot (1 s zapowiedzi): w poprzek drogi do bohatera, za nim albo obok. Blokuje ruch i pociski; ścina się 2 ciosami na kafel, sam więdnie po 8 s; najwyżej 2 naraz. Nigdy nie zamyka jedynej drogi (BFS) ani nie rośnie na ciałach.
+- **B1 „Gniazda”:** 2 słupy z bocianimi gniazdami (para symetryczna) — osłona przed nalotami (pikujący bocian zatrzymuje się na słupie). Gniazdo zniszczone 5 trafieniami — w każdym nalocie jeden bocian mniej („Moje gniazdo!”), ale najmniej 1.
+
+**Spójność („mało kolizji, bez konfliktów”):** kolidujące rekwizyty (lustra, słupy, wiadra, żywopłot, gruz) idą przez warstwę kolizji kafli i jednocześnie zmieniają kafle piętra, więc linia wzroku Kiterów i droga wrogów po kaflach widzą to samo co fizyka. Nic nie stoi przy wejściu (2 kafle), na schodach ani na środku (start bossa); lustra i słupy stoją parami symetrycznie. Wszystkie pociski mają odbicie — o tym, czy pocisk się odbija, czy ginie, decyduje kafel (lustro odbija, gniazdo i żywopłot pochłaniają). Uciekająca sprzątaczka bez postępu przez 0,7 s staje przy drzwiach windy (straż przed zaklinowaniem w gruzie). Własne strumienie RNG (`ARENA_LAYOUT_SEED_SALT`, `ARENA_RUNTIME_SEED_SALT`) — reszta piętra bez zmian. Liczby w `config/arenaConditionsConfig.ts`.
+
+**Pliki:** czyste — `core/arenaConditionTypes.ts`, `config/arenaConditionsConfig.ts`, `dungeon/ArenaConditionPlanner.ts` (dopisany do `PURE_FILES`), `systems/WetFloor.ts`, `systems/Terrace.ts`, `systems/ArenaCover.ts`, `config/biomeConfig.ts` (`arenaConditions`); Phaser — `combat/ArenaConditionManager.ts`, `effects/ArenaConditionArt.ts` (tekstury rysowane w kodzie, klucze do podmiany przez generator), `combat/BossFight.ts` (`arenaHooks`: `adjustPlan`, `onStrikeImpact`; `arenaFighter`, `teleport`, straż ucieczki), `combat/BossEncounter.ts` (`arenaPhase`), `entities/Boss.ts` (poślizg, `daze`), `entities/Player.ts` (`setWindPush`), `combat/PlayerShotManager.ts` i `combat/ProjectileManager.ts` (hak kafla, odbicie), `dungeon/DungeonView.ts` (`setBlocked`, `applyDressing`), `scenes/GameScene.ts`.
+
+**Testy:** `tests/dungeon/ArenaConditionPlanner.test.ts` (4: nic przy wejściu i schodach, bez nakładania; gruz po bokach i fazy, butle w murze fazy 1; słupy symetrycznie, taras nad bokiem bez wejścia; determinizm), `tests/systems/ArenaConditions.test.ts` (mokra posadzka i poślizg bossa, kolejność zawalenia, wyjście z lustra, płyty tarasu i upadek, wiatr, żywopłot — także przy bliskiej Wiedźmie — i ścieżka BFS, nalot przy słupach i zniszczonych gniazdach). `npm run build` OK (159 plików, 2661 testów). Smoke: zob. weryfikację.
+
+**Weryfikacja w przeglądarce:** `?seed=3&floor=6` — mury gruzu walą się w fazach 1 i 2, odsłaniają wózek i butle, lustra pękają, wiadra się przewracają, pasy mokrej posadzki ślizgają bohatera; poślizg z ogłuszeniem i przejście przez lustro sprawdzone przy obniżonych progach (tylko test). `?floor=7` — płyty pękają i odpadają, upadek, podmuchy, żywopłoty rosną i więdną, słupy z gniazdami. Bez błędów w konsoli. Zrzuty: `screens/krok157-areny/` w plikach projektu.
+
+**Do oceny właściciela:** tempo mycia i siła poślizgu, jak często sprzątaczka sama wpada w poślizg (próg 120 px/s — przy domyślnych liczbach rzadko, głównie przez kałużę z wiadra), wygląd rekwizytów (rysowane w kodzie, do generatora), siła upadku (15% HP) i wiatru, częstotliwość żywopłotów, czy gniazda mają być łatwiejsze do zniszczenia.
 
 ## Znane ograniczenia i backlog
 
@@ -5672,6 +5695,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **Ruiny po apokalipsie (krok 155)** `#ruiny` `#lore`: śmieci i zniszczenie na piętrze 1 — czeka na ocenę (gęstość, kości vs łupy). Lore: im wyżej, tym mniej ruiny i więcej resztek cywilizacji.
 
 **Żywe otoczenie (krok 156)** `#zywe-otoczenie`: Grzybnia (kępy grzybów, lampy, ćmy) i Cmentarzysko (znicze, kruki, ogniki) — czeka na ocenę: gęstość, odsłanianie wrogów przez światła, gaszenie zniczy dashem. Krok 157: Piekło (szczeliny, chrząszcze) i mieszkanie gracza (ekrany z komunikatem „do wieży”, karaluchy, puszki) — czeka na ocenę: gęstość, czytelność komunikatu, czy puszki i karaluchy nie rozpraszają. Dalej: interaktywne warunki dla Lustrzanej komnaty i Bocianiego Ogrodu (osobny wątek).
+
+**Zmienne warunki aren (krok 160)** `#areny-zmienne` `#sprzataczki` `#brudna-wiedzma`: mokra posadzka i wiadra, walące się mury z butlami chloru, lustra (piętro 6); taras nad przepaścią z wiatrem, żywopłoty, słupy z gniazdami (piętro 7) — czeka na ocenę: tempo, siła upadku i wiatru, wygląd rekwizytów (do przeniesienia do generatora w `tools/`).
 
 **Król Szlamu (krok 153)** `#krol-szlamu`: szlam zamiast ognia, kałuże i szlam od ścian — czeka na ocenę (siła spowolnień, tempo zwężania, fiolet). Kolejne kroki: ten sam poziom detalu dla ataków innych bossów; zwężanie areny u Kata Otchłani jako rozwinięcie.
 

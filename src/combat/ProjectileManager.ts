@@ -48,6 +48,8 @@ export class ProjectileManager {
   private readonly waves = new WeakMap<Projectile, WaveShape>();
   private readonly hitCallbacks = new WeakMap<Projectile, (damage: number) => void>();
   private readonly landCallbacks = new WeakMap<Projectile, (at: Vector2) => void>();
+  /** Lustra areny (krok 160): czy kafel odbija pocisk. */
+  private reflects: ((projectile: Projectile, tile: { readonly x: number; readonly y: number }) => boolean) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -58,8 +60,11 @@ export class ProjectileManager {
   ) {
     this.group = scene.physics.add.group({ classType: Projectile });
 
-    scene.physics.add.collider(this.group, walls, (projectile) => {
-      if (projectile instanceof Projectile) this.splash(projectile);
+    scene.physics.add.collider(this.group, walls, (projectile, tile) => {
+      if (!(projectile instanceof Projectile)) return;
+      // Lustro areny (krok 160) odbija także pociski bossa i wrogów (fizyka odbiła je już — sprężystość 1).
+      if (tile instanceof Phaser.Tilemaps.Tile && this.reflects?.(projectile, tile)) return;
+      this.splash(projectile);
     });
     for (const member of party.members) {
       scene.physics.add.overlap(member, this.group, (_player, projectile) => {
@@ -90,6 +95,13 @@ export class ProjectileManager {
     if (spec.onLand) this.landCallbacks.set(projectile, spec.onLand);
     const dir = normalize(spec.direction);
     projectile.setVelocity(dir.x * spec.speed, dir.y * spec.speed);
+    // Sprężystość 1: lustra areny odbijają (krok 160); o zwykły mur pocisk i tak się rozbija.
+    projectile.setBounce(1);
+  }
+
+  /** Lustra areny (krok 160). */
+  setReflector(reflects: ((projectile: Projectile, tile: { readonly x: number; readonly y: number }) => boolean) | null): void {
+    this.reflects = reflects;
   }
 
   update(now: number): void {

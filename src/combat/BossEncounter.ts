@@ -161,6 +161,24 @@ export class BossEncounter {
     second!.nudge(push.b);
   }
 
+  /**
+   * Faza walki dla zmiennych warunków areny (krok 160): 0 — początek; piętro sprzątaczek: 1 — blondynka
+   * odjechała windą, 2 — wróciła; inni bossowie: 1 — wściekłość. Faza nigdy nie maleje.
+   */
+  get arenaPhase(): number {
+    const { opener, partner } = this;
+    if (opener) {
+      if (!opener.isDefeated) return 0;
+      return partner && !partner.isDormant ? 2 : 1;
+    }
+    return this.fights.some((fight) => fight.isEnraged) ? 1 : 0;
+  }
+
+  /** Walki areny (zmienne warunki działają na każdego walczącego bossa). */
+  get arenaFights(): readonly BossFight[] {
+    return this.fights;
+  }
+
   /** Pozycje walczących bossów (krok 136: strzałki do bossów poza kadrem). */
   get fightingPositions(): Vector2[] {
     return this.fights.flatMap((fight) => (fight.isFighting && fight.position ? [fight.position] : []));
