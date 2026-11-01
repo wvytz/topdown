@@ -281,6 +281,7 @@ export class ArenaConditionManager {
     this.gfx.clear();
     this.overGfx.clear();
     this.updateCollapse(encounter.arenaPhase, now);
+    if (over) this.dryUp();
     this.updateWet(now, fighting, enraged);
     this.updateClouds(now);
     this.updateMirrors(now);
@@ -294,6 +295,19 @@ export class ArenaConditionManager {
     if (config.wetFloor) this.nextLaneAt = now + config.wetFloor.firstAfterMs;
     if (config.terrace?.wind && this.deps.layout.abyss) this.nextGustAt = now + config.terrace.wind.firstAfterMs;
     if (config.hedges) this.nextHedgeAt = now + config.hedges.firstAfterMs;
+  }
+
+  /**
+   * Po zwycięstwie posadzka od razu schnie, a chmury chloru się rozwiewają: przy łupach i schodach nic już nie
+   * ślizga ani nie truje (poślizg zniósłby bohatera ze schodów).
+   */
+  private dryUp(): void {
+    if (this.lanes.length === 0 && this.puddles.length === 0 && this.clouds.length === 0) return;
+    for (const signs of this.laneSigns.values()) for (const sign of signs) sign.destroy();
+    this.laneSigns.clear();
+    this.lanes = [];
+    this.puddles = [];
+    this.clouds = [];
   }
 
   // ————————————————————————————————————————————— A1 mokra posadzka
