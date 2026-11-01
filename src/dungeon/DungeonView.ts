@@ -167,6 +167,37 @@ export class DungeonView {
     this.hiddenGates.clear();
   }
 
+  /** Zmienne warunki areny (krok 160): kafel kolizji pojawia się albo znika (lustro, słup, żywopłot). */
+  setBlocked(tile: TilePoint, blocked: boolean): void {
+    if (blocked) this.collisionLayer.putTileAt(this.collisionFrame, tile.x, tile.y);
+    else this.collisionLayer.removeTileAt(tile.x, tile.y);
+  }
+
+  /**
+   * Walący się mur (krok 160, A3): kafle `tiles` wszystkich warstw obrazu przechodzą na obraz z `next`
+   * (to samo piętro ubrane bez gruzu); tylko tam, gdzie się różnią.
+   */
+  applyDressing(next: DressedFloor, tiles: readonly TilePoint[]): void {
+    for (const name of VISUAL_LAYERS) {
+      const layer = this.layers.get(name)!;
+      const data: DressedLayer = next[name];
+      for (const { x, y } of tiles) {
+        if (x < 0 || y < 0 || x >= data.width) continue;
+        const i = y * data.width + x;
+        const frame = data.frames[i];
+        if (frame === undefined) continue;
+        const current = layer.getTileAt(x, y);
+        if (frame === EMPTY_TILE) {
+          if (current) layer.removeTileAt(x, y);
+          continue;
+        }
+        if (current?.index === frame && current.flipX === (data.flipX[i] === 1)) continue;
+        const tile = layer.putTileAt(frame, x, y, false);
+        tile.flipX = data.flipX[i] === 1;
+      }
+    }
+  }
+
   static tileToWorldCenter(point: TilePoint): { x: number; y: number } {
     return { x: (point.x + 0.5) * TILE_SIZE, y: (point.y + 0.5) * TILE_SIZE };
   }

@@ -24,6 +24,8 @@ import type { PuffballConfig } from '@/systems/Puffballs';
 import type { StickyWebConfig } from '@/systems/StickyWebs';
 import type { BrazierConfig } from '@/systems/Braziers';
 import type { WallDogConfig } from '@/systems/WallDogs';
+import type { ArenaConditionsConfig } from '@/core/arenaConditionTypes';
+import { MIRROR_HALL_ARENA, STORK_GARDEN_ARENA } from '@/config/arenaConditionsConfig';
 import { SPIDER_QUEEN } from '@/config/bossConfig';
 import {
   FUNGAL_GROVE_TILESET_ASSET,
@@ -77,6 +79,8 @@ export interface BiomeDefinition {
   readonly mirrorFloor?: MirrorFloorConfig | null;
   /** Żywe otoczenie (krok 156): animowane rekwizyty reagujące na bohatera; brak = bez nich. */
   readonly ambient?: BiomeAmbientConfig | null;
+  /** Zmienne warunki areny bossa (krok 160): mokre pasy, walące się mury, lustra, taras, żywopłot, gniazda. */
+  readonly arenaConditions?: ArenaConditionsConfig | null;
 }
 
 export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
@@ -327,6 +331,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     traps: null,
     breakables: null,
     mirrorFloor: MIRROR_FLOOR,
+    arenaConditions: MIRROR_HALL_ARENA,
   },
   // Bociani Ogród (krok 137, `#brudna-wiedzma`): ostatnie piętro kręgu — po złudnej czystości Lustrzanej komnaty
   // winda wywozi na zarośnięty taras nocą, „totalny mrok”. Wrogowie na razie z ruin (jak w Lustrzanej komnacie).
@@ -344,6 +349,7 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     braziers: null,
     traps: null,
     breakables: null,
+    arenaConditions: STORK_GARDEN_ARENA,
   },
 };
 

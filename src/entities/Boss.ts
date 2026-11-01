@@ -51,6 +51,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   private fleeing = false;
   /** Stoi i gra animację `idle` (sprzątaczka poleruje posadzkę). */
   private standingIdle = false;
+  /** Poślizg na mokrej posadzce (krok 160): do kiedy i z jaką prędkością boss sunie bez sterowania. */
+  private slideUntil = -Infinity;
+  private slideVelocity = { x: 0, y: 0 };
 
   constructor(scene: Phaser.Scene, x: number, y: number, definition: BossDefinition, rng: Rng) {
     super(scene, x, y, SPRITE_SHEETS[BOSS_VISUALS[definition.id].sheet].key);
@@ -165,6 +168,32 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
     return false;
   }
 
+  /** Poślizg na mokrym (krok 160): przez `ms` boss sunie z prędkością `velocity`, nie steruje i nie atakuje. */
+  startSlide(velocity: { readonly x: number; readonly y: number }, ms: number, now: number): void {
+    this.slideVelocity = { x: velocity.x, y: velocity.y };
+    this.slideUntil = now + ms;
+  }
+
+  isSliding(now: number): boolean {
+    return now < this.slideUntil;
+  }
+
+  /** Koniec poślizgu (uderzenie w mur). */
+  stopSlide(): void {
+    this.slideUntil = -Infinity;
+    this.setVelocity(0, 0);
+  }
+
+  /**
+   * Ogłuszenie z otoczenia (uderzenie w mur w poślizgu, krok 160) — z odpornością bossa jak każde ogłuszenie;
+   * zwraca faktyczny czas (0 — odporny). Ogłuszenie odsuwa też kolejny atak.
+   */
+  daze(durationMs: number, now: number): number {
+    const { stunnedMs } = this.status.apply({ stun: { durationMs } }, now);
+    if (stunnedMs > 0) this.brain.delay(stunnedMs);
+    return stunnedMs;
+  }
+
   /** Leczenie (uczta i kąsanie Grzybowego Pożeracza). */
   heal(amount: number): void {
     this.health.heal(amount);
@@ -195,6 +224,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       return null;
     }
     if (this.anims.isPaused) this.anims.resume();
+    if (this.isSliding(now)) {
+      // Poślizg (krok 160): boss sunie w kierunku szarży i nie zaczyna ataku; uderzenie w mur ogłusza (BossFight).
+      this.setVelocity(this.slideVelocity.x, this.slideVelocity.y);
+      this.updateTint(now);
+      return null;
+    }
     const decision = this.brain.think({
       self: { x: this.x, y: this.y },
       target,

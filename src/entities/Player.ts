@@ -96,6 +96,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   readonly health: Health;
   /** Krok 152: odpychanie bańki partnera (co-op), px/s. */
   private bubblePush: Vector2 = { x: 0, y: 0 };
+  /** Podmuch wiatru na tarasie (krok 160): doliczany do ruchu jak odpychanie bańki. */
+  private windPush: Vector2 = { x: 0, y: 0 };
   readonly radius = PLAYER_SIZE / 2;
 
   private stats: PlayerStats;
@@ -385,6 +387,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * Krok 152: odpychanie „żelowej” bańki partnera (px/s), doliczane do chodu w następnym `tick` —
    * nie w dashu, odrzucie ani paraliżu, i nie kumuluje się (scena ustawia je co klatkę).
    */
+  /** Podmuch wiatru (krok 160); zero — bez wiatru. */
+  setWindPush(push: Vector2): void {
+    this.windPush = push;
+  }
+
   setBubblePush(push: Vector2): void {
     this.bubblePush = push;
   }
@@ -446,7 +453,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const velocity = this.dash.velocity();
       this.setVelocity(velocity.x, velocity.y);
     } else if (rooted && !this.knockbackStun.isActive(now)) {
-      this.setVelocity(this.bubblePush.x, this.bubblePush.y);
+      this.setVelocity(this.bubblePush.x + this.windPush.x, this.bubblePush.y + this.windPush.y);
     } else if (!this.knockbackStun.isActive(now)) {
       const velocity = computeVelocity(actions.move, this.stats);
       // Promień spowalnia Czarodziejkę (decyzja właściciela).
@@ -459,7 +466,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             ? archery.bow.moveSpeedMultiplier
             : 1;
       const slow = this.status.speedMultiplier(now) * channel;
-      const desired = { x: velocity.x * slow + this.bubblePush.x, y: velocity.y * slow + this.bubblePush.y };
+      const desired = {
+        x: velocity.x * slow + this.bubblePush.x + this.windPush.x,
+        y: velocity.y * slow + this.bubblePush.y + this.windPush.y,
+      };
       const body = this.body as Phaser.Physics.Arcade.Body;
       // Na mokrym (krok 125) prędkość dąży do zamierzonej powoli — bohater sunie i skręca z bezwładnością.
       const sliding = this.slip && this.isSlipping(now) ? slideVelocity(body.velocity, desired, now - (this.lastMoveAt ?? now), this.slip.traction) : desired;

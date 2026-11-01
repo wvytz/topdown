@@ -37,6 +37,12 @@ export interface ShotFlight {
 export type PlayerShotResolver = (shot: PlayerShot, owner: object | null) => object | null;
 
 /**
+ * Co pocisk robi po uderzeniu w kafel kolizji (zmienne warunki areny, krok 160): `reflect` — odbija się
+ * (lustro), `absorb` — rozbija się, trafiając przeszkodę (żywopłot, gniazdo); null — zwykły mur.
+ */
+export type TileHitHook = (shot: Projectile, tile: { readonly x: number; readonly y: number }) => 'reflect' | 'absorb' | null;
+
+/**
  * Pociski gracza: lot, rozbijanie o ściany i kraty, wygasanie, przebijanie wrogów (Szuriken).
  * Trafienia rozstrzyga resolver przekazany przez scenę.
  */
@@ -44,19 +50,30 @@ export class PlayerShotManager {
   private readonly group: Phaser.Physics.Arcade.Group;
   /** Strzelec każdego pocisku (co-op, etap C2): trafienie leczy i nietykalność bossa liczy się dla niego. */
   private readonly owners = new WeakMap<Projectile, object>();
+  private tileHook: TileHitHook | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
     walls: Phaser.Tilemaps.TilemapLayer,
   ) {
     this.group = scene.physics.add.group({ classType: Projectile });
-    scene.physics.add.collider(this.group, walls, (shot) => {
+    scene.physics.add.collider(this.group, walls, (shot, tile) => {
       if (!(shot instanceof Projectile)) return;
+      // Lustro odbija (fizyka już odbiła pocisk — każdy ma sprężystość 1), przeszkoda areny przyjmuje trafienie.
+      const verdict = tile instanceof Phaser.Tilemaps.Tile ? this.tileHook?.(shot, tile) : null;
+      if (verdict === 'reflect') {
+        const v = shot.body?.velocity;
+        if (v && !shot.anims.isPlaying) shot.setRotation(Math.atan2(v.y, v.x));
+        return;
+      }
+      if (verdict === 'absorb') {
+        shot.destroy();
+        return;
+      }
       // Rykoszet (krok 150, Szuriken ×3): odbicie od muru zamiast rozbicia; lot trwa trochę dłużej.
       if (shot.bouncesLeft > 0) {
         shot.bouncesLeft--;
         shot.expiresAt += shot.bounceLifetimeMs;
-        if (shot.bouncesLeft === 0) shot.setBounce(0);
         return;
       }
       shot.destroy();
@@ -84,11 +101,22 @@ export class PlayerShotManager {
     shot.setCircle(r, shot.width / 2 - r, shot.height / 2 - r);
     const dir = normalize(direction);
     shot.setVelocity(dir.x * config.projectileSpeed, dir.y * config.projectileSpeed);
-    if (shot.bouncesLeft > 0) shot.setBounce(1);
+    // Sprężystość zawsze 1: rykoszet i lustra (krok 160) odbijają; zwykły pocisk i tak rozbija się o mur.
+    shot.setBounce(1);
     // Przebijający pocisk to gwiazdka „szurikena” obracana klatkami co 45° (bez obrotu o dowolny kąt).
     if (look?.animation) shot.play(look.animation);
     else if (look) shot.setRotation(Math.atan2(dir.y, dir.x));
     else shot.play(lootAnimationKey(shot.pierceLeft > 0 ? 'shotPierce' : 'shot'));
+  }
+
+  /** Zmienne warunki areny (krok 160): lustra odbijają, przeszkody przyjmują trafienie. */
+  setTileHook(hook: TileHitHook | null): void {
+    this.tileHook = hook;
+  }
+
+  /** Pociski w locie (lustra liczą odbicia). */
+  get flying(): readonly Projectile[] {
+    return this.group.getChildren().filter((c): c is Projectile => c instanceof Projectile && c.active);
   }
 
   /** `homingTargets` — cele naprowadzanych strzałów (żywi, widoczni wrogowie i boss). */

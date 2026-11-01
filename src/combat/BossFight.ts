@@ -127,6 +127,14 @@ export interface BossFightDeps {
   readonly escapeHpRatio?: number;
   /** Jedno piętro sprzątaczek (krok 154): winda wspólna z innym bossem areny (te same drzwi, jeden sprite). */
   readonly sharedElevator?: Phaser.GameObjects.Sprite;
+  /** Zmienne warunki areny (krok 160): poprawka planu (słupy z gniazdami) i uderzenia stref (pękające płyty). */
+  readonly arenaHooks?: BossArenaHooks;
+}
+
+/** Jak zmienne warunki areny wpływają na ataki bossa (krok 160). */
+export interface BossArenaHooks {
+  adjustPlan(plan: BossAttackPlan): BossAttackPlan;
+  onStrikeImpact(strike: AreaStrike): void;
 }
 
 /** Bohater, który atakuje bossa (pozycja i czy żyje). */
@@ -193,6 +201,9 @@ interface PendingBurst {
 }
 
 const BOSS_SEED_SALT = 0xb055;
+/** Uciekający boss, który tyle ms nie zbliży się do windy o `ESCAPE_STUCK_PROGRESS_PX`, staje przed drzwiami. */
+const ESCAPE_STUCK_MS = 700;
+const ESCAPE_STUCK_PROGRESS_PX = 4;
 const RETINUE_SEED_SALT = 0x5717;
 const LARDER_SEED_SALT = 0x1a4d;
 const THRONE_SEED_SALT = 0x7407;
@@ -286,6 +297,8 @@ export class BossFight {
   private creepStartAt: number | null = null;
   private creepLastAt = 0;
   private lastSludgeTextAt = -Infinity;
+  /** Ucieczka windą: ostatnie zbliżenie do drzwi (krok 160 — ucieczka nie utknie za przeszkodą). */
+  private escapeTrack: { dist: number; at: number } | null = null;
   /** Ucieczka windą w toku. */
   private escape: { arrivedAt: number | null; closing: boolean } | null = null;
   /** Boss odjechał windą (krok 125) — „pokonany” bez śmierci. */
@@ -523,7 +536,7 @@ export class BossFight {
     if (boss.isFighting) this.updateShouts(now);
     this.updateFireRing(boss, now);
     this.updateCreep(boss, now);
-    if (plan) this.schedule(plan);
+    if (plan) this.schedule(this.deps.arenaHooks ? this.deps.arenaHooks.adjustPlan(plan) : plan);
     this.updateLarders(boss, now);
     this.updateRetinue(boss, now);
     this.updatePresence(boss);
@@ -1313,6 +1326,7 @@ export class BossFight {
         this.deps.decals.add('scorch', strike.center.x, strike.center.y);
       }
       for (const player of party.members) this.strikePlayer(player, strike, now);
+      this.deps.arenaHooks?.onStrikeImpact(strike);
       return false;
     });
   }
@@ -1764,7 +1778,10 @@ export class BossFight {
     if (!state || !def) return;
     const door = this.elevator?.door ?? { x: boss.x, y: boss.y };
     if (state.arrivedAt === null) {
-      if (!boss.fleeTick(door, def.speedMultiplier)) return;
+      if (!boss.fleeTick(door, def.speedMultiplier)) {
+        this.unstickEscape(boss, door, now);
+        return;
+      }
       state.arrivedAt = now;
       // Wsiada: krok w głąb drzwi i znika.
       this.deps.scene.tweens.add({ targets: boss, y: boss.y - boss.radius, alpha: 0, duration: def.boardMs });
@@ -1783,6 +1800,39 @@ export class BossFight {
     this.escape = null;
     this.escaped = true;
     this.deps.onDefeated(door);
+  }
+
+  /**
+   * Ucieczka nie może utknąć (krok 160): lustro, gruz albo słup na drodze do windy — gdy boss przez
+   * `ESCAPE_STUCK_MS` nie zbliży się do drzwi, staje przed nimi (błysk jak przy przejściu przez lustro).
+   */
+  private unstickEscape(boss: Boss, door: Vector2, now: number): void {
+    const dist = Math.hypot(door.x - boss.x, door.y - boss.y);
+    const track = this.escapeTrack;
+    if (!track || dist < track.dist - ESCAPE_STUCK_PROGRESS_PX) {
+      this.escapeTrack = { dist, at: now };
+      return;
+    }
+    if (now - track.at < ESCAPE_STUCK_MS) return;
+    this.deps.effects.impact(boss.x, boss.y, boss.radius * 1.4);
+    (boss.body as Phaser.Physics.Arcade.Body).reset(door.x, door.y + 4);
+    this.deps.effects.impact(door.x, door.y, boss.radius * 1.4);
+    this.escapeTrack = null;
+  }
+
+  /** Boss walczący na ziemi (nie w skoku, nie uciekający, nie w windzie) — zmienne warunki areny działają na niego. */
+  get arenaFighter(): Boss | null {
+    const boss = this.boss;
+    if (!boss || this.dormant || this.leap || this.escape || this.dying || !boss.isFighting || boss.isDead) return null;
+    if (this.lastNow < this.enteringUntil) return null;
+    return boss;
+  }
+
+  /** Przejście przez lustro (krok 160): boss staje w `to` (px). */
+  teleport(to: Vector2): void {
+    const boss = this.boss;
+    if (!boss) return;
+    (boss.body as Phaser.Physics.Arcade.Body).reset(to.x, to.y);
   }
 
   /** Dym znad plamy po Baronie: kłęby wznoszą się, rosną i gasną przez `rise.durationMs`. */
