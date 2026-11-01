@@ -14,7 +14,7 @@ import {
   STORK_GARDEN_DRESSING,
 } from '@/config/dressingConfig';
 import type { BiomeAmbientConfig } from '@/config/ambientConfig';
-import { GRAVEYARD_AMBIENT, GROVE_AMBIENT } from '@/config/ambientConfig';
+import { DEN_AMBIENT, GRAVEYARD_AMBIENT, GROVE_AMBIENT, INFERNAL_AMBIENT } from '@/config/ambientConfig';
 import type { FogConfig, MirrorFloorConfig } from '@/config/lightingConfig';
 import { FUNGAL_FOG, GARDEN_NIGHT, GRAVEYARD_MIST, INFERNAL_HAZE, MIRROR_FLOOR, SMOKE_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
@@ -263,6 +263,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     },
     traps: null,
     breakables: null,
+    // Krok 157: oddychające szczeliny z żarem i żużlowe chrząszcze.
+    ambient: { grove: null, graveyard: null, infernal: INFERNAL_AMBIENT, den: null },
   },
   // Zadymiona palarnia (krok 83, prośba właściciela: boss „następnego poziomu”): piętro Barona Dymu. Na razie
   // osobny arkusz kafli (nikotynowa szarość, `--biome smoke_den`), a nastrój robi gęsty szary dym zamiast mroku.
@@ -304,6 +306,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     breakables: null,
     // Pies w ścianie (krok 84): w co trzecim–czwartym zwykłym pokoju; podejście do rysy w murze budzi psa.
     wallDogs: { roomChance: 0.3, minShortSide: 5, maxPerFloor: 3, triggerRadius: 52, crackMs: 900 },
+    // Krok 157: ekrany (gra albo komunikat „do wieży”), karaluchy i puszki — w mieszkaniu jest jeszcze prąd.
+    ambient: { grove: null, graveyard: null, infernal: null, den: DEN_AMBIENT },
   },
   // Lustrzana komnata (krok 124, pomysł właściciela `#lustrzana-komnata`): dwa piętra sprzątaczek po Palarni.
   // Wypolerowana, opalizująca posadzka świeci i odbija postacie, mury najbardziej zniszczone w wieży.

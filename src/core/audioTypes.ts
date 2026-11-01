@@ -54,6 +54,14 @@ export enum SoundCue {
   SporePuff = 'spore-puff',
   /** Zdmuchnięty znicz (krok 156): krótki syk gasnącego knota. */
   CandleSnuff = 'candle-snuff',
+  /** Szczelina Piekła wypuszcza żar (krok 157): niski wydech i trzask iskier. */
+  VentBreath = 'vent-breath',
+  /** Ekran w mieszkaniu gracza traci obraz (krok 157): krótki szum zakłóceń. */
+  TvStatic = 'tv-static',
+  /** Karaluchy pierzchają (krok 157): suchy, cichy chrobot. */
+  RoachScatter = 'roach-scatter',
+  /** Kopnięta puszka (krok 157): blaszany brzęk, także przy odbiciu od muru. */
+  CanKick = 'can-kick',
   // Świat i łupy
   Coin = 'coin',
   Heal = 'heal',

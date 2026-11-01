@@ -386,6 +386,41 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'sine', freq: 300, freqEnd: 180, attack: 0.002, decay: 0.06, volume: 0.25 },
     ],
   },
+  /** Wydech szczeliny Piekła (krok 157): niski, ciepły szum i kilka trzasków iskier. */
+  [SoundCue.VentBreath]: {
+    gain: 0.26,
+    layers: [
+      { wave: 'noise', freq: 500, freqEnd: 180, attack: 0.04, decay: 0.38, volume: 0.55, lowpass: 700 },
+      { wave: 'noise', freq: 4200, freqEnd: 3000, delay: 0.06, attack: 0.002, decay: 0.03, volume: 0.22, lowpass: 6000 },
+      { wave: 'noise', freq: 3800, freqEnd: 2600, delay: 0.15, attack: 0.002, decay: 0.025, volume: 0.18, lowpass: 6000 },
+    ],
+  },
+  /** Zakłócenia ekranu (krok 157): krótki biały szum z wysokim piskiem kineskopu. */
+  [SoundCue.TvStatic]: {
+    gain: 0.18,
+    layers: [
+      { wave: 'noise', freq: 5000, freqEnd: 4000, attack: 0.005, decay: 0.28, volume: 0.5, lowpass: 8000 },
+      { wave: 'sine', freq: 7800, attack: 0.005, decay: 0.3, volume: 0.06 },
+    ],
+  },
+  /** Karaluchy (krok 157): suchy chrobot — kilka bardzo krótkich trzasków. */
+  [SoundCue.RoachScatter]: {
+    gain: 0.14,
+    layers: [
+      { wave: 'noise', freq: 6000, freqEnd: 5000, attack: 0.001, decay: 0.015, volume: 0.4, lowpass: 9000 },
+      { wave: 'noise', freq: 6000, freqEnd: 5000, delay: 0.04, attack: 0.001, decay: 0.015, volume: 0.35, lowpass: 9000 },
+      { wave: 'noise', freq: 6000, freqEnd: 5000, delay: 0.09, attack: 0.001, decay: 0.015, volume: 0.3, lowpass: 9000 },
+    ],
+  },
+  /** Puszka (krok 157): blaszany brzęk — dwa niezestrojone, szybko gasnące tony i stuk. */
+  [SoundCue.CanKick]: {
+    gain: 0.2,
+    layers: [
+      { wave: 'triangle', freq: 1320, freqEnd: 1240, attack: 0.001, decay: 0.14, volume: 0.3 },
+      { wave: 'triangle', freq: 1870, freqEnd: 1800, attack: 0.001, decay: 0.09, volume: 0.2 },
+      { wave: 'noise', freq: 2500, freqEnd: 1500, attack: 0.001, decay: 0.03, volume: 0.3, lowpass: 5000 },
+    ],
+  },
 };
 
 /**
@@ -453,6 +488,10 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.WingFlap]: { minGapMs: 150 },
   [SoundCue.SporePuff]: { minGapMs: 160 },
   [SoundCue.CandleSnuff]: { minGapMs: 120 },
+  [SoundCue.VentBreath]: { minGapMs: 200 },
+  [SoundCue.TvStatic]: { minGapMs: 200 },
+  [SoundCue.RoachScatter]: { minGapMs: 250 },
+  [SoundCue.CanKick]: { minGapMs: 90 },
 };
 
 /**

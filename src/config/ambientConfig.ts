@@ -20,6 +20,16 @@ export enum AmbientKind {
   Wisp = 'wisp',
   /** Cmentarzysko: kruk na posadzce — dziobie, a gdy bohater podejdzie, odlatuje. */
   Raven = 'raven',
+  /** Piekło (krok 157): szczelina z żarem w posadzce — oddycha; przejście obok wyrzuca snop iskier, potem stygnie. */
+  LavaVent = 'lava-vent',
+  /** Piekło: żużlowy chrząszcz z żarem pod pancerzem — ucieka spod nóg i staje dalej. */
+  CinderBeetle = 'cinder-beetle',
+  /** Mieszkanie gracza (krok 157): telewizor, monitor albo laptop — gra albo komunikat „do wieży”; przejście obok zakłóca obraz. */
+  Screen = 'screen',
+  /** Mieszkanie gracza: karaluchy — pierzchają spod nóg i chowają się w szparach pod murem. */
+  Roach = 'roach',
+  /** Mieszkanie gracza: pusta puszka — bohater kopie ją przy przejściu (w dashu mocniej), odbija się od murów. */
+  Can = 'can',
 }
 
 /** Rekwizyt świecący (kępa grzybów, lampa, znicz): światło, płoszenie i powrót. */
@@ -110,6 +120,74 @@ export interface GraveyardAmbientConfig {
   };
 }
 
+/** Biegające drobiazgi (chrząszcze, karaluchy): ucieczka spod nóg w głąb pokoju albo do szpary pod murem. */
+export interface ScuttlerConfig {
+  /** Bohater bliżej niż tyle (px) płoszy; w dashu — z dalszej odległości. */
+  readonly fleeRadius: number;
+  readonly dashFleeRadius: number;
+  /** Prędkość biegu (px/s) i jak długo trwa ucieczka (ms), zanim stworek przystanie. */
+  readonly runSpeed: number;
+  readonly runMs: number;
+  /** Rozrzut kierunku ucieczki (± rad) — stado rozbiega się wachlarzem. */
+  readonly spread: number;
+  /** Czy chowa się, gdy dobiegnie do muru (karaluch znika w szparze; chrząszcz zawraca). */
+  readonly hidesAtWall: boolean;
+  /** Margines od brzegu pokoju (px). */
+  readonly wallMarginPx: number;
+}
+
+export interface InfernalAmbientConfig {
+  /** Szczeliny z żarem w pokoju (w głębi posadzki, nie pod murem). */
+  readonly ventsPerRoom: IntRange;
+  readonly minSpacingTiles: number;
+  readonly vent: GlowPropConfig;
+  /** Żużlowe chrząszcze: szansa na gromadkę w pokoju i jej wielkość (grzeją się przy szczelinach). */
+  readonly beetles: {
+    readonly roomChance: number;
+    readonly count: IntRange;
+    readonly lightRadius: number;
+    readonly scuttle: ScuttlerConfig;
+  };
+  /** Iskry: ile tryska przy wydechu i co ile wzlatuje pojedyncza z widocznej szczeliny. */
+  readonly sparks: {
+    readonly burst: number;
+    readonly driftIntervalMs: number;
+    readonly lifespanMs: IntRange;
+    readonly riseSpeed: IntRange;
+    readonly maxParticles: number;
+  };
+}
+
+export interface DenAmbientConfig {
+  /** Ekrany (telewizor, monitor, laptop) pod murami: ile w pokoju i ile jeszcze działa (reszta — czarny ekran). */
+  readonly screensPerRoom: IntRange;
+  readonly litChance: number;
+  readonly wallReachTiles: number;
+  readonly minSpacingTiles: number;
+  readonly screen: GlowPropConfig;
+  /** Karaluchy: szansa na gromadkę w pokoju i jej wielkość. */
+  readonly roaches: {
+    readonly roomChance: number;
+    readonly count: IntRange;
+    readonly scuttle: ScuttlerConfig;
+  };
+  /** Puszki: ile w pokoju i jak się toczą po kopnięciu. */
+  readonly cans: {
+    readonly perRoom: IntRange;
+    /** Bohater bliżej niż tyle (px) kopie puszkę — tylko przy wejściu w promień, nie stojąc obok. */
+    readonly kickRadius: number;
+    /** Prędkość po kopnięciu (px/s): zwykły chód i dash. */
+    readonly walkKick: number;
+    readonly dashKick: number;
+    /** Hamowanie (1/s, wykładnicze) i sprężystość odbicia od muru (0..1). */
+    readonly friction: number;
+    readonly bounce: number;
+    /** Poniżej tej prędkości (px/s) puszka staje; odbicie słychać od `clinkSpeed`. */
+    readonly stopSpeed: number;
+    readonly clinkSpeed: number;
+  };
+}
+
 export interface AmbientConfig {
   /** Czy światła żywego otoczenia odsłaniają wrogów we mgle i mroku (jak pochodnie). */
   readonly revealsEnemies: boolean;
@@ -121,6 +199,10 @@ export interface AmbientConfig {
 export interface BiomeAmbientConfig {
   readonly grove: GroveAmbientConfig | null;
   readonly graveyard: GraveyardAmbientConfig | null;
+  /** Piekło (krok 157); brak = bez szczelin i chrząszczy. */
+  readonly infernal?: InfernalAmbientConfig | null;
+  /** Mieszkanie gracza (krok 157); brak = bez ekranów, karaluchów i puszek. */
+  readonly den?: DenAmbientConfig | null;
 }
 
 /** Grzybnia: biom „pełniejszy” od leża — kępy przy każdym murze, co trzeci pokój stara lampa. */
@@ -188,6 +270,68 @@ export const GRAVEYARD_AMBIENT: GraveyardAmbientConfig = {
     fleeRadius: 52,
     fleeSpeed: 38,
     wallMarginPx: 20,
+  },
+};
+
+/**
+ * Piekło (krok 157): w biomie bez cywilizacji żyje tylko żar. Szczeliny w głębi pokojów oddychają i wyrzucają iskry
+ * pod nogi przechodzącego (bez obrażeń — to klimat, nie pułapka; pułapkami Piekła są paleniska), chrząszcze grzeją
+ * się przy nich i uciekają. Liczby moje, do oceny właściciela.
+ */
+export const INFERNAL_AMBIENT: InfernalAmbientConfig = {
+  ventsPerRoom: { min: 1, max: 3 },
+  minSpacingTiles: 3,
+  vent: {
+    lightRadius: 28,
+    pulseOffsets: [-2, 0, 2, 4, 2, 0],
+    dimRadius: 12,
+    startleRadius: 24,
+    flinchMs: 330,
+    dimMs: 2200,
+    recoverMs: 1200,
+  },
+  beetles: {
+    roomChance: 0.45,
+    count: { min: 1, max: 3 },
+    lightRadius: 10,
+    scuttle: { fleeRadius: 40, dashFleeRadius: 70, runSpeed: 70, runMs: 700, spread: 0.7, hidesAtWall: false, wallMarginPx: 20 },
+  },
+  sparks: { burst: 12, driftIntervalMs: 380, lifespanMs: { min: 900, max: 1800 }, riseSpeed: { min: 12, max: 30 }, maxParticles: 80 },
+};
+
+/**
+ * Mieszkanie gracza (krok 157): wyżej w wieży jest jeszcze prąd. Ekrany pod murami świecą zimnym błękitem (gra
+ * albo komunikat z wieżą i strzałką w górę); przejście obok zakłóca obraz, a ekran na chwilę gaśnie do czuwania.
+ * Karaluchy pierzchają do szpar, puszki turlają się po kopnięciu. Liczby moje, do oceny właściciela.
+ */
+export const DEN_AMBIENT: DenAmbientConfig = {
+  screensPerRoom: { min: 1, max: 2 },
+  litChance: 0.8,
+  wallReachTiles: 1,
+  minSpacingTiles: 3,
+  screen: {
+    lightRadius: 30,
+    pulseOffsets: [0, -2, 0, 2, 0, -1],
+    dimRadius: 8,
+    startleRadius: 22,
+    flinchMs: 450,
+    dimMs: 1500,
+    recoverMs: 500,
+  },
+  roaches: {
+    roomChance: 0.55,
+    count: { min: 2, max: 5 },
+    scuttle: { fleeRadius: 44, dashFleeRadius: 76, runSpeed: 95, runMs: 1100, spread: 1.1, hidesAtWall: true, wallMarginPx: 12 },
+  },
+  cans: {
+    perRoom: { min: 0, max: 2 },
+    kickRadius: 9,
+    walkKick: 70,
+    dashKick: 190,
+    friction: 2.2,
+    bounce: 0.55,
+    stopSpeed: 6,
+    clinkSpeed: 40,
   },
 };
 

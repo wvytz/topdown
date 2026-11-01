@@ -13,10 +13,12 @@ const chebyshev = (a: { x: number; y: number }, b: { x: number; y: number }) => 
 const WALL_KINDS = new Set([AmbientKind.Glowcap, AmbientKind.OvergrownLamp, AmbientKind.Candle]);
 
 describe('planAmbient — żywe otoczenie Grzybni i Cmentarzyska (krok 156)', () => {
-  it('Grzybnia i Cmentarzysko mają żywe otoczenie, inne biomy nie', () => {
+  it('Grzybnia i Cmentarzysko mają żywe otoczenie (Piekło i mieszkanie — od kroku 157), ruiny i areny 6–7 nie', () => {
     expect(BIOMES[BiomeId.FungalGrove].ambient?.grove).toBeTruthy();
     expect(BIOMES[BiomeId.Graveyard].ambient?.graveyard).toBeTruthy();
-    for (const id of [BiomeId.TowerRuins, BiomeId.Infernal, BiomeId.MirrorHall, BiomeId.StorkGarden]) expect(BIOMES[id].ambient ?? null).toBeNull();
+    expect(BIOMES[BiomeId.Infernal].ambient?.infernal).toBeTruthy();
+    expect(BIOMES[BiomeId.SmokeDen].ambient?.den).toBeTruthy();
+    for (const id of [BiomeId.TowerRuins, BiomeId.MirrorHall, BiomeId.StorkGarden]) expect(BIOMES[id].ambient ?? null).toBeNull();
   });
 
   it('rekwizyty stoją na podłodze pokoju startowego albo zwykłego, nie na środku, nie przy schodach i starcie', () => {

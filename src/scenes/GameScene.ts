@@ -314,7 +314,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Biom piętra: arkusz kafli, dekorowanie, warianty wrogów. */
   private biome!: BiomeDefinition;
   private torches!: Torches;
-  /** Żywe otoczenie Grzybni i Cmentarzyska (krok 156); null — biom bez niego albo areny bossów. */
+  /** Żywe otoczenie biomów 2–5 (kroki 156–157); null — biom bez niego albo areny bossów. */
   private ambient: AmbientLifeView | null = null;
   private combatDecals!: CombatDecals;
   private death: DeathSummary | null = null;
