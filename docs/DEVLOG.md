@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5437,6 +5437,34 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** `#ruiny` `#ocena` gęstość śmieci (50% kafli), czy kości i szczątki nie mylą się z łupami, czy zniszczenie ma rosnąć jeszcze bardziej. Następnie: malejące zniszczenie na kolejnych piętrach zgodnie z lore (piętra 2–7 mają własne motywy — do omówienia).
 
+## Krok 156 — Żywe otoczenie Grzybni i Cmentarzyska `#zywe-otoczenie` `#grzybnia` `#cmentarzysko`
+
+**Prośba właściciela (31.10):** „dodajmy sobie lepsze animacje też do drugiego biomu i do trzeciego biomu”, z pytaniem, czy trzymać się stałych warunków, czy dodać „interaktywne, bardziej zmienne warunki”. Lore (decyzja właściciela): na dole zniszczona cywilizacja, wyżej coraz więcej jej resztek — piętra 2–3 mniej zrujnowane niż piętro 1. Poziom detalu jak ogień (krok 144) i szlam (krok 153). Areny sprzątaczek i Wiedźmy robi osobny wątek.
+
+**Co powstało — rekwizyty bez kolizji, które żyją i reagują na bohatera:**
+- **Grzybnia (piętro 2):**
+  - **Świecące kępy grzybów** (2–4 na pokój, pod murami, nie w przejściach): puls światła wędruje po kapeluszach i biegnie żyłkami grzybni po posadzce. Bohater wchodzi w promień 22 px → grzyby kulą się w pąki, sypią świecącymi zarodnikami („pff”, `SoundCue.SporePuff`) i przygasają; czekają, aż bohater odejdzie, potem po 2,4 s budzą się schodkami.
+  - **Stara latarnia zarośnięta grzybem** (co trzeci pokój): pęknięta szybka, grzyb wylewa się na posadzkę — resztka cywilizacji. Zachowuje się jak kępa, świeci mocniej.
+  - **Świecące ćmy** (u ok. połowy kęp i lamp, 1–3): krążą spłaszczoną orbitą, po spłoszeniu rozpierzchają się szeroko i wracają przez 2,2 s.
+  - **Zarodniki** wzlatują co chwilę z widocznych, spokojnych kęp.
+- **Cmentarzysko (piętro 3):**
+  - **Znicze** (1–3 grupy na pokój pod murami, w czerwonym i bursztynowym szkle): płomień migocze za szkłem, przejście obok szarpie płomieniem, a **dash obok gasi znicz na dobre** (syk `SoundCue.CandleSnuff` i smużka dymu) — pokój robi się ciemniejszy. 20% zniczy już się wypaliło (ktoś jeszcze pamięta o zmarłych, ale coraz mniej).
+  - **Kruki** (co trzeci pokój, stadko 1–3): siedzą, mrugają i dziobią; bohater bliżej niż 46 px (w dashu 80 px) — zrywają się (`SoundCue.WingFlap`), odlatują od niego, wznoszą się nad cieniem i znikają w mroku; spłoszony kruk zrywa sąsiadów falą (90–260 ms).
+  - **Błędne ogniki** (co drugi pokój): zimny zielony płomyk snuje się ósemką; bohater bliżej niż 52 px — ucieka, ale zostaje w pokoju (osaczony sunie wzdłuż muru).
+- **Światła:** kępy (26 px), lampy (34 px), znicze (22 px) i ogniki (24 px) rozwiewają mgłę i mrok jak pochodnie, z poświatą ADD i skokowym pulsem. **Odsłaniają też wrogów** (`AMBIENT_CONFIG.revealsEnemies`) — spłoszona kępa przygasa, a zdmuchnięty znicz gaśnie, więc warunki walki zmieniają się od zachowania gracza (odpowiedź na „interaktywne, bardziej zmienne warunki”). Przy modyfikatorze „Mrok” światła i poświaty nie działają (jak pochodnie).
+
+**Decyzje:** tylko pokój startowy i zwykłe (arena, zasadzka i ukryta komnata mają własną oprawę); w arenach bossów (tryb testowy) — bez żywego otoczenia. Rekwizyty omijają schody, start, kapliczkę i kryjówki Czyhaczy. Własny strumień RNG (`AMBIENT_SEED_SALT`) — rozmieszczenie wrogów i reszty piętra bez zmian. Animacje liczymy tylko blisko kadru (64 px zapasu).
+
+**Grafika — `tools/ambient_sprites.py` (nowy):** `grove-glowcap.png` (3 warianty kępy × 10 klatek: puls, skulenie, przygaszenie), `grove-lamp.png`, `grove-moth.png`, `grave-candle.png` (1, 2 albo 3 znicze × 10 klatek: migotanie, szarpnięcie, zgaszony, dym), `grave-wisp.png`, `grave-raven.png` (spoczynek, dziobanie, lot). Rampy światła z arkuszy biomów, pasmowe cieniowanie, świecące elementy bez obrysu (STYLEGUIDE §6b). Cień kruka rysuje gra (alfa 0,4).
+
+**Pliki:** czyste — `config/ambientConfig.ts` (wszystkie liczby), `dungeon/AmbientPlanner.ts` (dopisany do `PURE_FILES`), `systems/AmbientLife.ts` (fazy grzybów i zniczy, kruki, ogniki, ćmy), `config/biomeConfig.ts` (`ambient`); Phaser — `effects/AmbientLifeView.ts`, `scenes/GameScene.ts` (`setupAmbientLife`, światła w `pointLights`), `config/spriteConfig.ts`, `config/renderLayers.ts` (`ambientProp`, `ambientCritter`, `ambientFlyer`, `ambientGlow`), `config/audioConfig.ts`.
+
+**Testy:** `tests/dungeon/AmbientPlanner.test.ts` (6: tylko Grzybnia i Cmentarzysko, podłoga pokoju poza środkiem/schodami/startem, pod murem vs w głębi, omijanie kafli, determinizm i gęstość, wypalone znicze), `tests/systems/ambientLife.test.ts` (11: cykl płoszenia, stanie obok nie płoszy w kółko, dash gasi tylko znicze, puls i schodki światła, ćmy, odlot kruka, dash z dalszej odległości, alarm stada, ósemka i ucieczka ognika). `npm run build` OK (2516 testów). `npm run smoke -- --floors 3 --seeds 1` — wszyscy trzej bohaterowie przechodzą piętra 1–3 bez błędów.
+
+**Weryfikacja w przeglądarce:** `?seed=7&floor=2` i `?seed=7&floor=3` — przejście przez kępy (skulenie, zarodniki, ćmy), lampa, zryw kruka, ucieczka ognika, dash gaszący znicz; bez błędów w konsoli. Zrzuty i dwa nagrania: `screens/krok156-zywe-otoczenie/` w plikach projektu.
+
+**Do oceny właściciela:** gęstość (kępy 2–4 na pokój, znicze 1–3, kruki co trzeci pokój), czy światła mają odsłaniać wrogów we mgle (`revealsEnemies`), czy dash ma gasić znicze, wygląd kruków i ogników, siła poświaty.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5576,6 +5604,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
 **Ruiny po apokalipsie (krok 155)** `#ruiny` `#lore`: śmieci i zniszczenie na piętrze 1 — czeka na ocenę (gęstość, kości vs łupy). Lore: im wyżej, tym mniej ruiny i więcej resztek cywilizacji.
+
+**Żywe otoczenie (krok 156)** `#zywe-otoczenie`: Grzybnia (kępy grzybów, lampy, ćmy) i Cmentarzysko (znicze, kruki, ogniki) — czeka na ocenę: gęstość, odsłanianie wrogów przez światła, gaszenie zniczy dashem. Dalej: ten sam pomysł dla Piekła i Palarni, interaktywne warunki dla Lustrzanej komnaty i Bocianiego Ogrodu (osobny wątek).
 
 **Król Szlamu (krok 153)** `#krol-szlamu`: szlam zamiast ognia, kałuże i szlam od ścian — czeka na ocenę (siła spowolnień, tempo zwężania, fiolet). Kolejne kroki: ten sam poziom detalu dla ataków innych bossów; zwężanie areny u Kata Otchłani jako rozwinięcie.
 

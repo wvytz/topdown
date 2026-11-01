@@ -13,6 +13,8 @@ import {
   SPIDER_LAIR_DRESSING,
   STORK_GARDEN_DRESSING,
 } from '@/config/dressingConfig';
+import type { BiomeAmbientConfig } from '@/config/ambientConfig';
+import { GRAVEYARD_AMBIENT, GROVE_AMBIENT } from '@/config/ambientConfig';
 import type { FogConfig, MirrorFloorConfig } from '@/config/lightingConfig';
 import { FUNGAL_FOG, GARDEN_NIGHT, GRAVEYARD_MIST, INFERNAL_HAZE, MIRROR_FLOOR, SMOKE_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
@@ -73,6 +75,8 @@ export interface BiomeDefinition {
   readonly wallDogs?: WallDogConfig | null;
   /** Lustrzana posadzka (krok 124): odbicia postaci i błyski; brak = zwykła podłoga. */
   readonly mirrorFloor?: MirrorFloorConfig | null;
+  /** Żywe otoczenie (krok 156): animowane rekwizyty reagujące na bohatera; brak = bez nich. */
+  readonly ambient?: BiomeAmbientConfig | null;
 }
 
 export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
@@ -207,6 +211,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     braziers: null,
     traps: null,
     breakables: null,
+    // Krok 156: świecące kępy grzybów, zarośnięte lampy i ćmy.
+    ambient: { grove: GROVE_AMBIENT, graveyard: null },
   },
   // Cmentarzysko (krok 32a): ludzki biom nad Grzybnią — tu upadli zatruci; jedni się rozkładają, inni zmieniają
   // w grzybowe zombie. Grzyb ledwo dociera. Paleta C „trupia zieleń” (wybór właściciela), świece zamiast
@@ -225,6 +231,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     braziers: null,
     traps: null,
     breakables: null,
+    // Krok 156: znicze, błędne ogniki i kruki.
+    ambient: { grove: null, graveyard: GRAVEYARD_AMBIENT },
   },
   // Piekło (krok 41a, prośba właściciela): krwisty, demoniczny biom z pomarańczowym żarem; paleta A
   // „krwawy bazalt” (wybór właściciela). Wrogowie (krok 41d): piekielny ogar (Rusher) i kultysta popiołu
