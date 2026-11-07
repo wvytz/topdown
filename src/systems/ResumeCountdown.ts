@@ -10,6 +10,9 @@ export interface ResumeCountdownConfig {
   readonly stepMs: number;
   /** Najdłuższa klatka liczona do odliczania (ms) — po zacięciu karty odliczanie nie przeskakuje. */
   readonly maxFrameMs: number;
+  /** Krok 161 (uwaga testera): po tylu ms odliczanie można pominąć kliknięciem / Enter / A — wcześniej nie,
+   *  żeby to samo kliknięcie, które wcisnęło „Wznów”, od razu go nie przeskoczyło. */
+  readonly minSkipMs: number;
 }
 
 export class ResumeCountdown {
@@ -23,6 +26,18 @@ export class ResumeCountdown {
     const before = this.value;
     this.elapsed += Math.min(Math.max(deltaMs, 0), this.config.maxFrameMs);
     return this.value !== before;
+  }
+
+  /** Czy pominięcie jest już dozwolone (zob. `minSkipMs`). */
+  get canSkip(): boolean {
+    return !this.done && this.elapsed >= this.config.minSkipMs;
+  }
+
+  /** Pomija resztę odliczania; zwraca, czy się udało. */
+  skip(): boolean {
+    if (!this.canSkip) return false;
+    this.elapsed = this.total;
+    return true;
   }
 
   get total(): number {

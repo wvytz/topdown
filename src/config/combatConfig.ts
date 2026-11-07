@@ -23,7 +23,9 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
   meleeRange: 52,
   meleeArcDeg: 110,
   attackCooldownMs: 320,
-  knockback: 260,
+  // Krok 161 (uwaga testera: „mniejszy pushback wrogów”): odrzut zwykłych trafień ok. ×0,6 — wróg zostaje bliżej
+  // i da się dokończyć combo. Fala Czarodziejki, ultimate i odrzut od bossów bez zmian.
+  knockback: 160,
   invulnerabilityMs: 600,
   // Krok 117 (ocena właściciela: dash za długi na pokoje 5–10 kafli): 620 × 150 ms ≈ 93 px (prawie 3 kafle)
   // → 500 × 140 ms = 70 px (ok. 2 kafle); nietykalność dasha prawie bez zmian (= czas trwania).
@@ -35,7 +37,7 @@ export const PLAYER_COMBAT: PlayerCombatConfig = {
   // Strzał jest słabszy od ciosu wręcz: uzupełnienie walki (dobijanie, Kitery), nie zamiennik.
   ranged: {
     damage: 9,
-    knockback: 90,
+    knockback: 55,
     projectileSpeed: 460,
     projectileLifetimeMs: 650,
     projectileRadius: 4,

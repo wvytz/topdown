@@ -27,7 +27,8 @@ export interface EliteConfig {
   /** Szansa na elitę w pokoju z wrogami, wg piętra (indeks 0 = piętro 1; dalej ostatnia wartość). */
   readonly roomChanceByFloor: readonly number[];
   /** Najmniej elit na piętrze (krok 44: właściciel nie trafił na żadną) — dolosowane w pokojach bez elity. */
-  readonly minPerFloor: number;
+  /** Najmniej elit na piętrze, wg piętra (ostatnia wartość obowiązuje dalej; krok 161). */
+  readonly minPerFloorByFloor: readonly number[];
   readonly hpMultiplier: number;
   readonly damageMultiplier: number;
   readonly affixes: Readonly<Record<EliteAffix, EliteAffixDefinition>>;
@@ -69,6 +70,11 @@ export function eliteRoomChance(config: EliteConfig, floor: number): number {
   return table[Math.min(table.length - 1, Math.max(0, floor - 1))] ?? 0;
 }
 
+export function eliteMinPerFloor(config: EliteConfig, floor: number): number {
+  const table = config.minPerFloorByFloor;
+  return table[Math.min(table.length - 1, Math.max(0, floor - 1))] ?? 0;
+}
+
 /** Cechy dostępne dla archetypu na piętrze (kolejność jak w konfiguracji — stabilna dla RNG). */
 export function availableAffixes(config: EliteConfig, type: EnemyType, floor: number): EliteAffix[] {
   return (Object.keys(config.affixes) as EliteAffix[]).filter((affix) => {
@@ -79,7 +85,7 @@ export function availableAffixes(config: EliteConfig, type: EnemyType, floor: nu
 
 /**
  * Wybiera elity: w każdym pokoju z wrogami z szansą piętra jeden wróg dostaje `affixCount` różnych cech
- * (mniej, jeśli tyle nie ma); na piętrze jest co najmniej `minPerFloor` elit (o ile starczy pokojów). Zwraca cechy dla każdego spawnu (pusto = zwykły wróg), w kolejności spawnów.
+ * (mniej, jeśli tyle nie ma); na piętrze jest co najmniej `eliteMinPerFloor` elit (o ile starczy pokojów). Zwraca cechy dla każdego spawnu (pusto = zwykły wróg), w kolejności spawnów.
  * Losuje zawsze tyle samo razy na pokój — elity w jednym pokoju nie zależą od reszty piętra.
  */
 export function rollElites(
@@ -99,7 +105,8 @@ export function rollElites(
   });
   // Za mało elit: dolosowujemy pokoje spośród tych bez elity.
   const spare = picks.filter((p) => !p.elite);
-  while (picks.filter((p) => p.elite).length < config.minPerFloor && spare.length > 0) {
+  const minimum = eliteMinPerFloor(config, floor);
+  while (picks.filter((p) => p.elite).length < minimum && spare.length > 0) {
     spare.splice(Math.floor(rng.next() * spare.length), 1)[0]!.elite = true;
   }
   for (const { pick, elite } of picks) {

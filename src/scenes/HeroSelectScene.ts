@@ -18,6 +18,8 @@ import { openMainMenu } from '@/scenes/BootScene';
 import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { startFloorInfo } from '@/systems/FloorSelect';
 import { MenuCommand, menuCommandFromKey } from '@/systems/gamepadInput';
+import { spaceConfirms } from '@/systems/spaceConfirm';
+import { SPACE_CONFIRM_CONFIG } from '@/config/menuConfig';
 import { bindPadMenu } from '@/input/PadMenuInput';
 
 interface HeroCard {
@@ -48,6 +50,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private cards: HeroCard[] = [];
   private selected = 0;
   private mode = RunMode.Tower;
+  private openedAt = 0;
   private modeTabs: ModeTab[] = [];
   private modeDescription!: Phaser.GameObjects.Text;
   private starting = false;
@@ -67,6 +70,7 @@ export class HeroSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.openedAt = performance.now();
     this.cameras.main.setBackgroundColor(P.background);
     const style: Phaser.Types.GameObjects.Text.TextStyle = { fontFamily: 'monospace', color: P.text };
 
@@ -171,6 +175,11 @@ export class HeroSelectScene extends Phaser.Scene {
     if (event.key === 'Tab') {
       event.preventDefault();
       this.setMode(nextRunMode(this.mode));
+      return;
+    }
+    // Krok 161: spacja wybiera bohatera (wybór bohatera niczego nie nadpisuje); nie zaraz po otwarciu ekranu.
+    if (spaceConfirms({ key: event.key, repeat: event.repeat, sinceOpenMs: performance.now() - this.openedAt }, true, SPACE_CONFIRM_CONFIG)) {
+      this.onCommand(MenuCommand.Confirm);
       return;
     }
     // Backspace w tym ekranie nie wraca do menu (tylko Esc) — jak przed krokiem 95.

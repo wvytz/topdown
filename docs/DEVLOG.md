@@ -5556,6 +5556,22 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** tempo mycia i siła poślizgu, jak często sprzątaczka sama wpada w poślizg (próg 120 px/s — przy domyślnych liczbach rzadko, głównie przez kałużę z wiadra), wygląd rekwizytów (rysowane w kodzie, do generatora), siła upadku (15% HP) i wiatru, częstotliwość żywopłotów, czy gniazda mają być łatwiejsze do zniszczenia.
 
+## Krok 161 — Uwagi doświadczonego testera, etap A: skip odliczania, mniejszy odrzut, więcej elit, spacja w menu `#ocena` `#decyzja` `#uwagi-testera`
+
+**Kontekst (6.11):** Wicio przekazał 18 uwag testera-fana roguelike'ów. Plan w 3 etapach (dokument „TOP DOWN — plan wdrożenia uwag testera”), a 7.11 decyzje właściciela: krótszy run z finałem po piętrze 7, 2. krąg → Akt II, układ ścieżka główna + odnogi, relikwie bossów (nowy rodzaj przedmiotu — zgoda), próba `?zoom=1.6`, próba wolniejszych ciosów barbarzyńcy, **Czarodziejka ukryta z wyboru** (kod zostaje), spacja tylko w bezpiecznych miejscach. Ten krok to etap A.
+
+**Co powstało:**
+- **Skip odliczania po pauzie:** kliknięcie / stuknięcie, Enter, spacja albo A na padzie pomija 3-2-1; krok odliczania 1,0 → 0,6 s (`PAUSE_CONFIG.countdown.stepMs`). Pierwsze 120 ms (`minSkipMs`) bez skipu — kliknięcie „Wznów” nie przeskakuje odliczania tym samym zdarzeniem. Esc / P / Start dalej wracają do pauzy.
+- **Mniejszy odrzut wrogów** (zwykłe trafienia ok. ×0,6): cios barbarzyńcy 260 → 160, jego strzał 90 → 55, kule Czarodziejki 120 → 75, strzały łucznika 110 → 70 (mocna 200 → 130). Fala uderzeniowa, ultimate, przemiany i odrzut od bossów bez zmian.
+- **Więcej elit:** szansa na pokój 20/30/40% → 35/50/60% (piętra 1/2/3+), minimum elit na piętrze z tabeli `minPerFloorByFloor` [1, 2] — od piętra 2 co najmniej 2.
+- **Spacja w menu** (odwraca część kroku 129/130): spacja wybiera w menu głównym, na ekranie wyboru bohatera i w pauzie, ale nie tam, gdzie można stracić zapis — zapis do slotu, wyjście do menu, czat, a w menu głównym nowy run (wspinaczka, co-op, areny, wybór piętra), gdy jest autozapis „Kontynuuj”. Przez 400 ms po otwarciu ekranu i przy autopowtórzeniu spacja nic nie wybiera (dash z biegu). Logika: `systems/spaceConfirm.ts`, liczba: `SPACE_CONFIRM_CONFIG`. Pad A bez zmian.
+
+**Testy:** `tests/systems/spaceConfirm.test.ts` (nowy), `resumeCountdown.test.ts` (skip po `minSkipMs`, 1,8 s), `elites.test.ts` (min. 2 od piętra 2, szansa 60%).
+
+**Weryfikacja:** `npm run build`, smoke wszystkimi bohaterami.
+
+**Do oceny właściciela:** czy 0,6 s na krok odliczania wystarcza, czy odrzut nie jest teraz za mały dla Kiterów, ile elit to „wincyj”.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5714,3 +5730,8 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **6. Drobne uwagi techniczne**
 - **Boss bez reguły widoku:** arena (11–13 kafli) jest wyższa niż widok w pionie (ok. 8,4 kafla), więc uderzenie może spaść poza kadrem. Ataki są obszarowe i z telegrafem. Od kroku 136 strzałka przy krawędzi ekranu pokazuje bossa poza kadrem; oddalenie kamery na arenie — tylko jeśli to nie wystarczy.
 - **Pozostałości testów w panelu przeglądarki:** wpisy „0 złota” na tablicy rekordów i dwa stare wpisy w konsoli z przeładowań HMR w kroku 18. Gra działa poprawnie.
+
+**Uwagi testera z 6.11 — plan (decyzje właściciela 7.11)** `#uwagi-testera`:
+- [x] Etap A (krok 161): skip odliczania, mniejszy odrzut, więcej elit, spacja w bezpiecznych menu.
+- [ ] Etap B: ekran „Moje przedmioty” (pauza + ekran śmierci), ikonki pokojów na minimapie, ustalone fale w zasadzce, groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
+- [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).

@@ -56,7 +56,8 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       sorcery: {
         orbs: {
           damage: 18,
-          knockback: 120,
+          // Krok 161: odrzut ×0,6 (uwaga testera).
+          knockback: 75,
           speed: 360,
           lifetimeMs: 750,
           radius: 5,
@@ -111,7 +112,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       // Krok 88: 8 → 7, tyle co strzał barbarzyńcy.
       ranged: {
         damage: 9,
-        knockback: 110,
+        knockback: 70,
         projectileSpeed: 480,
         projectileLifetimeMs: 550,
         projectileRadius: 4,
@@ -129,10 +130,11 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
           // ≈ 37/s, ale wręcz i łukiem); wcześniej pełne naciągnięcie 14 co 1,3 s ≈ 11/s.
           // Krok 145: obrażenia bohaterów ×1,25 (8/14 → 10/18, ok. 37/s; cios barbarzyńcy 15/0,32 s ≈ 47/s).
           damage: 10,
-          knockback: 110,
+          // Krok 161: odrzut ×0,6 (uwaga testera).
+          knockback: 70,
           speed: 520,
           strongDamage: 18,
-          strongKnockback: 200,
+          strongKnockback: 130,
           strongSpeed: 620,
           strongPierce: 1,
           strongEvery: 3,
