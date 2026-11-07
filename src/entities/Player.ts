@@ -68,6 +68,8 @@ export interface PlayerTickResult {
   readonly beam: boolean;
   /** Czarodziejka: ile razy promień zadaje obrażenia w tej klatce. */
   readonly beamTicks: number;
+  /** Czarodziejka: narastanie Wyrwy 0..1 (krok 181). */
+  readonly beamCharge: number;
   /** Łucznik: strzała z łuku wypuszczona w tej klatce (kierunek, czy mocna); null = brak. */
   readonly arrow: { readonly direction: Vector2; readonly strong: boolean } | null;
   /** Łucznik: kierunek celowania salwy (wachlarz rozkłada scena); null = brak. */
@@ -84,12 +86,13 @@ const IDLE: PlayerTickResult = {
   nova: false,
   beam: false,
   beamTicks: 0,
+  beamCharge: 0,
   arrow: null,
   volley: null,
   ultimate: null,
 };
 /** Barwa bohatera w trakcie nietykalności z ultimate: szał (czerwień) i tarcza Supernowej (błękit). */
-const ULTIMATE_GUARD_TINT: Readonly<Record<UltimateConfig['kind'], number>> = { rage: 0xff8a6a, supernova: 0x9ef2ff, totem: 0xffffff };
+const ULTIMATE_GUARD_TINT: Readonly<Record<UltimateConfig['kind'], number>> = { rage: 0xff8a6a, supernova: 0xd9b8ff, totem: 0xffffff };
 /** Kolor znacznika celowania, gdy następna strzała serii będzie mocna. */
 const STRONG_ARROW_AIM_TINT = 0xffe08a;
 const KNOCKBACK_STUN_MS = 120;
@@ -449,7 +452,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.bow?.interrupt();
       }
     }
-    const beam = this.beam?.update(actions.shoot && !this.dash.isDashing(now), now) ?? { active: false, ticks: 0 };
+    const beam = this.beam?.update(actions.shoot && !this.dash.isDashing(now), now) ?? { active: false, ticks: 0, charge: 0 };
     // Łucznik: salwa (PPM) przerywa serię; przytrzymany LPM strzela w kółko (krok 97).
     const aim = { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
     const volley = this.bow && actions.shoot && !this.dash.isDashing(now) && this.tryShoot(now) ? aim : null;
@@ -493,7 +496,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.updateVisuals(now);
       this.updateOrbit(now);
       this.updateSorceryAnimation(actions, now, castStarted, beam.active);
-      return { ...IDLE, poisonDamage, ultimate, orb, nova: thrown?.last ?? false, beam: beam.active, beamTicks: beam.ticks };
+      return { ...IDLE, poisonDamage, ultimate, orb, nova: thrown?.last ?? false, beam: beam.active, beamTicks: beam.ticks, beamCharge: beam.charge };
     }
 
     if (bow) {
@@ -657,7 +660,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     else if (this.ultimateGuard.isActive(now)) this.setTint(ULTIMATE_GUARD_TINT[this.ultimateConfig.kind]);
     else this.clearTint();
     if (this.dash.isDashing(now)) {
-      this.setAlpha(0.5);
+      // Krok 181: teleport Czarodziejki — postać znika na czas przeskoku.
+      this.setAlpha(this.combat.dash.blink ? 0 : 0.5);
     } else if (this.invulnerability.isActive(now)) {
       // Miganie w trakcie nietykalności po trafieniu.
       this.setAlpha(Math.floor(now / 80) % 2 === 0 ? 0.35 : 1);

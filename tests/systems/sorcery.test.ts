@@ -11,7 +11,7 @@ import { Health } from '@/systems/Health';
 import type { MeleeTarget } from '@/systems/MeleeResolver';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
-import { BeamChannel, OrbSeries, beamPulseStatus, beamReach, isBeamPulse, crystalPoint, distanceToSegment, orbitOffsets, resolveBeam, resolveSplash } from '@/systems/Sorcery';
+import { BeamChannel, OrbSeries, beamGrowth, beamPulseStatus, beamReach, isBeamPulse, crystalPoint, distanceToSegment, orbitOffsets, resolveBeam, resolveSplash } from '@/systems/Sorcery';
 
 const sorceress = HERO_DEFINITIONS[HeroId.Sorceress];
 const barbarian = HERO_DEFINITIONS[HeroId.Barbarian];
@@ -160,7 +160,7 @@ describe('orbita kul', () => {
 describe('promień (PPM)', () => {
   it('zapala się po wciśnięciu, zadaje obrażenia od razu i co tickMs', () => {
     const beam = new BeamChannel(beamConfig);
-    expect(beam.update(true, 1000)).toEqual({ active: true, ticks: 1 });
+    expect(beam.update(true, 1000)).toEqual({ active: true, ticks: 1, charge: 0 });
     expect(beam.update(true, 1000 + beamConfig.tickMs - 1).ticks).toBe(0);
     expect(beam.update(true, 1000 + beamConfig.tickMs).ticks).toBe(1);
     expect(beam.update(true, 1000 + beamConfig.tickMs * 3).ticks).toBe(2);
@@ -308,5 +308,28 @@ describe('promień z przedmiotami (krok 180)', () => {
     expect(status.stun).toBeUndefined();
     expect(status.slow?.pct).toBe(0.4);
     expect(status.burn?.tickDamage).toBe(3);
+  });
+});
+
+describe('Wyrwa i teleport (krok 181)', () => {
+  it('narastanie jest wykładnicze: ×1 na starcie, ×max na końcu, połowa czasu = pierwiastek', () => {
+    expect(beamGrowth(0, 4)).toBe(1);
+    expect(beamGrowth(1, 4)).toBe(4);
+    expect(beamGrowth(0.5, 4)).toBeCloseTo(2);
+    expect(beamGrowth(2, 4)).toBe(4);
+  });
+
+  it('BeamChannel podaje postęp narastania', () => {
+    const channel = new BeamChannel(beamConfig);
+    expect(channel.update(true, 0).charge).toBe(0);
+    expect(channel.update(true, beamConfig.maxChannelMs / 2).charge).toBeCloseTo(0.5);
+    expect(channel.update(false, beamConfig.maxChannelMs / 2 + 10).charge).toBe(0);
+  });
+
+  it('Wyrwa rośnie w obrażeniach i szerokości, a dash Czarodziejki to teleport', () => {
+    expect(beamConfig.growth.damageMultiplier).toBeGreaterThan(1);
+    expect(beamConfig.growth.widthMultiplier).toBeGreaterThan(1);
+    expect(sorceress.combat.dash.blink).toBe(true);
+    expect(barbarian.combat.dash.blink).toBeFalsy();
   });
 });

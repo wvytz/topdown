@@ -104,7 +104,7 @@ COLORS = {
     'L': BONE[1], 'H': BONE[2], 'j': BONE[2], 'R': BLOOD,
     's': IRON[0], 'S': IRON[1], 'T': IRON[2],
     'g': GOLD[0], 'G': GOLD[1], 'Y': GOLD[2],
-    'c': hx('#1d7f9c'), 'C': hx('#39c0d8'), 'e': hx('#e4fbfb'),  # kryształ — barwy promienia (HeroCombat.drawBeam)
+    'c': hx('#4a1f8c'), 'C': hx('#8a4fe0'), 'e': hx('#f6eaff'),  # kryształ — fiolet Czarodziejki (SORCERY_COLORS, krok 181)
     'w': DIRT[2], 'W': DIRT[3], 'u': hx('#9a6e44'),  # u jaśniejsze od DIRT[4] — łuk ma być widać na ciemnym tle
 }
 

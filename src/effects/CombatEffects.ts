@@ -1,7 +1,8 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { AREA_TELEGRAPH_VISUAL, BLAST_VISUAL, NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
+import { AREA_TELEGRAPH_VISUAL, BLAST_VISUAL, BLINK_VISUAL, NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
+import { SORCERY_COLORS } from '@/config/heroColorConfig';
 import { FireEffects } from '@/effects/FireEffects';
 import { SludgeEffects } from '@/effects/SludgeEffects';
 import { exposedArcs } from '@/systems/AreaOutline';
@@ -120,6 +121,15 @@ export class CombatEffects {
     const ring = this.scene.add.circle(x, y, radius, color, fillAlpha).setStrokeStyle(3, core, alpha).setDepth(RENDER_DEPTH.groundFlash);
     ring.setScale(startScale);
     this.scene.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: durationMs, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
+  }
+
+  /** Teleport Czarodziejki (krok 181): fioletowy pierścień zapada się do jasnego jądra w miejscu startu i przybycia. */
+  blink(x: number, y: number): void {
+    const { radius, durationMs } = BLINK_VISUAL;
+    const ring = this.scene.add.circle(x, y, radius, SORCERY_COLORS.deep, 0.25).setStrokeStyle(2, SORCERY_COLORS.light, 1).setDepth(RENDER_DEPTH.slash);
+    const core = this.scene.add.circle(x, y, radius * 0.45, SORCERY_COLORS.core, 0.9).setDepth(RENDER_DEPTH.slash);
+    this.scene.tweens.add({ targets: ring, scale: 0.2, alpha: 0, duration: durationMs, ease: 'Quad.easeIn', onComplete: () => ring.destroy() });
+    this.scene.tweens.add({ targets: core, scale: 1.6, alpha: 0, duration: durationMs, ease: 'Quad.easeOut', onComplete: () => core.destroy() });
   }
 
   /** Unoszący się napis (np. „+3” złota) nad miejscem zdarzenia. */

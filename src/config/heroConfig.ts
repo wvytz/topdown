@@ -58,12 +58,14 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
     tagline: 'Najtrudniejsza: promień i kule',
     attacks: [
       { input: 'LPM', text: '3 kule energii, potem fala' },
-      { input: 'PPM', text: 'promień (przytrzymaj)' },
+      { input: 'PPM', text: 'Wyrwa: rośnie, gdy trzymasz' },
       { input: 'R', text: 'Supernowa i tarcza' },
     ],
     // Krok 180 (przywrócenie, była najsłabsza): 75 → 80 HP — promień spowalnia ją, więc dostaje więcej ciosów niż łucznik.
     stats: { maxHp: 80, moveSpeed: 175 },
-    combat: PLAYER_COMBAT,
+    // Krok 181 (prośba właściciela): dash to natychmiastowy teleport — ok. 77 px w 70 ms, postać znika na ten czas
+    // (szybki ruch zamiast przeskoku, żeby nie przenikać murów; nietykalność = czas trwania jak u innych).
+    combat: { ...PLAYER_COMBAT, dash: { ...PLAYER_COMBAT.dash, speed: 1100, durationMs: 70, blink: true } },
     kit: {
       kind: 'sorcery',
       sorcery: {
@@ -91,10 +93,12 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
         },
         // Krok 97 (raport testera: promień za słaby): 5 → 8 na tick (40/s), dłuższy i szerszy,
         // trwa do 3 s, blokada 1,5 → 1 s, mniejsze spowolnienie (0,5 → 0,6).
+        // Krok 181 — Wyrwa (prośba właściciela: promień rosnący wykładniczo): 6 na tick (30/s) na starcie, po 3 s ×4
+        // (120/s) i 3× szerzej; średnio ×2,16 przez pełne 3 s. Z kulami w blokadzie ok. 50/s (wcześniej ok. 46/s).
         beam: {
           range: 170,
           halfWidth: 5,
-          damagePerTick: 10,
+          damagePerTick: 6,
           tickMs: 200,
           knockback: 25,
           moveSpeedMultiplier: 0.6,
@@ -104,8 +108,10 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
           sideOffset: 4,
           // Krok 180: Ostrze +3 → +2 na tyknięcie (+10/s, u barbarzyńcy +3 co 0,42 s ≈ +7/s, ale promień przebija);
           // impuls co 3. tyknięcie (0,6 s): statusy, kieł, Rozpęd i Fala ostrza.
-          bladeDamageFraction: 0.5,
+          // Krok 181: Ostrze 0,5 → 0,34 (+1 na tyknięcie), bo premia też rośnie ×4 z Wyrwą.
+          bladeDamageFraction: 0.34,
           pulseEveryTicks: 3,
+          growth: { damageMultiplier: 4, widthMultiplier: 3 },
         },
       },
     },

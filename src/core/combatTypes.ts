@@ -456,6 +456,8 @@ export interface DashConfig {
   readonly cooldownMs: number;
   /** Krok 150, Pętla czasu (Klepsydra ×3): ładunki dasha; brak = 1. */
   readonly charges?: number;
+  /** Krok 181, teleport Czarodziejki: postać znika na czas dasha, błysk w miejscu startu i przybycia. */
+  readonly blink?: boolean;
 }
 
 /** Atak dystansowy gracza (PPM): strzał z puli ładunków odnawiających się z czasem. */

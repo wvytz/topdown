@@ -71,6 +71,11 @@ export interface BeamConfig {
    * i liczy się jako atak główny (Rozpęd, Fala ostrza). Pierwsze tyknięcie po zapaleniu jest impulsem.
    */
   readonly pulseEveryTicks: number;
+  /**
+   * Krok 181, Wyrwa (prośba właściciela: promień rosnący wykładniczo): przez `maxChannelMs` obrażenia tyknięcia
+   * rosną od ×1 do ×`damageMultiplier`, a szerokość od ×1 do ×`widthMultiplier` — oba jak potęga czasu.
+   */
+  readonly growth: { readonly damageMultiplier: number; readonly widthMultiplier: number };
 }
 
 export interface SorceryConfig {

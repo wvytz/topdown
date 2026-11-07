@@ -2118,10 +2118,10 @@ export const SPORE_BLAST_VISUAL = {
 } as const;
 
 /** Rozprysk kuli Czarodziejki (krok 50): pierścień w kolorze kul. */
-export const ORB_SPLASH_VISUAL = { color: 0x6ee7ff, alpha: 0.7, fillAlpha: 0.18, durationMs: 220 } as const;
+export const ORB_SPLASH_VISUAL = { color: 0xb487ff, alpha: 0.7, fillAlpha: 0.18, durationMs: 220 } as const;
 /** Ultimate (krok 98): napisy, poświata szału i tarczy, totem łucznika (placeholder geometryczny), wstrząs. */
 export const ULTIMATE_VISUAL = {
-  text: { rage: '#ff8a6a', supernova: '#9ef2ff', totem: '#ffe08a' },
+  text: { rage: '#ff8a6a', supernova: '#d9b8ff', totem: '#ffe08a' },
   rage: 0xff5a3c,
   shield: 0x8ae6ef,
   totem: { wood: 0x8a5a32, woodDark: 0x4e3018, glow: 0xffe08a, height: 22 },
@@ -2130,7 +2130,9 @@ export const ULTIMATE_VISUAL = {
 } as const;
 
 /** Fala uderzeniowa Czarodziejki (krok 97): pierścień rośnie od środka do promienia fali i gaśnie. */
-export const NOVA_VISUAL = { color: 0x8ae6ef, core: 0xe4fbfb, alpha: 0.9, fillAlpha: 0.15, startScale: 0.25, durationMs: 260 } as const;
+/** Krok 181: rozprysk, fala i teleport w fiolecie Czarodziejki (`SORCERY_COLORS`). */
+export const BLINK_VISUAL = { radius: 14, durationMs: 220 } as const;
+export const NOVA_VISUAL = { color: 0xc79bff, core: 0xf6eaff, alpha: 0.9, fillAlpha: 0.15, startScale: 0.25, durationMs: 260 } as const;
 
 /** Pułapki i rzeczy do rozbicia ruin (krok 48). */
 export const TRAP_VISUAL = {
