@@ -5824,6 +5824,18 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** wysokość dużego stosu, czy boczne języki są dość widoczne, od jakiego promienia łączyć płomienie (14 px).
 
+## Krok 178 — Kursor-broń dla każdego bohatera `#decyzja`
+
+**Pomysł właściciela (7.11):** „zróbmy dla każdego bohatera inny kursor” — łucznik mały łuk, barbarzyńca mieczyk.
+
+**Co powstało:** w trakcie gry kursor to broń bohatera: barbarzyńca — mieczyk, łucznik — mały łuk z nałożoną strzałą (oba celują czubkiem w lewym górnym rogu, jak strzałka systemu). Czarodziejka (ukryta) i ekrany poza grą (menu, wybór bohatera, wyniki) zostają przy celowniku z kroku 172. W co-opie kursor należy do bohatera P1, który gra myszą.
+
+**Jak:** generator `tools/cursor_sprites.py` rysuje teraz trzy kursory (siatki ASCII, gorące punkty w `HOTSPOTS`); `config/cursorConfig.ts` (`GameCursor`, `HERO_CURSOR`, gorące punkty w px); `input/gameCursor.ts` dokłada reguły CSS `#game[data-cursor=…] canvas`, a `GameScene` ustawia atrybut na starcie piętra i zdejmuje go przy wyjściu ze sceny. Dalej sam CSS — zero kosztu co klatkę.
+
+**Testy:** `tests/input/gameCursor.test.ts` (reguły bohaterów, przypisanie broni, wszystkie obrazki istnieją).
+
+**Weryfikacja:** `npm run build`; w Chromium menu ma celownik, `?hero=archer` — łuk, `?hero=barbarian` — mieczyk (obliczony styl płótna), bez błędów strony.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

@@ -1,18 +1,30 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { gameCursorCss } from '@/input/gameCursor';
+import { GameCursor, HERO_CURSOR } from '@/config/cursorConfig';
+import { HeroId } from '@/core/heroTypes';
+import { cursorFile, gameCursorCss } from '@/input/gameCursor';
 
-describe('własny kursor (krok 172)', () => {
+describe('własny kursor (kroki 172 i 178)', () => {
   const css = gameCursorCss('./');
 
-  it('dotyczy tylko płótna gry i ma zapasowy celownik', () => {
+  it('domyślny celownik dotyczy tylko płótna gry, a każdy kursor ma zapasowy celownik', () => {
     expect(css).toMatch(/^#game canvas \{/);
-    expect(css.match(/, crosshair !important;/g)).toHaveLength(2);
+    expect(css.match(/, crosshair !important;/g)).toHaveLength(2 * Object.values(GameCursor).length);
   });
 
-  it('wskazuje istniejące obrazki z generatora', () => {
-    const files = [...css.matchAll(/url\('\.\/([^']+)'\)/g)].map((match) => match[1]);
-    expect(new Set(files).size).toBe(2);
-    for (const file of files) expect(existsSync(`public/${file}`), file).toBe(true);
+  it('kursory bohaterów włącza atrybut kontenera gry', () => {
+    expect(css).toContain('#game[data-cursor="sword"] canvas {');
+    expect(css).toContain('#game[data-cursor="bow"] canvas {');
+  });
+
+  it('barbarzyńca ma mieczyk, łucznik łuk', () => {
+    expect(HERO_CURSOR[HeroId.Barbarian]).toBe(GameCursor.Sword);
+    expect(HERO_CURSOR[HeroId.Archer]).toBe(GameCursor.Bow);
+  });
+
+  it('wszystkie obrazki z generatora istnieją', () => {
+    for (const cursor of Object.values(GameCursor)) {
+      for (const hiDpi of [false, true]) expect(existsSync(`public/${cursorFile(cursor, hiDpi)}`), cursor).toBe(true);
+    }
   });
 });

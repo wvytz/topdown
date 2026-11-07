@@ -72,6 +72,8 @@ import { planArenaLayout, withWallTiles } from '@/dungeon/ArenaConditionPlanner'
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { ENEMY_DEFINITIONS, ENEMY_VARIANTS, getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS, SELECTABLE_HEROES, parseHeroId } from '@/config/heroConfig';
+import { DEFAULT_CURSOR, HERO_CURSOR } from '@/config/cursorConfig';
+import { setGameCursor } from '@/input/gameCursor';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL } from '@/config/spriteConfig';
 import { sorceryOf } from '@/core/heroTypes';
@@ -625,6 +627,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       };
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => diag.setState(null));
+    // Kursor-broń bohatera w trakcie gry (krok 178); poza sceną gry (menu, wyniki) wraca celownik.
+    setGameCursor(HERO_CURSOR[this.run.hero]);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => setGameCursor(DEFAULT_CURSOR));
   }
 
   private replay: InputReplay | null = null;

@@ -1,11 +1,12 @@
 """
-Generator kursora myszy (krok 172): celownik z kości z krwawą kropką, w stylu znacznika celowania (loot_sprites.py).
+Generator kursorów myszy (krok 172, kursory bohaterów — krok 178): celownik z kości z krwawą kropką (menu i Czarodziejka),
+mieczyk barbarzyńcy i mały łuk łucznika, w stylu znacznika celowania (loot_sprites.py).
 
 Kursor podstawia CSS (`cursor: url(...)` w index.html), więc gra niczego nie rysuje co klatkę — to zwykły kursor systemu
-z naszym obrazkiem. Siatka ASCII 15x15 (środek = gorący punkt), skala 2x (jak zoom gry) i 4x (ekrany HiDPI).
+z naszym obrazkiem. Siatki ASCII 15x15 (gorący punkt podaje HOTSPOTS; musi zgadzać się z config/cursorConfig.ts), skala 2x (jak zoom gry) i 4x (ekrany HiDPI).
 
 Użycie (z katalogu głównego repozytorium):
-  python tools/cursor_sprites.py                       # public/assets/cursor/crosshair{,@2x}.png
+  python tools/cursor_sprites.py                       # public/assets/cursor/<kursor>{,@2x}.png
   python tools/cursor_sprites.py --preview tools/out   # dodatkowo podgląd 8x na tle posadzki
 """
 import argparse
@@ -14,7 +15,7 @@ import os
 from PIL import Image
 
 import tower_ruins_tiles as trt
-from tower_ruins_tiles import BONE, OUT, hx
+from tower_ruins_tiles import BONE, DIRT, GOLD, IRON, OUT, hx
 
 OUT_DIR = os.path.join(trt.ROOT, 'public', 'assets', 'cursor')
 # Kanwa kursora: 32 px przy 1x i 64 px przy 2x — Chrome odrzuca kursory większe niż 32 px CSS przy krawędzi okna.
@@ -22,34 +23,80 @@ CANVAS = 32
 SCALE = 2
 BLOOD = hx('#c8243a')
 
-# . przezroczyste  L kość (baza)  H kość (blask)  R krew  o obrys (dokładany niżej automatycznie)
-CROSSHAIR = [
-    '...............',
-    '.......H.......',
-    '.......L.......',
-    '.......L.......',
-    '.......L.......',
-    '...............',
-    '...............',
-    '.HLLL..R..LLLH.',
-    '...............',
-    '...............',
-    '.......L.......',
-    '.......L.......',
-    '.......L.......',
-    '.......H.......',
-    '...............',
-]
-COLORS = {'L': BONE[1], 'H': BONE[2], 'R': BLOOD}
+# . przezroczyste  L kość (baza)  H kość (blask)  j kość (cięciwa)  R krew  s S T stal  g G Y złoto  w W u drewno
+# Obrys 1 px dokładamy automatycznie, dlatego skrajne wiersze i kolumny zostają puste.
+CURSORS = {
+    'crosshair': [
+        '...............',
+        '.......H.......',
+        '.......L.......',
+        '.......L.......',
+        '.......L.......',
+        '...............',
+        '...............',
+        '.HLLL..R..LLLH.',
+        '...............',
+        '...............',
+        '.......L.......',
+        '.......L.......',
+        '.......L.......',
+        '.......H.......',
+        '...............',
+    ],
+    # Mieczyk barbarzyńcy: czubek ostrza w lewym górnym rogu to gorący punkt (jak strzałka systemu).
+    'sword': [
+        '...............',
+        '.TS............',
+        '.sTS...........',
+        '..sTS..........',
+        '...sTS.........',
+        '....sTS........',
+        '.....sTS.......',
+        '......sTS..YG..',
+        '.......sTSYG...',
+        '.........YG....',
+        '........YGwW...',
+        '.......YG..wW..',
+        '.......G....YG.',
+        '............GG.',
+        '...............',
+    ],
+    # Mały łuk łucznika z nałożoną strzałą: grot w lewym górnym rogu to gorący punkt.
+    'bow': [
+        '...............',
+        '.TS............',
+        '.ST......uuuuu.',
+        '...L..uuuu..j..',
+        '....Luu....j...',
+        '....WL....j....',
+        '...uW.L..j.....',
+        '...u...Lj......',
+        '...u...jLR.....',
+        '..uu..j.RR.....',
+        '..u..j.........',
+        '..u.j..........',
+        '..uj...........',
+        '..u............',
+        '...............',
+    ],
+}
+# Gorący punkt (x, y) w pikselach siatki.
+HOTSPOTS = {'crosshair': (7, 7), 'sword': (1, 1), 'bow': (1, 1)}
+COLORS = {
+    'L': BONE[1], 'H': BONE[2], 'j': BONE[2], 'R': BLOOD,
+    's': IRON[0], 'S': IRON[1], 'T': IRON[2],
+    'g': GOLD[0], 'G': GOLD[1], 'Y': GOLD[2],
+    'w': DIRT[2], 'W': DIRT[3], 'u': hx('#9a6e44'),  # u jaśniejsze od DIRT[4] — łuk ma być widać na ciemnym tle
+}
 
 
-def logical():
+def logical(rows):
     """Obrazek 15x15: piksele z siatki + obrys 1 px w 8-sąsiedztwie (czytelny na jasnym i ciemnym tle)."""
-    size = len(CROSSHAIR)
-    assert all(len(row) == size for row in CROSSHAIR), 'siatka kursora musi być kwadratem'
+    size = len(rows)
+    assert all(len(row) == size for row in rows), 'siatka kursora musi być kwadratem'
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     px = img.load()
-    for y, row in enumerate(CROSSHAIR):
+    for y, row in enumerate(rows):
         for x, ch in enumerate(row):
             if ch in COLORS:
                 px[x, y] = COLORS[ch]
@@ -63,14 +110,14 @@ def logical():
     return img
 
 
-def export(img, factor):
-    """Skala całkowita (pixel-perfect), wyśrodkowana na kanwie CANVAS*factor/SCALE."""
+def export(img, factor, hotspot):
+    """Skala całkowita (pixel-perfect), wyśrodkowana na kanwie CANVAS*factor/SCALE; zwraca też gorący punkt w px obrazka."""
     big = img.resize((img.width * factor, img.height * factor), Image.NEAREST)
     side = CANVAS * factor // SCALE
     canvas = Image.new('RGBA', (side, side), (0, 0, 0, 0))
     off = (side - big.width) // 2
     canvas.paste(big, (off, off))
-    return canvas, off + (img.width // 2) * factor + factor // 2
+    return canvas, tuple(off + v * factor + factor // 2 for v in hotspot)
 
 
 def main():
@@ -78,20 +125,21 @@ def main():
     parser.add_argument('--preview', help='katalog na podgląd 8x')
     args = parser.parse_args()
     os.makedirs(OUT_DIR, exist_ok=True)
-    img = logical()
-    for name, factor in (('crosshair.png', SCALE), ('crosshair@2x.png', SCALE * 2)):
-        sheet, hot = export(img, factor)
-        sheet.save(os.path.join(OUT_DIR, name))
-        print(f'{name}: {sheet.width}x{sheet.height}, gorący punkt {hot},{hot}')
+    images = {name: logical(rows) for name, rows in CURSORS.items()}
+    for name, img in images.items():
+        for suffix, factor in (('', SCALE), ('@2x', SCALE * 2)):
+            sheet, hot = export(img, factor, HOTSPOTS[name])
+            sheet.save(os.path.join(OUT_DIR, f'{name}{suffix}.png'))
+            print(f'{name}{suffix}.png: {sheet.width}x{sheet.height}, gorący punkt {hot[0]},{hot[1]}')
     if args.preview:
         os.makedirs(args.preview, exist_ok=True)
-        bg = Image.new('RGBA', (img.width * 2, img.height), trt.PALETTES['piaskowiec'].floor[2])
-        dark = Image.new('RGBA', (img.width, img.height), hx('#0e0e12'))
-        bg.paste(dark, (img.width, 0))
-        bg.alpha_composite(img, (0, 0))
-        bg.alpha_composite(img, (img.width, 0))
+        size = len(CURSORS['crosshair'])
+        bg = Image.new('RGBA', (size * len(images), size * 2), trt.PALETTES['piaskowiec'].floor[2])
+        bg.paste(Image.new('RGBA', (bg.width, size), hx('#0e0e12')), (0, size))
+        for i, img in enumerate(images.values()):
+            bg.alpha_composite(img, (i * size, 0))
+            bg.alpha_composite(img, (i * size, size))
         bg.resize((bg.width * 8, bg.height * 8), Image.NEAREST).save(os.path.join(args.preview, 'cursor_preview.png'))
-
 
 if __name__ == '__main__':
     main()
