@@ -8,7 +8,7 @@ import { readPng } from '../helpers/png';
 const PUBLIC = fileURLToPath(new URL('../../public/', import.meta.url));
 const RESERVED = ['#000000', '#ffffff', '#9cff57'];
 
-const sheets = [SPRITE_SHEETS.fireBurst32, SPRITE_SHEETS.fireBurst64, SPRITE_SHEETS.fireFlame] as const;
+const sheets = [SPRITE_SHEETS.fireBurst32, SPRITE_SHEETS.fireBurst64, SPRITE_SHEETS.fireFlame, SPRITE_SHEETS.fireFlameBig] as const;
 
 describe('Ogień: arkusze', () => {
   it.each(sheets.map((s) => [s.url, s] as const))('%s: wymiary jak w spriteConfig, piksele pełne, bez barw zarezerwowanych', (_url, sheet) => {

@@ -10,7 +10,9 @@ fire-burst-32.png (256x32, komórka 32) i fire-burst-64.png (512x64, komórka 64
   0 biały błysk, 1–2 kula ognia z językami, 3–4 kłęby unoszą się i ciemnieją, 5–7 dym z żarem rozwiewa się.
   Gra wybiera arkusz i całkowitą skalę po promieniu strefy (pełne piksele).
 fire-flame.png (128x24, komórka 16x24): płomień na podłodze — 0–1 zapłon, 2–5 płonie (pętla), 6–7 gaśnie.
-  Podstawa płomienia w wierszu 21 (gra ustawia go stopą w punkcie podłogi).
+  Podstawa płomienia w wierszu 21 (gra ustawia go stopą w punkcie podłogi); pod nią owal żaru (krok 177).
+fire-flame-big.png (256x40, komórka 32x40): duży płomień szerokiej plamy — trzy języki na wspólnym łożu żaru,
+  te same klatki co mały; podstawa w wierszu 34.
 """
 import argparse
 import math
@@ -135,26 +137,33 @@ FLAME = (
 )
 
 
-def flame_frame(f):
-    img = Img(FLAME_W, FLAME_H)
-    k = FLAME[f]
-    cx = FLAME_W / 2
-    for i in range(k['h']):
-        t = i / max(1, k['h'] - 1)
+def draw_tongue(img, cx, base, k, f, seed, scale_h=1.0, scale_w=1.0):
+    """Jeden język ognia (kształt kropli) od podstawy `base` w górę. U samej podstawy płomień jest ciemniejszy
+    i węższy (wsiąka w żar), nad nią jasne „korzenie” — płomień ma głębię zamiast ciętej poziomo stopy."""
+    h = max(3, int(round(k['h'] * scale_h)))
+    w = k['w'] * scale_w
+    for i in range(h):
+        t = i / max(1, h - 1)
         # Kształt kropli: najszerszy tuż nad podstawą, czubek zwęża się i wychyla.
-        half = k['w'] * (math.sin(min(1.0, t * 3.2 + .25) * math.pi / 2) * (1 - t) ** .8 + .12)
-        x0 = cx + k['sway'] * t * t
-        y = FLAME_BASE - i
-        for x in range(FLAME_W):
+        half = w * (math.sin(min(1.0, t * 3.2 + .25) * math.pi / 2) * (1 - t) ** .8 + .12)
+        # Dwa najniższe wiersze węższe: płomień wyrasta z żaru, a nie stoi na kresce.
+        if i < 2:
+            half *= .72 + .14 * i
+        x0 = cx + k['sway'] * scale_h * t * t
+        y = base - i
+        for x in range(img.w):
             d = abs(x + .5 - x0)
             if d > half:
                 continue
             u = d / max(.5, half)
-            n = hash01(x, y, f)
-            if not k['core']:
+            n = hash01(x, y, f, seed)
+            if i == 0:
+                # Korzeń: ciemny brzeg, gorący środek (głębia u podstawy).
+                c = FIRE[0] if u > .55 else FIRE[2] if u > .25 else FIRE[3]
+            elif not k['core']:
                 c = FIRE[1] if u > .5 or n < .4 else FIRE[2]
             elif u > .72:
-                c = FIRE[1]
+                c = FIRE[1] if i > 1 or n < .6 else FIRE[0]
             elif u > .42 or t > .7:
                 c = FIRE[2] if t > .35 or n < .5 else FIRE[3]
             else:
@@ -163,12 +172,61 @@ def flame_frame(f):
     # Odrywające się iskry nad czubkiem.
     if k['core']:
         for j in range(2):
-            x = int(cx + k['sway'] + (hash01(f, j, 5) - .5) * 6)
-            y = FLAME_BASE - k['h'] - 1 - int(hash01(j, f, 9) * 3)
+            x = int(cx + k['sway'] * scale_h + (hash01(f, j, 5, seed) - .5) * 6 * scale_w)
+            y = base - h - 1 - int(hash01(j, f, 9, seed) * 3 * scale_h)
             img.put(x, y, EMBER[j])
-    # Żar u podstawy — płomień „stoi” na podłodze.
-    for x in range(int(cx - k['w']), int(cx + k['w']) + 1):
-        img.put(x, FLAME_BASE + 1, FIRE[0])
+
+
+def draw_bed(img, cx, base, rx, ry, f, seed, glow=1.0):
+    """Łoże żaru pod płomieniem: owal węgli w rzucie z góry (zamiast prostej kreski). Z tyłu i z boków ciemne
+    węgle, z przodu (u dołu owalu) okopcona krawędź, w środku żarzące się punkty — owal daje płomieniowi głębię."""
+    cy = base + .5
+    for y in range(int(cy - ry) - 1, int(cy + ry) + 2):
+        for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
+            dx, dy = (x + .5 - cx) / rx, (y + .5 - cy) / ry
+            # Brzeg owalu poszarpany szumem — węgle, nie geometryczna elipsa.
+            q = dx * dx + dy * dy - (noise(x, y, 1.6, seed) - .5) * .5
+            if q > 1:
+                continue
+            n = hash01(x, y, f // 2, seed + 3)
+            if q > .62:
+                # Zewnętrzny pierścień: od dołu (przód) okopcony, u góry (tył) ciemny żar.
+                c = SMOKE[1] if dy > .45 and n < .35 else FIRE[0] if n < .8 else FIRE[1]
+            elif q > .28:
+                c = FIRE[1] if n < .55 else FIRE[0] if n < .8 else FIRE[2]
+            else:
+                c = FIRE[3] if n < .35 * glow else FIRE[2] if n < .8 else FIRE[1]
+            img.put(x, y, c)
+
+
+def flame_frame(f):
+    img = Img(FLAME_W, FLAME_H)
+    k = FLAME[f]
+    cx = FLAME_W / 2
+    draw_bed(img, cx, FLAME_BASE, k['w'] * .9 + 1.5, 2.4, f, 11, glow=1.0 if k['core'] else .4)
+    draw_tongue(img, cx, FLAME_BASE, k, f, 0)
+    return img
+
+
+# Duży płomień (krok 177, prośba właściciela): w szerokiej plamie kilka małych płomieni łączy się w jeden „stos” —
+# wysoki środkowy język i dwa niższe boczne w innych fazach migotania, na wspólnym łożu żaru.
+BIG_W, BIG_H, BIG_BASE = 32, 40, 33
+
+
+def burn_phase(f, k):
+    """Klatka pętli płonięcia przesunięta o `k` (boczne języki migoczą w innym rytmie); zapłon i gaśnięcie bez zmian."""
+    return 2 + (f - 2 + k) % 4 if 2 <= f <= 5 else f
+
+
+def big_flame_frame(f):
+    img = Img(BIG_W, BIG_H)
+    k = FLAME[f]
+    cx = BIG_W / 2
+    draw_bed(img, cx, BIG_BASE + 1, k['w'] * 1.7 + 2.5, 4.6, f, 21, glow=1.0 if k['core'] else .4)
+    # Boczne języki najpierw — środkowy je przykrywa, sylwetka jest jedna.
+    draw_tongue(img, cx - 6.5, BIG_BASE, FLAME[burn_phase(f, 1)], f, 1, scale_h=1.1, scale_w=1.1)
+    draw_tongue(img, cx + 6.5, BIG_BASE + 1, FLAME[burn_phase(f, 3)], f, 2, scale_h=.95, scale_w=1.05)
+    draw_tongue(img, cx, BIG_BASE, k, f, 3, scale_h=1.6, scale_w=1.35)
     return img
 
 
@@ -187,6 +245,7 @@ def build():
     for size in (32, 64):
         sheets[f'fire-burst-{size}.png'] = strip(size, size, burst_frame(size), 8)
     sheets['fire-flame.png'] = strip(FLAME_W, FLAME_H, flame_frame, 8)
+    sheets['fire-flame-big.png'] = strip(BIG_W, BIG_H, big_flame_frame, 8)
     return sheets
 
 

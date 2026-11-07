@@ -15,6 +15,7 @@ import {
   fireLightPeak,
   fireLightRadius,
   flameCount,
+  flamePlan,
   flameSpots,
   particleCount,
   shakeIntensity,
@@ -45,6 +46,16 @@ interface FireLight {
 }
 
 /** Płomienie i poświata jednej płonącej plamy (krok 114), trzymane tak długo, jak plama. */
+/** Arkusze płomieni na podłodze: mały i duży stos (krok 177). */
+type FlameSheet = 'fireFlame' | 'fireFlameBig';
+
+/** Stopa płomienia jako ułamek wysokości komórki (wiersz pod podstawą płomienia, tam gdzie środek łoża żaru). */
+const FLAME_FOOT: Readonly<Record<FlameSheet, number>> = { fireFlame: 22 / 24, fireFlameBig: 34 / 40 };
+
+function flameSheetOf(flame: Phaser.GameObjects.Sprite): FlameSheet {
+  return flame.getData('sheet') === 'fireFlameBig' ? 'fireFlameBig' : 'fireFlame';
+}
+
 interface PatchFire {
   readonly flames: Phaser.GameObjects.Sprite[];
   readonly glow: Phaser.GameObjects.Image;
@@ -158,11 +169,14 @@ export class FireEffects {
       let fire = this.patches.get(p.key);
       if (!fire) {
         const want = Math.min(v.maxFlames, Math.max(1, Math.round(p.r * v.flamesPerRadius)));
-        const granted = this.flames.take(want);
-        const spots = flameSpots({ x: p.x, y: p.y }, p.r, granted, v.spread, Math.random);
+        // Szeroka plama płonie jednym dużym stosem płomieni zamiast kilku małych (krok 177).
+        const plan = flamePlan(p.r, want, FIRE_FX.stack);
+        const sheet: FlameSheet = plan.big > 0 ? 'fireFlameBig' : 'fireFlame';
+        const granted = this.flames.take(plan.big + plan.small);
+        const spots = flameSpots({ x: p.x, y: p.y }, p.r, granted, plan.big > 1 ? v.spread : plan.big === 1 ? 0 : v.spread, Math.random);
         const flames = spots.map((spot) => {
-          const flame = this.takeFlame(spot.x, spot.y);
-          flame.play(animationKey('fireFlame', 'ignite')).chain(animationKey('fireFlame', 'burn'));
+          const flame = this.takeFlame(spot.x, spot.y, sheet);
+          flame.play(animationKey(sheet, 'ignite')).chain(animationKey(sheet, 'burn'));
           return flame;
         });
         const glow = this.takeGlow(p.x, p.y, p.r * v.glowScale, v.glowAlpha);
@@ -171,7 +185,7 @@ export class FireEffects {
       }
       if (p.dying && !fire.dying) {
         fire.dying = true;
-        for (const flame of fire.flames) flame.play(animationKey('fireFlame', 'die'));
+        for (const flame of fire.flames) flame.play(animationKey(flameSheetOf(flame), 'die'));
       }
       // Migotanie poświaty skokowo z klatką ognia.
       const flicker = 1 - v.flicker + v.flicker * (((frame * 7 + Math.round(p.x)) % 5) / 4);
@@ -227,25 +241,29 @@ export class FireEffects {
 
   private spawnFlames(x: number, y: number, radius: number): void {
     const { flames: cfg } = FIRE_FX;
-    const spots = flameSpots({ x, y }, radius, flameCount(radius, cfg), cfg.spread, Math.random).filter((s) => this.floorAt(s.x, s.y));
+    // Szeroka strefa zostawia kilka dużych stosów płomieni zamiast wielu małych (krok 177).
+    const plan = flamePlan(radius, flameCount(radius, cfg), FIRE_FX.stack);
+    const sheet: FlameSheet = plan.big > 0 ? 'fireFlameBig' : 'fireFlame';
+    const spots = flameSpots({ x, y }, radius, plan.big + plan.small, cfg.spread, Math.random).filter((s) => this.floorAt(s.x, s.y));
     const granted = this.flames.take(spots.length);
     for (const spot of spots.slice(0, granted)) {
-      const flame = this.takeFlame(spot.x, spot.y).setVisible(false);
+      const flame = this.takeFlame(spot.x, spot.y, sheet).setVisible(false);
       const linger = cfg.lingerMs.min + Math.random() * (cfg.lingerMs.max - cfg.lingerMs.min);
       this.scene.time.delayedCall(Math.random() * cfg.igniteDelayMs, () => {
-        flame.setVisible(true).play(animationKey('fireFlame', 'ignite')).chain(animationKey('fireFlame', 'burn'));
+        flame.setVisible(true).play(animationKey(sheet, 'ignite')).chain(animationKey(sheet, 'burn'));
         this.scene.time.delayedCall(linger, () => {
-          flame.play(animationKey('fireFlame', 'die'));
+          flame.play(animationKey(sheet, 'die'));
           flame.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.releaseFlame(flame));
         });
       });
     }
   }
 
-  /** Płomień z puli: stopa (wiersz 21 z 24) w punkcie podłogi. */
-  private takeFlame(x: number, y: number): Phaser.GameObjects.Sprite {
-    const flame = this.freeFlames.pop() ?? this.scene.add.sprite(0, 0, '__DEFAULT').setOrigin(0.5, 22 / 24).setDepth(RENDER_DEPTH.fireGround);
+  /** Płomień z puli: stopa (wiersz podstawy arkusza) w punkcie podłogi; pula wspólna dla małych i dużych. */
+  private takeFlame(x: number, y: number, sheet: FlameSheet = 'fireFlame'): Phaser.GameObjects.Sprite {
+    const flame = this.freeFlames.pop() ?? this.scene.add.sprite(0, 0, '__DEFAULT').setDepth(RENDER_DEPTH.fireGround);
     flame.off(Phaser.Animations.Events.ANIMATION_COMPLETE);
+    flame.setData('sheet', sheet).setOrigin(0.5, FLAME_FOOT[sheet]);
     return flame.setVisible(true).setActive(true).setPosition(Math.round(x), Math.round(y)).setFlipX(Math.random() < 0.5);
   }
 

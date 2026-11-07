@@ -29,6 +29,22 @@ export function flameCount(radius: number, cfg: { readonly areaPerFlame: number;
   return Math.min(cfg.max, Math.max(cfg.min, raw));
 }
 
+/** Ile dużych i małych płomieni (krok 177): w szerokiej strefie małe płomienie łączą się w duże „stosy”. */
+export interface FlamePlan {
+  readonly big: number;
+  readonly small: number;
+}
+
+/**
+ * Od promienia `stack.fromRadius` każde `stack.smallPerBig` małych płomieni (zaokrąglając) staje się jednym dużym,
+ * co najmniej jednym — szeroka plama płonie jednym większym ogniem zamiast kilku małych obok siebie.
+ */
+export function flamePlan(radius: number, small: number, stack: { readonly fromRadius: number; readonly smallPerBig: number }): FlamePlan {
+  if (small <= 0) return { big: 0, small: 0 };
+  if (radius < stack.fromRadius) return { big: 0, small };
+  return { big: Math.max(1, Math.round(small / stack.smallPerBig)), small: 0 };
+}
+
 /** Miejsca płomieni równomiernie w kole o promieniu `radius × spread` (pierwiastek — bez skupienia w środku). */
 export function flameSpots(center: Vector2, radius: number, count: number, spread: number, random: () => number): Vector2[] {
   const spots: Vector2[] = [];

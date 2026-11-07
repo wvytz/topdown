@@ -15,6 +15,11 @@ export const FIRE_FX = {
   light: { radiusScale: 2.6, minRadius: 32, maxRadius: 120, durationMs: 650, step: 8 },
   /** Płomienie zostające na podłodze: jeden na tyle px² strefy, w środkowej części koła, przez `lingerMs`. */
   flames: { areaPerFlame: 280, min: 1, max: 6, spread: 0.8, lingerMs: { min: 900, max: 1700 }, igniteDelayMs: 140 },
+  /**
+   * Stos płomieni (krok 177, prośba właściciela): od tego promienia strefy albo plamy małe płomienie łączą się
+   * w duże (`fire-flame-big.png`, trzy języki na wspólnym łożu żaru) — po jednym na `smallPerBig` małych.
+   */
+  stack: { fromRadius: 14, smallPerBig: 3 },
   /** Iskry (ADD) i dym wyrzucane przy wybuchu. */
   embers: { perRadius: 0.5, max: 18, lifespanMs: { min: 450, max: 900 }, speed: { min: 30, max: 110 }, gravityY: -60, colors: [0xffe08a, 0xffa040, 0xff5a2a] },
   smoke: { perRadius: 0.2, max: 7, lifespanMs: { min: 700, max: 1300 }, rise: { min: 10, max: 28 }, colors: [0x3a3236, 0x4a4044, 0x2a2428], alpha: 0.75 },
