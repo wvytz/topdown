@@ -53,6 +53,7 @@ import { autoPauseEnabled } from '@/systems/PauseClock';
 import type { PauseClock } from '@/systems/PauseClock';
 import type { BuildSection, PauseSceneData } from '@/scenes/PauseScene';
 import { summarizeBuild } from '@/systems/BuildSummary';
+import { roomMarkers } from '@/systems/RoomMarkers';
 import { MinimapExplorer } from '@/systems/Minimap';
 import { MinimapRoute } from '@/systems/MinimapRoute';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
@@ -823,6 +824,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
       stairs: this.dungeon.stairs,
       boss,
       route,
+      markers: roomMarkers({
+        rooms: this.dungeon.rooms,
+        shrine: this.shrine?.markerTile ?? null,
+        ambushRoomId: this.ambush && !this.ambush.cleared ? this.ambushRoomId : null,
+        elites: [...this.enemies.living].filter((e) => isElite(e.definition)).map((e) => DungeonView.worldToTile(e.x, e.y)),
+      }),
     };
   }
 

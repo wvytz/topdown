@@ -180,6 +180,8 @@ export interface MinimapHudData {
   readonly boss: { readonly x: number; readonly y: number } | null;
   /** Podpowiedź drogi (krok 147): kafle od gracza do celu (arena, potem schody), bez kafla gracza. */
   readonly route: readonly { readonly x: number; readonly y: number }[];
+  /** Ikonki pokojów (krok 163): kapliczka, zasadzka, elity — rysowane, gdy kafel jest odkryty. */
+  readonly markers: readonly import('@/systems/RoomMarkers').RoomMarker[];
 }
 
 export interface RangedHudData {

@@ -353,6 +353,21 @@ export class HudScene extends Phaser.Scene {
     });
     const dot = (p: { x: number; y: number }, color: number, size: number) =>
       marks.fillStyle(color, 1).fillRect(originX + (p.x + 0.5) * cfg.tilePx - size / 2, originY + (p.y + 0.5) * cfg.tilePx - size / 2, size, size);
+    // Ikonki pokojów (krok 163) — pod schodami, bossem i graczem.
+    const M = cfg.markers;
+    for (const marker of map.markers) {
+      if (!explorer.isRevealed(marker.x, marker.y)) continue;
+      const { color, pattern } = M[marker.kind];
+      const size = pattern.length * M.pixelPx;
+      const left = Math.round(originX + (marker.x + 0.5) * cfg.tilePx - size / 2);
+      const top = Math.round(originY + (marker.y + 0.5) * cfg.tilePx - size / 2);
+      marks.fillStyle(M.outline, M.outlineAlpha).fillRect(left - 1, top - 1, size + 2, size + 2);
+      pattern.forEach((row, py) => {
+        for (let px = 0; px < row.length; px++) {
+          if (row[px] === '#') marks.fillStyle(color, 1).fillRect(left + px * M.pixelPx, top + py * M.pixelPx, M.pixelPx, M.pixelPx);
+        }
+      });
+    }
     if (explorer.isRevealed(map.stairs.x, map.stairs.y)) dot(map.stairs, cfg.colors.stairs, cfg.playerPx);
     if (map.boss && explorer.isRevealed(map.boss.x, map.boss.y)) dot(map.boss, cfg.colors.boss, cfg.playerPx);
     if (Math.floor(time / 300) % 2 === 0) {

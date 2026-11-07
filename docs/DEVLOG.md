@@ -5586,6 +5586,20 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Nie zrobione:** podsumowanie przedmiotów na ekranie śmierci — osobno, jeśli strona w pauzie się sprawdzi.
 
+## Krok 163 — Ikonki pokojów na minimapie `#uwagi-testera` `#minimapa`
+
+**Uwaga testera:** „pokoje mogłyby mieć ikonki”.
+
+**Co powstało:** na minimapie ikonki 5×5 (piksel 2 px, czarny obrys): **kapliczka** (złoty krzyż, znika po ofierze), **zasadzka** (fioletowa czaszka na środku pokoju, znika po ostatniej fali), **elita** (czerwona korona, jedna na pokój z żywą elitą; elita w korytarzu albo w pokoju zasadzki — bez ikonki). Ikonka pokazuje się dopiero, gdy jej kafel jest odkryty — mapa dalej nie zdradza nieznanych pokojów. Schody, arena, gracz i smużka drogi bez zmian.
+
+**Pliki:** czysty `systems/RoomMarkers.ts`; `config/minimapConfig.ts` (`markers`: wzory i kolory), `core/types.ts` (`MinimapHudData.markers`), `scenes/GameScene.ts`, `scenes/HudScene.ts`, `world/ShrineSite.ts` (`markerTile`), `combat/AmbushManager.ts` (`cleared`).
+
+**Testy:** `tests/systems/roomMarkers.test.ts` (4).
+
+**Weryfikacja:** `?floor=3&seed=7` z odkrytą całą mapą (`minimap.revealed.fill(1)`) — korony elit w pokojach, krzyż kapliczki obok korony.
+
+**Dalej (decyzja 7.11, etap C):** układ ścieżka główna + odnogi z nagrodą — ikonka powie, co jest w odnodze.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5748,5 +5762,6 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 **Uwagi testera z 6.11 — plan (decyzje właściciela 7.11)** `#uwagi-testera`:
 - [x] Etap A (krok 161): skip odliczania, mniejszy odrzut, więcej elit, spacja w bezpiecznych menu.
 - [x] Etap B, krok 162: „Moje przedmioty” w pauzie (ekran śmierci — jeszcze nie).
-- [ ] Etap B: ikonki pokojów na minimapie, ustalone fale w zasadzce, groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
+- [x] Etap B, krok 163: ikonki pokojów na minimapie (kapliczka, zasadzka, elita).
+- [ ] Etap B: ustalone fale w zasadzce, groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
 - [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).

@@ -75,6 +75,11 @@ export class AmbushManager {
     return { x: room.x + Math.floor(room.width / 2), y: room.y + Math.floor(room.height / 2) };
   }
 
+  /** Zasadzka po ostatniej fali — ikonka na minimapie znika (krok 163). */
+  get cleared(): boolean {
+    return this.state.phase === AmbushPhase.Cleared;
+  }
+
   /** Przynęta leży, dopóki zasadzka trwa — podnieść ją można dopiero po ostatniej fali. */
   canCollect(drop: LootDrop): boolean {
     return drop !== this.bait || this.state.phase === AmbushPhase.Cleared;
