@@ -5612,6 +5612,19 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** czy fale są ciekawsze, czy elita-upiór i szarżownicy biomu nie psują „jackpotu”, nazwy i liczby w `AMBUSH_SCENARIOS`.
 
+## Krok 165 — Groźniejsze pułapki ruin `#uwagi-testera` `#ruiny`
+
+**Uwaga testera:** „trapy super, dać je bardziej niebezpieczne”.
+
+**Co powstało (tylko liczby i jedna reguła, `config/biomeConfig.ts`):**
+- **Kolce:** w 45% pokojów zamiast 35%; rytm 1,6 s w dole → 1,2 s, wysunięte 0,9 → 1,0 s; obrażenia 10 → 15. Ostrzeżenie zostaje 0,5 s (test czytelności pilnuje minimum). Wrogowie na kolcach dostają **2×** (`enemyDamageMultiplier`) — warto ich w nie wciągać.
+- **Strzałki:** w 40% pokojów zamiast 30%; salwa 4 strzałek zamiast 3, co 140 ms, telegraf 400 ms, odnowienie 1,8 s zamiast 2,5 s, obrażenia 9 → 13. **Płytę naciska też wróg** (`enemiesPress`) — salwa leci w bohatera, który stoi na linii.
+- Strzałki dalej nie ranią wrogów (pociski pułapki trafiają tylko bohaterów — zmiana w `ProjectileManager` do rozważenia osobno).
+
+**Testy:** istniejące testy pułapek (rytm, telegraf ≥ 0,5 s) bez zmian.
+
+**Do oceny właściciela:** czy pułapki nie są za mocne na piętrze 1 (nowi gracze), czy naciskanie płyty przez wrogów jest czytelne.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5776,5 +5789,6 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap B, krok 162: „Moje przedmioty” w pauzie (ekran śmierci — jeszcze nie).
 - [x] Etap B, krok 163: ikonki pokojów na minimapie (kapliczka, zasadzka, elita).
 - [x] Etap B, krok 164: ustalone fale w zasadzce (6 scenariuszy po 3 fale).
-- [ ] Etap B: groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
+- [x] Etap B, krok 165: groźniejsze pułapki ruin (kolce 2× na wrogach, wróg naciska płytę strzałek).
+- [ ] Etap B: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
 - [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).

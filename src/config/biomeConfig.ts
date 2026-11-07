@@ -98,23 +98,28 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     braziers: null,
     // Krok 48 (właściciel: „pierwszy poziom wydaje się pusty i bez wyzwania”). Kolce i strzałki ostrzegają
     // wyraźnie i ranią umiarkowanie — wyzwanie, ale nie kara dla nowych graczy.
+    // Krok 165 (uwaga testera: „trapy super, dać je bardziej niebezpieczne”): częściej, szybszy rytm
+    // (ostrzeżenie kolców zostaje 0,5 s — czytelność), mocniejsze ciosy, dłuższa salwa strzałek; kolce ranią wrogów 2× (warto ich w nie wciągać), a płytę strzałek
+    // naciska też wróg — salwa leci wtedy w bohatera, który stoi na linii.
     traps: {
       spikes: {
-        roomChance: 0.35,
+        roomChance: 0.45,
         minShortSide: 5,
-        timing: { downMs: 1600, warnMs: 600, upMs: 900 },
-        damage: 10,
+        timing: { downMs: 1200, warnMs: 500, upMs: 1000 },
+        damage: 15,
         knockback: 160,
+        enemyDamageMultiplier: 2,
       },
       darts: {
-        roomChance: 0.3,
+        roomChance: 0.4,
         plateDistance: { min: 2, max: 3 },
         minLine: 6,
-        windupMs: 450,
-        volley: 3,
-        volleyIntervalMs: 160,
-        cooldownMs: 2500,
-        damage: 9,
+        windupMs: 400,
+        volley: 4,
+        volleyIntervalMs: 140,
+        cooldownMs: 1800,
+        enemiesPress: true,
+        damage: 13,
         knockback: 140,
         speed: 360,
       },
