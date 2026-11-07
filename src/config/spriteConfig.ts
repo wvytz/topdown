@@ -400,6 +400,22 @@ export const SPRITE_SHEETS = {
       die: { frames: [6, 7], loop: false },
     },
   },
+  // Duży płomień szerokiej plamy albo strefy (krok 177): trzy języki na wspólnym łożu żaru, te same animacje.
+  fireFlameBig: {
+    key: 'sheet-fire-flame-big',
+    url: 'assets/sprites/fire-flame-big.png',
+    frameWidth: 32,
+    frameHeight: 40,
+    sheetWidth: 256,
+    sheetHeight: 40,
+    directions: 1,
+    fps: 10,
+    animations: {
+      ignite: { frames: [0, 1], loop: false },
+      burn: { frames: [2, 3, 4, 5], loop: true },
+      die: { frames: [6, 7], loop: false },
+    },
+  },
   // Szlam Króla Szlamu (krok 153, tools/sludge_sprites.py): flegma, rozbryzg, kałuże o stałych promieniach, bąbel.
   sludgePhlegm: {
     key: 'sheet-sludge-phlegm',

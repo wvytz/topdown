@@ -8,6 +8,7 @@ import {
   fireLightPeak,
   fireLightRadius,
   flameCount,
+  flamePlan,
   flameSpots,
   particleCount,
   shakeIntensity,
@@ -27,6 +28,15 @@ describe('FireBurst', () => {
     expect(flameCount(1, cfg)).toBe(cfg.min);
     expect(flameCount(14, cfg)).toBe(2);
     expect(flameCount(200, cfg)).toBe(cfg.max);
+  });
+
+  it('stos płomieni (krok 177): w szerokiej strefie małe płomienie łączą się w duże', () => {
+    const stack = { fromRadius: 14, smallPerBig: 3 };
+    expect(flamePlan(9, 1, stack)).toEqual({ big: 0, small: 1 }); // smuga ogara
+    expect(flamePlan(22, 2, stack)).toEqual({ big: 1, small: 0 }); // kałuża smoły
+    expect(flamePlan(30, 3, stack)).toEqual({ big: 1, small: 0 }); // plama po elicie
+    expect(flamePlan(40, 6, stack)).toEqual({ big: 2, small: 0 }); // duży wybuch
+    expect(flamePlan(30, 0, stack)).toEqual({ big: 0, small: 0 });
   });
 
   it('miejsca płomieni leżą w kole o promieniu r × spread', () => {

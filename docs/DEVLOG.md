@@ -5808,6 +5808,22 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** grubość pasa węgli (2 px) i skorupy (1 px), gęstość poświaty, tempo mienienia się węgli.
 
+## Krok 177 — Stos płomieni i łoże żaru zamiast kreski u podstawy `#ocena` `#ogien`
+
+**Ocena właściciela po kroku 176 (7.11.2026):** „idziemy w dobrym kierunku”, ale przy obszerniejszych płomieniach zamiast kilku małych ma być jeden większy „stos”, a proste, generyczne kreski u podstawy płomieni trzeba zastąpić głębią.
+
+**Co powstało:**
+- **Generator** `tools/fire_sprites.py`:
+  - mały płomień (`fire-flame.png`, bez zmiany wymiarów) stoi na **łożu żaru** — poszarpany owal węgli w rzucie z góry (ciemny pierścień, z przodu okopcony, w środku żarzące się punkty) zamiast poziomej kreski; dwa najniższe wiersze płomienia są węższe, z ciemnym brzegiem i gorącym korzeniem, więc płomień wyrasta z żaru;
+  - nowy **duży płomień** `fire-flame-big.png` (komórka 32×40, te same klatki: zapłon, pętla, gaśnięcie): wysoki środkowy język i dwa boczne w innych fazach migotania na wspólnym, większym łożu żaru — jedna sylwetka.
+- **Stos** (`flamePlan` w `systems/FireBurst.ts`, `FIRE_FX.stack`): od promienia 14 px każde 3 małe płomienie (zaokrąglając, co najmniej 1) stają się jednym dużym. Płonąca plama (kałuża smoły r 22, plama po elicie r 30) ma jeden duży stos na środku; smugi (r 9) zostają przy małych. Tak samo płomienie zostające po szerokich wybuchach (np. 6 małych → 2 duże).
+- `FirePatchRenderer`: drobne języki z pikseli tylko w małych plamach (w szerokiej jest stos), bez płaskiej belki u ich podstawy.
+- Pula płomieni wspólna dla obu arkuszy (stopa ustawiana z arkusza), limity bez zmian. Zasięgi i obrażenia bez zmian.
+- **Testy:** `flamePlan` w `tests/systems/fireBurst.test.ts`, nowy arkusz w `tests/assets/fire.test.ts`. `npm run build` (2753 testy) zielony.
+- **Przeglądarka (Chromium, dev, `?seed=3&floor=4`):** smugi, kałuża i plama po elicie na bazalcie Piekła, bez błędów. Zrzuty: `screens/krok177-stos-plomieni/`.
+
+**Do oceny:** wysokość dużego stosu, czy boczne języki są dość widoczne, od jakiego promienia łączyć płomienie (14 px).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

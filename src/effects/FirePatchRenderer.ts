@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { FIRE_PATCH_VISUAL } from '@/config/spriteConfig';
+import { FIRE_FX } from '@/config/fireConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import type { FireEffects } from '@/effects/FireEffects';
@@ -104,7 +105,8 @@ export class FirePatchRenderer {
       if (look.stage === 'ignite') continue;
       const dying = look.stage === 'dying';
       this.drawCore(look, frame, dying);
-      if (!dying) this.drawTongues(look, frame);
+      // Szeroka plama ma jeden duży stos płomieni z generatora (krok 177) — bez drobnych języków obok niego.
+      if (!dying && look.r < FIRE_FX.stack.fromRadius) this.drawTongues(look, frame);
       this.drawSparks(look, frame, dying);
     }
     for (const look of looks.values()) this.drawRim(look, now, frame);
@@ -196,7 +198,7 @@ export class FirePatchRenderer {
 
   /** Języki ognia: słupki pikseli od podstawy w środku plamy w górę, wysokość skacze co klatkę, czubek w kole. */
   private drawTongues({ x, y, r }: PatchLook, frame: number): void {
-    const { tongues, core, hot, body } = FIRE_PATCH_VISUAL;
+    const { tongues, core, hot } = FIRE_PATCH_VISUAL;
     const count = Math.min(tongues.max, Math.max(1, Math.round(r * tongues.perRadius)));
     const tallest = Math.min(tongues.maxHeight, Math.round(r * tongues.heightPerRadius));
     const wide = r >= core.bigRadius ? 1 : 0;
@@ -209,7 +211,6 @@ export class FirePatchRenderer {
       const room = Math.floor(by - y + Math.sqrt(Math.max(0, r * r - (bx - x) ** 2))) - 2;
       const height = Math.min(room, Math.round(3 + unit(x + i, y, frame) * (tallest - 3)));
       if (height < 3) continue;
-      this.flame.fillStyle(body.color, 0.7).fillRect(bx - 1 - wide, by - 1, 3 + wide * 2, 2);
       this.flame.fillStyle(core.color, 0.85).fillRect(bx - 1, by - height + 1, 2 + wide, height - 1);
       this.flame.fillStyle(hot.color, hot.alpha).fillRect(bx, by - height, 1, 2 + wide);
     }
