@@ -5,6 +5,7 @@ export enum GameCursor {
   Crosshair = 'crosshair',
   Sword = 'sword',
   Bow = 'bow',
+  Wand = 'wand',
 }
 
 export interface CursorSprite {
@@ -17,6 +18,8 @@ export const CURSOR_SPRITES: Readonly<Record<GameCursor, CursorSprite>> = {
   // Mieczyk i łuk celują czubkiem ostrza i grotem strzały (lewy górny róg), jak strzałka systemu.
   [GameCursor.Sword]: { hotspot: { x: 4, y: 4 } },
   [GameCursor.Bow]: { hotspot: { x: 4, y: 4 } },
+  // Krok 180: kostur Czarodziejki celuje kryształem.
+  [GameCursor.Wand]: { hotspot: { x: 4, y: 4 } },
 };
 
 /** Kursor poza walką (menu, wybór bohatera, ekrany wyników). */
@@ -25,6 +28,6 @@ export const DEFAULT_CURSOR = GameCursor.Crosshair;
 /** Kursor w grze zależnie od bohatera (w co-opie — bohatera P1, który gra myszą). */
 export const HERO_CURSOR: Readonly<Record<HeroId, GameCursor>> = {
   [HeroId.Barbarian]: GameCursor.Sword,
-  [HeroId.Sorceress]: GameCursor.Crosshair,
+  [HeroId.Sorceress]: GameCursor.Wand,
   [HeroId.Archer]: GameCursor.Bow,
 };

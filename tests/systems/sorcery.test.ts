@@ -11,7 +11,7 @@ import { Health } from '@/systems/Health';
 import type { MeleeTarget } from '@/systems/MeleeResolver';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
-import { BeamChannel, OrbSeries, beamReach, crystalPoint, distanceToSegment, orbitOffsets, resolveBeam, resolveSplash } from '@/systems/Sorcery';
+import { BeamChannel, OrbSeries, beamPulseStatus, beamReach, isBeamPulse, crystalPoint, distanceToSegment, orbitOffsets, resolveBeam, resolveSplash } from '@/systems/Sorcery';
 
 const sorceress = HERO_DEFINITIONS[HeroId.Sorceress];
 const barbarian = HERO_DEFINITIONS[HeroId.Barbarian];
@@ -277,5 +277,36 @@ describe('rozprysk kuli (krok 50)', () => {
     expect(hits[0]!.status).toBeUndefined();
     expect(damage).toBeLessThan(14);
     expect(splashDamage(1, 0.35)).toBe(1);
+  });
+});
+
+describe('promień z przedmiotami (krok 180)', () => {
+  const beamOf = (items: ItemId[]) => sorceryOf(loadout(items).kit)!.beam;
+
+  it('Ostrze dokłada połowę premii do tyknięcia promienia', () => {
+    expect(beamOf([]).damagePerTick).toBe(beamConfig.damagePerTick);
+    expect(beamOf([ItemId.Blade]).damagePerTick).toBeGreaterThan(beamConfig.damagePerTick);
+  });
+
+  it('Rękawice skracają odstęp tyknięć', () => {
+    expect(beamOf([ItemId.Gloves]).tickMs).toBeLessThan(beamConfig.tickMs);
+  });
+
+  it('impuls: pierwsze tyknięcie i potem co pulseEveryTicks', () => {
+    const every = beamConfig.pulseEveryTicks;
+    expect(isBeamPulse(0, every)).toBe(true);
+    expect(isBeamPulse(1, every)).toBe(false);
+    expect(isBeamPulse(every, every)).toBe(true);
+    expect(isBeamPulse(5, 0)).toBe(false);
+  });
+
+  it('impuls niesie ogień i lód, ale nie ogłusza', () => {
+    const status = beamPulseStatus({
+      shotStatus: { stun: { durationMs: 900 }, slow: { pct: 0.4, durationMs: 1500 } },
+      meleeStatus: { burn: { tickDamage: 3, tickMs: 500, durationMs: 2000 } },
+    });
+    expect(status.stun).toBeUndefined();
+    expect(status.slow?.pct).toBe(0.4);
+    expect(status.burn?.tickDamage).toBe(3);
   });
 });

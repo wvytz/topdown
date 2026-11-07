@@ -24,7 +24,7 @@ import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
-import { beamReach, crystalPoint, splashDamage } from '@/systems/Sorcery';
+import { beamPulseStatus, beamReach, crystalPoint, isBeamPulse, splashDamage } from '@/systems/Sorcery';
 import { Timer } from '@/systems/Timer';
 import type { AimTarget } from '@/systems/touchAim';
 import { applyRage } from '@/systems/Ultimate';
@@ -40,7 +40,8 @@ import { HeroEvolutionView, drawBolt, ensureCrescentTexture } from '@/effects/Ev
 export interface HeroStrikeTargets {
   /** Cios wręcz; zwraca liczbę trafionych stworzeń (do Wampirzego kła). */
   melee(swing: MeleeSwing, attacker: Player): number;
-  beam(beam: BeamStrike, attacker: Player): void;
+  /** Tyknięcie promienia; zwraca liczbę trafionych stworzeń (do Wampirzego kła, krok 180). */
+  beam(beam: BeamStrike, attacker: Player): number;
   /** Rozprysk kuli, fala uderzeniowa i Supernowa — wrogowie i boss. */
   splash(strike: OrbSplash, attacker: Player): void;
   dash(sweep: DashSweep, alreadyHit: Set<object>, attacker: Player): void;
@@ -81,6 +82,8 @@ export class HeroCombat {
   /** Wampirzy kieł: sufit leczenia na sekundę (krok 93). */
   private readonly healBudget = new HealBudget();
   private beamGfx: Phaser.GameObjects.Graphics | null = null;
+  /** Tyknięcia bieżącego promienia (od zapalenia) — co `pulseEveryTicks` impuls (krok 180). */
+  private beamTicksDone = 0;
   /** Ostatni dash, który już zabrzmiał (krok 116). */
   private dashSoundFor = -1;
   /** Krok 150: przemiany przedmiotów. */
@@ -159,7 +162,7 @@ export class HeroCombat {
   }
 
   /**
-   * Krok 150: atak główny (cios, kula, strzała z łuku) — Rozpęd liczy serię, a co 3. atak z Falą ostrza
+   * Krok 150: atak główny (cios, kula, strzała z łuku; od kroku 180 impuls promienia) — Rozpęd liczy serię, a co 3. atak z Falą ostrza
    * wylatuje półksiężyc.
    */
   private afterMainAttack(now: number): void {
@@ -381,6 +384,7 @@ export class HeroCombat {
     const config = player.sorceryConfig?.beam;
     if (!active || !config) {
       this.beamGfx?.clear();
+      this.beamTicksDone = 0;
       return;
     }
     const angle = player.getAimAngle();
@@ -392,6 +396,8 @@ export class HeroCombat {
     const to = { x: from.x + dir.x * length, y: from.y + dir.y * length };
     this.drawBeam(from, to);
     for (let i = 0; i < ticks; i++) {
+      // Krok 180: impuls niesie statusy przedmiotów, leczy kłem i liczy się jako atak główny (Rozpęd, Fala ostrza).
+      const pulse = isBeamPulse(this.beamTicksDone++, config.pulseEveryTicks);
       const beam: BeamStrike = {
         from,
         to,
@@ -400,8 +406,12 @@ export class HeroCombat {
         knockback: config.knockback,
         now,
         source: { x: player.x, y: player.y },
+        ...(pulse && { status: beamPulseStatus(player.effects) }),
       };
-      this.deps.strikes.beam(beam, player);
+      const hits = this.deps.strikes.beam(beam, player);
+      if (!pulse) continue;
+      if (hits > 0) this.tryVampireHeal(now);
+      this.afterMainAttack(now);
     }
   }
 
