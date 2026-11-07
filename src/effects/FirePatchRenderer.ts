@@ -3,8 +3,8 @@ import { FIRE_PATCH_VISUAL } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import type { FireEffects } from '@/effects/FireEffects';
-import { exposedArcs } from '@/systems/AreaOutline';
-import type { OutlineArc } from '@/systems/AreaOutline';
+import type { RimPixel } from '@/systems/FirePatchRim';
+import { RimPixelKind, rimPixels } from '@/systems/FirePatchRim';
 import type { FirePatch, FirePatchField, FirePatchStage } from '@/systems/HellAttacks';
 import { firePatchStage } from '@/systems/HellAttacks';
 
@@ -50,10 +50,12 @@ export class FirePatchRenderer {
   private readonly halfH = Math.ceil(GAME_HEIGHT / (2 * CAMERA_CONFIG.zoom)) + CHAR_MARGIN;
   /** Ogień (ADD): świeci jak pochodnie. */
   private readonly flame: Phaser.GameObjects.Graphics;
-  /** Odsłonięte łuki brzegu każdej plamy i pary nachodzących plam; liczone na nowo tylko po zmianie listy. */
-  private arcs = new Map<FirePatch, OutlineArc[]>();
+  /** Ciemna skorupa za brzegiem (zwykłe mieszanie) — nad wypaloną podłogą. */
+  private readonly crust: Phaser.GameObjects.Graphics;
+  /** Piksele obrysu każdej plamy (suma kół) i pary nachodzących plam; liczone na nowo tylko po zmianie listy. */
+  private rims = new Map<FirePatch, RimPixel[]>();
   private pairs: (readonly [FirePatch, FirePatch])[] = [];
-  private arcsVersion = -1;
+  private rimsVersion = -1;
 
   /** `fire` — płomienie z generatora, poświata i światło nad mrokiem dla każdej plamy (krok 144). */
   constructor(
@@ -66,6 +68,7 @@ export class FirePatchRenderer {
       .setOrigin(0)
       .setDepth(RENDER_DEPTH.telegraph)
       .setAlpha(FIRE_PATCH_VISUAL.char.alpha);
+    this.crust = scene.add.graphics().setDepth(RENDER_DEPTH.telegraph);
     this.bodyLayer = scene.add
       .renderTexture(0, 0, this.halfW * 2, this.halfH * 2)
       .setOrigin(0)
@@ -78,13 +81,14 @@ export class FirePatchRenderer {
   draw(field: FirePatchField, now: number): void {
     const v = FIRE_PATCH_VISUAL;
     this.flame.clear();
+    this.crust.clear();
     this.charLayer.clear();
     this.bodyLayer.clear();
     if (field.patches.length === 0) {
       this.fire.syncPatches([], 0);
       return;
     }
-    if (field.version !== this.arcsVersion) this.updateArcs(field);
+    if (field.version !== this.rimsVersion) this.updateRims(field);
     const frame = Math.floor(now / v.frameMs);
     const looks = new Map<FirePatch, PatchLook>();
     for (const patch of field.patches) {
@@ -103,7 +107,7 @@ export class FirePatchRenderer {
       if (!dying) this.drawTongues(look, frame);
       this.drawSparks(look, frame, dying);
     }
-    for (const look of looks.values()) this.drawEdge(look, now);
+    for (const look of looks.values()) this.drawRim(look, now, frame);
     this.fire.syncPatches(
       [...looks.values()].map(({ patch, x, y, r, stage }) => ({ key: patch, x, y, r, dying: stage === 'dying' })),
       frame,
@@ -124,13 +128,34 @@ export class FirePatchRenderer {
     layer.draw(this.stencil, -ox, -oy);
   }
 
-  /** Brzeg w całości wewnątrz koła (r-2..r), jak telegrafy z kroku 110; przed zgaśnięciem miga skokowo. */
-  private drawEdge({ patch, x, y, r, stage }: PatchLook, now: number): void {
+  /**
+   * Obrys z pikseli: skorupa za brzegiem, pas węgli mieniących się skokowo w samym brzegu zasięgu i rozproszona
+   * poświata w głąb. Przy zapłonie węgle są białożółte, przed zgaśnięciem cały pas miga skokowo.
+   */
+  private drawRim({ patch, stage }: PatchLook, now: number, frame: number): void {
     const v = FIRE_PATCH_VISUAL;
+    const { rim } = v;
+    const pixels = this.rims.get(patch) ?? [];
     const dim = stage === 'dying' && Math.floor((patch.expiresAt - now) / v.dyingBlinkMs) % 2 === 0;
-    this.flame.lineStyle(v.edge.width, stage === 'ignite' ? v.hot.color : v.edge.color, dim ? v.dyingEdgeAlpha : v.edge.alpha);
-    for (const arc of this.arcs.get(patch) ?? []) {
-      this.flame.beginPath().arc(x, y, r - v.edge.width / 2, arc.start, arc.end).strokePath();
+    const emberAlpha = dim ? v.dyingEdgeAlpha : rim.emberAlpha;
+    this.crust.fillStyle(rim.crust.color, rim.crust.alpha);
+    for (const p of pixels) if (p.kind === RimPixelKind.Crust) this.crust.fillRect(p.x, p.y, 1, 1);
+    for (const p of pixels) {
+      if (p.kind === RimPixelKind.Crust) continue;
+      if (p.kind === RimPixelKind.Glow) {
+        if (stage === 'dying') continue;
+        this.flame.fillStyle(rim.glow.color, rim.glow.alpha).fillRect(p.x, p.y, 1, 1);
+        continue;
+      }
+      if (stage === 'ignite') {
+        this.flame.fillStyle(v.hot.color, emberAlpha).fillRect(p.x, p.y, 1, 1);
+        continue;
+      }
+      // Każdy węgiel zmienia ton we własnej fazie (co `glimmerFrames` klatek ognia).
+      const phase = hash(p.x, p.y, 7) % rim.glimmerFrames;
+      const step = Math.floor((frame + phase) / rim.glimmerFrames);
+      const ramp = p.kind === RimPixelKind.EmberOuter ? rim.outerRamp : rim.innerRamp;
+      this.flame.fillStyle(ramp[hash(p.x, p.y, step) % ramp.length]!, emberAlpha).fillRect(p.x, p.y, 1, 1);
     }
   }
 
@@ -209,22 +234,20 @@ export class FirePatchRenderer {
     }
   }
 
-  /** Łuki brzegu nieprzykryte przez sąsiednie plamy (smuga ma jeden obrys sumy kół) i pary nachodzących plam. */
-  private updateArcs(field: FirePatchField): void {
+  /** Piksele obrysu sumy kół (smuga ma jeden obrys) i pary nachodzących plam do żył żaru. */
+  private updateRims(field: FirePatchField): void {
     const patches = field.patches;
     const circles = patches.map((p) => ({ center: { x: Math.round(p.center.x), y: Math.round(p.center.y) }, radius: Math.round(p.radius) }));
-    this.arcs = new Map();
+    this.rims = new Map();
     this.pairs = [];
     patches.forEach((patch, i) => {
       const me = circles[i]!;
-      const near: typeof circles = [];
       circles.forEach((other, j) => {
-        if (j === i || Math.hypot(other.center.x - me.center.x, other.center.y - me.center.y) >= other.radius + me.radius) return;
-        near.push(other);
-        if (j > i) this.pairs.push([patch, patches[j]!]);
+        if (j <= i || Math.hypot(other.center.x - me.center.x, other.center.y - me.center.y) >= other.radius + me.radius) return;
+        this.pairs.push([patch, patches[j]!]);
       });
-      this.arcs.set(patch, near.length === 0 ? [{ start: 0, end: Math.PI * 2 }] : exposedArcs(me, [me, ...near], FIRE_PATCH_VISUAL.outlineSegments));
+      this.rims.set(patch, rimPixels(circles, i, FIRE_PATCH_VISUAL.rim.shape));
     });
-    this.arcsVersion = field.version;
+    this.rimsVersion = field.version;
   }
 }

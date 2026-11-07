@@ -5791,6 +5791,23 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** liczebność i tempo fal, czy stworki nie są za słabe po zmianie HP, czy „Droga wolna” pomaga, siła bossów po ×0,8.
 
+## Krok 176 — Szczegółowy obrys płonących plam `#ocena` `#ogien`
+
+**Uwaga właściciela (7.11.2026):** „potrzebujemy bardziej szczegółowego i wyraźnego obramowania, dopasowanego do poziomu szczegółowości, jaki ostatnio wprowadzamy”. Przyjęto, że chodzi o brzeg płonących plam na podłodze (wątek kroku 114): płomienie z generatora (krok 144) i trucizna (krok 173) są w pikselach, a brzeg plamy był gładką kreską 2 px rysowaną `arc`, rozmytą zwłaszcza na jasnej posadzce.
+
+**Co powstało:**
+- **Czysta logika** `systems/FirePatchRim.ts` (`rimPixels`): piksele obrysu sumy kół — smuga ma jeden obrys, każdy piksel należy do jednej plamy (bez podwójnego ADD). Piksel liczony po środku: pas żaru w kole, skorupa tuż za nim.
+- **Wygląd** (`FirePatchRenderer.drawRim`, liczby w `FIRE_PATCH_VISUAL.rim`):
+  - ciemna **skorupa** wypalonej posadzki 1 px tuż za brzegiem (jak ciemny obrys telegrafów — styk to dokładny zasięg parzenia), czytelna także na jasnej posadzce;
+  - **pas węgli** 2 px w samym brzegu: zewnętrzny piksel w ciemniejszej rampie, wewnętrzny w jaśniejszej, każdy węgiel mieni się skokowo we własnej fazie (co 2 klatki ognia);
+  - **poświata żaru** 4 px w głąb, rozproszona Bayerem (gęsta przy brzegu, pojedyncze piksele dalej);
+  - zapłon: węgle białożółte; dogasanie: pas miga skokowo jak wcześniej, poświata gaśnie.
+- Stara kreska `arc` (`edge`, `outlineSegments`, `exposedArcs` w plamach) usunięta. Zasięg, obrażenia i czasy plam bez zmian.
+- **Testy:** `tests/systems/firePatchRim.test.ts` — żar w kole i skorupa za brzegiem (±1 px), ciągłość brzegu we wszystkich kierunkach, jeden obrys smugi bez podwójnych pikseli, poświata rzednie w głąb, Bayer dla ujemnych współrzędnych. `npm run build` (2749 testów) zielony.
+- **Przeglądarka (Chromium, dev, `?seed=3&floor=4|6`):** plamy r 9/22/30 i smugi na bazalcie Piekła i na jasnej posadzce Lustrzanej komnaty, bez błędów w konsoli. Zrzuty przed/po: `screens/krok176-obrys-ognia/`.
+
+**Do oceny:** grubość pasa węgli (2 px) i skorupy (1 px), gęstość poświaty, tempo mienienia się węgli.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

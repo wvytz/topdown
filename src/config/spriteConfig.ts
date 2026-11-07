@@ -1736,8 +1736,23 @@ export const LOB_VISUALS: Readonly<Partial<Record<EnemyVariant, { readonly sheet
 export const FIRE_PATCH_VISUAL = {
   /** Wypalona podłoga pod ogniem (zwykłe mieszanie): ciemna plama dokładnie w zasięgu. */
   char: { color: 0x200a06, alpha: 0.6 },
-  /** Rampa ognia od brzegu do środka (mieszanie ADD). */
-  edge: { color: 0xb8240e, alpha: 0.95, width: 2 },
+  /**
+   * Obrys z pikseli (krok 176, zamiast gładkiej kreski 2 px): w samym brzegu zasięgu pas żarzących się węgli
+   * (`ember` px; każdy węgiel mieni się w rampie ognia we własnym takcie), tuż za brzegiem ciemna skorupa
+   * wypalonej posadzki (`crust` px — jak ciemny obrys telegrafów: styk to dokładny zasięg), w głąb plamy
+   * rozproszona poświata żaru (`glow` px, Bayer). Kształt liczy `systems/FirePatchRim.ts`.
+   */
+  rim: {
+    shape: { crust: 1, ember: 2, glow: 4 },
+    crust: { color: 0x120504, alpha: 0.85 },
+    /** Zewnętrzny piksel pasa: ciemniejsze węgle; wewnętrzny: jaśniejsze. */
+    outerRamp: [0x7a1408, 0xb8240e, 0xd8481a, 0xb8240e],
+    innerRamp: [0xd8481a, 0xf07a26, 0xffb648, 0xf07a26],
+    emberAlpha: 0.95,
+    glow: { color: 0xd8481a, alpha: 0.4 },
+    /** Co ile klatek ognia węgiel zmienia ton (każdy we własnej fazie). */
+    glimmerFrames: 2,
+  },
   body: { color: 0xa82010, alpha: 0.4 },
   /**
    * Żar w środku: mała plama ma jedną kulę (`smallScale` promienia), duża (od `bigRadius`) kilka kul w różnych
@@ -1759,7 +1774,6 @@ export const FIRE_PATCH_VISUAL = {
   tongues: { perRadius: 1 / 5, max: 6, maxHeight: 10, heightPerRadius: 0.6, spread: 0.6 },
   /** Iskry: piksele wznoszące się nad żarem (`rise` px na klatkę przez `lifeFrames` klatek), zawsze w kole. */
   sparks: { perRadius: 1 / 6, max: 4, rise: 2, lifeFrames: 3 },
-  outlineSegments: 32,
 } as const;
 
 /**
