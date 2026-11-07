@@ -5844,7 +5844,7 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Co powstało:** spacja na slocie w pauzie pokazuje w pasku stanu „Enter — zapisz (nadpisuje slot)” (`SAVE_TEXT.slotNeedsEnter`). Zachowanie zapisu bez zmian.
 
-**Testy:** `npm run build` (2753 testy) zielony; bez zrzutów (drobna zmiana tekstu).
+**Testy:** `npm run build` (2757 testów) zielony; bez zrzutów (drobna zmiana tekstu).
 
 ## Znane ograniczenia i backlog
 
