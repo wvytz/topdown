@@ -6,9 +6,10 @@ import type { EliteConfig } from '@/systems/Elites';
  * mocniejsze ciosy, cecha zmieniająca walkę i wyraźnie lepszy łup. Gra ma być wymagająca — elity jej nie łagodzą.
  */
 export const ELITE_CONFIG: EliteConfig = {
-  // Piętro 1 — rzadko (nauka), potem co 2–3 pokoje.
-  roomChanceByFloor: [0.2, 0.3, 0.4],
-  minPerFloor: 1,
+  // Piętro 1 — rzadziej (nauka), potem co 2–3 pokoje.
+  // Krok 161 (uwaga testera: „wincyj elitek”): 20/30/40% → 35/50/60%, od piętra 2 co najmniej 2 elity.
+  roomChanceByFloor: [0.35, 0.5, 0.6],
+  minPerFloorByFloor: [1, 2],
   hpMultiplier: 2.5,
   damageMultiplier: 1.3,
   affixes: {

@@ -19,7 +19,7 @@ import { loadFromRecord, saveSummary } from '@/systems/SaveGame';
 import { BossProgress } from '@/persistence/BossProgress';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { startFloorInfo, stepStartFloor } from '@/systems/FloorSelect';
-import { MENU_SCORES } from '@/config/menuConfig';
+import { MENU_SCORES, SPACE_CONFIRM_CONFIG } from '@/config/menuConfig';
 import { HIGHSCORE_BOARDS } from '@/config/lootConfig';
 import type { HighscoreBoardId } from '@/config/lootConfig';
 import { BOARD_ORDER, createBoardHighscores } from '@/persistence/highscoreBoards';
@@ -29,6 +29,7 @@ import type { StartBoardLine } from '@/systems/startScoreboard';
 import type { ScoreEntry } from '@/systems/Highscores';
 import { StartScoresPanel } from '@/effects/StartScoresPanel';
 import { MenuCommand, menuCommandFromKey } from '@/systems/gamepadInput';
+import { isMenuEntrySpaceSafe, spaceConfirms } from '@/systems/spaceConfirm';
 import { bindPadMenu } from '@/input/PadMenuInput';
 
 export interface MenuSceneData {
@@ -123,7 +124,14 @@ export class MenuScene extends Phaser.Scene {
     this.fade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, P.fade).setOrigin(0).setAlpha(1).setDepth(1);
     this.tweens.add({ targets: this.fade, alpha: 0, duration: L.fadeInMs });
 
+    const openedAt = performance.now();
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      // Krok 161: spacja wybiera tylko tam, gdzie nie zastąpi autozapisu (zob. systems/spaceConfirm.ts).
+      const press = { key: event.key, repeat: event.repeat, sinceOpenMs: performance.now() - openedAt };
+      if (spaceConfirms(press, this.spaceSafe(), SPACE_CONFIRM_CONFIG)) {
+        this.onCommand(MenuCommand.Confirm);
+        return;
+      }
       const command = menuCommandFromKey(event.key);
       if (command) this.onCommand(command);
     });
@@ -136,6 +144,14 @@ export class MenuScene extends Phaser.Scene {
     sound.setMusicIntense(false);
     sound.setMusicDuck(1);
     this.refresh();
+  }
+
+  /** Czy spacja może teraz zatwierdzić zaznaczoną pozycję (krok 161). */
+  private spaceSafe(): boolean {
+    const { hasAutosave } = this.availability();
+    if (this.view === 'floors') return this.floorCursor === 1 || !hasAutosave;
+    if (this.view === 'slots') return this.slotCursor === SAVE_CONFIG.slotCount || !hasAutosave;
+    return isMenuEntrySpaceSafe(MENU_ORDER[this.cursor], hasAutosave);
   }
 
   private availability(): MenuAvailability {

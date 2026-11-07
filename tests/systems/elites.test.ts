@@ -7,6 +7,7 @@ import { ENEMY_LOOT } from '@/config/lootConfig';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
 import { planEncounters } from '@/dungeon/EncounterPlanner';
 import {
+  eliteMinPerFloor,
   applyElite,
   availableAffixes,
   eliteAnnouncement,
@@ -41,9 +42,9 @@ describe('elity — losowanie (krok 42)', () => {
       for (const count of byRoom.values()) expect(count).toBe(1);
       rooms += new Set(spawns.map((s) => s.room)).size;
     });
-    // Szansa 40% na pokój — w próbce wyraźnie więcej niż 20%, mniej niż 60%.
-    expect(elites / rooms).toBeGreaterThan(0.2);
-    expect(elites / rooms).toBeLessThan(0.6);
+    // Szansa 60% na pokój (krok 161) — w próbce wyraźnie więcej niż 40%, mniej niż prawie każdy pokój.
+    expect(elites / rooms).toBeGreaterThan(0.4);
+    expect(elites / rooms).toBeLessThan(0.8);
   });
 
   it('deterministycznie z RNG; piętro 1 rzadziej niż dalsze', () => {
@@ -65,9 +66,12 @@ describe('elity — losowanie (krok 42)', () => {
     ];
     for (let seed = 0; seed < 20; seed++) {
       const none = rollElites(spawns, { ...ELITE_CONFIG, roomChanceByFloor: [0] }, 1, 1, createRng(seed));
-      expect(none.filter((a) => a.length > 0)).toHaveLength(ELITE_CONFIG.minPerFloor);
+      expect(none.filter((a) => a.length > 0)).toHaveLength(eliteMinPerFloor(ELITE_CONFIG, 1));
+      const second = rollElites(spawns, { ...ELITE_CONFIG, roomChanceByFloor: [0] }, 2, 1, createRng(seed));
+      expect(second.filter((a) => a.length > 0)).toHaveLength(2);
     }
-    expect(ELITE_CONFIG.minPerFloor).toBeGreaterThanOrEqual(1);
+    expect(eliteMinPerFloor(ELITE_CONFIG, 1)).toBeGreaterThanOrEqual(1);
+    expect(eliteMinPerFloor(ELITE_CONFIG, 9)).toBe(2);
     expect(rollElites([], ELITE_CONFIG, 1, 1, createRng(1))).toEqual([]);
   });
 

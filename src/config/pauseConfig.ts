@@ -77,8 +77,10 @@ export const PAUSE_CONFIG = {
    */
   countdown: {
     steps: 3,
-    stepMs: 1000,
+    // Krok 161 (uwaga testera: „3, 2, 1 wkurzające”): krok 1,0 → 0,6 s, a kliknięcie / Enter / A pomija odliczanie.
+    stepMs: 600,
     maxFrameMs: 100,
+    minSkipMs: 120,
     /** Nakładka w czasie odliczania — dużo lżejsza niż w pauzie, żeby było widać planszę. */
     overlayAlpha: 0.22,
     fontSize: 96,
@@ -87,7 +89,7 @@ export const PAUSE_CONFIG = {
     pulseScale: 1.5,
     /** Pod koniec kroku cyfra blednie do tej przezroczystości. */
     fadeAlpha: 0.35,
-    caption: 'Przygotuj się…',
+    caption: 'Przygotuj się…  (klik — od razu)',
     /** Cyfra nad bohaterem (kamera trzyma go na środku) — nie zasłania jego okolicy. */
     y: 140,
     captionDy: 70,

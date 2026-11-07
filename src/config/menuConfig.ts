@@ -1,6 +1,7 @@
 import { SPLASH_PALETTE } from '@/config/splashConfig';
 import { DEATH_HERO_ICON } from '@/config/deathScreenConfig';
 import { MenuEntry } from '@/systems/mainMenu';
+import type { SpaceConfirmConfig } from '@/systems/spaceConfirm';
 
 /**
  * Menu główne (krok 91): układ i napisy. Menu leży na ekranie startowym — wieża, zaćmienie i popiół
@@ -120,3 +121,6 @@ export const MENU_SCORES = {
       to === null ? `▼ wyprzedzili cię: było ${from}. miejsce` : `▼ ktoś cię wyprzedził: ${from}. → ${to}.`,
   },
 } as const;
+
+/** Krok 161 (uwaga testera): spacja wybiera w bezpiecznych miejscach menu; zaraz po otwarciu ekranu jeszcze nie (dash z biegu). */
+export const SPACE_CONFIRM_CONFIG: SpaceConfirmConfig = { openGuardMs: 400 };

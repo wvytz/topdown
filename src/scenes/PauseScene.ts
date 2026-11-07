@@ -11,6 +11,8 @@ import { bindPadMenu } from '@/input/PadMenuInput';
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import { AUDIO_TEXT, MUSIC_PRESET_NAMES, MUTE_KEY } from '@/config/audioConfig';
 import { menuCommandFromKey } from '@/systems/gamepadInput';
+import { isPauseItemSpaceSafe, spaceConfirms } from '@/systems/spaceConfirm';
+import { SPACE_CONFIRM_CONFIG } from '@/config/menuConfig';
 import { volumeLabel } from '@/systems/AudioSettings';
 import { DISPLAY_CONFIG, DISPLAY_TEXT } from '@/config/displayConfig';
 import { display } from '@/input/DisplayControls';
@@ -114,6 +116,10 @@ export class PauseScene extends Phaser.Scene {
     // Kliknięcie obok listy na stronie głównej wznawia grę (podstrony: nic — łatwo chybić przycisku głośności).
     this.input.on(Phaser.Input.Events.POINTER_UP, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (feedbackUi.isOpen || performance.now() - this.feedbackClosedAt < FEEDBACK_CLICK_GUARD_MS) return;
+      if (this.countdown) {
+        this.skipCountdown(this.countdown);
+        return;
+      }
       if (over.length === 0 && this.page === PausePage.Main && !this.pendingPage && !this.countdown) this.resume();
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => feedbackUi.close());
@@ -163,7 +169,14 @@ export class PauseScene extends Phaser.Scene {
       if (!this.countdown) this.save(onSave, slot);
     });
     // Strzałki, WASD, Enter i Esc — jak pad (Esc to „wstecz”, na stronie głównej wznawia).
+    const openedAt = performance.now();
     keyboard.on('keydown', (event: KeyboardEvent) => {
+      // Krok 161: spacja wybiera bezpieczne pozycje (nie zapis do slotu, nie wyjście) i pomija odliczanie.
+      const press = { key: event.key, repeat: event.repeat, sinceOpenMs: performance.now() - openedAt };
+      if (spaceConfirms(press, this.countdown !== null || isPauseItemSpaceSafe(this.cursor), SPACE_CONFIRM_CONFIG)) {
+        this.onCommand(MenuCommand.Confirm);
+        return;
+      }
       if (event.repeat && (event.key === 'Escape' || event.key === 'Enter')) return;
       const command = menuCommandFromKey(event.key);
       if (command) this.onCommand(command);
@@ -181,6 +194,7 @@ export class PauseScene extends Phaser.Scene {
     // W trakcie odliczania działa tylko powrót do pauzy.
     if (this.countdown) {
       if (command === MenuCommand.Pause || command === MenuCommand.Back) this.cancelCountdown();
+      else if (command === MenuCommand.Confirm) this.skipCountdown(this.countdown);
       return;
     }
     switch (command) {
@@ -474,6 +488,11 @@ export class PauseScene extends Phaser.Scene {
     }
     if (changed) sound.play(SoundCue.UiMove);
     this.drawCountdown(countdown);
+  }
+
+  /** Krok 161: kliknięcie / Enter / A w trakcie odliczania — gra rusza od razu. */
+  private skipCountdown(countdown: ResumeCountdown): void {
+    if (countdown.skip()) this.finishResume();
   }
 
   private drawCountdown(countdown: ResumeCountdown): void {
