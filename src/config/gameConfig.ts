@@ -1,3 +1,4 @@
+import { type ZoomOverrideConfig, zoomFromSearch } from '@/systems/cameraZoom';
 import type { PlayerStats } from '@/core/types';
 import type { DungeonGeneratorConfig } from '@/core/dungeonTypes';
 import { BiomeId, biomeForFloor } from '@/config/biomeConfig';
@@ -61,11 +62,17 @@ export const PLAYER_BASE_STATS: PlayerStats = {
   moveSpeed: 200,
 };
 
+/** Stały zoom 2,0 (krok 18, decyzja właściciela): całkowita krotność, piksele bez zniekształceń. */
+export const BASE_CAMERA_ZOOM = 2;
+
+/** Krok 167: próbny zoom z adresu (`?zoom=1.6`) — tylko do testów właściciela, domyślnie bez zmian. */
+export const ZOOM_OVERRIDE: ZoomOverrideConfig = { param: 'zoom', min: 1.25, max: 2 };
+
 export const CAMERA_CONFIG = {
   /** Interpolacja śledzenia (0..1) — mniejsza = płynniej. */
   lerp: 0.12,
-  /** Stały zoom 2,0 (krok 18, decyzja właściciela): całkowita krotność, piksele bez zniekształceń. */
-  zoom: 2,
+  /** Zoom kamery: 2,0, chyba że adres prosi o próbny (krok 167). */
+  zoom: zoomFromSearch(typeof location === 'undefined' ? '' : location.search, BASE_CAMERA_ZOOM, ZOOM_OVERRIDE),
   /** Martwa strefa w px świata, w której gracz może się ruszać bez przesuwania kamery
    *  (przy zoomie 1,5 było 80×60; przeliczone, by zajmowała tę samą część ekranu). */
   deadzoneWidth: 60,

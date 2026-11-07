@@ -53,3 +53,14 @@ describe('ekran wyboru — zakładki trybu (krok 90)', () => {
     expect(2 * L.mode.tabWidth + L.mode.gap).toBeLessThan(GAME_WIDTH);
   });
 });
+
+describe('ukryci bohaterowie (krok 167)', () => {
+  it('Czarodziejki nie ma na ekranach wyboru, ale dalej jest w grze', async () => {
+    const { SELECTABLE_HEROES, HIDDEN_HEROES } = await import('@/config/heroConfig');
+    expect(HIDDEN_HEROES).toContain(HeroId.Sorceress);
+    expect(SELECTABLE_HEROES).not.toContain(HeroId.Sorceress);
+    expect(SELECTABLE_HEROES.length).toBeGreaterThanOrEqual(2); // co-op: różni bohaterowie
+    expect(HERO_ORDER).toContain(HeroId.Sorceress);
+    expect(parseHeroId('sorceress')).toBe(HeroId.Sorceress);
+  });
+});

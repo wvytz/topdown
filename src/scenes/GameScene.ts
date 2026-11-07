@@ -71,7 +71,7 @@ import type { ArenaLayout } from '@/core/arenaConditionTypes';
 import { planArenaLayout, withWallTiles } from '@/dungeon/ArenaConditionPlanner';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
-import { HERO_DEFINITIONS, HERO_ORDER, parseHeroId } from '@/config/heroConfig';
+import { HERO_DEFINITIONS, SELECTABLE_HEROES, parseHeroId } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL } from '@/config/spriteConfig';
 import { sorceryOf } from '@/core/heroTypes';
@@ -393,7 +393,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   init(sceneData: FloorSceneData): void {
     // Ukryty bot-partner (krok 149): `?bot=1` w adresie dokłada P2 sterowanego przez AI (też po menu i ekranie wyboru).
-    const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), HERO_ORDER);
+    const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), SELECTABLE_HEROES);
     const data = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;

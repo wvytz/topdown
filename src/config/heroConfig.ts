@@ -2,6 +2,25 @@ import type { HeroDefinition } from '@/core/heroTypes';
 import { HeroId } from '@/core/heroTypes';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
+import type { PlayerCombatConfig } from '@/core/combatTypes';
+import { flagFromSearch } from '@/systems/cameraZoom';
+
+/**
+ * Krok 167 (uwaga testera: „wolniejsze ataki, żeby były bardziej meaningful”; decyzja właściciela: próba tylko
+ * na barbarzyńcy, przełącznikiem `?heavy=1`): cios co 0,42 s zamiast 0,32 s, obrażenia +30% (15 → 20), krótkie
+ * drżenie kamery przy trafieniu. Obrażenia na sekundę prawie bez zmian (47 → 48/s), więc balans zostaje.
+ */
+export const HEAVY_SWING_TRIAL = {
+  param: 'heavy',
+  combat: {
+    ...PLAYER_COMBAT,
+    meleeDamage: 20,
+    attackCooldownMs: 420,
+    hitShake: { durationMs: 70, intensity: 0.0025 },
+  } satisfies PlayerCombatConfig,
+} as const;
+
+const heavySwing = flagFromSearch(typeof location === 'undefined' ? '' : location.search, HEAVY_SWING_TRIAL.param);
 
 /**
  * Bohaterowie (krok 37). Barbarzyńca to dotychczasowy gracz.
@@ -23,7 +42,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       { input: 'R', text: 'Szał: furia ciosów, nietykalny' },
     ],
     stats: PLAYER_BASE_STATS,
-    combat: PLAYER_COMBAT,
+    combat: heavySwing ? HEAVY_SWING_TRIAL.combat : PLAYER_COMBAT,
     kit: { kind: 'melee' },
     // Krok 98 (pomysł właściciela: szał, żeby szybko dobić bossa, z nietykalnością).
     // Krok 117 (ocena właściciela: szał z przedmiotami „broken”): 5 → 4 s, ciosy ×0,65 → ×0,8, obrażenia ×1,35 → ×1,2.
@@ -167,6 +186,15 @@ export const DEFAULT_HERO = HeroId.Barbarian;
 
 /** Kolejność kart na ekranie wyboru (od lewej). */
 export const HERO_ORDER: readonly HeroId[] = [HeroId.Barbarian, HeroId.Sorceress, HeroId.Archer];
+
+/**
+ * Krok 167 (decyzja właściciela po uwadze testera „wywalić czarodziejkę”): Czarodziejka znika z ekranów wyboru
+ * (solo i co-op), ale kod zostaje — `?hero=sorceress`, zapisy i bot-partner działają dalej.
+ */
+export const HIDDEN_HEROES: readonly HeroId[] = [HeroId.Sorceress];
+
+/** Bohaterowie na ekranach wyboru (od lewej). */
+export const SELECTABLE_HEROES: readonly HeroId[] = HERO_ORDER.filter((hero) => !HIDDEN_HEROES.includes(hero));
 
 /** Rozpoznaje identyfikator bohatera (parametr adresu, zapis w przeglądarce); nieznany = null. */
 export function parseHeroId(value: string | null): HeroId | null {

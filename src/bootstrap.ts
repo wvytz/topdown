@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PAUSE_CLOCK_KEY } from '@/config/pauseConfig';
-import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
+import { BASE_CAMERA_ZOOM, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import type { PlatformId } from '@/core/platform';
 import { setPlatform } from '@/core/platform';
 import { sound } from '@/audio/SoundBoard';
@@ -53,7 +53,8 @@ export function canvasScale(viewport: Viewport, fractional = false): number {
     gameWidth: GAME_WIDTH,
     gameHeight: GAME_HEIGHT,
     devicePixelRatio: window.devicePixelRatio || 1,
-    cameraZoom: CAMERA_CONFIG.zoom,
+    // Skala płótna liczona od bazowego zoomu — próbny `?zoom=` (krok 167) zmienia tylko kamerę.
+    cameraZoom: BASE_CAMERA_ZOOM,
     fractional,
   });
 }

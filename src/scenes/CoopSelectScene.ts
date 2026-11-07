@@ -4,7 +4,7 @@ import type { HeroId } from '@/core/heroTypes';
 import type { CoopSelectData, FloorSceneData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { RunMode } from '@/core/runMode';
-import { HERO_DEFINITIONS, HERO_ORDER } from '@/config/heroConfig';
+import { HERO_DEFINITIONS, SELECTABLE_HEROES as HERO_ORDER } from '@/config/heroConfig';
 import { HERO_SELECT_LAYOUT as L, HERO_SELECT_PALETTE as P } from '@/config/heroSelectConfig';
 import { COOP_CONFIG, COOP_SELECT_TEXT as T } from '@/config/coopConfig';
 import { HERO_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';

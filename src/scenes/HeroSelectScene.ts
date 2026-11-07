@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import type { HeroId } from '@/core/heroTypes';
 import type { FloorSceneData, HeroSelectData } from '@/core/types';
 import { SceneKey } from '@/core/types';
-import { HERO_DEFINITIONS, HERO_ORDER } from '@/config/heroConfig';
+import { HERO_DEFINITIONS, SELECTABLE_HEROES as HERO_ORDER } from '@/config/heroConfig';
 import { HERO_SELECT_LAYOUT as L, HERO_SELECT_PALETTE as P } from '@/config/heroSelectConfig';
 import { HERO_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';

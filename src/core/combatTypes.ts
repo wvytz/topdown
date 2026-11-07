@@ -468,6 +468,8 @@ export interface PlayerCombatConfig {
   readonly invulnerabilityMs: number;
   readonly dash: DashConfig;
   readonly ranged: RangedConfig;
+  /** Krok 167 (próba „cięższych ciosów”): drżenie kamery, gdy cios kogoś trafi; brak = bez drżenia. */
+  readonly hitShake?: { readonly durationMs: number; readonly intensity: number };
 }
 
 export interface EnemyScalingConfig {

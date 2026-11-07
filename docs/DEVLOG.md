@@ -5642,6 +5642,21 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** czy ogniki pasują do ogrodu (może własne świetliki z generatora), liczby.
 
+## Krok 167 — Czarodziejka ukryta, próbny zoom i próba cięższych ciosów `#uwagi-testera` `#decyzja`
+
+**Decyzje właściciela (7.11) po uwagach testera:** „wywalić czarodziejkę” → **7b: ukryć z wyboru, kod zostaje**; „za blisko kamera” → **5a: przełącznik testowy**; „wolniejsze ataki” → **6a: próba tylko na barbarzyńcy**.
+
+**Co powstało:**
+- **Czarodziejka ukryta:** `HIDDEN_HEROES` i `SELECTABLE_HEROES` w `config/heroConfig.ts`; ekran wyboru (solo, PC i telefon) i co-op pokazują barbarzyńcę i łucznika. `?hero=sorceress`, stare zapisy i smoke dalej działają; bot-partner i `?coop` dobierają partnera spośród widocznych.
+- **`?zoom=1.6`** (zakres 1,25–2): oddala kamerę na próbę. Skala płótna liczy się dalej od bazowego 2,0 (`BASE_CAMERA_ZOOM`), więc zmienia się tylko kamera; mrok, mgła i ogień biorą zoom z `CAMERA_CONFIG`. Zasady widoku wrogów (strzelają tylko z kadru przy 2,0) bez zmian — przy oddalonej kamerze strzelają z bliższa niż widać. Ułamkowy zoom może lekko migotać pikselami.
+- **`?heavy=1`** (tylko barbarzyńca): cios co 0,42 s zamiast 0,32 s, 20 obrażeń zamiast 15 (obrażenia na sekundę prawie te same, 47 → 48/s), krótkie drżenie kamery przy trafieniu (`PlayerCombatConfig.hitShake`).
+
+**Pliki:** czysty `systems/cameraZoom.ts` (`zoomFromSearch`, `flagFromSearch`), `config/gameConfig.ts`, `config/heroConfig.ts`, `core/combatTypes.ts`, `combat/HeroCombat.ts`, `bootstrap.ts`, `scenes/HeroSelectScene.ts`, `scenes/CoopSelectScene.ts`, `scenes/BootScene.ts`, `scenes/GameScene.ts`.
+
+**Testy:** `tests/systems/cameraZoom.test.ts` (nowy), `heroSelect.test.ts` (ukryci bohaterowie).
+
+**Do oceny właściciela:** zagraj `https://wvytz.github.io/topdown/?zoom=1.6` i `?heavy=1` (można razem: `?zoom=1.6&heavy=1`) — jeśli się spodobają, staną się domyślne.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5808,4 +5823,5 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap B, krok 164: ustalone fale w zasadzce (6 scenariuszy po 3 fale).
 - [x] Etap B, krok 165: groźniejsze pułapki ruin (kolce 2× na wrogach, wróg naciska płytę strzałek).
 - [x] Etap B, krok 166: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
-- [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
+- [x] Etap C, krok 167: Czarodziejka ukryta z wyboru, `?zoom=1.6`, `?heavy=1` — czekają na ocenę.
+- [ ] Etap C: stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
