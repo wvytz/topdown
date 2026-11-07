@@ -5713,6 +5713,14 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** siła i nazwy relikwii, wygląd ikon (zwłaszcza Ząb Pożeracza).
 
+## Krok 171 — Cięższe ciosy barbarzyńcy domyślnie `#ocena` `#decyzja`
+
+**Ocena właściciela (7.11) po próbie `?heavy=1`:** „zostaw, super jest”.
+
+**Co się zmieniło:** barbarzyńca ma domyślnie cios co 0,42 s (było 0,32 s), 20 obrażeń (było 15) i krótkie drżenie kamery przy trafieniu (`BARBARIAN_COMBAT` w `config/heroConfig.ts`). Obrażenia na sekundę prawie bez zmian (47 → 48/s). Przełącznik `?heavy` usunięty; `?zoom=1.6` dalej czeka na ocenę.
+
+**Testy:** `cameraZoom.test.ts` (barbarzyńca używa `BARBARIAN_COMBAT`).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5879,7 +5887,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap B, krok 164: ustalone fale w zasadzce (6 scenariuszy po 3 fale).
 - [x] Etap B, krok 165: groźniejsze pułapki ruin (kolce 2× na wrogach, wróg naciska płytę strzałek).
 - [x] Etap B, krok 166: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
-- [x] Etap C, krok 167: Czarodziejka ukryta z wyboru, `?zoom=1.6`, `?heavy=1` — czekają na ocenę.
+- [x] Etap C, krok 167: Czarodziejka ukryta z wyboru, `?zoom=1.6` (czeka na ocenę), `?heavy=1` — od kroku 171 domyślnie.
 - [x] Etap C, krok 168: stała liczba pokojów na piętro, ścieżka główna + 1–2 odnogi (kapliczka w odnodze).
 - [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
 - [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.

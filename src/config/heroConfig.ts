@@ -3,24 +3,17 @@ import { HeroId } from '@/core/heroTypes';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
 import type { PlayerCombatConfig } from '@/core/combatTypes';
-import { flagFromSearch } from '@/systems/cameraZoom';
 
 /**
- * Krok 167 (uwaga testera: „wolniejsze ataki, żeby były bardziej meaningful”; decyzja właściciela: próba tylko
- * na barbarzyńcy, przełącznikiem `?heavy=1`): cios co 0,42 s zamiast 0,32 s, obrażenia +30% (15 → 20), krótkie
- * drżenie kamery przy trafieniu. Obrażenia na sekundę prawie bez zmian (47 → 48/s), więc balans zostaje.
+ * Cięższe ciosy barbarzyńcy: krok 167 jako próba `?heavy=1`, od kroku 171 domyślnie (ocena właściciela 7.11: „zostaw,
+ * super jest”). Cios co 0,42 s zamiast 0,32 s, 20 obrażeń zamiast 15 (ok. 48/s jak wcześniej 47/s), drżenie kamery przy trafieniu.
  */
-export const HEAVY_SWING_TRIAL = {
-  param: 'heavy',
-  combat: {
-    ...PLAYER_COMBAT,
-    meleeDamage: 20,
-    attackCooldownMs: 420,
-    hitShake: { durationMs: 70, intensity: 0.0025 },
-  } satisfies PlayerCombatConfig,
-} as const;
-
-const heavySwing = flagFromSearch(typeof location === 'undefined' ? '' : location.search, HEAVY_SWING_TRIAL.param);
+export const BARBARIAN_COMBAT = {
+  ...PLAYER_COMBAT,
+  meleeDamage: 20,
+  attackCooldownMs: 420,
+  hitShake: { durationMs: 70, intensity: 0.0025 },
+} as const satisfies PlayerCombatConfig;
 
 /**
  * Bohaterowie (krok 37). Barbarzyńca to dotychczasowy gracz.
@@ -42,7 +35,7 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       { input: 'R', text: 'Szał: furia ciosów, nietykalny' },
     ],
     stats: PLAYER_BASE_STATS,
-    combat: heavySwing ? HEAVY_SWING_TRIAL.combat : PLAYER_COMBAT,
+    combat: BARBARIAN_COMBAT,
     kit: { kind: 'melee' },
     // Krok 98 (pomysł właściciela: szał, żeby szybko dobić bossa, z nietykalnością).
     // Krok 117 (ocena właściciela: szał z przedmiotami „broken”): 5 → 4 s, ciosy ×0,65 → ×0,8, obrażenia ×1,35 → ×1,2.
