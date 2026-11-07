@@ -137,6 +137,8 @@ export class EnemyManager implements EnemyAttackHandler {
   private readonly routes = new WeakMap<Enemy, EnemyRoute>();
   /** Gniazdownicy i ich czerwie (krok 122). */
   private readonly broods = new BroodLedger<Enemy, Enemy>();
+  /** Stworki nawały i świty bossa (krok 175) — jak czerwie: bez łupu i ładowania ultimate. */
+  private readonly swarm = new WeakSet<Enemy>();
   /** Czyhacze w kryjówkach (krok 123) i ich doskoki w locie. */
   private readonly dens = new Map<Enemy, LurkerDen>();
   private landings: LurkLanding[] = [];
@@ -233,7 +235,14 @@ export class EnemyManager implements EnemyAttackHandler {
 
   /** Czerw z gniazda (krok 122): bez łupu i bez ładowania ultimate za zabicie. */
   isBroodling(enemy: Enemy): boolean {
-    return this.broods.isMinion(enemy);
+    return this.broods.isMinion(enemy) || this.swarm.has(enemy);
+  }
+
+  /** Stworek nawały (krok 175): wariant-stworek biomu, wykluwa się `riseMs` (nietykalny i bierny). */
+  spawnSwarmling(variant: EnemyVariant, at: Vector2, riseMs: number): Enemy {
+    const enemy = this.spawnAt(EnemyType.Rusher, at, [], { variant, riseMs });
+    this.swarm.add(enemy);
+    return enemy;
   }
 
   variantOf(type: EnemyType): EnemyVariant {

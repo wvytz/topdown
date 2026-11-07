@@ -70,7 +70,7 @@ import { ArenaConditionManager } from '@/combat/ArenaConditionManager';
 import type { ArenaLayout } from '@/core/arenaConditionTypes';
 import { planArenaLayout, withWallTiles } from '@/dungeon/ArenaConditionPlanner';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
-import { getEncounterConfigForFloor } from '@/config/combatConfig';
+import { ENEMY_DEFINITIONS, ENEMY_VARIANTS, getEncounterConfigForFloor } from '@/config/combatConfig';
 import { HERO_DEFINITIONS, SELECTABLE_HEROES, parseHeroId } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL } from '@/config/spriteConfig';
@@ -105,6 +105,9 @@ import { EnemyManager } from '@/combat/EnemyManager';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
+import { HordeManager } from '@/combat/HordeManager';
+import { HORDE_CONFIG } from '@/config/hordeConfig';
+import { hordeMinionVariant, isInsideRoom, planHordeRooms } from '@/systems/Horde';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { assignLurkers, assignNesters, planEncounters } from '@/dungeon/EncounterPlanner';
@@ -251,6 +254,9 @@ const AMBUSH_SEED_SALT = 0xa3b1;
 const DART_SEED_SALT = 0xda27;
 const BREAKABLE_SEED_SALT = 0xb7ea;
 const AMBIENT_SEED_SALT = 0x11fe;
+const HORDE_SEED_SALT = 0x40de;
+/** Ostatnia fala nawały wybita (krok 175) — etap „zero błąkania”: wiadomo, że można iść dalej. */
+const HORDE_CLEARED_TOAST = 'Droga wolna';
 const TOAST_DURATION_MS = 2500;
 /** Napis nad kartami, gdy boss uciekł windą zamiast zginąć (blond sprzątaczka, krok 125). */
 const ESCAPED_HEADLINE = 'SPRZĄTACZKA UCIEKŁA!';
@@ -311,6 +317,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private secretRoom: SecretRoomManager | null = null;
   private ambushRoomId: number | null = null;
   private ambush: AmbushManager | null = null;
+  /** Nawała (krok 175): fale stworków w pokojach i tłum świty bossa. */
+  private horde: HordeManager | null = null;
   /** Upiory zasadzki: zawsze widoczne (świecą nad mrokiem), bez łupu. */
   private ambushGhosts = new Set<Phaser.GameObjects.Sprite>();
   /** Kafle kryjówek Czyhaczy (krok 123) — pułapki i urny ruin je omijają. */
@@ -701,6 +709,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     }
     const interactOf = (hero: Player) => (hero === this.player ? actions.interact : (this.partnerActions?.interact ?? false));
     this.enemies.update(time);
+    this.horde?.update(time);
     this.ceilingDrops?.update(time);
     this.cocoons?.update(time);
     this.stickyWebs?.update(time);
@@ -1032,6 +1041,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
       this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
     }
+    this.horde = this.createHorde();
     const biome = this.bossRush ? null : this.biome;
 
     const drops = biome?.ceilingDrops;
@@ -1161,6 +1171,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       },
       // Świta (krok 80): wróg biomu wynurza się (chwilę nietykalny i niegroźny), zanim ruszy.
       spawnHelper: (type, at) => this.enemies.spawnAt(type, at, [], { riseMs: RETINUE_MARKER_VISUAL.riseMs }),
+      spawnSwarm: (at, count) => this.horde?.spawnAround(at, count),
       onDefeated: (position) => {
         this.dropLoot(position, BOSS_LOOT);
         // Areny bossów: nagrodę i teleport prowadzi `updateBossRush` (najpierw arena musi być pusta).
@@ -1696,6 +1707,30 @@ export class GameScene extends Phaser.Scene implements HudSource {
     diag.note('boss-reward-offered', { floor: this.floorNumber, choices: choices.length });
     this.scene.pause();
     this.scene.launch(SceneKey.Reward, data);
+  }
+
+  /**
+   * Nawała (krok 175): we wspinaczce fale w zwykłych pokojach; w arenach bossów tylko tłum świty. Własny strumień RNG
+   * (planowanie i miejsca wyjścia) — rozmieszczenie reszty piętra bez zmian.
+   */
+  private createHorde(): HordeManager {
+    const rng = createRng(deriveSeed(this.dungeon.seed, HORDE_SEED_SALT));
+    const plans = this.bossRush ? [] : planHordeRooms(this.dungeon, this.floorNumber, HORDE_CONFIG, this.coop !== null, rng);
+    return new HordeManager({
+      scene: this,
+      floor: this.dungeon,
+      party: this.party,
+      enemies: this.enemies,
+      effects: this.effects,
+      config: HORDE_CONFIG,
+      plans,
+      minion: hordeMinionVariant(this.biome.enemyVariants, ENEMY_VARIANTS, ENEMY_DEFINITIONS[EnemyType.Nester].attack),
+      rng,
+      onRoomCleared: (room) => {
+        const inRoom = this.enemies.living.some((e) => isInsideRoom(room, { x: Math.floor(e.x / TILE_SIZE), y: Math.floor(e.y / TILE_SIZE) }, 0));
+        if (!inRoom) this.showToast(HORDE_CLEARED_TOAST);
+      },
+    });
   }
 
   private showToast(text: string, durationMs = TOAST_DURATION_MS): void {

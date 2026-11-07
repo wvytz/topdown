@@ -679,6 +679,8 @@ export interface RetinueDefinition {
   readonly telegraphMs: number;
   /** Najmniejsza odległość miejsca wyjścia od gracza (kafle, Czebyszew). */
   readonly minPlayerDistanceTiles: number;
+  /** Ile stworków nawały wychodzi razem z każdym pomocnikiem (krok 175); brak = 0. */
+  readonly swarm?: number;
 }
 
 export interface BossDefinition {
