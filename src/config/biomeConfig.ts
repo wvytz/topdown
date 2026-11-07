@@ -14,7 +14,7 @@ import {
   STORK_GARDEN_DRESSING,
 } from '@/config/dressingConfig';
 import type { BiomeAmbientConfig } from '@/config/ambientConfig';
-import { DEN_AMBIENT, GRAVEYARD_AMBIENT, GROVE_AMBIENT, INFERNAL_AMBIENT } from '@/config/ambientConfig';
+import { DEN_AMBIENT, GARDEN_AMBIENT, GRAVEYARD_AMBIENT, GROVE_AMBIENT, INFERNAL_AMBIENT, MIRROR_AMBIENT, RUINS_AMBIENT } from '@/config/ambientConfig';
 import type { FogConfig, MirrorFloorConfig } from '@/config/lightingConfig';
 import { FUNGAL_FOG, GARDEN_NIGHT, GRAVEYARD_MIST, INFERNAL_HAZE, MIRROR_FLOOR, SMOKE_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
@@ -125,6 +125,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
       },
     },
     breakables: { roomChance: 0.9, perRoom: { min: 1, max: 3 }, crateChance: 0.35, urnVariants: 2, radius: 9 },
+    // Krok 166: karaluchy i puszki w gruzie (uwaga testera o „robaczkach”).
+    ambient: { grove: null, graveyard: null, infernal: null, den: RUINS_AMBIENT },
   },
   [BiomeId.SpiderLair]: {
     id: BiomeId.SpiderLair,
@@ -337,6 +339,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     breakables: null,
     mirrorFloor: MIRROR_FLOOR,
     arenaConditions: MIRROR_HALL_ARENA,
+    // Krok 166: karaluch, którego sprzątaczki przegapiły.
+    ambient: { grove: null, graveyard: null, infernal: null, den: MIRROR_AMBIENT },
   },
   // Bociani Ogród (krok 137, `#brudna-wiedzma`): ostatnie piętro kręgu — po złudnej czystości Lustrzanej komnaty
   // winda wywozi na zarośnięty taras nocą, „totalny mrok”. Wrogowie na razie z ruin (jak w Lustrzanej komnacie).
@@ -355,6 +359,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     traps: null,
     breakables: null,
     arenaConditions: STORK_GARDEN_ARENA,
+    // Krok 166: ogniki jak świetliki i kruki na nocnych ścieżkach.
+    ambient: { grove: null, graveyard: GARDEN_AMBIENT, infernal: null, den: null },
   },
 };
 

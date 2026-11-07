@@ -5625,6 +5625,23 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** czy pułapki nie są za mocne na piętrze 1 (nowi gracze), czy naciskanie płyty przez wrogów jest czytelne.
 
+## Krok 166 — Żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie `#uwagi-testera` `#zywe-otoczenie` `#lore`
+
+**Uwaga testera:** „fajne idle rzeczy na mapce, jak robaczki, światełka”. Do tej pory miały je piętra 2–5 (kroki 156–159); teraz każde piętro wspinaczki.
+
+**Co powstało (z istniejących stworków, spójnie z lore):**
+- **Ruiny (piętro 1):** karaluchy w gruzie (45% pokojów, 2–4) i puszki do kopnięcia (1–2 na pokój). Ekranów nie ma — na najniższym piętrze prądu już nie ma.
+- **Lustrzana komnata (piętro 6):** „złudna czystość” — gdzieniegdzie karaluch, którego sprzątaczki przegapiły (25% pokojów, 1–2), bez puszek.
+- **Bociani Ogród (piętro 7, noc):** błędne ogniki jak świetliki (75% pokojów; rozwiewają mrok jak w Cmentarzysku) i kruki na ścieżkach (30%), bez zniczy.
+
+**Pliki:** `config/ambientConfig.ts` (`RUINS_AMBIENT`, `MIRROR_AMBIENT`, `GARDEN_AMBIENT` — warianty istniejących konfiguracji), `config/biomeConfig.ts` (`ambient` trzech biomów). Planer i widoki bez zmian.
+
+**Testy:** `tests/dungeon/AmbientPlanner.test.ts` — wszystkie biomy wspinaczki mają żywe otoczenie, ruiny bez ekranów, komnata bez puszek, ogród bez zniczy.
+
+**Weryfikacja:** `?floor=1&seed=4` — puszka w pokoju startowym; `?floor=7&seed=4` — kruki i ognik w pierwszym pokoju.
+
+**Do oceny właściciela:** czy ogniki pasują do ogrodu (może własne świetliki z generatora), liczby.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5790,5 +5807,5 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap B, krok 163: ikonki pokojów na minimapie (kapliczka, zasadzka, elita).
 - [x] Etap B, krok 164: ustalone fale w zasadzce (6 scenariuszy po 3 fale).
 - [x] Etap B, krok 165: groźniejsze pułapki ruin (kolce 2× na wrogach, wróg naciska płytę strzałek).
-- [ ] Etap B: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
+- [x] Etap B, krok 166: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
 - [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
