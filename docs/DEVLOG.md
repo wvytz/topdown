@@ -5600,6 +5600,18 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Dalej (decyzja 7.11, etap C):** układ ścieżka główna + odnogi z nagrodą — ikonka powie, co jest w odnodze.
 
+## Krok 164 — Zasadzka z ustalonymi falami `#uwagi-testera` `#zasadzki`
+
+**Uwaga testera:** „pokój z upiorami szybko się nudzi (może lepiej jakieś predefined fale mobków)”.
+
+**Co powstało:** zasadzka losuje z seeda piętra jeden z 6 ręcznie ułożonych scenariuszy (Krąg, Ściana, Kleszcze, Z kątów, Nawała, Straż). Każdy ma **3 krótkie fale w różnych szykach**: *pierścień* wokół gracza, *szereg* pod ścianą najdalszą od niego, *kleszcze* z dwóch stron wzdłuż dłuższego boku pokoju, *z czterech kątów*, *wszędzie* (dawne losowe miejsca). W części fal pierwszy upiór jest elitą (Szybki), a w dwóch scenariuszach dochodzi 1–2 szarżowników biomu (z normalnym łupem; strzelców celowo nie ma — w mroku zasadzki byłoby to nieuczciwe). Każda fala ma napis „Fala 2/3 — otaczają cię!”. Upiorów razem ok. 14 zamiast 9, ale dalej słabe (krok 50a: „jackpot, nie kłopot”). Szyk, który się nie mieści, dopełnia się losowo.
+
+**Pliki:** czysty `systems/AmbushWaves.ts` (`formationTiles`, `pickScenario`, `waveSize`), `config/ambushConfig.ts` (`AMBUSH_SCENARIOS`, `AMBUSH_FORMATION_TEXT`; `waves` z `AmbushConfig` usunięte), `systems/Ambush.ts` (stan bierze liczby fal ze scenariusza), `combat/AmbushManager.ts` (`summon(index)`).
+
+**Testy:** `tests/systems/ambushWaves.test.ts` (nowy: scenariusze, determinizm, każdy szyk — liczba, różne kafle, w pokoju; pierścień, szereg, kleszcze), `ambush.test.ts`.
+
+**Do oceny właściciela:** czy fale są ciekawsze, czy elita-upiór i szarżownicy biomu nie psują „jackpotu”, nazwy i liczby w `AMBUSH_SCENARIOS`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5763,5 +5775,6 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap A (krok 161): skip odliczania, mniejszy odrzut, więcej elit, spacja w bezpiecznych menu.
 - [x] Etap B, krok 162: „Moje przedmioty” w pauzie (ekran śmierci — jeszcze nie).
 - [x] Etap B, krok 163: ikonki pokojów na minimapie (kapliczka, zasadzka, elita).
-- [ ] Etap B: ustalone fale w zasadzce, groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
+- [x] Etap B, krok 164: ustalone fale w zasadzce (6 scenariuszy po 3 fale).
+- [ ] Etap B: groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
 - [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
