@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { flagFromSearch, zoomFromSearch } from '@/systems/cameraZoom';
 import { BASE_CAMERA_ZOOM, CAMERA_CONFIG, ZOOM_OVERRIDE } from '@/config/gameConfig';
-import { HEAVY_SWING_TRIAL } from '@/config/heroConfig';
+import { BARBARIAN_COMBAT, HERO_DEFINITIONS } from '@/config/heroConfig';
+import { HeroId } from '@/core/heroTypes';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
 
 describe('próbny zoom i cięższe ciosy (krok 167)', () => {
@@ -18,11 +19,12 @@ describe('próbny zoom i cięższe ciosy (krok 167)', () => {
     expect(zoomFromSearch('?zoom=abc', 2, ZOOM_OVERRIDE)).toBe(2);
   });
 
-  it('?heavy=1 włącza próbę; cięższy cios ma prawie te same obrażenia na sekundę', () => {
+  it('flaga z adresu; barbarzyńca ma domyślnie cięższy cios o prawie tych samych obrażeniach na sekundę (krok 171)', () => {
     expect(flagFromSearch('?heavy=1', 'heavy')).toBe(true);
     expect(flagFromSearch('?heavy=0', 'heavy')).toBe(false);
     expect(flagFromSearch('', 'heavy')).toBe(false);
-    const heavy = HEAVY_SWING_TRIAL.combat;
+    const heavy = BARBARIAN_COMBAT;
+    expect(HERO_DEFINITIONS[HeroId.Barbarian].combat).toBe(BARBARIAN_COMBAT);
     expect(heavy.attackCooldownMs).toBeGreaterThan(PLAYER_COMBAT.attackCooldownMs);
     const dps = (c: { meleeDamage: number; attackCooldownMs: number }) => c.meleeDamage / c.attackCooldownMs;
     expect(dps(heavy) / dps(PLAYER_COMBAT)).toBeGreaterThan(0.95);

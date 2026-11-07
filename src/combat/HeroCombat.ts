@@ -453,7 +453,7 @@ export class HeroCombat {
     // Krok 93: kokony, purchawki i urny już nie leczą.
     if (this.deps.strikes.melee(swing, player) > 0) {
       this.tryVampireHeal(now);
-      // Krok 167: próba cięższych ciosów (`?heavy=1`) — trafienie czuć w kamerze.
+      // Krok 167/171: cięższe ciosy barbarzyńcy — trafienie czuć w kamerze.
       if (combat.hitShake) this.deps.scene.cameras.main.shake(combat.hitShake.durationMs, combat.hitShake.intensity);
     }
   }
