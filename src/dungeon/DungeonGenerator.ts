@@ -123,8 +123,13 @@ export class DungeonGenerator {
     // Reszta piętra: drzewo rozpinające (Prim) i pętle — bez dotykania areny i pokoju końcowego.
     const blockedMain: Blocked = (x, y) => avoidBoss(x, y) || avoidEnd(x, y);
     const links = new RoomLinks();
-    if (!this.connectTree(tiles, rects, main, links, blockedMain)) return undefined;
-    this.addLoops(tiles, rects, main, links, rng, blockedMain);
+    if (this.config.linear) {
+      // Krok 168: ścieżka główna od areny do startu + odnogi (zamiast drzewa z pętlami).
+      if (!this.connectLinear(tiles, rects, main, links, rng, blockedMain)) return undefined;
+    } else {
+      if (!this.connectTree(tiles, rects, main, links, blockedMain)) return undefined;
+      this.addLoops(tiles, rects, main, links, rng, blockedMain);
+    }
 
     // Jedno wejście na arenę: z najbliższego pokoju reszty piętra.
     if (!this.carveRoute(tiles, rects, BOSS_ROOM_INDEX, main[0]!, avoidEnd, links)) return undefined;
@@ -231,8 +236,48 @@ export class DungeonGenerator {
   private connectRooms(tiles: TileType[], rects: readonly RoomRect[], rng: Rng): void {
     const all = rects.map((_, i) => i);
     const links = new RoomLinks();
+    if (this.config.linear && this.connectLinear(tiles, rects, all, links, rng, () => false)) return;
     this.connectTree(tiles, rects, all, links, () => false);
     this.addLoops(tiles, rects, all, links, rng, () => false);
+  }
+
+  /**
+   * Układ liniowy (krok 168, uwaga testera: „layout bardziej linearny”; decyzja właściciela: ścieżka główna
+   * + 1–2 odnogi). Łańcuch pokojów od `nodes[0]` (przy arenie) metodą najbliższego sąsiada; kilka pokojów
+   * ze środka łańcucha wypada z niego i staje się ślepą odnogą podłączoną do najbliższego pokoju ścieżki
+   * (nie do jej końca — tam jest start). Bez pętli. Zwraca false, gdy któregoś korytarza nie da się poprowadzić.
+   */
+  private connectLinear(tiles: TileType[], rects: readonly RoomRect[], nodes: readonly number[], links: RoomLinks, rng: Rng, blocked: Blocked): boolean {
+    const linear = this.config.linear!;
+    const chain: number[] = [nodes[0]!];
+    const left = new Set(nodes.slice(1));
+    while (left.size > 0) {
+      const last = rects[chain[chain.length - 1]!]!;
+      let best = -1;
+      for (const i of left) if (best < 0 || centerDistanceSq(last, rects[i]!) < centerDistanceSq(last, rects[best]!)) best = i;
+      chain.push(best);
+      left.delete(best);
+    }
+    // Odnogi: z wnętrza łańcucha (nie pierwszy — przy arenie, nie ostatni — start); ścieżka zostaje ≥ 3 pokoje.
+    const wanted = Math.min(rng.int(linear.branches.min, linear.branches.max), Math.max(0, chain.length - 3));
+    const branches: number[] = [];
+    for (let k = 0; k < wanted; k++) {
+      const inner = chain.slice(1, -1);
+      if (inner.length === 0) break;
+      const pick = inner[Math.floor(rng.next() * inner.length)]!;
+      chain.splice(chain.indexOf(pick), 1);
+      branches.push(pick);
+    }
+    for (let i = 1; i < chain.length; i++) {
+      if (!this.carveRoute(tiles, rects, chain[i - 1]!, chain[i]!, blocked, links)) return false;
+    }
+    const anchors = chain.slice(0, -1);
+    for (const branch of branches) {
+      const rect = rects[branch]!;
+      const anchor = anchors.reduce((a, b) => (centerDistanceSq(rect, rects[b]!) < centerDistanceSq(rect, rects[a]!) ? b : a));
+      if (!this.carveRoute(tiles, rects, anchor, branch, blocked, links)) return false;
+    }
+    return true;
   }
 
   /** Drzewo rozpinające (Prim na odległościach środków) — każdy korytarz omija istniejące równolegle. */

@@ -103,9 +103,10 @@ describe('DungeonGenerator — determinizm i skalowanie', () => {
     expect(generator.generate(1).tiles).not.toEqual(generator.generate(2).tiles);
   });
 
-  it('mapa rośnie z piętrem i przestaje rosnąć po limicie', () => {
-    expect(getDungeonConfigForFloor(3).widthTiles).toBeGreaterThan(getDungeonConfigForFloor(1).widthTiles);
-    expect(getDungeonConfigForFloor(20)).toEqual(getDungeonConfigForFloor(7));
+  it('krok 168: mapa i liczba pokojów nie rosną z piętrem (krótsze runy)', () => {
+    expect(getDungeonConfigForFloor(7).widthTiles).toBe(getDungeonConfigForFloor(1).widthTiles);
+    expect(getDungeonConfigForFloor(7).roomCount).toEqual(getDungeonConfigForFloor(2).roomCount);
+    expect(getDungeonConfigForFloor(20).roomCount.max).toBeLessThanOrEqual(8);
   });
 
   it('zgłasza błąd, gdy na mapie nie mieszczą się dwa pokoje', () => {

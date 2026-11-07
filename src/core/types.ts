@@ -180,6 +180,8 @@ export interface MinimapHudData {
   readonly boss: { readonly x: number; readonly y: number } | null;
   /** Podpowiedź drogi (krok 147): kafle od gracza do celu (arena, potem schody), bez kafla gracza. */
   readonly route: readonly { readonly x: number; readonly y: number }[];
+  /** Ikonki pokojów (krok 163): kapliczka, zasadzka, elity — rysowane, gdy kafel jest odkryty. */
+  readonly markers: readonly import('@/systems/RoomMarkers').RoomMarker[];
 }
 
 export interface RangedHudData {
@@ -202,6 +204,8 @@ export interface DeathSummary {
   readonly coop?: boolean;
   /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
   readonly nameEntry: string | null;
+  /** Krok 169: run skończony zwycięstwem (po bossie ostatniego piętra kręgu), nie śmiercią. */
+  readonly victory?: boolean;
 }
 
 export interface HudItem {
@@ -214,6 +218,8 @@ export interface HudItem {
   readonly rare: boolean;
   /** Krok 150: przemieniony (3. kopia) — jasna ramka i gwiazdka. */
   readonly evolved?: boolean;
+  /** Krok 170: relikwia bossa — karmazynowa ramka. */
+  readonly relic?: boolean;
 }
 
 /** Nazwa i efekt świeżo zdobytego przedmiotu — HUD pokazuje je pod ikonami i wygasza. */

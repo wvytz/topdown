@@ -105,8 +105,12 @@ export function computeLoadout(
       dash: {
         ...baseCombat.dash,
         cooldownMs: Math.round(baseCombat.dash.cooldownMs * cooldownMultiplier(mods.dashCooldownPct)),
-        // Pętla czasu (Klepsydra ×3): 2 ładunki dasha.
-        ...(evolved(ItemIds.Hourglass) && { charges: effectsConfig.evolution.hourglass.dashCharges }),
+        // Pętla czasu (Klepsydra ×3): 2 ładunki dasha; Mokry mop (krok 170) — o ładunek więcej.
+        ...((evolved(ItemIds.Hourglass) || counts.has(ItemIds.WetMop)) && {
+          charges:
+            (evolved(ItemIds.Hourglass) ? effectsConfig.evolution.hourglass.dashCharges : (baseCombat.dash.charges ?? 1)) +
+            (counts.has(ItemIds.WetMop) ? effectsConfig.relics.wetMop.extraDashCharges : 0),
+        }),
       },
       ranged: {
         ...baseCombat.ranged,

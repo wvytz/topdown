@@ -335,6 +335,36 @@ export const DEN_AMBIENT: DenAmbientConfig = {
   },
 };
 
+/**
+ * Krok 166 (uwaga testera: „fajne idle rzeczy na mapce jak robaczki, światełka”): żywe otoczenie dochodzi na piętra,
+ * które go nie miały — z istniejących stworków, spójnie z lore (`#lore`):
+ * - Ruiny (piętro 1, najbardziej zrujnowane, pełne śmieci): karaluchy w gruzie i puszki do kopnięcia, bez ekranów
+ *   (tu prądu już nie ma).
+ * - Lustrzana komnata (piętro 6, „złudna czystość”): wypolerowana, ale gdzieniegdzie karaluch, którego sprzątaczki
+ *   przegapiły; bez puszek i ekranów.
+ * - Bociani Ogród (piętro 7, noc): błędne ogniki jak świetliki nad żywopłotami i kruki na ścieżkach; bez zniczy.
+ */
+export const RUINS_AMBIENT: DenAmbientConfig = {
+  ...DEN_AMBIENT,
+  screensPerRoom: { min: 0, max: 0 },
+  roaches: { ...DEN_AMBIENT.roaches, roomChance: 0.45, count: { min: 2, max: 4 } },
+  cans: { ...DEN_AMBIENT.cans, perRoom: { min: 1, max: 2 } },
+};
+
+export const MIRROR_AMBIENT: DenAmbientConfig = {
+  ...DEN_AMBIENT,
+  screensPerRoom: { min: 0, max: 0 },
+  roaches: { ...DEN_AMBIENT.roaches, roomChance: 0.25, count: { min: 1, max: 2 } },
+  cans: { ...DEN_AMBIENT.cans, perRoom: { min: 0, max: 0 } },
+};
+
+export const GARDEN_AMBIENT: GraveyardAmbientConfig = {
+  ...GRAVEYARD_AMBIENT,
+  candlesPerRoom: { min: 0, max: 0 },
+  ravens: { ...GRAVEYARD_AMBIENT.ravens, roomChance: 0.3 },
+  wisps: { ...GRAVEYARD_AMBIENT.wisps, roomChance: 0.75 },
+};
+
 export const AMBIENT_CONFIG: AmbientConfig = {
   revealsEnemies: true,
   activeMarginPx: 64,

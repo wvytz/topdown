@@ -5572,6 +5572,147 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** czy 0,6 s na krok odliczania wystarcza, czy odrzut nie jest teraz za mały dla Kiterów, ile elit to „wincyj”.
 
+## Krok 162 — „Moje przedmioty” w pauzie `#uwagi-testera`
+
+**Uwaga testera:** „brakuje możliwości sprawdzenia, co robiły twoje itemki”.
+
+**Co powstało:** w pauzie nowa pozycja **Moje przedmioty** (druga, pod „Wznów”). Strona pokazuje każdy zebrany przedmiot w kolejności zdobycia: nazwę w kolorze przedmiotu z liczbą kopii, a pod nią co robi (statystyka „za kopię”, efekt broni „mocniej z każdą kopią”) i „jeszcze N do przemiany: …”. Przemieniony przedmiot jest złoty, z gwiazdką i nazwą przemiany, opisem nowej mechaniki i tym, co da kolejna kopia (albo „limit kopii”). Od 7 przedmiotów lista idzie w dwóch kolumnach; co-op — kolumna na bohatera (P1/P2); za długa lista zmniejsza się, żeby nie weszła na „Wróć”. Działa myszą, klawiaturą, padem i dotykiem (ta sama strona pauzy).
+
+**Pliki:** czysty `systems/BuildSummary.ts` (`summarizeBuild`), `systems/pauseMenu.ts` (`PausePage.Items`, `PauseItem.Items`), `config/pauseConfig.ts` (`build`), `scenes/PauseScene.ts` (`drawBuild`), `scenes/GameScene.ts` (`buildSections`).
+
+**Testy:** `tests/systems/buildSummary.test.ts` (nowy), `pauseMenu.test.ts`.
+
+**Weryfikacja:** build; w przeglądarce `?hero=archer&floor=4&items=blade*3,heart*2,fire-fist,gloves*3,electric-arrow,boots*2,quiver` → Esc → „Moje przedmioty”: dwie kolumny, Fala ostrza i Rozpęd złote.
+
+**Nie zrobione:** podsumowanie przedmiotów na ekranie śmierci — osobno, jeśli strona w pauzie się sprawdzi.
+
+## Krok 163 — Ikonki pokojów na minimapie `#uwagi-testera` `#minimapa`
+
+**Uwaga testera:** „pokoje mogłyby mieć ikonki”.
+
+**Co powstało:** na minimapie ikonki 5×5 (piksel 2 px, czarny obrys): **kapliczka** (złoty krzyż, znika po ofierze), **zasadzka** (fioletowa czaszka na środku pokoju, znika po ostatniej fali), **elita** (czerwona korona, jedna na pokój z żywą elitą; elita w korytarzu albo w pokoju zasadzki — bez ikonki). Ikonka pokazuje się dopiero, gdy jej kafel jest odkryty — mapa dalej nie zdradza nieznanych pokojów. Schody, arena, gracz i smużka drogi bez zmian.
+
+**Pliki:** czysty `systems/RoomMarkers.ts`; `config/minimapConfig.ts` (`markers`: wzory i kolory), `core/types.ts` (`MinimapHudData.markers`), `scenes/GameScene.ts`, `scenes/HudScene.ts`, `world/ShrineSite.ts` (`markerTile`), `combat/AmbushManager.ts` (`cleared`).
+
+**Testy:** `tests/systems/roomMarkers.test.ts` (4).
+
+**Weryfikacja:** `?floor=3&seed=7` z odkrytą całą mapą (`minimap.revealed.fill(1)`) — korony elit w pokojach, krzyż kapliczki obok korony.
+
+**Dalej (decyzja 7.11, etap C):** układ ścieżka główna + odnogi z nagrodą — ikonka powie, co jest w odnodze.
+
+## Krok 164 — Zasadzka z ustalonymi falami `#uwagi-testera` `#zasadzki`
+
+**Uwaga testera:** „pokój z upiorami szybko się nudzi (może lepiej jakieś predefined fale mobków)”.
+
+**Co powstało:** zasadzka losuje z seeda piętra jeden z 6 ręcznie ułożonych scenariuszy (Krąg, Ściana, Kleszcze, Z kątów, Nawała, Straż). Każdy ma **3 krótkie fale w różnych szykach**: *pierścień* wokół gracza, *szereg* pod ścianą najdalszą od niego, *kleszcze* z dwóch stron wzdłuż dłuższego boku pokoju, *z czterech kątów*, *wszędzie* (dawne losowe miejsca). W części fal pierwszy upiór jest elitą (Szybki), a w dwóch scenariuszach dochodzi 1–2 szarżowników biomu (z normalnym łupem; strzelców celowo nie ma — w mroku zasadzki byłoby to nieuczciwe). Każda fala ma napis „Fala 2/3 — otaczają cię!”. Upiorów razem ok. 14 zamiast 9, ale dalej słabe (krok 50a: „jackpot, nie kłopot”). Szyk, który się nie mieści, dopełnia się losowo.
+
+**Pliki:** czysty `systems/AmbushWaves.ts` (`formationTiles`, `pickScenario`, `waveSize`), `config/ambushConfig.ts` (`AMBUSH_SCENARIOS`, `AMBUSH_FORMATION_TEXT`; `waves` z `AmbushConfig` usunięte), `systems/Ambush.ts` (stan bierze liczby fal ze scenariusza), `combat/AmbushManager.ts` (`summon(index)`).
+
+**Testy:** `tests/systems/ambushWaves.test.ts` (nowy: scenariusze, determinizm, każdy szyk — liczba, różne kafle, w pokoju; pierścień, szereg, kleszcze), `ambush.test.ts`.
+
+**Do oceny właściciela:** czy fale są ciekawsze, czy elita-upiór i szarżownicy biomu nie psują „jackpotu”, nazwy i liczby w `AMBUSH_SCENARIOS`.
+
+## Krok 165 — Groźniejsze pułapki ruin `#uwagi-testera` `#ruiny`
+
+**Uwaga testera:** „trapy super, dać je bardziej niebezpieczne”.
+
+**Co powstało (tylko liczby i jedna reguła, `config/biomeConfig.ts`):**
+- **Kolce:** w 45% pokojów zamiast 35%; rytm 1,6 s w dole → 1,2 s, wysunięte 0,9 → 1,0 s; obrażenia 10 → 15. Ostrzeżenie zostaje 0,5 s (test czytelności pilnuje minimum). Wrogowie na kolcach dostają **2×** (`enemyDamageMultiplier`) — warto ich w nie wciągać.
+- **Strzałki:** w 40% pokojów zamiast 30%; salwa 4 strzałek zamiast 3, co 140 ms, telegraf 400 ms, odnowienie 1,8 s zamiast 2,5 s, obrażenia 9 → 13. **Płytę naciska też wróg** (`enemiesPress`) — salwa leci w bohatera, który stoi na linii.
+- Strzałki dalej nie ranią wrogów (pociski pułapki trafiają tylko bohaterów — zmiana w `ProjectileManager` do rozważenia osobno).
+
+**Testy:** istniejące testy pułapek (rytm, telegraf ≥ 0,5 s) bez zmian.
+
+**Do oceny właściciela:** czy pułapki nie są za mocne na piętrze 1 (nowi gracze), czy naciskanie płyty przez wrogów jest czytelne.
+
+## Krok 166 — Żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie `#uwagi-testera` `#zywe-otoczenie` `#lore`
+
+**Uwaga testera:** „fajne idle rzeczy na mapce, jak robaczki, światełka”. Do tej pory miały je piętra 2–5 (kroki 156–159); teraz każde piętro wspinaczki.
+
+**Co powstało (z istniejących stworków, spójnie z lore):**
+- **Ruiny (piętro 1):** karaluchy w gruzie (45% pokojów, 2–4) i puszki do kopnięcia (1–2 na pokój). Ekranów nie ma — na najniższym piętrze prądu już nie ma.
+- **Lustrzana komnata (piętro 6):** „złudna czystość” — gdzieniegdzie karaluch, którego sprzątaczki przegapiły (25% pokojów, 1–2), bez puszek.
+- **Bociani Ogród (piętro 7, noc):** błędne ogniki jak świetliki (75% pokojów; rozwiewają mrok jak w Cmentarzysku) i kruki na ścieżkach (30%), bez zniczy.
+
+**Pliki:** `config/ambientConfig.ts` (`RUINS_AMBIENT`, `MIRROR_AMBIENT`, `GARDEN_AMBIENT` — warianty istniejących konfiguracji), `config/biomeConfig.ts` (`ambient` trzech biomów). Planer i widoki bez zmian.
+
+**Testy:** `tests/dungeon/AmbientPlanner.test.ts` — wszystkie biomy wspinaczki mają żywe otoczenie, ruiny bez ekranów, komnata bez puszek, ogród bez zniczy.
+
+**Weryfikacja:** `?floor=1&seed=4` — puszka w pokoju startowym; `?floor=7&seed=4` — kruki i ognik w pierwszym pokoju.
+
+**Do oceny właściciela:** czy ogniki pasują do ogrodu (może własne świetliki z generatora), liczby.
+
+## Krok 167 — Czarodziejka ukryta, próbny zoom i próba cięższych ciosów `#uwagi-testera` `#decyzja`
+
+**Decyzje właściciela (7.11) po uwagach testera:** „wywalić czarodziejkę” → **7b: ukryć z wyboru, kod zostaje**; „za blisko kamera” → **5a: przełącznik testowy**; „wolniejsze ataki” → **6a: próba tylko na barbarzyńcy**.
+
+**Co powstało:**
+- **Czarodziejka ukryta:** `HIDDEN_HEROES` i `SELECTABLE_HEROES` w `config/heroConfig.ts`; ekran wyboru (solo, PC i telefon) i co-op pokazują barbarzyńcę i łucznika. `?hero=sorceress`, stare zapisy i smoke dalej działają; bot-partner i `?coop` dobierają partnera spośród widocznych.
+- **`?zoom=1.6`** (zakres 1,25–2): oddala kamerę na próbę. Skala płótna liczy się dalej od bazowego 2,0 (`BASE_CAMERA_ZOOM`), więc zmienia się tylko kamera; mrok, mgła i ogień biorą zoom z `CAMERA_CONFIG`. Zasady widoku wrogów (strzelają tylko z kadru przy 2,0) bez zmian — przy oddalonej kamerze strzelają z bliższa niż widać. Ułamkowy zoom może lekko migotać pikselami.
+- **`?heavy=1`** (tylko barbarzyńca): cios co 0,42 s zamiast 0,32 s, 20 obrażeń zamiast 15 (obrażenia na sekundę prawie te same, 47 → 48/s), krótkie drżenie kamery przy trafieniu (`PlayerCombatConfig.hitShake`).
+
+**Pliki:** czysty `systems/cameraZoom.ts` (`zoomFromSearch`, `flagFromSearch`), `config/gameConfig.ts`, `config/heroConfig.ts`, `core/combatTypes.ts`, `combat/HeroCombat.ts`, `bootstrap.ts`, `scenes/HeroSelectScene.ts`, `scenes/CoopSelectScene.ts`, `scenes/BootScene.ts`, `scenes/GameScene.ts`.
+
+**Testy:** `tests/systems/cameraZoom.test.ts` (nowy), `heroSelect.test.ts` (ukryci bohaterowie).
+
+**Do oceny właściciela:** zagraj `https://wvytz.github.io/topdown/?zoom=1.6` i `?heavy=1` (można razem: `?zoom=1.6&heavy=1`) — jeśli się spodobają, staną się domyślne.
+
+## Krok 168 — Stałe piętra i układ liniowy `#uwagi-testera` `#decyzja`
+
+**Decyzje właściciela (7.11):** „runy za długie” → **1a: stała liczba pokojów na piętro**; „layout bardziej linearny, ikonki pokojów” → **3a: ścieżka główna + 1–2 odnogi z nagrodą** (ikonki — krok 163).
+
+**Co powstało:**
+- **Stałe piętra:** `FLOOR_GROWTH` w `config/gameConfig.ts` (`maxSteps` 0) — mapa i liczba pokojów nie rosną już z piętrem (wcześniej do 12–14 pokojów od piętra 7). Każde piętro: arena + 5–7 pokojów. Trudność rośnie dalej statystykami.
+- **Układ liniowy:** `DungeonGeneratorConfig.linear` (`branches` 1–2). `connectLinear` w `dungeon/DungeonGenerator.ts` łączy pokoje łańcuchem najbliższych sąsiadów od startu do areny, a 1–2 pokoje wewnętrzne stają się ślepymi odnogami przyczepionymi do łańcucha (nigdy do areny). Pętle praktycznie znikają (średnio 0,01 na piętro).
+- **Nagroda w odnodze:** `isDeadEndRoom` w `dungeon/arenaGates.ts`; `ShrinePlanner` woli kapliczkę w ślepym pokoju, więc zboczenie z drogi się opłaca. Zasadzki i elity jak dotąd — ikonki na minimapie mówią, co gdzie jest.
+
+**Testy:** `DungeonGenerator.test.ts` (stała wielkość piętra zamiast wzrostu), `corridorLayout.test.ts` (mniej niż 1 pętla średnio, odnogi na ponad 60% pięter, kapliczka w odnodze).
+
+**Weryfikacja:** podgląd odkrytej minimapy na kilku seedach — prosta droga do areny i 1–2 odnogi.
+
+**Do oceny właściciela:** długość piętra i czy odnogi kuszą.
+
+## Krok 169 — Zwycięstwo po piętrze 7 `#uwagi-testera` `#decyzja`
+
+**Decyzja właściciela (7.11):** **1a + 2a** — run kończy się po 1. kręgu (Brudna Wiedźma na piętrze 7), 2. krąg będzie Aktem II.
+
+**Co powstało:**
+- `runEndsAfterFloor` w `systems/TowerLoop.ts`: schody z piętra 7 (i z każdego dalszego w trybie testowym `?floor=`) kończą run zwycięstwem; areny bossów bez zmian. Podpowiedź przy schodach: „[E] Zdobądź wieżę”.
+- **Ekran zwycięstwa:** ten sam ekran co po śmierci (top 3, miejsce, R/C/M), ale złoty tytuł „ZWYCIĘSTWO” i wynik „WIEŻA ZDOBYTA · X ZŁOTA” (`VICTORY_SCREEN` w `config/deathScreenConfig.ts`, `DeathScreen.setVictory`). Wynik = złoto, trafia na tablicę jak zwykle; `DeathSummary.victory` w diagnostyce.
+- Czcionka pikselowa: litery I, Y, Z i ogonek Ę (`core/pixelArt.ts`).
+
+**Testy:** `towerLoop.test.ts` (koniec runu), `pixelArt.test.ts`.
+
+**Weryfikacja:** `?hero=archer&floor=7&seed=4` + przejście schodami — złoty ekran „ZWYCIĘSTWO”.
+
+**Dalej:** finałowy boss wieży i Akt II (piekło z azteckimi torturami) — do zaprojektowania.
+
+## Krok 170 — Relikwie bossów `#uwagi-testera` `#decyzja`
+
+**Decyzja właściciela (7.11, 4a):** nowy rodzaj przedmiotu — 7 relikwii, po jednej na bossa kręgu; po walce jedna z 3 kart to zawsze relikwia tego bossa.
+
+**Co powstało:**
+- Nowy rodzaj `ItemKind.Relic` i 7 przedmiotów (`config/lootConfig.ts`, liczby w `config/relicConfig.ts`):
+  - **Korona Szlamu** (Król Szlamu): co 8 s jedno trafienie w bohatera zadaje połowę obrażeń (napis „galareta”).
+  - **Pajęczy jedwab** (pajęczy duet): każde trafienie spowalnia wroga o 30% na 2 s; z Lodowym odłamkiem bierze silniejsze z obu, zamrożenie zostaje.
+  - **Ząb Pożeracza** (Grzybowy Pożeracz): zabity wróg leczy 3 HP (nie czerwie gniazd ani upiory zasadzki).
+  - **Topór Kata** (Kat Otchłani): zwykły wróg, któremu zostałoby mniej niż 20% HP, ginie od trafienia; bossowie nie.
+  - **Fajka Barona** (Baron Dymu): pasek mocy (R) ładuje się z czasem 2× szybciej.
+  - **Mokry mop** (sprzątaczki): +1 ładunek dasha (z Pętlą czasu — 3).
+  - **Bocianie pióro** (Brudna Wiedźma): +15% prędkości i +10% tempa ataku (w zwykłym runie po Wiedźmie jest zwycięstwo, więc pióro działa w arenach i dalszych kręgach testowych).
+- Relikwia jest jedna (bez kopii i przemian), nie wypada z wrogów, zasadzek, ukrytej komnaty ani kapliczki (`ITEM_POOL` bez relikwii, `ALL_ITEMS` z nimi).
+- **Karty za bossa:** relikwia zastępuje ostatnią kartę, która nie jest kartą rozwoju (`withRelicCard`); bohater, który ją ma, dostaje zwykłe karty. W co-opie każdy bohater dostaje swoją. Areny bossów — relikwia bossa danej areny.
+- **Wygląd:** karmazynowa karta ze wstążką „RELIKWIA”, podpis pod kartami; ikony z generatora `tools/loot_sprites.py` (karmazynowa obwódka i iskra); karmazynowa ramka w HUD; w pauzie „◆ … (relikwia)”.
+- Bez nowych przycisków — wybór karty jak dotąd (mysz, 1–3, pad, dotyk).
+
+**Pliki:** czysty `systems/Relics.ts` (`relicForFloor`, `withRelicCard`, `withRelicStatus`, `computeRelicEffects`, `executeDamage`, `JellyGuard`), `config/relicConfig.ts`, `core/lootTypes.ts`, `core/combatTypes.ts` (`RelicEffects`, `StatusApplication.execute`), `systems/WeaponEffects.ts`, `systems/PlayerLoadout.ts`, `systems/Ultimate.ts` (`setPassiveMultiplier`), `systems/ItemEvolution.ts`, `systems/BuildSummary.ts`, `entities/Player.ts`, `entities/Enemy.ts`, `scenes/GameScene.ts`, `scenes/RewardScene.ts`, `scenes/HudScene.ts`, `config/spriteConfig.ts`, `effects/spriteAnimations.ts`.
+
+**Testy:** `tests/systems/relics.test.ts` (nowy), `itemEvolution.test.ts` (relikwie bez przemian).
+
+**Weryfikacja:** `?floor=4` + nagroda za bossa — karta Topora Kata, po wyborze karmazynowa ramka w HUD; `?hero=archer&floor=2` — karta Pajęczego jedwabiu.
+
+**Do oceny właściciela:** siła i nazwy relikwii, wygląd ikon (zwłaszcza Ząb Pożeracza).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5733,5 +5874,12 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Uwagi testera z 6.11 — plan (decyzje właściciela 7.11)** `#uwagi-testera`:
 - [x] Etap A (krok 161): skip odliczania, mniejszy odrzut, więcej elit, spacja w bezpiecznych menu.
-- [ ] Etap B: ekran „Moje przedmioty” (pauza + ekran śmierci), ikonki pokojów na minimapie, ustalone fale w zasadzce, groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
-- [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
+- [x] Etap B, krok 162: „Moje przedmioty” w pauzie (ekran śmierci — jeszcze nie).
+- [x] Etap B, krok 163: ikonki pokojów na minimapie (kapliczka, zasadzka, elita).
+- [x] Etap B, krok 164: ustalone fale w zasadzce (6 scenariuszy po 3 fale).
+- [x] Etap B, krok 165: groźniejsze pułapki ruin (kolce 2× na wrogach, wróg naciska płytę strzałek).
+- [x] Etap B, krok 166: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
+- [x] Etap C, krok 167: Czarodziejka ukryta z wyboru, `?zoom=1.6`, `?heavy=1` — czekają na ocenę.
+- [x] Etap C, krok 168: stała liczba pokojów na piętro, ścieżka główna + 1–2 odnogi (kapliczka w odnodze).
+- [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
+- [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.

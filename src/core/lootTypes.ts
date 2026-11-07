@@ -23,6 +23,14 @@ export enum ItemId {
   VampireFang = 'vampire-fang',
   StormDash = 'storm-dash',
   FrostShard = 'frost-shard',
+  // Krok 170: relikwie bossów — po jednej na bossa kręgu, tylko z karty za tego bossa (decyzja właściciela 4a).
+  SlimeCrown = 'slime-crown',
+  SpiderSilk = 'spider-silk',
+  DevourerTooth = 'devourer-tooth',
+  HeadsmanAxe = 'headsman-axe',
+  BaronPipe = 'baron-pipe',
+  WetMop = 'wet-mop',
+  StorkFeather = 'stork-feather',
 }
 
 export enum ItemKind {
@@ -30,6 +38,8 @@ export enum ItemKind {
   Stat = 'stat',
   /** Dodaje efekt broni (przebicie, podpalenie, ogłuszenie…). Kolejne kopie go wzmacniają. */
   Effect = 'effect',
+  /** Krok 170: relikwia bossa — jedna sztuka, tylko z karty za bossa (nie z łupów ani kapliczki). */
+  Relic = 'relic',
 }
 
 /**
@@ -119,6 +129,26 @@ export interface ItemEffectsConfig {
     readonly maxSlowPct: number;
     readonly durationMs: number;
   };
+  /** Krok 170: relikwie bossów. */
+  readonly relics: RelicConfig;
+}
+
+/** Krok 170: liczby relikwii bossów (`config/relicConfig.ts`). */
+export interface RelicConfig {
+  /** Relikwia bossa danego piętra kręgu (1–7). */
+  readonly byFloorInLoop: Readonly<Record<number, ItemId>>;
+  /** Korona Szlamu: co `cooldownMs` jedno trafienie w bohatera zadaje `damageMultiplier` obrażeń. */
+  readonly slimeCrown: { readonly cooldownMs: number; readonly damageMultiplier: number };
+  /** Pajęczy jedwab: każde trafienie spowalnia wroga. */
+  readonly spiderSilk: { readonly slowPct: number; readonly durationMs: number };
+  /** Ząb Pożeracza: zabity wróg leczy. */
+  readonly devourerTooth: { readonly heal: number };
+  /** Topór Kata: zwykły wróg poniżej tej części HP ginie od trafienia (bossowie nie). */
+  readonly headsmanAxe: { readonly executeBelowPct: number };
+  /** Fajka Barona: mnożnik ładowania paska mocy z czasem. */
+  readonly baronPipe: { readonly passiveMultiplier: number };
+  /** Mokry mop: dodatkowe ładunki dasha. */
+  readonly wetMop: { readonly extraDashCharges: number };
 }
 
 /** Stan runu przenoszony między piętrami (przez restart sceny). */

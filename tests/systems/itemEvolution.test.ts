@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HeroId } from '@/core/heroTypes';
-import { ItemId } from '@/core/lootTypes';
+import { ItemId, ItemKind } from '@/core/lootTypes';
 import { createRng } from '@/core/random';
 import { ENEMY_STATUS_RESISTANCE, PLAYER_COMBAT } from '@/config/combatConfig';
 import { BOSS_STATUS_RESISTANCE } from '@/config/bossConfig';
@@ -34,11 +34,12 @@ const fx = (items: ItemId[]) => computeWeaponEffects(items, ITEM_EFFECTS).evolve
 const loadout = (items: ItemId[]) => computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
 
 describe('przemiany przedmiotów (krok 150)', () => {
-  it('każdy przedmiot poza Butami ma przemianę z nazwą i opisem; przemiana przy 3. kopii', () => {
+  it('każdy przedmiot poza Butami i relikwiami ma przemianę z nazwą i opisem; przemiana przy 3. kopii', () => {
     expect(ITEM_EVOLUTION.copies).toBe(3);
     // Krok 151: lewitacja cofnięta — Buty czekają na nową przemianę.
     expect(ITEM_EVOLUTION.items[ItemId.Boots]).toBeUndefined();
-    for (const id of ALL_ITEM_IDS.filter((item) => item !== ItemId.Boots)) {
+    // Krok 170: relikwie bossów są pojedyncze, bez przemian.
+    for (const id of ALL_ITEM_IDS.filter((item) => item !== ItemId.Boots && ITEM_DEFINITIONS[item].kind !== ItemKind.Relic)) {
       const evo = ITEM_EVOLUTION.items[id];
       if (!evo) throw new Error(`brak przemiany: ${id}`);
       expect(evo.name.length).toBeGreaterThan(0);

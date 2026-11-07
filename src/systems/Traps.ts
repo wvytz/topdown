@@ -24,6 +24,8 @@ export interface SpikeConfig {
   readonly timing: SpikeTiming;
   readonly damage: number;
   readonly knockback: number;
+  /** Krok 165: wrogowie na kolcach dostają tyle razy więcej (pułapka to też broń gracza). */
+  readonly enemyDamageMultiplier: number;
 }
 
 export interface DartConfig {
@@ -42,6 +44,8 @@ export interface DartConfig {
   readonly damage: number;
   readonly knockback: number;
   readonly speed: number;
+  /** Krok 165: płytę naciska też wróg (nie tylko bohater). */
+  readonly enemiesPress: boolean;
 }
 
 export enum SpikePhase {

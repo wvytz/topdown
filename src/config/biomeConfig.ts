@@ -14,7 +14,7 @@ import {
   STORK_GARDEN_DRESSING,
 } from '@/config/dressingConfig';
 import type { BiomeAmbientConfig } from '@/config/ambientConfig';
-import { DEN_AMBIENT, GRAVEYARD_AMBIENT, GROVE_AMBIENT, INFERNAL_AMBIENT } from '@/config/ambientConfig';
+import { DEN_AMBIENT, GARDEN_AMBIENT, GRAVEYARD_AMBIENT, GROVE_AMBIENT, INFERNAL_AMBIENT, MIRROR_AMBIENT, RUINS_AMBIENT } from '@/config/ambientConfig';
 import type { FogConfig, MirrorFloorConfig } from '@/config/lightingConfig';
 import { FUNGAL_FOG, GARDEN_NIGHT, GRAVEYARD_MIST, INFERNAL_HAZE, MIRROR_FLOOR, SMOKE_HAZE } from '@/config/lightingConfig';
 import type { TilesetAsset } from '@/config/tilesetConfig';
@@ -98,28 +98,35 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     braziers: null,
     // Krok 48 (właściciel: „pierwszy poziom wydaje się pusty i bez wyzwania”). Kolce i strzałki ostrzegają
     // wyraźnie i ranią umiarkowanie — wyzwanie, ale nie kara dla nowych graczy.
+    // Krok 165 (uwaga testera: „trapy super, dać je bardziej niebezpieczne”): częściej, szybszy rytm
+    // (ostrzeżenie kolców zostaje 0,5 s — czytelność), mocniejsze ciosy, dłuższa salwa strzałek; kolce ranią wrogów 2× (warto ich w nie wciągać), a płytę strzałek
+    // naciska też wróg — salwa leci wtedy w bohatera, który stoi na linii.
     traps: {
       spikes: {
-        roomChance: 0.35,
+        roomChance: 0.45,
         minShortSide: 5,
-        timing: { downMs: 1600, warnMs: 600, upMs: 900 },
-        damage: 10,
+        timing: { downMs: 1200, warnMs: 500, upMs: 1000 },
+        damage: 15,
         knockback: 160,
+        enemyDamageMultiplier: 2,
       },
       darts: {
-        roomChance: 0.3,
+        roomChance: 0.4,
         plateDistance: { min: 2, max: 3 },
         minLine: 6,
-        windupMs: 450,
-        volley: 3,
-        volleyIntervalMs: 160,
-        cooldownMs: 2500,
-        damage: 9,
+        windupMs: 400,
+        volley: 4,
+        volleyIntervalMs: 140,
+        cooldownMs: 1800,
+        enemiesPress: true,
+        damage: 13,
         knockback: 140,
         speed: 360,
       },
     },
     breakables: { roomChance: 0.9, perRoom: { min: 1, max: 3 }, crateChance: 0.35, urnVariants: 2, radius: 9 },
+    // Krok 166: karaluchy i puszki w gruzie (uwaga testera o „robaczkach”).
+    ambient: { grove: null, graveyard: null, infernal: null, den: RUINS_AMBIENT },
   },
   [BiomeId.SpiderLair]: {
     id: BiomeId.SpiderLair,
@@ -332,6 +339,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     breakables: null,
     mirrorFloor: MIRROR_FLOOR,
     arenaConditions: MIRROR_HALL_ARENA,
+    // Krok 166: karaluch, którego sprzątaczki przegapiły.
+    ambient: { grove: null, graveyard: null, infernal: null, den: MIRROR_AMBIENT },
   },
   // Bociani Ogród (krok 137, `#brudna-wiedzma`): ostatnie piętro kręgu — po złudnej czystości Lustrzanej komnaty
   // winda wywozi na zarośnięty taras nocą, „totalny mrok”. Wrogowie na razie z ruin (jak w Lustrzanej komnacie).
@@ -350,6 +359,8 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     traps: null,
     breakables: null,
     arenaConditions: STORK_GARDEN_ARENA,
+    // Krok 166: ogniki jak świetliki i kruki na nocnych ścieżkach.
+    ambient: { grove: null, graveyard: GARDEN_AMBIENT, infernal: null, den: null },
   },
 };
 

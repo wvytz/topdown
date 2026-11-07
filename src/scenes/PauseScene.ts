@@ -19,6 +19,7 @@ import { display } from '@/input/DisplayControls';
 import { PauseItem, PausePage, movePauseCursor, pageOf, pauseBack, pauseItems, slotOf } from '@/systems/pauseMenu';
 import type { PauseMenuOptions } from '@/systems/pauseMenu';
 import { ResumeCountdown } from '@/systems/ResumeCountdown';
+import type { BuildRow } from '@/systems/BuildSummary';
 import { feedbackUi } from '@/diagnostics/FeedbackBox';
 
 export interface PauseSceneData {
@@ -33,6 +34,14 @@ export interface PauseSceneData {
   readonly onQuit: () => void;
   /** Krok 133: pauza z Entera w grze — od razu okienko „Napisz do autora”, a po wysłaniu powrót do gry. */
   readonly openFeedback?: boolean;
+  /** Krok 162: zebrane przedmioty do strony „Moje przedmioty” — jedna sekcja na bohatera (co-op: dwie). */
+  readonly build?: readonly BuildSection[];
+}
+
+/** Przedmioty jednego bohatera na stronie „Moje przedmioty”. */
+export interface BuildSection {
+  readonly title: string;
+  readonly rows: readonly BuildRow[];
 }
 
 /** Wiersz strony: napis pozycji (dla głośności także − i +). */
@@ -329,8 +338,10 @@ export class PauseScene extends Phaser.Scene {
       );
     }
 
+    if (page === PausePage.Items) this.drawBuild(add);
+
     const items = pauseItems(page, this.options);
-    const firstY = page === PausePage.Controls ? L.controlsItemsY : L.itemsY;
+    const firstY = page === PausePage.Controls || page === PausePage.Items ? L.controlsItemsY : L.itemsY;
     items.forEach((item, i) => {
       const y = firstY + i * L.itemStep;
       const text = add(
@@ -416,6 +427,63 @@ export class PauseScene extends Phaser.Scene {
         return DISPLAY_TEXT.fullscreen(display.fullscreen);
       default:
         return T[item as keyof typeof T] as string;
+    }
+  }
+
+  /** Strona „Moje przedmioty” (krok 162): nazwa z kopiami w kolorze przedmiotu, pod nią co robi; co-op — dwie kolumny. */
+  private drawBuild(add: <T extends Phaser.GameObjects.GameObject>(object: T) => T): void {
+    const B = PAUSE_CONFIG.build;
+    const { width } = this.scale;
+    // Solo z długą listą — dwie kolumny jednego bohatera (bez tytułów).
+    const given = this.pauseData.build ?? [];
+    const only = given.length === 1 ? given[0] : undefined;
+    const split = only && only.rows.length > B.splitAfter;
+    const sections: readonly BuildSection[] = split
+      ? [
+          { title: '', rows: only.rows.slice(0, Math.ceil(only.rows.length / 2)) },
+          { title: '', rows: only.rows.slice(Math.ceil(only.rows.length / 2)) },
+        ]
+      : given;
+    const box = add(this.add.container(0, 0));
+    const put = <T extends Phaser.GameObjects.GameObject>(object: T): T => {
+      box.add(object);
+      return object;
+    };
+    const columnWidth = sections.length > 1 ? B.columnWidth : B.width;
+    let bottom: number = B.top;
+    sections.forEach((section, column) => {
+      const x = sections.length > 1 ? width / 2 + (column === 0 ? -1 : 1) * (B.columnWidth / 2 + B.columnGap / 2) : width / 2;
+      const left = x - columnWidth / 2;
+      let y: number = B.top;
+      if (sections.length > 1 && section.title) {
+        put(this.add.text(x, y, section.title, { ...this.style, fontSize: '14px', color: '#d8c0ff', strokeThickness: 3 }).setOrigin(0.5, 0));
+        y += B.sectionGap;
+      }
+      if (section.rows.length === 0) {
+        put(this.add.text(x, y, B.empty, { ...this.style, fontSize: '12px', color: COLORS.dim, strokeThickness: 3, align: 'center', wordWrap: { width: columnWidth } }).setOrigin(0.5, 0));
+        return;
+      }
+      for (const row of section.rows) {
+        const color = `#${row.color.toString(16).padStart(6, '0')}`;
+        put(this.add.text(left, y, row.title, { ...this.style, fontSize: `${B.titleSize}px`, color: row.evolved ? COLORS.selected : color, strokeThickness: 3 }));
+        const detail = put(
+          this.add.text(left + B.indent, y + B.titleSize + 2, row.detail, {
+            ...this.style,
+            fontSize: `${B.detailSize}px`,
+            color: '#c8c8d8',
+            strokeThickness: 2,
+            wordWrap: { width: columnWidth - B.indent },
+          }),
+        );
+        y += B.titleSize + 2 + detail.height + B.rowGap;
+      }
+      bottom = Math.max(bottom, y);
+    });
+    // Za długa lista (co-op, wiele przedmiotów) — zmniejszamy całość, żeby nie weszła na „Wróć”.
+    const room = PAUSE_CONFIG.layout.controlsItemsY - B.bottomGap - B.top;
+    if (bottom - B.top > room) {
+      const scale = room / (bottom - B.top);
+      box.setScale(scale).setPosition((width / 2) * (1 - scale), B.top * (1 - scale));
     }
   }
 

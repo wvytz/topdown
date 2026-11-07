@@ -451,7 +451,11 @@ export class HeroCombat {
     sound.play(SoundCue.SwordSwing, swing.origin);
     // Wampirzy kieł: leczenie za cios, który trafił wroga lub bossa (raz na cios, niezależnie od liczby celów).
     // Krok 93: kokony, purchawki i urny już nie leczą.
-    if (this.deps.strikes.melee(swing, player) > 0) this.tryVampireHeal(now);
+    if (this.deps.strikes.melee(swing, player) > 0) {
+      this.tryVampireHeal(now);
+      // Krok 167: próba cięższych ciosów (`?heavy=1`) — trafienie czuć w kamerze.
+      if (combat.hitShake) this.deps.scene.cameras.main.shake(combat.hitShake.durationMs, combat.hitShake.intensity);
+    }
   }
 
   /** Burzowy pęd: w trakcie dasha bohater rani dotkniętych wrogów (każdego raz na dash). */

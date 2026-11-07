@@ -59,6 +59,8 @@ export interface DungeonGeneratorConfig {
   readonly bossRoomAtEnd: boolean;
   /** Szansa na pokój końcowy za areną (gdy `bossRoomAtEnd`). */
   readonly endRoomChance: number;
+  /** Krok 168: układ liniowy — ścieżka główna do areny i tyle ślepych odnóg; brak = drzewo z pętlami (krok 128). */
+  readonly linear?: { readonly branches: IntRange };
   /** Prowadzenie korytarzy i pętli (krok 128). */
   readonly routing: CorridorRoutingConfig;
 }

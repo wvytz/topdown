@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { DungeonFloor } from '@/core/dungeonTypes';
+import type { DungeonFloor, TilePoint } from '@/core/dungeonTypes';
 import type { ItemDefinition, ItemId } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -31,16 +31,23 @@ export interface ShrineSiteDeps {
 /** Kapliczka na piętrze: podpowiedź w pobliżu i ofiara złota pod klawiszem E. */
 export class ShrineSite {
   private readonly shrine: Shrine | null;
+  private readonly tile: TilePoint | null;
   private offerable = false;
 
   constructor(private readonly deps: ShrineSiteDeps) {
     const tile = planShrineLocation(deps.floor, deps.rng);
+    this.tile = tile;
     if (!tile) {
       this.shrine = null;
       return;
     }
     const position = DungeonView.tileToWorldCenter(tile);
     this.shrine = new Shrine(deps.scene, position.x, position.y);
+  }
+
+  /** Kafel kapliczki do ikonki na minimapie (krok 163); null — brak albo ofiara już złożona. */
+  get markerTile(): TilePoint | null {
+    return this.shrine && !this.shrine.isUsed ? this.tile : null;
   }
 
   /** Bohater stoi przy kapliczce i stać go na ofiarę — E zadziała (krok 96, przycisk E na dotyku). */

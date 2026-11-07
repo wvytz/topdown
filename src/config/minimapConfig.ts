@@ -22,6 +22,18 @@ export const MINIMAP_CONFIG = {
     /** Drugi gracz w co-opie (etap C5). */
     partner: 0x6ec6ff,
   },
+  /**
+   * Ikonki pokojów (krok 163, uwaga testera): wzór 5×5 ('#' — piksel), piksel ikonki = `pixelPx` px ekranu,
+   * czarny obrys dla czytelności na jasnej podłodze.
+   */
+  markers: {
+    pixelPx: 2,
+    outline: 0x000000,
+    outlineAlpha: 0.7,
+    shrine: { color: 0xffd86b, pattern: ['..#..', '.###.', '..#..', '.###.', '#####'] },
+    ambush: { color: 0xb48cff, pattern: ['.###.', '#.#.#', '#####', '.###.', '.#.#.'] },
+    elite: { color: 0xff5a3c, pattern: ['#.#.#', '#####', '#####', '.###.', '.....'] },
+  },
   /** Gracz jest większy niż kafel, żeby było go widać. */
   playerPx: 5,
   /**

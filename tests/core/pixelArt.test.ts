@@ -34,7 +34,7 @@ describe('font pikselowy 5×7', () => {
   });
 
   it('nieznany znak to błąd, a nie dziura w logo', () => {
-    expect(() => pixelText('TOWERZ', 1)).toThrow(/Z/);
+    expect(() => pixelText('TOWERQ', 1)).toThrow(/Q/);
   });
 });
 

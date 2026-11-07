@@ -39,3 +39,14 @@ describe('pętla wieży (krok 43)', () => {
     expect(toRoman(14)).toBe('XIV');
   });
 });
+
+describe('koniec runu po 1. kręgu (krok 169)', () => {
+  it('schody piętra 7 kończą wspinaczkę, wcześniejsze — nie; areny bossów — nigdy', async () => {
+    const { runEndsAfterFloor } = await import('@/systems/TowerLoop');
+    const { TOWER_CONFIG } = await import('@/config/towerConfig');
+    for (let floor = 1; floor < TOWER_CONFIG.floorsPerLoop; floor++) expect(runEndsAfterFloor(floor, false, TOWER_CONFIG)).toBe(false);
+    expect(runEndsAfterFloor(TOWER_CONFIG.floorsPerLoop, false, TOWER_CONFIG)).toBe(true);
+    expect(runEndsAfterFloor(9, false, TOWER_CONFIG)).toBe(true);
+    expect(runEndsAfterFloor(TOWER_CONFIG.floorsPerLoop, true, TOWER_CONFIG)).toBe(false);
+  });
+});

@@ -21,8 +21,6 @@ export interface AmbushConfig {
   readonly preferredChance: number;
   /** Kraty opadają, gdy gracz stoi co najmniej tyle kafli od krawędzi pokoju. */
   readonly triggerMargin: number;
-  /** Liczba upiorów w kolejnych falach. */
-  readonly waves: readonly number[];
   /** Od zamknięcia krat (albo końca fali) do pojawienia się następnej. */
   readonly waveDelayMs: number;
   /** Upiór „wynurza się” tyle ms (telegraf) — dopiero potem atakuje i da się go trafić. */
@@ -86,7 +84,8 @@ export class AmbushState {
   private wave = -1;
   private phaseAt = 0;
 
-  constructor(private readonly config: Pick<AmbushConfig, 'waves' | 'waveDelayMs'>) {}
+  /** `waves` — liczba wrogów w kolejnych falach (krok 164: ze scenariusza, `systems/AmbushWaves.ts`). */
+  constructor(private readonly config: { readonly waves: readonly number[]; readonly waveDelayMs: number }) {}
 
   get phase(): AmbushPhase {
     return this.current;

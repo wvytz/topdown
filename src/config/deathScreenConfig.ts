@@ -53,7 +53,34 @@ export const DEATH_TITLE_FLOW = {
   ] as readonly DeathFlowGroup[],
 } as const;
 
-export type DeathTitleFlow = typeof DEATH_TITLE_FLOW;
+export interface DeathTitleFlow {
+  readonly ramp: readonly number[];
+  readonly bandPx: number;
+  readonly stripPx: number;
+  readonly speedPxPerSec: number;
+  readonly groups: readonly DeathFlowGroup[];
+}
+
+/**
+ * Koniec runu po 1. kręgu (krok 169, decyzja właściciela 1a + 2a): po Brudnej Wiedźmie schody prowadzą do
+ * ekranu zwycięstwa zamiast na piętro 8. Ten sam układ co ekran śmierci, ale ZWYCIĘSTWO spływa złotem.
+ */
+export const VICTORY_SCREEN = {
+  title: 'ZWYCIĘSTWO',
+  /** Cień liter. */
+  shadow: 0x5a3a0a,
+  result: (gold: number) => `WIEŻA ZDOBYTA · ${gold} ZŁOTA`,
+  flow: {
+    ...DEATH_TITLE_FLOW,
+    ramp: [0xfff1b0, 0xf6d36a, 0xe7b140, 0xc98a22, 0xa86a18, 0xc98a22, 0xe7b140, 0xf6d36a],
+    /** Grupy liter: ZWY | CIĘ | STWO. */
+    groups: [
+      { letters: 3, speedPxPerSec: 14, offsetPx: 0 },
+      { letters: 3, speedPxPerSec: 20, offsetPx: 21 },
+      { letters: 4, speedPxPerSec: 16, offsetPx: 40 },
+    ],
+  } satisfies DeathTitleFlow,
+} as const;
 
 /** Oś czasu w ms od chwili śmierci — wszystko powoli, bez uderzeń. */
 export const DEATH_TIMING = {

@@ -22,6 +22,28 @@ export function findRoomEntrances(floor: Pick<DungeonFloor, 'width' | 'height' |
   return entrances;
 }
 
+/**
+ * Ślepy pokój (krok 168): wszystkie wejścia tworzą jedną spójną grupę kafli — jeden korytarz. W układzie liniowym
+ * to odnogi ścieżki głównej (i pokój startowy na jej końcu).
+ */
+export function isDeadEndRoom(floor: Pick<DungeonFloor, 'width' | 'height' | 'tiles'>, room: Room): boolean {
+  const entrances = findRoomEntrances(floor, room);
+  if (entrances.length === 0) return false;
+  const left = new Set(entrances.map((t) => `${t.x},${t.y}`));
+  const queue = [entrances[0]!];
+  left.delete(`${entrances[0]!.x},${entrances[0]!.y}`);
+  for (let head = 0; head < queue.length; head++) {
+    const { x, y } = queue[head]!;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const key = `${x + dx},${y + dy}`;
+      if (!left.has(key)) continue;
+      left.delete(key);
+      queue.push({ x: x + dx, y: y + dy });
+    }
+  }
+  return left.size === 0;
+}
+
 /** Czy kafel leży w pokoju co najmniej `margin` kafli od jego krawędzi. */
 export function isDeepInsideRoom(room: Room, tile: TilePoint, margin: number): boolean {
   return (

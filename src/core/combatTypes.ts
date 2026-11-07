@@ -171,6 +171,8 @@ export interface StatusApplication {
   readonly paralysis?: ParalysisEffect;
   readonly slow?: SlowEffect;
   readonly stun?: StunEffect;
+  /** Krok 170, Topór Kata: zwykły wróg, któremu po trafieniu zostaje mniej niż `belowPct` HP, ginie. */
+  readonly execute?: { readonly belowPct: number };
 }
 
 /** Jak cel znosi efekty statusu — boss jest odporniejszy niż zwykli wrogowie. */
@@ -216,6 +218,18 @@ export interface WeaponEffects {
   readonly dashDamage: number;
   /** Krok 150: łańcuch piorunów i przemiany przedmiotów (3. kopia). */
   readonly evolved: EvolvedEffects;
+  /** Krok 170: relikwie bossów działające poza bronią. */
+  readonly relics: RelicEffects;
+}
+
+/** Krok 170: efekty relikwii bossów (zero/null = brak relikwii). */
+export interface RelicEffects {
+  /** Korona Szlamu: co `cooldownMs` jedno trafienie zadaje ułamek obrażeń. */
+  readonly jelly: { readonly cooldownMs: number; readonly damageMultiplier: number } | null;
+  /** Ząb Pożeracza: leczenie za zabitego wroga. */
+  readonly killHeal: number;
+  /** Fajka Barona: mnożnik ładowania paska mocy z czasem (1 = bez zmian). */
+  readonly ultimatePassiveMultiplier: number;
 }
 
 /** Łańcuch pioruna (Elektryczna strzała): z trafionego celu przeskakuje na `targets` najbliższych. */
@@ -468,6 +482,8 @@ export interface PlayerCombatConfig {
   readonly invulnerabilityMs: number;
   readonly dash: DashConfig;
   readonly ranged: RangedConfig;
+  /** Krok 167 (próba „cięższych ciosów”): drżenie kamery, gdy cios kogoś trafi; brak = bez drżenia. */
+  readonly hitShake?: { readonly durationMs: number; readonly intensity: number };
 }
 
 export interface EnemyScalingConfig {

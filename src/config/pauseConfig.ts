@@ -17,6 +17,7 @@ export const PAUSE_CONFIG = {
    */
   items: {
     resume: 'Wznów',
+    items: 'Moje przedmioty',
     save: 'Zapisz grę',
     settings: 'Dźwięk i obraz',
     controls: 'Sterowanie',
@@ -32,7 +33,7 @@ export const PAUSE_CONFIG = {
     /** Krok 121: w walce z bossem nie ma zapisu — inaczej wyjście dawałoby darmową powtórkę walki. */
     quitBossFight: 'Walka z bossem — bez zapisu, wyjście kończy run',
   },
-  pageTitles: { save: 'ZAPIS GRY', settings: 'DŹWIĘK I OBRAZ', controls: 'STEROWANIE' },
+  pageTitles: { save: 'ZAPIS GRY', settings: 'DŹWIĘK I OBRAZ', controls: 'STEROWANIE', items: 'MOJE PRZEDMIOTY' },
   saveUnavailable: 'Zapis niedostępny podczas odtwarzania nagrania',
   /** Podpowiedź na dole: strona główna i podstrony. */
   hints: {
@@ -55,6 +56,24 @@ export const PAUSE_CONFIG = {
     noteGap: 14,
     statusY: 452,
     hintY: 488,
+  },
+  /** Krok 162: strona „Moje przedmioty” — pod tytułem, nad „Wróć” (controlsItemsY). */
+  build: {
+    top: 104,
+    width: 600,
+    /** Co-op: dwie kolumny. */
+    columnWidth: 300,
+    columnGap: 24,
+    sectionGap: 22,
+    titleSize: 13,
+    detailSize: 11,
+    indent: 12,
+    rowGap: 6,
+    /** Solo: od tylu przedmiotów lista idzie w dwóch kolumnach. */
+    splitAfter: 6,
+    /** Odstęp od „Wróć”. */
+    bottomGap: 22,
+    empty: 'Jeszcze nic — przedmioty dają wrogowie, skrzynie, kapliczki i bossowie.',
   },
   /** Strona „Sterowanie” (PC): klawiatura z myszą, pad i skróty w pauzie. */
   controls: [

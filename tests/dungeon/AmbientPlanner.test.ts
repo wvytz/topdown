@@ -13,12 +13,17 @@ const chebyshev = (a: { x: number; y: number }, b: { x: number; y: number }) => 
 const WALL_KINDS = new Set([AmbientKind.Glowcap, AmbientKind.OvergrownLamp, AmbientKind.Candle]);
 
 describe('planAmbient — żywe otoczenie Grzybni i Cmentarzyska (krok 156)', () => {
-  it('Grzybnia i Cmentarzysko mają żywe otoczenie (Piekło i mieszkanie — od kroku 157), ruiny i areny 6–7 nie', () => {
+  it('wszystkie biomy wspinaczki mają żywe otoczenie (Piekło i mieszkanie — krok 157, ruiny i piętra 6–7 — krok 166)', () => {
     expect(BIOMES[BiomeId.FungalGrove].ambient?.grove).toBeTruthy();
     expect(BIOMES[BiomeId.Graveyard].ambient?.graveyard).toBeTruthy();
     expect(BIOMES[BiomeId.Infernal].ambient?.infernal).toBeTruthy();
     expect(BIOMES[BiomeId.SmokeDen].ambient?.den).toBeTruthy();
-    for (const id of [BiomeId.TowerRuins, BiomeId.MirrorHall, BiomeId.StorkGarden]) expect(BIOMES[id].ambient ?? null).toBeNull();
+    // Krok 166 (uwaga testera): ruiny — karaluchy i puszki bez ekranów, Lustrzana komnata — nieliczne karaluchy,
+    // Bociani Ogród — ogniki i kruki bez zniczy.
+    expect(BIOMES[BiomeId.TowerRuins].ambient?.den?.screensPerRoom.max).toBe(0);
+    expect(BIOMES[BiomeId.MirrorHall].ambient?.den?.cans.perRoom.max).toBe(0);
+    expect(BIOMES[BiomeId.StorkGarden].ambient?.graveyard?.candlesPerRoom.max).toBe(0);
+    expect(BIOMES[BiomeId.StorkGarden].ambient?.graveyard?.wisps.roomChance).toBeGreaterThan(0);
   });
 
   it('rekwizyty stoją na podłodze pokoju startowego albo zwykłego, nie na środku, nie przy schodach i starcie', () => {

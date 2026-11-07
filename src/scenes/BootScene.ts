@@ -11,7 +11,7 @@ import { PROJECTILE_RADIUS } from '@/config/combatConfig';
 import { newRun } from '@/systems/RunState';
 import { parseStartOverrides } from '@/systems/startOverrides';
 import { withPracticeLoadout } from '@/scenes/practiceStart';
-import { DEFAULT_HERO, HERO_ORDER, parseHeroId } from '@/config/heroConfig';
+import { DEFAULT_HERO, SELECTABLE_HEROES, parseHeroId } from '@/config/heroConfig';
 import { freshCoop, partnerHero } from '@/systems/Coop';
 import { BOSS_RUSH_CONFIG } from '@/config/bossRushConfig';
 import { RunMode } from '@/core/runMode';
@@ -60,7 +60,7 @@ export class BootScene extends Phaser.Scene {
     // Co-op w trybie testowym (krok 103): `?hero=barbarian&coop=archer` — P1 na klawiaturze z myszą, P2 na padzie.
     // Tylko wspinaczka (decyzja właściciela); do czasu tablicy co-op (etap C7) run jest testowy.
     const coopWanted = heroParam() !== null && mode === RunMode.Tower ? parseHeroId(new URLSearchParams(window.location.search).get('coop')) : null;
-    const coop = coopWanted ? freshCoop(partnerHero(hero, coopWanted, HERO_ORDER)) : undefined;
+    const coop = coopWanted ? freshCoop(partnerHero(hero, coopWanted, SELECTABLE_HEROES)) : undefined;
     const startData = withPracticeLoadout(
       {
         runSeed: Date.now() >>> 0,

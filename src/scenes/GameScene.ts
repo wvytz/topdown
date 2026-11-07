@@ -51,7 +51,9 @@ import { PAUSE_CLOCK_KEY, PAUSE_CONFIG } from '@/config/pauseConfig';
 import type { PauseReason } from '@/config/pauseConfig';
 import { autoPauseEnabled } from '@/systems/PauseClock';
 import type { PauseClock } from '@/systems/PauseClock';
-import type { PauseSceneData } from '@/scenes/PauseScene';
+import type { BuildSection, PauseSceneData } from '@/scenes/PauseScene';
+import { summarizeBuild } from '@/systems/BuildSummary';
+import { roomMarkers } from '@/systems/RoomMarkers';
 import { MinimapExplorer } from '@/systems/Minimap';
 import { MinimapRoute } from '@/systems/MinimapRoute';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
@@ -69,7 +71,7 @@ import type { ArenaLayout } from '@/core/arenaConditionTypes';
 import { planArenaLayout, withWallTiles } from '@/dungeon/ArenaConditionPlanner';
 import { planBreakables, planDartTraps, planSpikeStrips } from '@/dungeon/TrapPlanner';
 import { getEncounterConfigForFloor } from '@/config/combatConfig';
-import { HERO_DEFINITIONS, HERO_ORDER, parseHeroId } from '@/config/heroConfig';
+import { HERO_DEFINITIONS, SELECTABLE_HEROES, parseHeroId } from '@/config/heroConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ELITE_VISUAL, RETINUE_MARKER_VISUAL, SECRET_ROOM_VISUAL } from '@/config/spriteConfig';
 import { sorceryOf } from '@/core/heroTypes';
@@ -89,7 +91,7 @@ import {
 } from '@/config/lootConfig';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
-import { eliteAffixCount } from '@/systems/TowerLoop';
+import { eliteAffixCount, runEndsAfterFloor } from '@/systems/TowerLoop';
 import { eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
 import { BossEncounter } from '@/combat/BossEncounter';
 import { duetForFloor } from '@/systems/BossDuet';
@@ -127,7 +129,9 @@ import { ReviveProgress, reviveHp } from '@/systems/Revive';
 import { SOLO_BALANCE, withExtraEnemies } from '@/systems/CoopBalance';
 import type { CoopBalanceConfig } from '@/systems/CoopBalance';
 import { isDeepInsideRoom } from '@/dungeon/arenaGates';
-import { Player } from '@/entities/Player';
+import { PLAYER_JELLY_EVENT, Player } from '@/entities/Player';
+import { relicForFloor, withRelicCard } from '@/systems/Relics';
+import { RELIC_CONFIG } from '@/config/relicConfig';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { countItems, isItemEvolved, rollRewardChoices } from '@/systems/ItemEvolution';
@@ -219,6 +223,8 @@ const NESTER_SEED_SALT = 0x6e57;
 /** Czyhacze (krok 123). */
 const LURKER_SEED_SALT = 0x1c4e;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
+/** Krok 169: schody ostatniego piętra kręgu kończą run. */
+const STAIRS_PROMPT_FINAL = '[E] Zdobądź wieżę';
 /** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
 function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
   return counts.map(({ id, count }) => {
@@ -230,6 +236,7 @@ function hudItems(counts: readonly { readonly id: ItemId; readonly count: number
       color: ITEM_DEFINITIONS[id].color,
       frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
       rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
+      relic: ITEM_DEFINITIONS[id].kind === ItemKind.Relic,
       evolved,
     };
   });
@@ -384,6 +391,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private stairsPrompt: Phaser.GameObjects.Text | null = null;
   private isTransitioning = false;
   private deathHandled = false;
+  /** Krok 169: run zakończony zwycięstwem (ekran ZWYCIĘSTWO zamiast POLEGŁEŚ). */
+  private victory = false;
 
   constructor() {
     super(SceneKey.Game);
@@ -391,7 +400,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   init(sceneData: FloorSceneData): void {
     // Ukryty bot-partner (krok 149): `?bot=1` w adresie dokłada P2 sterowanego przez AI (też po menu i ekranie wyboru).
-    const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), HERO_ORDER);
+    const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), SELECTABLE_HEROES);
     const data = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;
@@ -414,6 +423,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stairsPrompt = null;
     this.isTransitioning = false;
     this.deathHandled = false;
+    this.victory = false;
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
@@ -822,6 +832,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
       stairs: this.dungeon.stairs,
       boss,
       route,
+      markers: roomMarkers({
+        rooms: this.dungeon.rooms,
+        shrine: this.shrine?.markerTile ?? null,
+        ambushRoomId: this.ambush && !this.ambush.cleared ? this.ambushRoomId : null,
+        elites: [...this.enemies.living].filter((e) => isElite(e.definition)).map((e) => DungeonView.worldToTile(e.x, e.y)),
+      }),
     };
   }
 
@@ -958,6 +974,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private setupCombat(): void {
     this.effects = new CombatEffects(this);
+    // Krok 170: Korona Szlamu zbiła trafienie.
+    this.events.off(PLAYER_JELLY_EVENT);
+    this.events.on(PLAYER_JELLY_EVENT, (hero: Player) => this.effects.floatingText(hero.x, hero.y - 22, 'galareta', '#c49aff'));
     // Płomienie ognia walki stają tylko na podłodze (krok 144) — pas bocianów sięga za mury areny.
     const { width, height, tiles } = this.dungeon;
     this.effects.fire.setFloorCheck((x, y) => {
@@ -989,6 +1008,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Upiory zasadzki rozwiewają się bez łupu — nagrodą jest przynęta.
         this.player.addUltimateKill(this.time.now);
         if (this.ambushGhosts.has(enemy)) return;
+        this.devourerHeal();
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
       },
@@ -1531,10 +1551,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
       ...(this.checkpoint && this.saveLock.locked && { saveLocked: true }),
       onQuit: () => this.quitToMenu(),
       ...(openFeedback && { openFeedback: true }),
+      build: this.buildSections(),
     };
     this.scene.pause();
     this.scene.launch(SceneKey.Pause, data);
     sound.setMusicDuck(MUSIC_DUCK.pause);
+  }
+
+  /** Krok 162: przedmioty bohaterów do strony „Moje przedmioty” w pauzie (co-op — osobno P1 i P2). */
+  private buildSections(): BuildSection[] {
+    const heroes: { hero: Player; items: readonly ItemId[] }[] = [{ hero: this.player, items: this.run.items }];
+    if (this.partner) heroes.push({ hero: this.partner, items: this.partnerItems });
+    return heroes.map(({ hero, items }) => {
+      const tag = this.playerTag(hero);
+      const name = HERO_DEFINITIONS[this.heroIdOf(hero)].name;
+      return { title: tag ? `${tag} — ${name}` : name, rows: summarizeBuild(items, ITEM_DEFINITIONS, ITEM_EFFECTS.evolution) };
+    });
   }
 
   /** Pokonany boss odblokowuje start od tego piętra w trybie wyboru piętra (krok 91). Nie przy nagraniu i runie testowym. */
@@ -1590,6 +1622,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.input.keyboard?.resetKeys();
   }
 
+  /** Krok 170, Ząb Pożeracza: zabity wróg leczy każdego żywego bohatera z relikwią (zabójcy nie śledzimy). */
+  private devourerHeal(): void {
+    for (const hero of this.party.members) {
+      const heal = hero.effects.relics.killHeal;
+      if (heal <= 0 || hero.isDead) continue;
+      if (hero.health.value >= hero.health.max) continue;
+      hero.heal(heal);
+      this.effects.floatingText(hero.x, hero.y - 14, `+${heal}`, '#9fe07a');
+    }
+  }
+
   private offerBossReward(onPicked?: () => void): void {
     const rng = createRng(deriveSeed(this.dungeon.seed, REWARD_SEED_SALT));
     // Co-op (etap C4): każdy bohater wybiera swoją kartę, po kolei P1, potem P2 (także powalony — wstaje z nagrodą później).
@@ -1602,7 +1645,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
       }
       // Krok 150: karta rozwoju — gdy bohater ma przedmiot w trakcie budowy (1–2 kopie), jedna karta to on.
       const roll = rollRewardChoices(this.usefulPoolFor(hero), BOSS_REWARD.choices, rng, this.itemsOf(hero), ITEM_EFFECTS.evolution);
-      this.offerRewardTo(hero, roll.choices, offerNext, roll.development);
+      // Krok 170 (decyzja właściciela 4a): jedna z kart to zawsze relikwia tego bossa, póki bohater jej nie ma.
+      const relic = relicForFloor(this.floorNumber, TOWER_CONFIG.floorsPerLoop, RELIC_CONFIG);
+      const choices = withRelicCard(roll.choices, relic, this.itemsOf(hero), roll.development);
+      this.offerRewardTo(hero, choices, offerNext, roll.development);
     };
     offerNext();
   }
@@ -1686,12 +1732,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return remainingMs > 0 ? { text: this.toast.text, remainingMs } : null;
   }
 
-  private handlePlayerDeath(): void {
+  /** Krok 169: zwycięstwo — ten sam przebieg co śmierć (wynik = złoto, tablica, R/C/M), ale ekran ZWYCIĘSTWO. */
+  private finishRunVictory(): void {
+    if (this.deathHandled) return;
+    this.isTransitioning = true;
+    for (const member of this.party.members) member.setVelocity(0, 0);
+    sound.play(SoundCue.Stairs);
+    this.handlePlayerDeath(true);
+  }
+
+  private handlePlayerDeath(victory = false): void {
     if (this.deathHandled) return;
     this.deathHandled = true;
     // Śmierć drużyny: muzyka cichnie (zabrzmiał już krzyk bohatera).
     sound.setMusic(null);
-    diag.note('player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
+    diag.note(victory ? 'run-victory' : 'player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
+    this.victory = victory;
     // Śmierć kończy run — „Kontynuuj” znika (ręczne sloty zostają).
     if (this.checkpoint) this.saves.remove('auto');
 
@@ -1713,7 +1769,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           ? 'floorSelect'
           : null;
     if (unranked) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag() };
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
       this.awaitNewRun();
       return;
     }
@@ -1726,7 +1782,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
-    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag() };
+    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag(), ...this.victoryFlag() };
     const finish = (raw: string | null): void => {
       this.input.keyboard?.off('keydown', onKey);
       this.deathPad = null;
@@ -1755,6 +1811,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
   }
 
+  private victoryFlag(): { victory?: true } {
+    return this.victory ? { victory: true } : {};
+  }
+
   /** Znacznik tablicy aren na panelu śmierci (krok 91a). */
   private arenaFlag(): { arenas?: true; coop?: true } {
     return this.bossRush ? { arenas: true } : this.coop ? { coop: true } : {};
@@ -1764,7 +1824,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private recordDeath(entry: ScoreEntry): void {
     const highscores = this.bossRush ? this.arenaHighscores : this.coop ? this.coopHighscores : this.highscores;
     const { rank, board } = highscores.record(entry);
-    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag() };
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
     this.death = death;
     if (highscores.hasRemote) {
       this.death = { ...death, source: 'pending' };
@@ -1875,7 +1935,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const climber = this.party.living.find((hero) => isStairsTile(this.dungeon, DungeonView.worldToTile(hero.x, hero.y)));
     this.onStairs = this.stairsUnlocked && climber !== undefined;
     const waiting = this.party.members.some((hero) => hero.isDead);
-    this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : STAIRS_PROMPT).setVisible(this.onStairs);
+    this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG) ? STAIRS_PROMPT_FINAL : STAIRS_PROMPT).setVisible(this.onStairs);
     if (this.onStairs && climber && !waiting && interactPressed(climber)) {
       this.stairsPrompt?.setVisible(false);
       this.goToNextFloor();
@@ -1900,6 +1960,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private goToNextFloor(): void {
+    // Krok 169: po bossie ostatniego piętra kręgu schody kończą run zwycięstwem.
+    if (runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG)) {
+      this.finishRunVictory();
+      return;
+    }
     diag.note('stairs-up', { from: this.floorNumber });
     sound.play(SoundCue.Stairs);
     this.isTransitioning = true;

@@ -4,6 +4,7 @@ import type { ItemDefinition, ItemEffectsConfig, LootScalingConfig, LootTable, S
 import { ItemId, ItemKind } from '@/core/lootTypes';
 import type { ShrineConfig } from '@/systems/Shrine';
 import { ITEM_EVOLUTION } from '@/config/itemEvolutionConfig';
+import { RELIC_CONFIG } from '@/config/relicConfig';
 
 /** Pula przedmiotów pasywnych (5 bazowych + 7 z efektem) — kumulują się w trakcie runu. */
 export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
@@ -119,6 +120,71 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
     weight: 3,
     modifiers: {},
   },
+
+  // Krok 170: relikwie bossów (decyzja właściciela 4a) — waga 0: tylko z karty za swojego bossa.
+  [ItemId.SlimeCrown]: {
+    id: ItemId.SlimeCrown,
+    kind: ItemKind.Relic,
+    name: 'Korona Szlamu',
+    effect: 'co 8 s jedno trafienie zadaje ci połowę obrażeń',
+    color: 0x9a5ad8,
+    weight: 0,
+    modifiers: {},
+  },
+  [ItemId.SpiderSilk]: {
+    id: ItemId.SpiderSilk,
+    kind: ItemKind.Relic,
+    name: 'Pajęczy jedwab',
+    effect: 'każde trafienie oplątuje: wróg −30% szybkości na 2 s',
+    color: 0xe8e4f0,
+    weight: 0,
+    modifiers: {},
+  },
+  [ItemId.DevourerTooth]: {
+    id: ItemId.DevourerTooth,
+    kind: ItemKind.Relic,
+    name: 'Ząb Pożeracza',
+    effect: 'zabity wróg leczy 3 HP',
+    color: 0x8fbf5a,
+    weight: 0,
+    modifiers: {},
+  },
+  [ItemId.HeadsmanAxe]: {
+    id: ItemId.HeadsmanAxe,
+    kind: ItemKind.Relic,
+    name: 'Topór Kata',
+    effect: 'wróg poniżej 20% HP ginie od trafienia (bossowie nie)',
+    color: 0xd23a3a,
+    weight: 0,
+    modifiers: {},
+  },
+  [ItemId.BaronPipe]: {
+    id: ItemId.BaronPipe,
+    kind: ItemKind.Relic,
+    name: 'Fajka Barona',
+    effect: 'pasek mocy (R) ładuje się 2× szybciej',
+    color: 0x9a8f84,
+    weight: 0,
+    modifiers: {},
+  },
+  [ItemId.WetMop]: {
+    id: ItemId.WetMop,
+    kind: ItemKind.Relic,
+    name: 'Mokry mop',
+    effect: '+1 ładunek dasha',
+    color: 0x5ab8d8,
+    weight: 0,
+    modifiers: {},
+  },
+  [ItemId.StorkFeather]: {
+    id: ItemId.StorkFeather,
+    kind: ItemKind.Relic,
+    name: 'Bocianie pióro',
+    effect: '+15% prędkości i +10% tempa ataku',
+    color: 0xf0ece0,
+    weight: 0,
+    modifiers: { moveSpeedPct: 0.15, attackSpeedPct: 0.1 },
+  },
 };
 
 /** Siła efektów przedmiotów: pierwsza kopia + przyrost za każdą kolejną. */
@@ -135,9 +201,14 @@ export const ITEM_EFFECTS: ItemEffectsConfig = {
   stormDash: { damage: 10, damagePerStack: 6 },
   frostShard: { slowPct: 0.4, slowPctPerStack: 0.1, maxSlowPct: 0.7, durationMs: 1500 },
   evolution: ITEM_EVOLUTION,
+  relics: RELIC_CONFIG,
 };
 
-export const ITEM_POOL: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS);
+/** Pula łupów, kart i kapliczki — bez relikwii (krok 170: relikwia tylko z karty za swojego bossa). */
+export const ITEM_POOL: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS).filter((item) => item.kind !== ItemKind.Relic);
+
+/** Wszystkie przedmioty z relikwiami (sloty HUD, opisy). */
+export const ALL_ITEMS: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS);
 
 export const STAT_LIMITS: StatLimits = {
   /** Cooldowny nie spadną poniżej 50% bazowych. */

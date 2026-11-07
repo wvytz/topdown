@@ -2417,7 +2417,7 @@ export function lootAnimationKey(name: LootAnimation | `item-${string}`): string
   return `${LOOT_ATLAS.key}-${name}`;
 }
 
-/** Klatki ikony przedmiotu: bazowy — 1 (statyczny), z efektem — 4 (iskra). */
+/** Klatki ikony przedmiotu: bazowy — 1 (statyczny), z efektem i relikwia (krok 170) — 4 (iskra). */
 export function itemFrames(id: ItemId, kind: ItemKind): readonly string[] {
-  return numbered(`item_${id}`, kind === ItemKind.Effect ? 4 : 1);
+  return numbered(`item_${id}`, kind === ItemKind.Stat ? 1 : 4);
 }

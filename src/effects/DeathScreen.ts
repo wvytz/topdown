@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { DeathSummary } from '@/core/types';
-import { DEATH_HERO_ICON as ICON, DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW } from '@/config/deathScreenConfig';
+import { DEATH_HERO_ICON as ICON, DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW, VICTORY_SCREEN, type DeathTitleFlow } from '@/config/deathScreenConfig';
 import { heroIconTexture } from '@/effects/heroIcon';
 import type { HeroId } from '@/core/heroTypes';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
@@ -43,12 +43,14 @@ export class DeathScreen {
   private readonly vignette: Phaser.GameObjects.Image;
   private readonly band: Phaser.GameObjects.Image;
   private readonly glow: Phaser.GameObjects.Image;
-  private readonly title: Phaser.GameObjects.Container;
-  /** Lico liter — przerysowywane co klatkę (spływająca czerwień). */
-  private readonly titleFill: Phaser.GameObjects.Graphics;
-  private readonly titleText: PixelText;
-  private readonly titleLeft: number;
-  private readonly titleTop: number;
+  private title: Phaser.GameObjects.Container;
+  /** Lico liter — przerysowywane co klatkę (spływająca czerwień; przy zwycięstwie — złoto, krok 169). */
+  private titleFill: Phaser.GameObjects.Graphics;
+  private titleText: PixelText;
+  private titleLeft: number;
+  private titleTop: number;
+  private victory = false;
+  private flow: DeathTitleFlow = FLOW;
   private readonly score: Phaser.GameObjects.Text;
   private readonly ornament: Phaser.GameObjects.Container;
   private readonly header: Phaser.GameObjects.Text;
@@ -77,7 +79,7 @@ export class DeathScreen {
     this.titleLeft = (-this.titleText.width * unit) / 2;
     this.titleTop = (-(this.titleText.height - this.titleText.top) * unit) / 2 - this.titleText.top * unit;
     this.titleFill = scene.add.graphics();
-    this.title = this.buildTitle();
+    this.title = this.buildTitle(P.blood0);
 
     this.score = scene.add
       .text(L.centerX, L.score.y, '', { ...style, fontSize: `${L.score.fontSize}px`, color: '#9c8f74' })
@@ -144,8 +146,25 @@ export class DeathScreen {
 
   private start(death: DeathSummary, now: number): void {
     this.startedAt = now;
+    this.setVictory(death.victory === true);
     this.root.setVisible(true);
     this.fill(death);
+  }
+
+  /** Krok 169: POLEGŁEŚ w czerwieni albo ZWYCIĘSTWO w złocie — napis budowany od nowa tylko przy zmianie. */
+  private setVictory(victory: boolean): void {
+    if (victory === this.victory) return;
+    this.victory = victory;
+    this.flow = victory ? VICTORY_SCREEN.flow : FLOW;
+    const { unit, gap } = L.title;
+    this.titleText = pixelText(victory ? VICTORY_SCREEN.title : 'POLEGŁEŚ', gap);
+    this.titleLeft = (-this.titleText.width * unit) / 2;
+    this.titleTop = (-(this.titleText.height - this.titleText.top) * unit) / 2 - this.titleText.top * unit;
+    const index = this.root.getIndex(this.title);
+    this.title.destroy();
+    this.titleFill = this.scene.add.graphics();
+    this.title = this.buildTitle(victory ? VICTORY_SCREEN.shadow : P.blood0);
+    this.root.addAt(this.title, index);
   }
 
   /** Wynik i tablica albo pole na imię (pierwsza śmierć bez zapamiętanego imienia). */
@@ -154,7 +173,11 @@ export class DeathScreen {
     const unranked = death.source === 'practice' || death.source === 'fromSave' || death.source === 'floorSelect';
     const place = death.nameEntry === null && !unranked ? ` · MIEJSCE ${death.rank}` : '';
     // Na tablicy aren (krok 91a) o miejscu decyduje arena, więc idzie pierwsza.
-    const result = death.arenas ? `ARENA ${death.floor} · ${death.score} ZŁOTA` : `${death.score} ZŁOTA · PIĘTRO ${death.floor}`;
+    const result = death.arenas
+      ? `ARENA ${death.floor} · ${death.score} ZŁOTA`
+      : death.victory
+        ? VICTORY_SCREEN.result(death.score)
+        : `${death.score} ZŁOTA · PIĘTRO ${death.floor}`;
     this.score.setText(`${result}${place}`);
     const prompt = death.arenas ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT;
     // Wersja mobilna (krok 96): zamiast klawiszy są przyciski dotykowe w tym samym miejscu.
@@ -210,7 +233,7 @@ export class DeathScreen {
   }
 
   /** POLEGŁEŚ: cienki obrys w czerni i płytki cień (nieruchome) + lico ze spływającą czerwienią. */
-  private buildTitle(): Phaser.GameObjects.Container {
+  private buildTitle(shadow: number): Phaser.GameObjects.Container {
     const { unit, outline: o } = L.title;
     const g = this.scene.add.graphics();
     const layer = (dx: number, dy: number, color: number): void => {
@@ -219,7 +242,7 @@ export class DeathScreen {
         g.fillRect(this.titleLeft + x * unit + dx, this.titleTop + y * unit + dy, unit, unit);
       }
     };
-    layer(0, 2 * o, P.blood0);
+    layer(0, 2 * o, shadow);
     for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o]] as const) layer(dx, dy, P.void);
     return this.scene.add.container(L.centerX, L.title.centerY, [g, this.titleFill]);
   }
@@ -232,10 +255,10 @@ export class DeathScreen {
     const g = this.titleFill.clear();
     for (const { x, y } of this.titleText.cells) {
       // Każda grupa liter (PO | LEG | ŁEŚ) spływa we własnym tempie.
-      const group = flowGroupOf(Math.floor(x / (GLYPH_WIDTH + L.title.gap)));
+      const group = flowGroupOf(Math.floor(x / (GLYPH_WIDTH + L.title.gap)), this.flow);
       for (let dy = 0; dy < unit; dy += strip) {
         const py = y * unit + dy;
-        g.fillStyle(FLOW.ramp[titleFlowIndex(py - top, t, FLOW, group.speedPxPerSec, group.offsetPx)] ?? P.eye0);
+        g.fillStyle(this.flow.ramp[titleFlowIndex(py - top, t, this.flow, group.speedPxPerSec, group.offsetPx)] ?? P.eye0);
         g.fillRect(this.titleLeft + x * unit, this.titleTop + py, unit, strip);
       }
     }

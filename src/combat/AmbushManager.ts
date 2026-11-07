@@ -1,7 +1,7 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
-import { EnemyType, EnemyVariant } from '@/core/combatTypes';
+import { EliteAffix, EnemyType, EnemyVariant } from '@/core/combatTypes';
 import type { LootDrop } from '@/core/lootTypes';
 import { PickupKind } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
@@ -18,7 +18,9 @@ import type { Enemy } from '@/entities/Enemy';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { AmbushConfig } from '@/systems/Ambush';
-import { AmbushPhase, AmbushState, ambushSpawnTiles } from '@/systems/Ambush';
+import { AmbushPhase, AmbushState } from '@/systems/Ambush';
+import { type AmbushScenario, formationTiles, pickScenario, waveSize } from '@/systems/AmbushWaves';
+import { AMBUSH_FORMATION_TEXT, AMBUSH_SCENARIOS } from '@/config/ambushConfig';
 import { pickWeightedItem } from '@/systems/Loot';
 import { ENEMY_VARIANTS } from '@/config/combatConfig';
 
@@ -49,23 +51,26 @@ export interface AmbushDeps {
 }
 
 /**
- * Pokój zasadzki (krok 49): przedmiot na środku pustego pokoju. Gdy gracz wejdzie w głąb — kraty, mrok i dwie
- * fale upiorów (wynurzają się z posadzki). Po ostatniej fali światło wraca, kraty się podnoszą, przedmiot
+ * Pokój zasadzki (krok 49): przedmiot na środku pustego pokoju. Gdy gracz wejdzie w głąb — kraty, mrok i trzy
+ * fale upiorów w ustalonych szykach (krok 164) (wynurzają się z posadzki). Po ostatniej fali światło wraca, kraty się podnoszą, przedmiot
  * da się podnieść. Przebieg z czystego `systems/Ambush`.
  */
 export class AmbushManager {
   private readonly state: AmbushState;
   private readonly gates: readonly TilePoint[];
   private readonly bait: LootDrop;
+  /** Krok 164: ustalony scenariusz fal (z seeda piętra). */
+  private readonly scenario: AmbushScenario;
   private wave: Enemy[] = [];
   private dreadTarget = 0;
   private dread = 0;
   private lastNow = 0;
 
   constructor(private readonly deps: AmbushDeps) {
-    this.state = new AmbushState(deps.config);
     this.gates = findRoomEntrances(deps.floor, deps.room);
     const itemId = pickWeightedItem(ITEM_POOL, deps.rng);
+    this.scenario = pickScenario(AMBUSH_SCENARIOS, deps.rng);
+    this.state = new AmbushState({ waves: this.scenario.waves.map(waveSize), waveDelayMs: deps.config.waveDelayMs });
     this.bait = { kind: PickupKind.Item, itemId: itemId! };
     deps.spawnLoot(DungeonView.tileToWorldCenter(this.center), [this.bait]);
   }
@@ -73,6 +78,11 @@ export class AmbushManager {
   private get center() {
     const { room } = this.deps;
     return { x: room.x + Math.floor(room.width / 2), y: room.y + Math.floor(room.height / 2) };
+  }
+
+  /** Zasadzka po ostatniej fali — ikonka na minimapie znika (krok 163). */
+  get cleared(): boolean {
+    return this.state.phase === AmbushPhase.Cleared;
   }
 
   /** Przynęta leży, dopóki zasadzka trwa — podnieść ją można dopiero po ostatniej fali. */
@@ -91,7 +101,7 @@ export class AmbushManager {
       if (inside) this.deps.gather(inside, room);
       this.seal();
     }
-    else if (event?.kind === 'wave') this.summon(event.count);
+    else if (event?.kind === 'wave') this.summon(event.index);
     else if (event?.kind === 'clear') this.release();
     // Mrok narasta i opada płynnie (krok 28a: bez twardych przejść).
     const step = dt / config.dread.fadeMs;
@@ -114,16 +124,25 @@ export class AmbushManager {
     this.deps.toast('Zasadzka! Światło gaśnie…');
   }
 
-  private summon(count: number): void {
+  /** Fala scenariusza (krok 164): upiory (pierwszy może być elitą) i ewentualnie szarżownicy biomu, w szyku fali. */
+  private summon(index: number): void {
     const { room, config, party, enemies, rng, effects } = this.deps;
-    // Etap C0 co-opu: upiory wychodzą z dala od pierwszego żywego bohatera.
+    const wave = this.scenario.waves[index];
+    if (!wave) return;
+    // Etap C0 co-opu: szyk liczony od pierwszego żywego bohatera.
     const player = party.living[0] ?? party.leader;
-    const tiles = ambushSpawnTiles(room, DungeonView.worldToTile(player.x, player.y), count, config.minSpawnDistance, rng);
+    const tiles = formationTiles(room, DungeonView.worldToTile(player.x, player.y), wave.formation, waveSize(wave), config.minSpawnDistance, rng);
     tiles.forEach((tile, i) => {
       const at = DungeonView.tileToWorldCenter(tile);
+      if (i >= wave.ghosts) {
+        // Wróg biomu: zwykły łup; tylko szarżownik — strzelec w mroku zasadzki byłby nieuczciwy.
+        this.wave.push(enemies.spawnAt(EnemyType.Rusher, at, [], { riseMs: config.riseMs }));
+        effects.impact(at.x, at.y, TILE_SIZE * 0.5);
+        return;
+      }
       // Przesunięcie fazy przenikania rozłożone na cały cykl: upiory nie znikają wszystkie naraz.
-      const phaseOffsetMs = Math.floor((i * GHOST_PHASE_CYCLE) / Math.max(1, count));
-      const ghost = enemies.spawnAt(EnemyType.Rusher, at, [], {
+      const phaseOffsetMs = Math.floor((i * GHOST_PHASE_CYCLE) / Math.max(1, wave.ghosts));
+      const ghost = enemies.spawnAt(EnemyType.Rusher, at, wave.elite && i === 0 ? [EliteAffix.Swift] : [], {
         variant: EnemyVariant.Ghost,
         phaseOffsetMs,
         riseMs: config.riseMs,
@@ -133,6 +152,7 @@ export class AmbushManager {
       this.wave.push(ghost);
       effects.impact(at.x, at.y, TILE_SIZE * 0.5);
     });
+    this.deps.toast(`Fala ${index + 1}/${this.scenario.waves.length} — ${AMBUSH_FORMATION_TEXT[wave.formation]}`);
   }
 
   private release(): void {

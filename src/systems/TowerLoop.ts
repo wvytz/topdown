@@ -17,6 +17,14 @@ export function floorInLoop(floor: number, config: Pick<TowerLoopConfig, 'floors
   return ((Math.max(1, floor) - 1) % config.floorsPerLoop) + 1;
 }
 
+/**
+ * Krok 169 (decyzja właściciela 1a + 2a: „run kończy się po 1. kręgu”, dalej będzie Akt II): czy schody z tego
+ * piętra kończą run zwycięstwem. Areny bossów mają własny przebieg; tryb testowy z `?floor=` za kręgiem — też koniec.
+ */
+export function runEndsAfterFloor(floor: number, bossRush: boolean, config: Pick<TowerLoopConfig, 'floorsPerLoop'>): boolean {
+  return !bossRush && floor >= config.floorsPerLoop;
+}
+
 /** Liczba cech elity na piętrze: więcej w kolejnych kręgach, z limitem. */
 export function eliteAffixCount(floor: number, config: TowerLoopConfig): number {
   const count = config.eliteAffixesFirstLoop + towerLoop(floor, config) * config.eliteAffixesPerLoop;

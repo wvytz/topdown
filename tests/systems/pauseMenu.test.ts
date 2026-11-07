@@ -4,14 +4,14 @@ import { PauseItem, PausePage, movePauseCursor, pageOf, pauseBack, pauseItems, s
 const pc = { canSave: true, display: true };
 
 describe('menu pauzy', () => {
-  it('strona główna ma pięć pozycji; bez zapisu (nagranie) znika „Zapisz grę”', () => {
-    expect(pauseItems(PausePage.Main, pc)).toEqual([PauseItem.Resume, PauseItem.Save, PauseItem.Settings, PauseItem.Controls, PauseItem.Quit]);
+  it('strona główna ma sześć pozycji (krok 162: „Moje przedmioty”); bez zapisu (nagranie) znika „Zapisz grę”', () => {
+    expect(pauseItems(PausePage.Main, pc)).toEqual([PauseItem.Resume, PauseItem.Items, PauseItem.Save, PauseItem.Settings, PauseItem.Controls, PauseItem.Quit]);
     expect(pauseItems(PausePage.Main, { ...pc, canSave: false })).not.toContain(PauseItem.Save);
   });
 
   it('krok 133: „Napisz do autora” przed „Menu główne”, tylko gdy wysyłka jest dostępna; niczego nie otwiera', () => {
     expect(pauseItems(PausePage.Main, { ...pc, feedback: true })).toEqual([
-      PauseItem.Resume, PauseItem.Save, PauseItem.Settings, PauseItem.Controls, PauseItem.Feedback, PauseItem.Quit,
+      PauseItem.Resume, PauseItem.Items, PauseItem.Save, PauseItem.Settings, PauseItem.Controls, PauseItem.Feedback, PauseItem.Quit,
     ]);
     expect(pauseItems(PausePage.Main, { ...pc, feedback: false })).not.toContain(PauseItem.Feedback);
     expect(pageOf(PauseItem.Feedback)).toBeNull();
@@ -46,5 +46,13 @@ describe('menu pauzy', () => {
   it('sloty zapisu mają numery 1–3', () => {
     expect([PauseItem.Slot1, PauseItem.Slot2, PauseItem.Slot3].map(slotOf)).toEqual([1, 2, 3]);
     expect(slotOf(PauseItem.Back)).toBeNull();
+  });
+});
+
+describe('strona „Moje przedmioty” (krok 162)', () => {
+  it('otwiera się z głównej i wraca na swoją pozycję', () => {
+    expect(pageOf(PauseItem.Items)).toBe(PausePage.Items);
+    expect(pauseItems(PausePage.Items, pc)).toEqual([PauseItem.Back]);
+    expect(pauseBack(PausePage.Items)).toEqual({ page: PausePage.Main, cursor: PauseItem.Items });
   });
 });

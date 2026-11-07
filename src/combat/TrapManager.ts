@@ -50,7 +50,7 @@ const play = (sprite: Phaser.GameObjects.Sprite, name: string) => sprite.play(an
 /**
  * Pułapki ruin (krok 48): płyty z kolcami (rytm z czystego `systems/Traps`, ranią gracza i wrogów raz na wysunięcie)
  * i pułapki ze strzałkami (płyta naciskowa → telegraf linii → salwa strzałek przez ProjectileManager — ranią tylko
- * gracza). Bez ciał fizycznych. Obrażenia rosną z piętrem jak ciosy wrogów.
+ * gracza; od kroku 165 płytę naciska też wróg, a kolce ranią wrogów 2×). Bez ciał fizycznych. Obrażenia rosną z piętrem jak ciosy wrogów.
  */
 export class TrapManager {
   private readonly plates: LivePlate[] = [];
@@ -144,7 +144,7 @@ export class TrapManager {
         if (hits.get(group) === cycle) continue;
         hits.set(group, cycle);
         this.enemyHitCycle.set(enemy, hits);
-        enemy.takeHit({ damage: this.spikeDamage, knockback: knockbackFrom(live.at, enemy, config.knockback) }, now, live.at);
+        enemy.takeHit({ damage: this.spikeDamage * config.enemyDamageMultiplier, knockback: knockbackFrom(live.at, enemy, config.knockback) }, now, live.at);
       }
     }
   }
@@ -154,8 +154,10 @@ export class TrapManager {
     if (!darts) return;
     const { party, projectiles } = this.deps;
     const tiles = party.living.map((player) => DungeonView.worldToTile(player.x, player.y));
+    // Krok 165: płytę naciska też wróg.
+    if (darts.config.enemiesPress) for (const enemy of this.deps.enemies()) if (!enemy.isDead) tiles.push(DungeonView.worldToTile(enemy.x, enemy.y));
     for (const live of this.darts) {
-      // Płytę naciska którykolwiek żywy bohater.
+      // Płytę naciska którykolwiek żywy bohater (i wróg — krok 165).
       const onPlate = tiles.some((tile) => tile.x === live.trap.plate.x && tile.y === live.trap.plate.y);
       const shots = live.state.update(onPlate, now);
       const phase = live.state.phase;
