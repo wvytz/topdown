@@ -1,6 +1,7 @@
 import type { EvolvedEffects, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import type { ItemEffectsConfig } from '@/core/lootTypes';
 import { ItemId } from '@/core/lootTypes';
+import { NO_RELIC_EFFECTS, computeRelicEffects, withRelicStatus } from '@/systems/Relics';
 
 /** Krok 150: brak przemian i łańcucha pioruna. */
 export const NO_EVOLVED_EFFECTS: EvolvedEffects = {
@@ -26,6 +27,7 @@ export const NO_WEAPON_EFFECTS: WeaponEffects = {
   meleeHealMaxPerSec: 0,
   dashDamage: 0,
   evolved: NO_EVOLVED_EFFECTS,
+  relics: NO_RELIC_EFFECTS,
 };
 
 /** Wartość dla `stacks` kopii: pierwsza daje `base`, każda kolejna dodaje `perStack`. */
@@ -109,7 +111,7 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
       : null,
     bladeWave: evolved(count(ItemId.Blade)) ? { ...evo.bladeWave } : null,
     attackRamp: evolved(count(ItemId.Gloves)) ? { ...evo.attackRamp } : null,
-    dashCharges: evolved(count(ItemId.Hourglass)) ? evo.hourglass.dashCharges : 1,
+    dashCharges: (evolved(count(ItemId.Hourglass)) ? evo.hourglass.dashCharges : 1) + (count(ItemId.WetMop) > 0 ? config.relics.wetMop.extraDashCharges : 0),
     ricochet: evolved(shuriken) ? Math.min(evo.ricochet.max, evo.ricochet.bounces + beyond(shuriken) * evo.ricochet.perStack) : 0,
     ricochetExtraLifetimeMs: evolved(shuriken) ? evo.ricochet.extraLifetimeMs : 0,
     twinShot: evolved(count(ItemId.Quiver)),
@@ -128,12 +130,14 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
 
   return {
     shotPierce: stacked(shuriken, config.shuriken.pierce, config.shuriken.piercePerStack),
-    shotStatus,
-    meleeStatus,
+    // Krok 170: Pajęczy jedwab i Topór Kata działają na każde trafienie bohatera.
+    shotStatus: withRelicStatus(shotStatus, itemIds, config.relics),
+    meleeStatus: withRelicStatus(meleeStatus, itemIds, config.relics),
     meleeHeal: diminished(fangs, config.vampireFang.heal, config.vampireFang.healPerStack, config.vampireFang.stackDecay),
     meleeHealCooldownMs: fangs > 0 ? config.vampireFang.cooldownMs : 0,
     meleeHealMaxPerSec: fangs > 0 ? config.vampireFang.maxHpPctPerSec * baseMaxHp : 0,
     dashDamage,
     evolved: evolvedEffects,
+    relics: computeRelicEffects(itemIds, config.relics),
   };
 }

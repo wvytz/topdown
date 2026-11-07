@@ -129,7 +129,9 @@ import { ReviveProgress, reviveHp } from '@/systems/Revive';
 import { SOLO_BALANCE, withExtraEnemies } from '@/systems/CoopBalance';
 import type { CoopBalanceConfig } from '@/systems/CoopBalance';
 import { isDeepInsideRoom } from '@/dungeon/arenaGates';
-import { Player } from '@/entities/Player';
+import { PLAYER_JELLY_EVENT, Player } from '@/entities/Player';
+import { relicForFloor, withRelicCard } from '@/systems/Relics';
+import { RELIC_CONFIG } from '@/config/relicConfig';
 import type { PlayerActions } from '@/entities/Player';
 import { rollLoot } from '@/systems/Loot';
 import { countItems, isItemEvolved, rollRewardChoices } from '@/systems/ItemEvolution';
@@ -234,6 +236,7 @@ function hudItems(counts: readonly { readonly id: ItemId; readonly count: number
       color: ITEM_DEFINITIONS[id].color,
       frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
       rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
+      relic: ITEM_DEFINITIONS[id].kind === ItemKind.Relic,
       evolved,
     };
   });
@@ -971,6 +974,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private setupCombat(): void {
     this.effects = new CombatEffects(this);
+    // Krok 170: Korona Szlamu zbiła trafienie.
+    this.events.off(PLAYER_JELLY_EVENT);
+    this.events.on(PLAYER_JELLY_EVENT, (hero: Player) => this.effects.floatingText(hero.x, hero.y - 22, 'galareta', '#c49aff'));
     // Płomienie ognia walki stają tylko na podłodze (krok 144) — pas bocianów sięga za mury areny.
     const { width, height, tiles } = this.dungeon;
     this.effects.fire.setFloorCheck((x, y) => {
@@ -1002,6 +1008,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Upiory zasadzki rozwiewają się bez łupu — nagrodą jest przynęta.
         this.player.addUltimateKill(this.time.now);
         if (this.ambushGhosts.has(enemy)) return;
+        this.devourerHeal();
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
       },
@@ -1615,6 +1622,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.input.keyboard?.resetKeys();
   }
 
+  /** Krok 170, Ząb Pożeracza: zabity wróg leczy każdego żywego bohatera z relikwią (zabójcy nie śledzimy). */
+  private devourerHeal(): void {
+    for (const hero of this.party.members) {
+      const heal = hero.effects.relics.killHeal;
+      if (heal <= 0 || hero.isDead) continue;
+      if (hero.health.value >= hero.health.max) continue;
+      hero.heal(heal);
+      this.effects.floatingText(hero.x, hero.y - 14, `+${heal}`, '#9fe07a');
+    }
+  }
+
   private offerBossReward(onPicked?: () => void): void {
     const rng = createRng(deriveSeed(this.dungeon.seed, REWARD_SEED_SALT));
     // Co-op (etap C4): każdy bohater wybiera swoją kartę, po kolei P1, potem P2 (także powalony — wstaje z nagrodą później).
@@ -1627,7 +1645,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
       }
       // Krok 150: karta rozwoju — gdy bohater ma przedmiot w trakcie budowy (1–2 kopie), jedna karta to on.
       const roll = rollRewardChoices(this.usefulPoolFor(hero), BOSS_REWARD.choices, rng, this.itemsOf(hero), ITEM_EFFECTS.evolution);
-      this.offerRewardTo(hero, roll.choices, offerNext, roll.development);
+      // Krok 170 (decyzja właściciela 4a): jedna z kart to zawsze relikwia tego bossa, póki bohater jej nie ma.
+      const relic = relicForFloor(this.floorNumber, TOWER_CONFIG.floorsPerLoop, RELIC_CONFIG);
+      const choices = withRelicCard(roll.choices, relic, this.itemsOf(hero), roll.development);
+      this.offerRewardTo(hero, choices, offerNext, roll.development);
     };
     offerNext();
   }

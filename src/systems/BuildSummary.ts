@@ -27,6 +27,8 @@ export function summarizeBuild(
   return [...counts].map(([id, copies]) => {
     const item = definitions[id];
     const evolution = config.items[id];
+    // Krok 170: relikwia bossa — jedna sztuka.
+    if (item.kind === ItemKind.Relic) return { id, color: item.color, title: `◆ ${item.name} (relikwia)`, detail: item.effect, evolved: false };
     // Statystyka rośnie liczbą („+3 obrażeń za kopię”), efekt broni — siłą efektu.
     const base = item.kind === ItemKind.Effect ? (copies > 1 ? `${item.effect}, mocniej z każdą kopią` : item.effect) : `${item.effect} za kopię`;
     if (!evolution) {

@@ -10,6 +10,8 @@ export class UltimateGauge {
   private charge: number;
   private lastAt: number | null = null;
   private activeUntil = -Infinity;
+  /** Krok 170, Fajka Barona: mnożnik ładowania z czasem. */
+  private passiveMultiplier = 1;
 
   constructor(private readonly config: UltimateGaugeConfig) {
     this.charge = clamp01(config.startCharge);
@@ -28,6 +30,12 @@ export class UltimateGauge {
   /** Ultimate działa (pasek stoi). */
   isActive(now: number): boolean {
     return now < this.activeUntil;
+  }
+
+  /** Zmiana tempa ładowania z czasem (relikwia); dotychczasowy czas liczy się po staremu. */
+  setPassiveMultiplier(multiplier: number, now: number): void {
+    this.sync(now);
+    this.passiveMultiplier = Math.max(0, multiplier);
   }
 
   addKill(now: number): void {
@@ -52,7 +60,7 @@ export class UltimateGauge {
     const from = Math.max(this.lastAt, this.activeUntil);
     this.lastAt = Math.max(this.lastAt, now);
     if (now <= from) return;
-    this.charge = clamp01(this.charge + ((now - from) / 1000) * this.config.passivePerSec);
+    this.charge = clamp01(this.charge + ((now - from) / 1000) * this.config.passivePerSec * this.passiveMultiplier);
   }
 }
 

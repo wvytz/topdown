@@ -27,6 +27,8 @@ const CARD_WIDTH = 210;
 const CARD_HEIGHT = 292;
 /** Krok 150: złoto karty przemiany i zieleń karty rozwoju. */
 const EVOLUTION_GOLD = 0xf5c542;
+/** Krok 170: relikwia bossa. */
+const RELIC_CRIMSON = 0xc8304a;
 const DEVELOPMENT_GREEN = 0x8affa0;
 const CARD_GAP = 28;
 const KEY_NAMES = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'] as const;
@@ -83,10 +85,11 @@ export class RewardScene extends Phaser.Scene {
       .setOrigin(0.5);
     // Krok 150: zasada przemian wprost pod kartami.
     this.add
-      .text(width / 2, height / 2 + 40 + CARD_HEIGHT / 2 + 22, `${ITEM_EFFECTS.evolution.copies} kopie przedmiotu = PRZEMIANA w nową mechanikę  ·  zielona wstążka = przedmiot, który już zbierasz`, {
+      .text(width / 2, height / 2 + 40 + CARD_HEIGHT / 2 + 22, `${ITEM_EFFECTS.evolution.copies} kopie przedmiotu = PRZEMIANA w nową mechanikę  ·  zielona wstążka = przedmiot, który już zbierasz\nkarmazynowa wstążka = relikwia pokonanego bossa`, {
         ...style,
         fontSize: '12px',
         color: '#b8b8c8',
+        align: 'center',
       })
       .setOrigin(0.5);
     if (data.picker) this.add.text(width / 2, 136, data.picker, { ...style, fontSize: '16px', color: '#8affa0' }).setOrigin(0.5);
@@ -132,13 +135,14 @@ export class RewardScene extends Phaser.Scene {
   ): void {
     const item = ITEM_DEFINITIONS[itemId];
     const isEffect = item.kind === ItemKind.Effect;
+    const relic = item.kind === ItemKind.Relic;
     const owned = data.owned[itemId] ?? 0;
     // Krok 150 (prośba właściciela i testera: karta rozwoju niejasna): karta mówi poziom, co da ta kopia
     // i ile brakuje do przemiany; karta przemiany jest złota i opisuje nową mechanikę.
     const info = describeRewardCard(item, owned, ITEM_EFFECTS.evolution);
     const evolution = info.kind === 'evolution';
     const development = data.development === itemId;
-    const accent = evolution ? EVOLUTION_GOLD : development ? DEVELOPMENT_GREEN : isEffect ? 0xd0a040 : 0xa0a0b8;
+    const accent = evolution ? EVOLUTION_GOLD : relic ? RELIC_CRIMSON : development ? DEVELOPMENT_GREEN : isEffect ? 0xd0a040 : 0xa0a0b8;
     const top = y - CARD_HEIGHT / 2;
     const textStyle = (size: number, color: string, extra: Phaser.Types.GameObjects.Text.TextStyle = {}): Phaser.Types.GameObjects.Text.TextStyle => ({
       ...style,
@@ -150,8 +154,8 @@ export class RewardScene extends Phaser.Scene {
     });
 
     const card = this.add
-      .rectangle(x, y, CARD_WIDTH, CARD_HEIGHT, evolution ? 0x2a2414 : 0x1a1a24, 0.96)
-      .setStrokeStyle(evolution ? 3 : 2, accent)
+      .rectangle(x, y, CARD_WIDTH, CARD_HEIGHT, evolution ? 0x2a2414 : relic ? 0x2a1418 : 0x1a1a24, 0.96)
+      .setStrokeStyle(evolution || relic ? 3 : 2, accent)
       .setInteractive({ useHandCursor: true });
 
     const parts: Phaser.GameObjects.GameObject[] = [
@@ -159,22 +163,23 @@ export class RewardScene extends Phaser.Scene {
       this.add.text(x - CARD_WIDTH / 2 + 10, top + 10, `[${index + 1}]`, textStyle(13, '#8080a0')).setOrigin(0, 0),
       this.add.image(x, top + 58, LOOT_ATLAS.key, itemIconFrame(itemId)).setScale(3),
       this.add.text(x, top + 98, info.title, textStyle(17, evolution ? '#f5c542' : '#ffffff')).setOrigin(0.5, 0),
-      this.add.text(x, top + 120, info.subtitle, textStyle(12, evolution ? '#f5c542' : owned > 0 ? '#9fe0a0' : '#8080a0')).setOrigin(0.5, 0),
+      this.add.text(x, top + 120, info.subtitle, textStyle(12, evolution ? '#f5c542' : relic ? '#ff8aa0' : owned > 0 ? '#9fe0a0' : '#8080a0')).setOrigin(0.5, 0),
       ...this.createPips(x, top + 150, info.pips, evolution),
       this.add.text(x, top + 164, info.effect, textStyle(13, '#e0e0ec')).setOrigin(0.5, 0),
       this.add.text(x, top + CARD_HEIGHT - 62, info.progress, textStyle(11, evolution ? '#f5c542' : '#b8b8c8')).setOrigin(0.5, 0),
       this.add
         
-        .text(x, top + CARD_HEIGHT - 22, isEffect ? 'efekt broni' : 'przedmiot bazowy', textStyle(11, isEffect ? '#d0a040' : '#a0a0b8'))
+        .text(x, top + CARD_HEIGHT - 22, relic ? 'relikwia bossa' : isEffect ? 'efekt broni' : 'przedmiot bazowy', textStyle(11, relic ? '#ff8aa0' : isEffect ? '#d0a040' : '#a0a0b8'))
         .setOrigin(0.5, 0),
     ];
     // Wstążka u góry karty: przemiana albo karta rozwoju (przedmiot, który już zbierasz).
-    const ribbon = evolution ? 'PRZEMIANA' : development ? 'KARTA ROZWOJU' : null;
+    // Krok 170: relikwia bossa ma własną, karmazynową wstążkę.
+    const ribbon = evolution ? 'PRZEMIANA' : relic ? 'RELIKWIA' : development ? 'KARTA ROZWOJU' : null;
     if (ribbon) {
-      const ribbonColor = evolution ? EVOLUTION_GOLD : DEVELOPMENT_GREEN;
+      const ribbonColor = evolution ? EVOLUTION_GOLD : relic ? RELIC_CRIMSON : DEVELOPMENT_GREEN;
       parts.push(
         this.add.rectangle(x, top, 132, 18, 0x101018, 1).setStrokeStyle(2, ribbonColor),
-        this.add.text(x, top, ribbon, { ...style, fontSize: '12px', color: evolution ? '#f5c542' : '#8affa0' }).setOrigin(0.5),
+        this.add.text(x, top, ribbon, { ...style, fontSize: '12px', color: evolution ? '#f5c542' : relic ? '#ff8aa0' : '#8affa0' }).setOrigin(0.5),
       );
     }
     for (const part of parts) (part as unknown as Phaser.GameObjects.Components.Alpha).setAlpha(DIMMED_ALPHA);

@@ -5687,6 +5687,32 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Dalej:** finałowy boss wieży i Akt II (piekło z azteckimi torturami) — do zaprojektowania.
 
+## Krok 170 — Relikwie bossów `#uwagi-testera` `#decyzja`
+
+**Decyzja właściciela (7.11, 4a):** nowy rodzaj przedmiotu — 7 relikwii, po jednej na bossa kręgu; po walce jedna z 3 kart to zawsze relikwia tego bossa.
+
+**Co powstało:**
+- Nowy rodzaj `ItemKind.Relic` i 7 przedmiotów (`config/lootConfig.ts`, liczby w `config/relicConfig.ts`):
+  - **Korona Szlamu** (Król Szlamu): co 8 s jedno trafienie w bohatera zadaje połowę obrażeń (napis „galareta”).
+  - **Pajęczy jedwab** (pajęczy duet): każde trafienie spowalnia wroga o 30% na 2 s; z Lodowym odłamkiem bierze silniejsze z obu, zamrożenie zostaje.
+  - **Ząb Pożeracza** (Grzybowy Pożeracz): zabity wróg leczy 3 HP (nie czerwie gniazd ani upiory zasadzki).
+  - **Topór Kata** (Kat Otchłani): zwykły wróg, któremu zostałoby mniej niż 20% HP, ginie od trafienia; bossowie nie.
+  - **Fajka Barona** (Baron Dymu): pasek mocy (R) ładuje się z czasem 2× szybciej.
+  - **Mokry mop** (sprzątaczki): +1 ładunek dasha (z Pętlą czasu — 3).
+  - **Bocianie pióro** (Brudna Wiedźma): +15% prędkości i +10% tempa ataku (w zwykłym runie po Wiedźmie jest zwycięstwo, więc pióro działa w arenach i dalszych kręgach testowych).
+- Relikwia jest jedna (bez kopii i przemian), nie wypada z wrogów, zasadzek, ukrytej komnaty ani kapliczki (`ITEM_POOL` bez relikwii, `ALL_ITEMS` z nimi).
+- **Karty za bossa:** relikwia zastępuje ostatnią kartę, która nie jest kartą rozwoju (`withRelicCard`); bohater, który ją ma, dostaje zwykłe karty. W co-opie każdy bohater dostaje swoją. Areny bossów — relikwia bossa danej areny.
+- **Wygląd:** karmazynowa karta ze wstążką „RELIKWIA”, podpis pod kartami; ikony z generatora `tools/loot_sprites.py` (karmazynowa obwódka i iskra); karmazynowa ramka w HUD; w pauzie „◆ … (relikwia)”.
+- Bez nowych przycisków — wybór karty jak dotąd (mysz, 1–3, pad, dotyk).
+
+**Pliki:** czysty `systems/Relics.ts` (`relicForFloor`, `withRelicCard`, `withRelicStatus`, `computeRelicEffects`, `executeDamage`, `JellyGuard`), `config/relicConfig.ts`, `core/lootTypes.ts`, `core/combatTypes.ts` (`RelicEffects`, `StatusApplication.execute`), `systems/WeaponEffects.ts`, `systems/PlayerLoadout.ts`, `systems/Ultimate.ts` (`setPassiveMultiplier`), `systems/ItemEvolution.ts`, `systems/BuildSummary.ts`, `entities/Player.ts`, `entities/Enemy.ts`, `scenes/GameScene.ts`, `scenes/RewardScene.ts`, `scenes/HudScene.ts`, `config/spriteConfig.ts`, `effects/spriteAnimations.ts`.
+
+**Testy:** `tests/systems/relics.test.ts` (nowy), `itemEvolution.test.ts` (relikwie bez przemian).
+
+**Weryfikacja:** `?floor=4` + nagroda za bossa — karta Topora Kata, po wyborze karmazynowa ramka w HUD; `?hero=archer&floor=2` — karta Pajęczego jedwabiu.
+
+**Do oceny właściciela:** siła i nazwy relikwii, wygląd ikon (zwłaszcza Ząb Pożeracza).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5856,4 +5882,4 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap C, krok 167: Czarodziejka ukryta z wyboru, `?zoom=1.6`, `?heavy=1` — czekają na ocenę.
 - [x] Etap C, krok 168: stała liczba pokojów na piętro, ścieżka główna + 1–2 odnogi (kapliczka w odnodze).
 - [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
-- [ ] Etap C: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
+- [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.

@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import type { SpriteSheetDef, SpriteSheetId } from '@/config/spriteConfig';
 import { LOOT_ANIMATIONS, LOOT_ATLAS, SPRITE_SHEETS, animationKey, itemFrames, lootAnimationKey } from '@/config/spriteConfig';
 import type { LootAnimation } from '@/config/spriteConfig';
-import { ITEM_POOL } from '@/config/lootConfig';
+import { ALL_ITEMS } from '@/config/lootConfig';
 import { ItemKind } from '@/core/lootTypes';
 import { sheetFrameIndex } from '@/systems/Facing';
 
@@ -28,8 +28,8 @@ export function registerLootAnimations(scene: Phaser.Scene): void {
   for (const [name, frames] of Object.entries(LOOT_ANIMATIONS) as Array<[LootAnimation, readonly string[]]>) {
     create(lootAnimationKey(name), frames);
   }
-  for (const item of ITEM_POOL) {
-    if (item.kind === ItemKind.Effect) create(lootAnimationKey(`item-${item.id}`), itemFrames(item.id, item.kind));
+  for (const item of ALL_ITEMS) {
+    if (item.kind !== ItemKind.Stat) create(lootAnimationKey(`item-${item.id}`), itemFrames(item.id, item.kind));
   }
 }
 

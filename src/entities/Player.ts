@@ -32,6 +32,10 @@ import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
+import { JellyGuard } from '@/systems/Relics';
+
+/** Krok 170: Korona Szlamu zbiła trafienie — scena pokazuje napis nad bohaterem. */
+export const PLAYER_JELLY_EVENT = 'player-jelly';
 
 /** Abstrakcyjne akcje gracza w danej klatce — produkuje je InputController. */
 export interface PlayerActions {
@@ -136,6 +140,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Ultimate (R, krok 98): pasek mocy i nietykalność z szału albo tarczy. */
   private readonly ultimateConfig: UltimateConfig;
   private readonly ultimateGauge: UltimateGauge;
+  private readonly jellyGuard = new JellyGuard();
   private readonly ultimateGuard = new Timer();
   /** Kule krążące wokół Czarodziejki (tyle, ile jest gotowych do rzutu). */
   private readonly orbitSprites: Phaser.GameObjects.Sprite[] = [];
@@ -149,6 +154,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.visual = HERO_VISUALS[hero];
     this.ultimateConfig = HERO_DEFINITIONS[hero].ultimate;
     this.ultimateGauge = new UltimateGauge(gaugeConfigFor(HERO_DEFINITIONS[hero], ULTIMATE_GAUGE));
+    this.ultimateGauge.setPassiveMultiplier(loadout.effects.relics.ultimatePassiveMultiplier, scene.time.now);
     this.stats = loadout.stats;
     this.combat = loadout.combat;
     this.weaponEffects = loadout.effects;
@@ -217,6 +223,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.bloodShield = Math.min(this.bloodShield, loadout.effects.evolved.bloodShieldMax);
     this.combat = loadout.combat;
     this.weaponEffects = loadout.effects;
+    this.ultimateGauge.setPassiveMultiplier(loadout.effects.relics.ultimatePassiveMultiplier, now);
     this.health.setMax(loadout.stats.maxHp);
     this.kit = loadout.kit;
     const sorcery = sorceryOf(loadout.kit);
@@ -570,10 +577,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   takeHit(hit: Hit, now: number): boolean {
     if (this.isDead || this.isInvulnerable(now)) return false;
 
+    // Korona Szlamu (krok 170): co kilka sekund jedno trafienie o połowę słabsze.
+    const jelly = this.jellyGuard.absorb(hit.damage, now, this.weaponEffects.relics.jelly);
+    if (jelly.absorbed) this.scene.events.emit(PLAYER_JELLY_EVENT, this);
     // Krwawa tarcza (krok 150) zbija obrażenia przed zdrowiem.
-    const absorbed = Math.min(this.bloodShield, hit.damage);
+    const absorbed = Math.min(this.bloodShield, jelly.damage);
     this.bloodShield -= absorbed;
-    this.health.takeDamage(hit.damage - absorbed);
+    this.health.takeDamage(jelly.damage - absorbed);
     this.invulnerability.start(now, this.combat.invulnerabilityMs);
     this.knockbackStun.start(now, KNOCKBACK_STUN_MS);
     this.setVelocity(hit.knockback.x, hit.knockback.y);

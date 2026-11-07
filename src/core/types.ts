@@ -218,6 +218,8 @@ export interface HudItem {
   readonly rare: boolean;
   /** Krok 150: przemieniony (3. kopia) — jasna ramka i gwiazdka. */
   readonly evolved?: boolean;
+  /** Krok 170: relikwia bossa — karmazynowa ramka. */
+  readonly relic?: boolean;
 }
 
 /** Nazwa i efekt świeżo zdobytego przedmiotu — HUD pokazuje je pod ikonami i wygasza. */

@@ -4,7 +4,7 @@ import { floorLabel } from '@/systems/TowerLoop';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import type { BeamHudData, BossBarData, BossHudData, BossPointerData, UltimateHudData, HudItem, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
 import { SceneKey } from '@/core/types';
-import { ITEM_POOL } from '@/config/lootConfig';
+import { ALL_ITEMS } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
 import { MINIMAP_CONFIG } from '@/config/minimapConfig';
 import type { MinimapExplorer } from '@/systems/Minimap';
@@ -52,6 +52,8 @@ const ITEM_FRAME_COMMON = 0x9c8f74;
 /** Krok 150: ramka przemienionego przedmiotu. */
 const ITEM_FRAME_EVOLVED = 0x9fe8ff;
 const ITEM_FRAME_RARE = 0xe7b140;
+/** Krok 170: ramka relikwii bossa (karmazyn jak obwódka ikony). */
+const ITEM_FRAME_RELIC = 0xc8304a;
 /** Nazwa i efekt zdobytego przedmiotu — mniejsza złota czcionka pod ikonami. */
 const ITEM_NOTICE_Y = ITEM_SLOT_Y + ITEM_SLOT_SIZE + 6;
 const ITEM_NOTICE_FADE_MS = 800;
@@ -378,7 +380,7 @@ export class HudScene extends Phaser.Scene {
 
   /** Sloty na wszystkie przedmioty z puli (każdy rodzaj zajmuje jeden slot, kopie liczy licznik). */
   private buildItemSlots(style: Phaser.Types.GameObjects.Text.TextStyle): ItemSlot[] {
-    return ITEM_POOL.map((_, i) => {
+    return ALL_ITEMS.map((_, i) => {
       const x = BAR_X + i * (ITEM_SLOT_SIZE + ITEM_SLOT_GAP);
       const inner = ITEM_SLOT_SIZE - ITEM_SLOT_BORDER;
       const frame = this.add
@@ -407,7 +409,7 @@ export class HudScene extends Phaser.Scene {
       for (const part of [slot.frame, slot.icon, slot.count]) part.setVisible(item !== undefined);
       if (!item) return;
       // Krok 150: przemieniony przedmiot ma jasną ramkę i gwiazdkę zamiast licznika 3.
-      slot.frame.setStrokeStyle(ITEM_SLOT_BORDER, item.evolved ? ITEM_FRAME_EVOLVED : item.rare ? ITEM_FRAME_RARE : ITEM_FRAME_COMMON);
+      slot.frame.setStrokeStyle(ITEM_SLOT_BORDER, item.evolved ? ITEM_FRAME_EVOLVED : item.relic ? ITEM_FRAME_RELIC : item.rare ? ITEM_FRAME_RARE : ITEM_FRAME_COMMON);
       slot.icon.setFrame(item.frame);
       slot.count.setText(item.evolved ? (item.count > 3 ? `★${item.count}` : '★') : item.count > 1 ? `×${item.count}` : '');
     });

@@ -1,5 +1,5 @@
 """
-Generator sprite'ów łupów (krok 20): monety, mikstura, 12 przedmiotów, kapliczka, pocisk gracza,
+Generator sprite'ów łupów (krok 20): monety, mikstura, 12 przedmiotów i 7 relikwii bossów (krok 170), kapliczka, pocisk gracza,
 znacznik celowania. Paleta C i narzędzia z tower_ruins_tiles.py (rampy, obrys, walidacja).
 
 Użycie (z katalogu głównego repozytorium):
@@ -39,7 +39,17 @@ ITEMS = {
     'vampire-fang': ('#b0203a', 'effect'),
     'storm-dash': ('#9a86ff', 'effect'),
     'frost-shard': ('#a8f0ff', 'effect'),
+    # Krok 170: relikwie bossów — karmazynowa obwódka i iskra.
+    'slime-crown': ('#9a5ad8', 'relic'),
+    'spider-silk': ('#e8e4f0', 'relic'),
+    'devourer-tooth': ('#8fbf5a', 'relic'),
+    'headsman-axe': ('#d23a3a', 'relic'),
+    'baron-pipe': ('#9a8f84', 'relic'),
+    'wet-mop': ('#5ab8d8', 'relic'),
+    'stork-feather': ('#f0ece0', 'relic'),
 }
+RELIC_RIM = '#c8304a'
+RELIC_SPARK = '#ff8aa0'
 POTION_COLOR = '#ff4f5e'  # jaśniejsza od dawnego #d93a5a: na piaskowcu tamten miał tylko 1,44:1 (test WCAG)
 SHOT_COLOR = '#5ee0c8'  # turkus jak ładunki w HUD
 
@@ -212,6 +222,105 @@ ICONS = {
         '....LBDD....',
         '.....DD.....',
     ],
+
+    'slime-crown': [
+        '............',
+        '..Y..Y..Y...',
+        '..GY.GY.GY..',
+        '..GGYGGYGG..',
+        '..GGGGGGGG..',
+        '..gGHGGLGg..',
+        '..gggggggg..',
+        '..BLHBBLBB..',
+        '..BBBBBBBD..',
+        '...BD.BD.D..',
+        '...D...D....',
+        '............',
+    ],
+    'spider-silk': [
+        '............',
+        '..wWWWWWWw..',
+        '...BBBBBB...',
+        '...BHLLBB...',
+        '...BLBBBD...',
+        '...BBBBBD...',
+        '...BLBBBD...',
+        '...BBBBDD...',
+        '..wWWWWWWw..',
+        '.........L..',
+        '..........L.',
+        '...........L',
+    ],
+    'devourer-tooth': [
+        '............',
+        '..jKKKKKKj..',
+        '..KkkkkkkK..',
+        '..KkkBkkkK..',
+        '..jKkBBkKj..',
+        '...KkBDkK...',
+        '...KkkDkK...',
+        '....KkkK....',
+        '....KkkK....',
+        '.....Kk.....',
+        '.....K......',
+        '............',
+    ],
+    'headsman-axe': [
+        '.......uw...',
+        '...TTSSWw...',
+        '..TSSSSWw...',
+        '..TSSSSWw...',
+        '..SSSSSWw...',
+        '..BSSSSWw...',
+        '..BBSSSWw...',
+        '...BBDSWw...',
+        '.......Ww...',
+        '.......Ww...',
+        '.......Ww...',
+        '.......uu...',
+    ],
+    'baron-pipe': [
+        '.....HL.....',
+        '....LB......',
+        '.....BL.....',
+        '....DB......',
+        '.....D......',
+        '..uWWWu.....',
+        '..WfFfW.....',
+        '..WwwwWWWWu.',
+        '..WwwwWuuuW.',
+        '...WwwW.....',
+        '....WW......',
+        '............',
+    ],
+    'wet-mop': [
+        '..........uw',
+        '.........uw.',
+        '........uw..',
+        '.......uw...',
+        '......uw....',
+        '...sSSw.....',
+        '..LBBBBL....',
+        '.HBLBLBBD...',
+        '.BLBBLBDD...',
+        '..B.B.BD....',
+        '..L...D.....',
+        '.....L......',
+    ],
+    'stork-feather': [
+        '.........HL.',
+        '........HLB.',
+        '.......HLBB.',
+        '......HLBBD.',
+        '.....HLBBD..',
+        '....HLBBD...',
+        '...HLBBD....',
+        '..sLBBD.....',
+        '..sBDD......',
+        '.s..........',
+        's...........',
+        '............',
+    ],
 }
 
 POTION = [
@@ -308,16 +417,19 @@ def item_frames(item_id):
     outline(base, OUT)
     if kind == 'stat':
         return [base]
-    outline(base, GOLD[2])  # złota obwódka = przedmiot z efektem (ten sam język co dawne gwiazdy)
+    relic = kind == 'relic'
+    # złota obwódka = przedmiot z efektem (ten sam język co dawne gwiazdy); karmazynowa = relikwia bossa (krok 170)
+    outline(base, hx(RELIC_RIM) if relic else GOLD[2])
+    spark = hx(RELIC_SPARK) if relic else GOLD[3]
     frames = []
     for f in range(4):  # iskra w prawym górnym rogu: brak, punkt, krzyżyk, punkt
         img = Img(CELL, CELL)
         img.blit(base, 0, 0)
         if f in (1, 3):
-            img.put(13, 2, GOLD[3])
+            img.put(13, 2, spark)
         elif f == 2:
             for x, y in ((13, 1), (12, 2), (13, 2), (14, 2), (13, 3)):
-                img.put(x, y, GOLD[3])
+                img.put(x, y, spark)
             img.put(13, 2, BONE[2])
         frames.append(img)
     return frames

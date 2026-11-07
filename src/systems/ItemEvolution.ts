@@ -1,5 +1,5 @@
 import type { ItemDefinition, ItemEvolutionConfig } from '@/core/lootTypes';
-import { ItemId } from '@/core/lootTypes';
+import { ItemId, ItemKind } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 import { pickWeightedItem } from '@/systems/Loot';
 
@@ -42,7 +42,7 @@ export function isEvolved(count: number, config: ItemEvolutionConfig): boolean {
 }
 
 /** Rodzaj karty: nowy przedmiot, kolejna kopia przed przemianą, przemiana albo kopia po przemianie. */
-export type RewardCardKind = 'new' | 'growth' | 'evolution' | 'evolved';
+export type RewardCardKind = 'new' | 'growth' | 'evolution' | 'evolved' | 'relic';
 
 export interface RewardCardInfo {
   readonly kind: RewardCardKind;
@@ -65,6 +65,10 @@ export interface RewardCardInfo {
 export function describeRewardCard(item: ItemDefinition, owned: number, config: ItemEvolutionConfig): RewardCardInfo {
   const evolution = config.items[item.id];
   const after = owned + 1;
+  // Krok 170: relikwia bossa — jedna sztuka, bez kopii i przemiany.
+  if (item.kind === ItemKind.Relic) {
+    return { kind: 'relic', title: item.name, subtitle: 'relikwia bossa', effect: item.effect, pips: { filled: 0, total: 0 }, progress: 'jedna na run · tylko z tego bossa' };
+  }
   if (!evolution) {
     // Przedmiot bez przemiany (krok 151): zwykła karta, bez kropek postępu.
     return {

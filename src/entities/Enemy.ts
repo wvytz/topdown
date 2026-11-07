@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { executeDamage } from '@/systems/Relics';
 import Phaser from 'phaser';
 import type {
   BroodAttackDefinition,
@@ -392,7 +393,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       !hit.unblockable &&
       !this.isShieldLowered(now) &&
       isShielded(this, this.shieldFacing, shield.arcDeg, source);
-    const damage = blocked ? Math.max(1, Math.round(hit.damage * shield.frontMultiplier)) : hit.damage;
+    const dealt = blocked ? Math.max(1, Math.round(hit.damage * shield.frontMultiplier)) : hit.damage;
+    // Topór Kata (krok 170): trafienie, po którym zostałoby mniej niż próg HP, dobija.
+    const execute = hit.status?.execute;
+    const damage = execute ? executeDamage(this.health.value, this.health.max, dealt, execute.belowPct) : dealt;
     const result = this.health.takeDamage(damage);
     this.hitFlash.start(now, HIT_FLASH_MS);
     this.lastHitBlocked = blocked;
