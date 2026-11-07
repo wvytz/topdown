@@ -5767,6 +5767,30 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** długość walki z Wiedźmą (Czarodziejka i łucznik — zwłaszcza w locie).
 
+## Krok 175 — Nawała: fale stworków w pokojach, lżejsi bossowie ze świtą w tłumie `#decyzja` `#balans` `#feel` `#nawala`
+
+**Decyzja właściciela (7.11):** po wdrożeniu uwag testera — „przejdźmy do kolejnych etapów” planu z kroku 143 (dokument „TOP DOWN — czym ma być gra”). Etapy dopasowane do stanu po krokach 161–174: piętra są już stałe i liniowe (krok 168), run kończy się po piętrze 7 (169), ciosy barbarzyńcy są cięższe (171).
+
+**Etap 1 — nawała (natłok mobów):**
+- Pierwsze wejście bohatera w głąb zwykłego pokoju (kafel od muru — próg drzwi nie budzi) budzi fale stworków biomu — tych samych, które wypluwa gniazdo biomu (czerw, pajęczak, zarodnik, pełzająca dłoń, diablik, smużka dymu). Każdy wychodzi ze znacznika na podłodze (0,6 s) z dala od bohaterów i wykluwa się 0,4 s.
+- Pokoje z nawałą: piętro 1 — ok. połowa (nauka), piętro 2 — 80%, dalej każdy zwykły pokój. Fale: 1 na piętrze 1, 2 na piętrach 2–4, 3 od piętra 5. Fala: 4 stworki + 0,5 na piętro (maks. 8); co-op +2. Następna fala, gdy z poprzednich żyją najwyżej 2, albo po 7 s.
+- Stworki bez łupu i bez ładowania ultimate (jak czerwie gniazd). Sufit 22 żywych wrogów na piętrze — nadmiar fali przepada (wydajność telefonu).
+- **HP wrogów +8% na piętro (było 15%)** — trudność daje liczba. Stworek pada od 1 ciosu barbarzyńcy na piętrze 1 i od 2 na piętrze 7 (test).
+- Liczby: `config/hordeConfig.ts`; czysto: `systems/Horde.ts` (`planHordeRooms`, `HordeRoomState`, `hordeMinionVariant`, `hordeRoomForSpawn`); Phaser: `combat/HordeManager.ts`, `EnemyManager.spawnSwarmling` (stworki liczą się jak czerwie w `isBroodling`). Własny strumień RNG (`HORDE_SEED_SALT`).
+
+**Etap 2 — zero błąkania:** układ liniowy i ikonki pokojów zrobione w krokach 163 i 168; dochodzi napis **„Droga wolna”**, gdy ostatnia fala pokoju padnie i w pokoju nie ma już wrogów.
+
+**Etap 3 — boss to finał, nie ściana:**
+- Ciosy bossów ×0,8 (`BOSS_SCALING.damageMultiplier`, liczone w `scaleBossForFloor`). HP bossów bez zmian (kroki 145, 174).
+- Każdy pomocnik świty wychodzi z 3 stworkami nawały (`RetinueDefinition.swarm`, `BossFight` → `spawnSwarm`).
+- Trwałe plamy krócej: grzybnia Króla Pająków 14 → 6 s, ślad Pożeracza 6,5 → 5 s (we wściekłości 9 → 6,5 s).
+
+**Testy:** `tests/systems/horde.test.ts` (plan pokojów i szanse, wielkość fal i co-op, próg drzwi, rytm fal, sufit, stworek w każdym biomie, ciosy do zabicia stworka). `npm run build` zielony.
+
+**Weryfikacja:** Chromium (dev, `?hero=barbarian&seed=4&floor=3`): wejście do pokoju → 5 pełzających dłoni ze znaczników, wybicie fali → od razu druga, wybicie drugiej → nawała skończona; bez błędów w konsoli. `npm run smoke -- --floors 7 --seeds 1` (3 bohaterów) i `--coop --floors 3` bez błędów.
+
+**Do oceny właściciela:** liczebność i tempo fal, czy stworki nie są za słabe po zmianie HP, czy „Droga wolna” pomaga, siła bossów po ×0,8.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5820,7 +5844,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - kolejność: najpierw zwykłe zombie (32b), potem Lord;
 - właściciel: commit i push po każdym kroku („wrzucaj wszystko na GitHuba i lecimy dalej”).
 
-**Nowy kierunek po kroku 143 — natłok mobów i zero błąkania** `#decyzja` `#feel`: wizja i plan w dokumencie „TOP DOWN — czym ma być gra” (Claude Docs, 30.10.2026). Etap 0 (złoto samo leci, słabsze chmury) zrobiony w kroku 143. Czekają na decyzje właściciela: etap 1 — fale słabszych mobów zamiast „1–2 wrogów na pokój” (limit ok. 25 żywych, pomiar na telefonie), etap 2 — piętra maks. 8–9 pokojów i strzałka do najbliższej walki/areny, etap 3 — krótsze trwałe plamy bossów i mniej obrażeń w zamian za świtę w falach.
+**Nowy kierunek po kroku 143 — natłok mobów i zero błąkania** `#decyzja` `#feel` (etapy 1–3 zrobione w kroku 175): wizja i plan w dokumencie „TOP DOWN — czym ma być gra” (Claude Docs, 30.10.2026). Etap 0 (złoto samo leci, słabsze chmury) zrobiony w kroku 143. Czekają na decyzje właściciela: etap 1 — fale słabszych mobów zamiast „1–2 wrogów na pokój” (limit ok. 25 żywych, pomiar na telefonie), etap 2 — piętra maks. 8–9 pokojów i strzałka do najbliższej walki/areny, etap 3 — krótsze trwałe plamy bossów i mniej obrażeń w zamian za świtę w falach.
 
 **Kandydatury na kolejne kroki** (wybiera właściciel):
 - **Stan po kroku 25:** piętro 2 to Pajęcze leże, gotowe są:

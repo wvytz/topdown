@@ -404,8 +404,12 @@ export const ENEMY_VIEW_RULE: EnemyViewRule = {
  */
 export const ENEMY_ROUTE: EnemyRouteConfig = { refreshMs: 250, reuseGoalPx: 16 };
 
+/**
+ * Krok 175 (wizja „natłok mobów”, decyzja właściciela 7.11): HP wrogów rośnie o 8% na piętro (było 15%) — trudność
+ * daje liczba (nawała, `config/hordeConfig.ts`), a pojedynczy wróg zostaje kimś, kogo się rozwala, nie gąbką.
+ */
 export const ENEMY_SCALING: EnemyScalingConfig = {
-  hpPerFloor: 0.15,
+  hpPerFloor: 0.08,
   damagePerFloor: 0.1,
 };
 
@@ -417,6 +421,8 @@ export const ENEMY_SCALING: EnemyScalingConfig = {
 export const BOSS_SCALING: EnemyScalingConfig = {
   hpPerFloor: 0.06,
   damagePerFloor: ENEMY_SCALING.damagePerFloor,
+  // Krok 175 (wizja „boss to finał, nie ściana”): ciosy bossów ×0,8, w zamian świta przychodzi z tłumem stworków.
+  damageMultiplier: 0.8,
 };
 
 export const PROJECTILE_RADIUS = 4;

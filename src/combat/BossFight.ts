@@ -108,6 +108,8 @@ export interface BossFightDeps {
   readonly spawnRusher?: (at: Vector2) => void;
   /** Świta bossa (krok 80): zwykły wróg biomu wychodzący na arenę; zwraca go, by liczyć żywych. */
   readonly spawnHelper?: (type: EnemyType, at: Vector2) => { readonly isDead: boolean; readonly active: boolean };
+  /** Stworki nawały wokół miejsca wyjścia pomocnika (krok 175). */
+  readonly spawnSwarm?: (at: Vector2, count: number) => void;
   /** Wabik (totem łucznika, krok 98): boss i jego dog celują w niego zamiast w gracza; null — w gracza. */
   readonly aggroTarget?: () => Vector2 | null;
   /** Duet (krok 114): który boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
@@ -859,6 +861,7 @@ export class BossFight {
       if (now >= pending.at) {
         pending.gfx.destroy();
         this.helpers.push(spawnHelper(def.type, pending.position));
+        if (def.swarm) this.deps.spawnSwarm?.(pending.position, def.swarm);
         this.deps.effects.impact(pending.position.x, pending.position.y, radius);
         sound.play(SoundCue.Impact, pending.position);
         return false;

@@ -490,4 +490,6 @@ export interface EnemyScalingConfig {
   /** Przyrost HP na każde piętro powyżej pierwszego (0.15 = +15%). */
   readonly hpPerFloor: number;
   readonly damagePerFloor: number;
+  /** Mnożnik obrażeń ataków (bossowie, krok 175); brak = 1. */
+  readonly damageMultiplier?: number;
 }

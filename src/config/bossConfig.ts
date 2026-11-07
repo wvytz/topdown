@@ -26,6 +26,8 @@ const RETINUE_BASE = {
   maxAlive: 2,
   telegraphMs: 1000,
   minPlayerDistanceTiles: 4,
+  // Krok 175: z każdym pomocnikiem wychodzi tłum stworków biomu (jak nawała w pokojach).
+  swarm: 3,
 } as const;
 
 /**
@@ -331,7 +333,8 @@ export const SPIDER_KING = {
     startRadius: 14,
     maxRadius: 40,
     spreadMs: 1000,
-    durationMs: 14000,
+    // Krok 175 (wizja „boss to finał, nie ściana”): grzybnia leży 6 s (było 14 s) — arena nie zarasta na stałe.
+    durationMs: 6000,
     poison: { tickDamage: 2, tickMs: 500, durationMs: 1000 },
     slow: { pct: 0.35, durationMs: 400 },
     recoveryMs: 300,
@@ -432,12 +435,13 @@ export const FUNGAL_DEVOURER = {
     offsetY: 14,
     maxPatches: 14,
     enragedMaxPatches: 20,
-    enragedDurationMs: 9000,
+    // Krok 175: płaty leżą krócej (5 / 6,5 s, było 6,5 / 9 s).
+    enragedDurationMs: 6500,
     patch: {
       startRadius: 6,
       maxRadius: 18,
       spreadMs: 500,
-      durationMs: 6500,
+      durationMs: 5000,
       poison: { tickDamage: 3, tickMs: 500, durationMs: 1200 },
       slow: { pct: 0.35, durationMs: 350 },
     },
@@ -956,7 +960,7 @@ export const ARENA_GATES = {
 /** Skalowanie HP i obrażeń wszystkich ataków bossa (także wybuchów pajączków) do piętra. */
 export function scaleBossForFloor<T extends BossDefinition>(boss: T, floor: number, scaling: EnemyScalingConfig): T {
   const dmg = <A extends { readonly damage: number }>(attack: A | undefined): A | undefined =>
-    attack && { ...attack, damage: scaleForFloor(attack.damage, floor, scaling.damagePerFloor) };
+    attack && { ...attack, damage: Math.round(scaleForFloor(attack.damage, floor, scaling.damagePerFloor) * (scaling.damageMultiplier ?? 1)) };
   return {
     ...boss,
     maxHp: scaleForFloor(boss.maxHp, floor, scaling.hpPerFloor),
