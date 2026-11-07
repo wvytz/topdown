@@ -129,11 +129,9 @@ describe('układ korytarzy (krok 128)', () => {
     expect(rings / floors.length).toBeLessThan(0.03);
   });
 
-  it('pętle zostają — na większych piętrach średnio co najmniej jedna', () => {
-    const big = floors.filter((f) => f.rooms.length >= 11);
-    expect(big.length).toBeGreaterThan(20);
-    const loops = big.reduce((sum, f) => sum + cyclomatic(f), 0) / big.length;
-    expect(loops).toBeGreaterThanOrEqual(1);
+  it('krok 168: układ liniowy — średnio mniej niż jedna pętla na piętro (wcześniej co najmniej jedna)', () => {
+    const loops = floors.reduce((sum, f) => sum + cyclomatic(f), 0) / floors.length;
+    expect(loops).toBeLessThan(1);
   });
 
   it('każde piętro spójne: z pokoju startowego dojdzie się do każdego pokoju', () => {
@@ -195,3 +193,22 @@ function cyclomatic(f: DungeonFloor): number {
   }
   return edges.size - (f.rooms.length + components) + 1;
 }
+
+describe('odnogi z nagrodą (krok 168)', () => {
+  it('większość pięter ma ślepą odnogę, a kapliczka stoi w odnodze, gdy ta istnieje', async () => {
+    const { isDeadEndRoom } = await import('@/dungeon/arenaGates');
+    const { planShrineLocation } = await import('@/dungeon/ShrinePlanner');
+    const { createRng } = await import('@/core/random');
+    const { RoomKind } = await import('@/core/dungeonTypes');
+    let withBranch = 0;
+    for (const f of floors) {
+      const branches = f.rooms.filter((r) => r.kind === RoomKind.Normal && isDeadEndRoom(f, r));
+      if (branches.length === 0) continue;
+      withBranch++;
+      const shrine = planShrineLocation(f, createRng(f.seed));
+      if (!shrine) continue;
+      expect(branches.some((r) => shrine.x >= r.x && shrine.y >= r.y && shrine.x < r.x + r.width && shrine.y < r.y + r.height)).toBe(true);
+    }
+    expect(withBranch / floors.length).toBeGreaterThan(0.6);
+  });
+});

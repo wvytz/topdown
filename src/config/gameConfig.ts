@@ -32,25 +32,34 @@ export const BASE_DUNGEON_CONFIG: DungeonGeneratorConfig = {
   maxPlacementAttempts: 300,
   bossRoomAtEnd: true,
   endRoomChance: 0,
+  // Krok 168 (uwagi testera „runy za długie”, „layout bardziej linearny”; decyzja właściciela 1a + 3a):
+  // ścieżka główna do areny i 1–2 ślepe odnogi zamiast drzewa z pętlami.
+  linear: { branches: { min: 1, max: 2 } },
 };
+
+/**
+ * Krok 168: każde piętro ma tyle samo pokojów (arena + 5–7) i tę samą mapę — wcześniej rosły z piętrem
+ * (do 12–14 pokojów od piętra 7). Trudność rośnie dalej statystykami wrogów i bossów.
+ */
+export const FLOOR_GROWTH = { maxSteps: 0, widthPerStep: 4, heightPerStep: 2, roomsPerStep: 1 } as const;
 
 /** Ukryta komnata za areną (krok 46) jest nagrodą za pokonanie Króla Pająków — tylko w Grzybni (krok 51, decyzja właściciela). */
 export const SECRET_ROOM_BIOME = BiomeId.FungalGrove;
 
-/** Na wyższych piętrach mapa rośnie i pojawia się więcej pokojów (z górnym limitem). */
+/** Konfiguracja piętra; od kroku 168 mapa i liczba pokojów nie rosną z piętrem (`FLOOR_GROWTH.maxSteps` = 0). */
 export function getDungeonConfigForFloor(floor: number): DungeonGeneratorConfig {
-  const growth = Math.min(floor - 1, 6);
+  const growth = Math.min(floor - 1, FLOOR_GROWTH.maxSteps);
   return {
     ...BASE_DUNGEON_CONFIG,
     // Krok 45: arena na końcu piętra wszędzie poza piętrem 1 (szybsze przejście do drugiego biomu).
     bossRoomAtEnd: floor !== 1,
     // Krok 51: pokój końcowy z ukrytą komnatą zawsze na piętrach Grzybni (też w kolejnych kręgach), nigdzie indziej.
     endRoomChance: biomeForFloor(floor).id === SECRET_ROOM_BIOME ? 1 : 0,
-    widthTiles: BASE_DUNGEON_CONFIG.widthTiles + growth * 4,
-    heightTiles: BASE_DUNGEON_CONFIG.heightTiles + growth * 2,
+    widthTiles: BASE_DUNGEON_CONFIG.widthTiles + growth * FLOOR_GROWTH.widthPerStep,
+    heightTiles: BASE_DUNGEON_CONFIG.heightTiles + growth * FLOOR_GROWTH.heightPerStep,
     roomCount: {
-      min: BASE_DUNGEON_CONFIG.roomCount.min + growth,
-      max: BASE_DUNGEON_CONFIG.roomCount.max + growth,
+      min: BASE_DUNGEON_CONFIG.roomCount.min + growth * FLOOR_GROWTH.roomsPerStep,
+      max: BASE_DUNGEON_CONFIG.roomCount.max + growth * FLOOR_GROWTH.roomsPerStep,
     },
   };
 }
