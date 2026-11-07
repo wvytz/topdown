@@ -5846,6 +5846,22 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `npm run build` (2757 testów) zielony; bez zrzutów (drobna zmiana tekstu).
 
+## Krok 180 — Czarodziejka wraca jako najbardziej złożona klasa `#decyzja` `#czarodziejka` `#balans`
+
+**Decyzja właściciela (7.11):** „całkowita cofka” decyzji z kroku 167 — Czarodziejka wraca jako trzecia klasa z puli trzech archetypów: barbarzyńca = siła, łucznik = dystans i bezpieczeństwo, Czarodziejka = najbardziej złożona i wymagająca. Rdzeń zostaje: ciągły promień i chodzenie na spowolnieniu. Złożoność ma iść z modyfikowania promienia przez przedmioty.
+
+**Co powstało:**
+- `HIDDEN_HEROES` puste — Czarodziejka znów na ekranie wyboru (środkowa karta, hasło „Najtrudniejsza: promień i kule”) i w co-opie; `?hero=sorceress` działał cały czas.
+- Kursor: kostur z kryształem w barwach promienia (`tools/cursor_sprites.py` → `wand`, `GameCursor.Wand`).
+- **Promień chłonie przedmioty** (dotąd brał tylko kule, więc z przedmiotami słabł względem reszty): Ostrze dokłada połowę premii do tyknięcia (+3 → +2/tyknięcie, ok. +10/s, przebija), Rękawice i Rozpęd skracają odstęp tyknięć (`applySorceryModifiers`). Co 3. tyknięcie (0,6 s) to **impuls**: niesie statusy przedmiotów (ogień, lód i Zamrożenie), leczy Wampirzym kłem i liczy się jako atak główny — Rozpęd i Fala ostrza działają już przy promieniu (punkt z przeglądu buildu po kroku 151). Bez ogłuszenia i paraliżu (0,9 s co 0,6 s = trwały paraliż) — ogłusza dalej kula.
+- HP 75 → 80 (promień ją spowalnia, więc obrywa częściej niż łucznik).
+
+**Balans (z liczb, bez bota):** bez przedmiotów ok. 46/s (3 s promienia po 50/s + kule w blokadzie) wobec ok. 48/s barbarzyńcy i ok. 37+12/s łucznika; promień przebija, więc na nawałę (krok 175) działa jak AoE. Przewaga rośnie z przedmiotami, bo dotąd żaden nie wzmacniał promienia. Liczby w `heroConfig.ts` (`bladeDamageFraction`, `pulseEveryTicks`).
+
+**Testy:** `tests/systems/sorcery.test.ts` (Ostrze, Rękawice, impuls, statusy bez ogłuszenia), `heroSelect` (trzy klasy po kolei, 80 HP), `gameCursor` (kostur). `npm run build` — 2761 testów zielone; `npm run smoke -- --floors 2 --seeds 1` OK dla trzech bohaterów. Zrzut ekranu wyboru: `/mnt/project-files/screens/krok180-wybor-czarodziejka.png`.
+
+**Czeka na ocenę właściciela:** siła promienia z przedmiotami, czy impuls co 0,6 s jest czytelny, wygląd kostura. Większe przeróbki umiejętności — najpierw propozycja.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5996,7 +6012,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Po przeglądzie buildu (krok 151)** `#przemiany` `#decyzja` — do omówienia z właścicielem („pamiętaj o kolejnych punktach”):
 - **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); pomysł do wymyślenia razem z właścicielem. Do tego czasu Buty bez przemiany.
-- **Fala ostrza i Rozpęd u Czarodziejki:** liczą tylko kule, nie promień, a Rozpęd zeruje się w przerwie na powrót kul; łucznik strzela bez przerwy, więc ma Rozpęd zawsze na maksa. Propozycja: promień liczy się co 0,5 s jako atak (wniosek z kodu, niezmierzone).
+- [x] **Fala ostrza i Rozpęd u Czarodziejki:** od kroku 180 impuls promienia (co 0,6 s) liczy się jako atak główny.
 - **Bot-partner:** goni bossa poza 220 px od gracza (łucznik i Czarodziejka prawie nie biją latającej Wiedźmy), wybiera kartę przemiany/rozwoju zamiast pierwszej; potem rzetelny pomiar siły 3 bohaterów botem.
 
 **5. Odrzucone:** ewolucje przedmiotów **zmieniające sterowanie** (decyzja właściciela). Od kroku 150 przemiany przy 3. kopii — bez nowych przycisków.
@@ -6012,7 +6028,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap B, krok 164: ustalone fale w zasadzce (6 scenariuszy po 3 fale).
 - [x] Etap B, krok 165: groźniejsze pułapki ruin (kolce 2× na wrogach, wróg naciska płytę strzałek).
 - [x] Etap B, krok 166: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
-- [x] Etap C, krok 167: Czarodziejka ukryta z wyboru, `?zoom=1.6` (czeka na ocenę), `?heavy=1` — od kroku 171 domyślnie.
+- [x] Etap C, krok 167: Czarodziejka ukryta z wyboru (cofnięte w kroku 180), `?zoom=1.6` (czeka na ocenę), `?heavy=1` — od kroku 171 domyślnie.
 - [x] Etap C, krok 168: stała liczba pokojów na piętro, ścieżka główna + 1–2 odnogi (kapliczka w odnodze).
 - [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
 - [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.

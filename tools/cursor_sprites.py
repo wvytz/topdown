@@ -1,6 +1,6 @@
 """
-Generator kursorów myszy (krok 172, kursory bohaterów — krok 178): celownik z kości z krwawą kropką (menu i Czarodziejka),
-mieczyk barbarzyńcy i mały łuk łucznika, w stylu znacznika celowania (loot_sprites.py).
+Generator kursorów myszy (krok 172, kursory bohaterów — krok 178): celownik z kości z krwawą kropką (menu),
+mieczyk barbarzyńcy, mały łuk łucznika i kostur Czarodziejki z kryształem (krok 180), w stylu znacznika celowania (loot_sprites.py).
 
 Kursor podstawia CSS (`cursor: url(...)` w index.html), więc gra niczego nie rysuje co klatkę — to zwykły kursor systemu
 z naszym obrazkiem. Siatki ASCII 15x15 (gorący punkt podaje HOTSPOTS; musi zgadzać się z config/cursorConfig.ts), skala 2x (jak zoom gry) i 4x (ekrany HiDPI).
@@ -23,7 +23,7 @@ CANVAS = 32
 SCALE = 2
 BLOOD = hx('#c8243a')
 
-# . przezroczyste  L kość (baza)  H kość (blask)  j kość (cięciwa)  R krew  s S T stal  g G Y złoto  w W u drewno
+# . przezroczyste  L kość (baza)  H kość (blask)  j kość (cięciwa)  R krew  s S T stal  g G Y złoto  w W u drewno  c C e kryształ
 # Obrys 1 px dokładamy automatycznie, dlatego skrajne wiersze i kolumny zostają puste.
 CURSORS = {
     'crosshair': [
@@ -79,13 +79,32 @@ CURSORS = {
         '..u............',
         '...............',
     ],
+    # Kostur Czarodziejki (krok 180): kryształ w kolorach jej promienia w lewym górnym rogu — gorący punkt.
+    'wand': [
+        '...............',
+        '.eC............',
+        '.CeCc..........',
+        '..CCCc.........',
+        '..cCcYG........',
+        '...cYGuw.......',
+        '.....uw........',
+        '......uw.......',
+        '.......uw......',
+        '........uw.....',
+        '.........uw....',
+        '..........uw...',
+        '...........uG..',
+        '............G..',
+        '...............',
+    ],
 }
 # Gorący punkt (x, y) w pikselach siatki.
-HOTSPOTS = {'crosshair': (7, 7), 'sword': (1, 1), 'bow': (1, 1)}
+HOTSPOTS = {'crosshair': (7, 7), 'sword': (1, 1), 'bow': (1, 1), 'wand': (1, 1)}
 COLORS = {
     'L': BONE[1], 'H': BONE[2], 'j': BONE[2], 'R': BLOOD,
     's': IRON[0], 'S': IRON[1], 'T': IRON[2],
     'g': GOLD[0], 'G': GOLD[1], 'Y': GOLD[2],
+    'c': hx('#1d7f9c'), 'C': hx('#39c0d8'), 'e': hx('#e4fbfb'),  # kryształ — barwy promienia (HeroCombat.drawBeam)
     'w': DIRT[2], 'W': DIRT[3], 'u': hx('#9a6e44'),  # u jaśniejsze od DIRT[4] — łuk ma być widać na ciemnym tle
 }
 

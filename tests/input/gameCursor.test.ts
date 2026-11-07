@@ -17,8 +17,9 @@ describe('własny kursor (kroki 172 i 178)', () => {
     expect(css).toContain('#game[data-cursor="bow"] canvas {');
   });
 
-  it('barbarzyńca ma mieczyk, łucznik łuk', () => {
+  it('barbarzyńca ma mieczyk, łucznik łuk, Czarodziejka kostur (krok 180)', () => {
     expect(HERO_CURSOR[HeroId.Barbarian]).toBe(GameCursor.Sword);
+    expect(HERO_CURSOR[HeroId.Sorceress]).toBe(GameCursor.Wand);
     expect(HERO_CURSOR[HeroId.Archer]).toBe(GameCursor.Bow);
   });
 

@@ -55,13 +55,14 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
   [HeroId.Sorceress]: {
     id: HeroId.Sorceress,
     name: 'Czarodziejka',
-    tagline: 'Z dystansu, kruchsza i wolniejsza',
+    tagline: 'Najtrudniejsza: promień i kule',
     attacks: [
       { input: 'LPM', text: '3 kule energii, potem fala' },
       { input: 'PPM', text: 'promień (przytrzymaj)' },
       { input: 'R', text: 'Supernowa i tarcza' },
     ],
-    stats: { maxHp: 75, moveSpeed: 175 },
+    // Krok 180 (przywrócenie, była najsłabsza): 75 → 80 HP — promień spowalnia ją, więc dostaje więcej ciosów niż łucznik.
+    stats: { maxHp: 80, moveSpeed: 175 },
     combat: PLAYER_COMBAT,
     kit: {
       kind: 'sorcery',
@@ -101,6 +102,10 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
           lockoutMs: 1000,
           forwardOffset: 17,
           sideOffset: 4,
+          // Krok 180: Ostrze +3 → +2 na tyknięcie (+10/s, u barbarzyńcy +3 co 0,42 s ≈ +7/s, ale promień przebija);
+          // impuls co 3. tyknięcie (0,6 s): statusy, kieł, Rozpęd i Fala ostrza.
+          bladeDamageFraction: 0.5,
+          pulseEveryTicks: 3,
         },
       },
     },
@@ -181,10 +186,10 @@ export const DEFAULT_HERO = HeroId.Barbarian;
 export const HERO_ORDER: readonly HeroId[] = [HeroId.Barbarian, HeroId.Sorceress, HeroId.Archer];
 
 /**
- * Krok 167 (decyzja właściciela po uwadze testera „wywalić czarodziejkę”): Czarodziejka znika z ekranów wyboru
- * (solo i co-op), ale kod zostaje — `?hero=sorceress`, zapisy i bot-partner działają dalej.
+ * Bohaterowie ukryci z ekranów wyboru. Krok 167 ukrył Czarodziejkę (uwaga testera), krok 180 (decyzja właściciela 7.11:
+ * „całkowita cofka”) przywrócił ją jako najbardziej złożoną z trzech klas. Lista zostaje na przyszłe ukrycia.
  */
-export const HIDDEN_HEROES: readonly HeroId[] = [HeroId.Sorceress];
+export const HIDDEN_HEROES: readonly HeroId[] = [];
 
 /** Bohaterowie na ekranach wyboru (od lewej). */
 export const SELECTABLE_HEROES: readonly HeroId[] = HERO_ORDER.filter((hero) => !HIDDEN_HEROES.includes(hero));

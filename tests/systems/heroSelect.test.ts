@@ -30,7 +30,7 @@ describe('ekran wyboru bohatera', () => {
   });
 
   it('linia statystyk pokazuje życie i chód', () => {
-    expect(heroStatLine(HERO_DEFINITIONS[HeroId.Sorceress])).toBe('ŻYCIE 75 · CHÓD 175');
+    expect(heroStatLine(HERO_DEFINITIONS[HeroId.Sorceress])).toBe('ŻYCIE 80 · CHÓD 175');
   });
 
   it('parseHeroId rozpoznaje tylko znanych bohaterów', () => {
@@ -54,12 +54,11 @@ describe('ekran wyboru — zakładki trybu (krok 90)', () => {
   });
 });
 
-describe('ukryci bohaterowie (krok 167)', () => {
-  it('Czarodziejki nie ma na ekranach wyboru, ale dalej jest w grze', async () => {
+describe('bohaterowie na ekranach wyboru (kroki 167 i 180)', () => {
+  it('Czarodziejka wróciła na ekrany wyboru (krok 180), trzy klasy po kolei', async () => {
     const { SELECTABLE_HEROES, HIDDEN_HEROES } = await import('@/config/heroConfig');
-    expect(HIDDEN_HEROES).toContain(HeroId.Sorceress);
-    expect(SELECTABLE_HEROES).not.toContain(HeroId.Sorceress);
-    expect(SELECTABLE_HEROES.length).toBeGreaterThanOrEqual(2); // co-op: różni bohaterowie
+    expect(HIDDEN_HEROES).not.toContain(HeroId.Sorceress);
+    expect(SELECTABLE_HEROES).toEqual([HeroId.Barbarian, HeroId.Sorceress, HeroId.Archer]);
     expect(HERO_ORDER).toContain(HeroId.Sorceress);
     expect(parseHeroId('sorceress')).toBe(HeroId.Sorceress);
   });

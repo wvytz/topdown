@@ -64,6 +64,13 @@ export interface BeamConfig {
   readonly forwardOffset: number;
   /** … i tyle px w prawo od osi patrzenia. */
   readonly sideOffset: number;
+  /** Krok 180: ułamek premii Ostrza (+obrażeń ciosu) doliczany do każdego tyknięcia promienia. */
+  readonly bladeDamageFraction: number;
+  /**
+   * Krok 180: co które tyknięcie to „impuls” — niesie statusy broni (bez ogłuszenia), leczy Wampirzym kłem
+   * i liczy się jako atak główny (Rozpęd, Fala ostrza). Pierwsze tyknięcie po zapaleniu jest impulsem.
+   */
+  readonly pulseEveryTicks: number;
 }
 
 export interface SorceryConfig {

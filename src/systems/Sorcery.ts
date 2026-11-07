@@ -1,4 +1,4 @@
-import type { Hit, StatusApplication } from '@/core/combatTypes';
+import type { Hit, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import type { BeamConfig, SorceryConfig } from '@/core/heroTypes';
 import type { StatLimits, StatModifiers } from '@/core/lootTypes';
 import type { Vector2 } from '@/core/types';
@@ -9,7 +9,9 @@ import type { MeleeTarget, SwingResult } from '@/systems/MeleeResolver';
 /**
  * Zestaw Czarodziejki (krok 37): przedmioty, orbita kul, promień.
  * Kule są jej bronią główną, więc biorą to, co u barbarzyńcy daje cios i strzał:
- * Ostrze (+obrażenia kul i fali), Rękawice (szybszy rzut i powrót kul), Kołczan (+1 kula). Promień to umiejętność bazowa.
+ * Ostrze (+obrażenia kul i fali), Rękawice (szybszy rzut i powrót kul), Kołczan (+1 kula).
+ * Krok 180 (przywrócenie Czarodziejki): przedmioty modyfikują też promień — Ostrze dokłada ułamek premii
+ * do tyknięcia, Rękawice (i Rozpęd) skracają odstęp tyknięć.
  */
 export function applySorceryModifiers(base: SorceryConfig, mods: StatModifiers, limits: StatLimits): SorceryConfig {
   const cooldown = attackCooldownMultiplier(mods, limits);
@@ -25,7 +27,26 @@ export function applySorceryModifiers(base: SorceryConfig, mods: StatModifiers, 
       nova: { ...orbs.nova, damage: Math.max(1, orbs.nova.damage + mods.meleeDamage) },
       maxOrbs: Math.min(Math.max(limits.maxRangedCharges, orbs.maxOrbs), orbs.maxOrbs + mods.rangedCharges),
     },
+    beam: {
+      ...base.beam,
+      damagePerTick: Math.max(1, base.beam.damagePerTick + Math.round(mods.meleeDamage * base.beam.bladeDamageFraction)),
+      tickMs: Math.max(1, Math.round(base.beam.tickMs * cooldown)),
+    },
   };
+}
+
+/** Krok 180: czy `tick`-te tyknięcie promienia (od 0, od zapalenia) jest impulsem. */
+export function isBeamPulse(tick: number, everyTicks: number): boolean {
+  return everyTicks > 0 && tick % everyTicks === 0;
+}
+
+/**
+ * Krok 180: statusy impulsu promienia — ogień i lód z przedmiotów (kul i ciosu), bez ogłuszenia Elektrycznej strzały:
+ * ogłuszenie 0,9 s co 0,6 s byłoby trwałym paraliżem celu (to samo paraliż relikwii). Ogłusza dalej kula.
+ */
+export function beamPulseStatus(effects: Pick<WeaponEffects, 'shotStatus' | 'meleeStatus'>): StatusApplication {
+  const { stun: _stun, paralysis: _paralysis, ...rest } = { ...effects.shotStatus, ...effects.meleeStatus };
+  return rest;
 }
 
 /** Punkt przy krysztale kostura: `forward` px w kierunku patrzenia i `side` px w prawo od tej osi. */

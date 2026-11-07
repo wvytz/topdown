@@ -962,13 +962,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
         return creatureHits;
       },
       beam: (beam, attacker) => {
-        this.enemies.resolvePlayerBeam(beam);
-        this.bossFight.resolvePlayerBeam(beam, attacker);
+        const creatureHits = this.enemies.resolvePlayerBeam(beam) + this.bossFight.resolvePlayerBeam(beam, attacker);
         this.cocoons?.resolvePlayerBeam(beam);
         this.puffballs?.resolvePlayerBeam(beam);
         this.secretRoom?.resolvePlayerBeam(beam);
         this.breakables?.resolvePlayerBeam(beam);
         this.arenaConditions?.resolvePlayerBeam(beam);
+        return creatureHits;
       },
       splash: (strike, attacker) => {
         this.enemies.resolveSplash(strike);
