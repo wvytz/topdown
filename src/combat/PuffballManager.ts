@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
 import type { Vector2 } from '@/core/types';
+import type { PuffballLook } from '@/config/spriteConfig';
 import { PUFFBALL_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { drawAreaTelegraph } from '@/effects/AreaTelegraph';
@@ -17,7 +18,7 @@ import { resolveMeleeSwing } from '@/systems/MeleeResolver';
 import type { BeamStrike } from '@/systems/Sorcery';
 import { resolveBeam } from '@/systems/Sorcery';
 import type { PuffballConfig } from '@/systems/Puffballs';
-import { isInPoisonCloud } from '@/systems/Puffballs';
+import { isInPoisonCloud, poisonStainAlpha } from '@/systems/Puffballs';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
 
@@ -34,6 +35,8 @@ interface Cloud {
   readonly center: Vector2;
   readonly burstAt: number;
   readonly sprite: Phaser.GameObjects.Sprite;
+  /** Skażona posadzka pod chmurą (krok 173); żyje dłużej niż chmura — schnie po jej rozwianiu. */
+  readonly stain: Phaser.GameObjects.Sprite | null;
   fading: boolean;
 }
 
@@ -114,7 +117,12 @@ export class PuffballManager {
     this.playHusk(center);
     sound.play(SoundCue.OrbSplash, center);
 
-    const { cloud: look } = PUFFBALL_VISUALS[config.look ?? 'puffball'];
+    const visual: PuffballLook = PUFFBALL_VISUALS[config.look ?? 'puffball'];
+    const look = visual.cloud;
+    const stain = visual.stain
+      ? scene.add.sprite(center.x, center.y, SPRITE_SHEETS[visual.stain.sheet].key).setDepth(RENDER_DEPTH.combatDecal).setAlpha(0)
+      : null;
+    if (visual.sporeBurst) this.playSporeBurst(center, visual.sporeBurst);
     const sprite = scene.add
       .sprite(center.x, center.y, SPRITE_SHEETS[look.sheet].key)
       .setDepth(RENDER_DEPTH.telegraph)
@@ -124,17 +132,22 @@ export class PuffballManager {
     // Klatki rozrostu odpowiadają promieniowi chmury (poisonCloudRadius) — tempo z spreadMs.
     sprite.play({ key: growKey, frameRate: (growFrames * 1000) / config.cloud.spreadMs });
     sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.play(animationKey(look.sheet, look.swirl)));
-    this.clouds.push({ center, burstAt: now, sprite, fading: false });
+    this.clouds.push({ center, burstAt: now, sprite, stain, fading: false });
   }
 
   private updateClouds(now: number): void {
     const { party, config, scene } = this.deps;
     const { durationMs } = config.cloud;
-    const { fadeMs } = PUFFBALL_VISUALS[config.look ?? 'puffball'].cloud;
+    const visual: PuffballLook = PUFFBALL_VISUALS[config.look ?? 'puffball'];
+    const { fadeMs } = visual.cloud;
     this.clouds = this.clouds.filter((cloud) => {
       const age = now - cloud.burstAt;
+      if (cloud.stain && visual.stain) cloud.stain.setAlpha(poisonStainAlpha(visual.stain, durationMs, age));
       if (age >= durationMs) {
-        cloud.sprite.destroy();
+        if (cloud.sprite.active) cloud.sprite.destroy();
+        // Chmura już nie truje; zostaje tylko schnąca posadzka.
+        if (cloud.stain && cloud.stain.alpha > 0) return true;
+        cloud.stain?.destroy();
         return false;
       }
       // Rozwiewanie tylko wizualnie: chmura truje do samego końca, więc gaśnie dopiero w ostatnich fadeMs.
@@ -147,6 +160,13 @@ export class PuffballManager {
       }
       return true;
     });
+  }
+
+  /** Wyrzut zarodników (krok 173): jednorazowa animacja nad postaciami wrogów, pod bohaterem. */
+  private playSporeBurst(at: Vector2, look: NonNullable<PuffballLook['sporeBurst']>): void {
+    const sprite = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[look.sheet].key).setDepth(RENDER_DEPTH.deathBurst);
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.destroy());
+    sprite.play(animationKey(look.sheet, look.animation));
   }
 
   /** Pęknięcie; ostatnia klatka (sflaczała skórka) zostaje na podłodze jako trwały ślad. */

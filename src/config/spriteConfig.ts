@@ -1548,6 +1548,30 @@ export const SPRITE_SHEETS = {
       swirl: { frames: [6, 7], loop: true },
     },
   },
+  // Wyrzut zarodników przy pęknięciu purchawki (krok 173, tools/poison_sprites.py): błysk i pierścień kropel do r 30.
+  sporeBurst: {
+    key: 'sheet-spore-burst',
+    url: 'assets/sprites/spore-burst.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 480,
+    sheetHeight: 96,
+    directions: 1,
+    fps: 13,
+    animations: { burst: { frames: [0, 1, 2, 3, 4], loop: false } },
+  },
+  // Skażona posadzka pod chmurą purchawki (krok 173): dokładny zasięg trucizny (r 30), gra rysuje ją półprzezroczyście.
+  poisonStain: {
+    key: 'sheet-poison-stain',
+    url: 'assets/sprites/poison-stain.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 96,
+    sheetHeight: 96,
+    directions: 1,
+    fps: 1,
+    animations: { still: { frames: [0], loop: false } },
+  },
   // Lepkie pajęczyny leża (krok 23e, tools/lair_enemies.py): 1×1 i 2×2 kafle; błysk wędruje po kroplach kleju.
   stickyWebSmall: {
     key: 'sheet-sticky-web-small',
@@ -2206,7 +2230,10 @@ export const PUFFBALL_VISUALS = {
     fuse: 'fuse',
     burst: 'burst',
     groundShadow: { width: 16, height: 5, offsetX: 0, offsetY: 7 },
-    cloud: { sheet: 'poisonCloud', grow: 'grow', swirl: 'swirl', alpha: 0.6, fadeMs: 600 },
+    // Krok 173 (poziom detalu 3): chmura gęstsza (0,6 → 0,75), wyrzut zarodników i skażona posadzka.
+    cloud: { sheet: 'poisonCloud', grow: 'grow', swirl: 'swirl', alpha: 0.75, fadeMs: 600 },
+    sporeBurst: { sheet: 'sporeBurst', animation: 'burst' },
+    stain: { sheet: 'poisonStain', alpha: 0.55, fadeInMs: 300, fadeOutMs: 1200 },
   },
   ashtray: {
     sheet: 'ashtray',
@@ -2225,6 +2252,17 @@ export interface PuffballLook {
   readonly burst: string;
   readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
   readonly cloud: { readonly sheet: SpriteSheetId; readonly grow: string; readonly swirl: string; readonly alpha: number; readonly fadeMs: number };
+  /** Wyrzut zarodników w chwili pęknięcia (krok 173) — pokazuje pełny zasięg chmury od pierwszej klatki. */
+  readonly sporeBurst?: { readonly sheet: SpriteSheetId; readonly animation: string };
+  /** Skażona posadzka pod chmurą (krok 173); po rozwianiu chmury schnie przez `fadeOutMs`. */
+  readonly stain?: PoisonStainLook;
+}
+
+export interface PoisonStainLook {
+  readonly sheet: SpriteSheetId;
+  readonly alpha: number;
+  readonly fadeInMs: number;
+  readonly fadeOutMs: number;
 }
 
 export const PUFFBALL_VISUAL = {
@@ -2233,7 +2271,7 @@ export const PUFFBALL_VISUAL = {
   fuse: 'fuse',
   burst: 'burst',
   groundShadow: { width: 16, height: 5, offsetX: 0, offsetY: 7 },
-  cloud: { sheet: 'poisonCloud', grow: 'grow', swirl: 'swirl', alpha: 0.6, fadeMs: 600 },
+  cloud: { sheet: 'poisonCloud', grow: 'grow', swirl: 'swirl', alpha: 0.75, fadeMs: 600 },
 } as const satisfies {
   readonly sheet: SpriteSheetId;
   readonly idle: string;

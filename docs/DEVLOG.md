@@ -5737,6 +5737,24 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Weryfikacja:** `npm run build`; w Chromium (`vite preview`) obliczony styl płótna to nasz `image-set` z gorącym punktem 16 16, obrazki ładują się (200), `mobile.html` ma kursor `auto`.
 
+## Krok 173 — Purchawki i trująca chmura na poziomie detalu ognia `#ocena` `#decyzja` `#ogien` `#grzybnia`
+
+**Zlecenie właściciela (31.10):** ulepszyć „kokony, które po nadepnięciu zamieniają się w truciznę” na wzór ognia z kroku 144, **bez zmniejszania obszaru**; najpierw pokazać proces dokładania detalu i porównać z ogniem. Przyjęto, że chodzi o purchawki Grzybni (kokony leża pękają jedwabiem). Makiety 5 poziomów (0 obecny, 1 cieniowanie, 2 faktura, 3 „jak ogień”, 4 maksimum) w `screens/kokony-trucizna/`. `#decyzja` 7.11 na karcie: **poziom 3**.
+
+**Co powstało:**
+- Nowy moduł rysunku `tools/poison_sprites.py`; arkusze zapisuje dalej `tools/grove_enemies.py` (pozostałe arkusze Grzybni bajt w bajt bez zmian).
+- **Purchawka** (`puffball.png`, te same 8 klatek i czasy): gruszkowata skórka z łuskami i brodawkami w 7 tonach, grzybnia rozchodząca się po podłodze, obłoczek z poru; w telegrafie szwy i por jarzą się jadem; pęknięcie to słup zarodników z kłębem i krople; skórka zostaje rozdarta, z resztkami jadu.
+- **Chmura** (`poison-cloud.png`): kłęby ze światłem z lewej-góry, jaśniejszy toksyczny wyrzut w pierwszych klatkach, smugi, zarodniki i pękające bąble, miękki brzeg gazu (Bayer 4×4 — dozwolony dla substancji amorficznych, STYLEGUIDE §5). Krycie 0,6 → 0,75. **Zasięg bez zmian:** rysunek = hitbox 14 → 30 px (test).
+- **Wyrzut zarodników** (`spore-burst.png`, 5 klatek): błysk i pierścień kropel lecący od razu do brzegu zasięgu (r 30) — jak kula ognia pokazuje, dokąd sięgnie trucizna.
+- **Skażona posadzka** (`poison-stain.png`): plama dokładnie w zasięgu trucizny pod chmurą (warstwa śladów walki); narasta 0,3 s, trzyma się, póki wisi chmura, potem schnie 1,2 s (czysta funkcja `poisonStainAlpha` w `systems/Puffballs.ts`, liczby w `PUFFBALL_VISUALS` w `spriteConfig`). Posadzka tylko wygląda — truje wyłącznie chmura.
+- Popielniczki palarni bez zmian (własny arkusz dymu, bez wyrzutu i posadzki).
+
+**Testy:** `tests/systems/puffballs.test.ts` — ostatnia klatka wyrzutu i posadzka sięgają maxRadius ±3 px, krycie posadzki w czasie; dotychczasowy test zgodności chmury z hitboxem przechodzi. `npm run build` (2726 testów) zielony.
+
+**Weryfikacja:** Chromium (dev, `?hero=archer&seed=3&floor=2`): bohater przy purchawce → telegraf, wyrzut, chmura, schnięcie; bez błędów w konsoli. Zrzuty: `screens/kokony-trucizna/krok173/`.
+
+**Do oceny:** krycie chmury 0,75 (czy nie zasłania wrogów w środku), widoczność posadzki w Mroku.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

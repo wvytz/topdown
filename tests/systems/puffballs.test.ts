@@ -6,11 +6,11 @@ import { createRng } from '@/core/random';
 import { BIOMES, BiomeId } from '@/config/biomeConfig';
 import { ENEMY_VARIANTS, PLAYER_COMBAT, PLAYER_STATUS_RESISTANCE } from '@/config/combatConfig';
 import { PLAYER_BASE_STATS, PLAYER_SIZE } from '@/config/gameConfig';
-import { SPRITE_SHEETS } from '@/config/spriteConfig';
+import { PUFFBALL_VISUALS, SPRITE_SHEETS } from '@/config/spriteConfig';
 import { planCocoons } from '@/dungeon/CocoonPlanner';
 import { roomContainsTile } from '@/dungeon/rooms';
 import { CocoonPhase, CocoonState } from '@/systems/Cocoons';
-import { isInPoisonCloud, poisonCloudRadius } from '@/systems/Puffballs';
+import { isInPoisonCloud, poisonCloudRadius, poisonStainAlpha } from '@/systems/Puffballs';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { sampleFloors } from '../helpers/floors';
 import { pixel, readPng } from '../helpers/png';
@@ -143,5 +143,39 @@ describe('Sprite chmury zgodny z hitboxem', () => {
       }
       expect(Math.abs(maxDist - expected)).toBeLessThanOrEqual(3);
     });
+  });
+});
+
+/** Najdalszy nieprzezroczysty piksel klatki od jej środka (px). */
+function frameReach(sheetId: 'sporeBurst' | 'poisonStain', column: number): number {
+  const sheet = SPRITE_SHEETS[sheetId];
+  const png = readPng(fileURLToPath(new URL(`../../public/${sheet.url}`, import.meta.url)));
+  const c = sheet.frameWidth / 2;
+  let maxDist = 0;
+  for (let y = 0; y < sheet.frameHeight; y++) {
+    for (let x = 0; x < sheet.frameWidth; x++) {
+      if (pixel(png, column * sheet.frameWidth + x, y)[3] === 0) continue;
+      maxDist = Math.max(maxDist, Math.hypot(x + 0.5 - c, y + 0.5 - c));
+    }
+  }
+  return maxDist;
+}
+
+describe('Wyrzut zarodników i skażona posadzka (krok 173)', () => {
+  it('ostatnia klatka wyrzutu i posadzka sięgają pełnego zasięgu chmury (±3 px), nie dalej', () => {
+    const frames = SPRITE_SHEETS.sporeBurst.animations.burst.frames;
+    expect(Math.abs(frameReach('sporeBurst', frames[frames.length - 1]!) - CLOUD.maxRadius)).toBeLessThanOrEqual(3);
+    expect(Math.abs(frameReach('poisonStain', 0) - CLOUD.maxRadius)).toBeLessThanOrEqual(3);
+  });
+
+  it('posadzka narasta, trzyma się przez całą chmurę i schnie po niej', () => {
+    const stain = PUFFBALL_VISUALS.puffball.stain;
+    const { durationMs } = CLOUD;
+    expect(poisonStainAlpha(stain, durationMs, -1)).toBe(0);
+    expect(poisonStainAlpha(stain, durationMs, 0)).toBe(0);
+    expect(poisonStainAlpha(stain, durationMs, stain.fadeInMs / 2)).toBeCloseTo(stain.alpha / 2);
+    expect(poisonStainAlpha(stain, durationMs, durationMs)).toBe(stain.alpha);
+    expect(poisonStainAlpha(stain, durationMs, durationMs + stain.fadeOutMs / 2)).toBeCloseTo(stain.alpha / 2);
+    expect(poisonStainAlpha(stain, durationMs, durationMs + stain.fadeOutMs)).toBe(0);
   });
 });
