@@ -5836,6 +5836,16 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Weryfikacja:** `npm run build`; w Chromium menu ma celownik, `?hero=archer` — łuk, `?hero=barbarian` — mieczyk (obliczony styl płótna), bez błędów strony.
 
+## Krok 179 — Podpowiedź „Enter — zapisz” na slocie pauzy `#ocena` `#zapis`
+
+**Uwaga właściciela (7.11.2026):** „nie można zapisać na tym samym slocie, a chciałem nadpisać stan gry”.
+
+**Diagnoza:** nadpisanie działa (Enter, pad A, klawisze 1–3 na pauzie), ale od kroku 161 spacja na slocie celowo nic nie robi (żeby nie nadpisać zapisu przez przypadek), a gra o tym milczała. Druga rzecz, która może mylić: zapis to zawsze stan z wejścia na piętro, więc ponowny zapis na tym samym piętrze daje te same złoto i przedmioty — zmienia się tylko godzina.
+
+**Co powstało:** spacja na slocie w pauzie pokazuje w pasku stanu „Enter — zapisz (nadpisuje slot)” (`SAVE_TEXT.slotNeedsEnter`). Zachowanie zapisu bez zmian.
+
+**Testy:** `npm run build` (2757 testów) zielony; bez zrzutów (drobna zmiana tekstu).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
