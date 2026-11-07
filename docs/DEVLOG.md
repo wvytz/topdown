@@ -5755,6 +5755,18 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** krycie chmury 0,75 (czy nie zasłania wrogów w środku), widoczność posadzki w Mroku.
 
+## Krok 174 — Więcej HP Brudnej Wiedźmy: finał runu nie lżejszy od sprzątaczek `#decyzja` `#balans` `#brudna-wiedzma`
+
+**Skąd:** ponowny przegląd balansu (7.11) po krokach 155–173. Od kroku 169 run kończy się na Wiedźmie (piętro 7), a od kroku 154 sprzątaczki na piętrze 6 mają trzy fazy: ok. 312 + 858 + 312 ≈ 1480 HP do zbicia. Wiedźma miała 860 bazowo, czyli ok. 1170 na piętrze 7 — finał był lżejszy od przedostatniego piętra. Właściciel: „tak” na propozycję podbicia.
+
+**Zmiana:** `DIRTY_WITCH.maxHp` 860 → **1050** (ok. 1430 na piętrze 7, ok. 97% sprzątaczek; Wiedźma lata i ma dwie fazy, więc na jedno HP jest trudniejsza). Sprzątaczek nie osłabiałem (zasada „nie łagodź trudności”). W co-opie mnożnik ×1,7 jak dla wszystkich bossów.
+
+**Przegląd bohaterów (bez zmian w kodzie):** po ukryciu Czarodziejki (krok 167) zostali barbarzyńca (100 HP, ok. 48/s łukiem w kilku wrogów, korzysta na mniejszym odrzucie z kroku 161) i łucznik (85 HP, ok. 37/s + salwa ok. 12/s, dystans i totem-wabik). Barbarzyńca ok. 25% silniejszy, łucznik bezpieczniejszy — podział do potwierdzenia w testach.
+
+**Testy:** `bossDuetArrival.test` — Wiedźma na piętrze 7 ma co najmniej 95% HP trzech faz sprzątaczek (i dalej najwyżej 4/3 w drugą stronę). `npm run build` OK.
+
+**Do oceny właściciela:** długość walki z Wiedźmą (Czarodziejka i łucznik — zwłaszcza w locie).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
