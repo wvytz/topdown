@@ -68,4 +68,12 @@ describe('sprzątaczki we wspinaczce (krok 126, od kroku 154 jedno piętro)', ()
     const witch = scaleForFloor(bossForFloor(7).maxHp, 7, BOSS_SCALING.hpPerFloor);
     expect(pool).toBeLessThan((witch * 4) / 3);
   });
+
+  it('krok 174: Wiedźma (finał runu na piętrze 7) ma tyle HP do zbicia co trzy fazy sprzątaczek (±5%), a lata', () => {
+    const duet = duetForFloor(6, BOSS_DUETS, TOWER_CONFIG)!;
+    const at6 = (hp: number) => scaleForFloor(hp, 6, BOSS_SCALING.hpPerFloor);
+    const pool =
+      at6(CLEANER_BLONDE.maxHp) * (1 - duet.opener!.escapeHpRatio) + at6(CLEANER_DARK.maxHp) + at6(CLEANER_BLONDE.maxHp) * duet.arrival!.partnerHpRatio;
+    expect(scaleForFloor(bossForFloor(7).maxHp, 7, BOSS_SCALING.hpPerFloor)).toBeGreaterThanOrEqual(pool * 0.95);
+  });
 });

@@ -826,7 +826,9 @@ export const DIRTY_WITCH = {
   enragedLabel: 'Chichocze!',
   radius: 18,
   color: 0xd86a2c,
-  maxHp: 860, // krok 145 (wolniejsze skalowanie bossów): 760 → 860
+  // Krok 145 (wolniejsze skalowanie bossów): 760 → 860. Krok 174 (przegląd balansu, zgoda właściciela): 860 → 1050 —
+  // finał runu ma mieć najwięcej HP do zbicia, a trzy fazy sprzątaczek piętro niżej dawały ok. 1480 wobec 1170.
+  maxHp: 1050,
   moveSpeed: 68,
   sprint: { speed: 140, distance: 190 },
   // Walczy stadem z dystansu: podchodzi tylko na średnią odległość.
