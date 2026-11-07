@@ -5572,6 +5572,20 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** czy 0,6 s na krok odliczania wystarcza, czy odrzut nie jest teraz za mały dla Kiterów, ile elit to „wincyj”.
 
+## Krok 162 — „Moje przedmioty” w pauzie `#uwagi-testera`
+
+**Uwaga testera:** „brakuje możliwości sprawdzenia, co robiły twoje itemki”.
+
+**Co powstało:** w pauzie nowa pozycja **Moje przedmioty** (druga, pod „Wznów”). Strona pokazuje każdy zebrany przedmiot w kolejności zdobycia: nazwę w kolorze przedmiotu z liczbą kopii, a pod nią co robi (statystyka „za kopię”, efekt broni „mocniej z każdą kopią”) i „jeszcze N do przemiany: …”. Przemieniony przedmiot jest złoty, z gwiazdką i nazwą przemiany, opisem nowej mechaniki i tym, co da kolejna kopia (albo „limit kopii”). Od 7 przedmiotów lista idzie w dwóch kolumnach; co-op — kolumna na bohatera (P1/P2); za długa lista zmniejsza się, żeby nie weszła na „Wróć”. Działa myszą, klawiaturą, padem i dotykiem (ta sama strona pauzy).
+
+**Pliki:** czysty `systems/BuildSummary.ts` (`summarizeBuild`), `systems/pauseMenu.ts` (`PausePage.Items`, `PauseItem.Items`), `config/pauseConfig.ts` (`build`), `scenes/PauseScene.ts` (`drawBuild`), `scenes/GameScene.ts` (`buildSections`).
+
+**Testy:** `tests/systems/buildSummary.test.ts` (nowy), `pauseMenu.test.ts`.
+
+**Weryfikacja:** build; w przeglądarce `?hero=archer&floor=4&items=blade*3,heart*2,fire-fist,gloves*3,electric-arrow,boots*2,quiver` → Esc → „Moje przedmioty”: dwie kolumny, Fala ostrza i Rozpęd złote.
+
+**Nie zrobione:** podsumowanie przedmiotów na ekranie śmierci — osobno, jeśli strona w pauzie się sprawdzi.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5733,5 +5747,6 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 
 **Uwagi testera z 6.11 — plan (decyzje właściciela 7.11)** `#uwagi-testera`:
 - [x] Etap A (krok 161): skip odliczania, mniejszy odrzut, więcej elit, spacja w bezpiecznych menu.
-- [ ] Etap B: ekran „Moje przedmioty” (pauza + ekran śmierci), ikonki pokojów na minimapie, ustalone fale w zasadzce, groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
+- [x] Etap B, krok 162: „Moje przedmioty” w pauzie (ekran śmierci — jeszcze nie).
+- [ ] Etap B: ikonki pokojów na minimapie, ustalone fale w zasadzce, groźniejsze pułapki ruin (ranią też wrogów), żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
 - [ ] Etap C: Czarodziejka ukryta z wyboru (kod zostaje), próbne `?zoom=1.6`, próba wolniejszych i mocniejszych ciosów barbarzyńcy; stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).

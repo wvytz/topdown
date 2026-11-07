@@ -9,10 +9,14 @@ export enum PausePage {
   Save = 'save',
   Settings = 'settings',
   Controls = 'controls',
+  /** Krok 162: „Moje przedmioty” — co robią zebrane przedmioty. */
+  Items = 'items',
 }
 
 export enum PauseItem {
   Resume = 'resume',
+  /** Krok 162: strona „Moje przedmioty”. */
+  Items = 'items',
   Save = 'save',
   Settings = 'settings',
   Controls = 'controls',
@@ -49,6 +53,7 @@ export function pauseItems(page: PausePage, options: PauseMenuOptions): readonly
     case PausePage.Main:
       return [
         PauseItem.Resume,
+        PauseItem.Items,
         ...(options.canSave ? [PauseItem.Save] : []),
         PauseItem.Settings,
         PauseItem.Controls,
@@ -67,6 +72,7 @@ export function pauseItems(page: PausePage, options: PauseMenuOptions): readonly
         PauseItem.Back,
       ];
     case PausePage.Controls:
+    case PausePage.Items:
       return [PauseItem.Back];
   }
 }
@@ -94,6 +100,8 @@ export function pageOf(item: PauseItem): PausePage | null {
       return PausePage.Settings;
     case PauseItem.Controls:
       return PausePage.Controls;
+    case PauseItem.Items:
+      return PausePage.Items;
     default:
       return null;
   }
@@ -113,5 +121,7 @@ export function pauseBack(page: PausePage): { readonly page: PausePage; readonly
       return { page: PausePage.Main, cursor: PauseItem.Settings };
     case PausePage.Controls:
       return { page: PausePage.Main, cursor: PauseItem.Controls };
+    case PausePage.Items:
+      return { page: PausePage.Main, cursor: PauseItem.Items };
   }
 }

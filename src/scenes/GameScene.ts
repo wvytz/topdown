@@ -51,7 +51,8 @@ import { PAUSE_CLOCK_KEY, PAUSE_CONFIG } from '@/config/pauseConfig';
 import type { PauseReason } from '@/config/pauseConfig';
 import { autoPauseEnabled } from '@/systems/PauseClock';
 import type { PauseClock } from '@/systems/PauseClock';
-import type { PauseSceneData } from '@/scenes/PauseScene';
+import type { BuildSection, PauseSceneData } from '@/scenes/PauseScene';
+import { summarizeBuild } from '@/systems/BuildSummary';
 import { MinimapExplorer } from '@/systems/Minimap';
 import { MinimapRoute } from '@/systems/MinimapRoute';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
@@ -1531,10 +1532,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
       ...(this.checkpoint && this.saveLock.locked && { saveLocked: true }),
       onQuit: () => this.quitToMenu(),
       ...(openFeedback && { openFeedback: true }),
+      build: this.buildSections(),
     };
     this.scene.pause();
     this.scene.launch(SceneKey.Pause, data);
     sound.setMusicDuck(MUSIC_DUCK.pause);
+  }
+
+  /** Krok 162: przedmioty bohaterów do strony „Moje przedmioty” w pauzie (co-op — osobno P1 i P2). */
+  private buildSections(): BuildSection[] {
+    const heroes: { hero: Player; items: readonly ItemId[] }[] = [{ hero: this.player, items: this.run.items }];
+    if (this.partner) heroes.push({ hero: this.partner, items: this.partnerItems });
+    return heroes.map(({ hero, items }) => {
+      const tag = this.playerTag(hero);
+      const name = HERO_DEFINITIONS[this.heroIdOf(hero)].name;
+      return { title: tag ? `${tag} — ${name}` : name, rows: summarizeBuild(items, ITEM_DEFINITIONS, ITEM_EFFECTS.evolution) };
+    });
   }
 
   /** Pokonany boss odblokowuje start od tego piętra w trybie wyboru piętra (krok 91). Nie przy nagraniu i runie testowym. */
