@@ -25,6 +25,8 @@ export const SAVE_TEXT = {
   checkpointNote: 'zapis = stan z wejścia na piętro',
   unrankedNote: 'run wczytany ze slotu nie trafia na tablicę',
   savedToast: (slot: number): string => `Zapisano w slocie ${slot}`,
+  /** Spacja na slocie (krok 161 — tylko Enter zapisuje, żeby nie nadpisać przez przypadek). */
+  slotNeedsEnter: 'Enter — zapisz (nadpisuje slot)',
   saveFailed: 'Nie udało się zapisać (magazyn przeglądarki zablokowany)',
   deathHeader: 'RUN Z ZAPISU — WYNIK NIE TRAFIA NA TABLICĘ',
   loadedToast: 'Wczytano zapis — wynik nie trafi na tablicę',

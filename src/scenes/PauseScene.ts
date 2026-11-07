@@ -11,7 +11,7 @@ import { bindPadMenu } from '@/input/PadMenuInput';
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import { AUDIO_TEXT, MUSIC_PRESET_NAMES, MUTE_KEY } from '@/config/audioConfig';
 import { menuCommandFromKey } from '@/systems/gamepadInput';
-import { isPauseItemSpaceSafe, spaceConfirms } from '@/systems/spaceConfirm';
+import { isPauseItemSpaceSafe, isSpaceKey, spaceConfirms } from '@/systems/spaceConfirm';
 import { SPACE_CONFIRM_CONFIG } from '@/config/menuConfig';
 import { volumeLabel } from '@/systems/AudioSettings';
 import { DISPLAY_CONFIG, DISPLAY_TEXT } from '@/config/displayConfig';
@@ -184,6 +184,11 @@ export class PauseScene extends Phaser.Scene {
       const press = { key: event.key, repeat: event.repeat, sinceOpenMs: performance.now() - openedAt };
       if (spaceConfirms(press, this.countdown !== null || isPauseItemSpaceSafe(this.cursor), SPACE_CONFIRM_CONFIG)) {
         this.onCommand(MenuCommand.Confirm);
+        return;
+      }
+      // Spacja na slocie celowo nie zapisuje (krok 161) — mówimy, że zapis i nadpisanie są pod Enterem.
+      if (isSpaceKey(event.key) && !event.repeat && this.cursor !== null && slotOf(this.cursor) !== null && this.pauseData.onSave) {
+        this.status.setText(SAVE_TEXT.slotNeedsEnter).setColor(COLORS.item);
         return;
       }
       if (event.repeat && (event.key === 'Escape' || event.key === 'Enter')) return;
