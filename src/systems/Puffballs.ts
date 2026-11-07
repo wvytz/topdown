@@ -53,3 +53,22 @@ export function isInPoisonCloud(config: PoisonCloudConfig, center: Vector2, burs
   const radius = poisonCloudRadius(config, burstAt, now);
   return radius > 0 && Math.hypot(player.x - center.x, player.y - center.y) <= radius;
 }
+
+/** Czasy i krycie skażonej posadzki (krok 173); liczby w `PUFFBALL_VISUALS` (spriteConfig). */
+export interface PoisonStainTiming {
+  readonly alpha: number;
+  readonly fadeInMs: number;
+  readonly fadeOutMs: number;
+}
+
+/**
+ * Krycie skażonej posadzki `age` ms po pęknięciu: narasta przez `fadeInMs`, trzyma się, dopóki wisi chmura
+ * (`cloudMs`), potem schnie przez `fadeOutMs`. 0 = posadzkę można usunąć. Tylko wygląd — nie truje.
+ */
+export function poisonStainAlpha(stain: PoisonStainTiming, cloudMs: number, age: number): number {
+  if (age < 0) return 0;
+  const rise = stain.fadeInMs > 0 ? Math.min(1, age / stain.fadeInMs) : 1;
+  if (age <= cloudMs) return stain.alpha * rise;
+  const dry = stain.fadeOutMs > 0 ? 1 - (age - cloudMs) / stain.fadeOutMs : 0;
+  return stain.alpha * rise * Math.max(0, dry);
+}
