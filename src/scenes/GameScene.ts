@@ -91,7 +91,7 @@ import {
 } from '@/config/lootConfig';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
-import { eliteAffixCount } from '@/systems/TowerLoop';
+import { eliteAffixCount, runEndsAfterFloor } from '@/systems/TowerLoop';
 import { eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
 import { BossEncounter } from '@/combat/BossEncounter';
 import { duetForFloor } from '@/systems/BossDuet';
@@ -221,6 +221,8 @@ const NESTER_SEED_SALT = 0x6e57;
 /** Czyhacze (krok 123). */
 const LURKER_SEED_SALT = 0x1c4e;
 const STAIRS_PROMPT = '[E] Wejdź wyżej';
+/** Krok 169: schody ostatniego piętra kręgu kończą run. */
+const STAIRS_PROMPT_FINAL = '[E] Zdobądź wieżę';
 /** Przedmioty do HUD: ikona, licznik kopii, ramka rzadkości. */
 function hudItems(counts: readonly { readonly id: ItemId; readonly count: number }[]): HudItem[] {
   return counts.map(({ id, count }) => {
@@ -386,6 +388,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private stairsPrompt: Phaser.GameObjects.Text | null = null;
   private isTransitioning = false;
   private deathHandled = false;
+  /** Krok 169: run zakończony zwycięstwem (ekran ZWYCIĘSTWO zamiast POLEGŁEŚ). */
+  private victory = false;
 
   constructor() {
     super(SceneKey.Game);
@@ -416,6 +420,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stairsPrompt = null;
     this.isTransitioning = false;
     this.deathHandled = false;
+    this.victory = false;
     this.galleryEnemies = new Set();
     this.secretRoom = null;
     this.minimap = null;
@@ -1706,12 +1711,22 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return remainingMs > 0 ? { text: this.toast.text, remainingMs } : null;
   }
 
-  private handlePlayerDeath(): void {
+  /** Krok 169: zwycięstwo — ten sam przebieg co śmierć (wynik = złoto, tablica, R/C/M), ale ekran ZWYCIĘSTWO. */
+  private finishRunVictory(): void {
+    if (this.deathHandled) return;
+    this.isTransitioning = true;
+    for (const member of this.party.members) member.setVelocity(0, 0);
+    sound.play(SoundCue.Stairs);
+    this.handlePlayerDeath(true);
+  }
+
+  private handlePlayerDeath(victory = false): void {
     if (this.deathHandled) return;
     this.deathHandled = true;
     // Śmierć drużyny: muzyka cichnie (zabrzmiał już krzyk bohatera).
     sound.setMusic(null);
-    diag.note('player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
+    diag.note(victory ? 'run-victory' : 'player-death', { floor: this.floorNumber, gold: this.run.gold, hero: this.run.hero, bossFight: this.bossFight.isFighting });
+    this.victory = victory;
     // Śmierć kończy run — „Kontynuuj” znika (ręczne sloty zostają).
     if (this.checkpoint) this.saves.remove('auto');
 
@@ -1733,7 +1748,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           ? 'floorSelect'
           : null;
     if (unranked) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag() };
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
       this.awaitNewRun();
       return;
     }
@@ -1746,7 +1761,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
-    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag() };
+    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag(), ...this.victoryFlag() };
     const finish = (raw: string | null): void => {
       this.input.keyboard?.off('keydown', onKey);
       this.deathPad = null;
@@ -1775,6 +1790,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
   }
 
+  private victoryFlag(): { victory?: true } {
+    return this.victory ? { victory: true } : {};
+  }
+
   /** Znacznik tablicy aren na panelu śmierci (krok 91a). */
   private arenaFlag(): { arenas?: true; coop?: true } {
     return this.bossRush ? { arenas: true } : this.coop ? { coop: true } : {};
@@ -1784,7 +1803,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private recordDeath(entry: ScoreEntry): void {
     const highscores = this.bossRush ? this.arenaHighscores : this.coop ? this.coopHighscores : this.highscores;
     const { rank, board } = highscores.record(entry);
-    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag() };
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
     this.death = death;
     if (highscores.hasRemote) {
       this.death = { ...death, source: 'pending' };
@@ -1895,7 +1914,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const climber = this.party.living.find((hero) => isStairsTile(this.dungeon, DungeonView.worldToTile(hero.x, hero.y)));
     this.onStairs = this.stairsUnlocked && climber !== undefined;
     const waiting = this.party.members.some((hero) => hero.isDead);
-    this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : STAIRS_PROMPT).setVisible(this.onStairs);
+    this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG) ? STAIRS_PROMPT_FINAL : STAIRS_PROMPT).setVisible(this.onStairs);
     if (this.onStairs && climber && !waiting && interactPressed(climber)) {
       this.stairsPrompt?.setVisible(false);
       this.goToNextFloor();
@@ -1920,6 +1939,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private goToNextFloor(): void {
+    // Krok 169: po bossie ostatniego piętra kręgu schody kończą run zwycięstwem.
+    if (runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG)) {
+      this.finishRunVictory();
+      return;
+    }
     diag.note('stairs-up', { from: this.floorNumber });
     sound.play(SoundCue.Stairs);
     this.isTransitioning = true;

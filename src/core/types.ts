@@ -204,6 +204,8 @@ export interface DeathSummary {
   readonly coop?: boolean;
   /** Imię w trakcie wpisywania; null, gdy panel pokazuje już tablicę. */
   readonly nameEntry: string | null;
+  /** Krok 169: run skończony zwycięstwem (po bossie ostatniego piętra kręgu), nie śmiercią. */
+  readonly victory?: boolean;
 }
 
 export interface HudItem {

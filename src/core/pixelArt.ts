@@ -8,7 +8,7 @@ export interface PixelCell {
 export const GLYPH_WIDTH = 5;
 export const GLYPH_HEIGHT = 7;
 
-/** Litery w stylu automatów, 5×7 pikseli; „#” = piksel. Tylko znaki potrzebne w napisach (TOP DOWN, POLEGŁEŚ). */
+/** Litery w stylu automatów, 5×7 pikseli; „#” = piksel. Tylko znaki potrzebne w napisach (TOP DOWN, POLEGŁEŚ, ZWYCIĘSTWO). */
 export const PIXEL_GLYPHS: Readonly<Record<string, readonly string[]>> = {
   A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
   C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
@@ -24,12 +24,18 @@ export const PIXEL_GLYPHS: Readonly<Record<string, readonly string[]>> = {
   S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
   T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
   W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'],
+  // Krok 169: ZWYCIĘSTWO na ekranie końca runu.
+  I: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '#####'],
+  Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+  Z: ['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'],
   ' ': ['.....', '.....', '.....', '.....', '.....', '.....', '.....'],
 };
 
 /** Litery z akcentem nad znakiem: litera bazowa + piksele akcentu (ujemne y = nad linią liter). */
 export const PIXEL_ACCENTED: Readonly<Record<string, { readonly base: string; readonly accent: readonly PixelCell[] }>> = {
   Ś: { base: 'S', accent: [{ x: 3, y: -3 }, { x: 2, y: -2 }] },
+  // Ogonek pod literą (y ≥ 7 — pod linią liter).
+  Ę: { base: 'E', accent: [{ x: 3, y: 7 }, { x: 4, y: 8 }] },
 };
 
 export interface PixelText {

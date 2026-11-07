@@ -5657,6 +5657,36 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny właściciela:** zagraj `https://wvytz.github.io/topdown/?zoom=1.6` i `?heavy=1` (można razem: `?zoom=1.6&heavy=1`) — jeśli się spodobają, staną się domyślne.
 
+## Krok 168 — Stałe piętra i układ liniowy `#uwagi-testera` `#decyzja`
+
+**Decyzje właściciela (7.11):** „runy za długie” → **1a: stała liczba pokojów na piętro**; „layout bardziej linearny, ikonki pokojów” → **3a: ścieżka główna + 1–2 odnogi z nagrodą** (ikonki — krok 163).
+
+**Co powstało:**
+- **Stałe piętra:** `FLOOR_GROWTH` w `config/gameConfig.ts` (`maxSteps` 0) — mapa i liczba pokojów nie rosną już z piętrem (wcześniej do 12–14 pokojów od piętra 7). Każde piętro: arena + 5–7 pokojów. Trudność rośnie dalej statystykami.
+- **Układ liniowy:** `DungeonGeneratorConfig.linear` (`branches` 1–2). `connectLinear` w `dungeon/DungeonGenerator.ts` łączy pokoje łańcuchem najbliższych sąsiadów od startu do areny, a 1–2 pokoje wewnętrzne stają się ślepymi odnogami przyczepionymi do łańcucha (nigdy do areny). Pętle praktycznie znikają (średnio 0,01 na piętro).
+- **Nagroda w odnodze:** `isDeadEndRoom` w `dungeon/arenaGates.ts`; `ShrinePlanner` woli kapliczkę w ślepym pokoju, więc zboczenie z drogi się opłaca. Zasadzki i elity jak dotąd — ikonki na minimapie mówią, co gdzie jest.
+
+**Testy:** `DungeonGenerator.test.ts` (stała wielkość piętra zamiast wzrostu), `corridorLayout.test.ts` (mniej niż 1 pętla średnio, odnogi na ponad 60% pięter, kapliczka w odnodze).
+
+**Weryfikacja:** podgląd odkrytej minimapy na kilku seedach — prosta droga do areny i 1–2 odnogi.
+
+**Do oceny właściciela:** długość piętra i czy odnogi kuszą.
+
+## Krok 169 — Zwycięstwo po piętrze 7 `#uwagi-testera` `#decyzja`
+
+**Decyzja właściciela (7.11):** **1a + 2a** — run kończy się po 1. kręgu (Brudna Wiedźma na piętrze 7), 2. krąg będzie Aktem II.
+
+**Co powstało:**
+- `runEndsAfterFloor` w `systems/TowerLoop.ts`: schody z piętra 7 (i z każdego dalszego w trybie testowym `?floor=`) kończą run zwycięstwem; areny bossów bez zmian. Podpowiedź przy schodach: „[E] Zdobądź wieżę”.
+- **Ekran zwycięstwa:** ten sam ekran co po śmierci (top 3, miejsce, R/C/M), ale złoty tytuł „ZWYCIĘSTWO” i wynik „WIEŻA ZDOBYTA · X ZŁOTA” (`VICTORY_SCREEN` w `config/deathScreenConfig.ts`, `DeathScreen.setVictory`). Wynik = złoto, trafia na tablicę jak zwykle; `DeathSummary.victory` w diagnostyce.
+- Czcionka pikselowa: litery I, Y, Z i ogonek Ę (`core/pixelArt.ts`).
+
+**Testy:** `towerLoop.test.ts` (koniec runu), `pixelArt.test.ts`.
+
+**Weryfikacja:** `?hero=archer&floor=7&seed=4` + przejście schodami — złoty ekran „ZWYCIĘSTWO”.
+
+**Dalej:** finałowy boss wieży i Akt II (piekło z azteckimi torturami) — do zaprojektowania.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5824,4 +5854,6 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap B, krok 165: groźniejsze pułapki ruin (kolce 2× na wrogach, wróg naciska płytę strzałek).
 - [x] Etap B, krok 166: żywe otoczenie w ruinach, Lustrzanej komnacie i Bocianim Ogrodzie.
 - [x] Etap C, krok 167: Czarodziejka ukryta z wyboru, `?zoom=1.6`, `?heavy=1` — czekają na ocenę.
-- [ ] Etap C: stała liczba pokojów na piętro i układ ścieżka główna + 1–2 odnogi z nagrodą; finałowy boss po piętrze 7 = koniec runu, 2. krąg jako Akt II; 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
+- [x] Etap C, krok 168: stała liczba pokojów na piętro, ścieżka główna + 1–2 odnogi (kapliczka w odnodze).
+- [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
+- [ ] Etap C: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia).
