@@ -5721,6 +5721,22 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `cameraZoom.test.ts` (barbarzyńca używa `BARBARIAN_COMBAT`).
 
+## Krok 172 — Własny kursor w grze `#decyzja`
+
+**Zlecenie właściciela (7.11):** własny kursor zamiast systemowego, o ile nie zwiększy zużycia zasobów i nie doda błędów.
+
+**Co powstało:** nad płótnem gry (wersja PC) mysz pokazuje celownik z kości z krwawą kropką — ten sam styl co znacznik celowania przy bohaterze. Obrazki 32×32 i 64×64 (HiDPI) robi generator `tools/cursor_sprites.py` → `public/assets/cursor/`.
+
+**Decyzje:**
+- **Sam CSS** (`src/input/gameCursor.ts`, wywołanie w `main.ts`): przeglądarka rysuje kursor jak systemowy, więc gra nic nie liczy ani nie rysuje co klatkę — zero kosztu w pętli i brak opóźnienia kursora (rysowany w Phaserze zostawałby klatkę za myszą).
+- `!important` wygrywa z „rączką” Phasera nad przyciskami, więc w menu też jest nasz celownik. Gdy obrazek się nie wczyta, przeglądarka pokaże zwykły celownik (`crosshair`). Przeglądarka bez `image-set()` bierze wersję 32×32.
+- Styl wstrzykuje TS z `import.meta.env.BASE_URL` zamiast `<style>` w `index.html` — Vite nie umie przepisać `image-set()` w HTML (ostrzeżenie przy buildzie).
+- Telefon (`mobile.html`) bez zmian; okienka DOM (czat z autorem, ekran Safari) zostają przy kursorach systemu (pole tekstu potrzebuje kursora tekstowego).
+
+**Testy:** `tests/input/gameCursor.test.ts` (reguła tylko dla płótna, zapasowy celownik, obrazki istnieją).
+
+**Weryfikacja:** `npm run build`; w Chromium (`vite preview`) obliczony styl płótna to nasz `image-set` z gorącym punktem 16 16, obrazki ładują się (200), `mobile.html` ma kursor `auto`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
