@@ -9,6 +9,7 @@ import { HERO_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { LastHero } from '@/persistence/LastHero';
 import { cycleIndex, heroStatLine, initialIndex } from '@/systems/heroSelect';
+import { HERO_COLORS } from '@/systems/HeroColors';
 import { newRun } from '@/systems/RunState';
 import { RunMode } from '@/core/runMode';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
@@ -226,15 +227,16 @@ export class HeroSelectScene extends Phaser.Scene {
     this.refresh();
   }
 
-  /** Zaznaczona karta: złota ramka, jaśniejsze tło, postać idzie; pozostałe przygaszone i stoją. */
+  /** Zaznaczona karta: ramka i imię w barwie klasy (krok 181), jaśniejsze tło, postać idzie; pozostałe przygaszone i stoją. */
   private refresh(): void {
     this.cards.forEach((card, i) => {
       const active = i === this.selected;
       const sheet = HERO_VISUALS[card.hero].sheet;
-      card.frame.setFillStyle(active ? P.cardSelected : P.card).setStrokeStyle(L.card.borderWidth, active ? P.borderSelected : P.border);
+      const color = HERO_COLORS[card.hero];
+      card.frame.setFillStyle(active ? P.cardSelected : P.card).setStrokeStyle(L.card.borderWidth, active ? color.hex : P.border);
       card.sprite.play(animationKey(sheet, active ? HERO_VISUALS[card.hero].move : HERO_VISUALS[card.hero].idle, L.facing));
       card.sprite.setAlpha(active ? 1 : 0.6);
-      card.name.setColor(active ? P.name : P.nameDim);
+      card.name.setColor(active ? color.css : color.dimCss);
       card.stats.setColor(active ? P.input : P.textDim);
       for (const text of card.texts) text.setColor(active ? P.text : P.textDim);
     });

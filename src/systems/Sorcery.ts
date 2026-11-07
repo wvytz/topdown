@@ -158,6 +158,13 @@ export interface BeamTick {
   readonly active: boolean;
   /** Ile razy w tej klatce promień zadaje obrażenia (0 albo więcej przy długiej klatce). */
   readonly ticks: number;
+  /** Krok 181: postęp narastania 0..1 (czas świecenia / maxChannelMs). */
+  readonly charge: number;
+}
+
+/** Krok 181: mnożnik narastania Wyrwy — `max` do potęgi postępu (0 → ×1, 1 → ×max), czyli wzrost wykładniczy w czasie. */
+export function beamGrowth(charge: number, max: number): number {
+  return Math.pow(Math.max(1, max), Math.min(1, Math.max(0, charge)));
 }
 
 /**
@@ -184,13 +191,13 @@ export class BeamChannel {
       this.startedAt = now;
       this.nextTickAt = now;
     }
-    if (!this.channeling) return { active: false, ticks: 0 };
+    if (!this.channeling) return { active: false, ticks: 0, charge: 0 };
     let ticks = 0;
     while (this.nextTickAt <= now) {
       ticks++;
       this.nextTickAt += this.config.tickMs;
     }
-    return { active: true, ticks };
+    return { active: true, ticks, charge: Math.min(1, (now - this.startedAt) / this.config.maxChannelMs) };
   }
 
   /** Przerwanie z zewnątrz (dash, paraliż, śmierć): promień gaśnie i wchodzi blokada. */

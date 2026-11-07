@@ -8,6 +8,7 @@ import { BARBARIAN_SHOT_HOMING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { ITEM_DEFINITIONS, ITEM_EFFECTS, STAT_LIMITS } from '@/config/lootConfig';
+import { SORCERY_COLORS } from '@/config/heroColorConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ARCHER_ARROW_VISUAL, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { PlayerShotManager, ShotLook } from '@/combat/PlayerShotManager';
@@ -24,7 +25,7 @@ import type { MeleeSwing } from '@/systems/MeleeResolver';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { computeHeroLoadout } from '@/systems/PlayerLoadout';
 import type { BeamStrike, OrbSplash } from '@/systems/Sorcery';
-import { beamPulseStatus, beamReach, crystalPoint, isBeamPulse, splashDamage } from '@/systems/Sorcery';
+import { beamGrowth, beamPulseStatus, beamReach, crystalPoint, isBeamPulse, splashDamage } from '@/systems/Sorcery';
 import { Timer } from '@/systems/Timer';
 import type { AimTarget } from '@/systems/touchAim';
 import { applyRage } from '@/systems/Ultimate';
@@ -86,6 +87,8 @@ export class HeroCombat {
   private beamTicksDone = 0;
   /** Ostatni dash, który już zabrzmiał (krok 116). */
   private dashSoundFor = -1;
+  /** Teleport, po którym czekamy na błysk przybycia (krok 181); -1 = żaden. */
+  private blinkArrivalFor = -1;
   /** Krok 150: przemiany przedmiotów. */
   private readonly ramp = new AttackRamp();
   private rampStep = 0;
@@ -150,11 +153,20 @@ export class HeroCombat {
     if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.strong);
     if (turn.struck || turn.orb || turn.arrow) this.afterMainAttack(time);
     if (turn.volley) this.fireVolley(turn.volley);
-    this.updateBeam(turn.beam, turn.beamTicks, time);
+    this.updateBeam(turn.beam, turn.beamTicks, turn.beamCharge, time);
     sound.hold(LoopCue.Beam, player, turn.beam && !player.isDead);
     if (player.dashId !== this.dashSoundFor && player.isDashing(time)) {
       this.dashSoundFor = player.dashId;
       sound.play(SoundCue.Dash, player);
+      // Krok 181: teleport Czarodziejki — błysk w miejscu startu, drugi po przybyciu.
+      if (player.combatConfig.dash.blink) {
+        this.deps.effects.blink(player.x, player.y);
+        this.blinkArrivalFor = player.dashId;
+      }
+    }
+    if (this.blinkArrivalFor === player.dashId && !player.isDashing(time)) {
+      this.blinkArrivalFor = -1;
+      this.deps.effects.blink(player.x, player.y);
     }
     this.ultimates.update(time);
     this.resolveDashStrike(time);
@@ -378,8 +390,11 @@ export class HeroCombat {
     sound.play(SoundCue.Nova, center);
   }
 
-  /** Promień Czarodziejki: rysunek co klatkę, obrażenia w klatkach z tickiem; zatrzymuje się na ścianie. */
-  private updateBeam(active: boolean, ticks: number, now: number): void {
+  /**
+   * Promień Czarodziejki: rysunek co klatkę, obrażenia w klatkach z tickiem; zatrzymuje się na ścianie.
+   * Krok 181 — Wyrwa: obrażenia i szerokość rosną wykładniczo z czasem świecenia (`beamGrowth`).
+   */
+  private updateBeam(active: boolean, ticks: number, charge: number, now: number): void {
     const { player } = this.deps;
     const config = player.sorceryConfig?.beam;
     if (!active || !config) {
@@ -394,15 +409,17 @@ export class HeroCombat {
     const blocked = (p: Vector2): boolean => walls.getTileAtWorldXY(p.x, p.y)?.collides ?? false;
     const length = blocked(from) ? 0 : beamReach(from, angle, config.range, blocked);
     const to = { x: from.x + dir.x * length, y: from.y + dir.y * length };
-    this.drawBeam(from, to);
+    const halfWidth = config.halfWidth * beamGrowth(charge, config.growth.widthMultiplier);
+    const damage = Math.max(1, Math.round(config.damagePerTick * beamGrowth(charge, config.growth.damageMultiplier)));
+    this.drawBeam(from, to, halfWidth);
     for (let i = 0; i < ticks; i++) {
       // Krok 180: impuls niesie statusy przedmiotów, leczy kłem i liczy się jako atak główny (Rozpęd, Fala ostrza).
       const pulse = isBeamPulse(this.beamTicksDone++, config.pulseEveryTicks);
       const beam: BeamStrike = {
         from,
         to,
-        halfWidth: config.halfWidth,
-        damage: config.damagePerTick,
+        halfWidth,
+        damage,
         knockback: config.knockback,
         now,
         source: { x: player.x, y: player.y },
@@ -415,16 +432,24 @@ export class HeroCombat {
     }
   }
 
-  /** Promień w kolorach kryształu (pełne kolory, bez przezroczystości); rdzeń migocze tylko wizualnie. */
-  private drawBeam(from: Vector2, to: Vector2): void {
+  /**
+   * Wyrwa (krok 181) w fiolecie Czarodziejki: trzy warstwy grubości zależnej od `halfWidth` (rośnie z narastaniem),
+   * kula energii u kryształu i na końcu; jądro migocze tylko wizualnie (Math.random wolno).
+   */
+  private drawBeam(from: Vector2, to: Vector2, halfWidth: number): void {
     const gfx = this.beamGfx ?? (this.beamGfx = this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.slash));
-    const core = Math.random() < 0.5 ? 1 : 2;
+    const C = SORCERY_COLORS;
+    const outer = Math.max(3, Math.round(halfWidth * 2));
+    const mid = Math.max(2, Math.round(halfWidth * 1.25));
+    const core = Math.max(1, Math.round(halfWidth * 0.5)) + (Math.random() < 0.5 ? 0 : 1);
     gfx.clear();
-    gfx.lineStyle(5, 0x1d7f9c, 1).lineBetween(from.x, from.y, to.x, to.y);
-    gfx.lineStyle(3, 0x39c0d8, 1).lineBetween(from.x, from.y, to.x, to.y);
-    gfx.lineStyle(core, 0xe4fbfb, 1).lineBetween(from.x, from.y, to.x, to.y);
-    gfx.fillStyle(0x8ae6ef, 1).fillCircle(to.x, to.y, 3);
-    gfx.fillStyle(0xe4fbfb, 1).fillCircle(from.x, from.y, 2);
+    gfx.lineStyle(outer, C.deep, 1).lineBetween(from.x, from.y, to.x, to.y);
+    gfx.lineStyle(mid, C.base, 1).lineBetween(from.x, from.y, to.x, to.y);
+    gfx.lineStyle(core, C.core, 1).lineBetween(from.x, from.y, to.x, to.y);
+    gfx.fillStyle(C.base, 1).fillCircle(to.x, to.y, Math.max(3, halfWidth * 1.1));
+    gfx.fillStyle(C.light, 1).fillCircle(to.x, to.y, Math.max(2, halfWidth * 0.6));
+    gfx.fillStyle(C.base, 1).fillCircle(from.x, from.y, Math.max(2, halfWidth * 0.9));
+    gfx.fillStyle(C.core, 1).fillCircle(from.x, from.y, Math.max(1, halfWidth * 0.45));
   }
 
   /** Wampirzy kieł: leczenie za trafienie (raz na cios lub kulę), najwyżej raz na meleeHealCooldownMs. */

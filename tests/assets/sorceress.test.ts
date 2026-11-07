@@ -13,10 +13,10 @@ const PUBLIC = fileURLToPath(new URL('../../public/', import.meta.url));
 const PALETTE = new Set([
   '#1b1a22',
   '#282a3c', '#353b55', '#48516f', '#63708f',
-  '#1c1f5a', '#23378f', '#2d56b9', '#3d7bd3', '#7fb4ec',
+  '#24154f', '#3a1f7d', '#5530a8', '#7449c9', '#ad8be8', // krok 181: fiolet
   '#b9805e', '#e8b892',
   '#4a3020', '#5a3a22', '#5b3e27',
-  '#1d7f9c', '#39c0d8', '#8ae6ef', '#e4fbfb',
+  '#4a1f8c', '#8a4fe0', '#c79bff', '#f6eaff',
 ]);
 const RESERVED = ['#000000', '#ffffff', '#9cff57', '#d4a83a'];
 

@@ -1,3 +1,4 @@
+import { SORCERY_COLORS } from '@/config/heroColorConfig';
 import Phaser from 'phaser';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorLabel } from '@/systems/TowerLoop';
@@ -78,7 +79,7 @@ interface ItemSlot {
 function helpLine(sorceress: boolean): string {
   // Wersja mobilna (krok 96): przyciski są podpisane na ekranie, a linia pomocy zasłaniałaby gałkę ruchu.
   if (currentPlatform() === 'mobile') return '';
-  const attacks = sorceress ? 'LPM — kule energii · PPM — promień (przytrzymaj)' : 'LPM — atak · PPM — strzał';
+  const attacks = sorceress ? 'LPM — kule energii · PPM — Wyrwa (przytrzymaj, rośnie)' : 'LPM — atak · PPM — strzał';
   // Krok 98: R — ultimate.
   const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
   return `WASD — ruch · ${attacks} · R — ultimate · Spacja — dash · E — kapliczka, schody${devHelp}`;
@@ -480,7 +481,7 @@ export class HudScene extends Phaser.Scene {
   private drawBeam(beam: BeamHudData | null): void {
     if (!beam) return;
     this.bars.fillStyle(0x202030, 1).fillRect(BAR_X, BEAM_Y, BAR_WIDTH, BEAM_HEIGHT);
-    const color = beam.active ? 0xe4fbfb : beam.readiness >= 1 ? 0x39c0d8 : 0x1d7f9c;
+    const color = beam.active ? SORCERY_COLORS.core : beam.readiness >= 1 ? SORCERY_COLORS.base : SORCERY_COLORS.deep;
     this.bars.fillStyle(color, 1).fillRect(BAR_X, BEAM_Y, BAR_WIDTH * beam.readiness, BEAM_HEIGHT);
   }
 

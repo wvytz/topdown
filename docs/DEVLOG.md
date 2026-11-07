@@ -5862,6 +5862,20 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** siła promienia z przedmiotami, czy impuls co 0,6 s jest czytelny, wygląd kostura. Większe przeróbki umiejętności — najpierw propozycja.
 
+## Krok 181 — Wyrwa, teleport Czarodziejki i barwy klas `#decyzja` `#czarodziejka` `#balans`
+
+**Prośba właściciela (7.11):** PPM Czarodziejki jako potężna fala energii rosnąca wykładniczo (inspiracja: fale energii z anime), dash jako natychmiastowy teleport, dopasowane kolory; barwy podstawowych klas wg teorii kolorów i udziału w wyborach. Nazwa i wygląd własne, w lore postapo TOP DOWN.
+
+**Co powstało:**
+- **Wyrwa (PPM):** promień dalej spowalnia ją w marszu, ale przez 3 s obrażenia tyknięcia rosną ×1 → ×4, a szerokość ×1 → ×3, wykładniczo (`beamGrowth` = max^postęp, `BeamConfig.growth`). Start 6 na tick (30/s), koniec 24 (120/s); średnio ×2,16. Kula energii u kryształu i na końcu. Ostrze 0,5 → 0,34 premii (+1 na tyknięcie, bo też rośnie ×4). Dash i puszczenie przerywają narastanie.
+- **Teleport (dash):** 77 px w 70 ms (`dash.blink`): postać znika, fioletowy pierścień zapada się w miejscu startu i przybycia. To szybki ruch fizyczny, a nie przeskok, żeby nie przenikać murów; nietykalność jak w dashu, przedmioty dasha działają.
+- **Barwy klas** (`config/heroColorConfig.ts`, `systems/HeroColors.ts`): triada odcieni co 120° — bursztyn barbarzyńcy (38°), zieleń łucznika (158°), fiolet Czarodziejki (278°). Rola z reguły 60-30-10 wg udziału w tablicach wyników (7.11: barbarzyńca 15/29 = 52% → dominanta, przygaszona; Czarodziejka 34% → uzupełniająca; łucznik 14% → akcent, najbardziej nasycony). Na kartach wyboru ramka i imię w barwie klasy (co-op — imię). Liczniki do odświeżenia w `HERO_PICK_COUNTS`.
+- **Czarodziejka w fiolecie:** sukienka i kryształ (`tools/sorceress_sprites.py`), kula, rozprysk, fala, Supernowa, pasek promienia w HUD i kursor-kostur (`SORCERY_COLORS`).
+
+**Testy:** `tests/systems/heroColors.test.ts` (HSL, role 60-30-10, triada), `sorcery.test.ts` (wzrost wykładniczy, postęp w `BeamChannel`, teleport tylko u niej), paleta sprite'a w `tests/assets/sorceress.test.ts`. `npm run build` — 2771 testów; `npm run smoke -- --floors 2 --seeds 1` OK. Zrzuty: `/mnt/project-files/screens/krok181-wyrwa/`.
+
+**Czeka na ocenę właściciela:** siła Wyrwy na końcu (×4), czy teleport 77 px nie jest za krótki, barwy barbarzyńcy i łucznika na sprite'ach (na razie tylko karty — sprite barbarzyńcy jest od właściciela).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

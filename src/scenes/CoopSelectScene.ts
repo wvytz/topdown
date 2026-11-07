@@ -5,6 +5,7 @@ import type { CoopSelectData, FloorSceneData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { RunMode } from '@/core/runMode';
 import { HERO_DEFINITIONS, SELECTABLE_HEROES as HERO_ORDER } from '@/config/heroConfig';
+import { HERO_COLORS } from '@/systems/HeroColors';
 import { HERO_SELECT_LAYOUT as L, HERO_SELECT_PALETTE as P } from '@/config/heroSelectConfig';
 import { COOP_CONFIG, COOP_SELECT_TEXT as T } from '@/config/coopConfig';
 import { HERO_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
@@ -145,7 +146,8 @@ export class CoopSelectScene extends Phaser.Scene {
       card.frame.setFillStyle(seat ? P.cardSelected : P.card).setStrokeStyle(L.card.borderWidth, color);
       const visual = HERO_VISUALS[card.hero];
       card.sprite.play(animationKey(visual.sheet, seat ? visual.move : visual.idle, L.facing), true).setAlpha(seat ? 1 : 0.6);
-      card.name.setColor(seat ? P.name : P.nameDim);
+      // Krok 181: imię w barwie klasy (ramka zostaje w kolorze gracza P1/P2).
+      card.name.setColor(seat ? HERO_COLORS[card.hero].css : HERO_COLORS[card.hero].dimCss);
       card.tag.setText(seat ? `P${owner + 1}${seat.ready ? ` · ${T.ready}` : ''}` : '').setColor(SEAT_CSS[owner as 0 | 1] ?? P.text);
       for (const text of card.texts) text.setColor(seat ? P.text : P.textDim);
     });

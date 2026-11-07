@@ -86,7 +86,7 @@ export const TOUCH_BUTTONS = {
 /** Napisy na przyciskach; przyciski ataku zależą od broni bohatera. */
 export const TOUCH_LABELS = {
   attack: { melee: 'ATAK', sorcery: 'KULA', archery: 'ŁUK' },
-  shoot: { melee: 'STRZAŁ', sorcery: 'PROMIEŃ', archery: 'SALWA' },
+  shoot: { melee: 'STRZAŁ', sorcery: 'WYRWA', archery: 'SALWA' },
   dash: 'ZRYW',
   interact: 'E',
   ultimate: { melee: 'SZAŁ', sorcery: 'NOVA', archery: 'TOTEM' },
