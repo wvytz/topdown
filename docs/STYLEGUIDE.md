@@ -175,3 +175,86 @@ Reguły wizualne wyciągnięte z gotowych sprite'ów: **Trashcan Man**, **Blond 
 - [ ] Brak półprzezroczystości (poza cieniem lewitacji)
 - [ ] 4 klatki pętli, 6 fps; ataki w kolumnach 4–7, spawn na 7
 - [ ] Wpis w `sprites.json`
+
+## 13. Oprawa 2.0 (upgrade Aktu I, gałąź `upgrade-fable`)
+
+Sekcje 1–12 obowiązują dalej. Ta sekcja mówi, co do nich dochodzi i gdzie wolno od nich odejść. Plan etapów: `docs/UPGRADE.md`.
+
+### 13.1 Co zostaje bez zmian
+
+- Skala, siatka, pivot i 8 kierunków z obrotu (§1–2). Hitbox nie rośnie razem z grafiką.
+- Obrys 1 px `#1b1a22`, rampy z przesunięciem odcienia, zakaz czystej bieli i czerni (§3–4).
+- Sprite'y postaci i kafle mają piksele 0/255. Żaden efekt nie rozmywa ich krawędzi.
+- Zoom 2,0 i pole widzenia kamery.
+- Światło płynne, bez pasm i bez ditheringu (§6b).
+- Ekran startowy jest wzorcem estetyki: popiół, czerń i czerwień.
+
+### 13.2 Hierarchia
+
+**Czytelność walki > klimat > ozdoby.** Efekt, który zasłania wroga, pocisk albo telegraf, wypada albo schodzi pod nie. Sprawdzian: kadr z pełną nawałą (22 wrogów) — gracz ma w pół sekundy wskazać bohatera, najbliższy pocisk i najbliższy telegraf.
+
+### 13.3 Poziomy jakości
+
+- Trzy poziomy w „Dźwięk i obraz”: **Niska**, **Średnia**, **Wysoka**. Telefon startuje z automatu na niższym poziomie.
+- **Niska = wygląd sprzed upgradu.** To jest plan wycofania każdego efektu ekranowego, więc nic z §13.5–13.7 nie może być na „Niskiej” obowiązkowe.
+- Poziom jakości zmienia tylko obraz. Logika, hitboxy i czas gry są takie same na każdym poziomie.
+- Bez WebGL gra działa jak na „Niskiej”.
+
+### 13.4 Tryb „mniej błysków”
+
+Osobne ustawienie, niezależne od jakości: wyłącza drżenie kamery, błyski pełnoekranowe i zwolnienia czasu, a migotanie świateł zastępuje stałą jasnością. Każdy nowy efekt z tej grupy musi to ustawienie czytać.
+
+### 13.5 Efekty walki
+
+- **Nad mrokiem.** Wybuch, błysk trafienia i smuga ciosu rysują się nad warstwą mroku i mgły, tak jak ogień od kroku 144. Na posadzce pod mrokiem zostaje tylko ślad (oparzenie, krew, szlam).
+- **Kształt z pikseli.** Efekt to klatki z generatora albo figury z pełnych pikseli świata, ze skokową animacją. Rosnące, płynnie gasnące koło to placeholder, nie efekt docelowy.
+- **Kolor mówi, czyje to jest.** Efekty bohatera biorą barwę klasy (`heroColorConfig.ts`), zagrożenia wrogów zostają w czerwieni i barwie biomu. Biel tylko jako jedna klatka błysku.
+- **Błysk trafienia:** jedna klatka pełnej bieli na trafionym, u bohatera w barwie ostrzegawczej.
+- **Hitstop:** zatrzymuje wyłącznie obraz i tylko przy ciężkim ciosie, zabiciu elity i ostatnim ciosie w bossa. Nie może zmienić przebiegu nagrania wejść.
+- **Drżenie kamery:** krótkie, malejące, najwyżej kilka pikseli świata; kolejne wstrząsy się nie sumują.
+- **Pociski wrogów** są najjaśniejszą rzeczą wroga na ekranie (§9) i w tłumie dostają własne małe światło.
+
+### 13.6 Poświata i efekty ekranowe
+
+- Poświata (bloom, glow) tylko dla rzeczy, które naprawdę świecą: ogień, lawa, magia, ekrany, lampy, oczy, pociski. Nigdy dla całej postaci ani kafla.
+- Poświata jest dodatkiem do światła z §6b, nie jego zamiennikiem: bez niej scena ma być tak samo czytelna.
+- Winieta i odcień biomu zmieniają się płynnie. Limity przyciemnienia z §6b (30% na krawędziach, 20% tam, skąd atakuje wróg) obowiązują także po nałożeniu efektów.
+- Zakazane: rozmycie całego obrazu, aberracja chromatyczna na stałe, ziarno i linie skanowania.
+
+### 13.7 Światło 2.0
+
+- Źródłem światła może być pocisk, zaklęcie, wybuch, płonąca plama i element biomu. Każde ma barwę z rampy tego, co świeci.
+- Światło rozjaśnia mrok płynnie i gaśnie skokowo w rytmie animacji (§6b). Nie rysujemy kręgów z twardą krawędzią.
+- Światło Czarnego Słońca: jedno zimne, stałe światło z tej samej strony na każdym piętrze, mocniejsze im wyżej. Wzmacnia gradient ruiny, nie konkuruje z pochodniami.
+
+### 13.8 Kafle i biomy 2.0
+
+- Więcej wariantów tej samej płyty i cegły zamiast nowej palety: pęknięcia, wytarcia, ubytki, plamy. Powtarzalny wzór nie może być widoczny w kadrze.
+- Przejścia materiałów (dual-grid) są czysto wizualne i nie zmieniają kolizji.
+- Mury mają głębię: górną płaszczyznę, lico i cień kontaktowy α 0,4 (§6).
+- Poza pokojami nie ma jednolitej czerni: widać mur wieży, a przez wyrwy niebo. Im wyższe piętro, tym mniej wyrw i więcej śladów życia.
+- Reguły czytelności podłogi z §6a i walidator generatora obowiązują bez wyjątków.
+- Dekoracje dalej bez kolizji.
+
+### 13.9 Postacie 2.0
+
+- Nowe stany: bezruch (2–4 klatki), trafienie (1–2), śmierć (4–6), dash. Tempo 6 kl./s jak w §8; wyjątki tylko tam, gdzie rządzi czas logiki (§11).
+- Barwa klasy na sprite'cie to akcent (ok. 10% powierzchni: pas, peleryna, poświata broni), a nie przemalowanie postaci.
+- W co-opie drugi bohater tej samej klasy różni się akcentem, nie sylwetką.
+- Zaakceptowanych projektów postaci i bossów nie zmieniamy; dochodzą klatki i detal.
+
+### 13.10 Interfejs
+
+- Jeden pikselowy krój pisma z `core/pixelArt.ts` na wszystkich ekranach; czcionka systemowa znika z gry.
+- Elementy interfejsu w całkowitej skali pikseli, z tym samym obrysem i złotem co łupy (§6c).
+- HUD nie zasłania walki: stałe napisy pomocy pojawiają się tylko na początku runu.
+- Jeden wygląd na PC, padzie i telefonie; różni się tylko rozmiar i podpowiedzi przycisków.
+
+### 13.11 Checklista efektu
+
+- [ ] Działa i jest czytelny na „Niskiej” albo jest tam wyłączony bez straty informacji
+- [ ] Czyta ustawienie „mniej błysków”
+- [ ] Nie zasłania bohatera, pocisków ani telegrafów
+- [ ] Nie zmienia hitboxów, czasu logiki ani strumieni RNG gry
+- [ ] Parametry w `src/config/`
+- [ ] Zmierzony na telefonie przy pełnej nawale
