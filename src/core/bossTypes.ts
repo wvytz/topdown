@@ -440,6 +440,11 @@ export interface ArenaGratesDefinition {
   readonly rowEvery: number;
   readonly wallMargin: number;
   readonly doorClear: number;
+  /**
+   * Rekwizyty kotłowni (krok 182a, bez kolizji): ile kafli od wejścia trzymać wolne, ile kafli od środka paszczy
+   * pieca (sterty węgla obok, łańcuchy dalej) i co ile kafli wisi łańcuch na licu północnego muru.
+   */
+  readonly props?: { readonly entranceClear: number; readonly furnaceClear: number; readonly chainEvery: number; readonly tables: number; readonly coalHeaps: number };
 }
 
 /** Rząd rusztu w świecie (px): środki kafli i zestaw (0 albo 1). */

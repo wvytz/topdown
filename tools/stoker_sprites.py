@@ -15,6 +15,8 @@ stoker-grate.png (192x32, komórka 32): ruszt w posadzce areny — 0 tlenie, 1�
   3–5 płomienie nad prętami (pętla). Pręty poziome sięgają krawędzi, więc kafle łączą się w pas.
 stoker-coal.png (64x16, komórka 16): bryła żaru w locie, 4 klatki (iskra obiega bryłę).
 stoker-furnace.png (384x64, komórka 96x64): paszcza wielkiego pieca w północnym murze areny, 4 klatki migotania.
+stoker-props.png (256x48, komórka 64x48, krok 182a): 0–1 stoły do krojenia (tasak; hak i kości), 2 sterta węgla
+  z szuflą, 3 łańcuch z kajdanami na licu muru.
 Kolory: żelazo z kroku 41f, skóra i fartuch w okopconych brązach, żar palety „krwawy bazalt”.
 """
 import argparse
@@ -23,7 +25,7 @@ import os
 import sys
 
 import tower_ruins_tiles as trt
-from tower_ruins_tiles import Img, ok
+from tower_ruins_tiles import CLR as CLEAR, Img, ok
 from spider_sprites import band_shade, ellipse, stroke
 from lair_enemies import directional_sheet, validate
 
@@ -256,6 +258,86 @@ def furnace_frame(f):
     return img
 
 
+STAIN = HELL.stain
+BONE = HELL.bone
+
+
+def table_frame(variant):
+    """Stół do krojenia 64×48 z góry: grube deski, przednia krawędź w cieniu, plamy krwi, tasak (albo hak i kości)."""
+    img = Img(64, 48)
+    x0, x1, y0, y1 = 6, 58, 12, 34
+    for y in range(y0, y1 + 5):
+        for x in range(x0, x1 + 1):
+            if y > y1:  # przednia krawędź blatu (3/4)
+                img.put(x, y, LEATHER[0] if y == y1 + 4 else WOOD[0] if x % 13 else LEATHER[1])
+                continue
+            plank = (y - y0) // 6
+            seam = (y - y0) % 6 == 5
+            light = x == x0 or y == y0
+            img.put(x, y, WOOD[1] if light else (LEATHER[2] if seam else (WOOD[0] if (plank + x // 17) % 2 else LEATHER[3])))
+    # plamy krwi: nieregularne krople
+    for cx, cy, r in ((20 + variant * 14, 20, 5.5), (40 - variant * 12, 27, 3.5), (28, 16, 2.2)):
+        ellipse(img, cx, cy, r * 1.3, r, lambda nx, ny: STAIN[1] if nx * nx + ny * ny < .45 else STAIN[0])
+    if variant == 0:  # tasak: ostrze z żelaza, trzonek z drewna
+        for y in range(17, 25):
+            for x in range(40, 50):
+                img.put(x, y, IRON[4] if y == 17 else IRON[3] if x < 47 else IRON[2])
+        stroke(img, [(50, 21), (56, 21)], 2.4, LEATHER[0])
+    else:  # hak rzeźniczy i kości
+        stroke(img, [(42, 18), (48, 18), (50, 22), (47, 25)], 1.6, IRON[3])
+        for bx, by in ((16, 28), (22, 26)):
+            stroke(img, [(bx, by), (bx + 7, by - 3)], 2.2, BONE[1])
+            img.put(bx, by, BONE[2])
+            img.put(bx + 7, by - 3, BONE[2])
+    trt.outline(img, trt.OUT)
+    return img
+
+
+def coal_heap_frame(_f):
+    """Sterta węgla 64×48: kopiec brył w dwóch tonach, kilka tlących się żarem, szufla wbita z boku."""
+    img = Img(64, 48)
+    for i in range(159, -1, -1):
+        a = (i * 2.399) % (2 * math.pi)
+        r = math.sqrt(i / 160)
+        x = 32 + math.cos(a) * r * 24
+        y = 30 + math.sin(a) * r * 12 - (1 - r) * 8
+        ellipse(img, x, y, 3.4, 2.8, lambda nx, ny, r=r: IRON[2] if nx + ny < -.9 else (IRON[0] if nx + ny < -.1 and r < .7 else (COAL[1] if nx + ny < .5 else COAL[0])))
+    for i in (7, 23, 41, 66, 90):
+        a = (i * 2.399) % (2 * math.pi)
+        r = math.sqrt(i / 160)
+        img.put(int(32 + math.cos(a) * r * 24), int(30 + math.sin(a) * r * 12 - (1 - r) * 8), EMBER[1] if i % 2 else EMBER[2])
+    stroke(img, [(52, 30), (58, 12)], 2.4, WOOD[0], edge=WOOD[1])
+    for y in range(8, 13):
+        for x in range(55, 62):
+            img.put(x, y, IRON[3] if x < 59 else IRON[2])
+    trt.outline(img, trt.OUT)
+    return img
+
+
+def chain_frame(_f):
+    """Łańcuch z kajdanami na licu muru (64×48, rysunek 16 px szeroki pośrodku): kółko w murze, ogniwa, dwie obręcze."""
+    img = Img(64, 48)
+    cx = 32
+    ellipse(img, cx, 4, 3.2, 3.2, lambda nx, ny: IRON[4] if nx + ny < -.5 else (CLEAR if nx * nx + ny * ny < .3 else IRON[2]))
+    for side, end in ((-1, 34), (1, 30)):
+        for i, y in enumerate(range(7, end, 3)):
+            x = cx + side * (i * .55)
+            c = IRON[3] if i % 2 else IRON[1]
+            img.put(int(x), y, c)
+            img.put(int(x), y + 1, c)
+            img.put(int(x) + (1 if i % 2 else 0), y + 2, IRON[2])
+        # kajdany: obręcz z rdzawą plamą
+        ex = cx + side * ((end - 7) / 3 * .55)
+        ellipse(img, ex, end + 4, 4, 3.5, lambda nx, ny: CLEAR if nx * nx + ny * ny < .35 else (IRON[4] if ny < -.3 else IRON[2]))
+        img.put(int(ex + 1), end + 6, STAIN[1])
+    trt.outline(img, trt.OUT)
+    return img
+
+
+def props_frame(f):
+    return (lambda: table_frame(0), lambda: table_frame(1), lambda: coal_heap_frame(0), lambda: chain_frame(0))[f]()
+
+
 def strip(w, h, fn, cols):
     sheet = Img(w * cols, h)
     frames = []
@@ -274,6 +356,7 @@ def build():
         'stoker-grate.png': (*strip(32, 32, grate_frame, 6), 32, 0),
         'stoker-coal.png': (*strip(16, 16, coal_frame, 4), 16, 1),
         'stoker-furnace.png': (*strip(96, 64, furnace_frame, 4), 96, 0),
+        'stoker-props.png': (*strip(64, 48, props_frame, 4), 64, 0),
     }
 
 
