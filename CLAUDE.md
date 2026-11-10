@@ -28,6 +28,14 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
    - Commity tylko z adresem noreply `10197578+wvytz@users.noreply.github.com` (historia przepisana — właściciel nie chce, by jego e-mail był publiczny).
    - Gra dla testerów: https://wvytz.github.io/topdown/ (GitHub Pages z gałęzi `gh-pages`). Nową wersję wdraża `npm run deploy:pages` (build + nadpisanie `gh-pages`).
 
+## Upgrade Aktu I — gałąź `upgrade-fable` (decyzja właściciela 10.11.2026: „zostawiamy dwie wersje”)
+
+- `main` = gra dla testerów. `upgrade-fable` = upgrade Aktu I z podglądem pod `/topdown/upgrade/`. Plan i ustalenia: `docs/UPGRADE.md`; zasady nowej oprawy: `docs/STYLEGUIDE.md` §13.
+- Praca nad upgradem: gałąź robocza → PR do `upgrade-fable`, **nie do `main`**. Każdy etap zaczyna od scalenia `main` do `upgrade-fable`.
+- Kroki na gałęzi nazywają się „Krok U<etap><litera>” (np. „Krok U2a”); numery 185+ zostają dla `main`.
+- Podgląd: `npm run deploy:pages -- --subdir upgrade` **bez** `.env.production` (wyniki z podglądu nie mogą trafiać na wspólne tablice). Zasada „commit i push na `main` po każdym kroku” gałęzi nie dotyczy.
+- Scalenie do `main` tylko na wyraźne „tak” właściciela. Akt II poza zakresem.
+
 ## Decyzje projektowe właściciela
 
 - **Wynik runu = złoto w chwili śmierci.**

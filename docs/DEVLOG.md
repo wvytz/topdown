@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie`, `#zaduch` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#upgrade`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie`, `#zaduch` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5976,6 +5976,21 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 **Zrobione** (`tools/devourer_sprites.py`, `draw_mouth` i `fang`): paszcza większa (szerokość 7 + 1,4k, wysokość 1,6 + 1,9k). Z przedniej wargi wyrastają dwa długie kły, a z tylnej dwa krótsze; szpice sięgają w głąb gardzieli. Między kłami są krótsze kliny, a kąciki zostają wolne, żeby kły się odcinały. Głębię dają drugi, ciemniejszy pierścień zębów w środku i gardziel ciemniejąca stopniowo do czerni. Zamknięta paszcza też pokazuje kły na krzyż przez szczelinę.
 
 **Weryfikacja:** `npm run build` (2819 testów), podgląd arkusza i walka w przeglądarce (`/mnt/project-files/screens/krok184-pozeracz/5-kly-w-grze.png`, `6-kly-arkusz.png`).
+
+## Krok U1a — Plan upgradu Aktu I i STYLEGUIDE 2.0 `#decyzja` `#upgrade`
+
+**Decyzja właściciela (10.11.2026):** „Wdrażaj jako osobny branch. Zostawiamy dwie wersje.” Gra dla testerów zostaje na `main`, upgrade Aktu I powstaje na gałęzi `upgrade-fable` z własnym podglądem pod `/topdown/upgrade/`.
+
+**Co powstało (sam tekst, bez zmian w kodzie):**
+- `docs/UPGRADE.md` — dokument projektowy: dwie wersje gry, kierunek (pixel art + światło i efekty za przełącznikiem jakości), przyjęte ustalenia, etapy U0–U10, zabezpieczenia.
+- `docs/STYLEGUIDE.md` §13 „Oprawa 2.0” — co zostaje, poziomy jakości, tryb „mniej błysków”, efekty walki nad mrokiem, poświata tylko dla rzeczy świecących, światło 2.0, kafle, postacie, interfejs, checklista efektu.
+- `CLAUDE.md` — zasady pracy na gałęzi `upgrade-fable` i numeracja „Krok U…”.
+
+**Decyzje:** właściciel nie odpowiadał na pytania z audytu pojedynczo; zgodnie z jego zasadą „wybieraj rekomendowane ścieżki” obowiązują rekomendacje (tabela w `docs/UPGRADE.md` §3). Rozgrywkowe nowości (wydarzenia w pokojach, przeklęta skrzynia, przemiana Butów „Rozdeptanie”) wchodzą dopiero w U8 jako propozycje do oceny na podglądzie.
+
+**Numeracja:** kroki na gałęzi to „Krok U<etap><litera>”; numery 185+ zostają dla `main`.
+
+**Weryfikacja:** `npm run build`.
 
 ## Znane ograniczenia i backlog
 
