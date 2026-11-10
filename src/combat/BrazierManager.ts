@@ -13,6 +13,7 @@ import type { Player } from '@/entities/Player';
 import type { BrazierConfig, BrazierTiming } from '@/systems/Braziers';
 import { BrazierPhase, brazierCycleIndex, brazierDamage, brazierState, brazierTimingForFloor } from '@/systems/Braziers';
 import { knockbackFrom } from '@/systems/CombatMath';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface BrazierDeps {
   readonly scene: Phaser.Scene;
@@ -127,7 +128,7 @@ export class BrazierManager {
     if (phase === BrazierPhase.Burst) {
       const { outer, inner, alpha, innerScale } = BRAZIER_VISUAL.fire;
       // Migotanie skokowe w rytmie animacji (efekt czysto wizualny).
-      const flicker = Math.floor(now / 160) % 2 === 0 ? 0 : -3;
+      const flicker = screenFx.flicker && Math.floor(now / 160) % 2 !== 0 ? -3 : 0;
       brazier.fire.fillStyle(outer, alpha).fillCircle(brazier.at.x, brazier.at.y, burst.radius + flicker);
       brazier.fire.fillStyle(inner, alpha).fillCircle(brazier.at.x, brazier.at.y, burst.radius * innerScale + flicker);
     }

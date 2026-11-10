@@ -4,7 +4,7 @@
  * (bez obrażeń), a licznik `?perf=1` (`diagnostics/PerfMeter.ts`) mierzy odstępy klatek i pracę gry w klatce.
  * Do porównania ten sam pomiar w pustym pokoju startowym („spokój”).
  *
- * Użycie:   npm run perf -- [--floor 7] [--seconds 10] [--only pc-horde,phone-horde] [--cpu 4] [--out .perf]
+ * Użycie:   npm run perf -- [--floor 7] [--seconds 10] [--only pc-horde,phone-horde] [--cpu 4] [--out .perf] [--query gfx=low]
  * Wynik: tabela w konsoli i `<out>/perf-<data>.json`. Przeglądarka jak w smoke (SMOKE_CHROMIUM).
  * Uwaga: przeglądarka bez GPU (kontener, CI) rysuje programowo — liczby są do porównań przed/po, nie absolutne.
  */
@@ -19,6 +19,8 @@ const CPU = Number(argOf(args, 'cpu', 4));
 const OUT = resolve(argOf(args, 'out', '.perf'));
 const ONLY = argOf(args, 'only', null)?.split(',') ?? null;
 const PORT = Number(argOf(args, 'port', 5197));
+/** Krok U1: dopisek do adresu, np. `--query gfx=low` — pomiar konkretnego poziomu jakości. */
+const EXTRA_QUERY = argOf(args, 'query', null);
 
 const SCENARIOS = [
   { id: 'pc-calm', title: 'PC, spokój', hero: 'barbarian', horde: false },
@@ -69,7 +71,7 @@ async function measure(browser, base, scenario) {
     const cdp = await context.newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
   }
-  const query = `hero=${scenario.hero}&seed=7&floor=${FLOOR}&items=auto&perf=1${scenario.coop ? `&coop=${scenario.coop}` : ''}`;
+  const query = `hero=${scenario.hero}&seed=7&floor=${FLOOR}&items=auto&perf=1${scenario.coop ? `&coop=${scenario.coop}` : ''}${EXTRA_QUERY ? `&${EXTRA_QUERY}` : ''}`;
   await page.goto(`${base}${scenario.phone ? 'mobile.html' : ''}?${query}`);
   await waitForGame(page, 60000);
   await sleep(1500);

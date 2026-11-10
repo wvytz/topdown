@@ -12,6 +12,7 @@ import { facingDirection } from '@/systems/Facing';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { ARCHER_ARROW_VISUAL, SPRITE_SHEETS, ULTIMATE_VISUAL, animationKey } from '@/config/spriteConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
+import { screenFx } from '@/effects/ScreenFx';
 
 type Totem = Extract<UltimateConfig, { kind: 'totem' }>;
 
@@ -66,7 +67,7 @@ export class UltimateManager {
     const { player, effects, scene } = this.deps;
     diag.note('ultimate', { floor: this.deps.floorNumber, kind: ultimate.kind });
     effects.floatingText(player.x, player.y - player.radius - 10, `${ultimate.name}!`, ULTIMATE_VISUAL.text[ultimate.kind]);
-    scene.cameras.main.shake(ULTIMATE_VISUAL.shakeMs, ULTIMATE_VISUAL.shakeIntensity);
+    screenFx.shake(scene.cameras.main, ULTIMATE_VISUAL.shakeMs, ULTIMATE_VISUAL.shakeIntensity);
     sound.play(SoundCue.Ultimate, player);
     switch (ultimate.kind) {
       case 'rage':

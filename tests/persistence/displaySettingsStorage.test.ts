@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISPLAY_STORAGE_KEY } from '@/config/displayConfig';
+import { DISPLAY_CONFIG, DISPLAY_STORAGE_KEY } from '@/config/displayConfig';
 import { DisplaySettingsStorage } from '@/persistence/DisplaySettingsStorage';
 
 function memoryStorage() {
@@ -10,23 +10,23 @@ function memoryStorage() {
 describe('DisplaySettingsStorage (krok 118)', () => {
   it('zapamiętuje „Wypełnij okno” między sesjami', () => {
     const storage = memoryStorage();
-    new DisplaySettingsStorage(storage).save({ fillWindow: true });
-    expect(new DisplaySettingsStorage(storage).load()).toEqual({ fillWindow: true });
+    new DisplaySettingsStorage(storage).save({ ...DISPLAY_CONFIG.defaults, fillWindow: true });
+    expect(new DisplaySettingsStorage(storage).load()).toEqual({ ...DISPLAY_CONFIG.defaults, fillWindow: true });
   });
 
   it('zepsuty wpis i brak magazynu — domyślnie ostre piksele, ustawienie w pamięci', () => {
     const storage = memoryStorage();
     storage.setItem(DISPLAY_STORAGE_KEY, '{zepsute');
-    expect(new DisplaySettingsStorage(storage).load()).toEqual({ fillWindow: false });
+    expect(new DisplaySettingsStorage(storage).load()).toEqual(DISPLAY_CONFIG.defaults);
     const noStorage = new DisplaySettingsStorage(null);
-    noStorage.save({ fillWindow: true });
-    expect(noStorage.load()).toEqual({ fillWindow: true });
+    noStorage.save({ ...DISPLAY_CONFIG.defaults, fillWindow: true });
+    expect(noStorage.load()).toEqual({ ...DISPLAY_CONFIG.defaults, fillWindow: true });
   });
 
   it('zablokowany magazyn nie przerywa gry', () => {
     const throwing = { getItem: () => { throw new Error('blokada'); }, setItem: () => { throw new Error('blokada'); } };
     const storage = new DisplaySettingsStorage(throwing);
-    expect(() => storage.save({ fillWindow: true })).not.toThrow();
-    expect(storage.load()).toEqual({ fillWindow: true });
+    expect(() => storage.save({ ...DISPLAY_CONFIG.defaults, fillWindow: true })).not.toThrow();
+    expect(storage.load()).toEqual({ ...DISPLAY_CONFIG.defaults, fillWindow: true });
   });
 });

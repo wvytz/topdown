@@ -16,6 +16,8 @@ import { SPACE_CONFIRM_CONFIG } from '@/config/menuConfig';
 import { volumeLabel } from '@/systems/AudioSettings';
 import { DISPLAY_CONFIG, DISPLAY_TEXT } from '@/config/displayConfig';
 import { display } from '@/input/DisplayControls';
+import { RENDER_QUALITY_TEXT } from '@/config/renderQualityConfig';
+import { screenFx } from '@/effects/ScreenFx';
 import { PauseItem, PausePage, movePauseCursor, pageOf, pauseBack, pauseItems, slotOf } from '@/systems/pauseMenu';
 import type { PauseMenuOptions } from '@/systems/pauseMenu';
 import { ResumeCountdown } from '@/systems/ResumeCountdown';
@@ -231,6 +233,8 @@ export class PauseScene extends Phaser.Scene {
       case MenuCommand.Right:
         if (this.cursor === PauseItem.Music || this.cursor === PauseItem.Sfx) this.changeVolume(this.cursor, command === MenuCommand.Left ? -1 : 1);
         if (this.cursor === PauseItem.MusicPreset) this.changePreset(command === MenuCommand.Left ? -1 : 1);
+        if (this.cursor === PauseItem.Quality) this.changeQuality(command === MenuCommand.Left ? -1 : 1);
+        if (this.cursor === PauseItem.ReduceFlashes) this.toggleReduceFlashes();
         break;
       case MenuCommand.Confirm:
         if (this.cursor !== null) this.activate(this.cursor);
@@ -280,6 +284,12 @@ export class PauseScene extends Phaser.Scene {
         break;
       case PauseItem.MusicPreset:
         this.changePreset(1);
+        break;
+      case PauseItem.Quality:
+        this.changeQuality(1);
+        break;
+      case PauseItem.ReduceFlashes:
+        this.toggleReduceFlashes();
         break;
       case PauseItem.Fill:
       case PauseItem.Fullscreen:
@@ -348,7 +358,7 @@ export class PauseScene extends Phaser.Scene {
     const items = pauseItems(page, this.options);
     const firstY = page === PausePage.Controls || page === PausePage.Items ? L.controlsItemsY : L.itemsY;
     items.forEach((item, i) => {
-      const y = firstY + i * L.itemStep;
+      const y = firstY + i * (page === PausePage.Settings ? L.settingsItemStep : L.itemStep);
       const text = add(
         this.add
           .text(cx, y, '', { ...this.style, fontSize: `${slotOf(item) === null ? L.itemFontSize : L.slotFontSize}px` })
@@ -426,6 +436,12 @@ export class PauseScene extends Phaser.Scene {
         return AUDIO_TEXT.preset(MUSIC_PRESET_NAMES[settings.preset]);
       case PauseItem.Mute:
         return T.mute(settings.muted);
+      case PauseItem.Quality: {
+        const forced = screenFx.forcedQuality;
+        return forced ? RENDER_QUALITY_TEXT.forced(forced) : RENDER_QUALITY_TEXT.quality(display.settings.quality, screenFx.quality);
+      }
+      case PauseItem.ReduceFlashes:
+        return RENDER_QUALITY_TEXT.reduceFlashes(display.settings.reduceFlashes);
       case PauseItem.Fill:
         return DISPLAY_TEXT.fill(display.settings.fillWindow);
       case PauseItem.Fullscreen:
@@ -523,6 +539,17 @@ export class PauseScene extends Phaser.Scene {
     void display.toggleFullscreen().then((ok) => {
       if (!ok && this.scene.isActive()) this.status.setText(DISPLAY_TEXT.fullscreenFailed).setColor(COLORS.error);
     });
+  }
+
+  /** Krok U1: jakość obrazu — od razu (poświata), pyłki od następnego piętra; ekran odświeża `display.watch`. */
+  private changeQuality(step: 1 | -1): void {
+    sound.play(SoundCue.UiMove);
+    display.cycleQuality(step);
+  }
+
+  private toggleReduceFlashes(): void {
+    sound.play(SoundCue.UiMove);
+    display.toggleReduceFlashes();
   }
 
   /** Zmiana stylu muzyki (krok 139); ekran odświeża się przez `sound.watch`. */

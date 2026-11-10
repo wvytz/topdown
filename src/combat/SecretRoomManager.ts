@@ -22,6 +22,7 @@ import type { BeamStrike } from '@/systems/Sorcery';
 import { resolveBeam } from '@/systems/Sorcery';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { resolvePlayerShot } from '@/systems/ShotResolver';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface SecretRoomDeps {
   readonly scene: Phaser.Scene;
@@ -78,7 +79,7 @@ export class SecretRoomManager {
     });
     const center = DungeonView.tileToWorldCenter({ x: area.room.x + Math.floor(area.room.width / 2), y: area.room.y + Math.floor(area.room.height / 2) });
     this.deps.effects.impact(center.x, center.y, SECRET_ROOM_VISUAL.revealFlashRadius);
-    scene.cameras.main.shake(SECRET_ROOM_VISUAL.shakeMs, SECRET_ROOM_VISUAL.shakeIntensity);
+    screenFx.shake(scene.cameras.main, SECRET_ROOM_VISUAL.shakeMs, SECRET_ROOM_VISUAL.shakeIntensity);
     sound.play(SoundCue.Secret);
     this.deps.onRevealed();
   }

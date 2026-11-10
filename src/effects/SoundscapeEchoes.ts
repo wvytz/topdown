@@ -3,6 +3,7 @@ import { SOUNDSCAPE_ECHO, SoundscapeEcho } from '@/config/soundscapeConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import type { SoundscapePick } from '@/systems/Soundscape';
+import { screenFx } from '@/effects/ScreenFx';
 
 const GRAIN_TEXTURE = 'tex-soundscape-grain';
 
@@ -45,7 +46,7 @@ export class SoundscapeEchoes {
     switch (pick.echo) {
       case SoundscapeEcho.Quake: {
         const camera = this.scene.cameras.main;
-        if (!camera.shakeEffect.isRunning) camera.shake(SOUNDSCAPE_ECHO.quakeShakeMs, SOUNDSCAPE_ECHO.quakeIntensity);
+        screenFx.shake(camera, SOUNDSCAPE_ECHO.quakeShakeMs, SOUNDSCAPE_ECHO.quakeIntensity, { ifIdle: true });
         for (let i = 0; i < SOUNDSCAPE_ECHO.quakePlumes; i++) this.plume(this.ash, view.x + Math.random() * view.width, view.y + Math.random() * view.height * 0.7);
         break;
       }

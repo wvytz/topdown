@@ -33,6 +33,7 @@ import { resolvePlayerShot } from '@/systems/ShotResolver';
 import { crackRadiusFor, fallDamage, landingTile, TerracePlates, windDirection } from '@/systems/Terrace';
 import type { WetLane, WetPuddle } from '@/systems/WetFloor';
 import { isWet, liveLanes, planWetLane, rhythmDelay, shouldBossSlide, spillPuddle, sweepFront } from '@/systems/WetFloor';
+import { screenFx } from '@/effects/ScreenFx';
 
 const key = (t: TilePoint): string => `${t.x},${t.y}`;
 const center = (t: TilePoint): Vector2 => DungeonView.tileToWorldCenter(t);
@@ -350,7 +351,7 @@ export class ArenaConditionManager {
           this.sliding.delete(boss);
           boss.daze(slide.stunMs, now);
           this.deps.effects.impact(boss.x, boss.y, boss.radius * 1.6);
-          this.deps.scene.cameras.main.shake(140, 0.004);
+          screenFx.shake(this.deps.scene.cameras.main, 140, 0.004);
           sound.play(SoundCue.Impact, boss);
           this.say('bossSlip', boss, now);
         }
@@ -431,7 +432,7 @@ export class ArenaConditionManager {
     const order = collapseOrder(tiles, mid, collapse.rippleMs);
     const anchor = center(order[0]!.tile);
     this.say('collapse', anchor, now);
-    scene.cameras.main.shake(order.length * collapse.rippleMs + 200, 0.003);
+    screenFx.shake(scene.cameras.main, order.length * collapse.rippleMs + 200, 0.003);
     order.forEach(({ tile, delayMs }, i) => {
       scene.time.delayedCall(delayMs, () => {
         this.block(tile, false);
@@ -614,7 +615,7 @@ export class ArenaConditionManager {
       player.setAlpha(0.3);
       this.deps.scene.tweens.add({ targets: player, alpha: 1, duration: 400 });
     }
-    this.deps.scene.cameras.main.shake(120, 0.004);
+    screenFx.shake(this.deps.scene.cameras.main, 120, 0.004);
     this.say('fall', player, now);
   }
 

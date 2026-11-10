@@ -8,6 +8,7 @@ import type { SpriteSheetId } from '@/config/spriteConfig';
 import { currentPlatform } from '@/core/platform';
 import { FireBudget, RateGate, particleCount, shakeIntensity } from '@/systems/FireBurst';
 import { splashSpriteFor } from '@/systems/Sludge';
+import { screenFx } from '@/effects/ScreenFx';
 
 const DROPLET_TEXTURE = 'fx-sludge-droplet';
 const SPLASH_SHEETS: Readonly<Record<number, SpriteSheetId>> = { 32: 'sludgeSplash32', 64: 'sludgeSplash64', 96: 'sludgeSplash96', 112: 'sludgeSplash112' };
@@ -62,7 +63,7 @@ export class SludgeEffects {
     this.droplets.explode(particleCount(radius, droplets.perRadius, droplets.max, this.quality.particleScale), x, y);
     if (options.shake !== false) {
       const camera = this.scene.cameras.main;
-      if (!camera.shakeEffect.isRunning) camera.shake(shake.durationMs, shakeIntensity(radius, shake));
+      screenFx.shake(camera, shake.durationMs, shakeIntensity(radius, shake), { ifIdle: true });
     }
   }
 

@@ -6022,6 +6022,36 @@ Wnioski: logika i rysowanie w JS kosztują przy pełnej nawale ok. 1,6 ms na kla
 
 **Weryfikacja:** `npm run build`; `npm run shots` i `npm run perf` bez błędów strony; wdrożenie sprawdzone na atrapie repozytorium (podkatalogi `coop/` i `upgrade/` przetrwały zwykłe wdrożenie, w `upgrade/` brak adresu workera); wszystkie linki ze strony „Do oceny” uruchamiają grę; podgląd wdrożony pod `/topdown/upgrade/`.
 
+## Krok U1 — Fundament renderu: jakość obrazu i „mniej błysków” `#upgrade` `#wydajnosc`
+
+**Zakres (etap U1 z `docs/UPGRADE.md`):** jedno miejsce na efekty ekranowe, przełącznik jakości i „mniej błysków”, automat na telefonie, wydzielenie efektów z `GameScene.ts`. Warunek etapu: **„Niska” wygląda jak gra przed upgradem**.
+
+**Co powstało**
+- **Jakość obrazu** — czysta warstwa `systems/RenderQuality.ts` (typy w `core/displayTypes.ts`, liczby w `config/renderQualityConfig.ts`): wybór gracza (Automat / Niska / Średnia / Wysoka) + platforma + WebGL → poziom, a poziom + „mniej błysków” → profil efektów (`RenderProfile`: siła drżenia, błyski pełnoekranowe, migotanie świateł, grupy poświaty, mnożnik ozdobnych cząstek). Bez WebGL zawsze Niska. `?gfx=low|medium|high` wymusza poziom na sesję (do kadrów i pomiarów; w menu napis „wymuszona adresem”).
+- **Automat:** PC — Wysoka, telefon — **Niska**. Poświata to osobne przejście GPU na każdy świecący obiekt, a kontener bez GPU nie mówi, ile to kosztuje na telefonie (niżej). Telefon podniesiemy po pomiarze `?perf=1&gfx=medium` na prawdziwym urządzeniu — wystarczy zmienić `RENDER_QUALITY_CONFIG.auto.mobile`.
+- **Moduł efektów ekranowych** `effects/ScreenFx.ts` (obiekt `screenFx`): wszystkie drżenia kamery (22 miejsca: bossowie, walka, zasadzki, areny, ogień, szlam, ekran startowy…) i błysk pełnoekranowy zasadzki idą przez `screenFx.shake/flash`; „kolejne wstrząsy się nie sumują” to opcja `ifIdle`. Migotanie pochodni, ognia, palenisk i śladu Burzowego pędu czyta `screenFx.flicker`. Poświata `screenFx.glow(obiekt, grupa)` — preFX glow tylko na tym, co świeci (STYLEGUIDE §13.6), włącza się i gaśnie od razu po zmianie w pauzie. Tu dopisują się kolejne etapy (U2: hitstop, błysk trafienia; U3: światło).
+- **Co robią poziomy (U1):** Niska — jak przed upgradem (test pilnuje: bez poświaty, cząstki ×1, drżenie i błyski bez zmian). Średnia — poświata płomieni pochodni. Wysoka — także płomienie ognia walki i ×1,5 pyłków w powietrzu (liczba pyłków z chwili wejścia na piętro). Większe efekty przyjdą z U2–U3.
+- **„Mniej błysków”** (STYLEGUIDE §13.4), niezależne od jakości: zero drżenia kamery, bez błysku zasadzki i błysku uderzenia na ekranie startowym, pochodnie i ogień świecą stałą jasnością. Zwolnień czasu jeszcze w grze nie ma — hitstop z U2 musi czytać to samo ustawienie.
+- **Pauza → „Dźwięk i obraz”**: dwie nowe pozycje — „Jakość: AUTO (WYSOKA)” (← → i Enter przełączają w kółko) i „Mniej błysków: TAK/NIE”. Działają myszą, klawiaturą, padem i dotykiem; na telefonie są (w przeciwieństwie do „Wypełnij okno” i pełnego ekranu). Lista ma gęstszy odstęp (`settingsItemStep`), żeby 9 pozycji zmieściło się na PC. Ustawienia w tym samym kluczu `tower-crawler.display.v1` (nowe pola; stary zapis dostaje Automat i „nie”).
+- **Światło piętra wydzielone z `GameScene.ts`** do `effects/FloorLighting.ts` (mrok, pochodnie, pyłki, mgła, ukrywanie wrogów poza światłem) — scena tylko podaje odczyty (bohaterowie, paleniska, żywe otoczenie, ogień, wrogowie do ukrycia). `GameScene.ts` −30 linii.
+- **Usunięty próbny `?zoom=`** z kroku 167 (ustalenie 5: zoom zostaje 2,0); `flagFromSearch` (`?heavy=1`) zostaje.
+- Narzędzia: `npm run shots -- --query gfx=low` i `npm run perf -- --query gfx=high` — dopisek do adresu każdego kadru / scenariusza.
+
+**Pomiar (kontener bez GPU, piętro 4 — pochodnie i ogień; FPS ograniczone programowym rysowaniem)**
+
+| Scenariusz | Niska: FPS / praca gry p50 ms | Średnia | Wysoka |
+|---|---|---|---|
+| PC, pełna nawała | 20,9 / 2,3 | 22,2 / 2,7 | 17,1 / 2,7 |
+| Co-op, pełna nawała | 18,9 / 4,9 | 14,8 / 4,4 | 16,0 / 3,0 |
+| Telefon (CPU ×4), spokój | 21,4 / 8,3 | 14,6 / 10,1 | 14,9 / 10,3 |
+| Telefon (CPU ×4), pełna nawała | 15,5 / 12,2 | 12,6 / 10,9 | 14,5 / 10,1 |
+
+Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp klatek w kontenerze to programowe rysowanie — tam poświata wyraźnie kosztuje (telefon w spokoju 21 → 15 FPS), stąd telefon na Niskiej do pomiaru na urządzeniu. Na PC z GPU kilkanaście przejść glow to drobiazg, ale trzeba to potwierdzić licznikiem `?perf=1` na podglądzie (pozycja na stronie „Do oceny”).
+
+**Testy:** `tests/systems/renderQuality.test.ts` (Niska = przed upgradem, wyższy poziom nigdy uboższy, „mniej błysków” na każdym poziomie, automat i WebGL, `?gfx=`, zapis starego formatu), zaktualizowane `displaySettings`, `displaySettingsStorage`, `pauseMenu`, `cameraZoom`.
+
+**Weryfikacja:** `npm run build` (2845 testów); kadry `npm run shots`: U0 → U1 na Niskiej — te same 12 kadrów bez różnic poza ruchem wrogów; U1 Niska → Wysoka — poświata pochodni i ognia; zbliżenie pochodni na 3 poziomach i strona „Dźwięk i obraz” na PC i telefonie (`/mnt/project-files/screens/krokU1-fundament/`); `npm run perf` na trzech poziomach; `npm run smoke`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6037,7 +6067,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - Większe nagrody i trudność w kolejnych kręgach (endless loop), finałowy boss wieży — z Aktem II.
 
 **3. Do zrobienia — upgrade Aktu I** (`docs/UPGRADE.md`, gałąź `upgrade-fable`; przed każdym etapem i po nim `npm run shots` i `npm run perf`)
-- **U1 fundament renderu:** moduł efektów ekranowych, przełącznik jakości i „mniej błysków”, wydzielenie efektów z `GameScene.ts`; usunąć próbny `?zoom=1.6` (ustalenie 5).
+- **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — w U3 włączać ją tylko w kadrze (albo zastąpić wspólną warstwą światła).
 - **U2 feel walki:** wybuchy i trafienia nad mrokiem, jaskrawsza krew (uwaga po kroku 24), wyraźniejsze smagnięcie Matki Pająków, czytelne pociski w tłumie.
 - **U3 światło 2.0:** światło pocisków, magii i ognia; postFX z przełącznikiem jakości (po kroku 144).
 - **U4 kafle:** pilot ruin; ozdobna obwódka areny i przejścia materiałów (dual-grid — dotąd odłożone, teraz w zakresie).

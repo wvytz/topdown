@@ -3,6 +3,7 @@ import type { Vector2 } from '@/core/types';
 import { EVOLUTION_VISUAL } from '@/config/itemEvolutionConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import type { StormTrailPoint } from '@/systems/StormTrail';
+import { screenFx } from '@/effects/ScreenFx';
 
 /**
  * Wygląd przemian przedmiotów (krok 150): pioruny, kula Iskrownika, Krwawa tarcza, ślad burzy.
@@ -86,7 +87,7 @@ export class HeroEvolutionView {
     if (state.dead) return;
     if (state.trail.length > 0) {
       const { color, core, width } = EVOLUTION_VISUAL.stormTrail;
-      const flicker = Math.random() < 0.5 ? 1 : 0.6;
+      const flicker = screenFx.flicker && Math.random() >= 0.5 ? 0.6 : 1;
       for (let i = 1; i < state.trail.length; i++) {
         const a = state.trail[i - 1]?.at;
         const b = state.trail[i]?.at;

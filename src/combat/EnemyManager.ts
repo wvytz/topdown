@@ -53,6 +53,7 @@ import type { DeathEcho } from '@/systems/StatusEffects';
 import { drawBurstRing } from '@/effects/EvolutionEffects';
 import { EVOLUTION_VISUAL } from '@/config/itemEvolutionConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface EnemyManagerDeps {
   readonly scene: Phaser.Scene;
@@ -494,7 +495,7 @@ export class EnemyManager implements EnemyAttackHandler {
     const { shakeMs, shakeIntensity, impactRadius, text, textColor } = SHIELD_CHARGE_VISUAL;
     effects.impact(enemy.x, enemy.y, impactRadius);
     sound.play(SoundCue.Impact, enemy);
-    scene.cameras.main.shake(shakeMs, shakeIntensity);
+    screenFx.shake(scene.cameras.main, shakeMs, shakeIntensity);
     effects.floatingText(enemy.x, enemy.y, text, textColor);
   }
 

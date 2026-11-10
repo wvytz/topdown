@@ -11,6 +11,7 @@ import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Enemy } from '@/entities/Enemy';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface ArenaGatesDeps {
   readonly scene: Phaser.Scene;
@@ -72,7 +73,7 @@ export class ArenaGates {
       const center = DungeonView.tileToWorldCenter(gate);
       effects.impact(center.x, center.y, TILE_SIZE * 0.6);
     }
-    scene.cameras.main.shake(ARENA_GATES.shakeDurationMs, ARENA_GATES.shakeIntensity);
+    screenFx.shake(scene.cameras.main, ARENA_GATES.shakeDurationMs, ARENA_GATES.shakeIntensity);
     sound.play(SoundCue.GatesSlam);
     onSealed();
   }

@@ -12,6 +12,7 @@ import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Party } from '@/entities/Party';
 import type { WallDogConfig } from '@/systems/WallDogs';
 import { WallDogPhase, WallDogState } from '@/systems/WallDogs';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface WallDogDeps {
   readonly scene: Phaser.Scene;
@@ -63,7 +64,7 @@ export class WallDogManager {
       const before = state.phase;
       const burst = state.update(at, target, now);
       if (before === WallDogPhase.Dormant && state.phase === WallDogPhase.Cracking) {
-        scene.cameras.main.shake(config.crackMs, WALL_DOG_VISUAL.shake);
+        screenFx.shake(scene.cameras.main, config.crackMs, WALL_DOG_VISUAL.shake);
         effects.floatingText(at.x, at.y - 22, WALL_DOG_VISUAL.warnText, WALL_DOG_VISUAL.warnColor);
       }
       if (state.phase === WallDogPhase.Cracking) {
@@ -82,7 +83,7 @@ export class WallDogManager {
         effects.deathBurst(at.x, at.y, WALL_DOG_VISUAL.rubbleColor, 18);
         sound.play(SoundCue.Break, at);
         sound.play(SoundCue.Impact, at);
-        scene.cameras.main.shake(WALL_DOG_VISUAL.burstShake.durationMs, WALL_DOG_VISUAL.burstShake.intensity);
+        screenFx.shake(scene.cameras.main, WALL_DOG_VISUAL.burstShake.durationMs, WALL_DOG_VISUAL.burstShake.intensity);
         this.deps.spawnDog(DungeonView.tileToWorldCenter(entry.spot.floorTile));
       }
     }

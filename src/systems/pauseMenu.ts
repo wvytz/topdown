@@ -31,13 +31,17 @@ export enum PauseItem {
   MusicPreset = 'musicPreset',
   Sfx = 'sfx',
   Mute = 'mute',
+  /** Krok U1: jakość obrazu (Automat / Niska / Średnia / Wysoka) — także na telefonie. */
+  Quality = 'quality',
+  /** Krok U1: „mniej błysków” (STYLEGUIDE §13.4). */
+  ReduceFlashes = 'reduceFlashes',
   Fill = 'fill',
   Fullscreen = 'fullscreen',
   Back = 'back',
 }
 
 /**
- * Co jest dostępne w tej chwili: zapis (nie przy odtwarzaniu nagrania), ustawienia obrazu (tylko PC)
+ * Co jest dostępne w tej chwili: zapis (nie przy odtwarzaniu nagrania), wielkość obrazu (tylko PC; jakość i „mniej błysków” — wszędzie)
  * i czat z autorem (krok 133; tylko gdy gra zna adres workera).
  */
 export interface PauseMenuOptions {
@@ -68,6 +72,8 @@ export function pauseItems(page: PausePage, options: PauseMenuOptions): readonly
         PauseItem.Music,
         PauseItem.Sfx,
         PauseItem.Mute,
+        PauseItem.Quality,
+        PauseItem.ReduceFlashes,
         ...(options.display ? [PauseItem.Fill, PauseItem.Fullscreen] : []),
         PauseItem.Back,
       ];

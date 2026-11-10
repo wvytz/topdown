@@ -4,6 +4,7 @@
  *
  * Użycie:   npm run shots -- [--label przed] [--out .shots] [--before .shots/przed] [--only boss-4,phone]
  *           --before <katalog>: arkusz porównawczy — każdy kadr obok kadru z tego katalogu (przed | po).
+ *           --query gfx=low: dopisek do adresu każdego kadru (krok U1: porównanie poziomów jakości).
  * Przeglądarka jak w smoke: Chrome albo SMOKE_CHROMIUM=<ścieżka>. Wymaga trybu dev (`window.__game`).
  * Seedy i miejsca są stałe; ruch wrogów i efekty wizualne (`Math.random`) różnią się między przebiegami.
  */
@@ -18,6 +19,7 @@ const BEFORE = argOf(args, 'before', null);
 const ONLY = argOf(args, 'only', null)?.split(',') ?? null;
 const PORT = Number(argOf(args, 'port', 5198));
 const SEED = 7;
+const EXTRA_QUERY = argOf(args, 'query', null);
 
 /** Lista kadrów — stała, żeby arkusze z kolejnych etapów dało się położyć obok siebie. */
 const FRAMES = [
@@ -42,7 +44,7 @@ async function capture(browser, base, frame) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
-  const query = `hero=${frame.hero}&seed=${SEED}&floor=${frame.floor}${frame.boss ? '&boss=1' : ''}${frame.hud ? '' : '&items=0'}`;
+  const query = `hero=${frame.hero}&seed=${SEED}&floor=${frame.floor}${frame.boss ? '&boss=1' : ''}${frame.hud ? '' : '&items=0'}${EXTRA_QUERY ? `&${EXTRA_QUERY}` : ''}`;
   await page.goto(`${base}${frame.phone ? 'mobile.html' : ''}?${query}`);
   await waitForGame(page);
   await sleep(800);

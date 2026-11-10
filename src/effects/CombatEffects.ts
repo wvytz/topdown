@@ -7,6 +7,7 @@ import { FireEffects } from '@/effects/FireEffects';
 import { SludgeEffects } from '@/effects/SludgeEffects';
 import { exposedArcs } from '@/systems/AreaOutline';
 import type { OutlineCircle } from '@/systems/AreaOutline';
+import { screenFx } from '@/effects/ScreenFx';
 
 /** Wygląd wybuchu: domyślny ogień (`BLAST_VISUAL`) albo inna paleta o tym samym układzie (zarodniki, krok 111). */
 type BlastVisual = {
@@ -154,6 +155,6 @@ export class CombatEffects {
   }
 
   playerHit(): void {
-    this.scene.cameras.main.shake(100, 0.004);
+    screenFx.shake(this.scene.cameras.main, 100, 0.004);
   }
 }

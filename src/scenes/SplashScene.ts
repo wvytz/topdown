@@ -27,6 +27,7 @@ import { stepParticle } from '@/systems/deathScreen';
 import { BOOT_START_DATA_KEY, heroParam, startFirstFloor } from '@/scenes/BootScene';
 import type { MenuSceneData } from '@/scenes/MenuScene';
 import { bindPadMenu } from '@/input/PadMenuInput';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface SplashSceneData {
   /** Powrót do menu z gry (krok 91): bez intra i bez ładowania — od razu ostatnia klatka i menu. */
@@ -194,7 +195,8 @@ export class SplashScene extends Phaser.Scene {
 
   private drawFrame(f: SplashFrame): void {
     this.blackout.setAlpha(f.blackout);
-    this.flash.setAlpha(f.flashAlpha);
+    // Krok U1: „mniej błysków” gasi błysk uderzenia (STYLEGUIDE §13.4).
+    this.flash.setAlpha(screenFx.profile.screenFlash ? f.flashAlpha : 0);
     // Korona i poświata lekko pulsują jak dogasający żar (efekt czysto wizualny).
     const ember = 0.88 + 0.12 * Math.sin(this.elapsed / 420);
     this.corona.setAlpha(f.coronaAlpha * ember);
@@ -216,7 +218,7 @@ export class SplashScene extends Phaser.Scene {
     const next = impacts[this.impactsDone];
     if (next !== undefined && this.elapsed >= next) {
       const i = this.impactsDone++;
-      this.cameras.main.shake(SPLASH_TIMING.shakeDuration[i] ?? 0, SPLASH_TIMING.shakeIntensity[i] ?? 0, true);
+      screenFx.shake(this.cameras.main, SPLASH_TIMING.shakeDuration[i] ?? 0, SPLASH_TIMING.shakeIntensity[i] ?? 0, { force: true });
       for (let k = 0; k < (L.debris.perImpact[i] ?? 0); k++) this.spawnStone();
       if (i === impacts.length - 1) this.spawnDust();
       this.nextDribbleAt = this.elapsed + L.debris.dribbleMs;
