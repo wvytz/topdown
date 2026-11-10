@@ -6050,7 +6050,7 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Testy:** `tests/systems/renderQuality.test.ts` (Niska = przed upgradem, wyższy poziom nigdy uboższy, „mniej błysków” na każdym poziomie, automat i WebGL, `?gfx=`, zapis starego formatu), zaktualizowane `displaySettings`, `displaySettingsStorage`, `pauseMenu`, `cameraZoom`.
 
-**Weryfikacja:** `npm run build` (2845 testów); kadry `npm run shots`: U0 → U1 na Niskiej — te same 12 kadrów bez różnic poza ruchem wrogów; U1 Niska → Wysoka — poświata pochodni i ognia; zbliżenie pochodni na 3 poziomach i strona „Dźwięk i obraz” na PC i telefonie (`/mnt/project-files/screens/krokU1-fundament/`); `npm run perf` na trzech poziomach; `npm run smoke`.
+**Weryfikacja:** `npm run build` (2845 testów); kadry `npm run shots`: U0 → U1 na Niskiej — te same 12 kadrów bez różnic poza ruchem wrogów; U1 Niska → Wysoka — poświata pochodni i ognia; zbliżenie pochodni na 3 poziomach i strona „Dźwięk i obraz” na PC i telefonie (`/mnt/project-files/screens/krokU1-fundament/`); `npm run perf` na trzech poziomach; `npm run smoke` — wszyscy bohaterowie dochodzą do piętra 7. Domyślne `--floors` w smoke zmienione z 8 na 6: od kroku 169 run kończy się po piętrze 7, więc próba wejścia na 8 zawsze kończyła się „błędem”. Jedno zacięcie Czarodziejki na piętrze 5 w pełnym przebiegu nie powtórzyło się w osobnym przebiegu (ani na U0, ani na U1).
 
 ## Znane ograniczenia i backlog
 
