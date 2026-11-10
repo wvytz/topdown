@@ -1347,12 +1347,13 @@ export const SPRITE_SHEETS = {
   },
   // Grzybowy Pożeracz (krok 39, tools/devourer_sprites.py, wygląd z paczki właściciela): 96×96, 8 kierunków;
   // 0–3 szuranie, 4–7 pożarcie (kłapnięcie w 6), 8–11 karmienie kokonem (leczenie w 11), 12–15 zamach łapami.
+  // Krok 184: kula zlepiona z ciał z kończynami i paszczą; 24–27 chwyt kończynami.
   fungalDevourer: {
     key: 'sheet-fungal-devourer',
     url: 'assets/sprites/fungal-devourer.png',
     frameWidth: 96,
     frameHeight: 96,
-    sheetWidth: 2304,
+    sheetWidth: 2688,
     sheetHeight: 768,
     directions: 8,
     fps: SPRITE_FPS,
@@ -1370,6 +1371,23 @@ export const SPRITE_SHEETS = {
       spit: { frames: [16, 17, 18, 19], loop: false },
       // Skok (krok 111): przysiad, głęboki przysiad, wybicie; lot trzyma ostatnią klatkę do lądowania.
       leap: { frames: [20, 21, 22, 23], loop: false },
+      // Chwyt kończynami (krok 184): zamach, wyrzut rąk, chwyt, wciągnięcie do paszczy.
+      grab: { frames: [24, 25, 26, 27], loop: false },
+    },
+  },
+  // Ręka chwytu Pożeracza w locie (krok 184): 24×24, dłoń na północ; 0–1 otwarta, 2–3 zaciśnięta.
+  devourerHand: {
+    key: 'sheet-devourer-hand',
+    url: 'assets/sprites/devourer-hand.png',
+    frameWidth: 24,
+    frameHeight: 24,
+    sheetWidth: 96,
+    sheetHeight: 24,
+    directions: 1,
+    fps: 10,
+    animations: {
+      reach: { frames: [0, 1], loop: true },
+      grip: { frames: [2, 3], loop: true },
     },
   },
   // Płat grzybów ze śladu Pożeracza (krok 111, tools/devourer_sprites.py): 48×48; 0–5 rozrost (promień 6→18 px
@@ -2026,6 +2044,7 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Call]: 'roar',
       [BossAttackKind.SporeVolley]: 'spit',
       [BossAttackKind.Leap]: 'leap',
+      [BossAttackKind.Hook]: 'grab',
     },
     deathDecal: 'splat',
   },
@@ -2462,9 +2481,21 @@ export const BOSS_PATCH_VISUALS = {
  */
 export const DEVOURER_FX_VISUAL = {
   pod: { sheet: 'sporePod', animation: 'fly', arcHeight: 56 },
+  /** Chwyt kończynami (krok 184): ręka leci prosto, za nią ramię (`arm` — skóra, `armOutline`, grubość w px). */
+  hand: { sheet: 'devourerHand', animation: 'reach', arcHeight: 0 },
+  grip: { sheet: 'devourerHand', animation: 'grip', arcHeight: 0 },
+  arm: { color: 0xb7bcc6, outline: 0x1b1a22, width: 3 },
   /** Zarodniki z grzbietu: co `everyMs` jedna kropka soku unosi się o `rise` px i gaśnie. */
   motes: { everyMs: 140, enragedEveryMs: 70, spread: 22, rise: 26, lifeMs: 900, colors: [0x5fe0d0, 0x9ef2e6, 0x2f9a94] },
-} as const satisfies { readonly pod: { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number }; readonly motes: unknown };
+} as const satisfies {
+  readonly pod: ThrownVisual;
+  readonly hand: ThrownVisual;
+  readonly grip: ThrownVisual;
+  readonly arm: { readonly color: number; readonly outline: number; readonly width: number };
+  readonly motes: unknown;
+};
+
+type ThrownVisual = { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number };
 
 /**
  * Brudna Wiedźma w walce (krok 137): bocian i ptak lecą prosto (bez łuku, bocian obrócony w kierunku lotu), nasiono

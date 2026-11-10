@@ -5,6 +5,7 @@ import type { MovementIntent, Vector2 } from '@/core/types';
 import { directionTo, distance } from '@/systems/CombatMath';
 import { planBossAttack, planFeast } from '@/ai/bossAttacks';
 import { AttackPattern } from '@/ai/attackPattern';
+import { lurchAt, swayDirection } from '@/systems/BossLurch';
 
 export interface BossBrainInput {
   readonly self: Vector2;
@@ -156,7 +157,7 @@ export class BossBrain {
         this.nextAttackAt = Math.max(this.nextAttackAt, plan.endsAt);
         return stand(plan);
       }
-      return { move: directionTo(input.self, larder), speed: this.speedFor(distance(input.self, larder)), newAttack: null, enraged };
+      return this.walk(directionTo(input.self, larder), distance(input.self, larder), input.now, enraged);
     }
 
     // Smagnięcie poza wzorem: gracz w zasięgu nóg i minął odstęp. Atak ze wzoru czeka do końca smagnięcia.
@@ -181,7 +182,16 @@ export class BossBrain {
     }
 
     if (gap <= this.definition.engageDistance) return stand(null);
-    return { move: directionTo(input.self, input.target), speed: this.speedFor(gap), newAttack: null, enraged };
+    return this.walk(directionTo(input.self, input.target), gap, input.now, enraged);
+  }
+
+  /** Ruch między atakami; szarpany chód (krok 184) dodaje zrywy, zamarcia i chwianie kierunku. */
+  private walk(dir: MovementIntent, gap: number, now: number, enraged: boolean): BossDecision {
+    const speed = this.speedFor(gap);
+    const lurch = this.definition.lurch;
+    if (!lurch) return { move: dir, speed, newAttack: null, enraged };
+    const state = lurchAt(lurch, now);
+    return { move: swayDirection(dir, state.swayRad), speed: speed * state.speedMultiplier, newAttack: null, enraged };
   }
 
   private trackTarget(target: Vector2, now: number): void {

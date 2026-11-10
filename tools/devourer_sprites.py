@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generator bossa Cmentarzyska „Grzybowy Pożeracz” (krok 39) — wygląd z paczki właściciela
+"""Generator bossa Cmentarzyska „Grzybowy Pożeracz” (krok 39; od kroku 184 kula z ciał) — wygląd z paczki właściciela
 (grzybowy-pozeracz.zip, generator fungal_sprites.py), dopasowany do naszego uniwersum:
 
 - palety z Cmentarzyska i Grzybni zamiast własnych: kapelusze z rampy kapelusza siewcy (ten sam grzyb, który
@@ -22,7 +22,8 @@ Arkusze:
   fungal-devourer.png   96×96 · pivot 48,48, wiersze 8 kierunków N…NW;
                         0–3 szuranie (pętla), 4–7 pożarcie (telegraf, wypad, kłapnięcie, przeżuwanie),
                         8–11 karmienie kokonem (leczenie w kolumnie 11), 12–15 zamach łapami (uderzenie w 15),
-                        16–19 wyrzut zarodników (krok 111; strąk w paszczy w 18), 20–23 skok (przysiad, wybicie, lot)
+                        16–19 wyrzut zarodników (krok 111; strąk w paszczy w 18), 20–23 skok (przysiad, wybicie, lot),
+                        24–27 chwyt kończynami (krok 184)
   devourer-cocoon.png   48×48, wiersze = 3 warianty (twarz, dłoń, skulone ciało);
                         0–3 oddech, 4–7 zjedzenie (7 zostaje), 8–9 drżenie (zew), 10–13 rozdarcie (wychodzi zarażony)
   fungal-throne.png     96×96, tron z grzybni, oparcie na północy (dekoracja areny bez kolizji)
@@ -31,6 +32,11 @@ Arkusze:
   mushroom-trail.png    48×48 (krok 111): płat grzybów ze śladu; 0–5 rozrost (promień 6→18 px = hitbox płatu),
                         6–7 puls soku, 8–9 więdnięcie
   spore-pod.png         24×24 (krok 111): strąk zarodników w locie, 4 klatki pulsu
+  devourer-hand.png     24×24 (krok 184): ręka chwytu w locie; 0–1 otwarta, 2–3 zaciśnięta
+
+Krok 184 (`#pozeracz`): Pożeracz to kula zlepiona z ciał zjedzonych (stylizacja geometryczna: blade tułowie,
+głowy-kółka, kończyny-kapsuły), spleciona grzybnią, z paszczą z przodu; kolumny 24–27 to chwyt kończynami
+(zamach, wyrzut rąk, chwyt, wciągnięcie do paszczy).
 """
 import argparse
 import math
@@ -256,282 +262,254 @@ def finish(body, fx, size):
 
 # ---------------------------------------------------------------- boss
 
-CAPS = [  # (x, y, r) kapelusze na grzbiecie, od małych do dużych
-    (44, 37, 2), (55, 31, 3.5), (41, 65, 4), (54, 66, 4.5), (36, 53, 5), (60, 52, 6), (48, 57, 9),
+# Krok 184 (`#pozeracz`, prośba właściciela): Pożeracz to kula zlepiona z ciał zjedzonych, spleciona grzybnią.
+# Stylizacja geometryczna bez dosłownej makabry: blade tułowie i głowy (kółka, zamknięte oczy-kreski),
+# kończyny jako kapsuły z dłońmi, jedna wielka paszcza z zębami-kośćmi z przodu (północ). Grzybnia i kapelusze
+# zostają z Cmentarzyska/Grzybni (klimat biomu), sok świeci przy leczeniu.
+
+BALL = (48, 50)      # środek kuli (przestrzeń lokalna, przód = -y)
+BALL_R = 19
+# Ciała w kuli: (kąt °, odległość od środka 0..1, rozmiar, poza: 0 skulony tułów, 1 głowa, 2 plecy).
+BODIES = [
+    (200, 0.72, 5.5, 0), (250, 0.70, 5.0, 2), (300, 0.68, 5.5, 0), (150, 0.70, 5.0, 2), (110, 0.66, 5.5, 0),
+    (60, 0.70, 5.0, 2), (180, 0.30, 6.0, 2), (240, 0.32, 5.0, 0), (120, 0.34, 5.0, 0), (0, 0.10, 5.5, 2),
+    (215, 0.55, 3.2, 1), (275, 0.50, 3.0, 1), (95, 0.52, 3.0, 1), (160, 0.85, 3.0, 1), (330, 0.60, 3.0, 1),
 ]
-CAP_SPOTS = [(44, 53), (46, 52), (51, 59), (42, 58), (58, 49), (35, 51), (60, 54), (53, 64), (54, 30)]
-STALKS = [  # maczużnik: pnie z grzbietu, zgrubiałe czubki
-    (37, 62, 32, 69), (60, 63, 64, 70),
-]
-SHELVES = []
-SAP_SPOTS = [(42, 50), (56, 61), (38, 59), (61, 46), (48, 66), (30, 47), (66, 42), (54, 47)]
-THREADS = [
-    [(40, 50), (33, 46), (28, 41)],
-    [(57, 48), (64, 45), (69, 40)],
-    [(48, 49), (48, 43), (46, 38)],
-    [(37, 60), (31, 57), (28, 52)],
-    [(60, 60), (66, 57), (68, 52)],
-    [(44, 48), (39, 44), (36, 40)],
+# Kończyny wystające z kuli: (kąt °, długość, zgięcie °) — 0° = przód; zgięcia na przemian „w złą stronę”.
+LIMBS = [(-38, 15, 40), (38, 15, -40), (-82, 14, -55), (82, 14, 55), (-128, 13, 50), (128, 13, -50),
+         (-165, 12, -35), (165, 12, 35)]
+# Kapelusze na grzbiecie (klimat biomu): (kąt °, odległość, promień).
+BALL_CAPS = [(200, 0.55, 3.5), (140, 0.62, 2.6), (250, 0.40, 2.2), (180, 0.80, 2.0)]
+BALL_THREADS = [  # grzybnia wiążąca ciała (kąt startu, kąt końca, odległość)
+    (130, 230, 0.58), (200, 300, 0.50), (60, 150, 0.48), (250, 330, 0.75), (20, 100, 0.80),
 ]
 
 
-def walk_pose(i):
-    ph = [0, 1, 0, -1][i]
-    return dict(
-        handL=(29, 21 + 3 * ph), elbowL=(23, 33 + 2 * ph),
-        handR=(67, 21 - 3 * ph), elbowR=(73, 33 - 2 * ph),
-        footL=(42, 69 - 3 * ph), footR=(54, 69 + 3 * ph),
-        head=(48, 32), jaw=0, sway=ph, glow=0,
-    )
+def polar(cx, cy, ang, d):
+    a = math.radians(ang)
+    return cx + math.sin(a) * d, cy - math.cos(a) * d
 
 
-def bite_pose(i):
-    p = walk_pose(0)
-    if i == 0:   # telegraf: rozkłada ręce, szczęka pęka, sok jaśnieje
-        p.update(handL=(21, 28), elbowL=(18, 40), handR=(75, 28), elbowR=(78, 40),
-                 head=(48, 34), jaw=1, glow=1, spread=2)
-    elif i == 1:  # wypad: głowa w przód, paszcza rozdarta na dwie połowy
-        p.update(handL=(31, 22), elbowL=(22, 32), handR=(65, 22), elbowR=(74, 32),
-                 head=(48, 30), jaw=4, glow=1)
-    elif i == 2:  # kłapnięcie: trafienie, krew w locie
-        p.update(handL=(39, 17), elbowL=(25, 27), handR=(57, 17), elbowR=(71, 27),
-                 head=(48, 28), jaw=0, glow=0, spray=(48, 20, 0.9), blood=2)
-    else:         # przeżuwanie
-        p.update(handL=(33, 21), elbowL=(23, 31), handR=(63, 21), elbowR=(73, 31),
-                 head=(48, 30), jaw=2, glow=0, blood=2, drip=True)
-    return p
+def draw_limb(L, cx, cy, r, ang, length, bend, grasp=False, twitch=0.0):
+    """Kończyna z kuli: ramię od barku pod powierzchnią, łokieć wygięty o `bend`, przedramię wraca ostrzej
+    (nienaturalnie), na końcu dłoń — otwarta (3 palce) albo zaciśnięta."""
+    sx, sy = polar(cx, cy, ang, r * 0.8)
+    ex, ey = polar(sx, sy, ang + bend + twitch, length * 0.5)
+    hx_, hy_ = polar(ex, ey, ang - bend * 1.3 - twitch, length * 0.55)
+    capsule(L, sx, sy, ex, ey, 2.7, 2.2, VICTIM)
+    capsule(L, ex, ey, hx_, hy_, 2.2, 1.8, VICTIM)
+    draw_hand(L, hx_, hy_, math.degrees(math.atan2(hx_ - ex, -(hy_ - ey))), grasp)
+    return hx_, hy_
 
 
-def smash_pose(i):
-    """Zamach obiema łapami (cios `Cleave`, zamiast tasaka Lorda): ostatnia klatka w chwili uderzenia."""
-    p = walk_pose(0)
-    if i == 0:   # zamach: łapy cofnięte za barki, tułów się prostuje
-        p.update(handL=(25, 57), elbowL=(18, 45), handR=(71, 57), elbowR=(78, 45), head=(48, 34), glow=1)
-    elif i == 1:  # łapy w górze i szeroko — telegraf, sok jaśnieje
-        p.update(handL=(24, 26), elbowL=(17, 38), handR=(72, 26), elbowR=(79, 38), head=(48, 33), glow=1, spread=2)
-    elif i == 2:  # łapy opadają do środka
-        p.update(handL=(37, 15), elbowL=(26, 27), handR=(59, 15), elbowR=(70, 27), head=(48, 31), sway=-1)
-    else:         # uderzenie: pięści złączone daleko przed sobą, krew z pazurów
-        p.update(handL=(44, 15), elbowL=(32, 27), handR=(52, 15), elbowR=(64, 27), head=(48, 30), blood=2, drip=True)
-    return p
+def draw_hand(L, x, y, ang, grasp):
+    if grasp:
+        ellipse(L, x, y, 2.6, 2.6, VICTIM)
+        return
+    ellipse(L, x, y, 2.3, 2.3, VICTIM)
+    for da in (-40, 0, 40):
+        tx, ty = polar(x, y, ang + da, 4.2)
+        capsule(L, x, y, tx, ty, 1.0, 0.8, VICTIM, rim=False)
 
 
-def feed_pose(i):
-    p = walk_pose(0)
-    if i == 0:   # strzępki grzybni wystrzeliwują do kokonu
-        p.update(handL=(31, 22), handR=(65, 22), head=(48, 31), glow=1,
-                 tendrils=[(40, 46, 40, 13), (56, 46, 56, 13), (48, 44, 48, 12)])
-    elif i == 1:  # chwyt i rozdarcie
-        p.update(handL=(37, 15), elbowL=(25, 27), handR=(59, 15), elbowR=(71, 27),
-                 head=(48, 29), jaw=3, glow=1,
-                 tendrils=[(40, 46, 43, 12), (56, 46, 53, 12)])
-    elif i == 2:  # głowa w kokonie: dużo krwi
-        p.update(handL=(37, 16), elbowL=(25, 28), handR=(59, 16), elbowR=(71, 28),
-                 head=(48, 27), jaw=2, glow=1, spray=(48, 20, 1.1), blood=3)
-    else:         # przełknięcie: leczenie, sok świeci najjaśniej
-        p.update(handL=(33, 23), handR=(63, 23), head=(48, 32), jaw=0, glow=2,
-                 blood=3, drip=True, puff=True)
-    return p
+def draw_mouth(L, cx, cy, k, r):
+    """Paszcza z przodu kuli: pierścień zębów (kość) wokół ciemnej gardzieli; k = 0 zamknięta szczelina … 4 rozwarta."""
+    mx, my = cx, cy - r * 0.42
+    w = 6 + k * 1.2
+    h = 1.2 + k * 1.6
+    if k == 0:
+        line(L, [(mx - w, my), (mx + w, my)], VOID)
+        for x in range(int(mx - w) + 1, int(mx + w), 2):
+            L.put(x, int(my) - 1, BONE[1])
+            L.put(x + 1, int(my) + 1, BONE[1])
+        return
+    ellipse(L, mx, my, w + 1.5, h + 1.5, FLESH, rim=False, bias=-0.2)
+    ellipse(L, mx, my, w, h, BLOOD[:3], rim=False, bias=-0.6)
+    ellipse(L, mx, my + h * 0.2, w * 0.6, h * 0.55, [VOID, VOID, VOID], rim=False)
+    # Zęby: trójkątne kliny na brzegu, szczyty do środka.
+    n = 8 + k * 2
+    for i in range(n):
+        a = math.tau * i / n
+        bx, by = mx + math.cos(a) * w, my + math.sin(a) * h
+        tx, ty = mx + math.cos(a) * w * 0.68, my + math.sin(a) * h * 0.55
+        line(L, [(bx, by), (tx, ty)], BONE[2] if i % 2 else BONE[1])
 
 
-def spit_pose(i):
-    """Wyrzut zarodników (krok 111): głowa odchyla się, sok nabrzmiewa, paszcza pęka i wypluwa strąk."""
-    p = walk_pose(0)
-    if i == 0:   # odchyla głowę, łapy na boki
-        p.update(handL=(25, 30), elbowL=(19, 41), handR=(71, 30), elbowR=(77, 41), head=(48, 36), glow=1, spread=1)
-    elif i == 1:  # nabrzmiewa: sok świeci najjaśniej, szczęka pęka
-        p.update(handL=(24, 32), elbowL=(18, 43), handR=(72, 32), elbowR=(78, 43), head=(48, 35), jaw=1, glow=2, spread=2)
-    elif i == 2:  # wyrzut: paszcza rozdarta, strąk w paszczy
-        p.update(handL=(30, 24), elbowL=(21, 35), handR=(66, 24), elbowR=(75, 35), head=(48, 30), jaw=4, glow=1,
-                 pod=(48, 20), spores=1)
-    else:         # strąk poleciał: chmura zarodników przed paszczą
-        p.update(handL=(32, 22), elbowL=(23, 32), handR=(64, 22), elbowR=(73, 32), head=(48, 30), jaw=3, glow=1,
-                 spores=2)
-    return p
+# Ciała wystające poza obrys kuli — sylwetka jest nierówna, zlepiona (kąt °, rozmiar).
+EDGE_BODIES = [(60, 5.0), (115, 5.5), (165, 5.0), (210, 6.0), (255, 5.0), (300, 5.5), (95, 3.5), (235, 3.5)]
 
 
-def leap_pose(i):
-    """Szarża z kłapnięciem (krok 111): przysiad, głębszy przysiad, wybicie, lot z łapami w przód (trzyma się do lądowania)."""
-    p = walk_pose(0)
-    if i == 0:   # przysiad: łapy za barkami, nisko
-        p.update(handL=(25, 55), elbowL=(18, 45), handR=(71, 55), elbowR=(78, 45), head=(48, 36),
-                 footL=(40, 66), footR=(56, 66), glow=1, spread=1)
-    elif i == 1:  # głęboki przysiad: sok jaśnieje
-        p.update(handL=(24, 58), elbowL=(17, 47), handR=(72, 58), elbowR=(79, 47), head=(48, 38),
-                 footL=(39, 65), footR=(57, 65), glow=2, spread=2)
-    elif i == 2:  # wybicie: łapy idą w górę i na boki, paszcza się otwiera
-        p.update(handL=(25, 26), elbowL=(19, 37), handR=(71, 26), elbowR=(77, 37), head=(48, 31), jaw=2, glow=1, spread=1)
-    else:         # lot: łapy szeroko w przód, paszcza rozdarta, stopy podkulone
-        p.update(handL=(31, 17), elbowL=(22, 28), handR=(65, 17), elbowR=(74, 28), head=(48, 29), jaw=4, glow=1,
-                 footL=(43, 63), footR=(53, 63), drip=True)
-    return p
-
-
-def draw_head(L, cx, cy, k, blood_lvl):
-    if k > 0:
-        # Paszcza: czerwone wnętrze między połowami głowy.
-        ellipse(L, cx, cy - 1, k + 2, 8.5, BLOOD, rim=False, bias=-0.35)
-        for y in range(int(cy - 5), int(cy + 3)):
-            L.put(cx - 1, y, BLOOD[2] if y % 3 else BLOOD[3])
-        ellipse(L, cx - k, cy, 8, 8.5, FLESH, clip=lambda x, y: x + 0.5 <= cx - k)
-        ellipse(L, cx + k, cy, 8, 8.5, FLESH, clip=lambda x, y: x + 0.5 >= cx + k)
-        # Zęby na wewnętrznych krawędziach połówek.
-        for y in range(int(cy - 6), int(cy + 3), 2):
-            L.put(cx - k - 1, y, BONE[1])
-            L.put(cx + k, y, BONE[1])
-        L.put(cx - k - 1, int(cy - 7), BONE[2])
-        L.put(cx + k, int(cy - 7), BONE[2])
-        ex = (cx - k - 4, cx + k + 3)
-    else:
-        ellipse(L, cx, cy, 8, 8.5, FLESH)
-        # Pęknięcie czaszki i zaschnięta krew przy pysku.
-        line(L, [(cx, cy - 2), (cx - 1, cy + 3), (cx, cy + 6)], FLESH[0], inside=L)
-        for x in range(cx - 3, cx + 3):
-            L.put(x, int(cy - 7), BLOOD[1] if x % 2 else BLOOD[0])
-        L.put(cx - 1, int(cy - 6), BLOOD[2])
-        L.put(cx + 1, int(cy - 6), BLOOD[2])
-        ex = (cx - 4, cx + 3)
-    # Martwe, mleczne oczy w ciemnych oczodołach.
-    for x in ex:
-        L.put(x, int(cy - 5), BONE[2])
-        L.put(x, int(cy - 4), FLESH[0])
-    if blood_lvl >= 2:
-        for x in range(ex[0], ex[1] + 1):
-            if L.solid(x, int(cy - 7)) and x % 2 == 0:
-                L.put(x, int(cy - 7), BLOOD[3])
-
-
-def draw_arm(L, sx, sy, e, h, blood_lvl):
-    capsule(L, sx, sy, e[0], e[1], 4.5, 3.6, FLESH)
-    capsule(L, e[0], e[1], h[0], h[1], 3.6, 3.0, FLESH)
-    # Przedramię i dłoń we krwi: ta sama bryła, rampa krwi.
-    capsule(L, e[0], e[1], h[0], h[1], 3.6, 3.0, BLOOD, tmin=0.55 if blood_lvl < 2 else 0.25)
-    ellipse(L, h[0], h[1], 3.6, 3.6, BLOOD)
-    # Pazury: kapsuły 2 px, czubki we krwi.
-    dx, dy = h[0] - e[0], h[1] - e[1]
-    n = math.hypot(dx, dy) or 1
-    dx, dy = dx / n, dy / n
-    for ang in (-0.55, 0, 0.55):
-        cx = dx * math.cos(ang) - dy * math.sin(ang)
-        cy = dx * math.sin(ang) + dy * math.cos(ang)
-        bx, by = h[0] + cx * 3.0, h[1] + cy * 3.0
-        tx, ty = h[0] + cx * 5.2, h[1] + cy * 5.2
-        capsule(L, bx, by, tx, ty, 1.1, 0.9, BONE, rim=False)
-        L.put(int(tx), int(ty), BLOOD[2])
+def ball_body(L, cx, cy, rx, ry, roll, glow):
+    sx, sy = rx / BALL_R, ry / BALL_R
+    for (ang, size) in EDGE_BODIES:
+        x, y = polar(cx, cy, ang + roll, BALL_R * 0.92)
+        x, y = cx + (x - cx) * sx, cy + (y - cy) * sy
+        ax, ay = polar(x, y, ang + roll + 90, size * 0.7)
+        bx, by = polar(x, y, ang + roll - 90, size * 0.7)
+        capsule(L, ax, ay, bx, by, size * 0.62, size * 0.55, VICTIM)
+    ellipse(L, cx, cy, rx * 0.97, ry * 0.97, FLESH)
+    sx, sy = rx / BALL_R, ry / BALL_R
+    for (ang, d, size, kind) in BODIES:
+        x, y = polar(cx, cy, ang + roll, d * BALL_R)
+        x, y = cx + (x - cx) * sx, cy + (y - cy) * sy
+        tang = ang + roll + 90
+        if kind == 1:   # głowa: kółko, zamknięte oczy (kreski), bez rysów twarzy
+            ellipse(L, x, y, size, size, VICTIM)
+            ex, ey = polar(x, y, tang, 1.4)
+            L.put(int(ex), int(ey), VICTIM[0])
+            ex, ey = polar(x, y, tang + 180, 1.4)
+            L.put(int(ex), int(ey), VICTIM[0])
+        elif kind == 0:  # skulony tułów: owal z kręgosłupem
+            ax, ay = polar(x, y, tang, size * 0.6)
+            bx, by = polar(x, y, tang + 180, size * 0.6)
+            capsule(L, ax, ay, bx, by, size * 0.55, size * 0.5, VICTIM)
+            line(L, [(ax, ay), (bx, by)], VICTIM[1], inside=L)
+        else:            # plecy: większy owal w cieniu (ciało głębiej w kuli)
+            ellipse(L, x, y, size, size * 0.75, VICTIM[:4], bias=-0.15)
+    # Grzybnia wiąże ciała.
+    for (a0, a1, d) in BALL_THREADS:
+        pts = [polar(cx, cy, a0 + roll + (a1 - a0) * t / 6, d * BALL_R * (1 + 0.08 * math.sin(t))) for t in range(7)]
+        pts = [(cx + (x - cx) * sx, cy + (y - cy) * sy) for x, y in pts]
+        line(L, pts, MYC[3], inside=L)
+    for (ang, d, r) in BALL_CAPS:
+        x, y = polar(cx, cy, ang + roll * 0.5, d * BALL_R)
+        ellipse(L, x, y * 1.0, r, r * 0.85, MYC)
+        L.put(int(x), int(y), SAP[2] if glow else MYC[4])
+    # Krosty soku: puls jasnością (leczenie).
+    for (ang, d) in ((230, 0.45), (130, 0.5), (290, 0.62), (70, 0.6)):
+        x, y = polar(cx, cy, ang + roll, d * BALL_R)
+        c = SAP[1] if glow == 0 else SAP[2] if glow == 1 else SAP[3]
+        disc(L, x, y, 1.0 + 0.5 * glow, c)
 
 
 def boss_frame(p):
     body = Layer(96, 96)
     fx = Layer(96, 96)
-    rng = random.Random(7)
-    blood_lvl = p.get('blood', 1)
-    sw = p.get('sway', 0)
-    sp = p.get('spread', 0)
-
-    # Stopy pod tułowiem (szuranie).
-    for (fx_, fy_) in (p['footL'], p['footR']):
-        capsule(body, fx_, 60, fx_, fy_, 3.8, 3.2, FLESH)
-    # Ramiona.
-    draw_arm(body, 33 - sp + sw, 44, p['elbowL'], p['handL'], blood_lvl)
-    draw_arm(body, 63 + sp + sw, 44, p['elbowR'], p['handR'], blood_lvl)
-    # Strzępki grzybni (karmienie).
-    for (ax, ay, bx, by) in p.get('tendrils', []):
-        mx, my = (ax + bx) / 2 + 3, (ay + by) / 2
-        capsule(body, ax, ay, mx, my, 1.9, 1.6, MYC)
-        capsule(body, mx, my, bx, by, 1.6, 1.3, MYC)
-        disc(body, bx, by, 1.5, SAP[2])
-    # Tułów (zgarbiony grzbiet).
-    ellipse(body, 48 + sw, 52, 19, 15, FLESH)
-    # Rozdarty bok: krew i żebra.
-    ellipse(body, 63 + sw, 56, 4.5, 3.5, BLOOD, rim=False)
-    for y in (55, 57):
-        line(body, [(61 + sw, y), (64 + sw, y)], BONE[1])
-    # Głowa wciśnięta między barki.
-    hx_, hy_ = p['head']
-    draw_head(body, hx_ + sw, hy_, p['jaw'], blood_lvl)
-    # Barki nachodzą na boki głowy.
-    ellipse(body, 32 - sp + sw, 44, 9, 8, FLESH)
-    ellipse(body, 64 + sp + sw, 44, 9, 8, FLESH)
-    # Krew na barkach (z poprzednich posiłków).
-    ellipse(body, 35 - sp + sw, 41, 3, 2, BLOOD, rim=False)
-    ellipse(body, 62 + sp + sw, 40, 2.5, 2, BLOOD, rim=False)
-    # Kręgosłup przebija skórę.
-    for y in (43, 46):
-        body.put(48 + sw, y, BONE[0])
-        body.put(49 + sw, y, BONE[1])
-    # Krwawy płaszcz na karku (spływa spod paszczy).
-    ellipse(body, 48 + sw, 41, 7, 3, BLOOD, rim=False)
-    # Huby na barkach.
-    for (x, y) in SHELVES:
-        x += sw + (-sp if x < 48 else sp)
-        ellipse(body, x, y, 4, 2.4, MYC, clip=(lambda xx, yy, x=x: xx + 0.5 <= x + 1) if x < 48 else (lambda xx, yy, x=x: xx + 0.5 >= x - 1))
-        line(body, [(x - 2, y - 1), (x + 2, y - 1)], MYC[4], inside=body)
-    # Pnie maczużnika.
-    for (ax, ay, bx, by) in STALKS:
-        capsule(body, ax + sw, ay, bx + sw, by, 1.8, 1.3, MYC)
-        ellipse(body, bx + sw, by, 2.2, 2.2, MYC)
-        body.put(int(bx + sw), int(by), SAP[2] if p.get('glow', 0) else MYC[4])
-    # Grzybnia na skórze.
-    for t in THREADS:
-        line(body, [(x + sw, y) for x, y in t], MYC[3], inside=body)
-    # Kapelusze (cecha dominująca).
-    for (x, y, r) in CAPS:
-        ellipse(body, x + sw, y, r, r * 0.85, MYC)
-        if r >= 5:  # wgłębienie i pierścień blaszek przy brzegu
-            body.put(int(x + sw), int(y), MYC[1])
-            body.put(int(x + sw) + 1, int(y), MYC[1])
-            for a in range(0, 360, 30):
-                xx = int(round(x + sw + math.cos(math.radians(a)) * (r - 1.6)))
-                yy = int(round(y + math.sin(math.radians(a)) * (r - 1.6) * 0.85))
-                if a > 20 and a < 160:
-                    body.put(xx, yy, MYC[1])
-    for (x, y) in CAP_SPOTS:
-        body.put(x + sw, y, BONE[1])
-    # Krosty soku: puls jasnością.
-    g = p.get('glow', 0)
-    for (x, y) in SAP_SPOTS:
-        x += sw
-        if g == 0:
-            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
-                body.put(x + dx, y + dy, SAP[1])
-            body.put(x, y, SAP[2])
-        elif g == 1:
-            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
-                body.put(x + dx, y + dy, SAP[2])
-            body.put(x, y, SAP[3])
-        else:
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    body.put(x + dx, y + dy, SAP[2])
-            body.put(x, y, SAP[3])
-            body.put(x + 1, y, SAP[3])
-    if g == 2:  # w chwili leczenia brzegi dużego kapelusza świecą sokiem
-        for y in range(46, 68):
-            for x in range(36, 60):
-                if body.solid(x, y) and tuple(body.a[y, x]) == MYC[0]:
-                    body.put(x, y, SAP[1])
-    # Krew w locie i ślinienie (bez obrysu, krawędź = blood-0).
-    if 'spray' in p:
-        sx, sy, s = p['spray']
-        ellipse(fx, sx, sy, 5 * s, 3.5 * s, BLOOD, rim=False)
-        droplets(fx, rng, sx, sy, 4 * s, 11 * s, int(26 * s), BLOOD)
-        for a in (-2.2, -1.57, -0.9):
-            line(fx, [(sx + math.cos(a) * 4 * s, sy + math.sin(a) * 3 * s), (sx + math.cos(a) * 10 * s, sy + math.sin(a) * 8 * s)], BLOOD[2])
-    if p.get('drip'):
-        for x, y in ((hx_ - 3, hy_ - 9), (hx_ + 2, hy_ - 10), (hx_, hy_ - 11), (hx_ - 1, hy_ - 13), (hx_ + 3, hy_ - 12)):
-            fx.put(x, y, BLOOD[2])
-            fx.put(x, y - 1, BLOOD[1])
-        for h in (p['handL'], p['handR']):
-            fx.put(h[0], h[1] + 5, BLOOD[2]); fx.put(h[0] + 1, h[1] + 6, BLOOD[1])
+    cx, cy = BALL[0], BALL[1] + p.get('dy', 0)
+    rx = BALL_R * p.get('sx', 1.0)
+    ry = BALL_R * p.get('sy', 1.0)
+    roll = p.get('roll', 0)
+    limbs = p.get('limbs', LIMBS)
+    tw = p.get('twitch', [0] * len(limbs))
+    for (ang, length, bend), t in zip(limbs, tw):
+        draw_limb(body, cx, cy, min(rx, ry), ang, length, bend, grasp=p.get('grasp', False), twitch=t)
+    ball_body(body, cx, cy, rx, ry, roll, p.get('glow', 0))
+    draw_mouth(body, cx, cy, p.get('jaw', 0), ry)
+    # Ręce chwytu (krok 184): z paszczy wystrzelają dwie długie kończyny.
+    for (ang, length, bend, grasp) in p.get('reach', []):
+        draw_limb(body, cx, cy - ry * 0.42, 3, ang, length, bend, grasp=grasp)
     if p.get('puff'):
-        droplets(fx, random.Random(3), 48, 56, 12, 20, 14, SAP, size=(0.5, 1.2))
-    if 'pod' in p:  # strąk zarodników w paszczy (jak `spore-pod.png`)
-        px, py = p['pod']
-        spore_pod(fx, px, py, 0)
+        droplets(fx, random.Random(3), cx, cy, 12, 21, 14, SAP, size=(0.5, 1.2))
+    if 'pod' in p:
+        spore_pod(fx, cx, cy - ry * 0.42 - 2, 0)
     if p.get('spores'):
         n = 8 if p['spores'] == 1 else 18
-        droplets(fx, random.Random(5), hx_, hy_ - 9, 2, 5 + 3 * p['spores'], n, SAP, size=(0.5, 1.1))
+        droplets(fx, random.Random(5), cx, cy - ry * 0.42 - 6, 2, 5 + 3 * p['spores'], n, SAP, size=(0.5, 1.1))
+    if p.get('drip'):
+        my = cy - ry * 0.42
+        for dx, dy in ((-3, -4), (2, -5), (0, -6), (4, -3)):
+            fx.put(int(cx + dx), int(my + dy), BLOOD[2])
     return finish(body, fx, 96)
+
+
+HAND = 24
+
+
+def hand_frame(f):
+    """Ręka chwytu w locie (krok 184), 24×24, dłoń na północ (gra obraca ją w kierunku lotu):
+    0–1 otwarta (palce drgają), 2–3 zaciśnięta."""
+    L = Layer(HAND, HAND)
+    capsule(L, 12, 19, 12, 14, 2.4, 2.2, VICTIM)
+    if f < 2:
+        ellipse(L, 12, 11, 3.2, 3.2, VICTIM)
+        for da in (-45, 0, 45):
+            tx, ty = polar(12, 11, da + (6 if f else -6), 6.5)
+            capsule(L, 12, 11, tx, ty, 1.2, 0.9, VICTIM, rim=False)
+    else:
+        ellipse(L, 12, 12, 3.6, 3.4 - (f - 2) * 0.4, VICTIM)
+        line(L, [(10, 10), (14, 10)], VICTIM[1], inside=L)
+    outline(L)
+    return L.a
+
+
+def crawl(i, amp=10):
+    """Kończyny przy szuraniu: pary na przemian sięgają i podciągają kulę; drgania na zmianę — nierówny rytm."""
+    out = []
+    for j, (ang, length, bend) in enumerate(LIMBS):
+        ph = (i + (j % 2) * 2) % 4
+        reach = [1.0, 1.15, 0.85, 0.7][ph]
+        out.append((ang + (amp if ph == 1 else -amp / 2 if ph == 3 else 0) * (1 if ang < 0 else -1), length * reach, bend))
+    return out
+
+
+def walk_pose(i):
+    return dict(roll=i * 14, limbs=crawl(i), twitch=[(-12, 8, 15, -6, 4, -14, 10, -4)[(k + i * 3) % 8] for k in range(8)],
+                sx=[1.0, 1.05, 0.97, 1.03][i], sy=[1.0, 0.95, 1.04, 0.98][i], dy=[0, -1, 0, 1][i])
+
+
+def bite_pose(i):
+    if i == 0:   # paszcza się rozwiera, kończyny rozkładają się
+        return dict(jaw=2, glow=1, limbs=crawl(0, 18), sy=1.04)
+    if i == 1:   # wypad
+        return dict(jaw=4, dy=-4, sy=1.08, sx=0.95, limbs=crawl(1, 6))
+    if i == 2:   # kłapnięcie
+        return dict(jaw=0, dy=-5, sy=1.06, limbs=crawl(2, 6), drip=True)
+    return dict(jaw=1, dy=-2, limbs=crawl(3), drip=True)   # przeżuwanie
+
+
+FRONT = [(-60, 15, 30), (60, 15, -30), (-25, 16, 20), (25, 16, -20)]
+BACK = [(-128, 13, 50), (128, 13, -50), (-165, 12, -35), (165, 12, 35)]
+
+
+def feed_pose(i):
+    if i == 0:   # kończyny sięgają do kokonu
+        return dict(jaw=1, glow=1, limbs=BACK + [(a, l + 4, b) for a, l, b in FRONT])
+    if i == 1:   # chwyt: zaciśnięte dłonie, paszcza rozwarta
+        return dict(jaw=4, glow=1, grasp=True, limbs=BACK + [(a * 0.7, l, b) for a, l, b in FRONT], dy=-2)
+    if i == 2:   # wciąga do paszczy
+        return dict(jaw=3, glow=1, grasp=True, limbs=BACK + [(a * 0.5, l * 0.6, b) for a, l, b in FRONT], dy=-3, sy=1.05)
+    return dict(jaw=0, glow=2, puff=True, sx=1.06, sy=1.06)   # przełknięcie: leczenie, kula pęcznieje
+
+
+def smash_pose(i):
+    if i == 0:   # kończyny cofnięte, kula się kurczy
+        return dict(limbs=[(a * 1.2 if abs(a) < 140 else a, l * 0.8, b) for a, l, b in LIMBS], sx=0.95, sy=0.95, glow=1)
+    if i == 1:   # kończyny w górze i szeroko — telegraf
+        return dict(limbs=[(a * 1.3 if abs(a) < 120 else a, l * 1.15, -b) for a, l, b in LIMBS], glow=1, jaw=1)
+    if i == 2:   # opadają do przodu
+        return dict(limbs=BACK + FRONT, jaw=2, dy=-2)
+    return dict(limbs=BACK + [(a * 0.6, l, b * 0.5) for a, l, b in FRONT], jaw=2, dy=-4, sy=0.94, sx=1.06, drip=True)
+
+
+def spit_pose(i):
+    if i == 0:
+        return dict(sy=0.94, sx=1.04, dy=2, glow=1, limbs=crawl(0, 14))
+    if i == 1:
+        return dict(sy=1.08, sx=1.08, glow=2, jaw=1, limbs=crawl(1, 14))
+    if i == 2:
+        return dict(jaw=4, glow=1, pod=True, spores=1, limbs=crawl(2, 6))
+    return dict(jaw=3, glow=1, spores=2, limbs=crawl(3, 6))
+
+
+def leap_pose(i):
+    if i == 0:   # przysiad: kula spłaszczona, kończyny podkulone
+        return dict(sx=1.1, sy=0.88, glow=1, limbs=[(a, l * 0.7, b * 1.4) for a, l, b in LIMBS])
+    if i == 1:
+        return dict(sx=1.16, sy=0.84, glow=2, limbs=[(a, l * 0.6, b * 1.6) for a, l, b in LIMBS])
+    if i == 2:   # wybicie: kula wydłużona w przód
+        return dict(sx=0.9, sy=1.12, dy=-2, jaw=2, limbs=[(a, l * 1.2, b * 0.4) for a, l, b in LIMBS])
+    return dict(sx=0.94, sy=1.08, dy=-3, jaw=4, limbs=BACK + [(a, l + 2, b * 0.3) for a, l, b in FRONT])
+
+
+def grab_pose(i):
+    """Chwyt kończynami (krok 184): ręce wystrzelają z paszczy, łapią i wracają do niej z ofiarą."""
+    if i == 0:   # zamach: kula cofa się, paszcza rozwiera, dłonie w gardzieli
+        return dict(jaw=3, glow=1, dy=3, sy=0.95, limbs=crawl(0, 16), reach=[(-20, 8, 50, False), (20, 8, -50, False)])
+    if i == 1:   # wyrzut: dwie długie ręce sięgają do przodu, dłonie otwarte
+        return dict(jaw=4, dy=1, limbs=crawl(1, 6), reach=[(-16, 24, 14, False), (16, 24, -14, False)])
+    if i == 2:   # chwyt: zaciśnięte dłonie, ręce w pół drogi
+        return dict(jaw=4, limbs=crawl(2, 6), reach=[(-16, 16, 25, True), (16, 16, -25, True)])
+    return dict(jaw=4, dy=-2, sy=1.05, glow=1, limbs=crawl(3, 10), reach=[(-14, 7, 40, True), (14, 7, -40, True)])
 
 
 # ---------------------------------------------------------------- kokony
@@ -900,7 +878,8 @@ def build():
     smash = [boss_frame(smash_pose(i)) for i in range(4)]
     spit = [boss_frame(spit_pose(i)) for i in range(4)]
     leap = [boss_frame(leap_pose(i)) for i in range(4)]
-    rows = [[anim[i][d] for anim in (walk, bite, feed, smash, spit, leap) for i in range(4)] for d in range(8)]
+    grab = [boss_frame(grab_pose(i)) for i in range(4)]
+    rows = [[anim[i][d] for anim in (walk, bite, feed, smash, spit, leap, grab) for i in range(4)] for d in range(8)]
     sheets = {
         'fungal-devourer.png': (sheet(rows, 96), 96, 8),
         'devourer-cocoon.png': (sheet([[cocoon(v, f) for f in range(14)] for v in range(3)], 48), 48, 6),
@@ -909,6 +888,7 @@ def build():
         'throne-decals.png': (sheet([[decal(i) for i in range(6)]], 48), 48, 4),
         'mushroom-trail.png': (sheet([[trail_frame(i) for i in range(10)]], TRAIL), TRAIL, 2),
         'spore-pod.png': (sheet([[pod_frame(i) for i in range(4)]], POD), POD, 2),
+        'devourer-hand.png': (sheet([[hand_frame(i) for i in range(4)]], HAND), HAND, 1),
     }
     return sheets
 
@@ -956,7 +936,7 @@ def previews(sheets, out):
         save(up(bg, k), os.path.join(out, f'preview_{name[:-4]}_{k}x.png'))
     # Klatki na północ, po 4 w pasku, 3x, z cieniem silnika.
     mb = sheets['fungal-devourer.png'][0]
-    for nm, src, c0 in (('walk', mb, 0), ('bite', mb, 4), ('feed', mb, 8), ('smash', mb, 12), ('spit', mb, 16), ('leap', mb, 20)):
+    for nm, src, c0 in (('walk', mb, 0), ('bite', mb, 4), ('feed', mb, 8), ('smash', mb, 12), ('spit', mb, 16), ('leap', mb, 20), ('grab', mb, 24)):
         bg = floor_bg(384, 96)
         for i in range(4):
             over(bg, src[0:96, (c0 + i) * 96:(c0 + i + 1) * 96], i * 96, 0, shadow=(i * 96 + 48, 50, 21, 17))

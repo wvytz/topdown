@@ -308,10 +308,20 @@ function planHook(ctx: AttackPlanContext): BossAttackPlan {
     impactAt: bashAt,
     damage: followUp.damage,
     knockback: followUp.knockback,
+    ...(followUp.healOnHit && { healOnHit: followUp.healOnHit }),
   });
   // Wiadro na sznurze (sprzątaczka, krok 125): leci od bossa do końca linii i ląduje w chwili uderzenia stref.
   const end = strikes.at(-2)?.center ?? pullTo;
-  const throws: ThrownObject[] = hook.look === 'bucket' ? [{ look: 'bucket', from: ctx.self, to: end, launchAt: impactAt - BUCKET_FLIGHT_MS, landAt: impactAt }] : [];
+  const throws: ThrownObject[] =
+    hook.look === 'bucket'
+      ? [{ look: 'bucket', from: ctx.self, to: end, launchAt: impactAt - BUCKET_FLIGHT_MS, landAt: impactAt }]
+      : hook.look === 'limbs'
+        ? // Kończyny Pożeracza (krok 184): ręka wystrzela z kuli do końca linii, a potem zaciśnięta wraca do paszczy.
+          [
+            { look: 'hand', from: ctx.self, to: end, launchAt: impactAt - BUCKET_FLIGHT_MS, landAt: impactAt },
+            { look: 'grip', from: end, to: pullTo, launchAt: impactAt, landAt: impactAt + followUp.delayMs * 0.6 },
+          ]
+        : [];
   return { kind: BossAttackKind.Hook, ...EMPTY, strikes, throws, endsAt: bashAt + hook.recoveryMs };
 }
 

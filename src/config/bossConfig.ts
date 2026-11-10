@@ -353,6 +353,9 @@ export const SPIDER_KING = {
  * zarażonych w kokonach (spiżarnia) i je zjada — uczta leczy go i wzmacnia.
  * Ciosy (moje, do strojenia w teście): kąsanie z bliska (leczy go), szarża z kłapnięciem (skok),
  * zamach łapami (`cleave`, dawny tasak), zew spiżarni; od kroku 111 wyrzut zarodników i ślad grzybów za nim.
+ * Krok 184 (`#pozeracz`, prośba właściciela): kula zlepiona z ciał zjedzonych — rusza się szarpanie, ale bardzo
+ * szybko (`lurch`), gryzie i chwyta kończynami: ręka wystrzela z kuli, łapie i wciąga gracza do paszczy (`hook`,
+ * wygląd `limbs`), a ugryzienie po chwycie leczy. Kokony dalej zjada — leczenie i szybszy chód (`feast`).
  */
 export const FUNGAL_DEVOURER = {
   id: BossId.FungalDevourer,
@@ -364,8 +367,11 @@ export const FUNGAL_DEVOURER = {
   maxHp: 670, // krok 145 (wolniejsze skalowanie bossów): 460 → 670
   // Krok 111 (ocena właściciela: „zero wyzwania, za wolny, nie trafia”): szybszy chód i sprint (gracz ma 200),
   // krótsze przerwy i telegrafy; skok, zamach i wyrzut celują tam, dokąd gracz biegnie (`lead`).
-  moveSpeed: 88,
-  sprint: { speed: 178, distance: 110 },
+  // Krok 184: szybszy (88 → 104, sprint 178 → 190) i szarpany — zrywy ×1,5 do 285 px/s przeplata zamarcie;
+  // średnio sprint dalej trochę wolniejszy od gracza (200), więc da się uciec, ale nie da się odpocząć.
+  moveSpeed: 104,
+  sprint: { speed: 190, distance: 110 },
+  lurch: { periodMs: 520, burstShare: 0.6, burstMultiplier: 1.5, restMultiplier: 0.25, swayDeg: 28 },
   engageDistance: 50,
   openingDelayMs: 900,
   restBetweenAttacksMs: 1050,
@@ -384,6 +390,21 @@ export const FUNGAL_DEVOURER = {
     damage: 12,
     knockback: 200,
     healOnHit: 12,
+  },
+  // Chwyt kończynami (krok 184): gracz trzyma dystans — z kuli wystrzela ręka; złapany ląduje przed paszczą
+  // i po chwili dostaje ugryzienie, które leczy Pożeracza. Unik: dash w bok z linii telegrafu.
+  hook: {
+    look: 'limbs',
+    minRange: 110,
+    maxRange: 230,
+    cooldownMs: 5200,
+    telegraphMs: 560,
+    recoveryMs: 400,
+    step: 22,
+    radius: 14,
+    damage: 5,
+    knockback: 0,
+    followUp: { delayMs: 420, reach: 38, radius: 36, damage: 16, knockback: 260, healOnHit: 14 },
   },
   // Szarża z kłapnięciem: doskok tam, dokąd gracz biegnie; lądowanie zostawia płat grzybów.
   leap: {

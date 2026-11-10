@@ -11,6 +11,7 @@ import { PLAYER_BASE_STATS } from '@/config/gameConfig';
 import { HERO_HURTBOX } from '@/config/combatConfig';
 import { planLarders } from '@/dungeon/LarderPlanner';
 import { roomContainsTile } from '@/dungeon/rooms';
+import { lurchAt, lurchAverage, swayDirection } from '@/systems/BossLurch';
 import { sampleFloors } from '../helpers/floors';
 
 const SELF = { x: 0, y: 0 };
@@ -86,11 +87,11 @@ function feasting(): BossBrain {
 describe('mózg: wyprzedzenie celu (krok 111)', () => {
   it('biegnący gracz: skok ląduje przed nim, w kierunku biegu', () => {
     const brain = new BossBrain({ ...DEVOURER, pattern: [BossAttackKind.Leap] }, createRng(1));
-    // Atak gotowy w 10. klatce — wcześniej mózg patrzy, jak gracz biegnie w dół 150 px/s.
+    // Gracz poza zasięgiem chwytu kończynami (krok 184). Atak gotowy w 10. klatce — wcześniej mózg patrzy, jak gracz biegnie w dół 150 px/s.
     brain.activate(10 * FRAME - DEVOURER.openingDelayMs);
     let plan: BossAttackPlan | null = null;
     for (let i = 0; i < 20 && !plan; i++) {
-      plan = brain.think({ self: SELF, target: { x: 200, y: (150 * i * FRAME) / 1000 }, now: i * FRAME, hpRatio: 1 }).newAttack;
+      plan = brain.think({ self: SELF, target: { x: 300, y: (150 * i * FRAME) / 1000 }, now: i * FRAME, hpRatio: 1 }).newAttack;
     }
     expect(plan?.kind).toBe(BossAttackKind.Leap);
     expect(plan!.leap!.to.y).toBeGreaterThan(30);
@@ -124,8 +125,9 @@ describe('uczta', () => {
   });
 
   it('bez kokonów nie ucztuje — idzie do gracza', () => {
-    const d = feasting().think({ self: SELF, target: player, now: 0, hpRatio: 1, larders: [] });
-    expect(d.move.x).toBeCloseTo(-1);
+    // Gracz bliżej niż zasięg chwytu (krok 184), ale poza kąsaniem.
+    const d = feasting().think({ self: SELF, target: { x: -100, y: 0 }, now: 0, hpRatio: 1, larders: [] });
+    expect(d.move.x).toBeLessThan(-0.8);
   });
 
   it('następna uczta po cooldownMs; po wściekłości częściej', () => {
@@ -280,13 +282,74 @@ describe('ciosy Pożeracza', () => {
     expect(scaleBossForFloor(DEVOURER, 4, ENEMY_SCALING).sporeVolley.damage).toBeGreaterThan(DEVOURER.sporeVolley.damage);
   });
 
-  it('krok 111: szybszy niż przed oceną (70/150), wolniejszy od gracza w sprincie', () => {
-    expect(DEVOURER.moveSpeed).toBeGreaterThan(80);
-    expect(DEVOURER.sprint.speed).toBeGreaterThan(170);
+  it('krok 111/184: szybszy niż przed oceną (70/150), wolniejszy od gracza w sprincie', () => {
+    expect(DEVOURER.moveSpeed).toBeGreaterThan(100);
+    expect(DEVOURER.sprint.speed).toBeGreaterThan(185);
     expect(DEVOURER.sprint.speed).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
   });
 
   it('uczta nie jest atakiem ze wzoru', () => {
     expect(() => plan(BossAttackKind.Feast)).toThrow(/uczta/);
+  });
+});
+
+describe('krok 184: kula z ciał — szarpany chód i chwyt kończynami', () => {
+  const lurch = DEVOURER.lurch;
+
+  it('szarpany chód: zryw szybszy od gracza, zamarcie prawie w miejscu, średnio sprint wolniejszy od gracza', () => {
+    expect(lurchAt(lurch, 1).speedMultiplier).toBe(lurch.burstMultiplier);
+    expect(lurchAt(lurch, lurch.periodMs * 0.95).speedMultiplier).toBe(lurch.restMultiplier);
+    expect(DEVOURER.sprint.speed * lurch.burstMultiplier).toBeGreaterThan(PLAYER_BASE_STATS.moveSpeed);
+    expect(DEVOURER.sprint.speed * lurchAverage(lurch)).toBeLessThan(PLAYER_BASE_STATS.moveSpeed);
+    expect(lurchAverage(lurch)).toBeCloseTo(1, 1);
+  });
+
+  it('kierunek chwieje się na zmianę w lewo i w prawo, długość ruchu bez zmian', () => {
+    const mid = (lurch.periodMs * lurch.burstShare) / 2;
+    const a = lurchAt(lurch, mid).swayRad;
+    const b = lurchAt(lurch, lurch.periodMs + mid).swayRad;
+    expect(a).toBeCloseTo((lurch.swayDeg * Math.PI) / 180, 5);
+    expect(b).toBeCloseTo(-a, 5);
+    const d = swayDirection({ x: 1, y: 0 }, a);
+    expect(Math.hypot(d.x, d.y)).toBeCloseTo(1, 5);
+    expect(d.y).toBeGreaterThan(0);
+  });
+
+  it('mózg: między atakami prędkość pulsuje (zryw / zamarcie)', () => {
+    const brain = new BossBrain(DEVOURER, createRng(2));
+    brain.activate(0);
+    const far = { x: 400, y: 0 };
+    const t0 = DEVOURER.openingDelayMs * 0.4;
+    const burstAt = Math.ceil(t0 / lurch.periodMs) * lurch.periodMs + 10;
+    const restAt = burstAt - 10 + lurch.periodMs * 0.9;
+    const burst = brain.think({ self: SELF, target: far, now: burstAt, hpRatio: 1 });
+    const rest = brain.think({ self: SELF, target: far, now: restAt, hpRatio: 1 });
+    expect(burst.speed).toBeGreaterThan(rest.speed * 4);
+  });
+
+  it('chwyt: linia stref do gracza wciąga przed paszczę, potem ugryzienie leczy; ręka leci i wraca zaciśnięta', () => {
+    const p = planBossAttack({ kind: BossAttackKind.Hook, definition: DEVOURER, self: SELF, target: { x: 180, y: 0 }, now: 0, enraged: false, rng: createRng(1) });
+    const grab = p.strikes.filter((s) => s.pullTo);
+    expect(grab.length).toBeGreaterThan(3);
+    expect(grab.every((s) => s.pullTo!.x > 0 && s.pullTo!.x < 60)).toBe(true);
+    const bite = p.strikes.find((s) => !s.pullTo)!;
+    expect(bite.healOnHit).toBe(DEVOURER.hook.followUp.healOnHit);
+    expect(p.throws.map((t) => t.look)).toEqual(['hand', 'grip']);
+    expect(p.throws[1]!.landAt).toBeLessThan(bite.impactAt);
+  });
+
+  it('chwyt tylko na gracza trzymającego dystans; skalowanie piętra obejmuje ugryzienie', () => {
+    const brain = new BossBrain(DEVOURER, createRng(3));
+    brain.activate(0);
+    const d = brain.think({ self: SELF, target: { x: 170, y: 0 }, now: DEVOURER.openingDelayMs * 0.75, hpRatio: 1 });
+    expect(d.newAttack?.kind).toBe(BossAttackKind.Hook);
+    const scaled = scaleBossForFloor(DEVOURER, 4, ENEMY_SCALING);
+    expect(scaled.hook.followUp.damage).toBeGreaterThan(DEVOURER.hook.followUp.damage);
+    expect(scaled.hook.followUp.healOnHit).toBe(DEVOURER.hook.followUp.healOnHit);
+  });
+
+  it('kokony dalej leczą i przyspieszają', () => {
+    expect(F.heal).toBeGreaterThan(0);
+    expect(F.speedPerStack).toBeGreaterThan(0);
   });
 });
