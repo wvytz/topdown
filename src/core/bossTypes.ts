@@ -465,9 +465,33 @@ export interface HookAttackDefinition extends BaseBossAttackDefinition {
   /** Strefy wzdłuż łańcucha: co `step` px, promień `radius`. */
   readonly step: number;
   readonly radius: number;
-  readonly followUp: { readonly delayMs: number; readonly reach: number; readonly radius: number; readonly damage: number; readonly knockback: number };
-  /** Wiadro na sznurze zamiast łańcucha z hakiem (sprzątaczka, krok 125): leci wiadro, napis „Do wiadra z tobą!”. */
-  readonly look?: 'bucket';
+  readonly followUp: {
+    readonly delayMs: number;
+    readonly reach: number;
+    readonly radius: number;
+    readonly damage: number;
+    readonly knockback: number;
+    /** Ugryzienie po chwycie leczy bossa (Pożeracz, krok 184). */
+    readonly healOnHit?: number;
+  };
+  /**
+   * Wiadro na sznurze zamiast łańcucha z hakiem (sprzątaczka, krok 125): leci wiadro, napis „Do wiadra z tobą!”.
+   * Kończyny (Pożeracz, krok 184): z kuli wystrzela ręka, chwyta i wciąga gracza do paszczy, napis „Chwyt!”.
+   */
+  readonly look?: 'bucket' | 'limbs';
+}
+
+/**
+ * Szarpany chód (Pożeracz, krok 184 — kula z ciał „rusza się nienaturalnie, ale bardzo szybko”): cykl `periodMs`
+ * dzieli się na zryw (`burstShare` cyklu, prędkość × `burstMultiplier`) i zamarcie (× `restMultiplier`).
+ * Kierunek chwieje się o ±`swayDeg` raz na cykl. Średnia prędkość ≈ chód bez szarpania (strojenie w configu).
+ */
+export interface LurchDefinition {
+  readonly periodMs: number;
+  readonly burstShare: number;
+  readonly burstMultiplier: number;
+  readonly restMultiplier: number;
+  readonly swayDeg: number;
 }
 
 /** Oddech palenisk: po telegrafie wszystkie paleniska areny buchają naraz (strefa `radius` wokół każdego). */
@@ -808,6 +832,8 @@ export interface BossDefinition {
   readonly shouts?: BossShoutDefinition;
   /** Ucieczka windą zamiast śmierci (blond sprzątaczka, krok 125). */
   readonly escape?: BossEscapeDefinition;
+  /** Szarpany chód (Pożeracz, krok 184): zrywy i zamarcia zamiast równego kroku, kierunek się chwieje. */
+  readonly lurch?: LurchDefinition;
   /** Ślad grzybów za bossem (Grzybowy Pożeracz, krok 111); też płaty z wyrzutu i skoku. */
   readonly trail?: FungalTrailDefinition;
   /** Dog Barona — boss-pomocnik. */
@@ -916,7 +942,7 @@ export interface WebShot {
 /** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
 export interface ThrownObject {
   /** Co leci: kokon Króla (domyślnie), puszka Barona, strąk Pożeracza, wiadro sprzątaczki; bocian, ptak i nasiono wiedźmy (krok 137). */
-  readonly look?: 'can' | 'spore' | 'bucket' | 'stork' | 'bird' | 'seed' | 'phlegm' | 'coal';
+  readonly look?: 'can' | 'spore' | 'bucket' | 'stork' | 'bird' | 'seed' | 'phlegm' | 'coal' | 'hand' | 'grip';
   readonly from: Vector2;
   readonly to: Vector2;
   readonly launchAt: number;

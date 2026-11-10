@@ -352,7 +352,7 @@ export class BossFight {
     this.trail = definition.trail ? new FungalTrail(definition.trail) : null;
     this.shouts = definition.shouts ? new ShoutSchedule(definition.shouts, createRng(deriveSeed(seed, SHOUT_SEED_SALT))) : null;
     this.creepView = definition.sludge ? new SludgeCreepView(deps.scene, deps.floor, arena, definition.sludge.creep) : null;
-    this.ropeGfx = definition.hook?.look === 'bucket' ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.projectile) : null;
+    this.ropeGfx = definition.hook?.look === 'bucket' || definition.hook?.look === 'limbs' ? deps.scene.add.graphics().setDepth(RENDER_DEPTH.projectile) : null;
     this.elevator = definition.escape || deps.arrival ? this.buildElevator(arena, definition.radius, deps.sharedElevator) : null;
     if (deps.arrival) {
       this.dormant = true;
@@ -852,6 +852,12 @@ export class BossFight {
         .setVisible(false)
         .play(animationKey(sheet, animation));
       // Bocian (krok 137) narysowany dziobem na wschód — obracamy go w kierunku lotu.
+      if (thrown.look === 'hand' || thrown.look === 'grip') {
+        // Dłoń na arkuszu patrzy na północ; obracamy ją od kuli w stronę końca chwytu.
+        const away = thrown.look === 'hand' ? thrown.to : thrown.from;
+        const base = thrown.look === 'hand' ? thrown.from : thrown.to;
+        sprite.setRotation(Math.atan2(away.y - base.y, away.x - base.x) + Math.PI / 2);
+      }
       if (thrown.look === 'stork') sprite.setRotation(Math.atan2(thrown.to.y - thrown.from.y, thrown.to.x - thrown.from.x));
       this.throws.push({ thrown, sprite });
     }
@@ -1243,6 +1249,8 @@ export class BossFight {
           .setPosition(Math.round(thrown.from.x + (thrown.to.x - thrown.from.x) * t), Math.round(thrown.from.y + (thrown.to.y - thrown.from.y) * t - lift));
         // Sznur wiadra: od dłoni sprzątaczki do lecącego wiadra.
         if (thrown.look === 'bucket' && this.boss) this.ropeGfx?.lineStyle(1, CLEANER_FX_VISUAL.bucket.rope, 0.9).lineBetween(this.boss.x, this.boss.y, sprite.x, sprite.y);
+        // Kończyna Pożeracza (krok 184): blade ramię z obrysem od kuli do lecącej dłoni, z łokciem wygiętym w bok.
+        if ((thrown.look === 'hand' || thrown.look === 'grip') && this.boss && this.ropeGfx) drawLimb(this.ropeGfx, this.boss, sprite);
         return true;
       }
       if (thrown.look !== undefined) {
@@ -1385,7 +1393,9 @@ export class BossFight {
       if (strike.pullTo && player.body instanceof Phaser.Physics.Arcade.Body) {
         player.body.reset(strike.pullTo.x, strike.pullTo.y);
         // Wiadro sprzątaczki (krok 125) ma swój okrzyk przy rzucie — bez napisu „Hak!”.
-        if (this.boss?.definition.hook?.look !== 'bucket') effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
+        const look = this.boss?.definition.hook?.look;
+        if (look === 'limbs') effects.floatingText(player.x, player.y - player.radius - 8, 'Chwyt!', '#e8d8ff');
+        else if (look !== 'bucket') effects.floatingText(player.x, player.y - player.radius - 8, 'Hak!', '#ff8a3c');
       }
       this.playThroneFx(THRONE_ROOM_VISUAL.fx.bloodRow, player.x, player.y);
       const boss = this.boss;
@@ -2026,7 +2036,26 @@ function thrownVisual(thrown: ThrownObject): { readonly sheet: SpriteSheetId; re
   if (thrown.look === 'can') return SMOKE_VISUAL.can;
   if (thrown.look === 'bucket') return CLEANER_FX_VISUAL.bucket;
   if (thrown.look === 'spore') return DEVOURER_FX_VISUAL.pod;
+  if (thrown.look === 'hand' || thrown.look === 'grip') return DEVOURER_FX_VISUAL[thrown.look];
   return KING_COCOON_VISUAL;
+}
+
+/** Ramię Pożeracza (krok 184): od krawędzi kuli do dłoni, łokieć odgięty w bok — kończyna wygląda „nie tak”. */
+function drawLimb(gfx: Phaser.GameObjects.Graphics, boss: { readonly x: number; readonly y: number; readonly radius: number }, hand: { readonly x: number; readonly y: number }): void {
+  const dx = hand.x - boss.x;
+  const dy = hand.y - boss.y;
+  const len = Math.hypot(dx, dy);
+  if (len <= boss.radius) return;
+  const ux = dx / len;
+  const uy = dy / len;
+  const start = { x: boss.x + ux * boss.radius * 0.6, y: boss.y + uy * boss.radius * 0.6 };
+  const bend = Math.min(14, len * 0.12);
+  const elbow = { x: (start.x + hand.x) / 2 - uy * bend, y: (start.y + hand.y) / 2 + ux * bend };
+  const { arm } = DEVOURER_FX_VISUAL;
+  for (const [width, color] of [[arm.width + 2, arm.outline], [arm.width, arm.color]] as const) {
+    gfx.lineStyle(width, color, 1).beginPath();
+    gfx.moveTo(start.x, start.y).lineTo(elbow.x, elbow.y).lineTo(hand.x, hand.y).strokePath();
+  }
 }
 
 /** Miejsce lądowania sieci: cienki czerwony obrys pełnego zasięgu i znacznik środka. */

@@ -5953,6 +5953,22 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `npm run build`, smoke 1–3.
 
+## Krok 184 — Pożeracz jako kula z ciał: szarpany chód i chwyt kończynami `#decyzja` `#grzybowy-pozeracz` `#cmentarzysko`
+
+**Prośba właściciela (10.11):** „poprawiony model pożeracza — kula złożona z ludzi, których zjadł, z ich kończyn; rusza się nienaturalnie, ale bardzo szybko, gryzie, chwyta kończynami i wciąga w paszczę; kokony z ludźmi zostają — konsumuje je, by odnawiać HP i zwiększać szybkość ruchu”.
+
+**Co powstało**
+- **Model** (`tools/devourer_sprites.py`, ten sam układ arkusza + kolumny 24–27): kula zlepiona z bladych ciał (tułowie, głowy-kółka z zamkniętymi oczami, ciała wystające poza obrys — sylwetka nierówna), spleciona grzybnią z kapeluszami i krostami soku (klimat Cmentarzyska/Grzybni), z wielką paszczą z zębami z przodu i ośmioma kończynami wygiętymi „w złą stronę”. Stylizacja geometryczna, bez dosłownej makabry (prawie bez krwi). Animacje: szuranie (kula się toczy i pulsuje, kończyny na przemian sięgają), kąsanie, uczta, zamach kończynami, wyrzut zarodników, skok (spłaszczenie i wydłużenie kuli) i nowy **chwyt** (`grab`). Nowy arkusz `devourer-hand.png` 24×24 — dłoń w locie (otwarta / zaciśnięta). Kokony, ślad grzybów, strąki i dekoracje bez zmian.
+- **Szarpany chód** (`LurchDefinition`, czysty `systems/BossLurch.ts`, `BossBrain.walk`): cykl 0,52 s — zryw ×1,5 przez 60%, zamarcie ×0,25 przez 40%, kierunek chwieje się ±28° na przemian. Chód 88 → 104, sprint 178 → 190 px/s: w zrywie sprint to ok. 285 px/s (szybciej od gracza), średnio ok. 190 — z dashem da się uciec, ale nie odpocząć.
+- **Chwyt kończynami** (`hook` z wyglądem `limbs`, poza wzorem, gdy gracz stoi 110–230 px): po telegrafie linia stref; z kuli wystrzela ręka (blade ramię z łokciem rysowane w `BossFight`), trafiony gracz ląduje przed paszczą („Chwyt!”), zaciśnięta dłoń wraca, a po 0,42 s ugryzienie (16 obr.) **leczy Pożeracza o 14** (`followUp.healOnHit`, nowe pole). Unik: dash w bok z linii.
+- **Kokony** — bez zmian w mechanice: uczta leczy (40) i daje stos szybszego chodu (+10%) i mocniejszych ciosów, do 4 stosów.
+
+**Testy:** `tests/ai/FungalDevourer.test.ts` — szarpany chód (zryw szybszy od gracza, średnio wolniej), chwianie kierunku, pulsowanie prędkości w mózgu, plan chwytu (wciąganie, leczenie ugryzieniem, ręka i powrót), chwyt tylko z dystansu, skalowanie piętra; dwa stare testy dostały gracza poza zasięgiem chwytu.
+
+**Weryfikacja:** `npm run build` (2818 testów); w przeglądarce `?floor=3&boss=1` — chwyt z napisem „Chwyt!”, uczta „+40”, kula w ruchu (`/mnt/project-files/screens/krok184-pozeracz/`).
+
+**Czeka na ocenę właściciela:** wygląd kuli (placeholder z generatora), tempo zrywów, siła i częstotliwość chwytu (co 5,2 s), czy leczenie z ugryzienia nie przedłuża walki za bardzo.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -6125,3 +6141,5 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.
 
 **Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie).
+
+**Pożeracz jako kula z ciał (krok 184)** `#grzybowy-pozeracz`: czeka na ocenę — wygląd kuli, tempo szarpanego chodu, częstotliwość chwytu i leczenie z ugryzienia.
