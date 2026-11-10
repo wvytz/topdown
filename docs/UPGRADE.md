@@ -14,7 +14,8 @@ Decyzja właściciela z 10.11.2026: **„Wdrażaj jako osobny branch. Zostawiamy
 - Etap upgradu = gałąź robocza → PR do `upgrade-fable`. **Nigdy do `main`.**
 - Na `main` w czasie upgradu trafiają tylko drobne poprawki i oceny właściciela. Każdy etap zaczyna od scalenia `main` do `upgrade-fable`.
 - Podgląd wdraża `npm run deploy:pages -- --subdir upgrade`, **bez** `.env.production` — build nie zna wtedy adresu workera, więc wyniki z podglądu nie trafiają na prawdziwe tablice.
-- Zwykłe wdrożenie z `main` nadpisuje całe `gh-pages` i kasuje podkatalogi. Do czasu poprawki skryptu (etap U0) po każdym wdrożeniu `main` trzeba wdrożyć podgląd ponownie.
+- Od kroku U0 zwykłe wdrożenie z `main` zachowuje podkatalogi `gh-pages` (`upgrade/`), a wdrożenie `--subdir` samo buduje bez workera (nawet przy `.env.production`) i z własnym przedrostkiem `localStorage` (`upgrade:`) — podgląd nie rusza zapisów i ustawień gry testerów.
+- Przed etapem i po nim: `npm run shots -- --label <etap>` (12 kadrów, `--before` daje arkusz „przed | po”) i `npm run perf` (pełna nawała: PC, co-op, telefon). Lista rzeczy do oceny: `public/do-oceny.html`.
 - Scalenie `upgrade-fable` do `main` dopiero na wyraźne „tak” właściciela, paczkami, z tagiem na `main` przed scaleniem.
 - Kroki na gałęzi mają w DEVLOG-u nazwy **„Krok U<etap><litera>”** (np. „Krok U2a”). Numery 185 i wyższe zostają dla `main`.
 

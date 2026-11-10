@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "node tools/smoke.mjs"
+    "smoke": "node tools/smoke.mjs",
+    "shots": "node tools/shots.mjs",
+    "perf": "node tools/perf.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"

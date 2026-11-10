@@ -28,6 +28,7 @@
 <body>
 <main>
   <h1>SZYBKI START TESTOWY</h1>
+  <p><a href="do-oceny.html" style="color:var(--accent)">Lista „Do oceny”</a> — wszystko, co czeka na twoją ocenę, z linkami.</p>
   <p>Start przy arenie bossa z przedmiotami i złotem, jakie zwykle zbiera się po drodze. Run testowy — wynik nie trafia na tablicę. Po śmierci <b>R</b> wraca na tę samą arenę z nowym zestawem.</p>
 
   <div class="row" id="heroes"><span>Bohater</span>
@@ -40,20 +41,20 @@
     <button data-items="0">bez przedmiotów</button>
   </div>
   <div class="row" id="loop"><span>Krąg wieży</span>
-    <button data-loop="0" aria-pressed="true">I (piętra 1–8)</button>
-    <button data-loop="1">II (piętra 9–16)</button>
+    <button data-loop="0" aria-pressed="true">I (piętra 1–7)</button>
+    <button data-loop="1">II (piętra 8–14)</button>
   </div>
 
   <ol id="bosses"></ol>
   <footer>Ręcznie: <code>?hero=archer&amp;floor=7&amp;boss=1</code>, dodaj <code>&amp;items=0</code> dla pustych rąk, <code>&amp;seed=N</code> dla tego samego zestawu.</footer>
 </main>
 <script>
-  // Bossowie pięter 1–8 (BIOME_BY_FLOOR / bossConfig, krok 137); kolejny krąg powtarza ich ze statystykami wyżej.
+  // Bossowie pięter 1–7 (BIOME_BY_FLOOR / bossConfig; nazwy po krokach 153, 154 i 182); kolejny krąg powtarza ich ze statystykami wyżej.
   const BOSSES = [
-    'Strażnik Piętra — ruiny',
+    'Król Szlamu — ruiny',
     'Król i Matka Pająków — Grzybnia',
     'Grzybowy Pożeracz — Cmentarzysko',
-    'Kat Otchłani — Piekło',
+    'Palacz — Piekło (kotłownia)',
     'Baron Dymu — Zadymiona palarnia',
     'Sprzątaczki — Lustrzana komnata',
     'Brudna Wiedźma — Bociani Ogród',
