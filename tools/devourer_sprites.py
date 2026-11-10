@@ -312,27 +312,55 @@ def draw_hand(L, x, y, ang, grasp):
         capsule(L, x, y, tx, ty, 1.0, 0.8, VICTIM, rim=False)
 
 
+def fang(L, bx, by, tx, ty, base):
+    """Kieł: klin z kości od nasady (bx, by) do szpica (tx, ty) — zwężająca się kapsuła, szpic jasny."""
+    capsule(L, bx, by, tx, ty, base, 0.45, BONE, rim=False)
+    L.put(int(round(tx)), int(round(ty)), BONE[2])
+
+
 def draw_mouth(L, cx, cy, k, r):
-    """Paszcza z przodu kuli: pierścień zębów (kość) wokół ciemnej gardzieli; k = 0 zamknięta szczelina … 4 rozwarta."""
+    """Paszcza z przodu kuli; k = 0 zamknięta szczelina … 4 rozwarta. Krok 184a (prośba właściciela: „większe,
+    bardziej wampirze zęby, by nadać głębi”): po dwa długie kły z przedniej i tylnej wargi zachodzą na gardziel,
+    między nimi krótsze zęby, a w głębi drugi, ciemniejszy pierścień zębów nad czarną gardzielą."""
     mx, my = cx, cy - r * 0.42
-    w = 6 + k * 1.2
-    h = 1.2 + k * 1.6
+    w = 7 + k * 1.4
+    h = 1.6 + k * 1.9
     if k == 0:
         line(L, [(mx - w, my), (mx + w, my)], VOID)
         for x in range(int(mx - w) + 1, int(mx + w), 2):
             L.put(x, int(my) - 1, BONE[1])
-            L.put(x + 1, int(my) + 1, BONE[1])
+        # Kły wystają ze zwartej paszczy: przednie w dół, tylne w górę, na krzyż przez szczelinę.
+        for sx in (-1, 1):
+            fang(L, mx + sx * w * 0.42, my - 1.5, mx + sx * w * 0.36, my + 3.5, 1.3)
+            fang(L, mx + sx * w * 0.72, my + 1.5, mx + sx * w * 0.70, my - 2.5, 1.0)
         return
-    ellipse(L, mx, my, w + 1.5, h + 1.5, FLESH, rim=False, bias=-0.2)
+    ellipse(L, mx, my, w + 1.8, h + 1.8, FLESH, rim=False, bias=-0.2)
     ellipse(L, mx, my, w, h, BLOOD[:3], rim=False, bias=-0.6)
-    ellipse(L, mx, my + h * 0.2, w * 0.6, h * 0.55, [VOID, VOID, VOID], rim=False)
-    # Zęby: trójkątne kliny na brzegu, szczyty do środka.
+    # Głębia: gardziel coraz ciemniejsza do środka.
+    ellipse(L, mx, my + h * 0.15, w * 0.72, h * 0.7, [BLOOD[0], BLOOD[0], BLOOD[1]], rim=False, bias=-0.4)
+    ellipse(L, mx, my + h * 0.2, w * 0.45, h * 0.42, [VOID, VOID, VOID], rim=False)
+    # Drugi pierścień zębów w głębi: krótkie, ciemniejsza kość.
     n = 8 + k * 2
     for i in range(n):
+        a = math.tau * (i + 0.5) / n
+        bx, by = mx + math.cos(a) * w * 0.7, my + math.sin(a) * h * 0.68
+        tx, ty = mx + math.cos(a) * w * 0.5, my + math.sin(a) * h * 0.45
+        line(L, [(bx, by), (tx, ty)], BONE[0])
+    # Zewnętrzny pierścień: grubsze kliny na brzegu wargi.
+    for i in range(n):
         a = math.tau * i / n
+        if abs(math.sin(a)) < 0.35:   # kąciki ust bez zębów — tam siedzą kły
+            continue
         bx, by = mx + math.cos(a) * w, my + math.sin(a) * h
-        tx, ty = mx + math.cos(a) * w * 0.68, my + math.sin(a) * h * 0.55
-        line(L, [(bx, by), (tx, ty)], BONE[2] if i % 2 else BONE[1])
+        tx, ty = mx + math.cos(a) * w * 0.82, my + math.sin(a) * h * 0.72
+        capsule(L, bx, by, tx, ty, 0.8, 0.35, BONE[:2] + [BONE[1]], rim=False)
+    # Kły: dwa długie z przedniej wargi (−y) i dwa krótsze z tylnej, szpice w głąb gardzieli.
+    reach = 0.95 if k >= 3 else 0.75
+    for sx in (-1, 1):
+        fx_ = mx + sx * w * 0.38
+        fang(L, fx_, my - h - 1.0, fx_ + sx * 0.8, my - h + h * 2 * reach * 0.66, 2.1)
+        bx_ = mx + sx * w * 0.62
+        fang(L, bx_, my + h + 0.5, bx_ - sx * 0.4, my + h - h * 2 * reach * 0.4, 1.3)
 
 
 # Ciała wystające poza obrys kuli — sylwetka jest nierówna, zlepiona (kąt °, rozmiar).

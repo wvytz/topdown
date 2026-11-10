@@ -5969,6 +5969,14 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** wygląd kuli (placeholder z generatora), tempo zrywów, siła i częstotliwość chwytu (co 5,2 s), czy leczenie z ugryzienia nie przedłuża walki za bardzo.
 
+## Krok 184a — Wampirze kły Pożeracza `#ocena` `#grzybowy-pozeracz`
+
+**Ocena właściciela (10.11):** „zrób większe, bardziej wampirze zęby, by nadać głębi”.
+
+**Zrobione** (`tools/devourer_sprites.py`, `draw_mouth` i `fang`): paszcza większa (szerokość 7 + 1,4k, wysokość 1,6 + 1,9k). Z przedniej wargi wyrastają dwa długie kły, a z tylnej dwa krótsze; szpice sięgają w głąb gardzieli. Między kłami są krótsze kliny, a kąciki zostają wolne, żeby kły się odcinały. Głębię dają drugi, ciemniejszy pierścień zębów w środku i gardziel ciemniejąca stopniowo do czerni. Zamknięta paszcza też pokazuje kły na krzyż przez szczelinę.
+
+**Weryfikacja:** `npm run build` (2819 testów), podgląd arkusza i walka w przeglądarce (`/mnt/project-files/screens/krok184-pozeracz/5-kly-w-grze.png`, `6-kly-arkusz.png`).
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
