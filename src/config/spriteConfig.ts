@@ -1159,6 +1159,21 @@ export const SPRITE_SHEETS = {
       land: { frames: [7], loop: false },
     },
   },
+  // Zaduch (krok 183, tools/great_ghost_sprites.py): 0–3 unoszenie (kable falują), 4–7 chwyt kablami.
+  greatGhost: {
+    key: 'sheet-great-ghost',
+    url: 'assets/sprites/great-ghost_float-grasp.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      float: { frames: [0, 1, 2, 3], loop: true },
+      grasp: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
   // Upiór zasadzek (krok 49, tools/ghost_sprites.py): 0–3 unoszenie, 4–7 chwyt.
   ghost: {
     key: 'sheet-ghost',
@@ -1754,6 +1769,7 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.Cultist]: { sheet: 'cultist', move: 'walk', idle: 'idle', attack: 'throw', groundShadow: WALKER_SHADOW },
   // Upiór unosi się nad posadzką — bez cienia (krok 49).
   [EnemyVariant.Ghost]: { sheet: 'ghost', move: 'float', attack: 'grasp', aboveDarkness: true },
+  [EnemyVariant.GreatGhost]: { sheet: 'greatGhost', move: 'float', attack: 'grasp', aboveDarkness: true },
   // Gniazdownicy i stworki (kroki 122–122a) pełzną przy ziemi: płaskie cienie.
   [EnemyVariant.BroodSac]: nestVisual('broodSac'),
   [EnemyVariant.Grub]: broodlingVisual('grub'),

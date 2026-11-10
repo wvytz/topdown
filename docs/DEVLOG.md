@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie`, `#zaduch` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5920,6 +5920,27 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** w `tests/ai/Stoker.test.ts` nowy test rozstawienia na 20 arenach (wolna posadzka, z dala od rusztów i wejścia, łańcuchy na murze). `npm run build`: 2794 testy. Smoke 1–5 bez błędów. Zrzuty: `screens/krok182-palacz/8–10`.
 
+## Krok 183 — Trzy wersje zasadzki: Butla dżina, Uciekinier i Zaduch `#decyzja` `#zasadzka` `#zaduch`
+
+**Skąd:** projekt właściciela (10.11), uwaga wszystkich testerów: „każdy encounter rozgrywa się tak samo — przedmiot na środku, duchy w tych samych miejscach, zawsze 3 fale”.
+
+**Zrobione:**
+- **Losowanie:** zasadzka losuje z seeda piętra jedną z trzech wersji, po równo (`AMBUSH_VARIANTS.weights`). Przynęta leży w losowym miejscu pokoju: co najmniej 1 kafel od ściany i ponad 2 kafle od wejść (`pickBaitTile`). Szyki fal losowane jak w kroku 164.
+- **1. Butla dżina (`Storm`):** te same scenariusze, ale każda fala o 1 upiora liczniejsza. Fale idą kaskadowo: następna rusza po 1,4 s albo od razu po wybiciu poprzedniej (`AmbushState` z `cascadeMs`). Upiory wylatują z przynęty jeden po drugim (co 90 ms), smugą na swoje miejsce.
+- **2. Uciekinier (`Flight`):** zamiast łupu leży ikona przedmiotu. Gdy gracz wejdzie w głąb pokoju, przedmiot lśni 1,5 s, potem odlatuje drogą po korytarzach do bossa (170 px/s, świeci nad mrokiem). Boss dostaje statystykę przedmiotu (`BossFight.empower`, `systems/BossEmpower.ts`):
+  - Serce, Wampirzy kieł → +30% życia;
+  - Buty, Klepsydra, Burzowy pęd, Kołczan → +20% szybkości i krótsze przerwy między atakami;
+  - broń (Ostrze, Rękawice, przedmioty z efektem) → +25% obrażeń wszystkich ataków.
+  - Nagroda: po bossie wypada ten przedmiot dodatkowo i 30 złota (obok zwykłej karty za bossa). Duet bossów — wzmacnia obu. Gdy boss już padł, przedmiot spada na arenę. Bez drogi do areny ta wersja nie wypada.
+- **3. Zaduch (`Haunt`):** kraty, mocny mrok (krąg światła 26/92 px, 95% ciemności), błysk i splątanie — bohater spowolniony o 40%, dopóki nie wynurzy się wielki duch.
+  - 4 salwy (2, 3, 3, 4 strzały co 1,9 s): upiory majaczą na brzegu kręgu światła 1,2 s, potem startują po kolei jako eteryczne strzały (210 px/s) przez miejsce bohatera. W locie pękają od jednego trafienia; trafienie bohatera: 6 obrażeń (rośnie jak u upiorów) i krótkie spowolnienie.
+  - Po salwach eteryczna wstęga prowadzi do najdalszego rogu, gdzie wynurza się **Zaduch** — wielki duch (`EnemyVariant.GreatGhost`, 240 HP, wolny, przenika rzadziej, chwyt 9 obrażeń); co 3,2 s wypuszcza 2 strzały. Po jego śmierci kraty się podnoszą.
+  - Wygląd — własny projekt w klimacie wieży po katastrofie: napęczniały kłąb smogu z szybu wentylacyjnego w pękniętej masce gazowej (dwa zielone szkła, jedno pęknięte, puszka filtra), zamiast rąk urwane kable z miedzianymi końcówkami, tren dymu. Generator `tools/great_ghost_sprites.py` (komórka 96×96, unoszenie i chwyt kablami).
+- **Silnik:** `Enemy.dart()` (lot strzały, cielesna w locie), `EnemyManager.dismiss()` (zniknięcie bez łupu), `BossEncounter.empower()`.
+- **Test ręczny:** `?ambush=storm|flight|haunt` wymusza zasadzkę i wersję na każdym piętrze (run testowy, bez tablicy).
+
+**Testy:** `tests/systems/ambushVariants.test.ts` — losowanie i wykluczenie Uciekiniera, miejsce przynęty, kaskada fal, wzmocnienia bossa, droga lotu, przebieg Zaduchu, geometria strzał, arkusz wielkiego ducha. `npm run build`: 2808 testów. Przeglądarka: wszystkie trzy wersje przechodzą do końca (kaskada do 21 wrogów naraz, boss 493 → 641 HP po Sercu i drop przedmiotu, Zaduch czyści się po śmierci wielkiego ducha). Smoke 1–3.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -6090,3 +6111,5 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - [x] Etap C, krok 168: stała liczba pokojów na piętro, ścieżka główna + 1–2 odnogi (kapliczka w odnodze).
 - [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
 - [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.
+
+**Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie).

@@ -85,7 +85,11 @@ export class AmbushState {
   private phaseAt = 0;
 
   /** `waves` — liczba wrogów w kolejnych falach (krok 164: ze scenariusza, `systems/AmbushWaves.ts`). */
-  constructor(private readonly config: { readonly waves: readonly number[]; readonly waveDelayMs: number }) {}
+  /**
+   * `cascadeMs` (krok 183, Butla dżina): następna fala rusza po tylu ms, choćby poprzednia żyła, a po wybiciu
+   * wszystkich — od razu, bez przerwy; `aliveInWave` liczy wtedy wszystkie żywe upiory zasadzki.
+   */
+  constructor(private readonly config: { readonly waves: readonly number[]; readonly waveDelayMs: number; readonly cascadeMs?: number }) {}
 
   get phase(): AmbushPhase {
     return this.current;
@@ -102,14 +106,22 @@ export class AmbushState {
         this.wave++;
         this.enter(AmbushPhase.Fighting, now);
         return { kind: 'wave', index: this.wave, count: this.config.waves[this.wave]! };
-      case AmbushPhase.Fighting:
+      case AmbushPhase.Fighting: {
+        const more = this.wave + 1 < this.config.waves.length;
+        const cascade = this.config.cascadeMs;
+        if (more && cascade !== undefined && (input.aliveInWave === 0 || now - this.phaseAt >= cascade)) {
+          this.wave++;
+          this.enter(AmbushPhase.Fighting, now);
+          return { kind: 'wave', index: this.wave, count: this.config.waves[this.wave]! };
+        }
         if (input.aliveInWave > 0) return null;
-        if (this.wave + 1 >= this.config.waves.length) {
+        if (!more) {
           this.enter(AmbushPhase.Cleared, now);
           return { kind: 'clear' };
         }
         this.enter(AmbushPhase.Gathering, now);
         return null;
+      }
       case AmbushPhase.Cleared:
         return null;
     }

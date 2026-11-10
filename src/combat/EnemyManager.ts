@@ -233,6 +233,14 @@ export class EnemyManager implements EnemyAttackHandler {
     this.trailFrom.set(enemy, { x: enemy.x, y: enemy.y });
   }
 
+  /** Zniknięcie bez śmierci (eteryczna strzała Zaduchu, krok 183): bez łupu, ultimate i plamy. */
+  dismiss(enemy: Enemy): void {
+    if (!this.enemies.includes(enemy)) return;
+    this.enemies = this.enemies.filter((e) => e !== enemy);
+    this.deps.gateWait?.forget(enemy);
+    enemy.destroy();
+  }
+
   /** Czerw z gniazda (krok 122): bez łupu i bez ładowania ultimate za zabicie. */
   isBroodling(enemy: Enemy): boolean {
     return this.broods.isMinion(enemy) || this.swarm.has(enemy);
