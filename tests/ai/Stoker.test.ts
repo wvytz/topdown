@@ -9,7 +9,7 @@ import { planBossAttack } from '@/ai/bossAttacks';
 import type { AttackPlanContext } from '@/ai/bossAttacks';
 import { planOverheatVent } from '@/ai/stokerAttacks';
 import { BossBrain } from '@/ai/BossBrain';
-import { planArenaGrates } from '@/dungeon/GratePlanner';
+import { planArenaGrates, planStokerProps } from '@/dungeon/GratePlanner';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
 import { TileType } from '@/core/dungeonTypes';
 import { sampleFloors } from '../helpers/floors';
@@ -116,5 +116,33 @@ describe('Palacz: ruszty w posadzce areny', () => {
         }
       });
     }
+  });
+});
+
+describe('Palacz: rekwizyty kotłowni (krok 182a)', () => {
+  const floors = sampleFloors([4], 20);
+  it('stoły, sterty węgla i łańcuchy stoją na wolnej posadzce (łańcuchy na murze), z dala od wejścia i rusztów', () => {
+    const layout = STOKER.arenaGrates;
+    let tables = 0;
+    let heaps = 0;
+    for (const floor of floors) {
+      const arena = floor.rooms[floor.bossRoomId]!;
+      const rows = planArenaGrates(floor, arena, layout);
+      const props = planStokerProps(floor, arena, rows, layout.props);
+      const grate = new Set(rows.flatMap((r) => r.tiles.map((t) => `${t.x},${t.y}`)));
+      const entrances = findRoomEntrances(floor, arena);
+      const ground = [...props.tables, ...props.coalHeaps].flatMap((t) => [t, { x: t.x + 1, y: t.y }]);
+      for (const t of ground) {
+        expect(floor.tiles[t.y * floor.width + t.x]).toBe(TileType.Floor);
+        expect(grate.has(`${t.x},${t.y}`)).toBe(false);
+        for (const e of entrances) expect(Math.max(Math.abs(e.x - t.x), Math.abs(e.y - t.y))).toBeGreaterThan(layout.props.entranceClear);
+      }
+      for (const c of props.chains) expect(c.y).toBe(arena.y - 1);
+      expect(props.chains.length).toBeGreaterThan(0);
+      tables += props.tables.length;
+      heaps += props.coalHeaps.length;
+    }
+    expect(tables).toBeGreaterThan(floors.length * 2);
+    expect(heaps).toBeGreaterThan(floors.length * 2);
   });
 });

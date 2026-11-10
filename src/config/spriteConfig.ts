@@ -1128,6 +1128,18 @@ export const SPRITE_SHEETS = {
     fps: 6,
     animations: { idle: { frames: [0, 1, 2, 3], loop: true } },
   },
+  // Rekwizyty kotłowni Palacza (krok 182a): 0–1 stoły do krojenia, 2 sterta węgla, 3 łańcuch z kajdanami (lico muru).
+  stokerProps: {
+    key: 'sheet-stoker-props',
+    url: 'assets/sprites/stoker-props.png',
+    frameWidth: 64,
+    frameHeight: 48,
+    sheetWidth: 256,
+    sheetHeight: 48,
+    directions: 1,
+    fps: 1,
+    animations: { still: { frames: [0], loop: false } },
+  },
   // Wrogowie Piekła (krok 41d, tools/infernal_enemies.py): 48×48, 8 kierunków.
   // Ogar: 0–3 bieg, 4 przysiad (zamach), 5–6 lot w skoku, 7 lądowanie / postój po chybieniu.
   hellhound: {
@@ -2572,5 +2584,6 @@ export const STOKER_VISUAL = {
   grate: { sheet: 'stokerGrate', idle: 'idle', warn: 'warn', burn: 'burn', burnMs: 700 },
   furnace: { sheet: 'stokerFurnace', animation: 'idle', lightRadius: 120 },
   hotArc: 0xff7a2a,
+  props: { sheet: 'stokerProps', tables: [0, 1], coalHeap: 2, chain: 3 },
 } as const;
 

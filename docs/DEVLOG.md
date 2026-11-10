@@ -5905,6 +5905,21 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Do oceny:** wytrzymałość drzwiczek (130), długość okna po przegrzaniu, tempo rusztów, czy pasy nie są za gęste na wąskiej arenie.
 
+## Krok 182a — Kotłownia Palacza: stoły do krojenia, węgiel i łańcuchy `#ocena` `#palacz` `#pieklo`
+
+**Skąd:** ocena właściciela (10.11): „testowałem na czarce, jest ok. Dołóż jeszcze jakieś detale w stylu stołów do krojenia oraz sterty węgli, jakieś łańcuchy z kajdanami przy ścianach”.
+
+**Zrobione:**
+- **Generator:** `tools/stoker_sprites.py` → `stoker-props.png` (komórka 64×48): dwa stoły do krojenia (krew i tasak; hak i kości), sterta węgla z tlącymi się bryłami i wbitą szuflą, łańcuch z kajdanami.
+- **Rozstawienie:** `planStokerProps` w `dungeon/GratePlanner.ts`, liczby w `STOKER.arenaGrates.props`.
+  - Sterty węgla (do 3): przy paszczy pieca, potem w dolnych narożnikach.
+  - Stoły (do 4): na kamiennych pasach między rusztami, przy bocznych murach, od dołu areny. Dwa stoły nie stoją w sąsiednich rzędach.
+  - Łańcuchy: co 2 kafle na licu północnego muru, z dala od paszczy.
+  - Nic nie stoi na rusztach ani bliżej niż 2 kafle od wejścia.
+- Rekwizyty są tylko wyglądem, bez kolizji, więc linia wzroku i ruch się nie zmieniają.
+
+**Testy:** w `tests/ai/Stoker.test.ts` nowy test rozstawienia na 20 arenach (wolna posadzka, z dala od rusztów i wejścia, łańcuchy na murze). `npm run build`: 2794 testy. Smoke 1–5 bez błędów. Zrzuty: `screens/krok182-palacz/8–10`.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).

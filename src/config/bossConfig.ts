@@ -672,7 +672,7 @@ export const STOKER = {
   // Piec na plecach bucha dookoła — kara za stanie za plecami.
   slam: { radius: 90, telegraphMs: 850, recoveryMs: 700, damage: 18, knockback: 330 },
   grate: { radius: 18, telegraphMs: 1100, recoveryMs: 600, damage: 16, knockback: 0, enragedFollowMs: 650 },
-  arenaGrates: { firstRow: 1, rowEvery: 3, wallMargin: 1, doorClear: 1 },
+  arenaGrates: { firstRow: 1, rowEvery: 3, wallMargin: 1, doorClear: 1, props: { entranceClear: 2, furnaceClear: 2, chainEvery: 2, tables: 4, coalHeaps: 3 } },
   strikeLook: 'embers',
   shouts: {
     idle: ['Ktoś musi grzać tych na górze!', 'Węgla! Więcej węgla!', 'Z Cmentarzyska też się pali…', 'Zimno tu przez ciebie.'],

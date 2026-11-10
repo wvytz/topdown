@@ -76,7 +76,7 @@ import type { DuetArrival } from '@/systems/BossDuet';
 import { arrivalWounds } from '@/systems/BossDuet';
 import { planElevator } from '@/dungeon/ElevatorPlanner';
 import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL, STOKER_VISUAL } from '@/config/spriteConfig';
-import { planArenaGrates } from '@/dungeon/GratePlanner';
+import { planArenaGrates, planStokerProps } from '@/dungeon/GratePlanner';
 import { planOverheatVent } from '@/ai/stokerAttacks';
 import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
 import { FungalTrail } from '@/systems/FungalTrail';
@@ -1567,7 +1567,9 @@ export class BossFight {
   private buildGrates(arena: Room, layout: NonNullable<BossDefinition['arenaGrates']>): void {
     const scene = this.deps.scene;
     const { grate, furnace } = STOKER_VISUAL;
-    for (const row of planArenaGrates(this.deps.floor, arena, layout)) {
+    const tileRows = planArenaGrates(this.deps.floor, arena, layout);
+    if (layout.props) this.dressBoilerRoom(arena, planStokerProps(this.deps.floor, arena, tileRows, layout.props));
+    for (const row of tileRows) {
       const points = row.tiles.map((tile) => {
         const at = DungeonView.tileToWorldCenter(tile);
         const sprite = scene.add.sprite(at.x, at.y, SPRITE_SHEETS[grate.sheet].key).setDepth(RENDER_DEPTH.floorHazard);
@@ -1581,6 +1583,23 @@ export class BossFight {
     const y = arena.y * TILE_SIZE;
     this.furnaceMouth = scene.add.sprite(x, y, SPRITE_SHEETS[furnace.sheet].key).setOrigin(0.5, 1).setDepth(RENDER_DEPTH.wallDecor);
     this.furnaceMouth.play(animationKey(furnace.sheet, furnace.animation));
+  }
+
+  /**
+   * Rekwizyty kotłowni (krok 182a, bez kolizji): stoły do krojenia i sterty węgla na posadzce (2 kafle szerokości),
+   * łańcuchy z kajdanami na licu północnego muru.
+   */
+  private dressBoilerRoom(arena: Room, props: ReturnType<typeof planStokerProps>): void {
+    const scene = this.deps.scene;
+    const { sheet, tables, coalHeap, chain } = STOKER_VISUAL.props;
+    const key = SPRITE_SHEETS[sheet].key;
+    const onFloor = (tile: { x: number; y: number }, frame: number) =>
+      scene.add.image((tile.x + 1) * TILE_SIZE, (tile.y + 0.5) * TILE_SIZE, key, frame).setDepth(RENDER_DEPTH.ambientProp);
+    props.tables.forEach((tile, i) => onFloor(tile, tables[i % tables.length]!).setFlipX(i % 2 === 1));
+    props.coalHeaps.forEach((tile, i) => onFloor(tile, coalHeap).setFlipX(i % 2 === 1));
+    for (const tile of props.chains) {
+      scene.add.image((tile.x + 0.5) * TILE_SIZE, arena.y * TILE_SIZE - 2, key, chain).setOrigin(0.5, 1).setDepth(RENDER_DEPTH.wallDecor);
+    }
   }
 
   /** Ruszt: kafle z planu jaśnieją przez telegraf, w chwili uderzenia płoną, potem gasną do tlenia. */
