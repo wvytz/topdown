@@ -350,7 +350,7 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
   // ale kruche i słabe: 20 HP, dotyk 4 obrażenia (dłuższy zamach 500 ms), lekkie spowolnienie 15% na 0,8 s.
   [EnemyVariant.Ghost]: {
     type: EnemyType.Rusher,
-    color: 0xb8d8e8,
+    color: 0x9ff0d8,
     maxHp: 20,
     moveSpeed: 100,
     phasing: { solidMs: 2400, phasedMs: 900 },

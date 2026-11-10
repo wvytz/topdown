@@ -1,15 +1,15 @@
 """
 Generator Zaduchu (krok 183): wielki duch zasadzki w wersji „Zaduch”. Własny projekt w klimacie wieży po
 katastrofie: napęczniały kłąb smogu z szybu wentylacyjnego, w pękniętej masce gazowej (dwa okrągłe szkła
-z chorobliwie zielonym blaskiem, jedno pęknięte, puszka filtra wysunięta do przodu); zamiast rąk zwisają
-urwane kable i węże z miedzianymi końcówkami, z tyłu postrzępiony tren dymu. Widok z góry (przód = N).
+z chorobliwie zielonym blaskiem, jedno pęknięte, puszka filtra wysunięta do przodu); bez rąk (krok 183a) —
+przy chwycie cały kłąb rzuca się naprzód; z boków kapie zielona ektoplazma, z tyłu postrzępiony tren dymu. Widok z góry (przód = N).
 
 Użycie (z katalogu głównego repozytorium):
   python tools/great_ghost_sprites.py                       # arkusz do public/assets/sprites/
   python tools/great_ghost_sprites.py --preview tools/out   # dodatkowo podgląd 2x na posadzce ruin
 
 great-ghost_float-grasp.png (768x768, komórka 96x96, 8 kierunków z obrotu, obrys po obrocie):
-  kolumny 0–3 unoszenie (kłąb pulsuje, kable falują), 4–7 chwyt: kable cofnięte, wyrzut, pełny zasięg, powrót.
+  kolumny 0–3 unoszenie (kłąb pulsuje, tren faluje), 4–7 zryw: cofnięcie, wyrzut maski, pełny zasięg, powrót.
 Kolory: szarozielony smog (z dala od palety piaskowca i od bladego błękitu zwykłych upiorów), ciemna guma maski,
 miedź końcówek kabli, zielony blask szkieł (akcent). Pełne piksele — przezroczystość daje silnik (STYLEGUIDE §6).
 """
@@ -56,23 +56,14 @@ def great_ghost_frame(f):
     for ang, dist, r in ((200, 18, 9), (250, 19, 8), (290, 19, 8), (340, 18, 9), (160, 16, 8), (20, 16, 8), (110, 14, 9), (70, 14, 9)):
         a = math.radians(ang)
         puff(img, C + math.cos(a) * (dist + pulse), cy + math.sin(a) * (dist + pulse) * .9, r, SMOG)
-    # kable zamiast rąk: dwa po bokach (guma z miedzianą końcówką), przy chwycie wyrzucone do przodu
-    reach = (0, 0, 0, 0, -4, 10, 15, 4)[f]
+    # bez rąk (krok 183a, ocena właściciela): przy chwycie cały kłąb rzuca się do przodu, a z boków kapie ektoplazma
+    reach = (0, 0, 0, 0, -2, 5, 8, 2)[f]
     for side in (-1, 1):
-        root = (C + side * 17, cy - 4)
-        if floating:
-            mid = (C + side * 25, cy + 2 + sway * side * .4)
-            tip = (C + side * 27, cy + 12 + sway * side * .6)
-        else:
-            mid = (C + side * 18, cy - 16 - reach * .5)
-            tip = (C + side * (12 - reach * .2), cy - 24 - reach)
-        stroke(img, [root, mid, tip], 3.4, RUBBER[1], edge=RUBBER[2])
-        ellipse(img, tip[0], tip[1], 2.4, 2.4, lambda nx, ny: COPPER[1] if nx + ny < 0 else COPPER[0])
-        # krótszy, urwany wąż obok — postrzępiony koniec
-        stub = (root[0] + side * 6, root[1] + 10 + sway * .3)
-        stroke(img, [(root[0], root[1] + 3), stub], 2.6, RUBBER[0], edge=RUBBER[1])
+        puff(img, C + side * 9, cy - 14 - reach * .6, 7, SMOG)
+        drip = (C + side * 21, cy + 4 + (f % 4) * 2)
+        ellipse(img, drip[0], drip[1], 1.6, 2.2, lambda nx, ny: GLOW[0])
     # maska gazowa z przodu (N): gumowy owal, dwa okrągłe szkła z blaskiem, jedno pęknięte, filtr wysunięty
-    my = cy - 12
+    my = cy - 12 - reach
     ellipse(img, C, my, 13, 10, band_shade(RUBBER + RUBBER[1:], light=(-.4, -.6)))
     for ex, cracked in ((-6, False), (6, True)):
         ellipse(img, C + ex, my - 1, 4.4, 4.2, lambda nx, ny: GLOW[1] if nx * nx + ny * ny < .35 else GLOW[0])

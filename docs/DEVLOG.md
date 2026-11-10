@@ -5941,6 +5941,18 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Testy:** `tests/systems/ambushVariants.test.ts` — losowanie i wykluczenie Uciekiniera, miejsce przynęty, kaskada fal, wzmocnienia bossa, droga lotu, przebieg Zaduchu, geometria strzał, arkusz wielkiego ducha. `npm run build`: 2808 testów. Przeglądarka: wszystkie trzy wersje przechodzą do końca (kaskada do 21 wrogów naraz, boss 493 → 641 HP po Sercu i drop przedmiotu, Zaduch czyści się po śmierci wielkiego ducha). Smoke 1–3.
 
+## Krok 183a — Duszki z ektoplazmy i przegląd błędów zasadzek `#ocena` `#zasadzka` `#zaduch`
+
+**Skąd:** ocena właściciela (10.11): „sprawdź, czy nie produkuje to bugów, i popraw warstwę wizualną. Duchy nie potrzebują rąk — niech będą jak kreskówkowe duszki i te z chrupek; niech bije od nich ektoplazma, niech będą żywe jak lampki w grzybowym biomie”.
+
+**Zrobione:**
+- **Upiór bez rąk** (`tools/ghost_sprites.py`): okrągła głowa z dużymi oczami i buzią „o”, ciało-łza zwężające się w falujący, zawijany ogon; miętowo-turkusowa ektoplazma z kapiącymi kroplami. Chwyt to teraz zryw z szeroko otwartą buzią.
+- **Zaduch bez rąk** (`tools/great_ghost_sprites.py`): zamiast kabli guzy smogu przy masce i kapiąca zielona ektoplazma; przy chwycie cały kłąb z maską rzuca się naprzód.
+- **Ektoplazma** (`effects/Ectoplasm.ts`, `ECTOPLASM_VISUAL`): każdy duch (wróg z przenikaniem) ma miękką poświatę ADD, która oddycha co 1,4 s jak lampki Grzybni, i kropelki kapiące z ciała. Gaśnie przy przenikaniu, znika razem z duchem. Kolor śmierci upiora i smug zasadzki dopasowany do ektoplazmy.
+- **Przegląd błędów:** wszystkie trzy wersje przeszły do końca w przeglądarce solo i w co-opie (barbarzyńca, łucznik, Czarodziejka; Zaduch z partnerem, Uciekinier z partnerem), bez błędów w konsoli. Logika bez zmian — nie znalazłem błędu do poprawy.
+
+**Testy:** `npm run build`, smoke 1–3.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
