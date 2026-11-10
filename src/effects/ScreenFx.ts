@@ -4,6 +4,8 @@ import type { RenderProfile, RenderQuality } from '@/core/displayTypes';
 import { currentPlatform } from '@/core/platform';
 import { RENDER_QUALITY_CONFIG } from '@/config/renderQualityConfig';
 import { display } from '@/input/DisplayControls';
+import { HitstopClock } from '@/systems/CombatFeel';
+import type { HitstopKind } from '@/core/combatFeelTypes';
 import { qualityFromSearch, renderProfile, resolveQuality, scaledParticleCount } from '@/systems/RenderQuality';
 
 /** Obiekt, który może dostać poświatę (preFX istnieje tylko w WebGL). */
@@ -30,6 +32,9 @@ class ScreenFxHub {
   private cached: RenderProfile | null = null;
   private readonly glowing = new Map<GlowTarget, GlowGroup>();
   private readonly watchers = new Set<() => void>();
+  /** Hitstop (krok U2): zatrzymanie samego obrazu; czas — zegar klatek z `installFrameHold`. */
+  private readonly hitstopClock = new HitstopClock();
+  private frameTime = 0;
 
   constructor() {
     display.watch(() => {
@@ -88,6 +93,30 @@ class ScreenFxHub {
   /** Czy światła mogą migotać (pochodnie, ogień, paleniska); false — stała jasność. */
   get flicker(): boolean {
     return this.profile.lightFlicker;
+  }
+
+  /**
+   * Hitstop (krok U2, §13.5): od następnej klatki obraz stoi przez czas z configu, a logika liczy się dalej —
+   * nagranie wejść odtwarza się tak samo. `enabled` — z poziomu feelu (Niska i „mniej błysków” — false).
+   * Zwraca, czy zatrzymanie przyznano (w nawale obowiązuje przerwa między hitstopami).
+   */
+  hitstop(kind: HitstopKind, enabled: boolean): boolean {
+    return this.hitstopClock.request(kind, this.frameTime, enabled) > 0;
+  }
+
+  /** Czas obrazu bez zatrzymań (ms) — zegar animacji efektów feelu walki. */
+  get visualTime(): number {
+    return this.hitstopClock.visualTime;
+  }
+
+  cancelHitstop(): void {
+    this.hitstopClock.reset();
+  }
+
+  /** Wołane przez `installFrameHold` na początku klatki: czy pominąć rysowanie. */
+  holdFrame(frameTime: number): boolean {
+    this.frameTime = frameTime;
+    return this.hitstopClock.shouldHold(frameTime);
   }
 
   /** Liczba ozdobnych cząstek na bieżącym poziomie (Niska — tyle, ile przed upgradem). */

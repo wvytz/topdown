@@ -6052,6 +6052,27 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Weryfikacja:** `npm run build` (2845 testów); kadry `npm run shots`: U0 → U1 na Niskiej — te same 12 kadrów bez różnic poza ruchem wrogów; U1 Niska → Wysoka — poświata pochodni i ognia; zbliżenie pochodni na 3 poziomach i strona „Dźwięk i obraz” na PC i telefonie (`/mnt/project-files/screens/krokU1-fundament/`); `npm run perf` na trzech poziomach; `npm run smoke` — wszyscy bohaterowie dochodzą do piętra 7. Domyślne `--floors` w smoke zmienione z 8 na 6: od kroku 169 run kończy się po piętrze 7, więc próba wejścia na 8 zawsze kończyła się „błędem”. Jedno zacięcie Czarodziejki na piętrze 5 w pełnym przebiegu nie powtórzyło się w osobnym przebiegu (ani na U0, ani na U1).
 
+## Krok U2 — Feel walki: iskry, smuga, rozpad, hitstop `#upgrade` `#feel-walki`
+
+**Zakres (etap U2 z `docs/UPGRADE.md`, STYLEGUIDE §13.5):** trafienia i wybuchy nad mrokiem, smuga cięcia, błysk i hitstop, rozpad wrogów, czytelne pociski w tłumie, wyraźniejsze elity. Same efekty obrazu: liczby walki, hitboxy, czas logiki i strumienie RNG bez zmian. **Niska = gra sprzed upgradu** (test pilnuje, że na Niskiej żaden efekt feelu nie działa).
+
+**Co powstało**
+- **Czysta warstwa** `systems/CombatFeel.ts` (typy `core/combatFeelTypes.ts`, liczby `config/combatFeelConfig.ts`): poziom feelu z profilu obrazu (Niska — nic; Średnia i Wysoka — wszystko, Wysoka gęstszy rozpad i więcej iskier), próg ciężkiego ciosu, zegar hitstopu z przerwą między zatrzymaniami (w nawale obraz się nie rwie, zabicie bossa przerwę pomija), tory kawałków rozpadu w pełnych pikselach, odcinki smugi.
+- **Hitstop tylko obrazu** (`effects/FrameHold.ts`, `screenFx.hitstop`): klatka w czasie zatrzymania robi wszystko oprócz rysowania — wejście, sceny, fizyka i czas gry idą dalej, na ekranie zostaje ostatni obraz z błyskiem trafienia. Dzięki temu nagranie wejść odtwarza się tak samo na każdym poziomie (logika nie wie o zatrzymaniu). Ciężki cios (≥ 40 obrażeń jednym trafieniem: Szał, Supernowa, przemiany) 45 ms, zabicie elity 70 ms, ostatni cios w bossa 160 ms; do tego krótkie drżenie przez `screenFx` (nie sumuje się). „Mniej błysków” wyłącza hitstop i drżenie. Animacje efektów liczą **czas obrazu** (bez zatrzymań), więc iskry i smuga nie gasną w czasie hitstopu, tylko ruszają po nim.
+- **Iskry trafienia** nad mrokiem (`RENDER_DEPTH.combatFx`): jedna klatka bieli w miejscu trafienia, potem 3–5 pikseli wylatuje od źródła ciosu skokowo; magia w fiolecie Czarodziejki, cios w tarczę — stal. Wołane z `Enemy.takeHit` i `Boss.takeHit` — jedno miejsce dla wszystkich źródeł obrażeń (cios, strzał, kula, promień, dash, wybuch).
+- **Smuga cięcia barbarzyńcy:** zamiast białego wachlarza (placeholder) łuk z pikseli przy końcu zasięgu — pierwsza klatka jasna, potem bursztyn klasy, cieńsza i gasnąca skokowo. Nie zasłania wrogów w zasięgu ciosu.
+- **Rozpad wrogów:** kawałki w barwie wroga z obrysem `#1b1a22` rozlatują się, podskakują i opadają (7 klatek). Elita sypie się dwa razy gęściej, w barwach swoich cech, i zatrzymuje obraz — to jej „wyraźne” zakończenie. Boss — największy rozpad i najdłuższy hitstop.
+- **Wybuchy nad mrokiem:** pierścień i iskry wybuchu rysują się też nad warstwą mroku (bez wypełnienia — nie zasłania postaci); kula ognia była nad mrokiem od kroku 144.
+- **Pociski wrogów w tłumie:** mały, dwustopniowy krąg czerwonego światła (ADD) nad mrokiem — pocisk widać w mroku i w nawale.
+- **Trafiony bohater** błyska przez 70 ms barwą ostrzegawczą (czerwień) zamiast niczego.
+- Trzy wspólne `Graphics` rysowane raz na klatkę zamiast obiektu na każde trafienie — w nawale stały koszt.
+
+**Testy:** `tests/systems/combatFeel.test.ts` — Niska bez feelu, wyższy poziom nigdy uboższy, „mniej błysków” wyłącza hitstop, próg ciężkiego ciosu, zegar (klatka zdarzenia rysuje się, zatrzymanie od następnej, przerwa w nawale, boss bez przerwy, reset), czas obrazu stoi w zatrzymaniu, tory rozpadu w pełnych pikselach, smuga pokrywa łuk.
+
+**Weryfikacja:** `npm run build`; w przeglądarce: przy zabiciu bossa 17 kroków logiki → 7 klatek rysowania (zatrzymanie ok. 10 klatek), na Niskiej 17/17; pasek klatek krokowanych ręcznie (`game.step`) Niska vs Wysoka i walka w nawale trzema bohaterami — bez błędów w konsoli (`/mnt/project-files/screens/krokU2-feel-walki/`); `npm run perf` (nawała, piętro 7): praca gry p50 3,2 ms (Niska) vs 3,7 ms (Wysoka, z poświatą z U1) — efekty feelu nie dokładają zauważalnej pracy JS; FPS w kontenerze bez GPU nic nie mówi o telefonie; `npm run smoke` do piętra 7.
+
+**Zostaje na później:** jaskrawsza krew na posadzce i nowe ślady walki (U4 — razem z kaflami), smagnięcie Matki Pająków (U6), światło od pocisków i wybuchów w warstwie mroku (U3). Do oceny na podglądzie: czy hitstop i rozpad „siedzą”, próg ciężkiego ciosu, długości zatrzymań.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6068,7 +6089,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 
 **3. Do zrobienia — upgrade Aktu I** (`docs/UPGRADE.md`, gałąź `upgrade-fable`; przed każdym etapem i po nim `npm run shots` i `npm run perf`)
 - **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — w U3 włączać ją tylko w kadrze (albo zastąpić wspólną warstwą światła).
-- **U2 feel walki:** wybuchy i trafienia nad mrokiem, jaskrawsza krew (uwaga po kroku 24), wyraźniejsze smagnięcie Matki Pająków, czytelne pociski w tłumie.
+- **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Zostało: jaskrawsza krew (uwaga po kroku 24) → U4, smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0:** światło pocisków, magii i ognia; postFX z przełącznikiem jakości (po kroku 144).
 - **U4 kafle:** pilot ruin; ozdobna obwódka areny i przejścia materiałów (dual-grid — dotąd odłożone, teraz w zakresie).
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.

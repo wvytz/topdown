@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { combatFeel } from '@/effects/CombatFeel';
 import Phaser from 'phaser';
 import type {
   AreaStrike,
@@ -1752,6 +1753,7 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
+    combatFeel.bossKill(boss, boss.radius, boss.definition.color);
     sound.play(SoundCue.BossDeath, boss);
     this.clearFight(boss);
     const position: Vector2 = { x: boss.x, y: boss.y };

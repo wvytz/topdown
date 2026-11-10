@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { combatFeel } from '@/effects/CombatFeel';
 import { executeDamage } from '@/systems/Relics';
 import Phaser from 'phaser';
 import type {
@@ -425,6 +426,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.hitFlash.start(now, HIT_FLASH_MS);
     this.lastHitBlocked = blocked;
     if (!result.died) sound.play(blocked ? SoundCue.ShieldBlock : SoundCue.EnemyHit, this);
+    // Krok U2: iskry trafienia nad mrokiem, ciężki cios zatrzymuje obraz (tylko obraz).
+    combatFeel.hit(this, source, damage, { blocked, magic: hit.magic });
     // Skoku i szarży nie da się zatrzymać trafieniem — bez odrzutu i ogłuszenia w biegu.
     if (!this.pounce && !this.leap && this.charge?.phase(now) !== ChargePhase.Charging) {
       this.hitStun.start(now, HIT_STUN_MS);
