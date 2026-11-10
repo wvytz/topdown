@@ -49,7 +49,7 @@ import { knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
 const GHOST_PHASING = ENEMY_VARIANTS[EnemyVariant.Ghost].phasing;
 const GHOST_PHASE_CYCLE = GHOST_PHASING ? GHOST_PHASING.solidMs + GHOST_PHASING.phasedMs : 0;
 /** Barwy duchowej poświaty (czysto wizualne). */
-const SPIRIT_TINT = 0xbfe8ff;
+const SPIRIT_TINT = 0x9fffe0;
 const HAUNT_TINT = 0x9fe0b0;
 /** Strzała Zaduchu „trzyma się” w majaczeniu dłużej, niż trwa telegraf — start daje menedżer. */
 const ARROW_HOLD_MS = 4000;

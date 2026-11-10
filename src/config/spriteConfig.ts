@@ -1815,6 +1815,21 @@ export const LURKER_HIDEOUT_VISUAL = {
 } as const;
 
 /** Upiór (krok 49): świeci nad mrokiem; przezroczystość cielesny/bezcielesny; wynurzanie się przy pojawieniu. */
+/**
+ * Ektoplazma upiorów (krok 183a, ocena właściciela: „niech bije od nich ektoplazma, żywe jak lampki w Grzybni”):
+ * pulsująca poświata ADD pod duchem i kapiące kropelki (`effects/Ectoplasm.ts`).
+ */
+export const ECTOPLASM_VISUAL = {
+  tint: 0x5fffd0,
+  /** Promień poświaty w promieniach ciała ducha. */
+  haloScale: 3.6,
+  haloAlpha: 0.7,
+  /** Pulsowanie: okres i głębokość (jak lampki Grzybni). */
+  pulseMs: 1400,
+  pulseDepth: 0.35,
+  drip: { frequencyMs: 170, lifespanMs: { min: 450, max: 900 }, fallSpeed: { min: 6, max: 22 }, alpha: 0.9 },
+} as const;
+
 export const GHOST_VISUAL = {
   solidAlpha: 0.9,
   phasedAlpha: 0.28,

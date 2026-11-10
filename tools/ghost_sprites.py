@@ -1,6 +1,6 @@
 """
-Generator upiora zasadzek (krok 49): duch w łachmanach całunu, widziany z góry (przód = N), z falującym
-trenem z tyłu i dłońmi wyciągniętymi do przodu. W grze świeci nad mrokiem; przenikanie (bezcielesność)
+Generator upiora zasadzek (krok 49; od kroku 183a duszek bez rąk): okrągła głowa z dużymi oczami i falujący
+ogon z ektoplazmy, widziany z góry (przód = N); chwyt to zryw z otwartą buzią. W grze świeci nad mrokiem; przenikanie (bezcielesność)
 silnik pokazuje przezroczystością sprite'a — arkusz ma pełne piksele (STYLEGUIDE §6).
 
 Użycie (z katalogu głównego repozytorium):
@@ -27,39 +27,41 @@ OUT_DIR = os.path.join(trt.ROOT, 'public', 'assets', 'sprites')
 CELL = 48
 MARGIN = 8
 C = CELL / 2
-SHROUD = (ok(.52, .040, 225), ok(.63, .045, 220), ok(.74, .045, 215), ok(.84, .035, 210), ok(.92, .020, 205))
-HOLLOW = ok(.20, .030, 255)
-GLOW = ok(.86, .110, 195)
+# Krok 183a (ocena właściciela): duszek bez rąk — okrągła głowa i falujący ogon (jak kreskówkowy duszek),
+# z ektoplazmy: miętowo-turkusowy, jasny, „żywy” jak lampki Grzybni; poświatę dorysowuje silnik (effects/Ectoplasm).
+SHROUD = (ok(.60, .075, 180), ok(.72, .085, 176), ok(.82, .080, 172), ok(.90, .060, 168), ok(.96, .035, 165))
+HOLLOW = ok(.18, .030, 230)
+GLOW = ok(.98, .030, 170)
+DRIP = ok(.84, .110, 170)
 
 
 def ghost_frame(f):
     img = Img(CELL, CELL)
     floating = f < 4
     sway = (0, 2, 0, -2)[f % 4] if floating else 0
-    cy = C
-    # tren całunu za plecami: trzy postrzępione pasma falujące na boki
-    for k, dx in enumerate((-4, 0, 4)):
-        wave = sway * (1 if k != 1 else -1)
-        pts = [(C + dx * .6, cy + 3), (C + dx + wave * .5, cy + 8), (C + dx * 1.1 + wave, cy + 12)]
-        stroke(img, pts, 3.2 - abs(dx) * .15, SHROUD[1], edge=SHROUD[2])
-    # tułów: owal całunu
-    ellipse(img, C, cy, 7.5, 7, band_shade(SHROUD))
-    # ramiona i dłonie: przy unoszeniu luźno przy bokach, w chwycie wyrzucone do przodu
-    reach = (0, 0, 0, 0, -2, 5, 7, 2)[f]
-    for side in (-1, 1):
-        if floating:
-            hand = (C + side * 8, cy - 3 + (sway * side) * .3)
-        else:
-            hand = (C + side * (5 - reach * .2), cy - 6 - reach)
-        stroke(img, [(C + side * 5.5, cy - 2), hand], 2.6, SHROUD[2], edge=SHROUD[3])
-        img.put(int(hand[0]), int(hand[1]), SHROUD[4])
-    # głowa w kapturze: jaśniejsza, z pustymi oczodołami i lodowym blaskiem
-    hy = cy - 5
-    ellipse(img, C, hy, 4.6, 4.2, band_shade(SHROUD, light=(-.4, -.6)))
-    for ex in (-2, 1):
-        img.put(int(C + ex), int(hy - 1), HOLLOW)
-        img.put(int(C + ex + 1), int(hy - 1), HOLLOW)
-        img.put(int(C + ex) + (1 if ex < 0 else 0), int(hy - 2), GLOW)
+    # zryw (4–7): głowa wysuwa się do przodu (N), ogon się wyciąga, paszcza otwiera
+    lunge = (0, 0, 0, 0, -1, 2, 3, 1)[f]
+    cy = C - lunge
+    # ciało-łza: kłęby coraz mniejsze ku tyłowi, koniec zawija się na bok (falowanie) — bez rąk
+    for k, (dy, r) in enumerate(((3, 8.2), (6.5, 6.6), (9.5, 5.0), (12, 3.4), (13.8, 2.2))):
+        bend = sway * (k * .45) + (lunge * .2 if k else 0)
+        ellipse(img, C + bend, cy + dy + lunge * .25 * k, r, r * .9, band_shade(SHROUD))
+    # głowa: duża, okrągła, z odblaskiem
+    ellipse(img, C, cy - 2, 9, 8.5, band_shade(SHROUD))
+    # oczy: pionowe, czarne owale z iskierką; w zrywie zmrużone
+    tall = 3 if lunge <= 2 else 2
+    for ex in (-4, 2):
+        for dx in range(2):
+            for dy in range(tall):
+                img.put(int(C + ex + dx), int(cy - 6 + dy + (3 - tall)), HOLLOW)
+        img.put(int(C + ex), int(cy - 6 + (3 - tall)), GLOW)
+    # buzia: kropka „o”, w zrywie szeroko otwarta
+    mouth = 1.0 if lunge <= 1 else 1.0 + lunge * .35
+    ellipse(img, C, cy, mouth, mouth * .9, lambda nx, ny: HOLLOW)
+    # kropla ektoplazmy odrywa się od boku (unoszenie)
+    if floating:
+        img.put(int(C + 8), int(cy + 3 + f), DRIP)
+        img.put(int(C - 8), int(cy + 6 - f), DRIP)
     return img
 
 

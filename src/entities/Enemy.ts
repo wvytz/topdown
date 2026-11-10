@@ -28,6 +28,7 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { GHOST_VISUAL } from '@/config/spriteConfig';
+import { attachEctoplasm } from '@/effects/Ectoplasm';
 import { isPhased } from '@/systems/Ambush';
 import { isShielded, turnToward } from '@/systems/Shield';
 import type { ShieldChargeConfig } from '@/systems/ShieldCharge';
@@ -159,6 +160,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.riseUntil = scene.time.now + (options.riseMs ?? 0);
     // Upiór świeci nad mrokiem (zasadzka przyciemnia światło).
     if (this.visual.aboveDarkness) this.setDepth(RENDER_DEPTH.darkness + 0.1);
+    // Duchy świecą ektoplazmą (krok 183a).
+    if (definition.phasing) attachEctoplasm(this);
     // Czyhacz w kryjówce: niewidoczny i nieruchomy (inni wrogowie go nie przepchną); trafienie w kryjówkę go wywabia.
     this.lurk = options.lurk ?? null;
     if (this.lurk) {
