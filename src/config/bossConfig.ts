@@ -615,6 +615,84 @@ export const ABYSS_EXECUTIONER = {
 } satisfies BossDefinition;
 
 /**
+ * „Palacz” (krok 182, `#palacz` — prośba właściciela: „przebuduj całkowicie bossa tarczownika i jego arenę”).
+ * Piekło to kotłownia wieży: w jej piecach płoną zmarli z Cmentarzyska, żeby ostatni żywi wyżej mieli ciepło.
+ * Palacz pilnuje ognia; kultyści popiołu mu służą. Zastępuje Kata Otchłani na piętrze 4 (Kat zostaje w kodzie).
+ * - drzwiczki pieca (tarcza z przodu): pociski i promień się w nie wtapiają, ciosy wręcz zadają połowę — wszystko
+ *   rozgrzewa żeliwo (`guard`). Rozgrzane do czerwoności odskakują: piec bucha stożkiem żaru przed Palaczem,
+ *   a on stoi z otwartymi drzwiczkami — kto uskoczy z ognia, ma pełne okno na combo (koniec „antyludzkich” odbić);
+ * - zamach szuflą (dwa cięcia), szufla żaru (bryły lecą tam, dokąd biegniesz), buchnięcie pieca na plecach;
+ * - ruszty w posadzce: pasy kafli buchają ogniem na przemian; we wściekłości oba zestawy po kolei.
+ * Liczby moje, do strojenia w teście właściciela.
+ */
+export const STOKER = {
+  id: BossId.Stoker,
+  name: 'Palacz',
+  title: 'Ten, który grzeje ostatnich',
+  enragedLabel: 'Przeciąg w piecu!',
+  radius: 32,
+  color: 0x7a3a18,
+  maxHp: 640,
+  moveSpeed: 74,
+  sprint: { speed: 140, distance: 160 },
+  engageDistance: 58,
+  openingDelayMs: 1400,
+  restBetweenAttacksMs: 1250,
+  pattern: [BossAttackKind.Grate, BossAttackKind.Cleave, BossAttackKind.Barrage, BossAttackKind.Slam],
+  patternOrder: PatternOrder.Shuffled,
+  // Świta: kultyści popiołu (Kiter Piekła) — słudzy pieca.
+  retinue: { ...RETINUE_BASE, type: EnemyType.Kiter, everyMs: 16000, enragedEveryMs: 11000 },
+  shield: {
+    arcDeg: 120,
+    turnRateDegPerSec: 75,
+    loweredAfterAttackMs: 1100,
+    frontMeleeMultiplier: 0.5,
+    reflectSpeed: 0,
+    reflectSpread: REFLECT_SPREAD,
+    absorbShots: true,
+    // Żar w drzwiczkach: tyle obrażeń w tarczę i odskakują na `breakMs`.
+    guard: { hp: 130, breakMs: 3800 },
+    overheat: { telegraphMs: 650, length: 150, step: 22, startRadius: 16, endRadius: 30, spreadDeg: 30, damage: 18, knockback: 300, staggerMs: 2200 },
+  },
+  // Zamach szuflą: dwa cięcia przed sobą (drugie dalej) — cofnięcie o krok nie wystarcza.
+  cleave: { reach: 42, radius: 44, telegraphMs: 650, recoveryMs: 750, damage: 20, knockback: 340, followUp: { delayMs: 420, reach: 64, radius: 38 } },
+  // Szufla żaru: bryły lecą łukiem, pierwsza tam, dokąd biegniesz.
+  barrage: {
+    zoneCount: 3,
+    zoneRadius: 34,
+    spread: 100,
+    intervalMs: 260,
+    telegraphMs: 850,
+    recoveryMs: 500,
+    damage: 14,
+    knockback: 200,
+    thrown: { flightMs: 420, look: 'coal' },
+    lead: { ms: 450, maxPx: 90 },
+  },
+  // Piec na plecach bucha dookoła — kara za stanie za plecami.
+  slam: { radius: 90, telegraphMs: 850, recoveryMs: 700, damage: 18, knockback: 330 },
+  grate: { radius: 18, telegraphMs: 1100, recoveryMs: 600, damage: 16, knockback: 0, enragedFollowMs: 650 },
+  arenaGrates: { firstRow: 1, rowEvery: 3, wallMargin: 1, doorClear: 1 },
+  strikeLook: 'embers',
+  shouts: {
+    idle: ['Ktoś musi grzać tych na górze!', 'Węgla! Więcej węgla!', 'Z Cmentarzyska też się pali…', 'Zimno tu przez ciebie.'],
+    attacks: {
+      [BossAttackKind.Grate]: ['Ruszt!', 'Pod nogi patrz!'],
+      [BossAttackKind.Barrage]: ['Łap żar!'],
+      [BossAttackKind.Slam]: ['Do pieca!'],
+    },
+    everyMs: { min: 6000, max: 10000 },
+    minGapMs: 2000,
+  },
+  enrage: {
+    ...ENRAGE_FURY,
+    hpThreshold: 0.5,
+    telegraphMultiplier: 0.8,
+    restMultiplier: 0.65,
+  },
+} satisfies BossDefinition;
+
+/**
  * „Baron Dymu” (krok 83, boss piętra 7 — prośba właściciela): gruby ziomek z wysokim czołem i wielkim brzuchem,
  * puszką napoju energetycznego w lewej ręce i fajką w prawej (druga w ustach, dym przy twarzy). U boku ma czarnego doga.
  * - smuga dymu z prawej fajki (atak „prawej ręki”): trafienie przywołuje doga z rogu widoku;
@@ -909,7 +987,8 @@ export const DIRTY_WITCH = {
 export const BOSS_BY_FLOOR: Readonly<Record<number, BossDefinition>> = {
   2: SPIDER_KING,
   3: FUNGAL_DEVOURER,
-  4: ABYSS_EXECUTIONER,
+  // Krok 182 (prośba właściciela: przebudować tarczownika): Palacz zamiast Kata Otchłani.
+  4: STOKER,
   5: SMOKE_BARON,
   // Krok 154 (decyzja właściciela): sprzątaczki na jednym piętrze — gospodarzem jest brunetka, blondynka otwiera walkę
   // (`BOSS_DUETS`). CLEANER_BLONDE nie ma już własnego piętra.
@@ -926,6 +1005,7 @@ const ALL_BOSSES: readonly BossDefinition[] = [
   FUNGAL_DEVOURER,
   GATE_WARDEN,
   ABYSS_EXECUTIONER,
+  STOKER,
   SMOKE_BARON,
   CLEANER_BLONDE,
   CLEANER_DARK,

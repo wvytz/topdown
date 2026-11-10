@@ -1,4 +1,4 @@
-import type { BossAttackPlan, BossDefinition } from '@/core/bossTypes';
+import type { BossAttackPlan, BossDefinition, GrateRow } from '@/core/bossTypes';
 import { BossAttackKind, BossPhase, PatternOrder } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import type { MovementIntent, Vector2 } from '@/core/types';
@@ -18,6 +18,8 @@ export interface BossBrainInput {
   readonly larders?: readonly Vector2[];
   /** Paleniska areny (Kat Otchłani). */
   readonly braziers?: readonly Vector2[];
+  /** Ruszty w posadzce areny (Palacz, krok 182). */
+  readonly grates?: readonly GrateRow[];
 }
 
 export interface BossDecision {
@@ -58,6 +60,8 @@ export class BossBrain {
   private roared = false;
   /** Ataki ze wzoru wykonane we wściekłości — liczy serie kombinacji (krok 81). */
   private enragedAttacks = 0;
+  /** Ruszty (Palacz): ile razy buchnęły — zestawy rzędów idą na przemian. */
+  private grateUses = 0;
   /** Śledzenie celu (krok 111): ostatnia pozycja i wygładzona prędkość — wyprzedzenie skoku i wyrzutu. */
   private lastTarget: { readonly at: Vector2; readonly now: number } | null = null;
   private targetVelocity: Vector2 = { x: 0, y: 0 };
@@ -232,6 +236,7 @@ export class BossBrain {
       summonsAlive: input.summonsAlive ?? 0,
       targetVelocity: this.targetVelocity,
       ...(input.braziers && { braziers: input.braziers }),
+      ...(kind === BossAttackKind.Grate && { grates: input.grates ?? [], grateSet: (this.grateUses++ % 2) as 0 | 1 }),
     });
   }
 }

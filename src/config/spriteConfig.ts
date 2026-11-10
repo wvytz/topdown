@@ -1069,6 +1069,65 @@ export const SPRITE_SHEETS = {
       kindle: { frames: [16, 17, 18, 19], loop: false },
     },
   },
+  // Palacz (krok 182, tools/stoker_sprites.py): 96×96, 8 kierunków; 0–3 chód, 4–7 zamach szuflą, 8–11 rzut żarem,
+  // 12–15 ruszt (uderzenie w posadzkę), 16–19 buchnięcie pieca na plecach.
+  stoker: {
+    key: 'sheet-stoker',
+    url: 'assets/sprites/stoker_walk-swing-throw-stomp-belch.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 1920,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      swing: { frames: [4, 5, 6, 7], loop: false },
+      throw: { frames: [8, 9, 10, 11], loop: false },
+      stomp: { frames: [12, 13, 14, 15], loop: false },
+      belch: { frames: [16, 17, 18, 19], loop: false },
+    },
+  },
+  // Ruszt w posadzce areny Palacza: 0 tlenie, 1–2 ostrzeżenie (tempo z telegrafu), 3–5 płomienie.
+  stokerGrate: {
+    key: 'sheet-stoker-grate',
+    url: 'assets/sprites/stoker-grate.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 192,
+    sheetHeight: 32,
+    directions: 1,
+    fps: 10,
+    animations: {
+      idle: { frames: [0], loop: false },
+      warn: { frames: [1, 2], loop: false },
+      burn: { frames: [3, 4, 5, 4, 3, 4, 5], loop: false },
+    },
+  },
+  // Bryła żaru z szufli Palacza (w locie).
+  stokerCoal: {
+    key: 'sheet-stoker-coal',
+    url: 'assets/sprites/stoker-coal.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 12,
+    animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
+  },
+  // Paszcza wielkiego pieca w północnym murze areny Palacza (96×64, migotanie).
+  stokerFurnace: {
+    key: 'sheet-stoker-furnace',
+    url: 'assets/sprites/stoker-furnace.png',
+    frameWidth: 96,
+    frameHeight: 64,
+    sheetWidth: 384,
+    sheetHeight: 64,
+    directions: 1,
+    fps: 6,
+    animations: { idle: { frames: [0, 1, 2, 3], loop: true } },
+  },
   // Wrogowie Piekła (krok 41d, tools/infernal_enemies.py): 48×48, 8 kierunków.
   // Ogar: 0–3 bieg, 4 przysiad (zamach), 5–6 lot w skoku, 7 lądowanie / postój po chybieniu.
   hellhound: {
@@ -1939,6 +1998,18 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
     },
     deathDecal: 'splat',
   },
+  // Palacz (krok 182): zamach szuflą, rzut żarem, ruszt, buchnięcie pieca.
+  [BossId.Stoker]: {
+    sheet: 'stoker',
+    move: 'walk',
+    attacks: {
+      [BossAttackKind.Cleave]: 'swing',
+      [BossAttackKind.Barrage]: 'throw',
+      [BossAttackKind.Grate]: 'stomp',
+      [BossAttackKind.Slam]: 'belch',
+    },
+    deathDecal: 'splat',
+  },
   // Baron Dymu (krok 83): smuga dymu (puff), uderzenie brzuchem (slam), salwa puszek (throw); ryk wściekłości = łyk (drink).
   [BossId.SmokeBaron]: {
     sheet: 'smokeBaron',
@@ -2491,3 +2562,15 @@ export function lootAnimationKey(name: LootAnimation | `item-${string}`): string
 export function itemFrames(id: ItemId, kind: ItemKind): readonly string[] {
   return numbered(`item_${id}`, kind === ItemKind.Stat ? 1 : 4);
 }
+
+/**
+ * Palacz (krok 182): bryła żaru w locie, ruszty w posadzce (światło przy buchnięciu), paszcza pieca w murze,
+ * barwa łuku rozgrzanych drzwiczek (od żelaza do żaru).
+ */
+export const STOKER_VISUAL = {
+  coal: { sheet: 'stokerCoal', animation: 'fly', arcHeight: 40 },
+  grate: { sheet: 'stokerGrate', idle: 'idle', warn: 'warn', burn: 'burn', burnMs: 700 },
+  furnace: { sheet: 'stokerFurnace', animation: 'idle', lightRadius: 120 },
+  hotArc: 0xff7a2a,
+} as const;
+

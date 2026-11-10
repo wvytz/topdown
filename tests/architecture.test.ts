@@ -26,6 +26,7 @@ const PURE_FILES = [
   'dungeon/LarderPlanner.ts',
   'dungeon/ThronePlanner.ts',
   'dungeon/BrazierPlanner.ts',
+  'dungeon/GratePlanner.ts',
   'dungeon/ArenaGalleries.ts',
   'dungeon/bossRoomRule.ts',
   'dungeon/SecretRoom.ts',

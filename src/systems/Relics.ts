@@ -17,7 +17,7 @@ export function computeRelicEffects(items: readonly ItemId[], config: RelicConfi
 
 /**
  * Statusy trafień z relikwiami: Pajęczy jedwab dokłada spowolnienie (z Lodowym odłamkiem silniejsze i dłuższe
- * z obu, zamrożenie zostaje), Topór Kata — egzekucję.
+ * z obu, zamrożenie zostaje), Pogrzebacz Palacza (dawniej Topór Kata) — egzekucję.
  */
 export function withRelicStatus(status: StatusApplication, items: readonly ItemId[], config: RelicConfig): StatusApplication {
   let result = status;
@@ -53,7 +53,7 @@ export function withRelicCard(choices: readonly ItemId[], relic: ItemId | null, 
   return result;
 }
 
-/** Topór Kata: obrażenia trafienia, które dobija wroga spadającego poniżej progu. */
+/** Pogrzebacz Palacza (dawniej Topór Kata): obrażenia trafienia, które dobija wroga spadającego poniżej progu. */
 export function executeDamage(current: number, max: number, damage: number, belowPct: number): number {
   if (damage <= 0 || belowPct <= 0 || current <= 0) return damage;
   return current - damage < max * belowPct ? Math.max(damage, current) : damage;

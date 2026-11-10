@@ -21,7 +21,7 @@ describe('pętla wieży (krok 43)', () => {
       expect(bossForFloor(floor + 2 * L).id).toBe(bossForFloor(floor).id);
     }
     expect(biomeForFloor(L + 2).id).toBe(BiomeId.FungalGrove);
-    expect(bossForFloor(L + 4).id).toBe(BossId.AbyssExecutioner);
+    expect(bossForFloor(L + 4).id).toBe(BossId.Stoker);
     expect(bossForFloor(L + 5).id).toBe(BossId.SmokeBaron);
   });
 

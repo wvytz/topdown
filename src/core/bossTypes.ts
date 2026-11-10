@@ -52,6 +52,8 @@ export enum BossAttackKind {
   FlowerEye = 'flower-eye',
   /** Wir sukni (Brudna Wiedźma): obrót wokół siebie — fala przy niej i pierścień liści. */
   Whirl = 'whirl',
+  /** Ruszt (Palacz, krok 182): pasy rusztów w posadzce areny buchają ogniem — jeden zestaw rzędów, we wściekłości oba po kolei. */
+  Grate = 'grate',
 }
 
 /** Który boss — wybiera wygląd (spriteConfig) i ślady po walce. */
@@ -66,6 +68,8 @@ export enum BossId {
   AbyssExecutioner = 'abyss-executioner',
   /** Palarnia (krok 83; od kroku 134 piętro 5): Baron Dymu — gruby z puszką i fajką, smuga dymu, czarny dog u boku. */
   SmokeBaron = 'smoke-baron',
+  /** Piekło (krok 182, piętro 4 zamiast Kata Otchłani): Palacz kotłowni wieży — drzwiczki pieca jako tarcza, szufla żaru, ruszty. */
+  Stoker = 'stoker',
   /** Lustrzana komnata, piętro A (krok 125): blond sprzątaczka — chlust i wiadro; przy 1/3 HP ucieka windą. */
   CleanerBlonde = 'cleaner-blonde',
   /** Lustrzana komnata, piętro B (krok 126): brunetka — miotła, plątanie i chlust; w połowie walki wraca blondynka. */
@@ -391,6 +395,57 @@ export interface ShieldDefinition {
    * potem tarcza wraca z pełną wytrzymałością. Brak = tarcza niezniszczalna (Kat Otchłani).
    */
   readonly guard?: { readonly hp: number; readonly breakMs: number };
+  /**
+   * Drzwiczki pieca (Palacz, krok 182): pociski z przodu nie odbijają się, tylko wtapiają w żeliwo i rozgrzewają je
+   * (zbijają `guard` swoimi obrażeniami, tak samo tyknięcia promienia). Brak = odbicie jak u Kata.
+   */
+  readonly absorbShots?: boolean;
+  /** Przegrzanie (Palacz): gdy `guard` pęknie, drzwiczki odskakują i piec bucha stożkiem żaru przed bossem. */
+  readonly overheat?: OverheatVentDefinition;
+}
+
+/**
+ * Buchnięcie przegrzanego pieca (Palacz, krok 182): po `telegraphMs` trzy smugi stref (środkowa i dwie pod kątem
+ * `spreadDeg`) od krawędzi bossa do `length` px, promień rośnie od `startRadius` do `endRadius`. Boss stoi
+ * `staggerMs` (drzwiczki otwarte — okno na combo, gdy uskoczysz z ognia).
+ */
+export interface OverheatVentDefinition {
+  readonly telegraphMs: number;
+  readonly length: number;
+  readonly step: number;
+  readonly startRadius: number;
+  readonly endRadius: number;
+  readonly spreadDeg: number;
+  readonly damage: number;
+  readonly knockback: number;
+  readonly staggerMs: number;
+}
+
+/**
+ * Ruszt (Palacz, krok 182): po telegrafie buchają wszystkie kafle rusztów jednego zestawu (strefa `radius` na kafel).
+ * Zestawy rzędów zmieniają się co atak; we wściekłości drugi zestaw buchnie `enragedFollowMs` po pierwszym.
+ */
+export interface GrateAttackDefinition extends BaseBossAttackDefinition {
+  readonly radius: number;
+  readonly enragedFollowMs: number;
+}
+
+/**
+ * Ruszty w posadzce areny (Palacz): poziome pasy kafli co `rowEvery` rzędów od `firstRow` (licząc od górnego
+ * wiersza areny), `wallMargin` kafli od bocznych murów, bez kafli przy wejściu (`doorClear`). Rzędy na przemian
+ * w zestawie 0 i 1.
+ */
+export interface ArenaGratesDefinition {
+  readonly firstRow: number;
+  readonly rowEvery: number;
+  readonly wallMargin: number;
+  readonly doorClear: number;
+}
+
+/** Rząd rusztu w świecie (px): środki kafli i zestaw (0 albo 1). */
+export interface GrateRow {
+  readonly set: 0 | 1;
+  readonly points: readonly Vector2[];
 }
 
 /**
@@ -736,6 +791,9 @@ export interface BossDefinition {
   readonly birdDive?: BirdDiveDefinition;
   readonly flowerEye?: FlowerEyeDefinition;
   readonly whirl?: WhirlAttackDefinition;
+  /** Ruszt (Palacz, krok 182) i ruszty w posadzce areny. */
+  readonly grate?: GrateAttackDefinition;
+  readonly arenaGrates?: ArenaGratesDefinition;
   /**
    * Druga faza (krok 137): od wejścia we wściekłość ataki biorą się z tego wzoru zamiast z `pattern`
    * (ta sama kolejność `patternOrder`). Brak = cały czas `pattern`.
@@ -787,7 +845,7 @@ export interface AreaStrike {
   /** Trafienie unieruchamia (plątanie brunetki, krok 126). */
   readonly root?: RootEffect;
   /** Wygląd strefy: dym zamiast czerwonego telegrafu; `spores` — czerwony telegraf, wybuch w kolorach soku (krok 111). */
-  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle' | 'embers' | 'dive' | 'whirl' | 'sludge';
+  readonly look?: 'smoke' | 'spores' | 'water' | 'tangle' | 'embers' | 'dive' | 'whirl' | 'sludge' | 'grate';
 }
 
 /** Fala pocisków wystrzelonych równomiernie dookoła punktu. */
@@ -853,7 +911,7 @@ export interface WebShot {
 /** Rzucony przedmiot (kokon Króla): tylko lot do pokazania; obrażenia daje strefa w `strikes`. */
 export interface ThrownObject {
   /** Co leci: kokon Króla (domyślnie), puszka Barona, strąk Pożeracza, wiadro sprzątaczki; bocian, ptak i nasiono wiedźmy (krok 137). */
-  readonly look?: 'can' | 'spore' | 'bucket' | 'stork' | 'bird' | 'seed' | 'phlegm';
+  readonly look?: 'can' | 'spore' | 'bucket' | 'stork' | 'bird' | 'seed' | 'phlegm' | 'coal';
   readonly from: Vector2;
   readonly to: Vector2;
   readonly launchAt: number;

@@ -94,8 +94,8 @@ describe('Kat Otchłani (krok 41f)', () => {
     ...over,
   });
 
-  it('kończy piętro 4 (jedyne piętro Piekła, krok 134) i ma tarczę jak Strażnik Bram, ale rozgrzewaną promieniem', () => {
-    expect(bossForFloor(4).id).toBe(BossId.AbyssExecutioner);
+  it('ma tarczę jak Strażnik Bram, ale rozgrzewaną promieniem (od kroku 182 poza wspinaczką — piętro 4 ma Palacza)', () => {
+    expect(bossForFloor(4).id).toBe(BossId.Stoker);
     expect(ABYSS_EXECUTIONER.shield.heat.ticks).toBeGreaterThan(0);
   });
 
