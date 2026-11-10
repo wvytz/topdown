@@ -1,3 +1,4 @@
+import type { BossEmpowerment } from '@/systems/AmbushVariants';
 import type { Vector2, BossHudData } from '@/core/types';
 import { deriveSeed } from '@/core/random';
 import { TILE_SIZE } from '@/config/gameConfig';
@@ -97,6 +98,17 @@ export class BossEncounter {
   get isFighting(): boolean {
     // Krok 154: po ucieczce otwierającej blondynki walka trwa, choć brunetka dopiero wychodzi z windy.
     return this.fights.some((fight) => fight.isFighting) || (Boolean(this.opener?.isDefeated) && !this.isDefeated);
+  }
+
+  /** Krok 183: przedmiot-uciekinier wzmacnia każdego bossa areny (duet — obu). */
+  empower(boon: BossEmpowerment): void {
+    for (const fight of this.fights) fight.empower(boon);
+  }
+
+  /** Gdzie wlecieć uciekającemu przedmiotowi: pierwszy niepokonany boss areny. */
+  get empowerTarget(): Vector2 | null {
+    for (const fight of this.fights) if (!fight.isDefeated && fight.position) return fight.position;
+    return null;
   }
 
   get isDefeated(): boolean {

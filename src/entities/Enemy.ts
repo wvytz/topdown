@@ -125,7 +125,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   /** Upiór (krok 49): przesunięcie fazy przenikania i koniec wynurzania (do tej chwili nietykalny i bierny). */
   private readonly phaseOffsetMs: number;
-  private readonly riseUntil: number;
+  private riseUntil: number;
+  /** Eteryczna strzała w locie (krok 183): cielesna do tej chwili, mimo przenikania. */
+  private solidUntil = 0;
   private readonly riseStart: number;
 
   constructor(
@@ -183,6 +185,24 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.animator.face({ x: to.x - this.x, y: to.y - this.y });
   }
 
+  /**
+   * Eteryczna strzała Zaduchu (krok 183): upiór kończy majaczenie i leci prosto do `to` (jak doskok Czyhacza);
+   * w locie jest cielesny — da się go rozbić. Obrażenia i rozwianie po locie prowadzi AmbushManager.
+   */
+  dart(to: Vector2, speed: number, now: number): void {
+    this.riseUntil = Math.min(this.riseUntil, now);
+    const endAt = now + pounceDurationMs({ x: this.x, y: this.y }, to, speed);
+    this.leap = { to, speed, startAt: now, endAt };
+    this.solidUntil = endAt + 100;
+    this.setAlpha(GHOST_VISUAL.solidAlpha);
+    this.animator.face({ x: to.x - this.x, y: to.y - this.y });
+  }
+
+  /** Strzała jeszcze leci (krok 183). */
+  get isDarting(): boolean {
+    return this.leap !== null;
+  }
+
   private revealFromDen(): void {
     this.setVisible(true);
     (this.body as Phaser.Physics.Arcade.Body).setImmovable(false);
@@ -191,6 +211,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   /** Bezcielesny (przenikanie) albo jeszcze się wynurza — wtedy nietykalny i nie atakuje. */
   isIntangible(now: number): boolean {
     if (now < this.riseUntil) return true;
+    if (now < this.solidUntil) return false;
     const phasing = this.definition.phasing;
     return phasing ? isPhased(phasing, this.phaseOffsetMs, now) : false;
   }

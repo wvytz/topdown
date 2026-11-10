@@ -19,6 +19,8 @@ import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { BOSS_SCALING } from '@/config/combatConfig';
 import { TILE_SIZE } from '@/config/gameConfig';
+import type { BossEmpowerment } from '@/systems/AmbushVariants';
+import { empowerBossDefinition } from '@/systems/BossEmpower';
 import { BOSS_SPAWN_SAFETY, bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
 import { withHpMultiplier } from '@/systems/CoopBalance';
 import {
@@ -312,9 +314,21 @@ export class BossFight {
   /** Boss odjechał windą (krok 125) — „pokonany” bez śmierci. */
   escaped = false;
   /** Pełne HP bossa (wspólny pasek duetu liczy je także po jego śmierci). */
-  readonly maxHp: number;
+  maxHp: number;
   /** Miejsce startu bossa (px) — duet rozstawia według niego partnera. */
   readonly spawnPoint: Vector2;
+
+  /**
+   * Uciekający przedmiot zasadzki wzmacnia bossa (krok 183): nowa definicja wchodzi w miejsce starej (boss,
+   * mózg i ataki czytają ją na bieżąco), przyrost życia leczy.
+   */
+  empower(boon: BossEmpowerment): void {
+    const boss = this.boss;
+    if (!boss) return;
+    Object.assign(boss.definition as { -readonly [K in keyof BossDefinition]: BossDefinition[K] }, empowerBossDefinition(boss.definition, boon));
+    boss.health.setMax(Math.round(boss.health.max * boon.hpMultiplier));
+    this.maxHp = boss.health.max;
+  }
 
   constructor(private readonly deps: BossFightDeps) {
     const arena = deps.floor.rooms[deps.floor.bossRoomId];

@@ -365,6 +365,26 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
       status: { slow: { pct: 0.15, durationMs: 800 } },
     },
   },
+  // Zaduch (krok 183): wielki duch na końcu wersji „Zaduch” — powolny, wytrzymały, dłużej cielesny; chwyt spowalnia
+  // mocniej. Co kilka sekund wypuszcza eteryczne strzały (AmbushManager). Skaluje się jak upiory (`ghostScaling`).
+  [EnemyVariant.GreatGhost]: {
+    type: EnemyType.Rusher,
+    color: 0xa8c8b0,
+    maxHp: 240,
+    moveSpeed: 54,
+    radius: 18,
+    phasing: { solidMs: 3600, phasedMs: 700 },
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 9,
+      range: 44,
+      hitRange: 56,
+      windupMs: 750,
+      cooldownMs: 1500,
+      knockback: 170,
+      status: { slow: { pct: 0.25, durationMs: 1000 } },
+    },
+  },
   // Gniazdownicy biomów (krok 122a): ten sam rytm wylęgu, inny wygląd i stworek. Ruiny — worek z czerwiami.
   [EnemyVariant.BroodSac]: { type: EnemyType.Nester },
   [EnemyVariant.Grub]: broodling(0xd8c49a),

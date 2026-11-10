@@ -58,8 +58,10 @@ import { MinimapExplorer } from '@/systems/Minimap';
 import { MinimapRoute } from '@/systems/MinimapRoute';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
 import { TrapManager } from '@/combat/TrapManager';
-import { AmbushManager } from '@/combat/AmbushManager';
-import { AMBUSH_CONFIG } from '@/config/ambushConfig';
+import { arenaCenter } from '@/dungeon/stairs';
+import { parseStartOverrides } from '@/systems/startOverrides';
+import { AmbushManager, type AmbushBossLink } from '@/combat/AmbushManager';
+import { AMBUSH_CONFIG, AMBUSH_VARIANTS } from '@/config/ambushConfig';
 import { planAmbushRoom } from '@/dungeon/AmbushPlanner';
 import { hasAmbush } from '@/systems/Ambush';
 import { GATE_WAIT_CONFIG } from '@/config/gateWaitConfig';
@@ -323,6 +325,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private horde: HordeManager | null = null;
   /** Upiory zasadzki: zawsze widoczne (świecą nad mrokiem), bez łupu. */
   private ambushGhosts = new Set<Phaser.GameObjects.Sprite>();
+  /** Krok 183 (Uciekinier): przedmiot, który wzmocnił bossa — wypada po walce dodatkowo. */
+  private stolenItem: ItemId | null = null;
   /** Kafle kryjówek Czyhaczy (krok 123) — pułapki i urny ruin je omijają. */
   private lurkerDens: TilePoint[] = [];
   private traps: TrapManager | null = null;
@@ -452,6 +456,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.leashFrom = null;
     this.ambush = null;
     this.ambushGhosts = new Set();
+    this.stolenItem = null;
     this.lurkerDens = [];
     this.ambient = null;
     this.traps = null;
@@ -473,7 +478,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Ukryta komnata (krok 46): rysujemy piętro z komnatą w przebraniu muru; prawdziwy obraz czeka na odsłonięcie.
     // Zasadzka (krok 49): co 1–2 piętra jeden zwykły pokój staje się pokojem zasadzki — przed dekorowaniem (kraty).
     this.ambushRoomId = null;
-    if (!this.bossRush && hasAmbush(this.runSeed, this.floorNumber, AMBUSH_CONFIG)) {
+    const forcedAmbush = parseStartOverrides(window.location.search).ambush;
+    if (!this.bossRush && (forcedAmbush || hasAmbush(this.runSeed, this.floorNumber, AMBUSH_CONFIG))) {
       const plan = planAmbushRoom(this.dungeon, AMBUSH_CONFIG, createRng(deriveSeed(this.dungeon.seed, AMBUSH_ROOM_SEED_SALT)));
       if (plan) {
         this.dungeon = plan.floor;
@@ -1179,6 +1185,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       spawnSwarm: (at, count) => this.horde?.spawnAround(at, count),
       onDefeated: (position) => {
         this.dropLoot(position, BOSS_LOOT);
+        this.dropStolenReward(position);
         // Areny bossów: nagrodę i teleport prowadzi `updateBossRush` (najpierw arena musi być pusta).
         if (this.bossRush) return;
         this.unlockStairs();
@@ -1305,7 +1312,41 @@ export class GameScene extends Phaser.Scene implements HudSource {
       toast: (text) => this.showToast(text),
       gather: (anchor, room) => this.gatherParty(anchor, room),
       gateWait: this.gateWait,
+      floorNumber: this.floorNumber,
+      hurt: (player, hit) => {
+        if (player.takeHit(hit, this.time.now)) this.effects.playerHit();
+      },
+      boss: this.bossRush ? null : this.ambushBossLink(),
+      ...(parseStartOverrides(window.location.search).ambush && { forceVariant: parseStartOverrides(window.location.search).ambush }),
+      onStolen: (item) => {
+        this.stolenItem = item;
+      },
     });
+  }
+
+  /** Arena bossa dla Uciekiniera (krok 183): cel lotu i wzmocnienie. */
+  private ambushBossLink(): AmbushBossLink | null {
+    const arena = this.dungeon.rooms[this.dungeon.bossRoomId];
+    if (!arena) return null;
+    const center = arenaCenter(arena);
+    return {
+      arenaTile: { x: Math.floor(center.x), y: Math.floor(center.y) },
+      name: () => this.bossFight?.name ?? 'Boss',
+      target: () => this.bossFight?.empowerTarget ?? null,
+      defeated: () => this.bossFight?.isDefeated ?? true,
+      empower: (boon) => this.bossFight?.empower(boon),
+    };
+  }
+
+  /** Krok 183: nagroda za bossa wzmocnionego Uciekinierem — jego przedmiot i garść złota. */
+  private dropStolenReward(position: Vector2): void {
+    const item = this.stolenItem;
+    if (!item) return;
+    this.stolenItem = null;
+    const coins = 3;
+    const amount = Math.round(AMBUSH_VARIANTS.flight.rewardGold / coins);
+    this.loot.spawn(position, [{ kind: PickupKind.Item, itemId: item }, ...Array.from({ length: coins }, () => ({ kind: PickupKind.Gold, amount }) as const)]);
+    this.showToast('Uciekinier wraca do ciebie — z odsetkami!');
   }
 
   /**

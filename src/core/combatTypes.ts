@@ -55,6 +55,8 @@ export enum EnemyVariant {
   BlackDog = 'black-dog',
   /** Zasadzki (krok 49): upiór (Rusher) — przenika (chwilami bezcielesny i nietykalny), dotyk mrozi i spowalnia. */
   Ghost = 'ghost',
+  /** Zaduch (krok 183): wielki duch zasadzki — napęczniały upiór ze smogu szybu w pękniętej masce gazowej. */
+  GreatGhost = 'great-ghost',
   /** Gniazdownik ruin (krok 122): pełzający worek z jajami, wypluwa czerwie. */
   BroodSac = 'brood-sac',
   /** Czerw (krok 122, Rusher): stworek z gniazda — kruchy, szybki, słabo gryzie; ginie razem z gniazdem. */
