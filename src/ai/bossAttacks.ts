@@ -6,6 +6,7 @@ import type {
   BossLeap,
   ThrownObject,
   BossDefinition,
+  GrateRow,
   ProjectileBurst,
   WebShot,
 } from '@/core/bossTypes';
@@ -16,6 +17,7 @@ import { isCaughtByGroundArea } from '@/systems/Hurtbox';
 import { EMPTY, required, telegraph, towardPoint } from '@/ai/planHelpers';
 import { planBirdDive, planFlowerEye, planStorkFlight, planWhirl } from '@/ai/witchAttacks';
 import { withSludgePuddles } from '@/systems/Sludge';
+import { planGrate } from '@/ai/stokerAttacks';
 
 export interface AttackPlanContext {
   readonly kind: BossAttackKind;
@@ -29,6 +31,9 @@ export interface AttackPlanContext {
   readonly summonsAlive?: number;
   /** Paleniska areny (Kat Otchłani) — oddech zapala je wszystkie. */
   readonly braziers?: readonly Vector2[];
+  /** Ruszty w posadzce areny (Palacz, krok 182) i zestaw rzędów, który buchnie pierwszy. */
+  readonly grates?: readonly GrateRow[];
+  readonly grateSet?: 0 | 1;
   /** Prędkość celu (px/s) z ostatnich klatek — wyprzedzenie ataków z `lead` (krok 111); brak = cel stoi. */
   readonly targetVelocity?: Vector2;
 }
@@ -87,6 +92,8 @@ function planAttackKind(ctx: AttackPlanContext): BossAttackPlan {
       return planFlowerEye(ctx);
     case BossAttackKind.Whirl:
       return planWhirl(ctx);
+    case BossAttackKind.Grate:
+      return planGrate(ctx);
     case BossAttackKind.Feast:
       throw new Error(`Boss „${ctx.definition.name}”: uczta nie jest atakiem ze wzoru (planFeast).`);
   }

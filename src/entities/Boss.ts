@@ -1,6 +1,6 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import Phaser from 'phaser';
-import type { BossAttackPlan, BossDefinition } from '@/core/bossTypes';
+import type { BossAttackPlan, BossDefinition, GrateRow } from '@/core/bossTypes';
 import { BossPhase } from '@/core/bossTypes';
 import { attackLeadTimeMs } from '@/ai/bossAttacks';
 import type { BossVisual } from '@/config/spriteConfig';
@@ -45,6 +45,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   private readonly guard: ShieldGuard | null;
   private guardNow = 0;
   private shieldBreakPending = false;
+  /** Przegrzanie drzwiczek (Palacz, krok 182): do tej chwili boss stoi. */
+  private staggeredUntil = -Infinity;
   /** Koniec ostatniego ataku — od niego liczy się okno z opuszczoną tarczą (krok 113). */
   private lastAttackEndsAt = -Infinity;
   /** Ucieczka windą (krok 125): boss biegnie do windy i nie walczy. */
@@ -106,6 +108,27 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
   }
 
   /** Tarcza pęknięta (krok 74) — boss odsłonięty ze wszystkich stron. */
+  /** Kierunek tarczy (radiany) — także przy opuszczonej (buchnięcie przegrzanego pieca idzie w tę stronę). */
+  get facingAngle(): number {
+    return this.shieldFacing;
+  }
+
+  /**
+   * Pocisk albo tyknięcie promienia w drzwiczki (Palacz, krok 182): obrażenia idą w wytrzymałość tarczy, nie w HP.
+   * Pęknięcie zgłasza `consumeShieldBreak`.
+   */
+  absorbIntoShield(damage: number, now: number): void {
+    this.guardNow = now;
+    this.activate(now);
+    if (this.guard?.absorb(damage, now)) this.shieldBreakPending = true;
+  }
+
+  /** Boss stoi `ms` i odkłada kolejny atak (przegrzanie drzwiczek Palacza). */
+  stagger(ms: number, now: number): void {
+    this.staggeredUntil = now + ms;
+    this.brain.delay(ms);
+  }
+
   get isShieldBroken(): boolean {
     return this.guard?.isBroken(this.guardNow) ?? false;
   }
@@ -212,7 +235,14 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
    * Zwraca nowy plan ataku, jeśli boss właśnie go rozpoczyna. `summonsAlive` — żywe pajączki z wylęgów;
    * `larders` — kokony spiżarni, które Pożeracz może pożreć.
    */
-  tick(target: Vector2, now: number, summonsAlive = 0, larders: readonly Vector2[] = [], braziers: readonly Vector2[] = []): BossAttackPlan | null {
+  tick(
+    target: Vector2,
+    now: number,
+    summonsAlive = 0,
+    larders: readonly Vector2[] = [],
+    braziers: readonly Vector2[] = [],
+    grates: readonly GrateRow[] = [],
+  ): BossAttackPlan | null {
     if (this.isDead) {
       this.setVelocity(0, 0);
       return null;
@@ -238,11 +268,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite implements MeleeTarget {
       summonsAlive,
       larders,
       braziers,
+      grates,
     });
     this.enraged = decision.enraged;
     if (decision.newAttack) this.lastAttackEndsAt = decision.newAttack.endsAt;
     // Opuszczona tarcza po ataku (krok 113): boss stoi — okno na combo.
-    const speed = this.isGuardLowered(now) ? 0 : decision.speed * this.status.speedMultiplier(now);
+    const speed = this.isGuardLowered(now) || now < this.staggeredUntil ? 0 : decision.speed * this.status.speedMultiplier(now);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
     this.updateAnimation(target, decision.newAttack, now, speed === 0);
     this.updateTint(now);

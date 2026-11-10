@@ -152,7 +152,8 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
   [ItemId.HeadsmanAxe]: {
     id: ItemId.HeadsmanAxe,
     kind: ItemKind.Relic,
-    name: 'Topór Kata',
+    // Krok 182: Kata Otchłani zastąpił Palacz — ta sama relikwia, nowa nazwa.
+    name: 'Pogrzebacz Palacza',
     effect: 'wróg poniżej 20% HP ginie od trafienia (bossowie nie)',
     color: 0xd23a3a,
     weight: 0,

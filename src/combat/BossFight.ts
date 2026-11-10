@@ -14,7 +14,7 @@ import type {
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
-import type { BossDefinition, BossDogDefinition, BossId } from '@/core/bossTypes';
+import type { BossDefinition, BossDogDefinition, BossId, GrateRow } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { BOSS_SCALING } from '@/config/combatConfig';
@@ -75,7 +75,9 @@ import { EscapeStage, escapeStage, shouldEscape } from '@/systems/BossEscape';
 import type { DuetArrival } from '@/systems/BossDuet';
 import { arrivalWounds } from '@/systems/BossDuet';
 import { planElevator } from '@/dungeon/ElevatorPlanner';
-import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL } from '@/config/spriteConfig';
+import { BRAZIER_VISUAL, DOG_VISUAL, FIRE_RING_VISUAL, RETINUE_MARKER_VISUAL, SHIELD_ARC_VISUAL, SMOKE_VISUAL, STOKER_VISUAL } from '@/config/spriteConfig';
+import { planArenaGrates } from '@/dungeon/GratePlanner';
+import { planOverheatVent } from '@/ai/stokerAttacks';
 import { RetinueSchedule, pickRetinueTiles } from '@/systems/BossRetinue';
 import { FungalTrail } from '@/systems/FungalTrail';
 import type { EnemyType } from '@/core/combatTypes';
@@ -267,6 +269,10 @@ export class BossFight {
   private readonly fireRingGfx: Phaser.GameObjects.Graphics | null;
   private fireRingStartAt: number | null = null;
   private shieldHeat = 0;
+  /** Palacz (krok 182): ruszty w posadzce areny (rzędy w px i kafle-sprite'y po kluczu „x,y”) i paszcza pieca w murze. */
+  private readonly grateRows: GrateRow[] = [];
+  private readonly grateSprites = new Map<string, Phaser.GameObjects.Sprite>();
+  private furnaceMouth: Phaser.GameObjects.Sprite | null = null;
   /** Dog Barona (krok 83): osobny boss-pomocnik u boku bossa; po śmierci wraca po `respawnMs`. */
   private dog: BossDog | null = null;
   private readonly dogDefinition: BossDogDefinition | null;
@@ -357,6 +363,7 @@ export class BossFight {
       sprite.play(animationKey(BRAZIER_VISUAL.sheet, BRAZIER_VISUAL.idle));
       this.arenaBraziers.push({ at, sprite });
     }
+    if (definition.arenaGrates) this.buildGrates(arena, definition.arenaGrates);
 
     this.larderRng = createRng(deriveSeed(deps.floor.seed, LARDER_SEED_SALT));
     const feast = definition.feast;
@@ -497,6 +504,7 @@ export class BossFight {
       this.deps.effects.impact(boss.x, boss.y, boss.radius * 1.4);
       this.deps.effects.deathBurst(boss.x, boss.y, SHIELD_ARC_VISUAL.color, boss.radius);
       sound.play(SoundCue.Break, boss);
+      this.overheat(boss, now);
     }
     if (!boss) {
       this.fireRingGfx?.clear();
@@ -534,7 +542,7 @@ export class BossFight {
 
     const larders = this.larders.map((larder) => larder.position);
     const braziers = this.arenaBraziers.map((b) => b.at);
-    const plan = boss.tick(this.aggroPoint(), now, this.spiderlings.count + this.spawns.length, larders, braziers);
+    const plan = boss.tick(this.aggroPoint(), now, this.spiderlings.count + this.spawns.length, larders, braziers, this.grateRows);
     if (boss.isFighting) this.updateShouts(now);
     this.updateFireRing(boss, now);
     this.updateCreep(boss, now);
@@ -701,7 +709,8 @@ export class BossFight {
     }
     // Promień w tarczę (z przodu) nie rani bossa — zatrzymuje się na żelazie. U Kata rozgrzewa tarczę.
     const shielded = this.boss.isShieldedFrom(beam.source);
-    if (shielded) this.heatShield(this.boss, beam.now);
+    if (shielded && this.boss.definition.shield?.absorbShots) this.boss.absorbIntoShield(beam.damage, beam.now);
+    else if (shielded) this.heatShield(this.boss, beam.now);
     const targets = shielded ? this.targets().filter((t) => t !== this.boss) : this.targets();
     const { hit, killed } = resolveBeam(beam, targets);
     this.handleKills(killed);
@@ -723,6 +732,13 @@ export class BossFight {
     // w losową stronę, odchylony od strzelca.
     const shield = boss.definition.shield;
     const touches = Math.hypot(shot.position.x - boss.x, shot.position.y - boss.y) <= shot.radius + boss.radius;
+    if (shield?.absorbShots && touches && !shot.ignore?.has(boss) && boss.isShieldedFrom(shot.position)) {
+      // Drzwiczki pieca (Palacz, krok 182): pocisk wtapia się w żeliwo i je rozgrzewa — bez odbicia.
+      boss.absorbIntoShield(shot.damage, shot.now);
+      this.deps.effects.impact(shot.position.x, shot.position.y, 8);
+      sound.play(SoundCue.ShieldBlock, shot.position);
+      return boss;
+    }
     if (shield && touches && !shot.ignore?.has(boss) && boss.isShieldedFrom(shot.position)) {
       const speed = Math.hypot(shot.velocity.x, shot.velocity.y) * shield.reflectSpeed;
       this.deps.projectiles.fire({
@@ -768,6 +784,7 @@ export class BossFight {
   private schedule(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
     if (plan.kind === BossAttackKind.Kindle) this.kindleBraziers(plan);
+    if (plan.kind === BossAttackKind.Grate) this.heatGrates(plan);
     if (plan.kind === BossAttackKind.Roar && this.boss && !this.shouts) {
       this.deps.effects.floatingText(this.boss.x, this.boss.y - this.boss.radius - 8, 'Ryk!', '#ff5a3c');
       sound.play(SoundCue.BossRoar, this.boss);
@@ -1313,7 +1330,12 @@ export class BossFight {
         effects.sludge.splash(strike.center.x, strike.center.y, strike.radius);
         this.deps.decals.add('slime', strike.center.x, strike.center.y);
       }
-      else if (strike.look === 'embers') {
+      else if (strike.look === 'grate') {
+        // Ruszt (Palacz): płonie sam kafel (heatGrates); kula ognia co drugi kafel, bez wypalonych śladów.
+        if ((Math.round(strike.center.x / TILE_SIZE) + Math.round(strike.center.y / TILE_SIZE)) % 2 === 0) {
+          effects.fire.burst(strike.center.x, strike.center.y, strike.radius);
+        }
+      } else if (strike.look === 'embers') {
         // Pas bocianów (krok 144): żar spada pod ptakiem — kula ognia, płomienie na podłodze i wypalony ślad.
         // Stref jest kilkadziesiąt: huk i wstrząs FireEffects dławi sam, pula ogranicza płomienie.
         effects.fire.burst(strike.center.x, strike.center.y, strike.radius);
@@ -1538,6 +1560,62 @@ export class BossFight {
     this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 10, 'Żar!', '#ff8a3c');
   }
 
+  /**
+   * Ruszty areny Palacza (krok 182): kafle-sprite'y na posadzce (pod postaciami) i paszcza pieca w północnym murze
+   * nad środkiem areny. Rzędy w px trafiają do mózgu bossa (atak `Grate`).
+   */
+  private buildGrates(arena: Room, layout: NonNullable<BossDefinition['arenaGrates']>): void {
+    const scene = this.deps.scene;
+    const { grate, furnace } = STOKER_VISUAL;
+    for (const row of planArenaGrates(this.deps.floor, arena, layout)) {
+      const points = row.tiles.map((tile) => {
+        const at = DungeonView.tileToWorldCenter(tile);
+        const sprite = scene.add.sprite(at.x, at.y, SPRITE_SHEETS[grate.sheet].key).setDepth(RENDER_DEPTH.floorHazard);
+        sprite.play(animationKey(grate.sheet, grate.idle));
+        this.grateSprites.set(`${at.x},${at.y}`, sprite);
+        return at;
+      });
+      this.grateRows.push({ set: row.set, points });
+    }
+    const x = (arena.x + arena.width / 2) * TILE_SIZE;
+    const y = arena.y * TILE_SIZE;
+    this.furnaceMouth = scene.add.sprite(x, y, SPRITE_SHEETS[furnace.sheet].key).setOrigin(0.5, 1).setDepth(RENDER_DEPTH.wallDecor);
+    this.furnaceMouth.play(animationKey(furnace.sheet, furnace.animation));
+  }
+
+  /** Ruszt: kafle z planu jaśnieją przez telegraf, w chwili uderzenia płoną, potem gasną do tlenia. */
+  private heatGrates(plan: BossAttackPlan): void {
+    const scene = this.deps.scene;
+    const { sheet, warn, burn, idle, burnMs } = STOKER_VISUAL.grate;
+    for (const strike of plan.strikes) {
+      const sprite = this.grateSprites.get(`${strike.center.x},${strike.center.y}`);
+      if (!sprite) continue;
+      const startIn = Math.max(0, strike.telegraphStartAt - scene.time.now);
+      const leadMs = Math.max(1, strike.impactAt - strike.telegraphStartAt);
+      scene.time.delayedCall(startIn, () => sprite.active && sprite.play({ key: animationKey(sheet, warn), frameRate: 2000 / leadMs }));
+      scene.time.delayedCall(startIn + leadMs, () => {
+        if (!sprite.active) return;
+        sprite.play({ key: animationKey(sheet, burn), frameRate: 7000 / burnMs });
+        scene.time.delayedCall(burnMs, () => sprite.active && sprite.play(animationKey(sheet, idle)));
+      });
+    }
+  }
+
+  /**
+   * Przegrzanie drzwiczek (Palacz, krok 182): rozgrzana tarcza pęka — piec bucha stożkiem żaru przed bossem
+   * (telegraf), a boss stoi z otwartymi drzwiczkami.
+   */
+  private overheat(boss: Boss, now: number): void {
+    const vent = boss.definition.shield?.overheat;
+    if (!vent) return;
+    const strikes = planOverheatVent({ x: boss.x, y: boss.y }, boss.facingAngle, boss.radius, vent, now);
+    for (const strike of strikes) {
+      this.strikes.push({ strike, group: strikes, gfx: this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+    }
+    boss.stagger(vent.telegraphMs + vent.staggerMs, now);
+    this.deps.effects.floatingText(boss.x, boss.y - boss.radius - 10, 'Przegrzanie!', '#ffb050');
+  }
+
   /** Oddech palenisk: paleniska areny rosną przez telegraf i buchają w chwili uderzenia stref. */
   private kindleBraziers(plan: BossAttackPlan): void {
     const scene = this.deps.scene;
@@ -1608,6 +1686,19 @@ export class BossFight {
     const { color, alpha, width, gap } = SHIELD_ARC_VISUAL;
     // Wytrzymałość tarczy widać po łuku: im bliżej pęknięcia, tym cieńszy i bledszy.
     const wear = boss.shieldFraction;
+    if (boss.definition.shield?.overheat) {
+      // Drzwiczki pieca (Palacz): łuk się nie cieńczy, tylko rozżarza — od żelaza do żaru, gdy przegrzanie blisko.
+      const heat = Phaser.Display.Color.Interpolate.ColorWithColor(
+        Phaser.Display.Color.ValueToColor(color),
+        Phaser.Display.Color.ValueToColor(STOKER_VISUAL.hotArc),
+        100,
+        Math.round((1 - wear) * 100),
+      );
+      gfx.lineStyle(width + 1, Phaser.Display.Color.GetColor(heat.r, heat.g, heat.b), Math.min(1, alpha + 0.3 * (1 - wear))).beginPath();
+      gfx.arc(boss.x, boss.y, boss.radius + gap, angle - half, angle + half);
+      gfx.strokePath();
+      return;
+    }
     gfx.lineStyle(Math.max(1, Math.round(width * (0.5 + wear))), color, alpha * (0.5 + 0.5 * wear)).beginPath();
     gfx.arc(boss.x, boss.y, boss.radius + gap, angle - half, angle + half);
     gfx.strokePath();
@@ -1897,6 +1988,7 @@ function patchVisual(shot: WebShot): { readonly sheet: SpriteSheetId; readonly g
 
 function thrownVisual(thrown: ThrownObject): { readonly sheet: SpriteSheetId; readonly animation: string; readonly arcHeight: number } {
   if (thrown.look === 'phlegm') return SLUDGE_FX.phlegm;
+  if (thrown.look === 'coal') return STOKER_VISUAL.coal;
   if (thrown.look === 'stork' || thrown.look === 'bird' || thrown.look === 'seed') return WITCH_FX_VISUAL[thrown.look];
   if (thrown.look === 'can') return SMOKE_VISUAL.can;
   if (thrown.look === 'bucket') return CLEANER_FX_VISUAL.bucket;

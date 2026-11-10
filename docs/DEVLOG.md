@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -5876,6 +5876,35 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Czeka na ocenę właściciela:** siła Wyrwy na końcu (×4), czy teleport 77 px nie jest za krótki, barwy barbarzyńcy i łucznika na sprite'ach (na razie tylko karty — sprite barbarzyńcy jest od właściciela).
 
+## Krok 182 — Palacz: nowy boss Piekła i kotłownia zamiast Kata Otchłani `#decyzja` `#pieklo` `#palacz` `#lore`
+
+**Skąd:** prośba właściciela (10.11): „przebuduj całkowicie bossa tarczownika i jego arenę. Zostawiam Tobie pełną dowolność, ma być zachowany klimat piętra i spójność z fabułą”.
+
+**Fabuła:** Piekło to kotłownia wieży. W jej piecach płoną zmarli z Cmentarzyska (piętro 3), żeby ostatni żywi wyżej (mieszkanie gracza, piętro 5) mieli ciepło. Palacz pilnuje ognia, a kultyści popiołu mu służą. Ruina maleje z wysokością: tu maszyneria wieży jeszcze działa.
+
+**Boss — Palacz, „Ten, który grzeje ostatnich”** (`STOKER` w `config/bossConfig.ts`, `BossId.Stoker`): olbrzym w okopconym fartuchu i goglach spawalniczych, z piecem na plecach, drzwiczkami pieca w lewej ręce (tarcza) i szuflą w prawej.
+- **Drzwiczki pieca zamiast odbijającej tarczy:** pociski i promień z przodu wtapiają się w żeliwo (bez odbić, na które skarżył się właściciel), ciosy wręcz zadają połowę. Każde trafienie w drzwiczki je rozgrzewa (`guard` 130); łuk tarczy przechodzi z żelaza w żar. Rozgrzane do czerwoności odskakują: „Przegrzanie!” — piec bucha trzema smugami żaru przed Palaczem (0,65 s telegrafu), a on stoi 2,2 s z otwartymi drzwiczkami (3,8 s bez tarczy). Kto uskoczy z ognia, ma pełne okno na combo. Bić w tarczę to teraz plan, a nie błąd; obchodzenie dalej działa.
+- **Wzór (losowa kolejność):** zamach szuflą (dwa cięcia, drugie dalej), szufla żaru (3 bryły łukiem, pierwsza tam, dokąd biegniesz), ruszt, buchnięcie pieca na plecach (dookoła — kara za stanie za plecami). Bez haka, skoku i pierścienia ognia Kata.
+- **Wściekłość (50% HP, „Przeciąg w piecu!”):** ruszt pali oba zestawy rzędów po kolei, krótsze telegrafy i przerwy. Świta: kultyści popiołu (co 16 s, we wściekłości co 11 s).
+- **Okrzyki:** „Ktoś musi grzać tych na górze!”, „Z Cmentarzyska też się pali…”, „Ruszt!”, „Łap żar!”, „Do pieca!”.
+
+**Arena — kotłownia** (`dungeon/GratePlanner.ts`, `combat/BossFight.ts`):
+- poziome pasy rusztów w posadzce co 3 rzędy, z kaflem wolnej posadzki przy bocznych murach, bez środkowego rzędu (start bossa, schody) i bez kafli przy wejściu. Rzędy na przemian w dwóch zestawach;
+- atak **Ruszt** (`BossAttackKind.Grate`, `ai/stokerAttacks.ts`): kafle zestawu jaśnieją przez 1,1 s, potem buchają płomieniami (16 obrażeń). Zestawy zmieniają się co atak. Kamienne pasy między rusztami są bezpieczne;
+- w północnym murze paszcza wielkiego pieca (migocze), paleniska Kata zniknęły z areny.
+
+**Grafika:** generator `tools/stoker_sprites.py` — boss 96×96 w 8 kierunkach (chód, zamach, rzut, ruszt, buchnięcie), ruszt 32×32 (tlenie, ostrzeżenie, płomienie), bryła żaru, paszcza pieca 96×64.
+
+**Relikwia piętra 4:** „Topór Kata” to teraz **Pogrzebacz Palacza** (to samo id i działanie, nowa nazwa i ikona w `tools/loot_sprites.py`). Nowego przedmiotu nie dodano.
+
+**Kat Otchłani** zostaje w kodzie poza wspinaczką, jak Strażnik Bram.
+
+**Testy:** `tests/ai/Stoker.test.ts` (miejsce we wspinaczce, ruszt, zmiana zestawów, wściekłość, przegrzanie, układ rusztów na 20 arenach piętra 4); poprawione `GateWarden` i `towerLoop`. `npm run build`: 2791 testów, build OK.
+
+**Weryfikacja w przeglądarce** (`?floor=4&boss=1&seed=7`, barbarzyńca, łucznik, Czarodziejka z promieniem): plansza „Palacz — Ten, który grzeje ostatnich”, ruszty buchają pasami, strzały i promień rozgrzewają drzwiczki aż do przegrzania, paszcza pieca w murze, bez błędów w konsoli. Zrzuty: `screens/krok182-palacz/`.
+
+**Do oceny:** wytrzymałość drzwiczek (130), długość okna po przegrzaniu, tempo rusztów, czy pasy nie są za gęste na wąskiej arenie.
+
 ## Znane ograniczenia i backlog
 
 Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
@@ -5971,7 +6000,7 @@ Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).
 - **Dźwięk (krok 116):** `#dzwiek` brzmienie efektów, muzyka wieży i zaświatów, proporcje głośności (60% / 70%), czy coś przeszkadza w co-opie — czeka na test właściciela; lista i licencje w `docs/AUDIO.md`.
 - **Tarczownik (kroki 99, 113):** `#elity` `#balans` szarża z telegrafem zamiast skoku, ogłuszenie po wbiciu w ścianę (bez tarczy), bomby go ranią; od kroku 113 obrót 35°/s, 1,6 s bez tarczy po każdym ciosie, HP ×1,8 — czeka na test właściciela.
-- **Jeden tarczownik (krok 134):** `#boss` `#decyzja` Kat Otchłani (bez galerii — wybór właściciela) jedynym bossem Piekła (piętro 4), krąg 7 pięter — czeka na test.
+- **Jeden tarczownik (krok 134):** `#boss` `#decyzja` Kat Otchłani (bez galerii — wybór właściciela) jedynym bossem Piekła (piętro 4), krąg 7 pięter. **Krok 182:** Kata zastąpił Palacz (kotłownia, drzwiczki pieca, ruszty) — czeka na test.
 - **Bossowie z tarczą (krok 113):** `#boss` `#balans` odbicia w losową stronę (30–80°), wolniejszy obrót, okno bez tarczy po ataku, mniej HP — czeka na test właściciela.
 - **Pajęczy duet (krok 112):** `#areny-bossow` Król i Matka Pająków naraz na arenie 3 — trudność, świta tylko Króla; potem decyzja o wspinaczce — czeka na test właściciela.
 - **Hitboxy i wybuchy (krok 110):** `#ocena` `#balans` strefy łapią ślad stóp (5 px), pociski tułów (8 px); nowy telegraf i wybuch w promieniu strefy (bomby kultystów, wybuch elity, ataki bossów) — czeka na test właściciela.
