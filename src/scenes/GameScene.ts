@@ -180,6 +180,7 @@ import { InputReplay, canReplay } from '@/systems/InputRecorder';
 import { BOSS_HERALD, HERALD_RUMBLE } from '@/config/bossHeraldConfig';
 import type { LightingOverlay } from '@/effects/LightingOverlay';
 import { FloorLighting } from '@/effects/FloorLighting';
+import { StairsGlow } from '@/effects/StairsGlow';
 import { installSmoothPhysics } from '@/world/SmoothPhysics';
 import { TORCH_PLACEMENT } from '@/config/lightingConfig';
 import { planTorches } from '@/dungeon/LightPlanner';
@@ -345,6 +346,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Biom piętra: arkusz kafli, dekorowanie, warianty wrogów. */
   private biome!: BiomeDefinition;
   private floorLighting!: FloorLighting;
+  /** Blask otwartych schodów (krok 186): światło z wyższego piętra i pyłki wznoszące się w górę. */
+  private stairsGlow!: StairsGlow;
   /** Żywe otoczenie biomów 2–5 (kroki 156–157); null — biom bez niego albo areny bossów. */
   private ambient: AmbientLifeView | null = null;
   private combatDecals!: CombatDecals;
@@ -539,6 +542,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupSecretRoom();
     this.setupAmbush();
     this.createStairsPrompt();
+    this.stairsGlow = new StairsGlow(this, this.dungeon.stairs);
     this.inputController = createPlayerInput(this, this.coop?.devices[0]);
     this.partnerInput = this.coop && this.partner ? this.createPartnerInput(this.coop, this.partner) : null;
     this.setupCamera();
@@ -939,6 +943,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (this.stairsUnlocked) return;
     this.stairsUnlocked = true;
     this.dungeonView.openStairs();
+    this.stairsGlow.open();
   }
 
   /** Wabik: pierwszy stojący totem łucznika (każdy bohater ma własne ultimate). */
@@ -2123,7 +2128,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       visionRadius: this.floorEffects.visionRadius,
       fog: this.biome.fog,
       bearers: () => this.lightBearers(),
-      extraLights: (withAmbient) => [...(this.braziers?.lights ?? []), ...(withAmbient ? (this.ambient?.lights ?? []) : [])],
+      extraLights: (withAmbient) => [...(this.braziers?.lights ?? []), ...this.stairsGlow.lights, ...(withAmbient ? (this.ambient?.lights ?? []) : [])],
       flares: () => this.effects?.fire.activeLights() ?? [],
       hideable: () => this.hideableEnemies(),
       ambientRevealsEnemies: AMBIENT_CONFIG.revealsEnemies,

@@ -6087,6 +6087,21 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Testy:** `tests/systems/cameraZoom.test.ts` (zoom 1,6, skala płótna od 2,0, widok gwarantowany), test czytelności w mroku z przestrojonym mrokiem. `npm run build`, `npm run smoke`, kadry `npm run shots`.
 
+## Krok 186 — Schody, które prowadzą w górę `#ocena` `#schody` `#lore` `#obraz`
+
+**Prośba właściciela (11.11.2026):** „mega słabe są te schody … stwórz model, który odpowiada naszym obecnym standardom. Idziemy w górę — schody mają jednoznacznie to komunikować”. Stare schody z kroku 17 wyglądały jak kratka wentylacyjna w posadzce.
+
+**Co zrobione**
+- **Nowy model w generatorze** `tools/stairs_tiles.py` (wołany z `tools/tower_ruins_tiles.py`, kafle `stairs_sealed_2x2` / `stairs_open_2x2` bez zmiany nazw i miejsc w arkuszu — przegenerowane wszystkie 8 arkuszy biomów, poza schodami piksel w piksel bez zmian). Wolnostojąca budowla na przezroczystym tle, więc pod spodem widać prawdziwą podłogę biomu (wykładzina mieszkania, posadzka-lustro).
+- Czytelność „w górę” z kilku stron naraz: bieg zwęża się ku północy (perspektywa), stopnie ku górze krótsze i jaśniejsze, balustrady z klinem lica rosną ku górze (niski słupek na dole), u szczytu łuk z nadprożem — bieg znika pod nim i ciągnie się dalej w świetle wyższego piętra; na nadprożu podwójny szewron.
+- **Zamknięte** (przed bossem): krata w łuku, łańcuch z kłódką w poprzek biegu, przygaszone szewrony. **Otwarte:** świetlisty prześwit, złote nosy górnych stopni i świecący szewron.
+- **Gradient zniszczeń (lore):** `WEAR` per biom — ruiny 3 (wyłamana balustrada, zapadnięty stopień, pęknięte i odłupane nadproże, gruz), leże/Grzybnia/Cmentarzysko 2, Piekło i mieszkanie 1, Lustrzana komnata i Bociani Ogród 0 (złota listwa, kule na słupkach). Dodatki: pajęczyna w łuku (Grzybnia, leże), żar w pęknięciach (Piekło), bordowy chodnik z mosiężnymi prętami (mieszkanie gracza), trawa przy balustradach (Bociani Ogród).
+- **Blask otwartych schodów** (`effects/StairsGlow.ts`, liczby w `config/stairsGlowConfig.ts`): po pokonaniu bossa światło z wyższego piętra rozjaśnia mrok nad łukiem, a złote pyłki wznoszą się po stopniach (liczba pyłków wg jakości obrazu z U1).
+
+**Do oceny:** czy schody czytają się jako „w górę” na wszystkich biomach (najciemniej: Lustrzana komnata i Bociani Ogród — kolory murów biomu); siła zniszczeń w ruinach; blask i pyłki.
+
+**Weryfikacja:** `npm run build` (typy, testy, build); kadry przed/po na piętrach 1–7 (zamknięte i otwarte) w przeglądarce — `/mnt/project-files/screens/krok186-schody/`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
