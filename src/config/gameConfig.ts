@@ -1,6 +1,7 @@
 import type { PlayerStats } from '@/core/types';
 import type { DungeonGeneratorConfig } from '@/core/dungeonTypes';
 import { BiomeId, biomeForFloor } from '@/config/biomeConfig';
+import { DEFAULT_CAMERA_ZOOM } from '@/config/cameraZoomConfig';
 
 /** Rozdzielczość logiczna (skalowana trybem FIT). */
 export const GAME_WIDTH = 960;
@@ -70,14 +71,14 @@ export const PLAYER_BASE_STATS: PlayerStats = {
   moveSpeed: 200,
 };
 
-/** Stały zoom 2,0 (krok 18, decyzja właściciela): całkowita krotność, piksele bez zniekształceń. */
-export const BASE_CAMERA_ZOOM = 2;
+// Zoom kamery i skala bazowa w osobnym pliku bez zależności (czyta je też `lightingConfig`).
+export { BASE_CAMERA_ZOOM, DEFAULT_CAMERA_ZOOM } from '@/config/cameraZoomConfig';
 
 export const CAMERA_CONFIG = {
   /** Interpolacja śledzenia (0..1) — mniejsza = płynniej. */
   lerp: 0.12,
-  /** Zoom kamery: zawsze 2,0 (próbny `?zoom=` z kroku 167 usunięty w kroku U1). */
-  zoom: BASE_CAMERA_ZOOM,
+  /** Zoom kamery: 1,6 (decyzja właściciela 11.11.2026; wcześniej 2,0). */
+  zoom: DEFAULT_CAMERA_ZOOM,
   /** Martwa strefa w px świata, w której gracz może się ruszać bez przesuwania kamery
    *  (przy zoomie 1,5 było 80×60; przeliczone, by zajmowała tę samą część ekranu). */
   deadzoneWidth: 60,
@@ -104,7 +105,7 @@ export const BOSS_POINTER_CONFIG = {
 
 /**
  * Połowy boków prostokąta wokół gracza (px świata), który zawsze jest na ekranie:
- * widok kamery minus luz martwej strefy. Przy zoomie 2: 210 × 112,5 px.
+ * widok kamery minus luz martwej strefy. Przy zoomie 1,6: 270 × 146 px (przy 2,0 było 210 × 112,5).
  */
 export const GUARANTEED_VIEW_HALF = {
   x: GAME_WIDTH / (2 * CAMERA_CONFIG.zoom) - CAMERA_CONFIG.deadzoneWidth / 2,

@@ -35,6 +35,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - Kroki na gałęzi nazywają się „Krok U<etap><litera>” (np. „Krok U2a”); numery 185+ zostają dla `main`.
 - Podgląd: `npm run deploy:pages -- --subdir upgrade` **bez** `.env.production` (wyniki z podglądu nie mogą trafiać na wspólne tablice). Zasada „commit i push na `main` po każdym kroku” gałęzi nie dotyczy.
 - Scalenie do `main` tylko na wyraźne „tak” właściciela. Akt II poza zakresem.
+- **11.11.2026 (krok 185):** pierwsza paczka (U0–U2) i zoom 1,6 scalone do `main` i wdrożone na prośbę właściciela; dalsze etapy tak samo — przez `upgrade-fable`, do `main` paczkami.
 
 ## Decyzje projektowe właściciela
 
@@ -65,7 +66,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
   - zasady pikseli są w `docs/STYLEGUIDE.md`.
 - **Warstwa wizualna (krok 16):**
   - paleta C „jasny piaskowiec”: czytelność walki ma pierwszeństwo, a mrok daje światło i winieta;
-  - zoom 2,0 pixel-perfect; obraz na PC powiększa pełny ekran (**F**) i opcja „Wypełnij okno” w pauzie (krok 118, skala ułamkowa) — pole widzenia kamery celowo bez zmian (zmieniłoby balans);
+  - zoom kamery **1,6** (decyzja właściciela 11.11.2026 po próbie z kroku 167; wcześniej 2,0 pixel-perfect — skala płótna dalej liczona od 2,0); obraz na PC powiększa pełny ekran (**F**) i opcja „Wypełnij okno” w pauzie (krok 118, skala ułamkowa) — te dwie opcje nie zmieniają pola widzenia kamery;
   - schody 2×2;
   - cienie środowiska ze stałą alfą 0,4;
   - światło (mrok, mgła, pochodnie) przechodzi płynnie — bez twardych pasm (decyzja z kroku 28a, odwołuje pasma z 19a);

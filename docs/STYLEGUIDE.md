@@ -185,7 +185,7 @@ Sekcje 1–12 obowiązują dalej. Ta sekcja mówi, co do nich dochodzi i gdzie w
 - Skala, siatka, pivot i 8 kierunków z obrotu (§1–2). Hitbox nie rośnie razem z grafiką.
 - Obrys 1 px `#1b1a22`, rampy z przesunięciem odcienia, zakaz czystej bieli i czerni (§3–4).
 - Sprite'y postaci i kafle mają piksele 0/255. Żaden efekt nie rozmywa ich krawędzi.
-- Zoom 2,0 i pole widzenia kamery.
+- Skala płótna (od zoomu 2,0). Zoom kamery od 11.11.2026 to 1,6 (decyzja właściciela) — sprite'y muszą być czytelne przy 1,6.
 - Światło płynne, bez pasm i bez ditheringu (§6b).
 - Ekran startowy jest wzorcem estetyki: popiół, czerń i czerwień.
 

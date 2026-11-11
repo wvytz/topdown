@@ -17,11 +17,12 @@ Decyzja właściciela z 10.11.2026: **„Wdrażaj jako osobny branch. Zostawiamy
 - Od kroku U0 zwykłe wdrożenie z `main` zachowuje podkatalogi `gh-pages` (`upgrade/`), a wdrożenie `--subdir` samo buduje bez workera (nawet przy `.env.production`) i z własnym przedrostkiem `localStorage` (`upgrade:`) — podgląd nie rusza zapisów i ustawień gry testerów.
 - Przed etapem i po nim: `npm run shots -- --label <etap>` (12 kadrów, `--before` daje arkusz „przed | po”) i `npm run perf` (pełna nawała: PC, co-op, telefon). Lista rzeczy do oceny: `public/do-oceny.html`.
 - Scalenie `upgrade-fable` do `main` dopiero na wyraźne „tak” właściciela, paczkami, z tagiem na `main` przed scaleniem.
+- **11.11.2026 — pierwsza paczka w grze testerów** (właściciel: „scal i wdróż na główny page wszystko nad czym pracowaliśmy wczoraj. ustaw ten 1.6 jako domyślny”): U0, U1a, U1, U2 i zoom 1,6 scalone do `main` (krok 185) i wdrożone. Tag sprzed scalenia: `przed-upgrade-u2`. Kolejne etapy dalej przez `upgrade-fable` i podgląd, do `main` paczkami na „tak”.
 - Kroki na gałęzi mają w DEVLOG-u nazwy **„Krok U<etap><litera>”** (np. „Krok U2a”). Numery 185 i wyższe zostają dla `main`.
 
 ## 2. Kierunek
 
-**Pixel art zostaje, dochodzi bogatszy detal i nowoczesne światło** (wariant C z audytu). Skala postaci, obrys, zoom 2,0 i pole widzenia bez zmian. Zasady wizualne nowej oprawy: `docs/STYLEGUIDE.md` §13.
+**Pixel art zostaje, dochodzi bogatszy detal i nowoczesne światło** (wariant C z audytu). Skala postaci i obrys bez zmian; zoom kamery 1,6 (decyzja właściciela 11.11.2026). Zasady wizualne nowej oprawy: `docs/STYLEGUIDE.md` §13.
 
 Hierarchia przy każdej decyzji: **czytelność walki > klimat > ozdoby**. Wzorcem estetyki jest ekran startowy (popiół, czerń, czerwień), a nie arcade'owy blask.
 
@@ -37,7 +38,7 @@ Właściciel nie odpowiedział na pytania pojedynczo, tylko polecił wdrażać. 
 | 2 | Pilot kafli | Ruiny (piętro 1), potem Grzybnia i Cmentarzysko |
 | 3 | „Sok” w walce | Pełny, z ustawieniem „mniej błysków” |
 | 4 | Kto widzi nową oprawę | Najpierw właściciel na podglądzie, testerzy po akceptacji paczki |
-| 5 | Zoom | Zostaje 2,0; próba `?zoom=1.6` do usunięcia |
+| 5 | Zoom | **Zmienione 11.11.2026 przez właściciela:** kamera 1,6 domyślnie (skala płótna dalej od 2,0) |
 | 6 | Powtarzalność | Wydarzenia w pokojach i przeklęta skrzynia; kupiec z Aktem II |
 | 7 | Przemiana Butów | „Rozdeptanie”: dash przez wrogów rani ich i odpycha. Wchodzi w U8 jako propozycja do oceny na podglądzie |
 | 8 | Balans | Upgrade nie zmienia liczb; w U8 pomiar botem i lista propozycji |

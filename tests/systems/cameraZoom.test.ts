@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { flagFromSearch } from '@/systems/cameraZoom';
-import { BASE_CAMERA_ZOOM, CAMERA_CONFIG } from '@/config/gameConfig';
+import { BASE_CAMERA_ZOOM, CAMERA_CONFIG, DEFAULT_CAMERA_ZOOM, GUARANTEED_VIEW_HALF } from '@/config/gameConfig';
 import { BARBARIAN_COMBAT, HERO_DEFINITIONS } from '@/config/heroConfig';
 import { HeroId } from '@/core/heroTypes';
 import { PLAYER_COMBAT } from '@/config/combatConfig';
 
-describe('zoom i cięższe ciosy (krok 167; próbny zoom usunięty w kroku U1)', () => {
-  it('zoom zawsze 2,0 jak od kroku 18', () => {
-    expect(CAMERA_CONFIG.zoom).toBe(BASE_CAMERA_ZOOM);
+describe('zoom i cięższe ciosy (krok 167; zoom 1,6 domyślny od 11.11.2026)', () => {
+  it('kamera 1,6, skala płótna dalej od 2,0; widok Kiterów rośnie z polem widzenia', () => {
+    expect(CAMERA_CONFIG.zoom).toBe(DEFAULT_CAMERA_ZOOM);
+    expect(DEFAULT_CAMERA_ZOOM).toBe(1.6);
     expect(BASE_CAMERA_ZOOM).toBe(2);
+    expect(GUARANTEED_VIEW_HALF.x).toBeCloseTo(960 / 3.2 - CAMERA_CONFIG.deadzoneWidth / 2);
   });
 
   it('flaga z adresu; barbarzyńca ma domyślnie cięższy cios o prawie tych samych obrażeniach na sekundę (krok 171)', () => {

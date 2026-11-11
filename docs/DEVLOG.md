@@ -6073,6 +6073,20 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Zostaje na później:** jaskrawsza krew na posadzce i nowe ślady walki (U4 — razem z kaflami), smagnięcie Matki Pająków (U6), światło od pocisków i wybuchów w warstwie mroku (U3). Do oceny na podglądzie: czy hitstop i rozpad „siedzą”, próg ciężkiego ciosu, długości zatrzymań.
 
+## Krok 185 — Upgrade U0–U2 w grze testerów i zoom 1,6 `#decyzja` `#upgrade` `#obraz`
+
+**Decyzja właściciela (11.11.2026):** „scal i wdróż na główny page wszystko nad czym pracowaliśmy wczoraj. ustaw ten 1.6 jako domyślny”.
+
+**Co zrobione**
+- Scalone do `upgrade-fable`: U0 (#91), U1 (#92), U2 (#93); potem `upgrade-fable` do `main` (tag `przed-upgrade-u2` na `main` sprzed scalenia) i wdrożenie gry testerów z workerem.
+- **Zoom kamery 1,6 domyślnie** (`DEFAULT_CAMERA_ZOOM` w nowym `config/cameraZoomConfig.ts`; `CAMERA_CONFIG.zoom`). Skala płótna dalej liczona od 2,0 (`BASE_CAMERA_ZOOM`) — tak samo jak w próbie `?zoom=1.6` z kroku 167, którą ocenił właściciel. Pole widzenia ok. 25% szersze w każdą stronę; widok gwarantowany Kiterów (`GUARANTEED_VIEW_HALF`) liczy się z zoomu: 270 × 146 px.
+- **Mrok otoczenia przestrojony** do nowego kadru: promienie `LIGHTING.ambient` ×1,25 (pełne światło 120 px, pełny mrok od 400 px), więc winieta zajmuje tę samą część ekranu co przy 2,0, a test czytelności w strefie walki (krok 19a) dalej przechodzi. Mechaniki światła („Mrok”, Zaduch, pochodnie) bez zmian — w świecie mają te same zasięgi.
+- Pozostałe efekty zależne od kadru (mgła, pyłki, iskry zapowiedzi bossa, płonące plamy) już liczyły się z `CAMERA_CONFIG.zoom`.
+
+**Do oceny:** czy na telefonie postacie przy 1,6 nie są za małe (ten sam zoom na PC i telefonie); czy Kitery z dalszego dystansu nie są za groźne.
+
+**Testy:** `tests/systems/cameraZoom.test.ts` (zoom 1,6, skala płótna od 2,0, widok gwarantowany), test czytelności w mroku z przestrojonym mrokiem. `npm run build`, `npm run smoke`, kadry `npm run shots`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

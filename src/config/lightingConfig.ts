@@ -1,7 +1,11 @@
+import { BASE_CAMERA_ZOOM, DEFAULT_CAMERA_ZOOM } from '@/config/cameraZoomConfig';
 /**
  * Oświetlenie (krok 19a): mrok otoczenia z winietą, światło gracza i pochodni, pyłki, cienie postaci.
  * Czysto wizualne. Od kroku 28a światło przechodzi płynnie (decyzja właściciela: bez „kręgów” pasm).
  */
+
+/** Ile razy pole widzenia jest większe niż przy zoomie 2,0 (dla 1,6 — 1,25). */
+const VIEW_SCALE = BASE_CAMERA_ZOOM / DEFAULT_CAMERA_ZOOM;
 
 /** Mrok wokół gracza: pełne światło w środku, płynne przejście ku krawędzi kadru. */
 export interface AmbientProfile {
@@ -45,7 +49,12 @@ export const LIGHTING = {
    * wrogów zachowuje kontrast ≥ 2:1 (przy 30% spada do 1,89; test WCAG). Pełne 30% tylko przy samych
    * krawędziach kadru.
    */
-  ambient: { fullLightRadius: 96, edgeRadius: 320, maxDarkness: 0.3 } satisfies AmbientProfile,
+  // Promienie rosną z polem widzenia (zoom 1,6 od 11.11.2026): mrok zajmuje tę samą część kadru co przy 2,0 (96 / 320 px).
+  ambient: {
+    fullLightRadius: 96 * VIEW_SCALE,
+    edgeRadius: 320 * VIEW_SCALE,
+    maxDarkness: 0.3,
+  } satisfies AmbientProfile,
   /** Modyfikator „Mrok”: mechanika piętra, poza limitem 30%; pochodnie nie rozświetlają mroku. */
   darknessModifier: { maxDarkness: 0.94, softEdge: 0.45 },
   /**
