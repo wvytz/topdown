@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOP DOWN — do oceny</title>
+<!--
+  Krok U0: jedna lista rzeczy, które czekają na ocenę właściciela, z linkiem prosto do miejsca w grze.
+  Źródło prawdy dla „Do oceny” — DEVLOG (backlog) odsyła tutaj. Nowy krok z „czeka na ocenę” dopisuje wpis do ITEMS,
+  oceniony wpis przenosimy do DEVLOG-u jako `#ocena` i usuwamy stąd.
+  Linki są względne: na podglądzie (/topdown/upgrade/) otwierają podgląd, w grze testerów — grę testerów.
+  Każdy link to run testowy (wynik nie trafia na tablicę), oprócz pozycji „menu”.
+-->
+<style>
+  :root { color-scheme: dark; --bg: #120d0e; --card: #1f1718; --line: #3a2a2b; --text: #eadfd6; --dim: #9c8c84; --accent: #e0573c; --ok: #7fbf6a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; letter-spacing: 0.08em; margin: 0 0 4px; }
+  h2 { font-size: 15px; letter-spacing: 0.06em; color: var(--dim); text-transform: uppercase; margin: 28px 0 8px; }
+  p { color: var(--dim); margin: 0 0 14px; }
+  a { color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .row span { color: var(--dim); min-width: 84px; }
+  button { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; font: inherit; cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--accent); color: #fff; background: #3a1c17; }
+  ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  li { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+  li.done { opacity: 0.45; }
+  li input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--ok); }
+  li b { font-weight: 600; }
+  li small { color: var(--dim); white-space: nowrap; margin-left: 6px; }
+  li .what { grid-column: 2; color: var(--dim); font-size: 14px; }
+  li .links { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 14px; }
+  footer { margin-top: 28px; color: var(--dim); font-size: 13px; }
+  code { color: var(--text); overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <h1>DO OCENY</h1>
+  <p>Wszystko, co czeka na twoją ocenę, z linkiem prosto do miejsca w grze. Każdy link to run testowy — wynik nie trafia na tablicę. Ptaszek zapamiętuje tylko ta przeglądarka; ocenę napisz w czacie projektu z Claude (podgląd upgradu nie wysyła wiadomości „Napisz do autora”).</p>
+  <p><a href="testy.html">Szybki start przy arenach</a> · licznik wydajności: dopisz <code>&amp;perf=1</code> do adresu (na telefonie: pozycja „Wydajność” niżej).</p>
+
+  <div class="row" id="heroes"><span>Bohater</span>
+    <button data-hero="barbarian" aria-pressed="true">Barbarzyńca</button>
+    <button data-hero="sorceress">Czarodziejka</button>
+    <button data-hero="archer">Łucznik</button>
+  </div>
+  <div class="row" id="filter"><span>Pokaż</span>
+    <button data-filter="open" aria-pressed="true">nieocenione</button>
+    <button data-filter="all">wszystko</button>
+  </div>
+
+  <div id="groups"></div>
+  <footer>Lista z kroku U0 (10.11.2026). Szczegóły każdej pozycji: <code>docs/DEVLOG.md</code>, „Krok N”.</footer>
+</main>
+<script>
+  // Pozycje: grupa, tytuł, kroki, co ocenić, linki [podpis, adres]. W adresie {hero} = wybrany bohater.
+  const ITEMS = [
+    ['Wydajność', 'Czas klatki na twoim telefonie', 'U0', 'Otwórz na telefonie, wejdź do kilku pokojów z nawałą i zrób zrzut licznika w lewym dolnym rogu (FPS, p95, wrogów). To brakujący pomiar przed upgradem.', [['telefon, piętro 7', 'mobile.html?hero={hero}&floor=7&perf=1'], ['PC, piętro 7', './?hero={hero}&floor=7&perf=1']]],
+    ['Wydajność', 'Jakość obrazu: Średnia na telefonie?', 'U1', 'Ten sam pomiar co wyżej, ale z poświatą pochodni (Średnia). Jeśli FPS trzyma się blisko Niskiej, telefon dostanie Średnią z automatu.', [['telefon, Średnia', 'mobile.html?hero={hero}&floor=4&perf=1&gfx=medium'], ['telefon, Niska', 'mobile.html?hero={hero}&floor=4&perf=1&gfx=low']]],
+    ['Oprawa', 'Poziomy jakości i „Mniej błysków”', 'U1', 'Pauza → „Dźwięk i obraz”: przełącz Jakość (Niska ma wyglądać jak dawniej; Średnia — poświata pochodni; Wysoka — także ogień walki i więcej pyłków) i „Mniej błysków” (bez drżenia kamery i migotania).', [['Piekło, Wysoka', './?hero={hero}&floor=4&gfx=high'], ['Piekło, Niska', './?hero={hero}&floor=4&gfx=low']]],
+    ['Oprawa', 'Feel walki: iskry, smuga, rozpad, hitstop', 'U2', 'Walcz w nawale na Wysokiej i na Niskiej. Na Wysokiej: iskry przy trafieniu i smuga cięcia nad mrokiem, wrogowie rozpadają się na kawałki, pociski wrogów mają małe czerwone światło, trafiony bohater błyska na czerwono, a ciężki cios, zabicie elity i boss zatrzymują obraz na ułamek sekundy. Czy to „siedzi”? Za dużo, za mało? „Mniej błysków” wyłącza zatrzymanie i drżenie.', [['Piekło, Wysoka', './?hero={hero}&floor=4&gfx=high'], ['Piekło, Niska', './?hero={hero}&floor=4&gfx=low'], ['boss 1, Wysoka', './?hero={hero}&floor=1&boss=1&gfx=high']]],
+
+    ['Obraz', 'Kręcona klatka schodowa w narożniku', '186–187', 'Klatka schodowa w tym samym narożniku areny na każdym piętrze runu. Czy spirala czyta się jako „w górę, w ciemność”? Pokonaj bossa (w trybie dev klawisz B): u wejścia słabe światło, pyłki wciągane w mrok. Czy szyb w środku ma blokować ruch?', [['piętro 1', './?hero={hero}&floor=1&boss=1'], ['piętro 4', './?hero={hero}&floor=4&boss=1'], ['piętro 7', './?hero={hero}&floor=7&boss=1']]],
+    ['Obraz', 'Zoom kamery 1,6 domyślnie', '185', 'Szerszy widok na PC i telefonie: czy postacie nie są za małe na telefonie i czy Kitery z dalszego dystansu nie są za groźne.', [['piętro 3', './?hero={hero}&floor=3'], ['telefon', 'mobile.html?hero={hero}&floor=3']]],
+
+    ['Bossowie', 'Grzybowy Pożeracz — kula z ciał i kły', '184–184a', 'Wygląd kuli, tempo szarpanego chodu, chwyt kończynami co ok. 5 s, leczenie z ugryzienia.', [['arena', './?hero={hero}&floor=3&boss=1']]],
+    ['Bossowie', 'Palacz w kotłowni', '182–182a', 'Drzwiczki pieca (pochłaniają pociski, buchają żarem), ruszty w posadzce, stoły, węgiel i łańcuchy.', [['arena', './?hero={hero}&floor=4&boss=1']]],
+    ['Bossowie', 'Brudna Wiedźma i taras nad przepaścią', '137, 160, 174', 'HP (1050), bociany i żar, taras z odpadającymi płytami i wiatrem, żywopłoty, słupy z gniazdami.', [['arena', './?hero={hero}&floor=7&boss=1']]],
+    ['Bossowie', 'Sprzątaczki i Lustrzana komnata', '154, 160', 'Blondynka ucieka windą, brunetka z plątaniem, powrót blondynki; mokre pasy, walące się mury, lustra.', [['arena', './?hero={hero}&floor=6&boss=1']]],
+    ['Bossowie', 'Król Szlamu', '153', 'Siła spowolnień kałuż i szlamu od ścian, tempo zwężania areny, fiolet szlamu.', [['arena', './?hero={hero}&floor=1&boss=1']]],
+    ['Bossowie', 'Pajęczy duet i dwa paski HP', '112, 136', 'Trudność Króla i Matki Pająków naraz, paski duetu, strzałka do bossa poza kadrem.', [['arena', './?hero={hero}&floor=2&boss=1']]],
+    ['Bossowie', 'Bezpieczny start bossów', '131', 'Boss i świta startują z dala od bohatera i wejścia.', [['dowolna arena', './?hero={hero}&floor=5&boss=1']]],
+
+    ['Bohaterowie i przedmioty', 'Czarodziejka: Wyrwa, teleport, barwy klas', '180–181', 'Promień rosnący przez 3 s, dash-teleport, fiolet Czarodziejki i barwy klas na ekranie wyboru.', [['piętro 3', './?hero=sorceress&floor=3']]],
+    ['Bohaterowie i przedmioty', 'Relikwie bossów', '170', 'Po bossie jedna z 3 kart to jego relikwia — czy warto ją brać.', [['arena 1', './?hero={hero}&floor=1&boss=1']]],
+    ['Bohaterowie i przedmioty', 'Przemiany przedmiotów', '150', 'Liczby, czytelność karty rozwoju, limity 3 kopii. Buty nadal bez przemiany (w U8 propozycja „Rozdeptanie”).', [['piętro 5 z zestawem', './?hero={hero}&floor=5&boss=1']]],
+    ['Bohaterowie i przedmioty', 'Balans: ultimate, przedmioty, naprowadzany strzał', '98, 117, 146', 'Ładowanie paska mocy, siła Szału / Supernowej / Totemu, limit tempa ataku, kieł, strzał barbarzyńcy.', [['piętro 4 z zestawem', './?hero={hero}&floor=4']]],
+    ['Bohaterowie i przedmioty', 'Strzały trafiają upiory', '82', 'Czy łucznik ma trafiać upiory w zasadzkach (dziś tak).', [['zasadzka', './?hero=archer&floor=2&ambush=storm']]],
+
+    ['Pokoje i wrogowie', 'Trzy wersje zasadzki', '183–183a', 'Tempo kaskady w Butli dżina, wzmocnienie bossa przez Uciekiniera, splątanie i strzały w mroku w Zaduchu, wygląd duszków.', [['Butla dżina', './?hero={hero}&floor=2&ambush=storm'], ['Uciekinier', './?hero={hero}&floor=2&ambush=flight'], ['Zaduch', './?hero={hero}&floor=3&ambush=haunt']]],
+    ['Pokoje i wrogowie', 'Nawała', '175', 'Fale stworków w pokojach: liczba, tempo fal, czy tłum jest czytelny.', [['piętro 3', './?hero={hero}&floor=3'], ['piętro 7', './?hero={hero}&floor=7']]],
+    ['Pokoje i wrogowie', 'Czyhacz i gniazda biomów', '122a, 123', 'Częstość, ostrzeżenie 0,6 s, wygląd kryjówek, stworki i rytm wylęgu w każdym biomie.', [['Grzybnia', './?hero={hero}&floor=2'], ['Cmentarzysko', './?hero={hero}&floor=3']]],
+    ['Pokoje i wrogowie', 'Tarczownik i elity', '99, 113', 'Szarża z telegrafem, ogłuszenie o ścianę, obrót 35°/s, okno bez tarczy.', [['piętro 4', './?hero={hero}&floor=4']]],
+    ['Pokoje i wrogowie', 'Wrogowie za kratami', '132', 'Czekają pod kratą, po podniesieniu zryw — długość i siła zrywu.', [['zasadzka', './?hero={hero}&floor=3&ambush=storm']]],
+    ['Pokoje i wrogowie', 'Hitboxy i wybuchy', '110', 'Strefy łapią stopy, pociski tułów; telegraf i wybuch w promieniu strefy.', [['piętro 3', './?hero={hero}&floor=3']]],
+
+    ['Biomy', 'Ruiny po apokalipsie i pułapki', '155, 165, 166', 'Gęstość śmieci, kości a łupy, kolce i strzałki, żywe otoczenie.', [['piętro 1', './?hero={hero}&floor=1&seed=7']]],
+    ['Biomy', 'Grzybnia: żywe otoczenie i purchawki', '156, 173', 'Kępy grzybów, lampy, ćmy, trująca chmura purchawek.', [['piętro 2', './?hero={hero}&floor=2&seed=7']]],
+    ['Biomy', 'Cmentarzysko: znicze, kruki, ogniki', '156', 'Gęstość, odsłanianie wrogów przez światła, gaszenie zniczy dashem.', [['piętro 3', './?hero={hero}&floor=3&seed=7']]],
+    ['Biomy', 'Piekło: szczeliny, chrząszcze, ogień walki', '144, 157', 'Szczeliny i chrząszcze, kule ognia, płomienie, siła poświaty i wstrząsu.', [['piętro 4', './?hero={hero}&floor=4&seed=7']]],
+    ['Biomy', 'Mieszkanie gracza (piętro 5)', '138, 157', 'Gęstość śmieci, ekrany z komunikatem „do wieży”, karaluchy i puszki, nazwa biomu (otwarta).', [['piętro 5', './?hero={hero}&floor=5&seed=7']]],
+
+    ['Interfejs i platformy', 'Menu, zapis, wybór piętra, wyniki w menu', '91, 94, 179', 'Autozapis „Kontynuuj”, 3 sloty, wybór piętra, top 3 na środku menu.', [['menu', './']]],
+    ['Interfejs i platformy', 'Minimapa i ikonki pokojów', '147, 163', 'Przezroczystość, smużka do areny, ikonki kapliczki, zasadzki i elity.', [['piętro 2', './?hero={hero}&floor=2']]],
+    ['Interfejs i platformy', 'Odliczanie po pauzie', '130', 'Długość 3-2-1, jasność nakładki (Esc, potem „Wznów”).', [['piętro 1', './?hero={hero}&floor=1']]],
+    ['Interfejs i platformy', 'Większy obraz', '118', 'Pełny ekran (F) i „Wypełnij okno” w pauzie — czy nierówne piksele przeszkadzają.', [['piętro 1', './?hero={hero}&floor=1']]],
+    ['Interfejs i platformy', 'Dźwięk i muzyka Horror', '116, 139', 'Brzmienie efektów, proporcje głośności, styl muzyki Lucent / Horror (pauza → „Dźwięk i obraz”).', [['piętro 2', './?hero={hero}&floor=2']]],
+    ['Interfejs i platformy', 'Wersja na telefon', '96, 141', 'Sterowanie dotykiem, czytelność, skala.', [['telefon', 'mobile.html']]],
+    ['Interfejs i platformy', 'Pad', '114', 'Układ X/B ataki, A dash, Y — E, RB ultimate; celowanie bez prawej gałki.', [['piętro 1', './?hero={hero}&floor=1']]],
+    ['Interfejs i platformy', 'Ekran blokady Safari', '142', 'Treść i wygląd ekranu z linkami do innych przeglądarek.', [['podgląd', './?safari=1']]],
+
+    ['Co-op', 'Co-op na jednym ekranie', '101–109, 152', 'Smycz, wskrzeszanie, bańki żelu, mnożniki HP wrogów. Drugi gracz na padzie.', [['barbarzyńca + łucznik', './?hero=barbarian&coop=archer&floor=1']]],
+    ['Co-op', 'Bot-partner', '149', 'Czy bot pomaga, a nie przeszkadza; czy ma trafić do menu jako „Graj z botem”.', [['z botem', './?hero={hero}&bot=1&floor=2']]],
+  ];
+
+  const STORE = 'topdown.do-oceny.v1';
+  const load = () => { try { return JSON.parse(localStorage.getItem(STORE) ?? '{}'); } catch { return {}; } };
+  const save = (done) => { try { localStorage.setItem(STORE, JSON.stringify(done)); } catch { /* ptaszki tylko w pamięci */ } };
+  const state = { hero: 'barbarian', filter: 'open', done: load() };
+
+  for (const [id, key] of [['heroes', 'hero'], ['filter', 'filter']]) {
+    const group = document.getElementById(id);
+    group.addEventListener('click', (event) => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      for (const other of group.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
+      state[key] = button.dataset[key];
+      render();
+    });
+  }
+
+  function render() {
+    const root = document.getElementById('groups');
+    root.replaceChildren();
+    const groups = [...new Set(ITEMS.map((item) => item[0]))];
+    for (const group of groups) {
+      const items = ITEMS.filter((item) => item[0] === group && (state.filter === 'all' || !state.done[item[1]]));
+      if (items.length === 0) continue;
+      const h2 = document.createElement('h2');
+      h2.textContent = group;
+      const ol = document.createElement('ol');
+      for (const [, title, steps, what, links] of items) {
+        const li = document.createElement('li');
+        if (state.done[title]) li.className = 'done';
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = Boolean(state.done[title]);
+        box.setAttribute('aria-label', 'Ocenione: ' + title);
+        box.addEventListener('change', () => {
+          if (box.checked) state.done[title] = new Date().toISOString().slice(0, 10);
+          else delete state.done[title];
+          save(state.done);
+          render();
+        });
+        const head = document.createElement('div');
+        head.innerHTML = '<b></b><small></small>';
+        head.querySelector('b').textContent = title;
+        head.querySelector('small').textContent = 'krok ' + steps;
+        const desc = document.createElement('div');
+        desc.className = 'what';
+        desc.textContent = what;
+        const row = document.createElement('div');
+        row.className = 'links';
+        for (const [label, href] of links) {
+          const a = document.createElement('a');
+          a.href = href.replace('{hero}', state.hero);
+          a.textContent = label + ' →';
+          row.append(a);
+        }
+        li.append(box, head, desc, row);
+        ol.append(li);
+      }
+      root.append(h2, ol);
+    }
+    if (!root.childElementCount) root.innerHTML = '<p>Wszystko ocenione. Pokaż „wszystko”, żeby zobaczyć listę.</p>';
+  }
+  render();
+</script>
+</body>
+</html>
