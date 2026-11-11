@@ -5,7 +5,7 @@
  "image": "graveyard_tileset.png",
  "tileSize": 32,
  "columns": 16,
- "rows": 10,
+ "rows": 11,
  "envShadowAlpha": 0.4,
  "tiles": {
   "floor_slab16_a": {
@@ -837,89 +837,83 @@
    "h": 1,
    "layer": "gate"
   },
-  "stairs_sealed_2x2": {
+  "stairs_sealed_3x3": {
    "frame": 97,
    "col": 1,
    "row": 6,
-   "w": 2,
-   "h": 2,
+   "w": 3,
+   "h": 3,
    "layer": "floorFeature",
    "frames": [
     [
      97,
-     98
+     98,
+     99
     ],
     [
      113,
-     114
-    ]
-   ]
-  },
-  "stairs_open_2x2": {
-   "frame": 99,
-   "col": 3,
-   "row": 6,
-   "w": 2,
-   "h": 2,
-   "layer": "floorFeature",
-   "frames": [
-    [
-     99,
-     100
+     114,
+     115
     ],
     [
-     115,
-     116
+     129,
+     130,
+     131
     ]
    ]
   },
-  "seal_2x2": {
-   "frame": 101,
-   "col": 5,
+  "stairs_open_3x3": {
+   "frame": 100,
+   "col": 4,
    "row": 6,
-   "w": 2,
-   "h": 2,
+   "w": 3,
+   "h": 3,
    "layer": "floorFeature",
    "frames": [
     [
+     100,
      101,
      102
     ],
     [
+     116,
      117,
      118
+    ],
+    [
+     132,
+     133,
+     134
+    ]
+   ]
+  },
+  "seal_2x2": {
+   "frame": 103,
+   "col": 7,
+   "row": 6,
+   "w": 2,
+   "h": 2,
+   "layer": "floorFeature",
+   "frames": [
+    [
+     103,
+     104
+    ],
+    [
+     119,
+     120
     ]
    ]
   },
   "torch_sconce": {
-   "frame": 103,
-   "col": 7,
+   "frame": 105,
+   "col": 9,
    "row": 6,
    "w": 1,
    "h": 1,
    "layer": "wallDecor"
   },
   "floor_cobble_a": {
-   "frame": 104,
-   "col": 8,
-   "row": 6,
-   "w": 1,
-   "h": 1,
-   "layer": "floorBase",
-   "weight": 1,
-   "flipX": true
-  },
-  "floor_cobble_b": {
-   "frame": 105,
-   "col": 9,
-   "row": 6,
-   "w": 1,
-   "h": 1,
-   "layer": "floorBase",
-   "weight": 1,
-   "flipX": true
-  },
-  "floor_cobble_c": {
    "frame": 106,
    "col": 10,
    "row": 6,
@@ -929,9 +923,29 @@
    "weight": 1,
    "flipX": true
   },
-  "face_banner": {
+  "floor_cobble_b": {
    "frame": 107,
    "col": 11,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 1,
+   "flipX": true
+  },
+  "floor_cobble_c": {
+   "frame": 108,
+   "col": 12,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 1,
+   "flipX": true
+  },
+  "face_banner": {
+   "frame": 109,
+   "col": 13,
    "row": 6,
    "w": 1,
    "h": 1,
@@ -939,8 +953,8 @@
    "weight": 2
   },
   "face_grate": {
-   "frame": 108,
-   "col": 12,
+   "frame": 110,
+   "col": 14,
    "row": 6,
    "w": 1,
    "h": 1,
@@ -948,8 +962,8 @@
    "weight": 2
   },
   "face_alcove": {
-   "frame": 109,
-   "col": 13,
+   "frame": 111,
+   "col": 15,
    "row": 6,
    "w": 1,
    "h": 1,
@@ -957,85 +971,45 @@
    "weight": 1
   },
   "face_brick": {
-   "frame": 110,
-   "col": 14,
-   "row": 6,
+   "frame": 112,
+   "col": 0,
+   "row": 7,
    "w": 1,
    "h": 1,
    "layer": "wallDecor",
    "weight": 3
   },
   "arch_2x1": {
-   "frame": 119,
-   "col": 7,
+   "frame": 121,
+   "col": 9,
    "row": 7,
    "w": 2,
    "h": 1,
    "layer": "overheadDecor",
    "frames": [
     [
-     119,
-     120
+     121,
+     122
     ]
    ]
   },
   "cobweb_nw": {
-   "frame": 111,
-   "col": 15,
-   "row": 6,
+   "frame": 123,
+   "col": 11,
+   "row": 7,
    "w": 1,
    "h": 1,
    "layer": "overheadDecor"
   },
   "cobweb_ne": {
-   "frame": 112,
-   "col": 0,
+   "frame": 124,
+   "col": 12,
    "row": 7,
    "w": 1,
    "h": 1,
    "layer": "overheadDecor"
   },
   "combat_splat_a": {
-   "frame": 121,
-   "col": 9,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_splat_b": {
-   "frame": 122,
-   "col": 10,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_scorch_a": {
-   "frame": 123,
-   "col": 11,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_scorch_b": {
-   "frame": 124,
-   "col": 12,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_slime_a": {
    "frame": 125,
    "col": 13,
    "row": 7,
@@ -1045,7 +1019,7 @@
    "weight": 1,
    "flipX": true
   },
-  "combat_slime_b": {
+  "combat_splat_b": {
    "frame": 126,
    "col": 14,
    "row": 7,
@@ -1055,277 +1029,217 @@
    "weight": 1,
    "flipX": true
   },
-  "torch_flame_0": {
+  "combat_scorch_a": {
    "frame": 127,
    "col": 15,
    "row": 7,
    "w": 1,
    "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_scorch_b": {
+   "frame": 128,
+   "col": 0,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_slime_a": {
+   "frame": 135,
+   "col": 7,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_slime_b": {
+   "frame": 136,
+   "col": 8,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "torch_flame_0": {
+   "frame": 137,
+   "col": 9,
+   "row": 8,
+   "w": 1,
+   "h": 1,
    "layer": "fx"
   },
   "torch_flame_1": {
-   "frame": 128,
-   "col": 0,
+   "frame": 138,
+   "col": 10,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "fx"
   },
   "torch_flame_2": {
-   "frame": 129,
-   "col": 1,
+   "frame": 139,
+   "col": 11,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "fx"
   },
   "torch_flame_3": {
-   "frame": 130,
-   "col": 2,
+   "frame": 140,
+   "col": 12,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "fx"
   },
   "pillar": {
-   "frame": 131,
-   "col": 3,
+   "frame": 141,
+   "col": 13,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "pillar_cracked": {
-   "frame": 132,
-   "col": 4,
+   "frame": 142,
+   "col": 14,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "pillar_stump": {
-   "frame": 133,
-   "col": 5,
+   "frame": 143,
+   "col": 15,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "fallen_pillar_2x1": {
-   "frame": 134,
-   "col": 6,
-   "row": 8,
+   "frame": 144,
+   "col": 0,
+   "row": 9,
    "w": 2,
    "h": 1,
    "layer": "prop",
    "frames": [
     [
-     134,
-     135
+     144,
+     145
     ]
    ]
   },
   "rubble_a": {
-   "frame": 136,
-   "col": 8,
-   "row": 8,
+   "frame": 146,
+   "col": 2,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "rubble_b": {
-   "frame": 137,
-   "col": 9,
-   "row": 8,
+   "frame": 147,
+   "col": 3,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "bones": {
-   "frame": 138,
-   "col": 10,
-   "row": 8,
+   "frame": 148,
+   "col": 4,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "face_niche": {
-   "frame": 139,
-   "col": 11,
-   "row": 8,
+   "frame": 149,
+   "col": 5,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "wallDecor",
    "weight": 4
   },
   "face_epitaph": {
-   "frame": 140,
-   "col": 12,
-   "row": 8,
+   "frame": 150,
+   "col": 6,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "wallDecor",
    "weight": 2
   },
   "face_skulls": {
-   "frame": 141,
-   "col": 13,
-   "row": 8,
+   "frame": 151,
+   "col": 7,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "wallDecor",
    "weight": 2
   },
   "decal_grave_slab_1x2": {
-   "frame": 142,
-   "col": 14,
-   "row": 8,
+   "frame": 152,
+   "col": 8,
+   "row": 9,
    "w": 1,
    "h": 2,
    "layer": "floorDecal",
    "frames": [
     [
-     142
+     152
     ],
     [
-     158
+     168
     ]
    ],
    "weight": 1
   },
   "decal_corpse_2x1": {
-   "frame": 144,
-   "col": 0,
+   "frame": 153,
+   "col": 9,
    "row": 9,
    "w": 2,
    "h": 1,
    "layer": "floorDecal",
    "frames": [
     [
-     144,
-     145
+     153,
+     154
     ]
    ],
    "weight": 1,
    "flipX": true
   },
   "decal_corpse_b_2x1": {
-   "frame": 146,
-   "col": 2,
+   "frame": 155,
+   "col": 11,
    "row": 9,
    "w": 2,
    "h": 1,
    "layer": "floorDecal",
    "frames": [
     [
-     146,
-     147
+     155,
+     156
     ]
    ],
    "weight": 1,
    "flipX": true
   },
   "decal_bones_a": {
-   "frame": 143,
-   "col": 15,
-   "row": 8,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_bones_b": {
-   "frame": 148,
-   "col": 4,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_candles_a": {
-   "frame": 149,
-   "col": 5,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_candles_b": {
-   "frame": 150,
-   "col": 6,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_mycel_faint_a": {
-   "frame": 151,
-   "col": 7,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_mycel_faint_b": {
-   "frame": 152,
-   "col": 8,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_trail_h_a": {
-   "frame": 153,
-   "col": 9,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_trail_h_b": {
-   "frame": 154,
-   "col": 10,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_trail_v_a": {
-   "frame": 155,
-   "col": 11,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_trail_v_b": {
-   "frame": 156,
-   "col": 12,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_trail_drops_a": {
    "frame": 157,
    "col": 13,
    "row": 9,
@@ -1335,10 +1249,110 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_drops_b": {
+  "decal_bones_b": {
+   "frame": 158,
+   "col": 14,
+   "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_candles_a": {
    "frame": 159,
    "col": 15,
    "row": 9,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_candles_b": {
+   "frame": 160,
+   "col": 0,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mycel_faint_a": {
+   "frame": 161,
+   "col": 1,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mycel_faint_b": {
+   "frame": 162,
+   "col": 2,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_a": {
+   "frame": 163,
+   "col": 3,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_b": {
+   "frame": 164,
+   "col": 4,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_a": {
+   "frame": 165,
+   "col": 5,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_v_b": {
+   "frame": 166,
+   "col": 6,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_a": {
+   "frame": 167,
+   "col": 7,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_drops_b": {
+   "frame": 169,
+   "col": 9,
+   "row": 10,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",

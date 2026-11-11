@@ -960,7 +960,7 @@ def seal(p, r):
 
 
 def stairs(open_):
-    """Schody w górę (krok 186): wolnostojąca budowla z łukiem u szczytu — rysuje tools/stairs_tiles.py."""
+    """Klatka schodowa (krok 187, 3x3): biegi, spocznik i szyb w ciemność — rysuje tools/stairs_tiles.py."""
     def gen(p, r):
         return stairs_tiles.draw(p, r, open_, BIOME, Img, outline)
     return gen
@@ -2148,8 +2148,8 @@ def manifest():
     for orient in ('h', 'v'):
         for state in ('open', 'half', 'closed'):
             m.append(Entry(f'gate_{orient}_{state}', gate(orient, state), 'gate', group=f'gate.{orient}'))
-    m.append(Entry('stairs_sealed_2x2', stairs(False), 'floorFeature', 2, 2))
-    m.append(Entry('stairs_open_2x2', stairs(True), 'floorFeature', 2, 2))
+    m.append(Entry('stairs_sealed_3x3', stairs(False), 'floorFeature', 3, 3))
+    m.append(Entry('stairs_open_3x3', stairs(True), 'floorFeature', 3, 3))
     m.append(Entry('seal_2x2', seal, 'floorFeature', 2, 2))
     m.append(Entry('torch_sconce', torch_sconce, 'wallDecor', group='torchSconce'))
     for v in ('a', 'b', 'c'):
@@ -2625,7 +2625,7 @@ def compose_mockup(p, tiles, meta, seed=16):
     # 3. elementy podłogi
     for y in range(H):
         for x in range(Wd):
-            if grid[y][x] == 'S': put('stairs_sealed_2x2', x, y)
+            if grid[y][x] == 'S': put('stairs_sealed_3x3', x, y)
             if grid[y][x] == 'O': put('seal_2x2', x, y)
     # 4. cienie środowiska
     for y in range(H):

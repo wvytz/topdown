@@ -9,8 +9,11 @@ export const GAME_HEIGHT = 540;
 
 export const TILE_SIZE = 32;
 
-/** Schody na kolejne piętro zajmują blok STAIRS_SIZE × STAIRS_SIZE kafli (64×64 px, krok 17). */
-export const STAIRS_SIZE = 2;
+/** Schody na kolejne piętro zajmują blok STAIRS_SIZE × STAIRS_SIZE kafli (krok 17: 2×2; od kroku 187 kręcona klatka 3×3, 96×96 px). */
+export const STAIRS_SIZE = 3;
+
+/** Wybór narożnika klatki (krok 187): narożnik runu odpada, gdy środek bloku jest bliżej wejścia niż tyle kafli. */
+export const STAIRS_PLACEMENT = { minEntranceDistance: 5 } as const;
 
 export const BASE_DUNGEON_CONFIG: DungeonGeneratorConfig = {
   widthTiles: 60,
