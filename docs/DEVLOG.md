@@ -6102,6 +6102,22 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Weryfikacja:** `npm run build` (typy, testy, build); kadry przed/po na piętrach 1–7 (zamknięte i otwarte) w przeglądarce — `/mnt/project-files/screens/krok186-schody/`.
 
+## Krok 187 — Kręcona klatka schodowa w narożniku runu `#ocena` `#schody` `#lore` `#obraz`
+
+**Prośba właściciela (11.11.2026, po kroku 186):** „przesuńmy schody w losowy narożnik pomieszczenia i przerysujmy model jeszcze raz, tak by stwarzał złudzenie 3D i faktycznie ukazywał głębię ciemności i ryzyko, jakie podejmujemy. Trzymajmy się jednej części areny bossa, utrzymując logikę budowy klatki schodowej w jednym pionie”.
+
+**Odczytanie:** „jeden pion” = klatka schodowa w tym samym miejscu na każdym piętrze. Narożnik losujemy raz na run (seed runu) i trzymamy go na wszystkich piętrach; wieża ma klatkę w jednym pionie, więc model to spirala w okrągłym szybie.
+
+**Co zrobione**
+- **Narożnik runu** (`runStairsCorner`, `StairsCorner` w `dungeon/stairs.ts`, własna sól RNG): `planStairs` bierze go, o ile środek bloku leży co najmniej `STAIRS_PLACEMENT.minEntranceDistance` (5) kafli od każdego wejścia do areny; inaczej — jak w kroku 75 — narożnik najdalszy od wejść. Na seedzie 7 ten sam narożnik ma 6 z 7 pięter (Lustrzana komnata ma wejście w tym rogu).
+- **Klatka 3×3** (`STAIRS_SIZE` 3, kafle `stairs_sealed_3x3` / `stairs_open_3x3`, `tools/stairs_tiles.py`): wejście od południa, stopnie-kliny wznoszą się zgodnie z ruchem wskazówek zegara i z każdym stopniem ciemnieją, a od wschodu spirala znika w czerni. Wąska szczelina, lico i cień pod nawisem każdego stopnia dają złudzenie wysokości. W środku szyb w głąb: wewnętrzne lico opada w czerń, a w dole majaczą coraz mniejsze zwoje tej samej spirali (piętra już przebyte). Mur szybu ma lico północnej ściany i przednie lico od południa. Zamknięte: krata w wejściu z kłódką.
+- Gradient zniszczeń z kroku 186 zostaje (ruiny: wyłamana poręcz nad szybem, wyszczerbiony mur, gruz; Lustrzana komnata i Ogród: złota poręcz) i dodatki biomów (pajęczyna w poprzek szybu, żar na dnie szybu w Piekle, chodnik w mieszkaniu, trawa przy murze).
+- **Otwarte schody** (`effects/StairsGlow.ts`): zamiast złotego blasku słabe światło u wejścia i blade pyłki w barwie popiołu biomu, które ciąg powietrza wciąga w górę, w mrok spirali.
+
+**Do oceny:** czy spirala czyta się jako „w górę, w ciemność”; bohater może przejść po szybie (schody nie mają kolizji, jak dotąd) — czy szyb ma blokować ruch; czy narożnik runu ma się też powtarzać w Lustrzanej komnacie kosztem bliskości wejścia.
+
+**Testy:** `tests/dungeon/stairs.test.ts` (blok 3×3, narożnik runu z pierwszeństwem i odrzuceniem przy wejściu, stały narożnik dla seeda), `FloorDressing.test.ts` (schody poza testowaną salą). `npm run build`, `npm run smoke`, kadry pięter 1–7 — `/mnt/project-files/screens/krok187-klatka-schodowa/`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

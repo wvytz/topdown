@@ -8,6 +8,7 @@ import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { STAIRS_SIZE } from '@/config/gameConfig';
+import type { StairsCorner } from '@/dungeon/stairs';
 import { planStairs } from '@/dungeon/stairs';
 import { checkBossRoomAtEnd } from '@/dungeon/bossRoomRule';
 
@@ -39,18 +40,20 @@ interface RoomRect {
 export class DungeonGenerator {
   constructor(private readonly config: DungeonGeneratorConfig) {}
 
-  generate(seed: number): DungeonFloor {
+  /** `options.stairsCorner` — narożnik klatki schodowej runu (krok 187); bez niego narożnik najdalszy od wejść. */
+  generate(seed: number, options: { readonly stairsCorner?: StairsCorner } = {}): DungeonFloor {
+    const corner = options.stairsCorner;
     if (this.config.bossRoomAtEnd) {
       for (let attempt = 0; attempt < BOSS_AT_END_ATTEMPTS; attempt++) {
-        const floor = this.build(seed, createRng(attempt === 0 ? seed : deriveSeed(seed, attempt)), true);
+        const floor = this.build(seed, createRng(attempt === 0 ? seed : deriveSeed(seed, attempt)), true, corner);
         if (floor && checkBossRoomAtEnd(floor).ok) return floor;
       }
     }
     // Piętro bez reguły (piętro 1) albo — awaryjnie — gdy żadna próba się nie udała.
-    return this.build(seed, createRng(seed), false)!;
+    return this.build(seed, createRng(seed), false, corner)!;
   }
 
-  private build(seed: number, rng: Rng, bossAtEnd: boolean): DungeonFloor | null {
+  private build(seed: number, rng: Rng, bossAtEnd: boolean, stairsCorner?: StairsCorner): DungeonFloor | null {
     const { widthTiles: width, heightTiles: height } = this.config;
     const tiles: TileType[] = new Array<TileType>(width * height).fill(TileType.Wall);
 
@@ -79,8 +82,8 @@ export class DungeonGenerator {
       kind: id === startIndex ? RoomKind.Start : id === bossIndex ? RoomKind.Boss : id === endIndex ? RoomKind.Secret : RoomKind.Normal,
     }));
 
-    // Schody STAIRS_SIZE × STAIRS_SIZE w narożniku areny najdalszym od wejść (krok 75); `stairs` to lewy górny róg bloku.
-    const stairs = planStairs({ width, height, tiles }, rooms[bossIndex]!);
+    // Schody STAIRS_SIZE × STAIRS_SIZE w narożniku areny — runu (krok 187) albo najdalszym od wejść (krok 75).
+    const stairs = planStairs({ width, height, tiles }, rooms[bossIndex]!, stairsCorner);
     for (let dy = 0; dy < STAIRS_SIZE; dy++) {
       for (let dx = 0; dx < STAIRS_SIZE; dx++) tiles[(stairs.y + dy) * width + stairs.x + dx] = TileType.StairsLocked;
     }

@@ -115,7 +115,7 @@ import { hordeMinionVariant, isInsideRoom, planHordeRooms } from '@/systems/Hord
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
 import { assignLurkers, assignNesters, planEncounters } from '@/dungeon/EncounterPlanner';
-import { isStairsTile } from '@/dungeon/stairs';
+import { isStairsTile, runStairsCorner } from '@/dungeon/stairs';
 import { dressFloor } from '@/dungeon/FloorDressing';
 import type { DressedFloor } from '@/dungeon/FloorDressing';
 import { CombatEffects } from '@/effects/CombatEffects';
@@ -181,6 +181,7 @@ import { BOSS_HERALD, HERALD_RUMBLE } from '@/config/bossHeraldConfig';
 import type { LightingOverlay } from '@/effects/LightingOverlay';
 import { FloorLighting } from '@/effects/FloorLighting';
 import { StairsGlow } from '@/effects/StairsGlow';
+import { hexColor } from '@/effects/lightTextures';
 import { installSmoothPhysics } from '@/world/SmoothPhysics';
 import { TORCH_PLACEMENT } from '@/config/lightingConfig';
 import { planTorches } from '@/dungeon/LightPlanner';
@@ -346,7 +347,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Biom piętra: arkusz kafli, dekorowanie, warianty wrogów. */
   private biome!: BiomeDefinition;
   private floorLighting!: FloorLighting;
-  /** Blask otwartych schodów (krok 186): światło z wyższego piętra i pyłki wznoszące się w górę. */
+  /** Otwarta klatka schodowa (kroki 186–187): światło u wejścia i pyłki wciągane w mrok spirali. */
   private stairsGlow!: StairsGlow;
   /** Żywe otoczenie biomów 2–5 (kroki 156–157); null — biom bez niego albo areny bossów. */
   private ambient: AmbientLifeView | null = null;
@@ -464,7 +465,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   create(): void {
     const generator = new DungeonGenerator(getDungeonConfigForFloor(this.floorNumber));
-    const generated = generator.generate(deriveSeed(this.runSeed, this.floorNumber));
+    // Krok 187: klatka schodowa w jednym pionie — narożnik areny losowany raz na run.
+    const generated = generator.generate(deriveSeed(this.runSeed, this.floorNumber), { stairsCorner: runStairsCorner(this.runSeed) });
     // Galerie za kratami na arenie bossa (krok 44, Strażnik Bram) — przed dekorowaniem, bo zmieniają kafle.
     const galleries = bossForFloor(this.floorNumber).galleries;
     const carved = galleries ? carveArenaGalleries(generated, galleries.sides, galleries.depth) : { floor: generated, posts: [] };
@@ -542,7 +544,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupSecretRoom();
     this.setupAmbush();
     this.createStairsPrompt();
-    this.stairsGlow = new StairsGlow(this, this.dungeon.stairs);
+    this.stairsGlow = new StairsGlow(this, this.dungeon.stairs, tileset.colors.ash.map(hexColor));
     this.inputController = createPlayerInput(this, this.coop?.devices[0]);
     this.partnerInput = this.coop && this.partner ? this.createPartnerInput(this.coop, this.partner) : null;
     this.setupCamera();

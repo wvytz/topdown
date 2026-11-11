@@ -67,7 +67,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - **Warstwa wizualna (krok 16):**
   - paleta C „jasny piaskowiec”: czytelność walki ma pierwszeństwo, a mrok daje światło i winieta;
   - zoom kamery **1,6** (decyzja właściciela 11.11.2026 po próbie z kroku 167; wcześniej 2,0 pixel-perfect — skala płótna dalej liczona od 2,0); obraz na PC powiększa pełny ekran (**F**) i opcja „Wypełnij okno” w pauzie (krok 118, skala ułamkowa) — te dwie opcje nie zmieniają pola widzenia kamery;
-  - schody 2×2;
+  - schody: kręcona klatka 3×3 w narożniku areny, ten sam narożnik przez cały run (krok 187, „jeden pion”);
   - cienie środowiska ze stałą alfą 0,4;
   - światło (mrok, mgła, pochodnie) przechodzi płynnie — bez twardych pasm (decyzja z kroku 28a, odwołuje pasma z 19a);
   - dekoracje bez kolizji (kolidujące rekwizyty tylko za zgodą, bo zmieniają linię wzroku Kiterów).

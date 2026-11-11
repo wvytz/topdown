@@ -127,7 +127,7 @@ export const FLOOR_DRESSING: FloorDressingConfig = {
   archGroup: 'overhead.arch',
   cobweb: { chance: 0.35, nwGroup: 'overhead.cobwebNW', neGroup: 'overhead.cobwebNE' },
   combatDecals: { capacity: 180, groups: { splat: 'combat.splat', scorch: 'combat.scorch', slime: 'combat.slime' } },
-  stairsTiles: { locked: 'stairs_sealed_2x2', open: 'stairs_open_2x2' },
+  stairsTiles: { locked: 'stairs_sealed_3x3', open: 'stairs_open_3x3' },
   gateTiles: {
     h: { open: 'gate_h_open', half: 'gate_h_half', closed: 'gate_h_closed' },
     v: { open: 'gate_v_open', half: 'gate_v_half', closed: 'gate_v_closed' },
