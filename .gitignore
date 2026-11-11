@@ -11,3 +11,7 @@ __pycache__/
 .dev.vars
 .wrangler/
 .env.production
+
+# Kadry i pomiary z automatu (krok U0: npm run shots / npm run perf)
+.shots/
+.perf/

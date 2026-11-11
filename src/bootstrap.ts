@@ -1,3 +1,5 @@
+import { installPerfMeter } from '@/diagnostics/PerfMeter';
+import { perfMeterWanted } from '@/systems/FrameStats';
 import Phaser from 'phaser';
 import { PAUSE_CLOCK_KEY } from '@/config/pauseConfig';
 import { BASE_CAMERA_ZOOM, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
@@ -93,6 +95,8 @@ export function startGame(options: GameStartOptions): Phaser.Game {
   game.step = (time: number, delta: number) => stepWithGameTime(pauseClock.shift(time), delta);
   // Dziennik błędów i niespotykanych zdarzeń (krok 55): raport pod F9; pętla gry nie zamiera po wyjątku.
   installDiagnostics(game);
+  // Licznik wydajności (krok U0): `?perf=1` — także w wersji produkcyjnej, do pomiaru na telefonie.
+  if (perfMeterWanted(window.location.search)) installPerfMeter(game);
   diag.note('platform', { platform: options.platform });
   // Dźwięk (krok 116): przeglądarka odblokowuje go dopiero po pierwszym geście gracza.
   sound.install(window);

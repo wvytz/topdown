@@ -1,3 +1,4 @@
+import { browserLocalStorage } from '@/persistence/scopedStorage';
 import type { ScoreComparator, ScoreEntry, ScoreboardView } from '@/systems/Highscores';
 import { buildScoreboard, compareScores, insertScore } from '@/systems/Highscores';
 
@@ -29,11 +30,8 @@ export class HighscoreStorage {
 
   /** Magazyn przeglądarki, jeśli jest dostępny. */
   static browserStorage(): KeyValueStorage | null {
-    try {
-      return typeof window !== 'undefined' ? window.localStorage : null;
-    } catch {
-      return null;
-    }
+    // Krok U0: podgląd z podkatalogu ma własne klucze (`persistence/scopedStorage.ts`).
+    return browserLocalStorage();
   }
 
   load(): ScoreEntry[] {

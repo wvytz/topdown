@@ -1,3 +1,4 @@
+import { browserLocalStorage } from '@/persistence/scopedStorage';
 import { SAVE_CONFIG } from '@/config/saveConfig';
 import type { SaveData, SaveRecord } from '@/systems/SaveGame';
 import { parseSaveRecord, toSaveRecord } from '@/systems/SaveGame';
@@ -21,11 +22,8 @@ export class SaveStorage {
   ) {}
 
   static browserStorage(): SaveKeyValueStorage | null {
-    try {
-      return typeof window !== 'undefined' ? window.localStorage : null;
-    } catch {
-      return null;
-    }
+    // Krok U0: podgląd z podkatalogu ma własne klucze (`persistence/scopedStorage.ts`).
+    return browserLocalStorage();
   }
 
   /** Numery ręcznych slotów (1..slotCount). */

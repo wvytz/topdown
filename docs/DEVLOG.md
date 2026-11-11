@@ -5992,9 +5992,83 @@ Dotychczasowe testy generatora i planerów (arena na końcu, ukryta komnata, zas
 
 **Weryfikacja:** `npm run build`.
 
+## Krok U0 — Pomiar i podgląd upgradu `#upgrade` `#wydajnosc`
+
+**Zakres (etap U0 z `docs/UPGRADE.md`):** zanim cokolwiek zmienimy w oprawie — punkt odniesienia „przed”, pomiar wydajności i bezpieczny podgląd gałęzi. Gra wygląda i działa jak w kroku 184a.
+
+**Co powstało**
+- **Kadry bazowe** — `npm run shots -- --label <nazwa>` (`tools/shots.mjs`): 12 stałych kadrów (7 biomów w pokoju z nawałą, bossowie 1/4/7, HUD z przedmiotami, telefon — emulacja Pixel 7) i arkusz 4×3. `--before <katalog>` składa arkusz porównawczy „przed | po”. Seedy i miejsca stałe; ruch wrogów i efekty `Math.random` różnią się między przebiegami. Arkusz „przed”: `/mnt/project-files/screens/krokU0-kadry-bazowe/arkusz.png`. Wynik w `.shots/` (poza repo).
+- **Licznik wydajności `?perf=1`** (`systems/FrameStats.ts` — czyste statystyki z testami, `diagnostics/PerfMeter.ts`, progi w `config/perfConfig.ts`): napis w lewym dolnym rogu — FPS, p95 i najdłuższa klatka, praca gry w klatce (logika + rysowanie w JS), żywi wrogowie, obiekty sceny. Działa też w wersji produkcyjnej, więc mierzy prawdziwy telefon.
+- **Profil przy pełnej nawale** — `npm run perf` (`tools/perf.mjs`): budzi nawałę we wszystkich pokojach piętra 7 (sufit 22 wrogów), bohater walczy bez obrażeń, 10 s pomiaru; scenariusze PC solo, co-op i telefon (Pixel 7, procesor ×4 wolniejszy), do porównania „spokój” w pokoju startowym. Wspólne funkcje skryptów: `tools/lib/gameHarness.mjs`.
+- **Wdrożenie** (`tools/deploy-pages.mjs`): zwykłe wdrożenie z `main` **zachowuje podkatalogi** wersji testowych z `gh-pages` (`upgrade/`, `coop/` — katalog z własnym `index.html`, którego nie ma w `dist/`); wdrożenie `--subdir` buduje **bez workera** (`VITE_SCORES_URL` pusty — ma pierwszeństwo przed `.env.production`; świadomie: `--with-scores`) i z **własnym przedrostkiem localStorage** (`VITE_STORAGE_PREFIX=<subdir>:`).
+- **Osobny magazyn podglądu** (`persistence/scopedStorage.ts`): podgląd pod `/topdown/upgrade/` leży w tym samym pochodzeniu co gra testerów, czyli ma ten sam `localStorage`. Klucze podglądu dostają przedrostek `upgrade:`, więc zapisy, lokalne tablice, ustawienia i dziennik głównej gry zostają nietknięte. W głównej grze przedrostek jest pusty — klucze `tower-crawler.*` bez zmian.
+- **Strona „Do oceny”** (`public/do-oceny.html`, na podglądzie `/topdown/upgrade/do-oceny.html`): wszystkie pozycje czekające na ocenę właściciela (33, w grupach), każda z linkiem prosto do miejsca w grze (run testowy), wybór bohatera i ptaszek „ocenione” (pamięta przeglądarka). To teraz jedyna lista „do oceny” — backlog niżej odsyła do niej.
+- **Porządek w backlogu**: nowy, krótki backlog (do oceny → strona, otwarte decyzje, do zrobienia wg etapów upgradu, odłożone, odrzucone, uwagi techniczne); dawny backlog w całości w „Archiwum backlogu”.
+- `testy.html`: aktualne nazwy bossów (Król Szlamu, Palacz) i kręgi po 7 pięter, link do „Do oceny”.
+
+**Pomiar (10.11.2026, kontener bez GPU — Chromium rysuje programowo i ogranicza się do ok. 30 klatek)**
+
+| Scenariusz (piętro 7) | FPS | klatka p50 / p95 ms | praca gry p50 / p95 ms | wrogów |
+|---|---|---|---|---|
+| PC, spokój | 33 | 29 / 36 | 1,1 / 1,9 | 6 |
+| PC, pełna nawała | 33 | 29 / 39 | 1,6 / 2,4 | 22 |
+| Co-op, pełna nawała | 31 | 32 / 38 | 1,6 / 2,4 | 20 |
+| Telefon (CPU ×4), spokój | 25 | 39 / 48 | 6,1 / 10,1 | 6 |
+| Telefon (CPU ×4), pełna nawała | 26 | 39 / 46 | 5,8 / 8,7 | 22 |
+
+Wnioski: logika i rysowanie w JS kosztują przy pełnej nawale ok. 1,6 ms na klatkę na PC (+0,5 ms względem spokoju), a na emulowanym słabym telefonie 6–9 ms — mieści się w budżecie 16,7 ms klatki 60 FPS z zapasem na efekty U1–U3. Odstęp klatek w kontenerze mierzy programowe rysowanie, nie grę, więc **czas klatki na prawdziwym telefonie trzeba zmierzyć licznikiem `?perf=1`** (pierwsza pozycja na stronie „Do oceny”). Pełne dane: `/mnt/project-files/screens/krokU0-kadry-bazowe/perf-*.json`.
+
+**Testy:** `tests/systems/FrameStats.test.ts` (percentyle, okno klatek, szarpnięcia, błędne pomiary, `?perf=1`), `tests/persistence/scopedStorage.test.ts` (podgląd nie widzi i nie nadpisuje kluczy głównej gry, pusty przedrostek = ten sam magazyn).
+
+**Weryfikacja:** `npm run build`; `npm run shots` i `npm run perf` bez błędów strony; wdrożenie sprawdzone na atrapie repozytorium (podkatalogi `coop/` i `upgrade/` przetrwały zwykłe wdrożenie, w `upgrade/` brak adresu workera); wszystkie linki ze strony „Do oceny” uruchamiają grę; podgląd wdrożony pod `/topdown/upgrade/`.
+
 ## Znane ograniczenia i backlog
 
-Stan po domknięciu warstwy wizualnej (kroki 16–19) i sprite'ów łupów (krok 20).
+Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
+
+**1. Do oceny** `#ocena` — jedna lista z linkami do gry: `public/do-oceny.html` (na podglądzie `wvytz.github.io/topdown/upgrade/do-oceny.html`). Nowy krok z „czeka na ocenę” dopisuje tam pozycję; ocenioną przenosimy do wpisu kroku jako `#ocena` i usuwamy ze strony. Najpilniejsze: czas klatki na telefonie właściciela (`?perf=1`) — punkt odniesienia dla U1–U3.
+
+**2. Otwarte decyzje właściciela** `#decyzja`
+- Nazwa biomu piętra 5 (Zadymiona palarnia / mieszkanie gracza).
+- Wspólna tablica wyników telefonów (zmiana w workerze).
+- Bot-partner w menu („Graj z botem”) — po naprawie bota w U9.
+- Gdzie wraca Pajęcze leże (poza wspinaczką od kroku 127); Kat Otchłani i Strażnik Bram poza wspinaczką od kroku 182.
+- Dodatkowe sekretne komnaty po bossach innych niż Grzybnia.
+- Większe nagrody i trudność w kolejnych kręgach (endless loop), finałowy boss wieży — z Aktem II.
+
+**3. Do zrobienia — upgrade Aktu I** (`docs/UPGRADE.md`, gałąź `upgrade-fable`; przed każdym etapem i po nim `npm run shots` i `npm run perf`)
+- **U1 fundament renderu:** moduł efektów ekranowych, przełącznik jakości i „mniej błysków”, wydzielenie efektów z `GameScene.ts`; usunąć próbny `?zoom=1.6` (ustalenie 5).
+- **U2 feel walki:** wybuchy i trafienia nad mrokiem, jaskrawsza krew (uwaga po kroku 24), wyraźniejsze smagnięcie Matki Pająków, czytelne pociski w tłumie.
+- **U3 światło 2.0:** światło pocisków, magii i ognia; postFX z przełącznikiem jakości (po kroku 144).
+- **U4 kafle:** pilot ruin; ozdobna obwódka areny i przejścia materiałów (dual-grid — dotąd odłożone, teraz w zakresie).
+- **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
+- **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
+- **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.
+- **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
+- **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
+
+**4. Odłożone — tylko za zgodą właściciela**
+- Kolidujące rekwizyty (zmieniają linię wzroku Kiterów).
+- Szukanie bohatera przez wrogów po całym piętrze (od kroku 152 omijają rogi do miejsca, gdzie go widzieli).
+- Synergie przedmiotów; kupiec między piętrami (z Aktem II); nowe rodzaje przedmiotów.
+- Trzecia faza Wiedźmy z tarczą z ptaków i Wiedźma jako bohaterka — po upgradzie.
+- Akt II (piekło z azteckimi torturami) — po upgradzie.
+
+**5. Odrzucone:** ewolucje przedmiotów zmieniające sterowanie; lewitacja jako przemiana Butów (krok 151); beczki z prochem w ruinach (krok 48).
+
+**6. Uwagi techniczne**
+- Arena (11–13 kafli) jest wyższa niż widok w pionie (ok. 8,4 kafla); ataki są obszarowe z telegrafem, a od kroku 136 strzałka pokazuje bossa poza kadrem. Oddalenie kamery na arenie — tylko jeśli to nie wystarczy (zmienia balans).
+- Domyślny pocisk wroga (pomarańczowe kółko z `BootScene`) nieużywany — zabezpieczenie.
+- Podgląd upgradu nie wysyła wyników ani zgłoszeń F9 / „Napisz do autora” (build bez workera) — oceny właściciela zbieramy w czacie.
+- `npm run perf` w kontenerze bez GPU mierzy pracę gry w JS wiarygodnie, ale odstęp klatek zależy od programowego rysowania — liczby absolutne tylko z prawdziwego urządzenia (`?perf=1`).
+
+---
+
+## Archiwum backlogu (stan po kroku 184a)
+
+Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy są wyżej.
+
+
 
 **Ocena właściciela po testach w grze (po kroku 20) — zaakceptowane:** `#ocena`
 - [x] **Miecz barbarzyńcy (krok 21):** wygląd chodu i ciosu zaakceptowany.
