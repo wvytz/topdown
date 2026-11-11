@@ -1,6 +1,6 @@
 # Akt II — Popielnik i Zejście (propozycja)
 
-Stan: 11.11.2026, **propozycja do oceny właściciela, bez kodu**. Odpowiada na prośbę: „po pierwszym pokonaniu czarownicy nowy biom-kryjówka i nowy rodzaj powtarzalnych runów ze zbieraniem przedmiotów”. Bierzemy mechaniki gatunku (baza wypadowa, runy, trwałe odblokowania), a nazwy, postacie i zasady są nasze.
+Stan: 11.11.2026, **zaakceptowane przez właściciela 11.11.2026 (wszystkie 9 decyzji z §10 wg rekomendacji)**; pierwsza wersja w budowie na gałęzi `akt-2`. Odpowiada na prośbę: „po pierwszym pokonaniu czarownicy nowy biom-kryjówka i nowy rodzaj powtarzalnych runów ze zbieraniem przedmiotów”. Bierzemy mechaniki gatunku (baza wypadowa, runy, trwałe odblokowania), a nazwy, postacie i zasady są nasze.
 
 Po akceptacji każdy etap z §9 to osobny wątek. Sekcja §10 zbiera decyzje, które należą do właściciela.
 
@@ -151,7 +151,9 @@ Kolejność względem upgradu Aktu I: Z0–Z3 dotykają innych plików niż U3�
 
 ## 10. Decyzje dla właściciela
 
-Przy każdej jest rekomendacja; bez odpowiedzi obowiązuje rekomendacja.
+`#decyzja` **11.11.2026 właściciel przyjął wszystkie rekomendacje:** „Popielnik jest ideolo”; odbicia — ok; odblokowania bez czystej siły — zgoda; Wota — „tak zrób”; przy śmierci przepada połowa; 6 pięter („później doprecyzujemy”); Czarne Słońce — tak; wspinaczka jako osobny tryb — tak; gałąź `akt-2` — „dokładnie tak”. Dodał: zgoda na każdą propozycję, która wyniknie w trakcie pracy.
+
+Poniżej pytania w brzmieniu z propozycji.
 
 1. **Nazwa kryjówki.** Popielnik (polecam) / Przedsionek / Ostatnie Palenisko.
 2. **Start na odbiciach wieży** zamiast czekania na nowe biomy. Polecam: tak, pętla jest grywalna po Z2.
