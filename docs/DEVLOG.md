@@ -6148,7 +6148,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - Szukanie bohatera przez wrogów po całym piętrze (od kroku 152 omijają rogi do miejsca, gdzie go widzieli).
 - Synergie przedmiotów; kupiec między piętrami (z Aktem II); nowe rodzaje przedmiotów.
 - Trzecia faza Wiedźmy z tarczą z ptaków i Wiedźma jako bohaterka — po upgradzie.
-- Akt II (piekło z azteckimi torturami) — po upgradzie.
+- Akt II (piekło z azteckimi torturami) — po upgradzie. **Propozycja z 11.11.2026: `docs/AKT2.md`** (Popielnik jako kryjówka po Wiedźmie, Zejście jako powtarzalne runy, Żar i Wota, etapy Z0–Z6+); zaakceptowana 11.11.2026, praca na gałęzi `akt-2`.
 
 **5. Odrzucone:** ewolucje przedmiotów zmieniające sterowanie; lewitacja jako przemiana Butów (krok 151); beczki z prochem w ruinach (krok 48).
 
