@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { combatFeel } from '@/effects/CombatFeel';
 import Phaser from 'phaser';
 import type {
   AreaStrike,
@@ -91,6 +92,7 @@ import { THRONE_ROOM } from '@/config/dressingConfig';
 import { SLUDGE_FX, sludgePuddleSheet } from '@/config/sludgeConfig';
 import { SludgeCreepView } from '@/effects/SludgeCreepView';
 import { creepTargetDepth, isHeroInCreep, puddlesOverLimit, sludgePuddle, stepCreepDepth } from '@/systems/Sludge';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface BossFightDeps {
   readonly scene: Phaser.Scene;
@@ -958,9 +960,9 @@ export class BossFight {
     const { introShake, enrageShake } = BOSS_PRESENCE_VISUAL;
     if (boss.isFighting && !this.introduced) {
       this.introduced = true;
-      camera.shake(introShake.durationMs, introShake.intensity);
+      screenFx.shake(camera, introShake.durationMs, introShake.intensity);
     }
-    if (boss.isEnraged && !this.wasEnraged) camera.shake(enrageShake.durationMs, enrageShake.intensity);
+    if (boss.isEnraged && !this.wasEnraged) screenFx.shake(camera, enrageShake.durationMs, enrageShake.intensity);
     this.wasEnraged = boss.isEnraged;
   }
 
@@ -1006,7 +1008,7 @@ export class BossFight {
       return;
     }
     this.finishLeap(boss);
-    this.deps.scene.cameras.main.shake(v.landShake.durationMs, v.landShake.intensity);
+    screenFx.shake(this.deps.scene.cameras.main, v.landShake.durationMs, v.landShake.intensity);
   }
 
   /** Królowa na ziemi w miejscu lądowania (także gdy zginie w locie). */
@@ -1751,6 +1753,7 @@ export class BossFight {
     const boss = this.boss;
     if (!boss) return;
     this.deps.effects.deathBurst(boss.x, boss.y, boss.definition.color, boss.radius * 1.5);
+    combatFeel.bossKill(boss, boss.radius, boss.definition.color);
     sound.play(SoundCue.BossDeath, boss);
     this.clearFight(boss);
     const position: Vector2 = { x: boss.x, y: boss.y };

@@ -7,6 +7,9 @@ import { FireEffects } from '@/effects/FireEffects';
 import { SludgeEffects } from '@/effects/SludgeEffects';
 import { exposedArcs } from '@/systems/AreaOutline';
 import type { OutlineCircle } from '@/systems/AreaOutline';
+import { screenFx } from '@/effects/ScreenFx';
+import { combatFeel } from '@/effects/CombatFeel';
+import { COMBAT_FEEL_CONFIG } from '@/config/combatFeelConfig';
 
 /** Wygląd wybuchu: domyślny ogień (`BLAST_VISUAL`) albo inna paleta o tym samym układzie (zarodniki, krok 111). */
 type BlastVisual = {
@@ -27,9 +30,12 @@ export class CombatEffects {
   constructor(private readonly scene: Phaser.Scene) {
     this.fire = new FireEffects(scene);
     this.sludge = new SludgeEffects(scene);
+    combatFeel.bind(scene);
   }
 
   slash(x: number, y: number, angle: number, range: number, arcRadians: number): void {
+    // Krok U2: na Średniej i Wysokiej smuga ostrza z pikseli nad mrokiem; Niska — dawny biały wycinek.
+    if (combatFeel.slash(x, y, angle, range, arcRadians)) return;
     const g = this.scene.add.graphics().setDepth(RENDER_DEPTH.slash);
     g.fillStyle(0xffffff, 0.35);
     g.slice(x, y, range, angle - arcRadians / 2, angle + arcRadians / 2, false);
@@ -66,6 +72,8 @@ export class CombatEffects {
     // Wybuch zawsze rani — dźwięk razem z obrazem (krok 116).
     sound.play(SoundCue.Explosion, { x, y });
     const g = this.scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash);
+    // Krok U2: pierścień i iskry także nad mrokiem (bez wypełnienia — nie zasłania postaci); Niska — tylko pod mrokiem.
+    const over = combatFeel.level.blastOverDark ? this.scene.add.graphics().setDepth(RENDER_DEPTH.combatFx).setAlpha(COMBAT_FEEL_CONFIG.blast.alpha) : null;
     const cx = Math.round(x);
     const cy = Math.round(y);
     const r = Math.max(2, Math.round(radius));
@@ -78,19 +86,22 @@ export class CombatEffects {
     const draw = (index: number): void => {
       const frame = v.frames[index];
       g.clear();
+      over?.clear();
       if (!frame) return;
       // Iskry wylatują z kolejnymi klatkami coraz dalej, ale nie dalej niż `sparkReach` promienia.
       const travel = (index + 1) / v.frames.length;
       g.fillStyle(frame.fill, frame.fillAlpha).fillCircle(cx, cy, r);
       const half = frame.ringWidth / 2;
-      g.lineStyle(frame.ringWidth, frame.ring, frame.ringAlpha);
-      for (const arc of arcs) g.beginPath().arc(cx, cy, r - half, arc.start, arc.end).strokePath();
-      g.fillStyle(v.sparkColor, 1);
-      for (const spark of sparks.slice(0, frame.sparks)) {
-        const d = Math.min(r * v.sparkReach, r * spark.reach * travel) - v.sparkSize / 2;
-        const px = Math.round(cx + Math.cos(spark.angle) * d - v.sparkSize / 2);
-        const py = Math.round(cy + Math.sin(spark.angle) * d - v.sparkSize / 2);
-        g.fillRect(px, py, v.sparkSize, v.sparkSize);
+      for (const target of over ? [g, over] : [g]) {
+        target.lineStyle(frame.ringWidth, frame.ring, frame.ringAlpha);
+        for (const arc of arcs) target.beginPath().arc(cx, cy, r - half, arc.start, arc.end).strokePath();
+        target.fillStyle(v.sparkColor, 1);
+        for (const spark of sparks.slice(0, frame.sparks)) {
+          const d = Math.min(r * v.sparkReach, r * spark.reach * travel) - v.sparkSize / 2;
+          const px = Math.round(cx + Math.cos(spark.angle) * d - v.sparkSize / 2);
+          const py = Math.round(cy + Math.sin(spark.angle) * d - v.sparkSize / 2);
+          target.fillRect(px, py, v.sparkSize, v.sparkSize);
+        }
       }
     };
     draw(0);
@@ -102,7 +113,10 @@ export class CombatEffects {
       repeat: v.frames.length - 1,
       callback: () => {
         index++;
-        if (index >= v.frames.length) g.destroy();
+        if (index >= v.frames.length) {
+          g.destroy();
+          over?.destroy();
+        }
         else draw(index);
       },
     });
@@ -154,6 +168,6 @@ export class CombatEffects {
   }
 
   playerHit(): void {
-    this.scene.cameras.main.shake(100, 0.004);
+    screenFx.shake(this.scene.cameras.main, 100, 0.004);
   }
 }

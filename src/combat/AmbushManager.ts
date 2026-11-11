@@ -45,6 +45,7 @@ import { pickWeightedItem } from '@/systems/Loot';
 import { ENEMY_VARIANTS } from '@/config/combatConfig';
 import { findTilePath } from '@/ai/botPath';
 import { knockbackFrom, scaleForFloor } from '@/systems/CombatMath';
+import { screenFx } from '@/effects/ScreenFx';
 
 const GHOST_PHASING = ENEMY_VARIANTS[EnemyVariant.Ghost].phasing;
 const GHOST_PHASE_CYCLE = GHOST_PHASING ? GHOST_PHASING.solidMs + GHOST_PHASING.phasedMs : 0;
@@ -220,7 +221,7 @@ export class AmbushManager {
       const at = DungeonView.tileToWorldCenter(gate);
       effects.impact(at.x, at.y, TILE_SIZE * 0.6);
     }
-    scene.cameras.main.shake(160, 0.004);
+    screenFx.shake(scene.cameras.main, 160, 0.004);
     sound.play(SoundCue.GatesSlam);
     sound.play(SoundCue.Ambush);
     this.dreadTarget = 1;
@@ -368,7 +369,7 @@ export class AmbushManager {
     boss.empower(boon);
     this.deps.onStolen(this.itemId);
     effects.impact(at.x, at.y, TILE_SIZE * 1.4);
-    scene.cameras.main.shake(220, 0.004);
+    screenFx.shake(scene.cameras.main, 220, 0.004);
     sound.play(SoundCue.BossRoar, at);
     toast(AMBUSH_VARIANT_TEXT.flightArrive(boss.name(), ITEM_DEFINITIONS[this.itemId].name, boon.label));
   }
@@ -386,7 +387,7 @@ export class AmbushManager {
     );
     if (event?.kind === 'seal') {
       this.seal(inside, AMBUSH_VARIANT_TEXT.haunt);
-      this.deps.scene.cameras.main.flash(500, 30, 50, 40);
+      screenFx.flash(this.deps.scene.cameras.main, 500, 30, 50, 40);
     } else if (event?.kind === 'volley') {
       if (event.index === 0) this.deps.toast(AMBUSH_VARIANT_TEXT.hauntArrows);
       this.volley(event.count, now);
@@ -394,7 +395,7 @@ export class AmbushManager {
     else if (event?.kind === 'giant') {
       this.deps.toast(AMBUSH_VARIANT_TEXT.hauntGiant);
       sound.play(SoundCue.BossRoar, this.giant ? { x: this.giant.x, y: this.giant.y } : undefined);
-      this.deps.scene.cameras.main.shake(260, 0.005);
+      screenFx.shake(this.deps.scene.cameras.main, 260, 0.005);
       this.nextGiantVolleyAt = now + cfg.giantVolleyMs;
     } else if (event?.kind === 'clear') {
       this.ribbon?.destroy();

@@ -62,5 +62,9 @@ export const RENDER_DEPTH = {
   /** Ogień walki (krok 144): poświata (ADD) i żar w powietrzu nad mrokiem — ogień świeci jak pochodnie. */
   fireGlow: 15.7,
   fireEmbers: 15.8,
+  /** Światło pocisków wrogów (krok U2, ADD): pocisk w tłumie i w mroku widać zawsze. */
+  projectileLight: 15.72,
+  /** Feel walki (krok U2): iskry trafień, smuga cięcia, pierścień wybuchu — nad mrokiem (STYLEGUIDE §13.5). */
+  combatFx: 15.75,
   worldText: 20,
 } as const;

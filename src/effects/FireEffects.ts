@@ -20,6 +20,7 @@ import {
   particleCount,
   shakeIntensity,
 } from '@/systems/FireBurst';
+import { GlowGroup, screenFx } from '@/effects/ScreenFx';
 
 const EMBER_TEXTURE = 'fx-fire-ember';
 const SMOKE_TEXTURE = 'fx-fire-smoke';
@@ -137,7 +138,7 @@ export class FireEffects {
     if (options.flames !== false) this.spawnFlames(x, y, radius);
     if (options.shake !== false) {
       const camera = this.scene.cameras.main;
-      if (!camera.shakeEffect.isRunning) camera.shake(FIRE_FX.shake.durationMs, shakeIntensity(radius, FIRE_FX.shake));
+      screenFx.shake(camera, FIRE_FX.shake.durationMs, shakeIntensity(radius, FIRE_FX.shake), { ifIdle: true });
     }
   }
 
@@ -188,7 +189,8 @@ export class FireEffects {
         for (const flame of fire.flames) flame.play(animationKey(flameSheetOf(flame), 'die'));
       }
       // Migotanie poświaty skokowo z klatką ognia.
-      const flicker = 1 - v.flicker + v.flicker * (((frame * 7 + Math.round(p.x)) % 5) / 4);
+      // Krok U1: „mniej błysków” — stała jasność zamiast migotania.
+      const flicker = screenFx.flicker ? 1 - v.flicker + v.flicker * (((frame * 7 + Math.round(p.x)) % 5) / 4) : 1;
       fire.glow.setAlpha(v.glowAlpha * flicker * (p.dying ? 0.5 : 1));
       if (!p.dying) lights.push({ x: p.x, y: p.y, radius: Math.round((p.r * v.lightScale) / FIRE_FX.light.step) * FIRE_FX.light.step || FIRE_FX.light.step });
     }
@@ -261,10 +263,17 @@ export class FireEffects {
 
   /** Płomień z puli: stopa (wiersz podstawy arkusza) w punkcie podłogi; pula wspólna dla małych i dużych. */
   private takeFlame(x: number, y: number, sheet: FlameSheet = 'fireFlame'): Phaser.GameObjects.Sprite {
-    const flame = this.freeFlames.pop() ?? this.scene.add.sprite(0, 0, '__DEFAULT').setDepth(RENDER_DEPTH.fireGround);
+    const flame = this.freeFlames.pop() ?? this.newFlame();
     flame.off(Phaser.Animations.Events.ANIMATION_COMPLETE);
     flame.setData('sheet', sheet).setOrigin(0.5, FLAME_FOOT[sheet]);
     return flame.setVisible(true).setActive(true).setPosition(Math.round(x), Math.round(y)).setFlipX(Math.random() < 0.5);
+  }
+
+  /** Nowy płomień do puli; od jakości Wysokiej z poświatą (krok U1). */
+  private newFlame(): Phaser.GameObjects.Sprite {
+    const flame = this.scene.add.sprite(0, 0, '__DEFAULT').setDepth(RENDER_DEPTH.fireGround);
+    screenFx.glow(flame, GlowGroup.Fire);
+    return flame;
   }
 
   private releaseFlame(flame: Phaser.GameObjects.Sprite): void {

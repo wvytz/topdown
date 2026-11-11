@@ -166,7 +166,6 @@ import { drawBubbleRipple } from '@/effects/HeroBubbleEffects';
 import { leashPair, leashSpan, partyFocus } from '@/systems/CoopCamera';
 import { freshCoop } from '@/systems/Coop';
 import { BossHeraldEffects } from '@/effects/BossHerald';
-import { DustMotes } from '@/effects/DustMotes';
 import { MirrorFloor } from '@/effects/MirrorFloor';
 import { AmbientLifeView } from '@/effects/AmbientLifeView';
 import { BiomeSoundscape } from '@/audio/BiomeSoundscape';
@@ -179,18 +178,14 @@ import { DIAGNOSTICS } from '@/config/diagnosticsConfig';
 import { sanityIssues } from '@/systems/Diagnostics';
 import { InputReplay, canReplay } from '@/systems/InputRecorder';
 import { BOSS_HERALD, HERALD_RUMBLE } from '@/config/bossHeraldConfig';
-import { FogWisps } from '@/effects/FogWisps';
-import { LightingOverlay } from '@/effects/LightingOverlay';
+import type { LightingOverlay } from '@/effects/LightingOverlay';
+import { FloorLighting } from '@/effects/FloorLighting';
 import { installSmoothPhysics } from '@/world/SmoothPhysics';
-import type { PointLight } from '@/effects/LightingOverlay';
-import { hexColor } from '@/effects/lightTextures';
-import { LIGHTING, TORCH_PLACEMENT } from '@/config/lightingConfig';
+import { TORCH_PLACEMENT } from '@/config/lightingConfig';
 import { planTorches } from '@/dungeon/LightPlanner';
 import type { TorchSpot } from '@/dungeon/LightPlanner';
 import { CombatDecals } from '@/effects/CombatDecals';
-import { darknessModifierProfile } from '@/systems/lighting';
-import { Torches } from '@/world/Torches';
-import { EnemyVisibility, LIGHT_VISIBILITY_KEY } from '@/effects/EnemyVisibility';
+import { LIGHT_VISIBILITY_KEY } from '@/effects/EnemyVisibility';
 import {
   NO_FLOOR_EFFECTS,
   applyFloorToEnemyLoot,
@@ -349,7 +344,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private lighting!: LightingOverlay;
   /** Biom piętra: arkusz kafli, dekorowanie, warianty wrogów. */
   private biome!: BiomeDefinition;
-  private torches!: Torches;
+  private floorLighting!: FloorLighting;
   /** Żywe otoczenie biomów 2–5 (kroki 156–157); null — biom bez niego albo areny bossów. */
   private ambient: AmbientLifeView | null = null;
   private combatDecals!: CombatDecals;
@@ -2119,41 +2114,21 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.input.keyboard?.on('keydown-B', () => this.bossFight.debugDefeat());
   }
 
-  /**
-   * Światło (krok 19a): mrok z winietą, pochodnie, pyłki. Przy modyfikatorze „Mrok” warstwa
-   * mroku jest prawie nieprzezroczysta, a pochodnie świecą tylko jako punkty (nie rozświetlają mroku).
-   * Biom z mgłą (krok 28a, Grzybnia): ta sama warstwa w kolorze mgły, z profilem mgły; latarnie ją
-   * rozwiewają, dochodzą dryfujące obłoczki i gęstsze zarodniki. „Mrok” ma pierwszeństwo przed mgłą.
-   * W „Mroku” i we mgle wrogowie pokazują się dopiero w świetle (krok 30).
-   */
+  /** Światło piętra — mrok, pochodnie, pyłki, mgła i ukrywanie wrogów (`effects/FloorLighting.ts`, wydzielone w kroku U1). */
   private setupLighting(asset: TilesetAsset, tileset: TilesetMeta, torchSpots: readonly TorchSpot[]): void {
-    const vision = this.floorEffects.visionRadius;
-    const fog = vision === null ? this.biome.fog : null;
-    const profile = vision !== null ? darknessModifierProfile(vision, LIGHTING.darknessModifier) : (fog?.profile ?? LIGHTING.ambient);
-    const color = fog?.color ?? hexColor(tileset.colors.ambient);
-    this.torches = new Torches(this, torchSpots, asset, tileset, { glow: vision === null });
-    this.lighting = new LightingOverlay(this, profile, color, vision === null);
-    new DustMotes(this, tileset.colors.ash.map(hexColor), fog?.motes ?? LIGHTING.motes);
-    if (fog) new FogWisps(this, fog);
-    const torchesLightUp = vision === null;
-    const hiding =
-      vision !== null || fog
-        ? new EnemyVisibility({
-            profile,
-            revealStrength: LIGHTING.enemyReveal.revealStrength,
-            lights: () => (torchesLightUp ? this.pointLights(AMBIENT_CONFIG.revealsEnemies) : []),
-            players: () => this.lightBearers(),
-            actors: () => this.hideableEnemies(),
-          })
-        : null;
-    // Po fizyce: światło gracza i widoczność wrogów nie zostają klatkę za nim.
-    const render = () => {
-      this.lighting.render(this.lightBearers(), this.pointLights(), this.effects?.fire.activeLights() ?? []);
-      hiding?.update();
-    };
-    render();
-    this.events.on(Phaser.Scenes.Events.POST_UPDATE, render);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, render));
+    this.floorLighting = new FloorLighting(this, {
+      asset,
+      tileset,
+      torchSpots,
+      visionRadius: this.floorEffects.visionRadius,
+      fog: this.biome.fog,
+      bearers: () => this.lightBearers(),
+      extraLights: (withAmbient) => [...(this.braziers?.lights ?? []), ...(withAmbient ? (this.ambient?.lights ?? []) : [])],
+      flares: () => this.effects?.fire.activeLights() ?? [],
+      hideable: () => this.hideableEnemies(),
+      ambientRevealsEnemies: AMBIENT_CONFIG.revealsEnemies,
+    });
+    this.lighting = this.floorLighting.overlay;
   }
 
   /**
@@ -2162,11 +2137,6 @@ export class GameScene extends Phaser.Scene implements HudSource {
    */
   private lightBearers(): readonly Player[] {
     return this.party.isDown ? [this.player] : this.party.members;
-  }
-
-  /** Światła piętra: pochodnie i paleniska (krok 41b). */
-  private pointLights(withAmbient = true): PointLight[] {
-    return [...this.torches.lights, ...(this.braziers?.lights ?? []), ...(withAmbient ? (this.ambient?.lights ?? []) : [])];
   }
 
   /**

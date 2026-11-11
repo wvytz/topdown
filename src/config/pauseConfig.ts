@@ -39,7 +39,7 @@ export const PAUSE_CONFIG = {
   hints: {
     main: '↑ ↓ wybór · Enter — OK · Esc — wznów',
     sub: '↑ ↓ wybór · Enter — OK · Esc — wróć',
-    settings: '← → głośność i styl · Enter — zmień · Esc — wróć',
+    settings: '← → głośność, styl i jakość · Enter — zmień · Esc — wróć',
   },
   /** Układ (y w pikselach płótna 960×540). */
   layout: {
@@ -48,6 +48,8 @@ export const PAUSE_CONFIG = {
     subtitleY: 116,
     itemsY: 176,
     itemStep: 38,
+    /** Krok U1: „Dźwięk i obraz” ma do 9 pozycji — gęstsza lista, żeby zmieściła się nad komunikatem. */
+    settingsItemStep: 30,
     itemFontSize: 20,
     slotFontSize: 14,
     volumeButtonDx: 150,

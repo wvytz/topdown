@@ -4,6 +4,7 @@ import { diag } from '@/diagnostics/DiagnosticsHub';
 import { DisplaySettingsStorage } from '@/persistence/DisplaySettingsStorage';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { isFullscreenKeyPress, toggleFillWindow } from '@/systems/DisplaySettings';
+import { cycleQuality, toggleReduceFlashes, withQuality } from '@/systems/RenderQuality';
 
 /**
  * Wielkość obrazu na PC (krok 118): „Wypełnij okno” (zapamiętane) i pełny ekran przeglądarki.
@@ -35,6 +36,22 @@ export class DisplayControls {
     this.settingsValue = toggleFillWindow(this.settingsValue);
     this.storage.save(this.settingsValue);
     diag.note('display-fill', { fillWindow: this.settingsValue.fillWindow });
+    this.notify();
+  }
+
+  /** Krok U1: następny / poprzedni poziom jakości (Automat → Niska → Średnia → Wysoka). */
+  cycleQuality(step: 1 | -1): void {
+    this.settingsValue = withQuality(this.settingsValue, cycleQuality(this.settingsValue.quality, step));
+    this.storage.save(this.settingsValue);
+    diag.note('display-quality', { quality: this.settingsValue.quality });
+    this.notify();
+  }
+
+  /** Krok U1: „mniej błysków” (STYLEGUIDE §13.4). */
+  toggleReduceFlashes(): void {
+    this.settingsValue = toggleReduceFlashes(this.settingsValue);
+    this.storage.save(this.settingsValue);
+    diag.note('display-reduce-flashes', { on: this.settingsValue.reduceFlashes });
     this.notify();
   }
 

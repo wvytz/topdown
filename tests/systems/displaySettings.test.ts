@@ -20,7 +20,7 @@ describe('ustawienia obrazu (krok 118)', () => {
     for (const raw of [null, 'x', 5, {}, { fillWindow: 'tak' }]) {
       expect(parseDisplaySettings(raw, DISPLAY_CONFIG.defaults)).toEqual(DISPLAY_CONFIG.defaults);
     }
-    expect(parseDisplaySettings({ fillWindow: true }, DISPLAY_CONFIG.defaults)).toEqual({ fillWindow: true });
+    expect(parseDisplaySettings({ fillWindow: true }, DISPLAY_CONFIG.defaults)).toEqual({ ...DISPLAY_CONFIG.defaults, fillWindow: true });
   });
 
   it('przełącznik „Wypełnij okno” działa w obie strony', () => {

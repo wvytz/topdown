@@ -10,6 +10,7 @@ import type { PointLight } from '@/effects/LightingOverlay';
 import { torchLightKey } from '@/effects/LightingOverlay';
 import { hexColor } from '@/effects/lightTextures';
 import { flickerRadius } from '@/systems/lighting';
+import { GlowGroup, screenFx } from '@/effects/ScreenFx';
 
 /** Animacja płomienia z klatek arkusza (grupa „torchFlame”), 6 kl./s jak postacie. Raz na arkusz, w BootScene. */
 export function registerTorchAnimation(scene: Phaser.Scene, asset: TilesetAsset, tileset: TilesetMeta): void {
@@ -54,6 +55,8 @@ export class Torches {
       scene.add.image(x, y, asset.sheetKey, sconceFrame).setOrigin(0).setDepth(RENDER_DEPTH.wallDecor);
       const flame = scene.add.sprite(x, y, asset.sheetKey).setOrigin(0).setDepth(RENDER_DEPTH.torchFlame);
       flame.play({ key: asset.torchAnimation, startFrame: Math.floor(Math.random() * 4) });
+      // Krok U1: poświata płomienia od jakości Średniej (Niska — jak przed upgradem).
+      screenFx.glow(flame, GlowGroup.Torch);
 
       const light: MutableLight = { x: x + TILE_SIZE / 2, y: y + tileset.torch.flameBaseY - 3, radius };
       lights.push(light);
@@ -65,7 +68,10 @@ export class Torches {
         .setDepth(RENDER_DEPTH.torchGlow)
         .setVisible(options.glow);
       flame.on(Phaser.Animations.Events.ANIMATION_UPDATE, () => {
-        light.radius = flickerRadius(radius, flickerOffsets, Math.random());
+        // Krok U1: „mniej błysków” — pochodnia świeci stałym promieniem.
+        const next = screenFx.flicker ? flickerRadius(radius, flickerOffsets, Math.random()) : radius;
+        if (next === light.radius) return;
+        light.radius = next;
         glow.setTexture(torchLightKey(scene, light.radius));
       });
     }

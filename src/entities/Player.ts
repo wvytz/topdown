@@ -1,4 +1,6 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { combatFeel } from '@/effects/CombatFeel';
+import { COMBAT_FEEL_CONFIG } from '@/config/combatFeelConfig';
 import Phaser from 'phaser';
 import type { Hit, PlayerCombatConfig, SlipEffect, StatusApplication, WeaponEffects } from '@/core/combatTypes';
 import type { ArcheryConfig, HeroId, HeroKit, SorceryConfig, UltimateConfig } from '@/core/heroTypes';
@@ -125,6 +127,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private shotCharges: ChargePool;
   private shotCycle: AttackCycle;
   private readonly invulnerability = new Timer();
+  /** Krok U2: krótki błysk barwą ostrzegawczą po trafieniu (sam obraz). */
+  private readonly hurtFlash = new Timer();
   private readonly knockbackStun = new Timer();
   /** Statusy na graczu: spowolnienie (kokony, pajęczyny, krok 23d), trucizna (Matka Pająków, krok 27); dash nie spowalnia. */
   private status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
@@ -587,6 +591,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const absorbed = Math.min(this.bloodShield, jelly.damage);
     this.bloodShield -= absorbed;
     this.health.takeDamage(jelly.damage - absorbed);
+    this.hurtFlash.start(now, COMBAT_FEEL_CONFIG.heroHurt.ms);
     this.invulnerability.start(now, this.combat.invulnerabilityMs);
     this.knockbackStun.start(now, KNOCKBACK_STUN_MS);
     this.setVelocity(hit.knockback.x, hit.knockback.y);
@@ -656,7 +661,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private updateVisuals(now: number): void {
     // Trucizna migocze na zielono, spowolnienie barwi na niebiesko (statusTint).
     const tint = statusTint(this.status, now);
-    if (tint !== null) this.setTint(tint);
+    // Krok U2: trafiony bohater błyska barwą ostrzegawczą (Średnia, Wysoka); Niska — jak przed upgradem.
+    if (this.hurtFlash.isActive(now) && combatFeel.level.heroHurtFlash) this.setTintFill(COMBAT_FEEL_CONFIG.heroHurt.color);
+    else if (tint !== null) this.setTint(tint);
     else if (this.ultimateGuard.isActive(now)) this.setTint(ULTIMATE_GUARD_TINT[this.ultimateConfig.kind]);
     else this.clearTint();
     if (this.dash.isDashing(now)) {

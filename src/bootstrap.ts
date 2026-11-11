@@ -1,4 +1,6 @@
 import { installPerfMeter } from '@/diagnostics/PerfMeter';
+import { installFrameHold } from '@/effects/FrameHold';
+import { screenFx } from '@/effects/ScreenFx';
 import { perfMeterWanted } from '@/systems/FrameStats';
 import Phaser from 'phaser';
 import { PAUSE_CLOCK_KEY } from '@/config/pauseConfig';
@@ -55,7 +57,7 @@ export function canvasScale(viewport: Viewport, fractional = false): number {
     gameWidth: GAME_WIDTH,
     gameHeight: GAME_HEIGHT,
     devicePixelRatio: window.devicePixelRatio || 1,
-    // Skala płótna liczona od bazowego zoomu — próbny `?zoom=` (krok 167) zmienia tylko kamerę.
+    // Skala płótna liczona od zoomu kamery (2,0).
     cameraZoom: BASE_CAMERA_ZOOM,
     fractional,
   });
@@ -88,6 +90,8 @@ export function startGame(options: GameStartOptions): Phaser.Game {
   };
 
   const game = new Phaser.Game(config);
+  // Hitstop (krok U2): klatka bez rysowania — najgłębsza nakładka na `game.step`, czas jak u reszty pętli.
+  installFrameHold(game);
   // Czas gry dla scen stoi w miejscu na pauzie (krok 70) — bez tego po wznowieniu wszystkie odnowienia by „wygasły”.
   const pauseClock = new PauseClock();
   game.registry.set(PAUSE_CLOCK_KEY, pauseClock);
@@ -95,6 +99,8 @@ export function startGame(options: GameStartOptions): Phaser.Game {
   game.step = (time: number, delta: number) => stepWithGameTime(pauseClock.shift(time), delta);
   // Dziennik błędów i niespotykanych zdarzeń (krok 55): raport pod F9; pętla gry nie zamiera po wyjątku.
   installDiagnostics(game);
+  // Jakość obrazu (krok U1): bez WebGL obowiązuje Niska.
+  game.events.once(Phaser.Core.Events.READY, () => screenFx.bindRenderer(game));
   // Licznik wydajności (krok U0): `?perf=1` — także w wersji produkcyjnej, do pomiaru na telefonie.
   if (perfMeterWanted(window.location.search)) installPerfMeter(game);
   diag.note('platform', { platform: options.platform });

@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { combatFeel } from '@/effects/CombatFeel';
 import Phaser from 'phaser';
 import type { BroodAttackDefinition, Hit, LobAttackDefinition, MeleeAttackDefinition, PounceAttackDefinition, ProjectileAttackDefinition } from '@/core/combatTypes';
 import type { DungeonFloor } from '@/core/dungeonTypes';
@@ -53,6 +54,7 @@ import type { DeathEcho } from '@/systems/StatusEffects';
 import { drawBurstRing } from '@/effects/EvolutionEffects';
 import { EVOLUTION_VISUAL } from '@/config/itemEvolutionConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
+import { screenFx } from '@/effects/ScreenFx';
 
 export interface EnemyManagerDeps {
   readonly scene: Phaser.Scene;
@@ -494,7 +496,7 @@ export class EnemyManager implements EnemyAttackHandler {
     const { shakeMs, shakeIntensity, impactRadius, text, textColor } = SHIELD_CHARGE_VISUAL;
     effects.impact(enemy.x, enemy.y, impactRadius);
     sound.play(SoundCue.Impact, enemy);
-    scene.cameras.main.shake(shakeMs, shakeIntensity);
+    screenFx.shake(scene.cameras.main, shakeMs, shakeIntensity);
     effects.floatingText(enemy.x, enemy.y, text, textColor);
   }
 
@@ -674,6 +676,9 @@ export class EnemyManager implements EnemyAttackHandler {
     }
     const echo = enemy.status.deathEcho(now);
     this.deps.effects.deathBurst(enemy.x, enemy.y, enemy.definition.color, enemy.radius);
+    // Krok U2: rozpad na kawałki; elita w barwach cech i z hitstopem.
+    const affixes = enemy.definition.affixes ?? [];
+    combatFeel.kill(at, enemy.radius, [enemy.definition.color, ...affixes.map((a) => ELITE_CONFIG.affixes[a].color)], affixes.length > 0);
     sound.play(SoundCue.EnemyDeath, at);
     this.deps.decals.add('splat', enemy.x, enemy.y);
     this.enemies = this.enemies.filter((e) => e !== enemy);

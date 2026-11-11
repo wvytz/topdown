@@ -33,6 +33,7 @@ import { AttackRamp } from '@/systems/AttackRamp';
 import { chainTargets, sparkLinkRule } from '@/systems/ChainLightning';
 import { StormTrail } from '@/systems/StormTrail';
 import { HeroEvolutionView, drawBolt, ensureCrescentTexture } from '@/effects/EvolutionEffects';
+import { screenFx } from '@/effects/ScreenFx';
 
 /**
  * Cele ataków bohatera w świecie (wrogowie, boss, kokony, purchawki, ukryta komnata, urny). Scena wie, co jest
@@ -489,7 +490,7 @@ export class HeroCombat {
     if (this.deps.strikes.melee(swing, player) > 0) {
       this.tryVampireHeal(now);
       // Krok 167/171: cięższe ciosy barbarzyńcy — trafienie czuć w kamerze.
-      if (combat.hitShake) this.deps.scene.cameras.main.shake(combat.hitShake.durationMs, combat.hitShake.intensity);
+      if (combat.hitShake) screenFx.shake(this.deps.scene.cameras.main, combat.hitShake.durationMs, combat.hitShake.intensity);
     }
   }
 

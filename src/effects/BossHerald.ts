@@ -6,6 +6,7 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 import { roomProximity, rumbleDue } from '@/systems/BossHerald';
 import type { RumbleConfig } from '@/systems/BossHerald';
 import { DungeonView } from '@/dungeon/DungeonView';
+import { screenFx } from '@/effects/ScreenFx';
 
 const SPARK_TEXTURE = 'tex-herald-spark';
 /** Tempo wygaszania i narastania odcienia (siła/s). */
@@ -62,7 +63,7 @@ export class BossHeraldEffects {
 
     const camera = this.deps.scene.cameras.main;
     if (rumbleDue(strength, now, this.lastRumbleAt, this.deps.rumble) && !camera.shakeEffect.isRunning) {
-      camera.shake(this.deps.rumble.durationMs, this.deps.rumble.intensity * strength);
+      screenFx.shake(camera, this.deps.rumble.durationMs, this.deps.rumble.intensity * strength);
       this.lastRumbleAt = now;
     }
     this.updateSparks(strength);

@@ -3,7 +3,7 @@
  * wszystkimi bohaterami (losowe wejścia, wszystkie pokoje, walka w arenie, pokonanie bossa, nagroda, schody) i szuka błędów:
  * wyjątków strony, błędów konsoli i zdarzeń `error` z dziennika diagnostycznego gry.
  *
- * Użycie:   npm run smoke -- [--floors 8] [--seeds 2] [--heroes all|barbarian|sorceress|archer] [--room-seconds 1.5] [--sweep-only] [--coop]
+ * Użycie:   npm run smoke -- [--floors 6] [--seeds 2] [--heroes all|barbarian|sorceress|archer] [--room-seconds 1.5] [--sweep-only] [--coop]
  *           --coop: co-op (krok 109) — drugi bohater (następny z listy) na podstawionym padzie, bot gra oboma i sprawdza wskrzeszanie.
  *           --bot: bot-partner (krok 149, `?bot=1`) — P2 prowadzi AI gry; smoke sprawdza, czy bot wskrzesza powalonego P1.
  * Przeglądarka: domyślnie zainstalowany Chrome (kanał „chrome”); inna: SMOKE_CHROMIUM=<ścieżka do pliku wykonywalnego>.
@@ -19,7 +19,8 @@ const opt = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] !== undefined ? args[i + 1] : fallback;
 };
-const FLOORS = Number(opt('floors', 8));
+// Krok U1: domyślnie 6 przejść (1→7). Od kroku 169 run kończy się zwycięstwem po piętrze 7, więc „wejście na 8” zawsze by padło.
+const FLOORS = Number(opt('floors', 6));
 const SEEDS = Number(opt('seeds', 2));
 const HEROES = ['all', 'both'].includes(opt('heroes', 'all')) ? ['barbarian', 'sorceress', 'archer'] : [opt('heroes', 'barbarian')];
 const ROOM_MS = Number(opt('room-seconds', 1.5)) * 1000;

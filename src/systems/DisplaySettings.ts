@@ -1,10 +1,16 @@
 import type { DisplaySettings } from '@/core/displayTypes';
+import { isQualityChoice } from '@/systems/RenderQuality';
 
 /** Ustawienia z magazynu: nieznane lub zepsute pola zastępują wartości domyślne. */
 export function parseDisplaySettings(raw: unknown, defaults: DisplaySettings): DisplaySettings {
   if (typeof raw !== 'object' || raw === null) return defaults;
   const data = raw as Record<string, unknown>;
-  return { fillWindow: typeof data.fillWindow === 'boolean' ? data.fillWindow : defaults.fillWindow };
+  return {
+    fillWindow: typeof data.fillWindow === 'boolean' ? data.fillWindow : defaults.fillWindow,
+    // Krok U1: pola dopisane do tego samego klucza — stary zapis (bez nich) dostaje wartości domyślne.
+    quality: isQualityChoice(data.quality) ? data.quality : defaults.quality,
+    reduceFlashes: typeof data.reduceFlashes === 'boolean' ? data.reduceFlashes : defaults.reduceFlashes,
+  };
 }
 
 export function toggleFillWindow(settings: DisplaySettings): DisplaySettings {

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { DustMotesConfig } from '@/config/lightingConfig';
 import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH } from '@/config/gameConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
+import { screenFx } from '@/effects/ScreenFx';
 
 const MOTE_TEXTURE = 'tex-mote';
 
@@ -34,8 +35,9 @@ export class DustMotes {
         gravityY: config.gravityY,
         alpha: config.alpha,
         tint: [...colors],
-        frequency: config.frequencyMs,
-        maxAliveParticles: config.maxParticles,
+        // Krok U1: na Wysokiej więcej pyłków; Niska i Średnia — tyle co przed upgradem. Liczba z chwili wejścia na piętro.
+        frequency: config.frequencyMs / screenFx.profile.ambientParticles,
+        maxAliveParticles: screenFx.particles(config.maxParticles),
       })
       .setDepth(RENDER_DEPTH.motes);
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.followCamera, this);
