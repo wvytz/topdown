@@ -1,36 +1,16 @@
 import type Phaser from 'phaser';
 import { HUD_GAUGES, type GaugePalette, type GaugeTheme } from '@/config/hudGaugeConfig';
 import { UI_PALETTE } from '@/config/uiConfig';
-import { pixelLine } from '@/core/pixelArt';
-import type { BeamHudData, RangedHudData } from '@/core/types';
-import { bowPull, filledRows, flowStart, heartbeatLevel, sparklePositions, stringSag } from '@/systems/hudGauges';
+import type { BeamHudData } from '@/core/types';
+import { flowStart, heartbeatLevel, sparklePositions, stringSag } from '@/systems/hudGauges';
 
 /**
- * Żywe wskaźniki bohatera pod paskiem zdrowia (krok U7e): dash, promień i ładunki strzału rysowane w motywie klasy
+ * Żywe wskaźniki bohatera pod paskiem zdrowia (krok U7e): dash i promień rysowane w motywie klasy
  * (`config/hudGaugeConfig.ts`). Ruch liczy `systems/hudGauges.ts`, tu tylko piksele.
  */
 
-interface Px {
-  readonly x: number;
-  readonly y: number;
-  readonly color: number;
-  readonly alpha?: number;
-}
-
 const G = HUD_GAUGES;
 const INK = UI_PALETTE.ink;
-
-/** Piksele z obrysem krzyżem w czerni obrysu (jak litery i łupy). */
-function drawPixels(g: Phaser.GameObjects.Graphics, pixels: readonly Px[], x: number, y: number, unit: number): void {
-  g.fillStyle(INK, 1);
-  for (const p of pixels) {
-    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) g.fillRect(x + (p.x + dx) * unit, y + (p.y + dy) * unit, unit, unit);
-  }
-  for (const p of pixels) {
-    g.fillStyle(p.color, p.alpha ?? 1);
-    g.fillRect(x + p.x * unit, y + p.y * unit, unit, unit);
-  }
-}
 
 /** Rurka paska: obrys, ciemne tło. */
 function tube(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, pal: GaugePalette): void {
@@ -118,74 +98,4 @@ function drawBowstring(g: Phaser.GameObjects.Graphics, x: number, y: number, w: 
 /** Promień Czarodziejki: drugi strumień magii. */
 export function drawBeamGauge(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, beam: BeamHudData, time: number): void {
   drawStream(g, x, y, w, beam.readiness, time, beam.active);
-}
-
-/** Szerokość i wysokość ikony ładunku (piksele ikony, przed skalą). */
-export function chargeIconSize(theme: GaugeTheme): { readonly width: number; readonly height: number } {
-  if (theme === 'bowstring') return { width: G.bow.width, height: G.bow.height };
-  const pattern = theme === 'blood' ? G.drop : G.orb;
-  return { width: pattern[0]?.length ?? 0, height: pattern.length };
-}
-
-/** Ładunki strzału (u Czarodziejki — kule): krople krwi, kule magii albo naciągane łuki. */
-export function drawChargeIcons(g: Phaser.GameObjects.Graphics, theme: GaugeTheme, x: number, y: number, ranged: RangedHudData, time: number, unit = 1): void {
-  const size = chargeIconSize(theme);
-  const count = Math.max(0, ranged.maxCharges);
-  for (let i = 0; i < count; i++) {
-    const progress = i < ranged.charges ? 1 : i === ranged.charges ? ranged.rechargeProgress : 0;
-    const ix = x + i * (size.width + G.icons.gap) * unit;
-    const pixels = theme === 'bowstring' ? bowPixels(progress) : fillPixels(theme, progress, time, i);
-    drawPixels(g, pixels, ix, y + (G.bow.height - size.height) * unit, unit);
-  }
-}
-
-/** Kropla albo kula wypełniona od dołu; pełna ma odblask, który u kul migocze. */
-function fillPixels(theme: 'blood' | 'arcane', progress: number, time: number, index: number): Px[] {
-  const pal = G.palettes[theme];
-  const pattern = theme === 'blood' ? G.drop : G.orb;
-  const h = pattern.length;
-  const rows = filledRows(h, progress);
-  const ready = progress >= 1;
-  // Odblask: kropla — stały, kula — wędruje po obwodzie.
-  const glint = theme === 'blood' ? { x: 2, y: 4 } : [{ x: 2, y: 2 }, { x: 3, y: 1 }, { x: 4, y: 2 }][Math.floor(time / 300 + index) % 3];
-  const out: Px[] = [];
-  pattern.forEach((row, py) => {
-    [...row].forEach((cell, px) => {
-      if (cell !== '#') return;
-      const fromBottom = h - 1 - py;
-      const filled = fromBottom < rows;
-      let color: number = pal.dark;
-      if (filled) color = ready ? (fromBottom >= h - 3 ? pal.bright : fromBottom <= 1 ? pal.deep : pal.base) : pal.deep;
-      if (filled && !ready && fromBottom === rows - 1) color = pal.base;
-      if (ready && glint && px === glint.x && py === glint.y) color = pal.glint;
-      out.push({ x: px, y: py, color });
-    });
-  });
-  return out;
-}
-
-/** Łuk: ramię z owijką, cięciwa naciągnięta według postępu; gotowy ładunek — pełny naciąg ze strzałą. */
-function bowPixels(progress: number): Px[] {
-  const pal = G.palettes.bowstring;
-  const B = G.bow;
-  const ready = progress >= 1;
-  const pull = bowPull(progress);
-  const out: Px[] = [];
-  const has = (x: number, y: number) => out.some((p) => p.x === x && p.y === y);
-  B.limb.forEach(([lx, ly]) => out.push({ x: lx, y: ly, color: ly <= 1 || ly >= B.height - 2 ? pal.bright : ly < B.nockY ? pal.base : pal.deep }));
-  B.grip.forEach(([gx, gy]) => out.push({ x: gx, y: gy, color: pal.deep }));
-  const [topX, topY] = B.limb[0] ?? [0, 0];
-  const [bottomX, bottomY] = B.limb[B.limb.length - 1] ?? [0, 0];
-  const nock = { x: topX + pull, y: B.nockY };
-  const stringColor = ready ? pal.bright : progress > 0 ? pal.base : pal.deep;
-  for (const c of [...pixelLine(topX, topY, nock.x, nock.y), ...pixelLine(nock.x, nock.y, bottomX, bottomY)]) {
-    if (!has(c.x, c.y)) out.push({ x: c.x, y: c.y, color: stringColor });
-  }
-  if (ready) {
-    // Strzała na cięciwie: grot wystaje za łuk w lewo, lotki w zieleni łucznika przy cięciwie.
-    for (let ax = 0; ax < nock.x; ax++) if (!has(ax, B.nockY)) out.push({ x: ax, y: B.nockY, color: ax <= 1 ? pal.glint : pal.bright });
-    out.push({ x: 1, y: B.nockY - 1, color: pal.bright }, { x: 1, y: B.nockY + 1, color: pal.bright });
-    out.push({ x: nock.x - 2, y: B.nockY - 1, color: pal.glint }, { x: nock.x - 2, y: B.nockY + 1, color: pal.glint });
-  }
-  return out;
 }

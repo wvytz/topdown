@@ -1,11 +1,11 @@
 import { SORCERY_COLORS } from '@/config/heroColorConfig';
 import Phaser from 'phaser';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
-import type { BeamHudData, BossBarData, BossHudData, BossPointerData, UltimateHudData, HudData, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
+import type { BeamHudData, BossBarData, BossHudData, BossPointerData, UltimateHudData, HudData, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData } from '@/core/types';
 import { HERO_DEFINITIONS } from '@/config/heroConfig';
 import { HUD_GAUGES } from '@/config/hudGaugeConfig';
 import { gaugeThemeFor } from '@/systems/hudGauges';
-import { drawBeamGauge, drawChargeIcons, drawDashGauge } from '@/ui/ClassGauges';
+import { drawBeamGauge, drawDashGauge } from '@/ui/ClassGauges';
 import { SceneKey } from '@/core/types';
 import { ALL_ITEMS } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
@@ -44,11 +44,11 @@ function hudGeometry(t: 1 | 2, hasBeam: boolean) {
   const hpY = L.margin;
   const dashY = hpY + L.hp.height + 1 + GB.gap;
   const beamY = dashY + GB.height + GB.gap + 1;
-  const chargesY = (hasBeam ? beamY : dashY) + GB.height + GB.gap + 2;
-  const goldY = chargesY + HUD_GAUGES.bow.height * HUD_GAUGES.icons.unit + 5;
+  // Krok U7f: bez ikon ładunków (właściciel: „nie daje to żadnej informacji, a wprowadza dezinformację”).
+  const goldY = (hasBeam ? beamY : dashY) + GB.height + GB.gap + 3;
   const itemY = goldY + 10 * t + 3;
   const objectiveY = itemY + L.itemSlot.size + 5;
-  return { t, hasBeam, hpY, dashY, beamY, chargesY, ultY: hpY - 1, goldY, itemY, objectiveY };
+  return { t, hasBeam, hpY, dashY, beamY, ultY: hpY - 1, goldY, itemY, objectiveY };
 }
 type HudGeometry = ReturnType<typeof hudGeometry>;
 const ITEM_NOTICE_FADE_MS = 800;
@@ -220,7 +220,7 @@ export class HudScene extends Phaser.Scene {
 
     const hpRatio = hud.maxHp > 0 ? hud.hp / hud.maxHp : 0;
     drawBar(this.bars, BAR_X, this.geo.hpY, L.hp.width, L.hp.height, hpRatio, hpRatio > 0.3 ? RAMPS.hp : RAMPS.hpLow);
-    this.drawClassGauges(hud.hero, hud.dashReadiness, hud.ranged, hud.beam, time);
+    this.drawClassGauges(hud.hero, hud.dashReadiness, hud.beam, time);
     this.drawUltimate(hud.ultimate, time);
 
     const help = helpLine(hud.beam !== null);
@@ -265,15 +265,14 @@ export class HudScene extends Phaser.Scene {
     this.items.moveTo(BAR_X, geo.itemY);
   }
 
-  /** Dash, promień i ładunki w motywie klasy (krok U7e): krew, magia albo cięciwa. */
-  private drawClassGauges(hero: HudData['hero'], dashReadiness: number, ranged: RangedHudData, beam: BeamHudData | null, time: number): void {
+  /** Dash i promień w motywie klasy (krok U7e): krew, magia albo cięciwa; ładunków nie pokazujemy (U7f). */
+  private drawClassGauges(hero: HudData['hero'], dashReadiness: number, beam: BeamHudData | null, time: number): void {
     const theme = gaugeThemeFor(HERO_DEFINITIONS[hero].kit.kind);
     if (dashReadiness >= 1) this.dashReadyAt ??= time;
     else this.dashReadyAt = null;
     const calm = display.settings.reduceFlashes;
     drawDashGauge(this.bars, theme, BAR_X, this.geo.dashY, L.hp.width, { readiness: dashReadiness, time, sinceReadyMs: this.dashReadyAt === null ? null : time - this.dashReadyAt, calm });
     if (beam) drawBeamGauge(this.bars, BAR_X, this.geo.beamY, L.hp.width, beam, time);
-    drawChargeIcons(this.bars, theme, BAR_X + 2, this.geo.chargesY, ranged, time, HUD_GAUGES.icons.unit);
   }
 
   /** Panel P2: portret, imię, HP (albo „POWALONY” z paskiem wskrzeszania), dash, ultimate i przedmioty. */

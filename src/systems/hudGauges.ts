@@ -41,13 +41,3 @@ export function stringSag(x: number, width: number, readiness: number, sinceRead
   const swing = Math.floor(sinceReadyMs / config.twangPeriodMs) % 2 === 0 ? 1 : -1;
   return Math.round(swing * bell);
 }
-
-/** Ile wierszy ikony (od dołu) wypełnia ładunek o postępie `progress`. */
-export function filledRows(height: number, progress: number): number {
-  return Math.max(0, Math.min(height, Math.round(height * progress)));
-}
-
-/** Naciąg cięciwy łuku (px) przy postępie ładowania; gotowy ładunek = pełny naciąg. */
-export function bowPull(progress: number, maxPull = HUD_GAUGES.bow.maxPull): number {
-  return Math.max(0, Math.min(maxPull, Math.round(maxPull * progress)));
-}

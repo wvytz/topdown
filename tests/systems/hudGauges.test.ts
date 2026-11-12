@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HUD_GAUGES } from '@/config/hudGaugeConfig';
-import { bowPull, filledRows, flowStart, gaugeThemeFor, heartbeatLevel, sparklePositions, stringSag } from '@/systems/hudGauges';
+import { flowStart, gaugeThemeFor, heartbeatLevel, sparklePositions, stringSag } from '@/systems/hudGauges';
 
 describe('żywe wskaźniki bohatera (krok U7e)', () => {
   it('motyw z broni: barbarzyńca krew, Czarodziejka magia, łucznik cięciwa', () => {
@@ -35,14 +35,5 @@ describe('żywe wskaźniki bohatera (krok U7e)', () => {
     expect(stringSag(50, 101, 1, null)).toBe(0);
     expect(Math.abs(stringSag(50, 101, 1, 10))).toBe(1);
     expect(stringSag(50, 101, 1, HUD_GAUGES.string.twangMs)).toBe(0);
-  });
-
-  it('ładunki: wiersze od dołu i naciąg łuku rosną z postępem', () => {
-    expect(filledRows(9, 0)).toBe(0);
-    expect(filledRows(9, 1)).toBe(9);
-    expect(filledRows(9, 0.5)).toBe(5);
-    expect(bowPull(0)).toBe(0);
-    expect(bowPull(1)).toBe(HUD_GAUGES.bow.maxPull);
-    expect(bowPull(2)).toBe(HUD_GAUGES.bow.maxPull);
   });
 });

@@ -3,30 +3,11 @@ import { SORCERY_COLORS } from '@/config/heroColorConfig';
 /**
  * Żywe wskaźniki bohatera pod paskiem zdrowia (krok U7e, prośba właściciela: „przetwórz te charge dasha i strzały
  * na coś żywego — w przypadku barby krwistego, czarki magicznego, a łucznika naciągniętej cięciwy”).
- * Barbarzyńca: dash = żyła z krwią bijącą jak serce, ładunki strzału = krople krwi.
- * Czarodziejka: dash i promień = strumień magii z iskrami, kule = kule na orbicie.
- * Łucznik: dash = cięciwa (luźna, gdy się ładuje; napięta i drgająca, gdy gotowa), ładunki = łuki z naciąganą cięciwą.
+ * Barbarzyńca: dash = żyła z krwią bijącą jak serce. Czarodziejka: dash i promień = strumień magii z iskrami.
+ * Łucznik: dash = cięciwa (luźna, gdy się ładuje; napięta i drgająca, gdy gotowa).
+ * Krok U7f: ikony ładunków strzału (krople, kule, łuki) usunięte — właściciel: „nie daje to żadnej informacji,
+ * a wprowadza dezinformację”.
  */
-/**
- * Piksele ramienia łuku wysokości `height`: parabola od `inner` (środek, rękojeść) do `inner + bend` (końce),
- * środek pogrubiony do 2 px, a na końcach piksel wygięty na zewnątrz. Pierwszy i ostatni element to końce,
- * do których przywiązana jest cięciwa.
- */
-function bowLimb(height: number, inner: number, bend: number): readonly (readonly [number, number])[] {
-  const c = (height - 1) / 2;
-  const top: [number, number][] = [];
-  const rest: [number, number][] = [];
-  for (let y = 0; y < height; y++) {
-    const x = Math.round(inner + bend * ((y - c) / c) ** 2);
-    rest.push([x, y]);
-    if (Math.abs(y - c) <= c - 2) rest.push([x + 1, y]);
-  }
-  const tipTop: [number, number] = [inner + bend + 1, 0];
-  const tipBottom: [number, number] = [inner + bend + 1, height - 1];
-  top.push(tipTop);
-  return [...top, ...rest, tipBottom];
-}
-
 export type GaugeTheme = 'blood' | 'arcane' | 'bowstring';
 
 export interface GaugePalette {
@@ -57,23 +38,4 @@ export const HUD_GAUGES = {
   sparkles: { count: 4, speedPxPerSec: 70 },
   /** Cięciwa: największe ugięcie luźnej struny i drganie po napięciu. */
   string: { sagPx: 3, twangMs: 450, twangPeriodMs: 90 },
-  /** Ikony ładunków: skala pikseli i odstęp między ikonami (w pikselach ikony). */
-  icons: { unit: 2, gap: 2 },
-  /** Kropla krwi i kula (wzory pikseli, „#” = piksel); wypełniają się od dołu. */
-  drop: ['...#...', '..###..', '..###..', '.#####.', '#######', '#######', '#######', '.#####.', '..###..'],
-  orb: ['..###..', '.#####.', '#######', '#######', '#######', '.#####.', '..###..'],
-  /**
-   * Łuk: ramię „(” w lewo, cięciwa od końców ramion do punktu naciągu; naciąg rośnie z ładowaniem,
-   * gotowy łuk jest w pełni naciągnięty ze strzałą.
-   */
-  bow: {
-    width: 12,
-    height: 13,
-    /** Ramię „(” od górnego do dolnego końca, w środku 2 px grubości; końce wygięte w prawo (refleks). */
-    limb: bowLimb(13, 3, 4),
-    /** Owijka rękojeści po stronie łucznika. */
-    grip: [[2, 5], [2, 6], [2, 7]] as const,
-    nockY: 6,
-    maxPull: 3,
-  },
 } as const;

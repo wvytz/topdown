@@ -6295,13 +6295,21 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 **Co powstało:**
 - Lewy panel od góry: pasek zdrowia (ultimate obok), żywe wskaźniki klasy, złoto, zdobyte przedmioty; pod nimi tylko cel, gdy coś znaczy (schody otwarte, „naciśnij E”), modyfikator piętra i wiadomość o przedmiocie. Portret i napis piętra usunięte.
 - Wskaźniki w motywie klasy (`config/hudGaugeConfig.ts`, ruch w `systems/hudGauges.ts`, rysunek `ui/ClassGauges.ts`):
-  - barbarzyńca — dash to żyła: krew płynie do czoła wypełnienia, gotowa żyła bije jak serce („lub-dub”); ładunki strzału to krople krwi wypełniające się od dołu, pełne z odblaskiem;
+  - barbarzyńca — dash to żyła: krew płynie do czoła wypełnienia, gotowa żyła bije jak serce („lub-dub”); ładunki strzału to krople krwi wypełniające się od dołu, pełne z odblaskiem (ikony ładunków usunięte w U7f);
   - Czarodziejka — dash i promień to strumienie magii z płynącymi iskrami (promień w działaniu jaśniejszy i szybszy); kule to fioletowe kule z wędrującym błyskiem;
   - łucznik — dash to cięciwa między końcami ramion: luźna zwisa, gotowa jest napięta i chwilę drga; ładunki to łuki, których cięciwa naciąga się w trakcie ładowania, a gotowy łuk ma strzałę na cięciwie.
 - Bicie serca wyłącza „Ogranicz błyski”.
 - Cel w zwykłej walce bez tekstu (dawne „Wrogowie: N”) — `objectiveHint` daje pusty skrót poza schodami.
 
 **Testy:** `tests/systems/hudGauges.test.ts` (motyw z broni, bicie serca, przepływ i iskry w wypełnionej części, ugięcie i drganie cięciwy, wiersze ładunku i naciąg łuku), cel bez liczby wrogów. `npm run build`, smoke solo i co-op.
+
+## Krok U7f — Bez ikon ładunków strzału `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7e (12.11.2026) `#ocena`:** „nie no co?! te bukłaki/krople krwi to nasz dash?” → „zrezygnujmy całkowicie z tego widoku. usuń te charge bukłaki… nie daje to żadnej informacji a wprowadza dezinformację”.
+
+**Co się zmieniło:** ikony ładunków (krople krwi, kule Czarodziejki, łuki łucznika) usunięte z HUD-u u wszystkich klas razem z kodem i wzorami. Pod paskiem zdrowia zostaje pasek dasha w motywie klasy (u Czarodziejki też promień), a zaraz pod nim złoto i przedmioty.
+
+**Testy:** `npm run build`, smoke solo.
 
 ## Znane ograniczenia i backlog
 
