@@ -1319,6 +1319,51 @@ export const SPRITE_SHEETS = {
       die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 8 },
     },
   },
+  // Krok U6: błysk pazurów smagnięcia Matki Pająków (tools/spider_sprites.py): 64×64, 8 kierunków; 0 wejście,
+  // 1 pełne cięcie, 2 gaśnięcie, 3 krople jadu. Komórka leży przed królową, przód = kierunek ciosu.
+  spiderQueenLashFx: {
+    key: 'sheet-spider-queen-lash-fx',
+    url: 'assets/sprites/spider-queen_lash-fx.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    sheetWidth: 256,
+    sheetHeight: 512,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      slash: { frames: [0, 1, 2, 3], loop: false, fps: 10 },
+    },
+  },
+  // Krok U6: śmierć Grzybowego Pożeracza (tools/devourer_sprites.py): 96×96, 8 kierunków; 0 konwulsja i ryk,
+  // 1 kula puchnie, 2 pęka — ciała odpadają, 3–5 osiada w kałuży, 6 ostatni wydech zarodników, 7 sterta (zostaje).
+  fungalDevourerDeath: {
+    key: 'sheet-fungal-devourer-death',
+    url: 'assets/sprites/fungal-devourer_death.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 7 },
+    },
+  },
+  // Krok U6: śmierć Palacza (tools/stoker_sprites.py): 96×96, 8 kierunków; 0 cios, 1 szufla wypada, 2 kolana,
+  // drzwiczki na posadzce, 3 ostatnie buchnięcie pieca, 4 upadek, 5–6 żar stygnie, 7 zwłoki (zostają).
+  stokerDeath: {
+    key: 'sheet-stoker-death',
+    url: 'assets/sprites/stoker_death.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 7 },
+    },
+  },
   // Śmierć Króla Pająków (krok 40, tools/king_sprites.py): 128×128, 8 kierunków; 0 wzdrygnięcie z rozbłyskiem
   // bulw, 1–3 podkulanie łap i opadanie kos, 4 pęknięte bulwy (zarodniki), 5–7 rozpad w kałużę soku. Potem `splat`.
   spiderKingDeath: {
@@ -2099,6 +2144,8 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Hook]: 'grab',
     },
     deathDecal: 'splat',
+    // Krok U6: kula pęka, sterta ciał zostaje na posadzce.
+    death: { sheet: 'fungalDevourerDeath', animation: 'die', keepCorpse: true },
   },
   // Kat Otchłani (krok 41f): jak Strażnik Bram, do tego rzut hakiem i oddech palenisk.
   [BossId.AbyssExecutioner]: {
@@ -2123,6 +2170,8 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Slam]: 'belch',
     },
     deathDecal: 'splat',
+    // Krok U6: Palacz pada twarzą w posadzkę przy zimnym piecu.
+    death: { sheet: 'stokerDeath', animation: 'die', keepCorpse: true },
   },
   // Baron Dymu (krok 83): smuga dymu (puff), uderzenie brzuchem (slam), salwa puszek (throw); ryk wściekłości = łyk (drink).
   [BossId.SmokeBaron]: {

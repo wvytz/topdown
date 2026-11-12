@@ -14,7 +14,10 @@ import type {
 } from '@/core/bossTypes';
 import { TileType } from '@/core/dungeonTypes';
 import type { DungeonFloor, Room } from '@/core/dungeonTypes';
-import type { BossHudData, Vector2 } from '@/core/types';
+import type { BossHudData, BossPortrait, Vector2 } from '@/core/types';
+import { bossPhaseMarks, bossPortrait } from '@/systems/BossPresentation';
+import { BOSS_PHASE_MARKS } from '@/config/bossPresentationConfig';
+import { hasLashFx, playLashFx } from '@/effects/BossLashFx';
 import type { BossDefinition, BossDogDefinition, BossId, GrateRow } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
@@ -37,6 +40,7 @@ import {
   SPIDERLING_DROP_VISUAL,
   THRONE_ROOM_VISUAL,
   SPRITE_SHEETS,
+  BOSS_VISUALS,
   animationKey,
 } from '@/config/spriteConfig';
 import type { SpriteSheetId } from '@/config/spriteConfig';
@@ -133,6 +137,8 @@ export interface BossFightDeps {
   readonly arrival?: DuetArrival;
   /** Jedno piętro sprzątaczek (krok 154): próg ucieczki windą zamiast tego z definicji bossa. */
   readonly escapeHpRatio?: number;
+  /** Krok U6: dodatkowe progi faz na pasku HP (np. powrót partnera duetu). */
+  readonly extraPhaseMarks?: readonly number[];
   /** Jedno piętro sprzątaczek (krok 154): winda wspólna z innym bossem areny (te same drzwi, jeden sprite). */
   readonly sharedElevator?: Phaser.GameObjects.Sprite;
   /** Zmienne warunki areny (krok 160): poprawka planu (słupy z gniazdami) i uderzenia stref (pękające płyty). */
@@ -162,6 +168,8 @@ interface PendingStrike {
   readonly gfx: Phaser.GameObjects.Graphics;
   /** Strefy tego samego ataku uderzające razem (hak, smuga) — telegraf obrysowuje ich sumę (krok 110). */
   readonly group: readonly AreaStrike[];
+  /** Krok U6: smagnięcie z błyskiem pazurów (Matka Pająków) — sam obraz w chwili uderzenia. */
+  readonly lash?: boolean;
 }
 
 /** Rzucona sieć: znacznik lądowania, kłąb w locie, potem plama (krok 25). */
@@ -247,6 +255,8 @@ export class BossFight {
   private leap: ActiveLeap | null = null;
   /** Wstrząs „zewu” przy przebudzeniu i przy wściekłości — po razie na walkę. */
   private introduced = false;
+  /** Krok U6: progi faz liczone raz (definicja bossa się nie zmienia w trakcie walki). */
+  private cachedMarks: readonly number[] | null = null;
   private wasEnraged = false;
   /** Żywe pajączki-kamikaze z telegrafem zapłonu. */
   private readonly spiderlings: SpiderlingSwarm;
@@ -506,7 +516,26 @@ export class BossFight {
       hp: boss.health.value,
       maxHp: boss.health.max,
       enraged: boss.isEnraged,
+      phaseMarks: this.phaseMarks,
+      portraits: [this.portrait],
     };
+  }
+
+  /** Krok U6: progi faz na pasku HP — wściekłość, ucieczka windą i progi walki (powrót partnera). */
+  get phaseMarks(): readonly number[] {
+    const definition = this.boss?.definition;
+    if (!definition) return [];
+    this.cachedMarks ??= bossPhaseMarks(
+      { enrageAt: definition.enrage.hpThreshold, escapeAt: definition.escape?.hpRatio, extra: this.deps.extraPhaseMarks },
+      BOSS_PHASE_MARKS.minGap,
+    );
+    return this.cachedMarks;
+  }
+
+  /** Krok U6: portret na karcie wejścia — pierwsza klatka chodu, przodem do gracza (wiersz S). */
+  get portrait(): BossPortrait {
+    const visual = BOSS_VISUALS[this.baseDefinition().id];
+    return bossPortrait(SPRITE_SHEETS[visual.sheet], visual.move);
   }
 
   update(now: number): void {
@@ -835,7 +864,8 @@ export class BossFight {
     const throws = plan.throws.map((thrown) => ({ ...thrown, to: moved.get(thrown.to) ?? thrown.to }));
     for (const strike of strikes) {
       const group = strikes.filter((other) => other.impactAt === strike.impactAt && other.telegraphStartAt === strike.telegraphStartAt);
-      this.strikes.push({ strike, group, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+      const lash = plan.kind === BossAttackKind.Lash && this.boss !== null && hasLashFx(this.boss.definition.id);
+      this.strikes.push({ strike, group, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph), ...(lash && { lash }) });
     }
     for (const planned of plan.bursts) {
       const burst = { ...planned, origin: moved.get(planned.origin) ?? planned.origin };
@@ -1336,13 +1366,15 @@ export class BossFight {
 
   private updateStrikes(now: number): void {
     const { party, effects } = this.deps;
-    this.strikes = this.strikes.filter(({ strike, gfx, group }) => {
+    this.strikes = this.strikes.filter(({ strike, gfx, group, lash }) => {
       if (now < strike.impactAt) {
         drawAreaTelegraph(gfx, strike, now, group);
         return true;
       }
       gfx.destroy();
-      if (strike.look === 'smoke') this.playSmokeBurst(strike);
+      // Krok U6: smagnięcie Matki Pająków to błysk pazurów zamiast ognistego wybuchu (sam obraz, strefa bez zmian).
+      if (lash && this.boss) playLashFx(this.deps.scene, this.boss.definition.id, this.boss, strike.center);
+      else if (strike.look === 'smoke') this.playSmokeBurst(strike);
       else if (strike.look === 'water') this.playSplash(strike);
       else if (strike.look === 'tangle') this.playTangleBurst(strike);
       else if (strike.look === 'sludge') {

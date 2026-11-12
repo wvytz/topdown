@@ -18,7 +18,7 @@ import type { Projectile } from '@/entities/Projectile';
 import { reservedTiles, setFloorTile } from '@/dungeon/ArenaConditionPlanner';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { DressedFloor } from '@/dungeon/FloorDressing';
-import { ARENA_ART, bakeArenaArt } from '@/effects/ArenaConditionArt';
+import { ARENA_ART } from '@/effects/ArenaConditionArt';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import { adjustStorkFlight, collapseOrder, mirrorExit, planHedge, rubbleForPhase, tileOf } from '@/systems/ArenaCover';
 import type { DashSweep } from '@/systems/DashStrike';
@@ -177,7 +177,6 @@ export class ArenaConditionManager {
 
   constructor(private readonly deps: ArenaConditionDeps) {
     const { scene, arena, layout, config } = deps;
-    bakeArenaArt(scene);
     this.gfx = scene.add.graphics().setDepth(RENDER_DEPTH.floorHazard);
     this.overGfx = scene.add.graphics().setDepth(RENDER_DEPTH.telegraph);
     this.arenaPx = { left: arena.x * TILE_SIZE, top: arena.y * TILE_SIZE, right: (arena.x + arena.width) * TILE_SIZE, bottom: (arena.y + arena.height) * TILE_SIZE };
