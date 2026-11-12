@@ -6195,7 +6195,21 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** test biomów 2.0 obejmuje Grzybnię, Cmentarzysko, Piekło, Lustrzaną komnatę i Ogród (grupy w arkuszach, progi, wyrwy); palarnia i leże bez progów i wyrw.
 
-**Weryfikacja:** `npm run build` (2969 testów); `npm run shots` przed i po (zmieniły się tylko piętra 4, 6 i 7 oraz krew), `npm run perf` w granicach szumu; `npm run smoke` przez 7 pięter bez błędów. Zrzuty: `/mnt/project-files/screens/krokU4c-kafle/`. **Czeka na ocenę właściciela.**
+**Weryfikacja:** `npm run build` (2969 testów); `npm run shots` przed i po (zmieniły się tylko piętra 4, 6 i 7 oraz krew), `npm run perf` w granicach szumu; `npm run smoke` przez 7 pięter bez błędów. Zrzuty: `/mnt/project-files/screens/krokU4c-kafle/`.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: „podoba mi się” — scalone, U4 zamknięte.
+
+## Krok U5a — Postacie 2.0: pilot barbarzyńcy `#upgrade` `#postacie`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: po U4c „lecimy dalej U5 i U6”. Wg planu (`docs/UPGRADE.md`) najpierw arkusz jednej postaci do akceptacji, potem reszta.
+
+**Co powstało**
+- **Nowy arkusz barbarzyńcy** `blond-barbarian_v2.png` z generatora `tools/hero_v2_sprites.py` (na klatkach z `barbarian_sword.py`, 8 kierunków z obrotu, obrys po obrocie): chód i cios bez zmian w tych samych kolumnach, a do tego **bezruch** (oddech: barki i miecz o piksel, 1 s na cykl), **trafienie** (odskok, głowa odchylona, ramiona rozrzucone), **dash** (głowa w przód, ramiona w tył) i **śmierć** (6 klatek: trafienie, kolana, pad w przód, leżące ciało z mieczem obok; ostatnia klatka zostaje na posadzce zamiast szarego stojącego bohatera).
+- **Akcent barwy klasy** (STYLEGUIDE §13.9, ok. 10% sylwetki): karwasze i rzemienie z barwionej skóry w bursztynie barbarzyńcy (`HERO_HUES` 38°).
+- **W grze** (`entities/Player.ts`): pola `hurt`, `dash`, `death` w `HeroVisual`; dash i świeże trafienie (260 ms, `HERO_HURT_POSE_MS`) mają pierwszeństwo przed chodem i bezruchem, cios — przed nimi. Bohater bez tych pól zachowuje się jak dotąd. Wyłącznik `HERO_SPRITES_V2` w `config/spriteConfig.ts` wraca do starego arkusza (stary plik zostaje).
+- Ciało fizyczne, pivot i komórka 48×48 bez zmian (test `tests/config/heroSpritesV2.test.ts`).
+
+**Weryfikacja:** `npm run build` (2973 testy), pozy w przeglądarce (bezruch, trafienie, pad), `npm run smoke -- --floors 2`. Arkusz: `/mnt/project-files/screens/krokU5a-barbarzynca/arkusz.png`. **Czeka na ocenę właściciela** — po akceptacji ta sama metoda dla Czarodziejki i łucznika, potem Totem i co-op.
 
 ## Znane ograniczenia i backlog
 
@@ -6216,7 +6230,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c; zostało smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
 - **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata, Ogród i jaskrawsza krew (czeka na ocenę). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138).
-- **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
+- **U5 postacie — pilot barbarzyńcy (krok U5a) czeka na ocenę:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
 - **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.

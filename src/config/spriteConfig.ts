@@ -130,6 +130,27 @@ export const SPRITE_SHEETS = {
       attack: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Krok U5a (postacie 2.0, tools/hero_v2_sprites.py): chód (0–3) i cios (4–7) jak wyżej, z akcentem barwy klasy,
+  // oraz nowe stany: bezruch (8–10), trafienie (11–12), dash (13–14), śmierć (15–20, ostatnia klatka zostaje).
+  barbarianV2: {
+    key: 'sheet-blond-barbarian-v2',
+    url: 'assets/sprites/blond-barbarian_v2.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 1008,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      // Oddech: barki rozchodzą się i miecz unosi o piksel (1 s na cykl).
+      idle: { frames: [8, 8, 9, 10, 10, 9], loop: true },
+      attack: { frames: [4, 5, 6, 7], loop: false },
+      hurt: { frames: [11, 12], loop: false },
+      dash: { frames: [13, 14], loop: false },
+      die: { frames: [15, 16, 17, 18, 19, 20], loop: false },
+    },
+  },
   trashcanMan: {
     key: 'sheet-trashcan-man',
     url: 'assets/sprites/trashcan-man_walk.png',
@@ -1935,6 +1956,29 @@ export const PLAYER_VISUAL = {
   groundShadow: WALKER_SHADOW,
 } as const satisfies EnemyVisual;
 
+/**
+ * Krok U5a: postacie 2.0 (STYLEGUIDE §13.9) — nowe arkusze z bezruchem, trafieniem, dashem i śmiercią.
+ * `false` przywraca stare arkusze bez zmian w logice (wyłącznik etapu U5).
+ */
+export const HERO_SPRITES_V2 = true;
+
+/** Ile trwa poza trafienia bohatera 2.0 (ms); w tym czasie chód i bezruch ustępują trafieniu. */
+export const HERO_HURT_POSE_MS = 260;
+
+/** Barwa leżącego ciała bohatera 2.0 (zamiast dawnej szarości 0x555555). */
+export const HERO_CORPSE_TINT = 0xa8a0a0;
+
+const BARBARIAN_VISUAL_V2 = {
+  sheet: 'barbarianV2',
+  move: 'walk',
+  idle: 'idle',
+  attack: 'attack',
+  hurt: 'hurt',
+  dash: 'dash',
+  death: 'die',
+  groundShadow: WALKER_SHADOW,
+} as const;
+
 /** Wygląd bohatera; Czarodziejka ma dodatkowo animację promienia, łucznik etapy naciągania. */
 export interface HeroVisual extends EnemyVisual {
   readonly attack: string;
@@ -1942,12 +1986,16 @@ export interface HeroVisual extends EnemyVisual {
   readonly channel?: string;
   /** Łucznik: animacje etapów naciągania łuku (od nałożenia strzały do pełnego naciągnięcia). */
   readonly drawStages?: readonly string[];
+  /** Postacie 2.0 (krok U5a): poza trafienia, dash i śmierć; brak = jak przed upgradem (miganie, szarość). */
+  readonly hurt?: string;
+  readonly dash?: string;
+  readonly death?: string;
   readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
 }
 
 /** Wygląd grywalnych bohaterów (krok 37). */
 export const HERO_VISUALS: Readonly<Record<HeroId, HeroVisual>> = {
-  [HeroId.Barbarian]: PLAYER_VISUAL,
+  [HeroId.Barbarian]: HERO_SPRITES_V2 ? BARBARIAN_VISUAL_V2 : PLAYER_VISUAL,
   [HeroId.Sorceress]: {
     sheet: 'sorceress',
     move: 'walk',
