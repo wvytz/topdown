@@ -40,7 +40,7 @@ export class BootScene extends Phaser.Scene {
     loadSpriteSheets(this);
     // Rekwizyty zmiennych aren 6–7 (krok U6, tools/arena_props.py).
     loadArenaArt(this);
-    // Skarbiec pająków w ukrytej komnacie Grzybni (krok U4d, tools/spider_vault_sprites.py).
+    // Skarbiec pająków w ukrytej komnacie Grzybni (krok U4f, tools/spider_vault_sprites.py).
     loadSpiderVaultArt(this);
     // Arkusze kafli wszystkich biomów (krok 23a) — piętro wybiera swój w GameScene.
     for (const { tileset } of Object.values(BIOMES)) {

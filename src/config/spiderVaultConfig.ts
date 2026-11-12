@@ -1,13 +1,13 @@
 import type { SpiderVaultConfig } from '@/dungeon/SpiderVault';
 
 /**
- * Skarbiec pająków (krok U4d, prośba właściciela 12.11.2026): ukryta komnata za areną Króla Pająków gęsto
+ * Skarbiec pająków (krok U4f, prośba właściciela 12.11.2026): ukryta komnata za areną Króla Pająków gęsto
  * opleciona jedwabiem i śluzem, kokony skarbu na piedestałach. Planowanie: `dungeon/SpiderVault.ts`,
  * grafika: `tools/spider_vault_sprites.py`, rysowanie: `effects/SpiderVaultView.ts`.
  */
 export const SPIDER_VAULT_CONFIG: SpiderVaultConfig = {
   wallMargin: 1,
-  // 3–5 kokonów (ocena właściciela po U4d: było 5–7): wielki + 1–2 pary.
+  // 3–5 kokonów (ocena właściciela po U4f: było 5–7): wielki + 1–2 pary.
   pedestalPairs: { min: 1, max: 2 },
   silkChance: { edge: 0.95, ring: 0.75, inner: 0.5, nearPedestal: 0.9, corridor: 0.7 },
   silkVariants: 6,
@@ -27,7 +27,7 @@ export const SPIDER_VAULT_CONFIG: SpiderVaultConfig = {
 };
 
 /**
- * Spowolnienie w skarbcu (ocena właściciela po U4d: „powinniśmy dostawać tam movement speed slow”): bohater na kaflu
+ * Spowolnienie w skarbcu (ocena właściciela po U4f: „powinniśmy dostawać tam movement speed slow”): bohater na kaflu
  * komnaty albo korytarza do niej brnie przez jedwab i śluz. Odnawiane co klatkę, trwa chwilę po wyjściu; dash
  * przechodzi bez spowolnienia (jak lepkie pajęczyny, krok 23e).
  */

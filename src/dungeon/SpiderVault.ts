@@ -4,7 +4,7 @@ import type { Rng } from '@/core/random';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 
 /**
- * Skarbiec pająków (krok U4d, prośba właściciela 12.11.2026): ukryta komnata za areną Króla Pająków jest
+ * Skarbiec pająków (krok U4f, prośba właściciela 12.11.2026): ukryta komnata za areną Króla Pająków jest
  * gęsto opleciona nićmi i śluzem, a kokony skarbu stoją na piedestałach — wielki na końcu komnaty naprzeciw
  * wejścia, pozostałe parami, symetrycznie wzdłuż osi, jak w sali tronowej. Czysta logika: gdzie co stoi.
  * Pozycje w jednostkach kafli (środek kafla x = x + 0,5), żeby wielki piedestał mógł stanąć dokładnie

@@ -12,7 +12,7 @@ Arkusze (STYLEGUIDE §2, §8, §10; wiersze = 8 kierunków N..NW z obrotu, obrys
   bat_wave.png           32x32; kolumny 0–3 migotanie fali, wiersze = kierunek lotu
   cocoon.png             32x32, bez kierunków (krok 23d); 0–1 spoczynek (puls szwu), 2–3 drżenie (telegraf),
                          4–7 rozdarcie; klatka 7 = strzępy, które zostają na podłodze
-  (kokon skarbu ukrytej komnaty z kroku U4b zastąpiony w U4d modelem 2x z tools/spider_vault_sprites.py)
+  (kokon skarbu ukrytej komnaty z kroku U4b zastąpiony w U4f modelem 2x z tools/spider_vault_sprites.py)
   sticky-web_small.png   32x32 (1 kafel), sticky-web_large.png 64x64 (2x2 kafle), krok 23e: lepka pajęczyna
                          na podłodze; 4 klatki = błysk przesuwa się po zielonych kroplach kleju. Pełna, okrągła
                          sieć z obrysem i kroplami — celowo inna niż narożne pajęczyny-dekoracje (trójkąt, bez obrysu)

@@ -39,7 +39,7 @@ export interface SecretRoomDeps {
   readonly effects: CombatEffects;
   /** RNG komnaty: piedestały, kokon z przedmiotem i przedmiot. */
   readonly rng: Rng;
-  /** RNG ozdób skarbca (krok U4d) — osobny strumień, żeby oplot nie zmieniał nagrody. */
+  /** RNG ozdób skarbca (krok U4f) — osobny strumień, żeby oplot nie zmieniał nagrody. */
   readonly decorRng: Rng;
   readonly dropLoot: (at: { x: number; y: number }, drops: readonly LootDrop[]) => void;
   readonly onRevealed: () => void;
@@ -47,7 +47,7 @@ export interface SecretRoomDeps {
 
 /**
  * Ukryta komnata za areną (krok 46): pokazuje się, gdy gracz podejdzie na 2 kafle; wtedy pojawiają się kokony skarbu.
- * Od kroku U4d to skarbiec pająków: kokony stoją na piedestałach, komnata gęsto opleciona jedwabiem i śluzem.
+ * Od kroku U4f to skarbiec pająków: kokony stoją na piedestałach, komnata gęsto opleciona jedwabiem i śluzem.
  * Każde trafienie rozbija kokon; z jednego wypada losowy przedmiot z puli. Decyzje — czyste `dungeon/SecretRoom`
  * i `dungeon/SpiderVault`.
  */

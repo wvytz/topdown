@@ -4,7 +4,7 @@ import { TileType } from '@/core/dungeonTypes';
 /**
  * Ukryta komnata (krok 46, pomysł właściciela): pokój końcowy za areną wygląda jak lity mur, dopóki gracz
  * nie podejdzie na `revealRadius` kafli (w każdym kierunku). W środku kokony skarbu — rozbijalne, tylko jeden
- * z nich ma losowy przedmiot. Czysta logika: obszar komnaty, maska odsłonięcia, przebranie piętra. Od kroku U4d
+ * z nich ma losowy przedmiot. Czysta logika: obszar komnaty, maska odsłonięcia, przebranie piętra. Od kroku U4f
  * kokony stoją na piedestałach skarbca pająków (`dungeon/SpiderVault.ts`).
  */
 export interface SecretRoomConfig {

@@ -2120,7 +2120,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return { x: arena.x + 2, y: arena.y + Math.floor(arena.height / 2) };
   }
 
-  /** `?vault=1` (krok U4d, run testowy): start w środku skarbca pająków, gdy piętro go ma. */
+  /** `?vault=1` (krok U4f, run testowy): start w środku skarbca pająków, gdy piętro go ma. */
   private vaultStartTile(): { x: number; y: number } | null {
     if (!this.secretArea || !parseStartOverrides(window.location.search).atVault) return null;
     const room = this.secretArea.room;

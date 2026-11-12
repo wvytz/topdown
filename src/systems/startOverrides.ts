@@ -9,7 +9,7 @@ export interface StartOverrides {
   readonly floor?: number;
   /** `?boss=1`: gracz startuje w arenie bossa piętra. */
   readonly atBoss?: boolean;
-  /** `?vault=1` (krok U4d): na piętrach z ukrytą komnatą (Grzybnia) gracz startuje w skarbcu pająków. */
+  /** `?vault=1` (krok U4f): na piętrach z ukrytą komnatą (Grzybnia) gracz startuje w skarbcu pająków. */
   readonly atVault?: boolean;
   /** `?ambush=storm|flight|haunt` (krok 183): zasadzka na każdym piętrze, w tej wersji. */
   readonly ambush?: AmbushVariant;

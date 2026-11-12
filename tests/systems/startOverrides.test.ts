@@ -20,7 +20,7 @@ describe('start z adresu — run testowy (krok 41g)', () => {
     expect(parseStartOverrides('?boss=0')).toEqual({ practice: false });
   });
 
-  it('?vault=1 (krok U4d): start w skarbcu pająków, run testowy', () => {
+  it('?vault=1 (krok U4f): start w skarbcu pająków, run testowy', () => {
     expect(parseStartOverrides('?vault=1&floor=2')).toEqual({ atVault: true, floor: 2, practice: true });
     expect(parseStartOverrides('?vault=0')).toEqual({ practice: false });
   });

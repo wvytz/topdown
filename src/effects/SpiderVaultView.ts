@@ -28,7 +28,7 @@ export function registerSpiderVaultAnimations(scene: Phaser.Scene): void {
 }
 
 /**
- * Skarbiec pająków (krok U4d): rysuje oplot i piedestały zaplanowane w czystym `dungeon/SpiderVault.ts`,
+ * Skarbiec pająków (krok U4f): rysuje oplot i piedestały zaplanowane w czystym `dungeon/SpiderVault.ts`,
  * gdy ukryta komnata się odsłoni. Wszystko bez kolizji. Nici rasteryzujemy raz do jednej tekstury
  * (piksel w piksel, z cieniem na posadzce), więc skarbiec kosztuje kilkadziesiąt obrazków bez pracy co klatkę.
  */

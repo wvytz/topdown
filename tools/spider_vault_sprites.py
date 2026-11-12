@@ -1,5 +1,5 @@
 """
-Generator skarbca pająków (krok U4d, prośba właściciela 12.11.2026, `#ukryta-komnata`): ukryta komnata za areną
+Generator skarbca pająków (krok U4f, prośba właściciela 12.11.2026, `#ukryta-komnata`): ukryta komnata za areną
 Króla Pająków ma wyglądać jak skarbiec potężnych, niepokonanych pająków — gęsto opleciona nićmi i śluzem,
 a kokony skarbu stoją na piedestałach. Pozycje rekwizytów planuje czysty `dungeon/SpiderVault.ts`.
 
@@ -457,7 +457,7 @@ def husk(v):
     return img
 
 
-# ---------------- kokon skarbu 2x (krok U4d, prośba właściciela: „własny, dwukrotnie większy model”) ----------------
+# ---------------- kokon skarbu 2x (krok U4f, prośba właściciela: „własny, dwukrotnie większy model”) ----------------
 COCOON2 = 64
 CX2, CY2, RX2, RY2 = 32, 34, 13, 19  # środek ciała; stopa (CY2 + RY2) 21 px pod środkiem klatki
 GLINTS2 = ((-7, -10), (4, -3), (-3, 7), (8, 4))

@@ -30,7 +30,7 @@ function handmade(side: VaultSide): { floor: DungeonFloor; area: SecretArea } {
   return { floor, area: { room, tiles: set } };
 }
 
-describe('skarbiec pająków (krok U4d)', () => {
+describe('skarbiec pająków (krok U4f)', () => {
   it('wejście: strona korytarza do komnaty', () => {
     for (const side of [VaultSide.North, VaultSide.South, VaultSide.East, VaultSide.West]) {
       const { floor, area } = handmade(side);

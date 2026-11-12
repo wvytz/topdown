@@ -6215,7 +6215,9 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Weryfikacja:** `npm run build` (2995 testów); Playwright: karta na piętrach 1–7, rozbłysk progu, śmierć Pożeracza i Palacza w grze, błysk pazurów, rekwizyty aren 6–7; `npm run smoke -- --floors 7 --sweep-only` bez błędów. `npm run perf` pominięty (karta i kreski to kilka obiektów HUD-u). Zrzuty: `/mnt/project-files/screens/krokU6-bossowie/`. **Czeka na ocenę właściciela.**
 
-## Krok U4d — Skarbiec pająków: ukryta komnata Grzybni opleciona jedwabiem, kokony na piedestałach `#upgrade` `#kafle` `#ukryta-komnata` `#ocena`
+## Krok U4f — Skarbiec pająków: ukryta komnata Grzybni opleciona jedwabiem, kokony na piedestałach `#upgrade` `#kafle` `#ukryta-komnata` `#ocena`
+
+Numer U4f, bo U4d i U4e zajęły równoległe poprawki krwi z gałęzi U5a (PR #106).
 
 **Ocena właściciela (12.11.2026)** `#ocena` `#ukryta-komnata`: w podglądzie upgradu ukryta komnata za areną Króla Pająków wyglądała jak zwykły pokój — „to sekretne pomieszczenie miało być pełne pajęczej spermy/nici, a kokony stać na piedestałach. Gdzie honor i zaszczyt z odnalezienia ukrytych skarbów potężnych niepokonanych pająków?”.
 
@@ -6231,7 +6233,7 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** `tests/dungeon/SpiderVault.test.ts` — strona wejścia (4 strony, komnaty z generatora), wielki piedestał na osi w rzędzie naprzeciw wejścia, pary lustrzane, odstęp od ścian, różne kafle, nic tuż przed wejściem, determinizm i osobne strumienie, gęstość jedwabiu (> 50% kafli), śluz w komnacie, zasłony tylko na murze nad komnatą, ciała przy ścianach bocznych, końce nici w komnacie, ciągłość i ugięcie nici; `?vault=1` w `startOverrides.test.ts`; `SpiderVault.ts` w `PURE_FILES`.
 
-**Weryfikacja:** `npm run build` (3006 testów); Playwright na seedach 3, 7 i 12 (komnaty 8×10 z wejściem od południa, 5×10 od północy, 6×7 od zachodu): oplot, piedestały, kokony w gniazdach, rozbicie wszystkich kokonów (strzępy na piedestałach), bez błędów w konsoli; `?floor=2&vault=1` startuje w skarbcu; `npm run smoke -- --floors 2` (raz wyścig przy przejściu piętra u łucznika w samym skrypcie — powtórka czysta). Zrzuty: `/mnt/project-files/screens/krokU4d-skarbiec/`. **Czeka na ocenę właściciela.**
+**Weryfikacja:** `npm run build` (3006 testów); Playwright na seedach 3, 7 i 12 (komnaty 8×10 z wejściem od południa, 5×10 od północy, 6×7 od zachodu): oplot, piedestały, kokony w gniazdach, rozbicie wszystkich kokonów (strzępy na piedestałach), bez błędów w konsoli; `?floor=2&vault=1` startuje w skarbcu; `npm run smoke -- --floors 2` (raz wyścig przy przejściu piętra u łucznika w samym skrypcie — powtórka czysta). Zrzuty: `/mnt/project-files/screens/krokU4f-skarbiec/`. **Czeka na ocenę właściciela.**
 
 **Ocena właściciela po podglądzie (12.11.2026, 22:46)** `#ocena` `#ukryta-komnata`: „powinniśmy dostawać tam movement speed slow. Kokonów powinno być mniej, od 3 do 5, i powinny mieć swój własny, dwukrotnie większy model graficzny”. Zrobione w tym samym kroku:
 - **Spowolnienie w skarbcu** (`SPIDER_VAULT_SLOW`, 40%, trwa 0,4 s po wyjściu): po odsłonięciu każdy bohater na kaflu komnaty albo korytarza do niej brnie przez jedwab i śluz (`isInVault`, `SecretRoomManager.update`); dash przechodzi bez spowolnienia, jak w lepkich pajęczynach.
@@ -6257,7 +6259,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
 - **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c, smagnięcie Matki Pająków — w U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
-- **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata, Ogród i jaskrawsza krew (czeka na ocenę). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138). U4d: skarbiec pająków w ukrytej komnacie Grzybni (czeka na ocenę: gęstość oplotu, piedestały, śluz).
+- **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata, Ogród i jaskrawsza krew (czeka na ocenę). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138). U4f: skarbiec pająków w ukrytej komnacie Grzybni (czeka na ocenę: gęstość oplotu, piedestały, śluz).
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.

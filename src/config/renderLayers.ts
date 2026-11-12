@@ -9,7 +9,7 @@ export const RENDER_DEPTH = {
   floorFeature: 1,
   /** Trwałe ślady walki: nad nakładkami i schodami, pod cieniami (mur nadal je przyciemnia). */
   combatDecal: 1.5,
-  /** Skarbiec pająków (krok U4d): jedwab, śluz i sieci na posadzce ukrytej komnaty — nad nakładkami podłogi. */
+  /** Skarbiec pająków (krok U4f): jedwab, śluz i sieci na posadzce ukrytej komnaty — nad nakładkami podłogi. */
   vaultFloor: 1.2,
   /** Nici skarbca z cieniem na posadzce i zawinięte ciała — nad jedwabiem, pod śladami walki. */
   vaultThreads: 1.4,
@@ -32,7 +32,7 @@ export const RENDER_DEPTH = {
   /** Płomienie na podłodze po wybuchu (krok 144): nad błyskiem strefy, pod łupami i postaciami. */
   fireGround: 6.5,
   shrine: 6,
-  /** Piedestały skarbca pająków (krok U4d): jak kapliczka — pod łupami, kokonami i postaciami. */
+  /** Piedestały skarbca pająków (krok U4f): jak kapliczka — pod łupami, kokonami i postaciami. */
   vaultProp: 6,
   coin: 7,
   /** Kruki na posadzce (krok 156): nad monetami, pod przedmiotami i postaciami. */
