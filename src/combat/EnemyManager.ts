@@ -217,6 +217,15 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   /** Wampiryczna elita leczy się z trafienia gracza. */
+  /** Skóra jaguara (krok Z4): wróg, który trafił bohatera wręcz (cios, szarża, skok), dostaje ciernie. */
+  private thorns(enemy: Enemy, player: Player): void {
+    const damage = player.thorns;
+    if (damage <= 0 || enemy.isDead || !enemy.active) return;
+    const result = enemy.takeHit({ damage, knockback: { x: 0, y: 0 } }, this.deps.scene.time.now, player);
+    this.deps.effects.floatingText(enemy.x, enemy.y, `-${damage}`, '#d8a040');
+    if (result.died) this.kill(enemy);
+  }
+
   private lifesteal(enemy: Enemy, damage: number): void {
     if (!enemy.hasAffix(EliteAffix.Vampiric) || enemy.isDead || !enemy.active) return;
     const heal = Math.min(lifestealHeal(damage, ELITE_CONFIG), enemy.health.max - enemy.health.value);
@@ -486,6 +495,7 @@ export class EnemyManager implements EnemyAttackHandler {
       if (!player.takeHit(hit, scene.time.now)) continue;
       this.deps.onPlayerHit(player);
       this.lifesteal(enemy, damage);
+      this.thorns(enemy, player);
       hitAny = true;
     }
     return hitAny;
@@ -528,6 +538,7 @@ export class EnemyManager implements EnemyAttackHandler {
       if (!player.takeHit(hit, scene.time.now)) continue;
       this.deps.onPlayerHit(player);
       this.lifesteal(enemy, hit.damage);
+      this.thorns(enemy, player);
       hitAny = true;
     }
     return hitAny;
@@ -609,6 +620,7 @@ export class EnemyManager implements EnemyAttackHandler {
       if (player.takeHit(hit, scene.time.now)) {
         this.deps.onPlayerHit(player);
         this.lifesteal(enemy, hit.damage);
+        this.thorns(enemy, player);
       }
     }
   }

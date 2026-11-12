@@ -6171,6 +6171,34 @@ Etap Z3 z `docs/AKT2.md` §9 na gałęzi `akt-2`. Właściciel zatwierdził Wota
 
 **Testy:** `tests/systems/Votives.test.ts` (odporności, łuska, ułamki trucizny, ratunek, znajdowanie, wypalanie, pula, Palenisko, zapis profilu, przedmiot startowy), poprawione `HideoutLayout.test.ts` (Palenisko jest stanowiskiem) i `itemEvolution.test.ts` (wota bez przemian). `npm run build` (2928 testów), `npm run smoke`. W przeglądarce: profil z dwoma znalezionymi Wotami → Piec wypala pierwsze (45 → 15 Żaru), drugie czeka („masz 15”), Palenisko przełącza start; Zejście startuje z Pancerzem, Wota w puli, trucizna 4×2 zabiera 4 HP, boss zostawia trzecie Wotum.
 
+## Krok Z4 — Akt II: dwie bramy, kupiec i druga paczka wot `#akt2` `#zejscie` `#wota`
+
+Etap Z4 z `docs/AKT2.md` §4 i §9 na gałęzi `akt-2`, razem z drugą paczką wot. Właściciel 12.11: „wdrażaj. na razie liczby mogą zostać” (liczby z Z3 bez zmian).
+
+**Co powstało**
+- **Dwie bramy po bossie** (`systems/DescentGates.ts`, `config/descentConfig.ts` `DESCENT_GATES`, `GATE_TEXT`): w Zejściu E na schodach otwiera wybór z dwóch kart — głębia, odbicie (piętro wieży) i podpowiedź nagrody. Bramy prowadzą na różne odbicia, gdy trasa na to pozwala (zawsze w dół i tak, by do Dna zostało 6 pięter), inaczej różnią się samą nagrodą. Ostatnie zejście (na Dno) jest bez wyboru. Własny strumień RNG: seed runu + piętro wyjścia.
+- **Nagrody bram:** „więcej Żaru” (Żar z wrogów i bossa ×1,5, ułamki przechodzą dalej — `EmberTally`), „kupiec” (kupiec przy wejściu), „więcej złota” (złoto z wrogów ×1,3). Dwie bramy zawsze mają różne nagrody; brama na głębię ze stałym kupcem nie obiecuje kupca.
+- **Kupiec** (`world/MerchantSite.ts`, `MERCHANT_CONFIG`): stoi w pokoju startowym na głębiach 3 i 5 („przejście między głębiami” z §4) i za bramą „kupiec”. Lada: 2 przedmioty z puli (z wypalonymi Wotami, bez nieprzydatnych) i leczenie 50% HP; ceny 30 + 10 / 15 + 5 złota na każdą głębię ponad pierwszą. Zakup obniża wynik (złoto = punkty), jak ofiara w kapliczce. Figura z latarnią jest tymczasowa (Graphics).
+- **Karty wyboru** (`scenes/ChoiceScene.ts`, `SceneKey.Choice`): wspólna nakładka dla bram i kupca — mysz (pełne kliknięcie), klawisze 1–5, pad (← → A, B — wyjście), dotyk; Esc wychodzi bez wyboru. W co-opie nad kartami „P1 wybiera drogę” / „P2 kupuje”.
+- **Droga w zapisie:** `RunSnapshot.descentPath` i `gateReward` (walidowane w `SaveGame.ts`; zły wpis odpada bez unieważniania zapisu). Stary zapis z Z1/Z3 odtwarza drogę z trasy seeda (`descentPathFor`). HUD liczy głębię z drogi.
+- **Druga paczka wot** (`config/votiveConfig.ts`, `systems/Votives.ts`, ikony z `tools/loot_sprites.py`):
+  - **Jadeitowa maska** — pociski wrogów ranią o 25% mniej za kopię, do 50% (`Hit.projectile`); napis „maska osłoniła”;
+  - **Obsydianowe zwierciadło** — co 8 s (2. kopia 5,5 s, sufit 4 s) pierwszy pocisk wraca do wrogów jako pocisk bohatera z podwójną siłą, bez efektów przedmiotów; fale uderzeniowe się nie odbijają; napis „odbite!”;
+  - **Skóra jaguara** — wróg, który trafi wręcz (cios, szarża Tarczownika, skok ogara), dostaje 10 obrażeń za kopię (do 3 kopii); bossowie nie;
+  - **Pióro kecala** — 0,25 s nietykalności po dashu za kopię (do 2 kopii).
+  - `VOTIVE_ORDER` ma 8 wot; boss Zejścia zostawia kolejne nieznane, Piec wypala je za 30 Żaru jak w Z3.
+
+**Decyzje w trakcie (na mocy zgody właściciela)**
+- Bramy jako karty przy schodach zamiast dwóch fizycznych bram w arenie: działa od razu na mysz, pad i dotyk, bez przebudowy aren; fizyczne bramy — z własną grafiką Popielnika i prób (Z6+).
+- W co-opie wybiera ten, kto pierwszy stanął na schodach i nacisnął E (partner widzi karty); odliczanie z §4 pominięte, bo karty i tak zatrzymują grę.
+- „Zwiększenie ładunków” u kupca zastąpione drugim przedmiotem — Kołczan (ładunki) i tak jest w puli; pasek mocy jest pełny na starcie piętra, więc jego zakup nic by nie dał.
+- „Wotum” jako nagroda bramy odłożone — Wotum zostawia każdy boss Zejścia, póki są nieznane.
+- Trzecia karta u kupca i druga podpowiedź za Żar (wydatki z §5) — razem z Zaćmieniami (Z5).
+
+**Do oceny:** czy wybór drogi coś znaczy przy odbiciach (różnica to głównie nagroda), ceny kupca, mnożniki 1,5 / 1,3, odczuwalność 4 nowych wot, figura kupca.
+
+**Testy:** nowe `tests/systems/DescentGates.test.ts` (pełna długość każdej drogi, różne drogi z jednego seeda, różne nagrody, brak podwójnego kupca, determinizm, droga ze starego zapisu, mnożniki, ułamki Żaru, lada kupca), `Votives.test.ts` (maska, zwierciadło z odnowieniem, ciernie i pióro z limitami), `saveGame.test.ts` (droga i nagroda w zapisie). `npm run build` (2937 testów). W przeglądarce: Zejście na głębi 3 — kupiec przy wejściu, zakup Butów 120 → 70 złota; bramy „więcej Żaru” (odbicie 4) i „kupiec” (odbicie 5) → wejście na 5 z drogą [1, 2, 3, 5] i kupcem; pocisk 12 obrażeń: pierwszy odbity przez zwierciadło (HP bez zmian), drugi po masce 9.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6198,8 +6226,8 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 
 **3a. Do zrobienia — Akt II** (`docs/AKT2.md`, gałąź `akt-2`, podgląd `/topdown/akt2/`)
 - **Z1 zrobione (krok Z1):** profil trwały, Popielnik, Zejście na odbiciach, Żar.
-- **Z3 zrobione (krok Z3):** 4 Wota ochronne, Piec wotów, przedmiot startowy. Zostały 4 kolejne Wota (Jadeitowa maska, Obsydianowe zwierciadło, Skóra jaguara, Pióro kecala).
-- **Z4:** wybór 1 z 2 bram po bossie, kupiec między głębiami.
+- **Z3 zrobione (krok Z3):** 4 Wota ochronne, Piec wotów, przedmiot startowy.
+- **Z4 zrobione (krok Z4):** dwie bramy po bossie z podpowiedzią nagrody, kupiec (głębie 3 i 5 i za bramą), druga paczka 4 wot. Zostało: fizyczne bramy i grafika kupca z generatora, wydatki Żaru u kupca (trzecia karta) — z Z5.
 - **Z5:** Zaćmienia 0–III, wspólna tablica Zejścia w workerze.
 - **Z6+:** próby Mictlanu jako własne biomy (po U4), finał z czerwonym odbiciem Czarnego Słońca.
 - Oprawa: własny arkusz kafli i stanowisk Popielnika z generatora, dźwięki stanowisk; Zejście w `npm run smoke`.

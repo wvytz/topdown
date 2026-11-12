@@ -51,6 +51,7 @@ export class ProjectileManager {
   private readonly landCallbacks = new WeakMap<Projectile, (at: Vector2) => void>();
   /** Lustra areny (krok 160): czy kafel odbija pocisk. */
   private reflects: ((projectile: Projectile, tile: { readonly x: number; readonly y: number }) => boolean) | null = null;
+  private mirror: ((at: Vector2, direction: Vector2, damage: number, hero: Player) => void) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -102,6 +103,11 @@ export class ProjectileManager {
     projectile.setBounce(1);
   }
 
+  /** Krok Z4: odbicie pocisku Obsydianowym zwierciadłem — scena wystrzeliwuje pocisk bohatera z powrotem. */
+  setMirror(mirror: ((at: Vector2, direction: Vector2, damage: number, hero: Player) => void) | null): void {
+    this.mirror = mirror;
+  }
+
   /** Lustra areny (krok 160). */
   setReflector(reflects: ((projectile: Projectile, tile: { readonly x: number; readonly y: number }) => boolean) | null): void {
     this.reflects = reflects;
@@ -145,7 +151,17 @@ export class ProjectileManager {
       damage: projectile.damage,
       knockback: knockbackFrom(from, player, projectile.knockback),
       status: projectile.status,
+      projectile: true,
     };
+
+    // Obsydianowe zwierciadło (krok Z4): pocisk wraca do wrogów zamiast trafić.
+    const mirror = this.mirror && !this.waves.has(projectile) ? player.tryMirror(now) : null;
+    if (mirror && this.mirror) {
+      const back = velocity ? { x: -velocity.x, y: -velocity.y } : { x: player.x - projectile.x, y: player.y - projectile.y };
+      this.mirror({ x: projectile.x, y: projectile.y }, back, projectile.damage * mirror.damageMultiplier, player);
+      projectile.destroy();
+      return;
+    }
 
     // Dash/nietykalność: pocisk przelatuje przez gracza.
     if (player.takeHit(hit, now)) {

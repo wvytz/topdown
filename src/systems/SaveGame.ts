@@ -1,7 +1,7 @@
 import type { HeroId } from '@/core/heroTypes';
 import type { RunSnapshot } from '@/core/lootTypes';
 import type { CoopPartnerSnapshot } from '@/core/types';
-import { ItemId } from '@/core/lootTypes';
+import { GateReward, ItemId } from '@/core/lootTypes';
 import { RunMode } from '@/core/runMode';
 import { HERO_DEFINITIONS, parseHeroId } from '@/config/heroConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
@@ -32,6 +32,7 @@ export function toSaveRecord(data: SaveData, savedAt: number): SaveRecord {
   return { version: SAVE_VERSION, savedAt, runSeed: data.runSeed, floor: data.floor, run: { ...data.run, items: [...data.run.items] }, ...coop };
 }
 
+const GATE_REWARDS: ReadonlySet<string> = new Set(Object.values(GateReward));
 const ITEM_IDS = new Set<string>(Object.values(ItemId));
 const RUN_MODES = new Set<string>(Object.values(RunMode));
 
@@ -69,7 +70,7 @@ function parsePartner(value: unknown): CoopPartnerSnapshot | null {
 function parseRunSnapshot(value: unknown): RunSnapshot | null {
   if (!isRecord(value)) return null;
   const hero = parseHeroId(typeof value.hero === 'string' ? value.hero : null);
-  const { gold, items, hp, practice, mode, fromSave, startFloor, embers } = value;
+  const { gold, items, hp, practice, mode, fromSave, startFloor, embers, descentPath, gateReward } = value;
   if (!hero || !isCount(gold) || !Array.isArray(items)) return null;
   if (!items.every((id): id is ItemId => typeof id === 'string' && ITEM_IDS.has(id))) return null;
   if (hp !== null && !(typeof hp === 'number' && Number.isFinite(hp) && hp > 0)) return null;
@@ -78,6 +79,9 @@ function parseRunSnapshot(value: unknown): RunSnapshot | null {
   if (mode !== undefined && !(typeof mode === 'string' && RUN_MODES.has(mode))) return null;
   if (startFloor !== undefined && !(isCount(startFloor) && startFloor >= 1)) return null;
   if (embers !== undefined && !isCount(embers)) return null;
+  // Krok Z4: droga przez bramy Zejścia — zła droga albo nagroda nie unieważnia zapisu (droga wraca z seeda).
+  const path = Array.isArray(descentPath) && descentPath.length > 0 && descentPath.every((floor) => isCount(floor) && floor >= 1) ? (descentPath as number[]) : null;
+  const reward = typeof gateReward === 'string' && GATE_REWARDS.has(gateReward) ? (gateReward as GateReward) : null;
   return {
     hero,
     gold,
@@ -88,6 +92,8 @@ function parseRunSnapshot(value: unknown): RunSnapshot | null {
     ...(fromSave ? { fromSave } : {}),
     ...(startFloor !== undefined ? { startFloor } : {}),
     ...(embers !== undefined && embers > 0 ? { embers } : {}),
+    ...(path ? { descentPath: [...path] } : {}),
+    ...(reward ? { gateReward: reward } : {}),
   };
 }
 

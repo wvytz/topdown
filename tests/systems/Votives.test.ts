@@ -7,11 +7,11 @@ import { HeroId } from '@/core/heroTypes';
 import { RunMode } from '@/core/runMode';
 import { EMPTY_META, burnVotive, cycleStartItem, findVotive, knownVotives, parseMetaProfile } from '@/systems/MetaProgress';
 import { newRun } from '@/systems/RunState';
-import { GuideRescue, NO_WARD_EFFECTS, PoisonWard, computeWardEffects, poolWithVotives, votiveToFind, wardedHitDamage, withStartItem } from '@/systems/Votives';
+import { GuideRescue, MirrorWard, NO_WARD_EFFECTS, PoisonWard, computeWardEffects, poolWithVotives, votiveToFind, wardedHitDamage, withStartItem } from '@/systems/Votives';
 
 describe('wota — ochrona (krok Z3)', () => {
-  it('pierwsze cztery wota to przedmioty ochronne poza pulą Aktu I', () => {
-    expect(VOTIVE_ORDER).toHaveLength(4);
+  it('osiem wot (dwie paczki) to przedmioty ochronne poza pulą Aktu I', () => {
+    expect(VOTIVE_ORDER).toHaveLength(8);
     for (const id of VOTIVE_ORDER) expect(ITEM_DEFINITIONS[id].kind).toBe(ItemKind.Votive);
     expect(ITEM_POOL.some((item) => item.kind === ItemKind.Votive)).toBe(false);
   });
@@ -100,5 +100,38 @@ describe('Piec wotów i przedmiot startowy (krok Z3)', () => {
     expect(withStartItem(run, 1, 1, null)).toBe(run);
     expect(withStartItem({ ...run, fromSave: true }, 1, 1, ItemId.Carapace).items).toEqual([]);
     expect(withStartItem(newRun(HeroId.Barbarian), 1, 1, ItemId.Carapace).items).toEqual([]);
+  });
+});
+
+describe('wota — druga paczka (krok Z4)', () => {
+  it('Jadeitowa maska ścina tylko pociski, do sufitu', () => {
+    const one = computeWardEffects([ItemId.JadeMask], VOTIVE_CONFIG);
+    expect(wardedHitDamage(12, undefined, one, true)).toBe(9);
+    expect(wardedHitDamage(12, undefined, one, false)).toBe(12);
+    const many = computeWardEffects(Array(5).fill(ItemId.JadeMask), VOTIVE_CONFIG);
+    expect(many.projectileResist).toBe(VOTIVE_CONFIG.jadeMask.max);
+    expect(wardedHitDamage(12, 'fire', { ...many, fireResist: 0.5 }, true)).toBe(3);
+  });
+
+  it('Obsydianowe zwierciadło odbija raz na odnowienie, a kolejne kopie je skracają', () => {
+    expect(computeWardEffects([], VOTIVE_CONFIG).mirror).toBeNull();
+    const one = computeWardEffects([ItemId.ObsidianMirror], VOTIVE_CONFIG).mirror;
+    const two = computeWardEffects([ItemId.ObsidianMirror, ItemId.ObsidianMirror], VOTIVE_CONFIG).mirror;
+    const many = computeWardEffects(Array(9).fill(ItemId.ObsidianMirror), VOTIVE_CONFIG).mirror;
+    expect(two!.cooldownMs).toBeLessThan(one!.cooldownMs);
+    expect(many!.cooldownMs).toBe(VOTIVE_CONFIG.obsidianMirror.minCooldownMs);
+    const ward = new MirrorWard();
+    expect(ward.tryReflect(0, one)).toBe(true);
+    expect(ward.tryReflect(one!.cooldownMs - 1, one)).toBe(false);
+    expect(ward.tryReflect(one!.cooldownMs, one)).toBe(true);
+    expect(new MirrorWard().tryReflect(0, null)).toBe(false);
+  });
+
+  it('Skóra jaguara i Pióro kecala rosną z kopiami do limitu', () => {
+    const { jaguarHide, quetzalFeather } = VOTIVE_CONFIG;
+    expect(computeWardEffects([ItemId.JaguarHide], VOTIVE_CONFIG).thorns).toBe(jaguarHide.thornsPerCopy);
+    expect(computeWardEffects(Array(9).fill(ItemId.JaguarHide), VOTIVE_CONFIG).thorns).toBe(jaguarHide.thornsPerCopy * jaguarHide.maxCopies);
+    expect(computeWardEffects([ItemId.QuetzalFeather], VOTIVE_CONFIG).dashGraceMs).toBe(quetzalFeather.graceMsPerCopy);
+    expect(computeWardEffects(Array(9).fill(ItemId.QuetzalFeather), VOTIVE_CONFIG).dashGraceMs).toBe(quetzalFeather.graceMsPerCopy * quetzalFeather.maxCopies);
   });
 });

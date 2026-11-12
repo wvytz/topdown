@@ -52,6 +52,11 @@ ITEMS = {
     'shield-core': ('#e0782a', 'votive'),
     'stone-scale': ('#a8a090', 'votive'),
     'guide-bone': ('#e8dcc0', 'votive'),
+    # Krok Z4: druga paczka wot.
+    'jade-mask': ('#3fb08a', 'votive'),
+    'obsidian-mirror': ('#6a5a8a', 'votive'),
+    'jaguar-hide': ('#d8a040', 'votive'),
+    'quetzal-feather': ('#40c070', 'votive'),
 }
 RELIC_RIM = '#c8304a'
 RELIC_SPARK = '#ff8aa0'
@@ -388,6 +393,66 @@ ICONS = {
         '.DD......DD.',
         '............',
         '............',
+    ],
+    # Krok Z4: Jadeitowa maska — twarz z otworami oczu i ust.
+    'jade-mask': [
+        '...LLLLLL...',
+        '..LHHLLHHL..',
+        '.LHBBBBBBHL.',
+        '.LBkkBBkkBL.',
+        '.LBkkBBkkBL.',
+        '.BBBBLLBBBB.',
+        '.BBBBLLBBBD.',
+        '.DBBBBBBBBD.',
+        '..DBkkkkBD..',
+        '..DBBBBBBD..',
+        '...DDBBDD...',
+        '....DDDD....',
+    ],
+    # Obsydianowe zwierciadło — czarna tafla z refleksem w kamiennej oprawie.
+    'obsidian-mirror': [
+        '....LLLL....',
+        '..LLkkkkLL..',
+        '.LkkkHkkkkL.',
+        '.LkkHkkkkkB.',
+        'LkkHkkkkkkkB',
+        'LkkkkkkkkkkB',
+        'LkkkkkkkkkkD',
+        'BkkkkkkkkkkD',
+        '.BkkkkkkkkD.',
+        '.BkkkkkkkkD.',
+        '..BDkkkkDD..',
+        '....DDDD....',
+    ],
+    # Skóra jaguara — płat futra w rozety.
+    'jaguar-hide': [
+        '.L........L.',
+        'LBL......LBD',
+        '.BBLLLLLLBD.',
+        '.BkBBkBBkBD.',
+        '.BBBLBBLBBD.',
+        '.BBkBBkBBBD.',
+        '.BLBBLBkBBD.',
+        '.BkBBkBBBBD.',
+        '.BBBLBBkBBD.',
+        '.DBkBBBBBD..',
+        'DBD.DDDD.DBD',
+        '.D........D.',
+    ],
+    # Pióro kecala — długie zielone pióro z jasną stosiną.
+    'quetzal-feather': [
+        '..........HL',
+        '.........HBB',
+        '........HBBD',
+        '.......HBBD.',
+        '......HBBD..',
+        '.....HBBD...',
+        '....LBBD....',
+        '...LBBD.....',
+        '..LBDD......',
+        '..BD........',
+        '.k..........',
+        'k...........',
     ],
 }
 

@@ -36,6 +36,11 @@ export enum ItemId {
   ShieldCore = 'shield-core',
   StoneScale = 'stone-scale',
   GuideBone = 'guide-bone',
+  // Krok Z4: druga paczka wot.
+  JadeMask = 'jade-mask',
+  ObsidianMirror = 'obsidian-mirror',
+  JaguarHide = 'jaguar-hide',
+  QuetzalFeather = 'quetzal-feather',
 }
 
 export enum ItemKind {
@@ -152,6 +157,22 @@ export interface VotiveConfig {
   readonly stoneScale: { readonly reductionPerCopy: number; readonly max: number };
   /** Kość psa-przewodnika: raz na piętro śmiertelny cios zostawia 1 HP i daje nietykalność; 2. kopia dokłada leczenie. */
   readonly guideBone: { readonly invulnerableMs: number; readonly healPctPerExtraCopy: number; readonly maxCopies: number };
+  /** Krok Z4 — Jadeitowa maska: pociski wrogów ranią mniej (ułamek na kopię, najwyżej `max`). */
+  readonly jadeMask: { readonly resistPerCopy: number; readonly max: number };
+  /** Krok Z4 — Obsydianowe zwierciadło: co `cooldownMs` jeden pocisk wraca do wrogów (`damageMultiplier` jego obrażeń). */
+  readonly obsidianMirror: {
+    readonly cooldownMs: number;
+    readonly cooldownMsPerExtraCopy: number;
+    readonly minCooldownMs: number;
+    readonly damageMultiplier: number;
+    readonly speed: number;
+    readonly lifetimeMs: number;
+    readonly radius: number;
+  };
+  /** Krok Z4 — Skóra jaguara: wróg, który trafi wręcz (cios, szarża, skok), dostaje tyle obrażeń za kopię. */
+  readonly jaguarHide: { readonly thornsPerCopy: number; readonly maxCopies: number };
+  /** Krok Z4 — Pióro kecala: nietykalność trwa tyle ms po dashu za kopię. */
+  readonly quetzalFeather: { readonly graceMsPerCopy: number; readonly maxCopies: number };
 }
 
 /** Krok 170: liczby relikwii bossów (`config/relicConfig.ts`). */
@@ -190,6 +211,20 @@ export interface RunSnapshot {
   readonly startFloor?: number;
   /** Zejście (krok Z1): Żar zabezpieczony na poprzednich piętrach runu. */
   readonly embers?: number;
+  /** Zejście (krok Z4): odbicia przebyte w tym runie, łącznie z bieżącym (wybór bram). */
+  readonly descentPath?: readonly number[];
+  /** Zejście (krok Z4): nagroda bramy, którą bohater wszedł na bieżące odbicie. */
+  readonly gateReward?: GateReward;
+}
+
+/** Krok Z4: nagroda z podpowiedzi na bramie Zejścia. */
+export enum GateReward {
+  /** Więcej Żaru z wrogów i bossa tego odbicia. */
+  Embers = 'embers',
+  /** Kupiec przy wejściu na odbicie. */
+  Merchant = 'merchant',
+  /** Więcej złota z wrogów. */
+  Gold = 'gold',
 }
 
 /** Krok 150: opis przemiany przedmiotu na kartach i w HUD. */

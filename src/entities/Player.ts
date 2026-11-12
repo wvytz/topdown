@@ -35,13 +35,13 @@ import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
 import { JellyGuard } from '@/systems/Relics';
-import { GuideRescue, PoisonWard, wardedHitDamage } from '@/systems/Votives';
+import { GuideRescue, MirrorWard, PoisonWard, wardedHitDamage } from '@/systems/Votives';
 
 /** Krok 170: Korona Szlamu zbiła trafienie — scena pokazuje napis nad bohaterem. */
 export const PLAYER_JELLY_EVENT = 'player-jelly';
 /** Krok Z3: zadziałało wotum (odporność albo ratunek) — scena pokazuje błysk i napis. */
 export const PLAYER_WARD_EVENT = 'player-ward';
-export type WardSignal = 'poison' | 'fire' | 'rescue';
+export type WardSignal = 'poison' | 'fire' | 'rescue' | 'projectile' | 'mirror';
 
 /** Abstrakcyjne akcje gracza w danej klatce — produkuje je InputController. */
 export interface PlayerActions {
@@ -155,6 +155,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Krok Z3: Pancerz z odwłoka (ułamki tyknięć) i Kość psa-przewodnika (ratunek raz na piętro — bohater żyje z piętrem). */
   private readonly poisonWard = new PoisonWard();
   private readonly guideRescue = new GuideRescue();
+  /** Krok Z4: Obsydianowe zwierciadło (odnowienie odbicia) i Pióro kecala (nietykalność chwilę po dashu). */
+  private readonly mirrorWard = new MirrorWard();
+  private readonly dashGrace = new Timer();
   private readonly wardFlash = new Timer();
   private wardFlashColor = 0;
   private readonly ultimateGuard = new Timer();
@@ -385,7 +388,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   isInvulnerable(now: number): boolean {
-    return this.invulnerability.isActive(now) || this.dash.isDashing(now) || this.ultimateGuard.isActive(now);
+    return this.invulnerability.isActive(now) || this.dash.isDashing(now) || this.dashGrace.isActive(now) || this.ultimateGuard.isActive(now);
   }
 
   /** Pasek mocy do HUD: 0..1 (1 = R gotowe) i czy ultimate właśnie działa. */
@@ -462,6 +465,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const direction = moving ? actions.move : { x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) };
       if (this.dash.tryStart(now, direction)) {
         this.dashCount++;
+        // Pióro kecala (krok Z4): nietykalność trwa jeszcze chwilę po końcu dasha.
+        const grace = this.weaponEffects.wards.dashGraceMs;
+        if (grace > 0) this.dashGrace.start(now, this.combat.dash.durationMs + grace);
         // Dash przerywa promień — jak puszczenie przycisku — i zaczyna serię strzał od nowa.
         this.beam?.interrupt(now);
         this.bow?.interrupt();
@@ -597,8 +603,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Wota (krok Z3): odporność na ogień i Kamienna łuska. Pełna odporność — trafienie nie przechodzi wcale.
     const wards = this.weaponEffects.wards;
-    const warded = wardedHitDamage(hit.damage, hit.element, wards);
+    const warded = wardedHitDamage(hit.damage, hit.element, wards, hit.projectile === true);
     if (hit.element === 'fire' && wards.fireResist > 0) this.scene.events.emit(PLAYER_WARD_EVENT, this, 'fire' satisfies WardSignal);
+    else if (hit.projectile && wards.projectileResist > 0) this.scene.events.emit(PLAYER_WARD_EVENT, this, 'projectile' satisfies WardSignal);
     if (warded <= 0 && hit.damage > 0) return false;
     // Korona Szlamu (krok 170): co kilka sekund jedno trafienie o połowę słabsze.
     const jelly = this.jellyGuard.absorb(warded, now, this.weaponEffects.relics.jelly);
@@ -635,6 +642,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.status.cleanseDamageOverTime();
     this.invulnerability.start(now, rescue.invulnerableMs);
     this.scene.events.emit(PLAYER_WARD_EVENT, this, 'rescue' satisfies WardSignal);
+  }
+
+  /**
+   * Obsydianowe zwierciadło (krok Z4): czy ten pocisk wraca do wrogów zamiast trafić. Tylko gdy trafienie by
+   * przeszło (nietykalny bohater i tak go nie poczuje — odbicie nie przepada).
+   */
+  tryMirror(now: number): { readonly damageMultiplier: number } | null {
+    const mirror = this.weaponEffects.wards.mirror;
+    if (this.isDead || this.isInvulnerable(now) || !this.mirrorWard.tryReflect(now, mirror) || !mirror) return null;
+    this.scene.events.emit(PLAYER_WARD_EVENT, this, 'mirror' satisfies WardSignal);
+    return mirror;
+  }
+
+  /** Skóra jaguara (krok Z4): obrażenia oddane wrogowi, który trafił wręcz (0 — brak skóry). */
+  get thorns(): number {
+    return this.weaponEffects.wards.thorns;
   }
 
   /** Krok Z3: krótki błysk barwy wotum, które właśnie zadziałało. */

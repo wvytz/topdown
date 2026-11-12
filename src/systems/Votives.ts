@@ -8,7 +8,16 @@ import { ItemId, ItemKind } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 import { RunMode } from '@/core/runMode';
 
-export const NO_WARD_EFFECTS: WardEffects = { poisonResist: 0, fireResist: 0, damageReduction: 0, rescue: null };
+export const NO_WARD_EFFECTS: WardEffects = {
+  poisonResist: 0,
+  fireResist: 0,
+  damageReduction: 0,
+  rescue: null,
+  projectileResist: 0,
+  mirror: null,
+  thorns: 0,
+  dashGraceMs: 0,
+};
 
 /** Ochrona z wot w ekwipunku bohatera. */
 export function computeWardEffects(items: readonly ItemId[], config: VotiveConfig): WardEffects {
@@ -21,15 +30,50 @@ export function computeWardEffects(items: readonly ItemId[], config: VotiveConfi
     fireResist: resist(count(ItemId.ShieldCore), config.shieldCore.resistPerCopy),
     damageReduction: Math.min(config.stoneScale.max, 1 - (1 - config.stoneScale.reductionPerCopy) ** scales),
     rescue: bones > 0 ? { invulnerableMs: config.guideBone.invulnerableMs, healPct: (bones - 1) * config.guideBone.healPctPerExtraCopy } : null,
+    ...secondPackWards(count, config),
   };
 }
 
+/** Krok Z4: druga paczka wot — maska, zwierciadło, skóra jaguara, pióro kecala. */
+function secondPackWards(count: (id: ItemId) => number, config: VotiveConfig): Pick<WardEffects, 'projectileResist' | 'mirror' | 'thorns' | 'dashGraceMs'> {
+  const { jadeMask, obsidianMirror, jaguarHide, quetzalFeather } = config;
+  const mirrors = count(ItemId.ObsidianMirror);
+  return {
+    projectileResist: Math.min(jadeMask.max, count(ItemId.JadeMask) * jadeMask.resistPerCopy),
+    mirror:
+      mirrors > 0
+        ? {
+            cooldownMs: Math.max(obsidianMirror.minCooldownMs, obsidianMirror.cooldownMs - (mirrors - 1) * obsidianMirror.cooldownMsPerExtraCopy),
+            damageMultiplier: obsidianMirror.damageMultiplier,
+          }
+        : null,
+    thorns: Math.min(count(ItemId.JaguarHide), jaguarHide.maxCopies) * jaguarHide.thornsPerCopy,
+    dashGraceMs: Math.min(count(ItemId.QuetzalFeather), quetzalFeather.maxCopies) * quetzalFeather.graceMsPerCopy,
+  };
+}
+
+/**
+ * Obsydianowe zwierciadło (krok Z4): pierwszy pocisk, który trafiłby bohatera, wraca do wrogów; potem zwierciadło
+ * „stygnie” przez `cooldownMs`. Gotowe od początku piętra (obiekt żyje z bohaterem piętra).
+ */
+export class MirrorWard {
+  private readyAt = -Infinity;
+
+  tryReflect(now: number, mirror: WardEffects['mirror']): boolean {
+    if (!mirror || now < this.readyAt) return false;
+    this.readyAt = now + mirror.cooldownMs;
+    return true;
+  }
+}
+
 /** Obrażenia trafienia po ochronie: żywioł (odporność), potem łuska. Pełna odporność daje 0; inaczej najmniej 1. */
-export function wardedHitDamage(damage: number, element: DamageElement | undefined, wards: WardEffects): number {
+export function wardedHitDamage(damage: number, element: DamageElement | undefined, wards: WardEffects, projectile = false): number {
   if (damage <= 0) return damage;
   const resist = element === 'fire' ? wards.fireResist : 0;
   if (resist >= 1) return 0;
-  const after = damage * (1 - resist) * (1 - wards.damageReduction);
+  // Krok Z4: Jadeitowa maska ścina pociski (osobno od żywiołu — ognisty pocisk ścinają obie).
+  const mask = projectile ? wards.projectileResist : 0;
+  const after = damage * (1 - resist) * (1 - mask) * (1 - wards.damageReduction);
   return Math.max(1, Math.round(after));
 }
 

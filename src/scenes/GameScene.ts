@@ -33,7 +33,8 @@ import { TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { ItemDefinition, ItemId, LootDrop, LootTable } from '@/core/lootTypes';
 import { ItemKind, PickupKind } from '@/core/lootTypes';
-import { itemFrames } from '@/config/spriteConfig';
+import { LOOT_ATLAS, itemFrames } from '@/config/spriteConfig';
+import { itemIconFrame } from '@/entities/Pickup';
 import { EnemyType } from '@/core/combatTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
@@ -151,14 +152,20 @@ import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { createBoardHighscores } from '@/persistence/highscoreBoards';
-import { DESCENT_CONFIG, DESCENT_ROUTE_SALT, DESCENT_TEXT } from '@/config/descentConfig';
+import { DESCENT_CONFIG, DESCENT_GATES, DESCENT_ROUTE_SALT, DESCENT_TEXT, GATE_TEXT, MERCHANT_CONFIG, MERCHANT_TEXT } from '@/config/descentConfig';
+import { EmberTally, descentPathFor, descentStep, gateEmbersMultiplier, gateGoldMultiplier, merchantHere, merchantRng, planMerchantTile, rollMerchantStock } from '@/systems/DescentGates';
+import type { DescentStep, GateOption, MerchantOffer } from '@/systems/DescentGates';
+import { MerchantSite } from '@/world/MerchantSite';
+import type { ChoiceCard, ChoiceSceneData } from '@/scenes/ChoiceScene';
+import type { GateReward } from '@/core/lootTypes';
 import { META_CONFIG } from '@/config/metaConfig';
 import { MetaStorage } from '@/persistence/MetaStorage';
-import { EmberPurse, descentDepth, descentRoute, nextDescentFloor, withUnderworldRule } from '@/systems/Descent';
+import { EmberPurse, withUnderworldRule } from '@/systems/Descent';
 import type { MetaProfile } from '@/systems/MetaProgress';
 import { addTrophy, bankDescent, findVotive, knownVotives, unlockHideout } from '@/systems/MetaProgress';
 import { poolWithVotives, votiveToFind, withStartItem } from '@/systems/Votives';
-import { KILN_CONFIG, VOTIVE_ORDER, WARD_VISUAL } from '@/config/votiveConfig';
+import { KILN_CONFIG, VOTIVE_CONFIG, VOTIVE_ORDER, WARD_VISUAL } from '@/config/votiveConfig';
+import { NO_WEAPON_EFFECTS } from '@/systems/WeaponEffects';
 import type { HideoutSceneData } from '@/core/types';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
@@ -395,8 +402,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private readonly descentHighscores = createBoardHighscores('descent');
   /** Trwały profil (krok Z1): Żar, odblokowanie Popielnika, trofea. */
   private readonly meta = MetaStorage.browser();
-  /** Zejście: trasa odbić z seeda runu; null w innych trybach. */
+  /** Zejście: przebyte odbicia łącznie z bieżącym (krok Z4: droga przez bramy); null w innych trybach. */
   private route: readonly number[] | null = null;
+  /** Zejście (krok Z4): nagroda bramy bieżącego odbicia, Żar z jej mnożnikiem i kupiec. */
+  private gateReward: GateReward | undefined = undefined;
+  private emberTally: EmberTally | null = null;
+  private merchant: MerchantSite | null = null;
+  private merchantStock: { readonly offer: MerchantOffer; sold: boolean }[] = [];
   /** Zejście: sakiewka Żaru (bezpieczny z poprzednich pięter + zebrany na tym). */
   private embers: EmberPurse | null = null;
   /** Krok Z3: pula łupów z Wotami wypalonymi w Popielniku (bez nich — pula Aktu I). */
@@ -464,7 +476,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
     const descent = this.run.mode === RunMode.Descent;
-    this.route = descent ? descentRoute(data.runSeed, DESCENT_CONFIG, DESCENT_ROUTE_SALT) : null;
+    this.route = descent ? descentPathFor(data.run.descentPath, data.floor, data.runSeed, DESCENT_CONFIG, DESCENT_ROUTE_SALT) : null;
+    this.gateReward = descent ? data.run.gateReward : undefined;
+    this.emberTally = descent ? new EmberTally(gateEmbersMultiplier(this.gateReward, DESCENT_GATES)) : null;
+    this.merchant = null;
+    this.merchantStock = [];
     this.embers = descent ? new EmberPurse(data.run.embers ?? 0) : null;
     // Krok Z3: wypalone Wota wypadają we wspinaczce i w Zejściu (nie w nagraniu — ono ma pulę z chwili zapisu).
     const profile = this.meta.load();
@@ -569,7 +585,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
           (floor, modifier) => biomeForFloor(floor).fog === null || !limitsVision(modifier),
         );
     // Zejście (krok Z1): reguła zaświatów na każdym piętrze, razem z modyfikatorem piętra.
-    this.floorEffects = this.route ? withUnderworldRule(floorEffectsOf(this.floorModifier), DESCENT_CONFIG.rule) : floorEffectsOf(this.floorModifier);
+    // Krok Z4: brama „więcej złota” dokłada mnożnik złota z wrogów.
+    const underworld = { ...DESCENT_CONFIG.rule, enemyGoldMultiplier: (DESCENT_CONFIG.rule.enemyGoldMultiplier ?? 1) * gateGoldMultiplier(this.gateReward, DESCENT_GATES) };
+    this.floorEffects = this.route ? withUnderworldRule(floorEffectsOf(this.floorModifier), underworld) : floorEffectsOf(this.floorModifier);
 
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
     // Krok 114: fizyka krokiem klatki obrazu — bez szarpania na monitorach 120/144 Hz.
@@ -586,6 +604,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (!this.bossRush) {
       this.setupShrine();
       this.setupRuinsProps();
+      this.setupMerchant();
     }
     this.setupSecretRoom();
     this.setupAmbush();
@@ -619,8 +638,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (this.bossRush) {
       this.showToast(BOSS_RUSH_TEXT.startToast);
     } else if (this.route) {
-      const modifier = this.floorModifier ? ` · ${this.floorModifier.name}: ${this.floorModifier.description}` : '';
-      this.showToast(this.depth === 1 ? DESCENT_TEXT.startToast : `${DESCENT_TEXT.rule}${modifier}`, FLOOR_MODIFIER_TOAST_MS);
+      // Krok Z4: osobne linie — nagroda bramy, reguła zaświatów, modyfikator piętra, kupiec.
+      const lines = [
+        this.gateReward ? GATE_TEXT.toast(GATE_TEXT.rewards[this.gateReward].title) : null,
+        this.depth === 1 ? DESCENT_TEXT.startToast : DESCENT_TEXT.rule,
+        this.floorModifier && this.depth > 1 ? `${this.floorModifier.name}: ${this.floorModifier.description}` : null,
+        this.merchant ? MERCHANT_TEXT.arrivedToast : null,
+      ];
+      this.showToast(lines.filter((line) => line !== null).join('\n'), FLOOR_MODIFIER_TOAST_MS);
     } else if (this.floorModifier) {
       this.showToast(`${this.floorModifier.name}: ${this.floorModifier.description}`, FLOOR_MODIFIER_TOAST_MS);
     } else if (this.run.practice) {
@@ -805,6 +830,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     );
     this.loot.update(time);
     this.shrine?.update(interactOf);
+    this.merchant?.update(interactOf);
     this.updateRevives(time);
 
     // Co-op: run trwa, dopóki stoi choć jeden bohater (powalonego wskrzesza partner).
@@ -821,7 +847,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       arenaLabel: this.bossRush
         ? arenaLabel(this.floorNumber, this.bossFight.name, TOWER_CONFIG)
         : this.route
-          ? DESCENT_TEXT.hudLabel(this.depth, this.route.length, this.biome?.name ?? '')
+          ? DESCENT_TEXT.hudLabel(this.depth, DESCENT_CONFIG.floors, this.biome?.name ?? '')
           : null,
       floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
@@ -835,7 +861,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
-      canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false)),
+      canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false) || (this.merchant?.canInteract ?? false)),
       isPlayerDead: ready && this.party.isDown,
       minimap: ready ? this.minimapData() : null,
       boss: ready ? this.bossFight.getStatus() : null,
@@ -997,7 +1023,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   /** Głębia bieżącego piętra na trasie Zejścia (1..n); 0 poza Zejściem. */
   private get depth(): number {
-    return this.route ? descentDepth(this.route, this.floorNumber) : 0;
+    return this.route ? this.route.length : 0;
   }
 
   /**
@@ -1021,7 +1047,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       if (found) this.showToast(found);
       return;
     }
-    this.embers.add(DESCENT_CONFIG.embers.boss);
+    this.addEmbers(DESCENT_CONFIG.embers.boss);
     const secured = this.embers.secure();
     diag.note('embers-secured', { floor: this.floorNumber, depth: this.depth, secured });
     this.showToast(found ? `${DESCENT_TEXT.embersSecured(secured)}\n${found}` : DESCENT_TEXT.embersSecured(secured));
@@ -1116,6 +1142,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     this.projectiles = new ProjectileManager(this, this.dungeonView.collisionLayer, this.party, onPlayerHit, this.combatDecals);
     this.playerShots = new PlayerShotManager(this, this.dungeonView.collisionLayer);
+    // Obsydianowe zwierciadło (krok Z4): odbity pocisk leci z powrotem jako pocisk bohatera, bez efektów przedmiotów.
+    const mirror = VOTIVE_CONFIG.obsidianMirror;
+    this.projectiles.setMirror((at, direction, damage) => {
+      const shot = { damage: Math.round(damage), knockback: 0, projectileSpeed: mirror.speed, projectileLifetimeMs: mirror.lifetimeMs, projectileRadius: mirror.radius };
+      this.playerShots.fire(at, direction, shot, NO_WEAPON_EFFECTS);
+      this.effects.impact(at.x, at.y, 10);
+    });
     this.gateWait = new GateWait<Enemy>(GATE_WAIT_CONFIG, this.dungeon, TILE_SIZE);
     this.enemies = new EnemyManager({
       scene: this,
@@ -1136,7 +1169,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Upiory zasadzki rozwiewają się bez łupu — nagrodą jest przynęta.
         this.player.addUltimateKill(this.time.now);
         if (this.ambushGhosts.has(enemy)) return;
-        this.embers?.add(isElite(enemy.definition) ? DESCENT_CONFIG.embers.elite : DESCENT_CONFIG.embers.enemy);
+        this.addEmbers(isElite(enemy.definition) ? DESCENT_CONFIG.embers.elite : DESCENT_CONFIG.embers.enemy);
         this.devourerHeal();
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
@@ -2025,7 +2058,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Krok Z1: dopiski ekranu końca runu — podsumowanie Zejścia i wyjście do Popielnika. */
   private descentFlag(): Pick<DeathSummary, 'descent' | 'toHideout'> {
     return {
-      ...(this.route && { descent: { depth: this.depth, floors: this.route.length, embers: this.embersBanked } }),
+      ...(this.route && { descent: { depth: this.depth, floors: DESCENT_CONFIG.floors, embers: this.embersBanked } }),
       ...(this.hideoutExit && { toHideout: true }),
     };
   }
@@ -2174,12 +2207,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const climber = this.party.living.find((hero) => isStairsTile(this.dungeon, DungeonView.worldToTile(hero.x, hero.y)));
     this.onStairs = this.stairsUnlocked && climber !== undefined;
     const waiting = this.party.members.some((hero) => hero.isDead);
-    const last = this.route ? nextDescentFloor(this.route, this.floorNumber) === null : runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG);
-    const prompt = this.route ? (last ? DESCENT_TEXT.stairsPromptFinal : DESCENT_TEXT.stairsPrompt) : last ? STAIRS_PROMPT_FINAL : STAIRS_PROMPT;
+    const step = this.descentNext();
+    const last = step ? step.kind === 'end' : runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG);
+    const descentPrompt = step?.kind === 'gates' ? GATE_TEXT.stairsPrompt : last ? DESCENT_TEXT.stairsPromptFinal : DESCENT_TEXT.stairsPrompt;
+    const prompt = step ? descentPrompt : last ? STAIRS_PROMPT_FINAL : STAIRS_PROMPT;
     this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : prompt).setVisible(this.onStairs);
     if (this.onStairs && climber && !waiting && interactPressed(climber)) {
       this.stairsPrompt?.setVisible(false);
-      this.goToNextFloor();
+      // Krok Z4: w Zejściu schody to dwie bramy — wybiera ten, kto pierwszy na nich stanął.
+      if (step?.kind === 'gates') this.openGates(step.options, climber);
+      else this.goToNextFloor();
     }
   }
 
@@ -2200,10 +2237,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
       .setVisible(false);
   }
 
-  private goToNextFloor(): void {
+  /** Zejście (krok Z4): co czeka za schodami — Dno, ostatnie zejście albo dwie bramy; null poza Zejściem. */
+  private descentNext(): DescentStep | null {
+    return this.route ? descentStep(this.runSeed, this.route, DESCENT_CONFIG, DESCENT_GATES) : null;
+  }
+
+  private goToNextFloor(gate?: GateOption): void {
     // Krok 169: po bossie ostatniego piętra kręgu schody kończą run zwycięstwem.
-    // Zejście (krok Z1): następne odbicie z trasy; po ostatnim — Dno zdobyte.
-    const nextFloor = this.route ? nextDescentFloor(this.route, this.floorNumber) : this.floorNumber + 1;
+    // Zejście (krok Z1): następne odbicie; krok Z4 — to za wybraną bramą; po ostatnim — Dno zdobyte.
+    const step = this.descentNext();
+    const nextFloor = !step ? this.floorNumber + 1 : step.kind === 'end' ? null : (gate?.floor ?? (step.kind === 'final' ? step.floor : step.options[0].floor));
     if (nextFloor === null || (!this.route && runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG))) {
       this.finishRunVictory();
       return;
@@ -2217,11 +2260,118 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const next: FloorSceneData = {
         runSeed: this.runSeed,
         floor: nextFloor,
-        run: { ...this.run.snapshot(this.player.health.value), ...(this.embers && this.embers.secured > 0 && { embers: this.embers.secured }) },
+        run: {
+          ...this.run.snapshot(this.player.health.value),
+          ...(this.embers && this.embers.secured > 0 && { embers: this.embers.secured }),
+          ...(this.route && { descentPath: [...this.route, nextFloor] }),
+          ...(gate && { gateReward: gate.reward }),
+        },
         ...this.coopForNextFloor(),
       };
       this.scene.restart(next);
     });
+  }
+
+  /** Żar z mnożnikiem bramy (krok Z4) do sakiewki Zejścia. */
+  private addEmbers(amount: number): void {
+    if (this.embers && this.emberTally) this.embers.add(this.emberTally.award(amount));
+  }
+
+  /** Dwie bramy Zejścia (krok Z4): karta = głębia, odbicie i podpowiedź nagrody. */
+  private openGates(options: readonly GateOption[], hero: Player): void {
+    const cards: ChoiceCard[] = options.map((option) => {
+      const reward = GATE_TEXT.rewards[option.reward];
+      return {
+        title: GATE_TEXT.card(this.depth + 1),
+        subtitle: reward.title,
+        body: `${GATE_TEXT.reflection(biomeForFloor(option.floor).name)}\n\n${reward.body}`,
+        accent: reward.color,
+      };
+    });
+    const tag = this.playerTag(hero);
+    const data: ChoiceSceneData = {
+      headline: GATE_TEXT.headline,
+      hint: GATE_TEXT.hint,
+      cards,
+      ...(tag && { picker: GATE_TEXT.picker(tag) }),
+      onPick: (index) => {
+        this.scene.resume(SceneKey.Game);
+        const gate = options[index];
+        if (!gate) return;
+        diag.note('descent-gate', { from: this.floorNumber, to: gate.floor, reward: gate.reward });
+        this.goToNextFloor(gate);
+      },
+      onCancel: () => this.scene.resume(SceneKey.Game),
+    };
+    this.scene.pause();
+    this.scene.launch(SceneKey.Choice, data);
+  }
+
+  /** Kupiec Zejścia (krok Z4): na stałych głębiach i za bramą „kupiec”, w pokoju startowym. */
+  private setupMerchant(): void {
+    if (!this.route || !merchantHere(this.depth, this.gateReward, DESCENT_GATES)) return;
+    const tile = planMerchantTile(this.dungeon);
+    if (!tile) return;
+    const offers = rollMerchantStock(this.usefulPoolFor(this.player), this.depth, merchantRng(this.dungeon.seed, MERCHANT_CONFIG), MERCHANT_CONFIG);
+    this.merchantStock = offers.map((offer) => ({ offer, sold: false }));
+    this.merchant = new MerchantSite({ scene: this, tile, party: this.party, onOpen: (hero) => this.openMerchant(hero) });
+  }
+
+  /** Lada kupca: towar za złoto (= wynik), ostatnia karta — odejdź. */
+  private openMerchant(hero: Player): void {
+    const cards: ChoiceCard[] = this.merchantStock.map(({ offer, sold }) => {
+      const full = offer.kind === 'heal' && hero.health.isFull;
+      const poor = this.run.gold < offer.price;
+      const footer = sold ? MERCHANT_TEXT.sold : full ? 'pełne HP' : poor ? `${MERCHANT_TEXT.price(offer.price)} · ${MERCHANT_TEXT.tooPoor}` : MERCHANT_TEXT.price(offer.price);
+      if (offer.kind === 'heal') {
+        return { title: MERCHANT_TEXT.heal(offer.pct), body: `+${Math.round(hero.health.max * offer.pct)} HP`, footer, accent: 0xff6b8a, disabled: sold || full || poor };
+      }
+      const item = ITEM_DEFINITIONS[offer.item];
+      return {
+        title: item.name,
+        icon: { atlas: LOOT_ATLAS.key, frame: itemIconFrame(offer.item) },
+        body: item.effect,
+        footer,
+        accent: item.color,
+        disabled: sold || poor,
+      };
+    });
+    cards.push({ title: MERCHANT_TEXT.leave, body: `masz ${this.run.gold} złota`, accent: 0x8080a0 });
+    const tag = this.playerTag(hero);
+    const resume = (): void => {
+      this.scene.resume(SceneKey.Game);
+    };
+    const data: ChoiceSceneData = {
+      headline: MERCHANT_TEXT.headline,
+      hint: MERCHANT_TEXT.hint,
+      cards,
+      ...(tag && { picker: `${tag} kupuje` }),
+      onPick: (index) => {
+        resume();
+        const entry = this.merchantStock[index];
+        if (entry) this.buy(entry, hero);
+      },
+      onCancel: resume,
+    };
+    this.scene.pause();
+    this.scene.launch(SceneKey.Choice, data);
+  }
+
+  private buy(entry: { readonly offer: MerchantOffer; sold: boolean }, hero: Player): void {
+    const { offer } = entry;
+    if (entry.sold || !this.run.spendGold(offer.price)) return;
+    entry.sold = true;
+    this.effects.floatingText(hero.x, hero.y, `-${offer.price}`, '#f5c542');
+    sound.play(SoundCue.Coin, hero);
+    diag.note('merchant-buy', { floor: this.floorNumber, depth: this.depth, offer: offer.kind === 'item' ? offer.item : 'heal', price: offer.price });
+    if (offer.kind === 'item') {
+      this.grantItem(offer.item, hero);
+      return;
+    }
+    const amount = Math.round(hero.health.max * offer.pct);
+    hero.heal(amount);
+    this.effects.floatingText(hero.x, hero.y - 12, `+${amount} HP`, '#ff6b8a');
+    sound.play(SoundCue.Heal, hero);
   }
 
   /** Co-op na kolejne piętro: partner z obecnym HP (powalony wstaje z minimum — zasady wskrzeszania w etapie C4). */
