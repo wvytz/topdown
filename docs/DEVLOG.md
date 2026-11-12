@@ -6232,6 +6232,20 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Weryfikacja:** `npm run build` (2973 testy), pozy w przeglądarce (bezruch, trafienie, pad), `npm run smoke -- --floors 2`. Arkusz: `/mnt/project-files/screens/krokU5a-barbarzynca/arkusz.png`. **Czeka na ocenę właściciela** — po akceptacji ta sama metoda dla Czarodziejki i łucznika, potem Totem i co-op.
 
+## Krok U5b — Postacie 2.0: Czarodziejka, łucznik, Totem i znaczniki co-opu `#upgrade` `#postacie` `#decyzja`
+
+**Decyzja właściciela (12.11.2026, wieczór)** `#decyzja`: „wdrażać, co nie wymaga mojej konsultacji, i zobaczymy jutro rano”. Pilot barbarzyńcy (U5a) scalony bez osobnej oceny; reszta U5 wg rekomendacji.
+
+**Co powstało**
+- **Czarodziejka i łucznik 2.0** (`tools/hero_v2_sprites.py`, arkusze `sorceress_v2.png`, `archer_v2.png`): kolumny 0–7 skopiowane bez zmian ze starych arkuszy, nowe stany w tym samym układzie co u barbarzyńcy — bezruch (Czarodziejka: włosy falują, kryształ ładuje się i rozjaśnia; łucznik: peleryna faluje, łuk opada), trafienie, dash (u Czarodziejki w arkuszu, ale niewidoczny — jej dash to teleport) i śmierć z leżącym ciałem (suknia i rozsypane włosy z kosturem obok; łucznik z łukiem i wysypanym kołczanem). Barwa klasy jest już na sylwetce (suknia z kroku 181, zielona peleryna), więc bez nowych akcentów.
+- **Totem łucznika** (`tools/totem_sprites.py`, `totem.png`): rzeźbiony słup z głową jastrzębia, skrzydłami z desek, zieloną wstęgą i wbitymi strzałami; wyrasta z ziemi (3 klatki), potem oczy pulsują złotem wabika. Pierścień wabika, cień i pasek czasu zostają z figur. Strzały lecą z oczu (`ULTIMATE_VISUAL.totem.height` 25).
+- **Rozróżnianie bohaterów w co-opie:** nad każdym żywym bohaterem trójkąt w barwie gracza z HUD — P1 zielony, P2 (i bot) niebieski (`COOP_CONFIG.seatMarker`). Co-op wymaga różnych klas, więc „ten sam bohater w innym akcencie” nie występuje.
+- Wyłącznik `HERO_SPRITES_V2` obejmuje wszystkich trzech bohaterów i totem.
+
+**Testy:** `tests/config/heroSpritesV2.test.ts` dla trzech par arkuszy (ta sama komórka, dotychczasowe animacje w tych samych kolumnach, nowe stany istnieją).
+
+**Weryfikacja:** `npm run build` (3049 testów); `npm run smoke` solo, `--coop` i `--bot`; w przeglądarce łucznik z botem-Czarodziejką: totem, znaczniki P1/P2, leżąca Czarodziejka. Zrzuty: `/mnt/project-files/screens/krokU5b-postacie/`. **Czeka na ocenę właściciela.**
+
 ## Krok U6 — Bossowie: karta wejścia, widoczne fazy, śmierć Pożeracza i Palacza, smagnięcie Matki Pająków, rekwizyty aren 6–7 `#upgrade` `#bossowie` `#pozeracz` `#palacz` `#matka-pajakow` `#areny-zmienne`
 
 **Decyzja właściciela (12.11.2026)** `#decyzja`: „podoba mi się, scalaj i lecimy dalej U5 i U6” (U5 równolegle w osobnym wątku).
@@ -6381,7 +6395,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c, smagnięcie Matki Pająków — w U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
 - **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata i Ogród. Krew usunięta całkowicie (krok U4e, decyzja właściciela). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138).
-- **U5 postacie — pilot barbarzyńcy (krok U5a) czeka na ocenę:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
+- **U5 postacie — zrobione (kroki U5a–U5b, czeka na ocenę):** bezruch, trafienie, dash i śmierć wszystkich trzech bohaterów, akcent barwy barbarzyńcy, Totem z generatora, znaczniki P1/P2 w co-opie. Do oceny: czy ciała po śmierci i oddech w bezruchu „siedzą”.
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.

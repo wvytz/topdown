@@ -1510,6 +1510,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const gfx = (this.reviveGfx ??= this.add.graphics().setDepth(RENDER_DEPTH.worldText));
     gfx.clear();
     if (this.party.isDown) return;
+    this.drawSeatMarkers(gfx, now);
     const config = COOP_CONFIG.revive;
     const helpers = this.party.living;
     for (const hero of this.party.members) {
@@ -1539,6 +1540,19 @@ export class GameScene extends Phaser.Scene implements HudSource {
         gfx.fillStyle(0x8affa0, 1).fillRect(hero.x - w / 2, hero.y - 20, w * progress.progress, 3);
       }
     }
+  }
+
+  /** Krok U5d: trójkąt w barwie gracza nad każdym żywym bohaterem co-opu (P1, P2 / bot), jak kolory w HUD. */
+  private drawSeatMarkers(gfx: Phaser.GameObjects.Graphics, now: number): void {
+    const m = COOP_CONFIG.seatMarker;
+    const bob = Math.floor(now / m.bobMs) % 2;
+    [this.player, this.partner].forEach((hero, seat) => {
+      if (!hero || hero.isDead) return;
+      const x = Math.round(hero.x);
+      const y = Math.round(hero.y) - m.offsetY - bob;
+      gfx.fillStyle(m.outline, 1).fillTriangle(x - m.halfWidth - 1, y - 1, x + m.halfWidth + 1, y - 1, x, y + m.height + 1);
+      gfx.fillStyle(m.colors[seat] ?? m.colors[0], 1).fillTriangle(x - m.halfWidth, y, x + m.halfWidth, y, x, y + m.height);
+    });
   }
 
   /** Nagroda za bossa: gra staje, gracz wybiera 1 z kart. Po wyborze gra rusza dalej. */

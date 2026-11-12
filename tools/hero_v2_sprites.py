@@ -203,28 +203,186 @@ def build():
     return sheet, columns, frames
 
 
+# ---------------- Czarodziejka i łucznik (krok U5b) ----------------
+# Kolumny 0–7 kopiujemy z dotychczasowych arkuszy bez zmian (chód, rzut / łuk), a nowe stany dopisujemy
+# w tym samym układzie co u barbarzyńcy: 8–10 bezruch, 11–12 trafienie, 13–14 dash, 15–20 śmierć.
+# Barwa klasy jest już na sylwetce (fioletowa suknia z kroku 181, zielona peleryna łucznika) — bez nowych akcentów.
+import sorceress_sprites as ss  # noqa: E402
+import archer_sprites as ar  # noqa: E402
+
+
+def shift(img, dx, dy):
+    return move(img, lambda x, y, c: True, dx, dy)
+
+
+def colored(colors):
+    colors = set(colors)
+    return lambda x, y, c: c in colors
+
+
+def sorc(staff=0, hem=0, hair=(0, 0, 0), crystal='rest'):
+    return ss.body_frame({'staff': staff, 'hem': hem, 'hair': hair, 'crystal': crystal})
+
+
+SORC_HEAD = colored([*ss.HAIR, *ss.SKIN])
+
+
+def sorceress_prone(spread, staff_off):
+    """Czarodziejka leży twarzą w dół (głowa na N): suknia rozłożona, włosy rozsypane, kostur obok, kryształ zgasł."""
+    img = Img(CELL, CELL)
+    # suknia — wydłużona plama od talii w tył
+    ellipse(img, 24, 27, 8.5, 9.5, lambda x, y, dx, dy: ss.DRESS[1] if dy > .55 or dx > .6 else
+            ss.DRESS[3] if dx < -.55 and dy < 0 else ss.DRESS[2])
+    for k in (-1, 1):  # fałdy
+        limb(img, (24 + 2 * k, 24), (24 + 5 * k, 34), .45, lambda t, s: ss.DRESS[0])
+    ellipse(img, 24, 19.5, 6, 3.4, lambda x, y, dx, dy: ss.DRESS[3] if dx < .3 else ss.DRESS[2])
+    # ramiona w rękawach wyciągnięte w przód
+    hands = ((18 - 3 * spread, 12 - 2 * spread), (30 + 3 * spread, 13 - spread))
+    for sx, (hx_, hy_) in zip((19.5, 28.5), hands):
+        limb(img, (sx, 19), (hx_, hy_), 1.1, lambda t, s: ss.DRESS[3] if s < 0 else ss.DRESS[2])
+        ellipse(img, hx_, hy_, 1.3, 1.3, lambda x, y, dx, dy: ss.SKIN[1] if dx + dy < 0 else ss.SKIN[0])
+    # włosy rozsypane wokół głowy
+    ellipse(img, 24, 14.5, 5.2 + spread, 5.2,
+            lambda x, y, dx, dy: ss.HAIR[2] if dx + dy < -.6 else ss.HAIR[0] if dx + dy > .8 else ss.HAIR[1])
+    for k in (-1, 1):
+        limb(img, (24 + 3 * k, 13), (24 + (6 + 2 * spread) * k, 9 + spread), .9, lambda t, s: ss.HAIR[1])
+    # kostur upuszczony z prawej, kryształ przygasły
+    ox, oy = staff_off
+    limb(img, (ox, oy), (ox - 3, oy + 13), .8, lambda t, s: ss.WOOD[2] if s < 0 else ss.WOOD[1])
+    ellipse(img, ox + .6, oy - 1.6, 1.6, 2.1, lambda x, y, dx, dy: ss.CRYSTAL[1] if dx < 0 else ss.CRYSTAL[0])
+    return img
+
+
+def sorceress_columns():
+    idle = [sorc(hair=(1, 0, 0)), sorc(hair=(0, 1, 0), crystal='charge'), sorc(hair=(-1, 0, 0), crystal='bright')]
+    h0 = shift(sorc(staff=2, hair=(0, -2, 1), crystal='charge'), 0, 1)
+    h1 = sorc(staff=1, hair=(0, -1, 0))
+    dash = [sorc(staff=-1, hair=(0, 4, 0), crystal='bright'), sorc(staff=-1, hair=(1, 5, 1), crystal='bright')]
+    kneel = move(shift(sorc(staff=3, hair=(0, -1, 0), crystal='charge'), 0, 1), SORC_HEAD, 0, 1)
+    slump = move(kneel, SORC_HEAD, 0, -3)
+    death = [h0, kneel, slump, sorceress_prone(0, (35, 15)), sorceress_prone(.6, (37, 17)),
+             sorceress_prone(1, (37, 17))]
+    return idle + [h0, h1] + dash + death
+
+
+def arch(feet=(0, 0), hem=0):
+    return ar.body_frame({'feet': feet, 'hem': hem, 'bow': 'side'})
+
+
+ARCH_HOOD = colored([ar.CLOAK[2], ar.CLOAK[3], ar.CLOAK[4], *ar.SKIN])
+
+
+def arch_bow(x, y, c):
+    """Łuk przy boku i ręka z nim — wszystko na lewo od kaftana."""
+    return x < 15
+
+
+def archer_prone(spread, bow_off):
+    """Łucznik leży twarzą w dół: peleryna na plecach, kołczan wysypany, łuk obok."""
+    img = Img(CELL, CELL)
+    for lx in (21.5, 26.5):  # nogi i buty
+        limb(img, (lx, 28), (lx + (lx - 24) * .4, 37), 1.5, lambda t, s: ar.LEATHER[0] if t > .75 else ar.LEATHER[1])
+    hands = ((17 - 5 * spread, 18 - 4 * spread), (31 + 5 * spread, 19 + 2 * spread))
+    for sx, (hx_, hy_) in zip((19.5, 28.5), hands):
+        limb(img, (sx, 20), (hx_, hy_), 1.2, lambda t, s: ar.LEATHER[2] if s < 0 else ar.LEATHER[1])
+        ellipse(img, hx_, hy_, 1.3, 1.3, lambda x, y, dx, dy: ar.SKIN[1] if dx + dy < 0 else ar.SKIN[0])
+    ellipse(img, 24, 24, 7.5, 8, lambda x, y, dx, dy: ar.CLOAK[0] if dy > .6 else ar.CLOAK[2] if dx < -.5 else ar.CLOAK[1])
+    limb(img, (24, 23), (24, 31), .45, lambda t, s: ar.CLOAK[0])
+    # kołczan i rozsypane strzały
+    limb(img, (27, 21), (30, 29), 1.6, lambda t, s: ar.LEATHER[0] if s > .6 else ar.LEATHER[1])
+    for i in range(2 + int(2 * spread)):
+        ax, ay = 32 + i * 1.6, 27 + i * 1.3
+        limb(img, (ax, ay), (ax + 4, ay + 1.5), .5, lambda t, s: ar.WOOD[2])
+        img.put(int(ax), int(ay), ar.FLETCH[1])
+    # kaptur
+    ellipse(img, 24, 15, 4.6, 4.4, lambda x, y, dx, dy: ar.CLOAK[4] if dx + dy < -.6 else ar.CLOAK[2] if dx + dy > .7 else ar.CLOAK[3])
+    # łuk upuszczony z lewej
+    ox, oy = bow_off
+    pts = [(ox - 2.5 * (1 - v * v), oy + 7 * v) for v in [i / 6 - 1 for i in range(13)]]
+    for a, b in zip(pts, pts[1:]):
+        limb(img, a, b, .8, lambda t, s: ar.WOOD[1])
+    limb(img, (ox + .5, oy - 7), (ox + .5, oy + 7), .4, lambda t, s: ar.STRING[0])
+    return img
+
+
+def archer_columns():
+    base = arch()
+    idle = [base, arch(hem=1), move(arch(hem=1), arch_bow, 0, 1)]
+    h0 = move(move(shift(base, 0, 1), arch_bow, -2, 1), ARCH_HOOD, 0, 1)
+    h1 = move(base, arch_bow, -1, 0)
+    lean = move(arch(feet=(-4, 3), hem=2), ARCH_HOOD, 0, -1)
+    dash = [move(lean, arch_bow, 1, 3), move(move(lean, arch_bow, 1, 4), lambda x, y, c: y >= 30, 0, 1)]
+    kneel = move(move(shift(arch(feet=(2, 2)), 0, 1), ARCH_HOOD, 0, 1), arch_bow, -1, 2)
+    slump = move(kneel, ARCH_HOOD, 0, -3)
+    death = [h0, kneel, slump, archer_prone(0, (12, 22)), archer_prone(.6, (11, 23)), archer_prone(1, (11, 23))]
+    return idle + [h0, h1] + dash + death
+
+
+def extended_sheet(old_png, new_columns, palette):
+    """Stare kolumny 0–7 bez zmian + nowe klatki obrócone na 8 kierunków z obrysem."""
+    old = Image.open(old_png).convert('RGBA')
+    columns = 8 + len(new_columns)
+    sheet = Img(CELL * columns, CELL * 8)
+    for y in range(old.height):
+        for x in range(old.width):
+            c = old.getpixel((x, y))
+            if c[3]:
+                sheet.put(x, y, c)
+    frames = []
+    for i, img_n in enumerate(new_columns):
+        col = 8 + i
+        for row in range(8):
+            img = rotate45(img_n, row)
+            outline(img, OUT)
+            sheet.blit(img, col * CELL, row * CELL)
+            frames.append((f'r{row}c{col}', img))
+    errors = bs.validate(new_columns, frames)
+    for name, img in frames:
+        extra = {c for r in img.p for c in r if c[3] and c not in palette}
+        if extra:
+            errors.append(f'{name}: kolory spoza palety {sorted(extra)[:3]}')
+    return sheet, errors
+
+
+SHEETS_V2 = {
+    'sorceress_v2.png': (lambda: os.path.join(bs.SPRITES, ss.SHEET_NAME), sorceress_columns, ss.PALETTE_COLORS),
+    'archer_v2.png': (lambda: os.path.join(bs.SPRITES, ar.SHEET_NAME), archer_columns, ar.PALETTE_COLORS),
+}
+
+
+def save_preview(sheet, path):
+    im = sheet.pil()
+    bg = Image.new('RGBA', im.size, bs.PALETTE.floor[2])
+    bg.alpha_composite(im)
+    bg.resize((im.width * 4, im.height * 4), Image.NEAREST).save(path)
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
-    ap = argparse.ArgumentParser(description='Generator arkusza barbarzyńcy 2.0 (krok U5a)')
+    ap = argparse.ArgumentParser(description='Generator arkuszy bohaterów 2.0 (kroki U5a–U5b)')
     ap.add_argument('--out', default=bs.SPRITES)
     ap.add_argument('--preview', default=None, help='katalog na podgląd 4x')
     a = ap.parse_args()
+    sheets = []
     sheet, local, frames = build()
-    errors = bs.validate(local, frames)
-    if errors:
+    sheets.append((OUT_NAME, sheet, bs.validate(local, frames)))
+    for name, (source, columns, palette) in SHEETS_V2.items():
+        sheet, errors = extended_sheet(source(), columns(), palette)
+        sheets.append((name, sheet, errors))
+    failed = False
+    for name, sheet, errors in sheets:
         for e in errors[:30]:
-            print('BŁĄD:', e)
+            print(f'BŁĄD {name}:', e)
+        failed = failed or bool(errors)
+    if failed:
         return 1
     os.makedirs(a.out, exist_ok=True)
-    sheet.pil().save(os.path.join(a.out, OUT_NAME))
-    print(f'zapisano {OUT_NAME} {sheet.w}x{sheet.h}: {len(frames)} klatek')
-    if a.preview:
-        os.makedirs(a.preview, exist_ok=True)
-        im = sheet.pil()
-        bg = Image.new('RGBA', im.size, bs.PALETTE.floor[2])
-        bg.alpha_composite(im)
-        bg.resize((im.width * 4, im.height * 4), Image.NEAREST).save(
-            os.path.join(a.preview, OUT_NAME.replace('.png', '_preview.png')))
+    for name, sheet, _ in sheets:
+        sheet.pil().save(os.path.join(a.out, name))
+        print(f'zapisano {name} {sheet.w}x{sheet.h}')
+        if a.preview:
+            os.makedirs(a.preview, exist_ok=True)
+            save_preview(sheet, os.path.join(a.preview, name.replace('.png', '_preview.png')))
     return 0
 
 

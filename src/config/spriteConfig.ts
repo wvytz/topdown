@@ -151,6 +151,66 @@ export const SPRITE_SHEETS = {
       die: { frames: [15, 16, 17, 18, 19, 20], loop: false },
     },
   },
+  // Krok U5b (tools/hero_v2_sprites.py): Czarodziejka 2.0 — kolumny 0–7 jak w `sorceress`, nowe stany jak u barbarzyńcy.
+  sorceressV2: {
+    key: 'sheet-sorceress-v2',
+    url: 'assets/sprites/sorceress_v2.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 1008,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      // Bezruch: włosy falują, kryształ ładuje się i rozjaśnia (1 s na cykl).
+      idle: { frames: [8, 8, 9, 10, 10, 9], loop: true },
+      cast: { frames: [4, 5, 6, 7], loop: false },
+      channel: { frames: [5, 6], loop: true },
+      hurt: { frames: [11, 12], loop: false },
+      // Dash Czarodziejki to teleport (postać znika), klatki 13–14 zostają w arkuszu na przyszłość.
+      dash: { frames: [13, 14], loop: false },
+      die: { frames: [15, 16, 17, 18, 19, 20], loop: false },
+    },
+  },
+  // Krok U5b: łucznik 2.0 — kolumny 0–7 jak w `archer`, nowe stany jak u barbarzyńcy.
+  archerV2: {
+    key: 'sheet-archer-v2',
+    url: 'assets/sprites/archer_v2.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 1008,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      // Bezruch: peleryna faluje, łuk opada o piksel.
+      idle: { frames: [8, 8, 9, 10, 10, 9], loop: true },
+      nock: { frames: [4], loop: false },
+      half: { frames: [5], loop: false },
+      full: { frames: [6], loop: false },
+      release: { frames: [7, 0], loop: false },
+      hurt: { frames: [11, 12], loop: false },
+      dash: { frames: [13, 14], loop: false },
+      die: { frames: [15, 16, 17, 18, 19, 20], loop: false },
+    },
+  },
+  // Krok U5c (tools/totem_sprites.py): totem łucznika — wyrastanie (0–2) i pętla z pulsującymi oczami (3–6).
+  totem: {
+    key: 'sheet-totem',
+    url: 'assets/sprites/totem.png',
+    frameWidth: 20,
+    frameHeight: 36,
+    sheetWidth: 140,
+    sheetHeight: 36,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      rise: { frames: [0, 1, 2], loop: false },
+      idle: { frames: [3, 4, 5, 6], loop: true },
+    },
+  },
   trashcanMan: {
     key: 'sheet-trashcan-man',
     url: 'assets/sprites/trashcan-man_walk.png',
@@ -2041,22 +2101,45 @@ export interface HeroVisual extends EnemyVisual {
 /** Wygląd grywalnych bohaterów (krok 37). */
 export const HERO_VISUALS: Readonly<Record<HeroId, HeroVisual>> = {
   [HeroId.Barbarian]: HERO_SPRITES_V2 ? BARBARIAN_VISUAL_V2 : PLAYER_VISUAL,
-  [HeroId.Sorceress]: {
-    sheet: 'sorceress',
-    move: 'walk',
-    idle: 'idle',
-    attack: 'cast',
-    channel: 'channel',
-    groundShadow: WALKER_SHADOW,
-  },
-  [HeroId.Archer]: {
-    sheet: 'archer',
-    move: 'walk',
-    idle: 'idle',
-    attack: 'release',
-    drawStages: ['nock', 'half', 'full'],
-    groundShadow: WALKER_SHADOW,
-  },
+  [HeroId.Sorceress]: HERO_SPRITES_V2
+    ? {
+        sheet: 'sorceressV2',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'cast',
+        channel: 'channel',
+        hurt: 'hurt',
+        death: 'die',
+        groundShadow: WALKER_SHADOW,
+      }
+    : {
+        sheet: 'sorceress',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'cast',
+        channel: 'channel',
+        groundShadow: WALKER_SHADOW,
+      },
+  [HeroId.Archer]: HERO_SPRITES_V2
+    ? {
+        sheet: 'archerV2',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'release',
+        drawStages: ['nock', 'half', 'full'],
+        hurt: 'hurt',
+        dash: 'dash',
+        death: 'die',
+        groundShadow: WALKER_SHADOW,
+      }
+    : {
+        sheet: 'archer',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'release',
+        drawStages: ['nock', 'half', 'full'],
+        groundShadow: WALKER_SHADOW,
+      },
 };
 
 /** Strzała łucznika: klatka według kierunku lotu (8 wierszy arkusza). */
@@ -2353,12 +2436,16 @@ export const SPORE_BLAST_VISUAL = {
 
 /** Rozprysk kuli Czarodziejki (krok 50): pierścień w kolorze kul. */
 export const ORB_SPLASH_VISUAL = { color: 0xb487ff, alpha: 0.7, fillAlpha: 0.18, durationMs: 220 } as const;
-/** Ultimate (krok 98): napisy, poświata szału i tarczy, totem łucznika (placeholder geometryczny), wstrząs. */
+/** Ultimate (krok 98): napisy, poświata szału i tarczy, totem łucznika (sprite od kroku U5c), wstrząs. */
 export const ULTIMATE_VISUAL = {
   text: { rage: '#ff8a6a', supernova: '#d9b8ff', totem: '#ffe08a' },
   rage: 0xff5a3c,
   shield: 0x8ae6ef,
-  totem: { wood: 0x8a5a32, woodDark: 0x4e3018, glow: 0xffe08a, height: 22 },
+  /**
+   * Totem: sprite od kroku U5c (`sheet`, podstawa w `originY` komórki), `height` — od podstawy do oczu (stąd lecą strzały).
+   * `wood`/`woodDark` zostają dla dawnego rysunku przy `HERO_SPRITES_V2 = false`.
+   */
+  totem: { sheet: 'totem', rise: 'rise', idle: 'idle', originY: 33 / 36, wood: 0x8a5a32, woodDark: 0x4e3018, glow: 0xffe08a, height: 25 },
   shakeMs: 160,
   shakeIntensity: 0.006,
 } as const;

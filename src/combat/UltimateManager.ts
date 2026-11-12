@@ -10,7 +10,7 @@ import type { AimTarget } from '@/systems/touchAim';
 import { nearestInRange } from '@/systems/Ultimate';
 import { facingDirection } from '@/systems/Facing';
 import { RENDER_DEPTH } from '@/config/renderLayers';
-import { ARCHER_ARROW_VISUAL, SPRITE_SHEETS, ULTIMATE_VISUAL, animationKey } from '@/config/spriteConfig';
+import { ARCHER_ARROW_VISUAL, HERO_SPRITES_V2, SPRITE_SHEETS, ULTIMATE_VISUAL, animationKey } from '@/config/spriteConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
 import { screenFx } from '@/effects/ScreenFx';
 
@@ -37,6 +37,8 @@ interface ActiveTotem {
   readonly until: number;
   nextShotAt: number;
   readonly gfx: Phaser.GameObjects.Graphics;
+  /** Krok U5c: rzeźbiony słup z generatora (brak = dawny rysunek z figur). */
+  readonly sprite: Phaser.GameObjects.Sprite | null;
 }
 
 /**
@@ -82,16 +84,19 @@ export class UltimateManager {
         this.shieldUntil = now + ultimate.shieldMs;
         return;
       }
-      case 'totem':
+      case 'totem': {
         this.removeTotem();
+        const at = { x: Math.round(player.x), y: Math.round(player.y) };
         this.totem = {
           config: ultimate,
-          at: { x: player.x, y: player.y },
+          at,
           until: now + ultimate.durationMs,
           nextShotAt: now,
-          gfx: scene.add.graphics().setDepth(RENDER_DEPTH.enemy),
+          gfx: scene.add.graphics().setDepth(RENDER_DEPTH.groundFlash),
+          sprite: HERO_SPRITES_V2 ? this.spawnTotemSprite(at) : null,
         };
         return;
+      }
     }
   }
 
@@ -163,7 +168,16 @@ export class UltimateManager {
     );
   }
 
-  /** Totem (placeholder geometryczny): drewniany słup z jarzącym się okiem i pierścieniem wabika. */
+  /** Krok U5c: totem wyrasta z ziemi i stoi z pulsującymi oczami; głębokość jak postacie (sortowanie po y). */
+  private spawnTotemSprite(at: Vector2): Phaser.GameObjects.Sprite {
+    const v = ULTIMATE_VISUAL.totem;
+    const sprite = this.deps.scene.add.sprite(at.x, at.y + 3, SPRITE_SHEETS[v.sheet].key).setOrigin(0.5, v.originY);
+    sprite.setDepth(RENDER_DEPTH.enemy).play(animationKey(v.sheet, v.rise));
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => sprite.play(animationKey(v.sheet, v.idle)));
+    return sprite;
+  }
+
+  /** Totem: pierścień wabika, cień i pasek czasu; sam słup to sprite (albo dawne figury przy wyłączniku U5). */
   private drawTotem(totem: ActiveTotem, now: number): void {
     const { gfx, at, until, config } = totem;
     const v = ULTIMATE_VISUAL.totem;
@@ -172,6 +186,11 @@ export class UltimateManager {
     gfx.clear();
     gfx.lineStyle(1, v.glow, 0.25 + 0.25 * pulse).strokeCircle(at.x, at.y, 14 + pulse * 6);
     gfx.fillStyle(0x000000, 0.35).fillEllipse(at.x, at.y + 2, 16, 6);
+    if (totem.sprite) {
+      gfx.fillStyle(0x000000, 0.6).fillRect(at.x - 9, at.y + 6, 18, 2);
+      gfx.fillStyle(v.glow, 1).fillRect(at.x - 9, at.y + 6, 18 * left, 2);
+      return;
+    }
     gfx.fillStyle(v.wood, 1).fillRect(at.x - 4, at.y - v.height, 8, v.height);
     gfx.fillStyle(v.woodDark, 1).fillRect(at.x - 4, at.y - v.height + 6, 8, 2).fillRect(at.x - 4, at.y - v.height + 13, 8, 2);
     gfx.fillStyle(v.glow, 0.6 + 0.4 * pulse).fillCircle(at.x, at.y - v.height, 3);
@@ -182,6 +201,7 @@ export class UltimateManager {
 
   private removeTotem(): void {
     this.totem?.gfx.destroy();
+    this.totem?.sprite?.destroy();
     this.totem = null;
   }
 
