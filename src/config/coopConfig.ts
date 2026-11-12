@@ -29,6 +29,11 @@ export const COOP_CONFIG = {
    */
   revive: { radiusPx: 30, durationMs: 3000, decaySlowdown: 3, hpFraction: 0.4 } satisfies ReviveConfig,
   /**
+   * Krok U5d (rozróżnianie bohaterów w co-opie): znacznik nad głową w barwie gracza z HUD (P1 zielony, P2 niebieski) —
+   * trójkąt `halfWidth`×`height` px, `offsetY` nad środkiem postaci, kołysze się o piksel co `bobMs`.
+   */
+  seatMarker: { colors: [0x3ddc84, 0x6ec6ff], outline: 0x1b1a22, offsetY: 22, halfWidth: 3, height: 3, bobMs: 300 },
+  /**
    * Bohaterowie jak bańki żelu (krok 152, pomysł właściciela) zamiast twardej kolizji: mogą lekko na siebie najść,
    * sprężyna ich rozpycha (do 90 px/s — mniej niż chód, więc w korytarzu da się przecisnąć).
    */
