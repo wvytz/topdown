@@ -148,14 +148,16 @@ describe('pas za napisem (kroki 66–67)', () => {
   const B = DEATH_LAYOUT.band;
 
   it('pełna czerń zaczyna się tuż pod HUD-em i obejmuje cały napis', () => {
-    expect(B.top + B.fadeTopPx).toBe(147);
+    // Krok U7: nowy HUD kończy się rzędem przedmiotów na y ≈ 123 (wcześniej 147).
+    expect(B.top + B.fadeTopPx).toBe(139);
     const half = ((7 - title.top) * DEATH_LAYOUT.title.unit * T.titleToScale) / 2;
     expect(B.top + B.fadeTopPx).toBeLessThanOrEqual(DEATH_LAYOUT.title.centerY - half);
   });
 
   it('sięga o połowę dalej w dół niż w kroku 63 (dół 271), w stronę tablicy', () => {
-    expect(B.bottom).toBe(271 + 75);
-    expect(B.bottom).toBeGreaterThan(DEATH_LAYOUT.score.y);
+    // Krok U7: pod wynikiem doszły podpis runu i rząd przedmiotów — pas obejmuje je w całości.
+    expect(B.bottom).toBe(360);
+    expect(B.bottom - B.fadeBottomPx).toBeGreaterThanOrEqual(DEATH_LAYOUT.items.y + DEATH_LAYOUT.items.size);
   });
 });
 

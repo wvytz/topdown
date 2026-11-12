@@ -111,6 +111,8 @@ export interface UltimateHudData {
 
 export interface HudData {
   readonly floor: number;
+  /** Krok U7: bohater gracza (portret w HUD-zie). */
+  readonly hero: import('@/core/heroTypes').HeroId;
   /** Areny bossów (krok 90): napis areny zamiast piętra; null we wspinaczce. */
   readonly arenaLabel: string | null;
   /** Modyfikator bieżącego piętra; null na piętrach bez modyfikatora. */
@@ -159,6 +161,8 @@ export interface HudData {
 /** Panel drugiego gracza w HUD (co-op, etap C5). */
 export interface HudPartnerData {
   readonly label: string;
+  /** Krok U7: bohater partnera (portret w panelu P2). */
+  readonly hero: import('@/core/heroTypes').HeroId;
   readonly hp: number;
   readonly maxHp: number;
   readonly dashReadiness: number;
@@ -206,6 +210,9 @@ export interface DeathSummary {
   readonly nameEntry: string | null;
   /** Krok 169: run skończony zwycięstwem (po bossie ostatniego piętra kręgu), nie śmiercią. */
   readonly victory?: boolean;
+  /** Krok U7: podpis runu (bohater, tryb, ziarno) i zebrane przedmioty na ekranie końca. */
+  readonly signature?: string;
+  readonly items?: readonly HudItem[];
 }
 
 export interface HudItem {

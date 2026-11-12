@@ -31,6 +31,9 @@ import { StartScoresPanel } from '@/effects/StartScoresPanel';
 import { MenuCommand, menuCommandFromKey } from '@/systems/gamepadInput';
 import { isMenuEntrySpaceSafe, spaceConfirms } from '@/systems/spaceConfirm';
 import { bindPadMenu } from '@/input/PadMenuInput';
+import { UiText, uiText } from '@/ui/UiText';
+import { drawFrame } from '@/ui/UiFrame';
+import { UI_PALETTE } from '@/config/uiConfig';
 
 export interface MenuSceneData {
   /** Seed, flaga runu testowego i tryb z adresu (BootScene); seed nowej gry losujemy przy wyborze. */
@@ -43,7 +46,7 @@ const SCORE_BOARDS: readonly HighscoreBoardId[] = ['tower', 'arenas', 'coop'];
 type View = 'main' | 'slots' | 'floors';
 
 interface Row {
-  readonly text: Phaser.GameObjects.Text;
+  readonly text: UiText;
   readonly zone: Phaser.GameObjects.Zone;
 }
 
@@ -65,9 +68,9 @@ export class MenuScene extends Phaser.Scene {
   private pendingDelete: number | null = null;
   private leaving = false;
   private rows: Row[] = [];
-  private infoTitle!: Phaser.GameObjects.Text;
-  private infoBody!: Phaser.GameObjects.Text;
-  private hint!: Phaser.GameObjects.Text;
+  private infoTitle!: UiText;
+  private infoBody!: UiText;
+  private hint!: UiText;
   private fade!: Phaser.GameObjects.Rectangle;
   private scoresPanel!: StartScoresPanel;
   /** Numer wejścia do menu — odpowiedź sieci z poprzedniego wejścia nie rysuje się w nowym. */
@@ -88,17 +91,16 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    const style: Phaser.Types.GameObjects.Text.TextStyle = { fontFamily: 'monospace', color: P.text };
-    const { menu, info, borderWidth } = L;
-    this.add.rectangle(menu.x, menu.y, menu.width, menu.height, P.panel, P.panelAlpha).setOrigin(0).setStrokeStyle(borderWidth, P.border);
-    this.add.rectangle(info.x, info.y, info.width, info.height, P.panel, P.panelAlpha).setOrigin(0).setStrokeStyle(borderWidth, P.border);
+    const { menu, info } = L;
+    // Krok U7: panele w pikselowych ramkach (jak HUD i pauza), napisy w pikselowym kroju.
+    const frames = this.add.graphics();
+    drawFrame(frames, menu.x, menu.y, menu.width, menu.height, { fill: P.panel, fillAlpha: P.panelAlpha, edge: P.border, rivets: UI_PALETTE.gold });
+    drawFrame(frames, info.x, info.y, info.width, info.height, { fill: P.panel, fillAlpha: P.panelAlpha, edge: P.border, rivets: UI_PALETTE.gold });
     // Pozycje menu (stała liczba wierszy — widok slotów używa pierwszych slotCount + 1).
     const rowCount = Math.max(MENU_ORDER.length, SAVE_CONFIG.slotCount + 1);
     for (let i = 0; i < rowCount; i++) {
       const y = menu.y + menu.firstItemY + i * menu.step;
-      const text = this.add
-        .text(menu.x + menu.padX, y, '', { ...style, fontSize: `${menu.fontSize}px` })
-        .setLetterSpacing(menu.letterSpacing);
+      const text = uiText(this, menu.x + menu.padX, y - 6, '', { size: 2, color: P.text });
       const zone = this.add.zone(menu.x, y - menu.step / 4, menu.width, menu.step).setOrigin(0).setInteractive({ useHandCursor: true });
       zone.on('pointerover', () => this.hover(i));
       zone.on('pointerdown', () => {
@@ -107,17 +109,13 @@ export class MenuScene extends Phaser.Scene {
       });
       this.rows.push({ text, zone });
     }
-    this.infoTitle = this.add.text(info.x + info.padX, info.y + info.padY, '', { ...style, fontSize: `${info.titleFontSize}px`, color: P.title });
-    this.infoBody = this.add.text(info.x + info.padX, info.y + info.padY + 30, '', {
-      ...style,
-      fontSize: `${info.fontSize}px`,
+    this.infoTitle = uiText(this, info.x + info.padX, info.y + info.padY - 4, '', { size: 2, color: P.title });
+    this.infoBody = uiText(this, info.x + info.padX, info.y + info.padY + 26, '', {
+      color: P.text,
       lineSpacing: info.lineSpacing,
-      wordWrap: { width: info.width - 2 * info.padX },
+      wrap: info.width - 2 * info.padX,
     });
-    this.hint = this.add
-      .text(GAME_WIDTH / 2, L.hint.y, '', { ...style, fontSize: `${L.hint.fontSize}px`, color: P.textDim })
-      .setOrigin(0.5)
-      .setLetterSpacing(L.hint.letterSpacing);
+    this.hint = uiText(this, GAME_WIDTH / 2, L.hint.y, '', { color: P.textDim, align: 'center' }).setOrigin(0.5);
     this.scoresPanel = new StartScoresPanel(this);
     void this.showScores();
     // Wiersze tablicy dochodzą później (sieć) — wygaszenie musi zostać nad nimi.

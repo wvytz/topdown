@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { UiText, uiText } from '@/ui/UiText';
 import { SPEAKER_BUTTON } from '@/config/audioConfig';
 import { sound } from '@/audio/SoundBoard';
 
@@ -9,7 +10,7 @@ import { sound } from '@/audio/SoundBoard';
  */
 export class SpeakerButton {
   private readonly icon: Phaser.GameObjects.Graphics;
-  private readonly label: Phaser.GameObjects.Text;
+  private readonly label: UiText;
   private hovered = false;
 
   constructor(scene: Phaser.Scene, depth: number) {
@@ -17,8 +18,7 @@ export class SpeakerButton {
     const x = scene.scale.width - B.marginX;
     const y = B.marginY;
     this.icon = scene.add.graphics({ x, y }).setDepth(depth);
-    this.label = scene.add
-      .text(x - B.radius - 8, y, '', { fontFamily: 'monospace', fontSize: '11px', color: '#a0a0b8', stroke: '#000000', strokeThickness: 3 })
+    this.label = uiText(scene, x - B.radius - 8, y, '', { color: '#a0a0b8' })
       .setOrigin(1, 0.5)
       .setDepth(depth)
       .setAlpha(0);

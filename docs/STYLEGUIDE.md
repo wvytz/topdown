@@ -251,6 +251,7 @@ Osobne ustawienie, niezależne od jakości: wyłącza drżenie kamery, błyski p
 - Elementy interfejsu w całkowitej skali pikseli, z tym samym obrysem i złotem co łupy (§6c).
 - HUD nie zasłania walki: stałe napisy pomocy pojawiają się tylko na początku runu.
 - Jeden wygląd na PC, padzie i telefonie; różni się tylko rozmiar i podpowiedzi przycisków.
+- Wdrożenie (krok U7): krój w `core/pixelFont.ts` (wersaliki 5×7, małe litery, polskie znaki, cyfry jednej szerokości), w grze `ui/UiText.ts`; ramki `ui/UiFrame.ts` (obrys `#1b1a22` ze ściętymi rogami, ramka 1 px, fazka, nity), barwy `config/uiConfig.ts` z palety ekranu startowego. Wielkości napisów tylko całkowite (1, 2, 3, 4); na telefonie drobne napisy HUD-u w skali 2. Nowy znak w napisach gry trzeba dopisać do fontu — pilnuje tego test.
 
 ### 13.11 Checklista efektu
 

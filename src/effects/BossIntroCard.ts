@@ -3,6 +3,7 @@ import type { BossPortrait } from '@/core/types';
 import { BOSS_INTRO_CARD } from '@/config/bossPresentationConfig';
 import { introCardFrame } from '@/systems/BossPresentation';
 import { display } from '@/input/DisplayControls';
+import { UiText, uiText } from '@/ui/UiText';
 
 /** Karta leży nad resztą HUD-u (paski, napisy). */
 const CARD_DEPTH = 20;
@@ -30,20 +31,21 @@ export function introCardEnabled(): boolean {
  */
 export class BossIntroCard {
   private readonly band: Phaser.GameObjects.Graphics;
-  private readonly caption: Phaser.GameObjects.Text;
-  private readonly name: Phaser.GameObjects.Text;
-  private readonly title: Phaser.GameObjects.Text;
+  private readonly caption: UiText;
+  private readonly name: UiText;
+  private readonly title: UiText;
   private portraits: Phaser.GameObjects.Image[] = [];
   private startedAt = -Infinity;
   private revealed = false;
   private flashUntil = -Infinity;
 
-  constructor(private readonly scene: Phaser.Scene, style: Phaser.Types.GameObjects.Text.TextStyle) {
+  constructor(private readonly scene: Phaser.Scene) {
     const c = BOSS_INTRO_CARD;
     this.band = scene.add.graphics().setDepth(CARD_DEPTH);
-    this.caption = scene.add.text(0, 0, '', { ...style, fontSize: '11px', color: c.colors.caption, strokeThickness: 3 });
-    this.name = scene.add.text(0, 0, '', { ...style, fontSize: '30px', color: c.colors.name, strokeThickness: 6 });
-    this.title = scene.add.text(0, 0, '', { ...style, fontSize: '15px', color: c.colors.title, strokeThickness: 4 });
+    // Krok U7: pikselowy krój — podpis drobny, imię w skali 4, tytuł w skali 2.
+    this.caption = uiText(scene, 0, 0, '', { color: c.colors.caption, letterSpacing: 2 });
+    this.name = uiText(scene, 0, 0, '', { size: 4, color: c.colors.name });
+    this.title = uiText(scene, 0, 0, '', { size: 2, color: c.colors.title });
     for (const part of [this.caption, this.name, this.title]) part.setOrigin(0, 0.5).setAlpha(0).setDepth(CARD_DEPTH + 2);
   }
 
@@ -83,9 +85,9 @@ export class BossIntroCard {
 
     const shift = frame.slide * c.slidePx;
     const textX = cx + c.textOffsetX + shift;
-    this.caption.setPosition(textX, c.bandY - 26).setAlpha(frame.alpha);
-    this.name.setPosition(textX, c.bandY - 4).setAlpha(frame.alpha);
-    this.title.setPosition(textX, c.bandY + 24).setAlpha(frame.alpha);
+    this.caption.setPosition(Math.round(textX), c.bandY - 28).setAlpha(frame.alpha);
+    this.name.setPosition(Math.round(textX), c.bandY - 6).setAlpha(frame.alpha);
+    this.title.setPosition(Math.round(textX), c.bandY + 22).setAlpha(frame.alpha);
 
     if (frame.revealed && !this.revealed) {
       this.revealed = true;

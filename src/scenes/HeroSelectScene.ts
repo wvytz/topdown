@@ -1,4 +1,6 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { addFrameRect } from '@/ui/FrameRect';
+import { UiText, uiTextFromStyle } from '@/ui/UiText';
 import Phaser from 'phaser';
 import type { HeroId } from '@/core/heroTypes';
 import type { FloorSceneData, HeroSelectData } from '@/core/types';
@@ -27,15 +29,15 @@ interface HeroCard {
   readonly hero: HeroId;
   readonly frame: Phaser.GameObjects.Rectangle;
   readonly sprite: Phaser.GameObjects.Sprite;
-  readonly texts: readonly Phaser.GameObjects.Text[];
-  readonly name: Phaser.GameObjects.Text;
-  readonly stats: Phaser.GameObjects.Text;
+  readonly texts: readonly UiText[];
+  readonly name: UiText;
+  readonly stats: UiText;
 }
 
 interface ModeTab {
   readonly mode: RunMode;
   readonly frame: Phaser.GameObjects.Rectangle;
-  readonly label: Phaser.GameObjects.Text;
+  readonly label: UiText;
 }
 
 const MODE_ORDER: readonly RunMode[] = [RunMode.Tower, RunMode.BossRush];
@@ -53,7 +55,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private mode = RunMode.Tower;
   private openedAt = 0;
   private modeTabs: ModeTab[] = [];
-  private modeDescription!: Phaser.GameObjects.Text;
+  private modeDescription!: UiText;
   private starting = false;
   private readonly lastHero = new LastHero(HighscoreStorage.browserStorage());
 
@@ -75,8 +77,7 @@ export class HeroSelectScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(P.background);
     const style: Phaser.Types.GameObjects.Text.TextStyle = { fontFamily: 'monospace', color: P.text };
 
-    this.add
-      .text(L.centerX, L.title.y, 'WYBIERZ BOHATERA', { ...style, fontSize: `${L.title.fontSize}px`, color: P.title })
+    uiTextFromStyle(this, L.centerX, L.title.y, 'WYBIERZ BOHATERA', { ...style, fontSize: `${L.title.fontSize}px`, color: P.title })
       .setOrigin(0.5)
       .setLetterSpacing(L.title.letterSpacing);
 
@@ -89,10 +90,9 @@ export class HeroSelectScene extends Phaser.Scene {
 
     // Wybór piętra (krok 91) przychodzi z menu z wybranym piętrem — bez zakładek, sam opis startu.
     if (this.mode !== RunMode.FloorSelect) this.buildModeTabs(style);
-    else this.modeDescription = this.add.text(L.centerX, L.mode.y, '', { ...style, fontSize: `${L.mode.fontSize}px` }).setOrigin(0.5);
+    else this.modeDescription = uiTextFromStyle(this, L.centerX, L.mode.y, '', { ...style, fontSize: `${L.mode.fontSize}px` }).setOrigin(0.5);
 
-    this.add
-      .text(L.centerX, L.hint.y, this.hintText(), { ...style, fontSize: `${L.hint.fontSize}px`, color: P.hint })
+    uiTextFromStyle(this, L.centerX, L.hint.y, this.hintText(), { ...style, fontSize: `${L.hint.fontSize}px`, color: P.hint })
       .setOrigin(0.5)
       .setLetterSpacing(L.hint.letterSpacing);
 
@@ -106,8 +106,7 @@ export class HeroSelectScene extends Phaser.Scene {
   private buildCard(hero: HeroId, centerX: number, top: number, style: Phaser.Types.GameObjects.Text.TextStyle): HeroCard {
     const def = HERO_DEFINITIONS[hero];
     const { width, height, borderWidth } = L.card;
-    const frame = this.add
-      .rectangle(centerX, top + height / 2, width, height, P.card)
+    const frame = addFrameRect(this, centerX, top + height / 2, width, height, P.card)
       .setStrokeStyle(borderWidth, P.border)
       .setInteractive({ useHandCursor: true });
     const index = HERO_ORDER.indexOf(hero);
@@ -122,19 +121,15 @@ export class HeroSelectScene extends Phaser.Scene {
       .sprite(centerX, top + L.sprite.offsetY, SPRITE_SHEETS[sheet].key)
       .setScale(L.sprite.scale);
 
-    const name = this.add
-      .text(centerX, top + L.name.offsetY, def.name.toUpperCase(), { ...style, fontSize: `${L.name.fontSize}px` })
+    const name = uiTextFromStyle(this, centerX, top + L.name.offsetY, def.name.toUpperCase(), { ...style, fontSize: `${L.name.fontSize}px` })
       .setOrigin(0.5, 0)
       .setLetterSpacing(L.name.letterSpacing);
-    const tagline = this.add
-      .text(centerX, top + L.tagline.offsetY, def.tagline, { ...style, fontSize: `${L.tagline.fontSize}px` })
+    const tagline = uiTextFromStyle(this, centerX, top + L.tagline.offsetY, def.tagline, { ...style, fontSize: `${L.tagline.fontSize}px` })
       .setOrigin(0.5, 0);
-    const stats = this.add
-      .text(centerX, top + L.stats.offsetY, heroStatLine(def), { ...style, fontSize: `${L.stats.fontSize}px`, color: P.input })
+    const stats = uiTextFromStyle(this, centerX, top + L.stats.offsetY, heroStatLine(def), { ...style, fontSize: `${L.stats.fontSize}px`, color: P.input })
       .setOrigin(0.5, 0);
     const attacks = def.attacks.map((attack, i) =>
-      this.add
-        .text(centerX, top + L.attacks.offsetY + i * L.attacks.step, `${attack.input} — ${attack.text}`, {
+      uiTextFromStyle(this, centerX, top + L.attacks.offsetY + i * L.attacks.step, `${attack.input} — ${attack.text}`, {
           ...style,
           fontSize: `${L.attacks.fontSize}px`,
         })
@@ -149,20 +144,17 @@ export class HeroSelectScene extends Phaser.Scene {
     const total = MODE_ORDER.length * tabWidth + (MODE_ORDER.length - 1) * gap;
     MODE_ORDER.forEach((mode, i) => {
       const x = L.centerX - total / 2 + i * (tabWidth + gap) + tabWidth / 2;
-      const frame = this.add
-        .rectangle(x, y, tabWidth, tabHeight, P.card)
+      const frame = addFrameRect(this, x, y, tabWidth, tabHeight, P.card)
         .setStrokeStyle(borderWidth, P.border)
         .setInteractive({ useHandCursor: true });
       frame.on('pointerdown', () => this.setMode(mode));
       const text = mode === RunMode.BossRush ? `${BOSS_RUSH_TEXT.modeName} · ${BOSS_RUSH_TEXT.testBadge}` : BOSS_RUSH_TEXT.towerModeName;
-      const label = this.add
-        .text(x, y, text, { ...style, fontSize: `${fontSize}px` })
+      const label = uiTextFromStyle(this, x, y, text, { ...style, fontSize: `${fontSize}px` })
         .setOrigin(0.5)
         .setLetterSpacing(letterSpacing);
       this.modeTabs.push({ mode, frame, label });
     });
-    this.modeDescription = this.add
-      .text(L.centerX, descriptionY, '', { ...style, fontSize: `${descriptionFontSize}px` })
+    this.modeDescription = uiTextFromStyle(this, L.centerX, descriptionY, '', { ...style, fontSize: `${descriptionFontSize}px` })
       .setOrigin(0.5);
   }
 

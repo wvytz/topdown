@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import type { UiText } from '@/ui/UiText';
 import { combatFeel } from '@/effects/CombatFeel';
 import Phaser from 'phaser';
 import type {
@@ -302,7 +303,7 @@ export class BossFight {
   private readonly shouts: ShoutSchedule | null;
   private lastSlipTextAt = -Infinity;
   /** Ostatni napis okrzyku — nowy zastępuje go, żeby napisy się nie nakładały. */
-  private lastShout: Phaser.GameObjects.Text | null = null;
+  private lastShout: UiText | null = null;
   private nextPolishAt = 0;
   /** Włosie miotły na stopach zaplątanych bohaterów (brunetka, krok 126). */
   private tangles: Array<{ readonly player: Player; readonly sprite: Phaser.GameObjects.Sprite }> = [];

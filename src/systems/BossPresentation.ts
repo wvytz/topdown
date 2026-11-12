@@ -1,6 +1,6 @@
 /**
  * Oprawa walki z bossem (krok U6) — czysta logika: przebieg karty wejścia w czasie i fazy na pasku HP.
- * Rysuje `effects/BossIntroCard.ts` i `effects/BossPhaseBar.ts`.
+ * Rysuje `effects/BossIntroCard.ts`.
  */
 
 /** Czasy karty wejścia (podzbiór `BOSS_INTRO_CARD`). */
