@@ -730,7 +730,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.stickyWebs?.update(time);
     this.puffballs?.update(time);
     this.wallDogs?.update(time);
-    this.secretRoom?.update();
+    this.secretRoom?.update(time);
     this.ambush?.update(time);
     this.traps?.update(time);
     this.breakables?.update();

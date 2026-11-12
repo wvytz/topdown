@@ -10,8 +10,9 @@ import { RENDER_DEPTH } from '@/config/renderLayers';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { SecretArea } from '@/dungeon/SecretRoom';
 import { areaBounds, revealMask } from '@/dungeon/SecretRoom';
-import { planVaultDecor, planVaultLayout } from '@/dungeon/SpiderVault';
-import { SPIDER_VAULT_CONFIG } from '@/config/spiderVaultConfig';
+import { isInVault, planVaultDecor, planVaultLayout } from '@/dungeon/SpiderVault';
+import { SPIDER_VAULT_CONFIG, SPIDER_VAULT_SLOW } from '@/config/spiderVaultConfig';
+import { TILE_SIZE } from '@/config/gameConfig';
 import type { PointLight } from '@/effects/LightingOverlay';
 import { SpiderVaultView } from '@/effects/SpiderVaultView';
 import type { CombatEffects } from '@/effects/CombatEffects';
@@ -60,8 +61,8 @@ export class SecretRoomManager {
     this.mask = revealMask(deps.floor, deps.area, SECRET_ROOM_CONFIG.revealRadius);
   }
 
-  update(): void {
-    const { party, floor } = this.deps;
+  update(now: number): void {
+    const { party, floor, area } = this.deps;
     if (!this.revealed) {
       // Komnatę odsłania którykolwiek żywy bohater.
       const inside = party.living.some((player) => {
@@ -69,6 +70,10 @@ export class SecretRoomManager {
         return this.mask[tile.y * floor.width + tile.x] === 1;
       });
       if (inside) this.reveal();
+    }
+    // Skarbiec spowalnia: bohater brnie przez jedwab i śluz (dash przechodzi bez spowolnienia).
+    if (this.revealed) {
+      for (const player of party.living) if (isInVault(area, floor.width, player, TILE_SIZE)) player.applyTerrainSlow(SPIDER_VAULT_SLOW, now);
     }
     this.cocoons = this.cocoons.filter((cocoon) => {
       if (!cocoon.isCracked) return true;

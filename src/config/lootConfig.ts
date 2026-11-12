@@ -346,7 +346,7 @@ export const PICKUP_CONFIG = {
 
 /**
  * Ukryta komnata za areną (krok 46): widać ją z 2 kafli; jeden kokon z losowym przedmiotem. Od kroku U4d kokony
- * stoją na piedestałach skarbca (wielki + 2–3 pary, czyli 5–7 kokonów; było 4–6) — `config/spiderVaultConfig.ts`.
+ * stoją na piedestałach skarbca (wielki + 1–2 pary, czyli 3–5 kokonów; było 4–6) — `config/spiderVaultConfig.ts`.
  */
 export const SECRET_ROOM_CONFIG: SecretRoomConfig = {
   revealRadius: 2,

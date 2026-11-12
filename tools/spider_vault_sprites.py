@@ -16,6 +16,8 @@ Pliki (klatki w poziomym pasku):
   vault-corner-web.png      64x64: wielka sieć w narożniku (wzór NW; gra odbija go na inne narożniki)
   vault-curtain.png         32x32 x3: zasłony jedwabiu zwisające z lica północnego muru
   vault-husk.png            32x32 x2: zawinięte w jedwab ciała śmiałków (trofea pająków)
+  vault-cocoon.png          64x64 x8: kokon skarbu 2x (własny model): złote taśmy, tętniący szew, złoto w rozdarciu;
+                            0–3 spoczynek, 4–7 rozdarcie (klatka 7 = skorupy w gnieździe)
 
 Zasady (STYLEGUIDE §3–4, §13.1): rekwizyty z obrysem 1 px #1b1a22, rampy z przesunięciem odcienia, bez czystej
 bieli i czerni, piksele kryjące; cień kontaktowy ma stałą alfę 0,4. Nakładki posadzki (jedwab, śluz, sieć) bez
@@ -455,6 +457,125 @@ def husk(v):
     return img
 
 
+# ---------------- kokon skarbu 2x (krok U4d, prośba właściciela: „własny, dwukrotnie większy model”) ----------------
+COCOON2 = 64
+CX2, CY2, RX2, RY2 = 32, 34, 13, 19  # środek ciała; stopa (CY2 + RY2) 21 px pod środkiem klatki
+GLINTS2 = ((-7, -10), (4, -3), (-3, 7), (8, 4))
+
+
+def egg_shade(nx, ny):
+    """Jedwab kokonu skarbu: pasmowe cieniowanie z rampy SILK, światło z lewej-góry."""
+    d = (nx + .45) ** 2 + (ny + .5) ** 2
+    r = nx * nx + ny * ny
+    if r > .8 and (nx > .05 or ny > .3):
+        return SILK[0]
+    if d < .08:
+        return SILK[4]
+    if d < .5:
+        return SILK[3]
+    if d < 1.2:
+        return SILK[2]
+    return SILK[1]
+
+
+def egg_body(img, cx, cy, rx, ry, rng):
+    # Jajo: szersze u dołu
+    for y in range(img.h):
+        for x in range(img.w):
+            ny = (y + .5 - cy) / ry
+            rxx = rx * (1 + .12 * ny)
+            nx = (x + .5 - cx) / rxx
+            if nx * nx + ny * ny <= 1:
+                img.put(x, y, egg_shade(nx, ny))
+                if nx * nx + ny * ny < .85:
+                    if (x - cx + (y - cy) * .8) % 5 < 1:
+                        img.put(x, y, SILK[1])
+                    elif (x - cx - (y - cy) * .8) % 7 < 1 and egg_shade(nx, ny) != SILK[0]:
+                        img.put(x, y, SILK[3])
+
+
+def gold_band(img, p0, p1, width=2):
+    """Złota taśma oplotu: pas z jaśniejszą górną krawędzią, tylko na ciele kokonu."""
+    (x0, y0), (x1, y1) = p0, p1
+    n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+    for i in range(n + 1):
+        t = i / n
+        x, y = int(round(x0 + (x1 - x0) * t)), int(round(y0 + (y1 - y0) * t))
+        for k in range(width):
+            c = img.get(x, y + k)
+            if c and c[3] and c != OUT:
+                img.put(x, y + k, GOLD[3] if k == 0 and i % 4 == 0 else (GOLD[2] if k == 0 else GOLD[1]))
+
+
+def vault_cocoon_frame(f):
+    """Kokon skarbu 2x: wielkie jajo z jedwabiu przewiązane złotymi taśmami, złoty szew tętni światłem, a przez
+    rozdarcie w oplocie widać złoto w środku. 0–3 spoczynek (puls szwu, wędrujący błysk), 4–7 rozdarcie; klatka 7 =
+    skorupy w gnieździe."""
+    img = Img(COCOON2, COCOON2)
+    rng = random.Random(9800 + f)
+    cx, cy, rx, ry = CX2, CY2, RX2, RY2
+    if f < 4:
+        egg_body(img, cx, cy, rx, ry, rng)
+        gold_band(img, (cx - rx, cy - 9), (cx + rx, cy + 1))
+        gold_band(img, (cx - rx, cy + 2), (cx + rx, cy - 8))
+        gold_band(img, (cx - rx - 1, cy + 9), (cx + rx + 2, cy + 9))
+        pulse = (1, 2, 3, 2)[f]
+        for y in range(cy - 15, cy + 14):  # szew
+            img.put(cx, y, GOLD[pulse])
+            if pulse >= 2 and abs(y - cy) < 9:
+                img.put(cx - 1, y, GOLD[pulse - 1])
+        # Rozdarcie w oplocie: przez nie widać złoto w środku
+        fill_ellipse(img, cx + 6.5, cy - 3, 3.4, 2.8, lambda nx, ny: OUT)
+        for x, y, c in ((cx + 5, cy - 3, GOLD[2]), (cx + 6, cy - 3, GOLD[3]), (cx + 7, cy - 2, GOLD[2]), (cx + 8, cy - 3, GOLD[1]),
+                        (cx + 6, cy - 2, GOLD[1]), (cx + 7, cy - 4, GOLD[3] if f % 2 else GOLD[2])):
+            img.put(x, y, c)
+        # Węzeł na czubku i nici w górę
+        fill_ellipse(img, cx, cy - ry - 1, 3.5, 2.2, lambda nx, ny: SILK[3] if ny < 0 else SILK[2])
+        outline(img, OUT)
+        for dx in (-3, 0, 4):
+            thread(img, (cx + dx * .5, cy - ry - 2), (cx + dx * 2, 1), SILK[3], sag=1, hi=SILK[4], every=4)
+        for side in (-1, 1):  # nici kotwiczące do gniazda
+            thread(img, (cx + side * rx * .7, cy + ry * .75), (cx + side * (rx + 5), cy + ry + 3), SILK[3], sag=1)
+        gx, gy = GLINTS2[f]
+        for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+            img.put(cx + gx + dx, cy + gy + dy, SILK[4] if (dx, dy) != (0, 0) else GOLD[3])
+        return img
+    if f == 4:  # pęknięcie: szew rozchodzi się w złotą szczelinę, promienie
+        egg_body(img, cx, cy, rx + 1, ry + 1, rng)
+        for y in range(cy - 16, cy + 15):
+            w = 1 if abs(y - cy) > 11 else (2 if abs(y - cy) > 5 else 3)
+            for x in range(cx - w + 1, cx + w):
+                img.put(x, y, GOLD[3] if abs(x - cx) < 1 else GOLD[2])
+        outline(img, OUT)
+        for a in range(8):
+            ang = a * math.tau / 8 + .2
+            for d in range(rx + 4, rx + 9, 2):
+                img.put(int(cx + math.cos(ang) * d), int(cy + math.sin(ang) * d * 1.2), GOLD[3] if d < rx + 7 else GOLD[2])
+        return img
+    k = f - 5  # 0..2: połówki skorupy rozchylają się i opadają do gniazda, w środku widać pusty, ciemny środek
+    spread = (6, 10, 12)[k]
+    for side in (-1, 1):
+        hx_ = cx + side * spread
+        ry_ = (16, 12, 8)[k]
+        cy_ = cy + ry - ry_
+        fill_ellipse(img, hx_, cy_, 8, ry_, lambda nx, ny, s=side: SILK[1] if nx * s > .35 else (SILK[3] if ny < -.3 else SILK[2]))
+        # wnętrze skorupy od strony środka (ciemne, ze złotym pyłem)
+        fill_ellipse(img, hx_ - side * 3.5, cy_ - 1, 4.2, ry_ * .75, lambda nx, ny: SILK[0])
+        for _ in range(3):
+            img.put(int(hx_ - side * 3.5 + rng.randint(-2, 2)), int(cy_ + rng.randint(-ry_ // 2, ry_ // 2)), GOLD[2])
+        gold_band(img, (hx_ - 7, cy_ + ry_ // 3), (hx_ + 7, cy_ + ry_ // 3))
+    if k < 2:  # złoty pył w środku
+        for _ in range(10 - k * 4):
+            img.put(cx + rng.randint(-4, 4), cy + rng.randint(-6, 12), GOLD[rng.randint(2, 3)])
+    outline(img, OUT)
+    for _ in range((8, 6, 4)[k]):  # nitki, część złota
+        a = rng.uniform(0, math.tau)
+        d = rng.uniform(10, 14 + spread)
+        px_, py_ = cx + math.cos(a) * d, cy + 6 + math.sin(a) * d * .6
+        thread(img, (px_, py_), (px_ + math.cos(a) * 3, py_ + math.sin(a) * 2), GOLD[1] if rng.random() < .45 else SILK[3])
+    return img
+
+
 SHEETS = {
     'vault-pedestal': (32, 40, [pedestal(f) for f in range(4)]),
     'vault-pedestal-grand': (48, 48, [pedestal_grand(f) for f in range(4)]),
@@ -463,6 +584,7 @@ SHEETS = {
     'vault-corner-web': (64, 64, [corner_web()]),
     'vault-curtain': (32, 32, [curtain(v) for v in range(3)]),
     'vault-husk': (32, 32, [husk(v) for v in range(2)]),
+    'vault-cocoon': (COCOON2, COCOON2, [vault_cocoon_frame(f) for f in range(8)]),
 }
 
 

@@ -7,7 +7,8 @@ import type { SpiderVaultConfig } from '@/dungeon/SpiderVault';
  */
 export const SPIDER_VAULT_CONFIG: SpiderVaultConfig = {
   wallMargin: 1,
-  pedestalPairs: { min: 2, max: 3 },
+  // 3–5 kokonów (ocena właściciela po U4d: było 5–7): wielki + 1–2 pary.
+  pedestalPairs: { min: 1, max: 2 },
   silkChance: { edge: 0.95, ring: 0.75, inner: 0.5, nearPedestal: 0.9, corridor: 0.7 },
   silkVariants: 6,
   silkJitter: 0.3,
@@ -24,6 +25,13 @@ export const SPIDER_VAULT_CONFIG: SpiderVaultConfig = {
   chordReach: { min: 0.6, max: 2.6 },
   sag: { min: 0.1, max: 0.45 },
 };
+
+/**
+ * Spowolnienie w skarbcu (ocena właściciela po U4d: „powinniśmy dostawać tam movement speed slow”): bohater na kaflu
+ * komnaty albo korytarza do niej brnie przez jedwab i śluz. Odnawiane co klatkę, trwa chwilę po wyjściu; dash
+ * przechodzi bez spowolnienia (jak lepkie pajęczyny, krok 23e).
+ */
+export const SPIDER_VAULT_SLOW = { pct: 0.4, durationMs: 400 } as const;
 
 /** Sól strumienia losowań ozdób skarbca (osobno od piedestałów i nagrody). */
 export const SPIDER_VAULT_DECOR_SALT = 0x5ec8;
@@ -45,8 +53,8 @@ export const SPIDER_VAULT_VISUAL = {
   /** Dół klatki piedestału poniżej środka kafla (cień kontaktowy wypada na kaflu piedestału). */
   pedestalFoot: 10,
   grandFoot: 12,
-  /** Środek kokonu nad górą klatki piedestału (kokon stoi w gnieździe z jedwabiu na kapitelu). */
-  cocoonAboveTop: -1,
+  /** Środek kokonu (model 2x, stopa 21 px pod środkiem) nad górą klatki piedestału — kokon stoi w gnieździe na kapitelu. */
+  cocoonAboveTop: 9,
   /** Kropla śluzu spływa po licu piedestału (kl./s, STYLEGUIDE §8: 6). */
   dripFps: 5,
   /** Zasłona wisi od wierzchu lica: tyle px nad dolną krawędzią kafla muru. */

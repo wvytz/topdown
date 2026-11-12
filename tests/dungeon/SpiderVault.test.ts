@@ -7,7 +7,7 @@ import { SPIDER_VAULT_CONFIG } from '@/config/spiderVaultConfig';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { secretArea } from '@/dungeon/SecretRoom';
 import type { SecretArea } from '@/dungeon/SecretRoom';
-import { VaultSide, pedestalTile, planVaultDecor, planVaultLayout, threadPixels, vaultEntrance } from '@/dungeon/SpiderVault';
+import { VaultSide, isInVault, pedestalTile, planVaultDecor, planVaultLayout, threadPixels, vaultEntrance } from '@/dungeon/SpiderVault';
 
 const vaults = Array.from({ length: 80 }, (_, i) => new DungeonGenerator(getDungeonConfigForFloor(2)).generate(i * 37 + 11))
   .filter((f) => f.endRoomId !== undefined)
@@ -143,6 +143,17 @@ describe('skarbiec pająków (krok U4d)', () => {
         }
       }
     }
+  });
+
+  it('spowolnienie: na kaflach komnaty i korytarza do niej, poza nimi nie', () => {
+    const { floor, area } = vaults[0]!;
+    const r = area.room;
+    expect(isInVault(area, floor.width, { x: (r.x + 0.5) * 32, y: (r.y + 0.5) * 32 }, 32)).toBe(true);
+    const door = vaultEntrance(floor, area).tile;
+    expect(isInVault(area, floor.width, { x: (door.x + 0.5) * 32, y: (door.y + 0.5) * 32 }, 32)).toBe(true);
+    const arena = floor.rooms[floor.bossRoomId]!;
+    expect(isInVault(area, floor.width, { x: (arena.x + 1.5) * 32, y: (arena.y + 1.5) * 32 }, 32)).toBe(false);
+    expect(isInVault(area, floor.width, { x: -5, y: 10 }, 32)).toBe(false);
   });
 
   it('nić: ciągła linia 1 px od końca do końca, bez powtórzeń, z ugięciem w dół', () => {

@@ -172,6 +172,13 @@ export function planVaultLayout(floor: DungeonFloor, area: SecretArea, config: S
 const between = (rng: Rng, range: { readonly min: number; readonly max: number }) => range.min + rng.next() * (range.max - range.min);
 const dist = (a: VaultPoint, b: VaultPoint) => Math.hypot(a.x - b.x, a.y - b.y);
 
+/** Czy punkt świata (px) leży na kaflu skarbca — komnaty albo korytarza do niej (spowolnienie w jedwabiu). */
+export function isInVault(area: SecretArea, floorWidth: number, point: VaultPoint, tileSize: number): boolean {
+  const x = Math.floor(point.x / tileSize);
+  const y = Math.floor(point.y / tileSize);
+  return x >= 0 && x < floorWidth && area.tiles.has(y * floorWidth + x);
+}
+
 /** Kafel (całkowity), na którym stoi piedestał. */
 export const pedestalTile = (p: VaultPedestal): TilePoint => ({ x: Math.floor(p.at.x), y: Math.floor(p.at.y - 0.01) });
 
