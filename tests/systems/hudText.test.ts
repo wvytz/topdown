@@ -9,7 +9,7 @@ describe('napisy HUD-u (krok U7)', () => {
     const a = objectiveHint(base, 'Naciśnij E', ARENA);
     const b = objectiveHint({ ...base, enemiesAlive: 3 }, 'Naciśnij E', ARENA);
     expect(a.key).toBe(b.key);
-    expect(a.short).toBe('Wrogowie: 4');
+    expect(a.short).toBe('');
     expect(a.long).toContain('komnatę bossa');
   });
 

@@ -1,10 +1,11 @@
 import { SORCERY_COLORS } from '@/config/heroColorConfig';
 import Phaser from 'phaser';
-import { TOWER_CONFIG } from '@/config/towerConfig';
-import { floorLabel } from '@/systems/TowerLoop';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
-import type { BeamHudData, BossBarData, BossHudData, BossPointerData, UltimateHudData, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
-import type { HeroId } from '@/core/heroTypes';
+import type { BeamHudData, BossBarData, BossHudData, BossPointerData, UltimateHudData, HudData, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData, RangedHudData } from '@/core/types';
+import { HERO_DEFINITIONS } from '@/config/heroConfig';
+import { HUD_GAUGES } from '@/config/hudGaugeConfig';
+import { gaugeThemeFor } from '@/systems/hudGauges';
+import { drawBeamGauge, drawChargeIcons, drawDashGauge } from '@/ui/ClassGauges';
 import { SceneKey } from '@/core/types';
 import { ALL_ITEMS } from '@/config/lootConfig';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
@@ -27,27 +28,27 @@ import { UiText, uiText } from '@/ui/UiText';
 import { drawBar, drawFrame, rampOf } from '@/ui/UiFrame';
 import { ItemSlotView } from '@/ui/ItemSlotView';
 
-/** Lewy górny panel: portret, obok niego nagłówek piętra i paski. */
-const PORTRAIT_X = L.margin;
-const PORTRAIT_Y = L.margin;
-const BAR_X = PORTRAIT_X + L.portrait.size + 6;
+/**
+ * Lewy górny panel (krok U7e, prośba właściciela): pasek zdrowia z ultimate obok, pod nim żywe wskaźniki klasy
+ * (dash, promień, ładunki), dalej złoto i zdobyte przedmioty. Bez portretu i bez napisu piętra.
+ */
+const BAR_X = L.margin;
 const ULT_X = BAR_X + L.hp.width + 7;
+const GB = HUD_GAUGES.bar;
 
 /**
- * Położenie elementów lewego panelu. `t` — skala drobnych napisów: 1 na PC, 2 na telefonie (płótno jest tam
- * pomniejszone, a krój 5×7 w skali 1 byłby za drobny); wtedy paski i rząd przedmiotów schodzą niżej.
+ * Położenie elementów lewego panelu. `t` — skala drobnych napisów: 1 na PC, 2 na telefonie. `hasBeam` — pasek
+ * promienia Czarodziejki pod dashem.
  */
-function hudGeometry(t: 1 | 2) {
-  const headlineY = L.margin - 3;
-  // Nad paskiem zdrowia tylko krótki numer piętra w skali drobnych napisów (krok U7d).
-  const hpY = L.margin + 12 * t;
-  const dashY = hpY + L.hp.height + L.barGap + 1;
-  const chargesY = dashY + L.dash.height + L.barGap + 1;
-  const beamY = chargesY + L.charges.height + L.barGap + 1;
-  const goldY = Math.max(PORTRAIT_Y + L.portrait.size, beamY + L.beam.height) + L.goldGap;
-  const objectiveY = goldY + 13 * t;
-  const itemY = objectiveY + 2 + 14 * t;
-  return { t, headlineY, hpY, dashY, chargesY, beamY, ultY: hpY - 1, goldY, objectiveY, itemY, noticeY: itemY + L.itemSlot.size + 4 };
+function hudGeometry(t: 1 | 2, hasBeam: boolean) {
+  const hpY = L.margin;
+  const dashY = hpY + L.hp.height + 1 + GB.gap;
+  const beamY = dashY + GB.height + GB.gap + 1;
+  const chargesY = (hasBeam ? beamY : dashY) + GB.height + GB.gap + 2;
+  const goldY = chargesY + HUD_GAUGES.bow.height * HUD_GAUGES.icons.unit + 5;
+  const itemY = goldY + 10 * t + 3;
+  const objectiveY = itemY + L.itemSlot.size + 5;
+  return { t, hasBeam, hpY, dashY, beamY, chargesY, ultY: hpY - 1, goldY, itemY, objectiveY };
 }
 type HudGeometry = ReturnType<typeof hudGeometry>;
 const ITEM_NOTICE_FADE_MS = 800;
@@ -101,9 +102,9 @@ export class HudScene extends Phaser.Scene {
   private geo!: HudGeometry;
   /** Ramki (portret, sloty, minimapa) — przerysowywane co klatkę razem z paskami. */
   private bars!: Phaser.GameObjects.Graphics;
-  private portrait!: Phaser.GameObjects.Image;
-  private portraitHero: HeroId | null = null;
-  private headlineText!: UiText;
+  private coin!: Phaser.GameObjects.Image;
+  /** Dash: od kiedy gotowy (drganie cięciwy łucznika po napięciu). */
+  private dashReadyAt: number | null = null;
   private hpText!: UiText;
   private ultimateText!: UiText;
   private helpText!: UiText;
@@ -155,30 +156,27 @@ export class HudScene extends Phaser.Scene {
     this.createdAt = this.time.now;
     this.floorShown = -1;
     this.objectiveKey = '';
-    this.portraitHero = null;
-    const geo = (this.geo = hudGeometry(currentPlatform() === 'mobile' ? L.textScale.mobile : L.textScale.pc));
+    this.dashReadyAt = null;
+    const geo = (this.geo = hudGeometry(currentPlatform() === 'mobile' ? L.textScale.mobile : L.textScale.pc, false));
     const t = geo.t;
 
     this.bars = this.add.graphics();
-    this.portrait = this.add.image(PORTRAIT_X + L.portrait.size / 2, PORTRAIT_Y + L.portrait.size / 2, '__DEFAULT').setVisible(false);
-    this.headlineText = uiText(this, BAR_X, geo.headlineY, '', { size: t, color: C.text });
     this.hpText = uiText(this, BAR_X + L.hp.width - 3, geo.hpY - 1, '', { color: C.bright, align: 'right' }).setOrigin(1, 0);
     // Na telefonie ultimate ma własny przycisk — kwadrat bez litery klawisza.
     this.ultimateText = uiText(this, ULT_X + L.ultimate.size / 2, geo.ultY + L.ultimate.size / 2, currentPlatform() === 'mobile' ? '' : 'R', { color: C.bright }).setOrigin(0.5);
     this.playerLabelText = uiText(this, ULT_X + L.ultimate.size + 6, geo.hpY, '', { size: t, color: '#3ddc84' });
 
-    // Złoto o stopień większe od drobnych napisów; dopisek wyrównany do spodu cyfr.
-    const goldSize = t;
-    this.add.image(PORTRAIT_X + 8, geo.goldY + 5 + 4 * goldSize, LOOT_ATLAS.key, 'coin_0');
-    this.goldText = uiText(this, PORTRAIT_X + 20, geo.goldY, '', { size: goldSize, color: C.gold });
-    this.goldNoteText = uiText(this, PORTRAIT_X + 20, geo.goldY + 10 * (goldSize - t), '', { size: t, color: C.dim });
-    this.hintText = uiText(this, PORTRAIT_X, geo.objectiveY, '', { size: t, color: C.dim });
+    this.coin = this.add.image(0, 0, LOOT_ATLAS.key, 'coin_0');
+    this.goldText = uiText(this, 0, 0, '', { size: t, color: C.gold });
+    this.goldNoteText = uiText(this, 0, 0, '', { size: t, color: C.dim });
+    this.hintText = uiText(this, BAR_X, 0, '', { size: t, color: C.dim });
 
     this.minimapMap = this.add.graphics();
     this.minimapMarks = this.add.graphics();
-    this.items = new ItemSlotView(this, { x: PORTRAIT_X, y: geo.itemY, size: L.itemSlot.size, gap: L.itemSlot.gap, iconScale: 1, capacity: ALL_ITEMS.length });
-    this.modifierText = uiText(this, PORTRAIT_X, geo.noticeY, '', { size: t, color: C.magic, wrap: L.noteWrap });
-    this.itemNoticeText = uiText(this, PORTRAIT_X, geo.noticeY, '', { size: t, color: C.gold, wrap: L.noteWrap }).setAlpha(0);
+    this.items = new ItemSlotView(this, { x: BAR_X, y: geo.itemY, size: L.itemSlot.size, gap: L.itemSlot.gap, iconScale: 1, capacity: ALL_ITEMS.length });
+    this.modifierText = uiText(this, BAR_X, 0, '', { size: t, color: C.magic, wrap: L.noteWrap });
+    this.itemNoticeText = uiText(this, BAR_X, 0, '', { size: t, color: C.gold, wrap: L.noteWrap }).setAlpha(0);
+    this.layoutPanel();
     this.toastText = uiText(this, this.scale.width / 2, 70, '', { size: 2, color: '#ffe08a', align: 'center' }).setOrigin(0.5);
 
     this.bossNameText = uiText(this, this.scale.width / 2, BOSS.y - 24, '', { size: 2, color: C.boss }).setOrigin(0.5, 0).setVisible(false);
@@ -211,18 +209,18 @@ export class HudScene extends Phaser.Scene {
       this.floorShown = hud.floor;
       this.floorSince = time;
     }
-    this.headlineText.setText(hud.arenaLabel ?? floorLabel(hud.floor, TOWER_CONFIG));
+    if ((hud.beam !== null) !== this.geo.hasBeam) {
+      this.geo = hudGeometry(this.geo.t, hud.beam !== null);
+      this.layoutPanel();
+    }
     const sinceFloor = time - this.floorSince;
     const modifierLong = sinceFloor < L.modifierLongMs;
     this.modifierText.setText(floorModifierNote(hud.floorModifier, sinceFloor, L.modifierLongMs)).setColor(modifierLong ? C.magic : C.dim);
-    this.drawPortrait(hud.hero);
     this.hpText.setText(`${hud.hp}/${hud.maxHp}`);
 
     const hpRatio = hud.maxHp > 0 ? hud.hp / hud.maxHp : 0;
     drawBar(this.bars, BAR_X, this.geo.hpY, L.hp.width, L.hp.height, hpRatio, hpRatio > 0.3 ? RAMPS.hp : RAMPS.hpLow);
-    drawBar(this.bars, BAR_X, this.geo.dashY, L.hp.width, L.dash.height, hud.dashReadiness, hud.dashReadiness >= 1 ? RAMPS.dash : RAMPS.dashCharging);
-    this.drawCharges(hud.ranged);
-    this.drawBeam(hud.beam);
+    this.drawClassGauges(hud.hero, hud.dashReadiness, hud.ranged, hud.beam, time);
     this.drawUltimate(hud.ultimate, time);
 
     const help = helpLine(hud.beam !== null);
@@ -235,6 +233,9 @@ export class HudScene extends Phaser.Scene {
       this.objectiveSince = time;
     }
     this.hintText.setText(time - this.objectiveSince < L.objectiveLongMs ? objective.long : objective.short).setColor(TONE_COLORS[objective.tone]);
+    // Pod przedmiotami: cel (gdy jest), modyfikator piętra, wiadomość o nowym przedmiocie — jedno pod drugim.
+    const lineGap = 10 * this.geo.t + 3;
+    this.modifierText.setY(this.geo.objectiveY + (this.hintText.text !== '' ? lineGap : 0));
 
     this.goldText.setText(String(hud.gold));
     this.goldNoteText.setText(goldNote(hud, BOSS_RUSH_TEXT.goldSuffix)).setX(this.goldText.x + this.goldText.width + 6);
@@ -254,13 +255,25 @@ export class HudScene extends Phaser.Scene {
     this.deathScreen.update(hud.death, time);
   }
 
-  /** Portret bohatera w ramce (krok U7): pierwsza klatka chodu 1:1, jak miniaturka z ekranu śmierci. */
-  private drawPortrait(hero: HeroId): void {
-    drawFrame(this.bars, PORTRAIT_X, PORTRAIT_Y, L.portrait.size, L.portrait.size, { rivets: P.gold });
-    if (hero === this.portraitHero) return;
-    this.portraitHero = hero;
-    const spec = { facing: DEATH_HERO_ICON.facing, crop: DEATH_HERO_ICON.crop, sizePx: L.portrait.icon };
-    this.portrait.setTexture(heroIconTexture(this, hero, spec)).setVisible(true);
+  /** Złoto (moneta + liczba) i rząd przedmiotów pod wskaźnikami; po zmianie układu (promień Czarodziejki). */
+  private layoutPanel(): void {
+    const geo = this.geo;
+    this.coin.setPosition(BAR_X + 4, geo.goldY + 5 * geo.t + 1);
+    this.goldText.setPosition(BAR_X + 12, geo.goldY);
+    this.goldNoteText.setY(geo.goldY);
+    this.hintText.setY(geo.objectiveY);
+    this.items.moveTo(BAR_X, geo.itemY);
+  }
+
+  /** Dash, promień i ładunki w motywie klasy (krok U7e): krew, magia albo cięciwa. */
+  private drawClassGauges(hero: HudData['hero'], dashReadiness: number, ranged: RangedHudData, beam: BeamHudData | null, time: number): void {
+    const theme = gaugeThemeFor(HERO_DEFINITIONS[hero].kit.kind);
+    if (dashReadiness >= 1) this.dashReadyAt ??= time;
+    else this.dashReadyAt = null;
+    const calm = display.settings.reduceFlashes;
+    drawDashGauge(this.bars, theme, BAR_X, this.geo.dashY, L.hp.width, { readiness: dashReadiness, time, sinceReadyMs: this.dashReadyAt === null ? null : time - this.dashReadyAt, calm });
+    if (beam) drawBeamGauge(this.bars, BAR_X, this.geo.beamY, L.hp.width, beam, time);
+    drawChargeIcons(this.bars, theme, BAR_X + 2, this.geo.chargesY, ranged, time, HUD_GAUGES.icons.unit);
   }
 
   /** Panel P2: portret, imię, HP (albo „POWALONY” z paskiem wskrzeszania), dash, ultimate i przedmioty. */
@@ -370,7 +383,7 @@ export class HudScene extends Phaser.Scene {
     this.itemNoticeText.setText(notice ? `${notice.name} — ${notice.effect}` : '');
     // Pod opisem modyfikatora, jeśli ten jeszcze widać.
     const below = this.modifierText.text !== '' ? this.modifierText.height + 4 : 0;
-    this.itemNoticeText.setY(this.geo.noticeY + below);
+    this.itemNoticeText.setY(this.modifierText.y + below);
     this.itemNoticeText.setAlpha(notice ? Math.min(1, notice.remainingMs / ITEM_NOTICE_FADE_MS) : 0);
   }
 
@@ -405,18 +418,6 @@ export class HudScene extends Phaser.Scene {
     this.bannerStartedAt = now;
   }
 
-  /** Ładunki strzału: pełne segmenty + częściowo wypełniony segment, który się ładuje. */
-  private drawCharges(ranged: RangedHudData): void {
-    const count = Math.max(1, ranged.maxCharges);
-    const gap = L.charges.gap + 2;
-    const width = Math.floor((L.hp.width - gap * (count - 1)) / count);
-    for (let i = 0; i < count; i++) {
-      const x = BAR_X + i * (width + gap);
-      const ratio = i < ranged.charges ? 1 : i === ranged.charges ? ranged.rechargeProgress : 0;
-      drawBar(this.bars, x, this.geo.chargesY, width, L.charges.height, ratio, i < ranged.charges ? RAMPS.charge : RAMPS.chargeLoading);
-    }
-  }
-
   /** Ultimate: kwadrat za paskiem HP, wypełnia się od dołu; pełny — złoty i pulsuje obwódką. */
   private drawUltimate(ultimate: UltimateHudData | null, time: number): void {
     this.ultimateText.setVisible(ultimate !== null);
@@ -438,13 +439,6 @@ export class HudScene extends Phaser.Scene {
       const on = Math.floor(time / 260) % 2 === 0;
       if (on) g.fillStyle(P.goldLight, 0.9).fillRect(x - 1, y - 1, size + 2, 1).fillRect(x - 1, y + size, size + 2, 1).fillRect(x - 1, y, 1, size).fillRect(x + size, y, 1, size);
     }
-  }
-
-  /** Promień: w trakcie — pozostały czas (jasny), w blokadzie — odnowienie (ciemny), gotowy — pełny. */
-  private drawBeam(beam: BeamHudData | null): void {
-    if (!beam) return;
-    const ramp = beam.active ? RAMPS.beam.active : beam.readiness >= 1 ? RAMPS.beam.ready : RAMPS.beam.loading;
-    drawBar(this.bars, BAR_X, this.geo.beamY, L.hp.width, L.beam.height, beam.readiness, ramp);
   }
 
   private drawBossBar(boss: BossHudData | null): void {

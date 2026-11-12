@@ -6288,6 +6288,21 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** recepta (drobne napisy bez cienia i rampy), linia modyfikatora. `npm run build`, smoke solo.
 
+## Krok U7e — Żywe wskaźniki klasy pod paskiem zdrowia, bez portretu i napisu piętra `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena i prośba właściciela po U7d (12.11.2026) `#ocena`:** „zepsuliśmy cały feel… pozbądź się tej szkaradnej miniaturki i napisu piętro 1. przetwórz te charge dasha i strzały na coś żywego — w przypadku barby krwistego, czarki magicznego, a łucznika naciągniętej cięciwy etc. usuń tekst o pokonanych wrogach — co on w ogóle oznacza? umieść pod zmodyfikowanym paskiem hp zdobyte itemy i golda”.
+
+**Co powstało:**
+- Lewy panel od góry: pasek zdrowia (ultimate obok), żywe wskaźniki klasy, złoto, zdobyte przedmioty; pod nimi tylko cel, gdy coś znaczy (schody otwarte, „naciśnij E”), modyfikator piętra i wiadomość o przedmiocie. Portret i napis piętra usunięte.
+- Wskaźniki w motywie klasy (`config/hudGaugeConfig.ts`, ruch w `systems/hudGauges.ts`, rysunek `ui/ClassGauges.ts`):
+  - barbarzyńca — dash to żyła: krew płynie do czoła wypełnienia, gotowa żyła bije jak serce („lub-dub”); ładunki strzału to krople krwi wypełniające się od dołu, pełne z odblaskiem;
+  - Czarodziejka — dash i promień to strumienie magii z płynącymi iskrami (promień w działaniu jaśniejszy i szybszy); kule to fioletowe kule z wędrującym błyskiem;
+  - łucznik — dash to cięciwa między końcami ramion: luźna zwisa, gotowa jest napięta i chwilę drga; ładunki to łuki, których cięciwa naciąga się w trakcie ładowania, a gotowy łuk ma strzałę na cięciwie.
+- Bicie serca wyłącza „Ogranicz błyski”.
+- Cel w zwykłej walce bez tekstu (dawne „Wrogowie: N”) — `objectiveHint` daje pusty skrót poza schodami.
+
+**Testy:** `tests/systems/hudGauges.test.ts` (motyw z broni, bicie serca, przepływ i iskry w wypełnionej części, ugięcie i drganie cięciwy, wiersze ładunku i naciąg łuku), cel bez liczby wrogów. `npm run build`, smoke solo i co-op.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

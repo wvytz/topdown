@@ -29,21 +29,25 @@ export interface ObjectiveTexts {
   readonly arenaHint: string;
 }
 
-/** Podpowiedź celu: pełna po zmianie celu, potem krótka. `pressE` — „Naciśnij E” albo „Stuknij E”. */
+/**
+ * Podpowiedź celu: pełna po zmianie celu, potem krótka. `pressE` — „Naciśnij E” albo „Stuknij E”.
+ * Krok U7e (właściciel: „usuń tekst o pokonanych wrogach — co on w ogóle oznacza?”): w zwykłej walce krótka
+ * podpowiedź jest pusta — HUD mówi coś dopiero, gdy schody są otwarte albo trzeba wcisnąć E.
+ */
 export function objectiveHint(state: ObjectiveState, pressE: string, arena: ObjectiveTexts): ObjectiveHint {
   const enemies = `Wrogowie: ${state.enemiesAlive}`;
   if (state.bossRush) {
     return state.boss
-      ? { key: 'arena-boss', long: arena.fightHint, short: 'Boss', tone: 'arena' }
-      : { key: 'arena', long: `${enemies} · ${arena.arenaHint}`, short: enemies, tone: 'arena' };
+      ? { key: 'arena-boss', long: arena.fightHint, short: '', tone: 'arena' }
+      : { key: 'arena', long: `${enemies} · ${arena.arenaHint}`, short: '', tone: 'arena' };
   }
   if (state.stairsUnlocked) {
     return state.onStairs
       ? { key: 'on-stairs', long: `${pressE}, aby wspiąć się wyżej`, short: `${pressE}, aby wspiąć się wyżej`, tone: 'stairs' }
       : { key: 'stairs', long: `Schody otwarte — stań na nich i ${pressE.toLowerCase()}, aby wspiąć się wyżej`, short: 'Schody otwarte', tone: 'stairs' };
   }
-  if (state.boss) return { key: 'boss', long: 'Pokonaj bossa, aby otworzyć schody · unikaj stref ataku', short: 'Pokonaj bossa', tone: 'boss' };
-  return { key: 'explore', long: `${enemies} · znajdź komnatę bossa (zakratowane schody)`, short: enemies, tone: 'plain' };
+  if (state.boss) return { key: 'boss', long: 'Pokonaj bossa, aby otworzyć schody · unikaj stref ataku', short: '', tone: 'boss' };
+  return { key: 'explore', long: `${enemies} · znajdź komnatę bossa (zakratowane schody)`, short: '', tone: 'plain' };
 }
 
 /**
