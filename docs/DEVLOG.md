@@ -6319,6 +6319,14 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** `npm run build`.
 
+## Krok U7h — Fazy bossa bez komunikatów `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela (12.11.2026) `#ocena`:** „nie no nie informujmy gracza o fazach, jest to zbyt transparentne i za mało się zmienia by to komunikować”.
+
+**Co się zmieniło:** pasek bossa nie pokazuje już dopisku „· FAZA x/y” ani kresek progów i ich rozbłysku (pojedynczy boss i duet). Zostaje imię i okrzyk wściekłości („SLIMER — WŚCIEKŁY!”) oraz plansza przy wściekłości. Usunięty rysownik `effects/BossPhaseBar.ts`; `BOSS_PHASE_MARKS` ma już tylko `minGap` (progi faz dalej liczy `BossFight.phaseMarks`, ale HUD ich nie używa).
+
+**Testy:** `npm run build`, kadry paska Slimera i pajęczego duetu.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

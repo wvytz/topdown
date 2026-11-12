@@ -14,9 +14,6 @@ import type { MinimapExplorer } from '@/systems/Minimap';
 import { visibleRoute } from '@/systems/MinimapRoute';
 import { DeathScreen } from '@/effects/DeathScreen';
 import { BossIntroCard, introCardEnabled } from '@/effects/BossIntroCard';
-import { drawPhaseMarks } from '@/effects/BossPhaseBar';
-import { bossPhase } from '@/systems/BossPresentation';
-import { BOSS_PHASE_MARKS } from '@/config/bossPresentationConfig';
 import { display } from '@/input/DisplayControls';
 import { currentPlatform } from '@/core/platform';
 import { BOSS_POINTER_CONFIG } from '@/config/gameConfig';
@@ -132,8 +129,6 @@ export class HudScene extends Phaser.Scene {
   private bannerBoss: BossHudData | null = null;
   /** Krok U6: karta wejścia bossa (zamiast planszy przy przebudzeniu) i ostatnie fazy pasków. */
   private introCard!: BossIntroCard;
-  private readonly lastPhase = new Map<string, number>();
-  private phaseFlash = new Map<string, { readonly mark: number; readonly at: number }>();
   /** Co-op (etap C5): napis P1 przy pasku i panel P2. */
   private playerLabelText!: UiText;
   private partnerLabel!: UiText;
@@ -391,10 +386,6 @@ export class HudScene extends Phaser.Scene {
     const now = this.time.now;
     const previous = this.bannerBoss;
     this.bannerBoss = boss;
-    if (!boss) {
-      this.lastPhase.clear();
-      this.phaseFlash.clear();
-    }
     this.introCard.update(now);
     if (boss?.title) {
       // Krok U6: przebudzenie ogłasza karta z portretem; `?bossCard=0` — dawna plansza.
@@ -452,32 +443,9 @@ export class HudScene extends Phaser.Scene {
 
     const x = (this.scale.width - BOSS.width) / 2;
     const ratio = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
-    const marks = this.phaseMarksOf(boss.phaseMarks);
-    const phase = marks.length > 0 ? ` · ${BOSS_PHASE_MARKS.label(bossPhase(ratio, marks), marks.length + 1)}` : '';
-    this.bossNameText.setText((boss.enraged ? `${boss.name} — ${boss.enragedLabel}` : boss.name) + phase);
+    // Krok U7h (ocena właściciela): bez „faza x/y” i kresek progów — fazy nie są komunikowane.
+    this.bossNameText.setText(boss.enraged ? `${boss.name} — ${boss.enragedLabel}` : boss.name);
     this.fillBossBar(x, BOSS.width, ratio, boss.enraged);
-    this.drawPhases('boss', { x, y: BOSS.y, width: BOSS.width, height: BOSS.height }, marks, ratio);
-  }
-
-  /** Kreski faz są wyłączalne w configu (krok U6). */
-  private phaseMarksOf(marks: readonly number[] | undefined): readonly number[] {
-    return BOSS_PHASE_MARKS.enabled ? (marks ?? []) : [];
-  }
-
-  /** Kreski faz na pasku i rozbłysk progu, który gracz właśnie przekroczył (krok U6). */
-  private drawPhases(key: string, bar: { x: number; y: number; width: number; height: number }, marks: readonly number[], ratio: number): void {
-    if (marks.length === 0) return;
-    const now = this.time.now;
-    const phase = bossPhase(ratio, marks);
-    const before = this.lastPhase.get(key);
-    this.lastPhase.set(key, phase);
-    const crossed = marks[phase - 2];
-    if (before !== undefined && phase > before && crossed !== undefined && !display.settings.reduceFlashes) {
-      this.phaseFlash.set(key, { mark: crossed, at: now });
-    }
-    const flash = this.phaseFlash.get(key);
-    const strength = flash ? 1 - (now - flash.at) / BOSS_PHASE_MARKS.flashMs : 0;
-    drawPhaseMarks(this.bars, bar, marks, ratio, flash && strength > 0 ? { mark: flash.mark, strength } : null);
   }
 
   /**
@@ -490,10 +458,6 @@ export class HudScene extends Phaser.Scene {
     text.setText(member.name).setColor(member.defeated ? C.muted : member.enraged ? '#ff8a5a' : C.boss);
     const ratio = member.maxHp > 0 ? member.hp / member.maxHp : 0;
     this.fillBossBar(this.duetBarX(index), DUET_BAR_WIDTH, ratio, member.enraged);
-    if (!member.defeated) {
-      const bar = { x: this.duetBarX(index), y: BOSS.y, width: DUET_BAR_WIDTH, height: BOSS.height };
-      this.drawPhases(`duet-${member.name}-${index}`, bar, this.phaseMarksOf(member.phaseMarks), ratio);
-    }
   }
 
   /** Pasek bossa w ramce z czerwonymi nitami (barwy ekranu startowego). */
