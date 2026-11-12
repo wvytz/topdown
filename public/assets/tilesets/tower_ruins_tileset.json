@@ -1869,26 +1869,6 @@
    "h": 1,
    "layer": "wall",
    "weight": 2
-  },
-  "combat_fresh_a": {
-   "frame": 230,
-   "col": 6,
-   "row": 14,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_fresh_b": {
-   "frame": 231,
-   "col": 7,
-   "row": 14,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
   }
  },
  "groups": {
@@ -2220,10 +2200,6 @@
    "wall_breach_c_2x1",
    "wall_breach_d_1x2",
    "wall_breach_e_1x1"
-  ],
-  "combat.fresh": [
-   "combat_fresh_a",
-   "combat_fresh_b"
   ]
  },
  "colors": {

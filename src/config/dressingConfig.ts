@@ -50,10 +50,10 @@ export interface FloorDressingConfig {
     readonly capacity: number;
     readonly groups: Readonly<Record<CombatDecalKind, string>>;
     /**
-     * Krok U4d: jaskrawa, świeża krew nad plamą — grupa kafli i czas wygaszania (ms). Gra od kroku 19b kładzie
-     * trwałe, ciemne plamy; jaskrawa krew z kroku U4c tylko na chwilę je przykrywa i znika. Brak = bez świeżej krwi.
+     * Krok U4e (decyzja właściciela 12.11.2026: „zlikwiduj tę krew całkowicie, gramy arcade”): plamy krwi po śmierci
+     * wrogów i bossów wyłączone; przypalenia i szlam zostają (pokazują strefy i ogień).
      */
-    readonly fresh?: { readonly group: string; readonly holdMs: number; readonly fadeMs: number; readonly capacity: number };
+    readonly blood: boolean;
   };
   readonly stairsTiles: { readonly locked: string; readonly open: string };
   /** Krok U4a (oprawa 2.0): kamienny próg na wejściu do pokoju — grupa wg orientacji przejścia; brak = bez progów. */
@@ -107,8 +107,6 @@ export interface TrailDressing {
 
 /** Oprawa 2.0 (kroki U4a–U4b): grupy progów i obwódki areny — te same nazwy w każdym arkuszu z dodatkiem `v2`. */
 const SILLS_V2 = { h: 'floorSill.h', v: 'floorSill.v' } as const;
-/** Krok U4d: świeża krew w biomach 2.0 (poza Grzybnią) — jaskrawa przez chwilę, potem zostaje dawna ciemna plama. */
-const FRESH_BLOOD_V2 = { group: 'combat.fresh', holdMs: 900, fadeMs: 1400, capacity: 24 } as const;
 const ARENA_BORDER_V2: Readonly<Record<ArenaBorderSide, string>> = {
   n: 'arenaBorder.n',
   s: 'arenaBorder.s',
@@ -169,7 +167,7 @@ export const FLOOR_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.1, group: 'wallFace' },
   archGroup: 'overhead.arch',
   cobweb: { chance: 0.35, nwGroup: 'overhead.cobwebNW', neGroup: 'overhead.cobwebNE' },
-  combatDecals: { capacity: 180, groups: { splat: 'combat.splat', scorch: 'combat.scorch', slime: 'combat.slime' } },
+  combatDecals: { capacity: 180, groups: { splat: 'combat.splat', scorch: 'combat.scorch', slime: 'combat.slime' }, blood: false },
   stairsTiles: { locked: 'stairs_sealed_3x3', open: 'stairs_open_3x3' },
   gateTiles: {
     h: { open: 'gate_h_open', half: 'gate_h_half', closed: 'gate_h_closed' },
@@ -219,7 +217,6 @@ export const RUINS_DRESSING: FloorDressingConfig = {
   sills: SILLS_V2,
   arenaBorder: ARENA_BORDER_V2,
   breaches: { group: 'wallBreach', chance: 0.035, minWallDistance: 4, spacing: 5 },
-  combatDecals: { ...FLOOR_DRESSING.combatDecals, fresh: FRESH_BLOOD_V2 },
 };
 
 /**
@@ -306,7 +303,6 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
   sills: SILLS_V2,
   arenaBorder: ARENA_BORDER_V2,
   breaches: { group: 'wallBreach', chance: 0.015, minWallDistance: 4, spacing: 6 },
-  combatDecals: { ...FLOOR_DRESSING.combatDecals, fresh: FRESH_BLOOD_V2 },
 };
 
 /**
@@ -403,7 +399,6 @@ export const MIRROR_HALL_DRESSING: FloorDressingConfig = {
   sills: SILLS_V2,
   arenaBorder: ARENA_BORDER_V2,
   breaches: { group: 'wallBreach', chance: 0.008, minWallDistance: 4, spacing: 6 },
-  combatDecals: { ...FLOOR_DRESSING.combatDecals, fresh: FRESH_BLOOD_V2 },
 };
 
 /**
@@ -443,7 +438,6 @@ export const STORK_GARDEN_DRESSING: FloorDressingConfig = {
   sills: SILLS_V2,
   arenaBorder: ARENA_BORDER_V2,
   breaches: { group: 'wallBreach', chance: 0.01, minWallDistance: 4, spacing: 6 },
-  combatDecals: { ...FLOOR_DRESSING.combatDecals, fresh: FRESH_BLOOD_V2 },
 };
 
 /**
@@ -480,7 +474,6 @@ export const INFERNAL_DRESSING: FloorDressingConfig = {
   sills: SILLS_V2,
   arenaBorder: ARENA_BORDER_V2,
   breaches: { group: 'wallBreach', chance: 0.012, minWallDistance: 4, spacing: 6 },
-  combatDecals: { ...FLOOR_DRESSING.combatDecals, fresh: FRESH_BLOOD_V2 },
 };
 
 /**

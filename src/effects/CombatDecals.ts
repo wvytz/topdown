@@ -18,13 +18,7 @@ export class CombatDecals {
   private readonly frames: Readonly<Record<CombatDecalKind, readonly number[]>>;
   private created = 0;
   private recycled = 0;
-  /** Krok U4d: chwilowa, jaskrawa krew nad plamą (własna mała pula, wygaszana tweenem). */
-  private readonly fresh?: {
-    readonly ring: RingBuffer<Phaser.GameObjects.Image>;
-    readonly frames: readonly number[];
-    readonly holdMs: number;
-    readonly fadeMs: number;
-  };
+  private readonly blood: boolean;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -40,16 +34,7 @@ export class CombatDecals {
       return names.map((name) => tileset.tiles[name]?.frame ?? 0);
     };
     this.frames = { splat: framesOf('splat'), scorch: framesOf('scorch'), slime: framesOf('slime') };
-    const fresh = config.fresh;
-    const freshNames = fresh ? tileset.groups[fresh.group] : undefined;
-    if (fresh && freshNames && freshNames.length > 0) {
-      this.fresh = {
-        ring: new RingBuffer(fresh.capacity),
-        frames: freshNames.map((name) => tileset.tiles[name]?.frame ?? 0),
-        holdMs: fresh.holdMs,
-        fadeMs: fresh.fadeMs,
-      };
-    }
+    this.blood = config.blood;
   }
 
   /** Statystyki puli (debug/weryfikacja): aktywne ślady, utworzone obiekty, ponowne użycia. */
@@ -58,6 +43,7 @@ export class CombatDecals {
   }
 
   add(kind: CombatDecalKind, x: number, y: number): void {
+    if (kind === 'splat' && !this.blood) return; // krok U4e: bez plam krwi
     const tx = Math.floor(x / TILE_SIZE);
     const ty = Math.floor(y / TILE_SIZE);
     if (tx < 0 || ty < 0 || tx >= this.floor.width || ty >= this.floor.height) return;
@@ -73,32 +59,8 @@ export class CombatDecals {
       image = this.scene.add.image(0, 0, this.asset.sheetKey, frame).setDepth(RENDER_DEPTH.combatDecal);
       this.created++;
     }
-    const flip = Math.random() < 0.5;
-    image.setFrame(frame).setPosition(Math.round(x), Math.round(y)).setFlipX(flip);
+    image.setFrame(frame).setPosition(Math.round(x), Math.round(y)).setFlipX(Math.random() < 0.5);
     this.ring.push(image);
-    if (kind === 'splat') this.addFresh(Math.round(x), Math.round(y), flip);
   }
 
-  /** Jaskrawa krew nad świeżą plamą: chwilę widoczna, potem wygasa i zostaje sama ciemna plama (krok U4d). */
-  private addFresh(x: number, y: number, flip: boolean): void {
-    const fresh = this.fresh;
-    if (!fresh) return;
-    const frame = fresh.frames[Math.floor(Math.random() * fresh.frames.length)] ?? fresh.frames[0]!;
-    let image: Phaser.GameObjects.Image;
-    if (fresh.ring.isFull) {
-      image = fresh.ring.oldest()!;
-      this.scene.tweens.killTweensOf(image);
-    } else {
-      image = this.scene.add.image(0, 0, this.asset.sheetKey, frame).setDepth(RENDER_DEPTH.freshBlood);
-    }
-    image.setFrame(frame).setPosition(x, y).setFlipX(flip).setAlpha(1).setVisible(true);
-    fresh.ring.push(image);
-    this.scene.tweens.add({
-      targets: image,
-      alpha: 0,
-      delay: fresh.holdMs,
-      duration: fresh.fadeMs,
-      onComplete: () => image.setVisible(false),
-    });
-  }
 }

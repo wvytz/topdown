@@ -491,3 +491,9 @@ export function getEncounterConfigForFloor(floor: number): EncounterConfig {
     lurker: { roomChance: 0.12, minRoomSide: 5, maxPerFloor: towerLoop(floor, TOWER_CONFIG) > 0 ? 2 : 1 },
   };
 }
+
+/**
+ * Odrzut, który wróg (nie boss) dostaje od ciosów, strzał i magii bohaterów — mnożnik (decyzja właściciela 12.11.2026:
+ * „zmniejszyć push back mobów o połowę, bo nie stanowią wyzwania”). Ogłuszenie po trafieniu bez zmian.
+ */
+export const ENEMY_KNOCKBACK_TAKEN = 0.5;

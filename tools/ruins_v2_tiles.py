@@ -356,7 +356,7 @@ def glow_rim(gen, ramp, count):
 
 
 def blood_splat(p, r):
-    """Krok U4c (uwaga właściciela po kroku 24): jaskrawa, świeża krew — od kroku U4d tylko chwilowa nakładka (znika)."""
+    """Krok U4c: jaskrawa krew — od kroku U4e nieużywana (właściciel: gra bez plam krwi), zostaje do ewentualnego powrotu."""
     B, T = p.blood, K.T
     img = K.Img(T, T)
     rad = r.uniform(4.5, 6)
@@ -412,9 +412,4 @@ def apply(entries, Entry, kit, biome='tower_ruins'):
     if biome == 'graveyard':
         for v in ('a', 'b'):
             out.append(Entry(f'wall_tower_niche_{v}', niche, 'wall', group='wallBand.tower', weight=.15))
-    if biome != 'fungal_grove':  # w Grzybni plamy to turkusowa posoka zarażonych — bez świeżej krwi
-        # Krok U4d: jaskrawa krew tylko na chwilę — gra kładzie ją na trwały, ciemny ślad i wygasza (FRESH_BLOOD).
-        for v in ('a', 'b'):
-            out.append(Entry(f'combat_fresh_{v}', blood_splat, 'combatDecal', group='combat.fresh', weight=1,
-                             flip_x=True))
     return out

@@ -6209,6 +6209,17 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Weryfikacja:** `npm run build`, w przeglądarce: świeża czerwień po ciosie, po 3 s sama ciemna plama. Zrzut: `/mnt/project-files/screens/krokU4c-kafle/krew-swieza-i-plama.png`.
 
+## Krok U4e — Bez krwi; odrzut wrogów o połowę `#upgrade` `#decyzja` `#ocena`
+
+**Decyzja właściciela (12.11.2026, po kroku U4d)** `#decyzja`: „zlikwiduj tę krew całkowicie. Gramy ARCADE, musimy wymyślić lepszy sposób na sygnalizację odniesienia obrażeń. BTW musimy zmniejszyć push back mobów o połowę, bo nie stanowią żadnego wyzwania.”
+
+**Co zmienione**
+- **Bez plam krwi:** `combatDecals.blood: false` (`config/dressingConfig.ts`) — śmierć wrogów, bossów, pająków i wybuchy nie kładą już plam; przypalenia i szlam zostają (pokazują ogień i strefy). Nakładka świeżej krwi z kroku U4d usunięta; kafle plam w arkuszach jak przed U4c (nieużywane).
+- **Odrzut wrogów o połowę:** `ENEMY_KNOCKBACK_TAKEN = 0.5` (`config/combatConfig.ts`) mnoży odrzut, który wróg dostaje od trafienia (ciosy, strzały, magia, wybuchy); bossowie, ogłuszenie po trafieniu i odrzut bohatera bez zmian. To zmiana balansu na gałęzi upgradu — do `main` z kolejną paczką.
+- **Sygnalizacja obrażeń** — do ustalenia z właścicielem (propozycje w wątku).
+
+**Weryfikacja:** `npm run build` (2973 testy), `npm run smoke -- --floors 2`.
+
 ## Krok U5a — Postacie 2.0: pilot barbarzyńcy `#upgrade` `#postacie`
 
 **Decyzja właściciela (12.11.2026)** `#decyzja`: po U4c „lecimy dalej U5 i U6”. Wg planu (`docs/UPGRADE.md`) najpierw arkusz jednej postaci do akceptacji, potem reszta.

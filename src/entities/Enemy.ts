@@ -15,7 +15,7 @@ import type {
 import { AttackPhase, EliteAffix, EnemyAttackKind, EnemyState } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import { EnemyBrain } from '@/ai/EnemyBrain';
-import { ENEMY_STATUS_RESISTANCE, ENEMY_VIEW_RULE } from '@/config/combatConfig';
+import { ENEMY_KNOCKBACK_TAKEN, ENEMY_STATUS_RESISTANCE, ENEMY_VIEW_RULE } from '@/config/combatConfig';
 import { AttackCycle } from '@/systems/AttackCycle';
 import { Health } from '@/systems/Health';
 import { StatusEffects } from '@/systems/StatusEffects';
@@ -431,7 +431,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // Skoku i szarży nie da się zatrzymać trafieniem — bez odrzutu i ogłuszenia w biegu.
     if (!this.pounce && !this.leap && this.charge?.phase(now) !== ChargePhase.Charging) {
       this.hitStun.start(now, HIT_STUN_MS);
-      this.setVelocity(hit.knockback.x, hit.knockback.y);
+      this.setVelocity(hit.knockback.x * ENEMY_KNOCKBACK_TAKEN, hit.knockback.y * ENEMY_KNOCKBACK_TAKEN);
     }
     this.brain.alert(source);
     if (!result.died) this.status.apply(hit.status, now);
