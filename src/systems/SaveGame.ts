@@ -5,6 +5,7 @@ import { GateReward, ItemId } from '@/core/lootTypes';
 import { RunMode } from '@/core/runMode';
 import { HERO_DEFINITIONS, parseHeroId } from '@/config/heroConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
+import { ECLIPSE_CONFIG } from '@/config/eclipseConfig';
 import { floorLabel } from '@/systems/TowerLoop';
 
 /**
@@ -67,10 +68,12 @@ function parsePartner(value: unknown): CoopPartnerSnapshot | null {
   return { hero, items, hp };
 }
 
+const MAX_ECLIPSE = ECLIPSE_CONFIG.levels.length - 1;
+
 function parseRunSnapshot(value: unknown): RunSnapshot | null {
   if (!isRecord(value)) return null;
   const hero = parseHeroId(typeof value.hero === 'string' ? value.hero : null);
-  const { gold, items, hp, practice, mode, fromSave, startFloor, embers, descentPath, gateReward } = value;
+  const { gold, items, hp, practice, mode, fromSave, startFloor, embers, descentPath, gateReward, eclipse } = value;
   if (!hero || !isCount(gold) || !Array.isArray(items)) return null;
   if (!items.every((id): id is ItemId => typeof id === 'string' && ITEM_IDS.has(id))) return null;
   if (hp !== null && !(typeof hp === 'number' && Number.isFinite(hp) && hp > 0)) return null;
@@ -94,6 +97,8 @@ function parseRunSnapshot(value: unknown): RunSnapshot | null {
     ...(embers !== undefined && embers > 0 ? { embers } : {}),
     ...(path ? { descentPath: [...path] } : {}),
     ...(reward ? { gateReward: reward } : {}),
+    // Krok Z5: poziom Zaćmienia — zły wpis odpada (run wraca jako zwykłe Zejście).
+    ...(isCount(eclipse) && eclipse <= MAX_ECLIPSE ? { eclipse } : {}),
   };
 }
 

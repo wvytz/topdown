@@ -1,6 +1,7 @@
 import type { DeathFlowGroup, DeathTiming, DeathTitleFlow } from '@/config/deathScreenConfig';
 import { DEATH_TIMING, DEATH_TITLE_FLOW } from '@/config/deathScreenConfig';
 import { HeroId } from '@/core/heroTypes';
+import { ECLIPSE_TEXT } from '@/config/eclipseConfig';
 import type { RankedEntry } from '@/systems/Highscores';
 
 const HERO_IDS: readonly string[] = Object.values(HeroId);
@@ -12,9 +13,10 @@ export function knownHero(hero: string | undefined): HeroId | null {
 
 /** Wiersz tablicy: miejsce, imię, wynik, piętro; bieżący run w znacznikach › ‹. Bohatera pokazuje miniaturka obok. */
 /** Wiersz tablicy; na tablicy aren (krok 91a) arena idzie przed złotem, bo to ona decyduje o miejscu. */
-/** Tablica Zejścia (krok Z1): miejsce w runie to głębia, nie piętro wieży. */
+/** Tablica Zejścia (krok Z1): miejsce w runie to głębia, nie piętro wieży; krok Z5 — z poziomem Zaćmienia. */
 export function formatScoreRow(row: RankedEntry, arenas = false, descent = false): string {
-  const where = arenas ? `arena ${row.entry.floor} · ${row.entry.score} złota` : `${row.entry.score} złota · ${descent ? 'głębia' : 'piętro'} ${row.entry.floor}`;
+  const eclipse = descent && row.entry.eclipse ? ` · ${ECLIPSE_TEXT.badge(row.entry.eclipse)}` : '';
+  const where = arenas ? `arena ${row.entry.floor} · ${row.entry.score} złota` : `${row.entry.score} złota · ${descent ? 'głębia' : 'piętro'} ${row.entry.floor}${eclipse}`;
   const label = `${row.rank}. ${row.entry.name ?? '—'} · ${where}`;
   return row.isCurrent ? `› ${label} ‹` : label;
 }

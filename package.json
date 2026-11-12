@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node tools/smoke.mjs",
+    "measure:eclipse": "node tools/eclipse-measure.mjs",
     "shots": "node tools/shots.mjs",
     "perf": "node tools/perf.mjs"
   },

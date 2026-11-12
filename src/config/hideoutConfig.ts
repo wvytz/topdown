@@ -18,6 +18,8 @@ export enum HideoutStation {
   Wall = 'wall',
   /** Półka trofeów po pokonanych bossach. */
   Shelf = 'shelf',
+  /** Kram kupca (krok Z5): za Żar kupiec Zejścia wykłada przedmiot więcej. */
+  Stall = 'stall',
 }
 
 export interface HideoutStationSpot {
@@ -57,6 +59,7 @@ export const HIDEOUT_CONFIG: HideoutConfig = {
     { id: HideoutStation.Kiln, tile: { x: 24, y: 11 }, name: 'Piec wotów', prompt: 'Zajrzyj do pieca' },
     { id: HideoutStation.Wall, tile: { x: 9, y: 7 }, name: 'Ściana imion', prompt: 'Czytaj' },
     { id: HideoutStation.Shelf, tile: { x: 21, y: 7 }, name: 'Półka trofeów', prompt: 'Obejrzyj' },
+    { id: HideoutStation.Stall, tile: { x: 22, y: 15 }, name: 'Kram kupca', prompt: 'Zajrzyj na kram' },
   ],
 };
 
@@ -100,4 +103,11 @@ export const HIDEOUT_TEXT = {
   wallEmpty: 'Ściana jest pusta. Pierwsze Zejście zapisze tu Twoje imię.',
   shelf: (count: number, total: number) => (count > 0 ? `Trofea: ${count}/${total}` : 'Półka jest pusta. Trofea zostawiają bossowie pokonani od teraz.'),
   coopMobile: 'Zejście we dwoje działa na komputerze (klawiatura + pad).',
+  // Krok Z5: Kram kupca (trzecia karta u kupca za Żar) i Zaćmienie w nagłówku.
+  stallPromptBuy: (cost: number) => `Trzecia karta u kupca (${cost} Żaru)`,
+  stallOffer: (cost: number, embers: number) =>
+    `Kupiec zaświatów zostawił tu pustą ladę. Za ${cost} Żaru będzie wykładał w Zejściu jeden przedmiot więcej — na zawsze. Masz ${embers}.`,
+  stallBought: 'Kram opłacony: kupiec Zejścia wykłada trzy przedmioty zamiast dwóch.',
+  stallDone: 'Kupiec Zejścia wykłada trzy przedmioty. Na kramie nie ma nic więcej.',
+  eclipseStatus: (name: string) => ` · ${name}`,
 } as const;

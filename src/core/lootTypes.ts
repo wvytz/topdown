@@ -215,6 +215,8 @@ export interface RunSnapshot {
   readonly descentPath?: readonly number[];
   /** Zejście (krok Z4): nagroda bramy, którą bohater wszedł na bieżące odbicie. */
   readonly gateReward?: GateReward;
+  /** Zejście (krok Z5): poziom Zaćmienia runu (0 — zwykłe Zejście). */
+  readonly eclipse?: number;
 }
 
 /** Krok Z4: nagroda z podpowiedzi na bramie Zejścia. */

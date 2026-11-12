@@ -15,7 +15,7 @@ import type { SaveSlot } from '@/persistence/SaveStorage';
 import { diag } from '@/diagnostics/DiagnosticsHub';
 import { MenuEntry, initialEntry, isEntryEnabled, menuOrder, moveCursor } from '@/systems/mainMenu';
 import { HIDEOUT_TEXT } from '@/config/hideoutConfig';
-import { META_CONFIG } from '@/config/metaConfig';
+import { ECLIPSE_CONFIG } from '@/config/eclipseConfig';
 import { MetaStorage } from '@/persistence/MetaStorage';
 import { metaRank } from '@/systems/MetaProgress';
 import type { MenuAvailability } from '@/systems/mainMenu';
@@ -412,7 +412,7 @@ export class MenuScene extends Phaser.Scene {
     switch (entry) {
       case MenuEntry.Hideout: {
         const profile = this.meta.load();
-        this.setInfo(HIDEOUT_TEXT.title, `${HIDEOUT_TEXT.menuInfo}\n\n${HIDEOUT_TEXT.hearth(profile.embers, metaRank(profile, META_CONFIG.ranks))}`);
+        this.setInfo(HIDEOUT_TEXT.title, `${HIDEOUT_TEXT.menuInfo}\n\n${HIDEOUT_TEXT.hearth(profile.embers, metaRank(profile, ECLIPSE_CONFIG.ranks))}`);
         break;
       }
       case MenuEntry.Continue: {

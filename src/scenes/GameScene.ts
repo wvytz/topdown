@@ -161,8 +161,11 @@ import type { GateReward } from '@/core/lootTypes';
 import { META_CONFIG } from '@/config/metaConfig';
 import { MetaStorage } from '@/persistence/MetaStorage';
 import { EmberPurse, withUnderworldRule } from '@/systems/Descent';
+import { ECLIPSE_CONFIG, ECLIPSE_TEXT, STALL_CONFIG } from '@/config/eclipseConfig';
+import type { EclipseLevel } from '@/config/eclipseConfig';
+import { clampEclipse, eclipseEliteAffixes, eclipseHeal, eclipseLevel, eclipsePrice, withExtraHordeWaves, withRunEclipse } from '@/systems/Eclipse';
 import type { MetaProfile } from '@/systems/MetaProgress';
-import { addTrophy, bankDescent, findVotive, knownVotives, unlockHideout } from '@/systems/MetaProgress';
+import { addTrophy, bankDescent, findVotive, knownVotives, metaRank, unlockHideout } from '@/systems/MetaProgress';
 import { poolWithVotives, votiveToFind, withStartItem } from '@/systems/Votives';
 import { KILN_CONFIG, VOTIVE_CONFIG, VOTIVE_ORDER, WARD_VISUAL } from '@/config/votiveConfig';
 import { NO_WEAPON_EFFECTS } from '@/systems/WeaponEffects';
@@ -411,6 +414,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private merchantStock: { readonly offer: MerchantOffer; sold: boolean }[] = [];
   /** Zejście: sakiewka Żaru (bezpieczny z poprzednich pięter + zebrany na tym). */
   private embers: EmberPurse | null = null;
+  /** Krok Z5: poziom Zaćmienia runu Zejścia (0 — zwykłe Zejście; we wspinaczce zawsze 0). */
+  private eclipseIndex = 0;
+  private eclipse: EclipseLevel = ECLIPSE_CONFIG.levels[0]!;
+  /** Krok Z5: nowa ranga za zwycięstwo w tym runie (ekran końca). */
+  private newRank: string | null = null;
   /** Krok Z3: pula łupów z Wotami wypalonymi w Popielniku (bez nich — pula Aktu I). */
   private itemPool: readonly ItemDefinition[] = ITEM_POOL;
   /** Żar oddany do Popielnika na koniec Zejścia (do ekranu podsumowania). */
@@ -454,8 +462,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), SELECTABLE_HEROES);
     const botData = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
     // Krok Z3: przedmiot startowy Zejścia z Paleniska (obaj bohaterowie w co-opie).
-    const startItem = botData.replay ? null : this.meta.load().startItem;
-    const startRun = withStartItem(botData.run, botData.floor, DESCENT_CONFIG.firstFloor, startItem);
+    const startProfile = this.meta.load();
+    const startItem = botData.replay ? null : startProfile.startItem;
+    // Krok Z5: świeże Zejście dostaje poziom Zaćmienia wybrany przy Bramie.
+    const startRun = withRunEclipse(
+      withStartItem(botData.run, botData.floor, DESCENT_CONFIG.firstFloor, startItem),
+      botData.floor,
+      DESCENT_CONFIG.firstFloor,
+      botData.replay ? 0 : Math.min(startProfile.eclipse, startProfile.eclipseCleared),
+      ECLIPSE_CONFIG.levels.length - 1,
+    );
     const data: FloorSceneData =
       startRun === botData.run
         ? botData
@@ -478,7 +494,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const descent = this.run.mode === RunMode.Descent;
     this.route = descent ? descentPathFor(data.run.descentPath, data.floor, data.runSeed, DESCENT_CONFIG, DESCENT_ROUTE_SALT) : null;
     this.gateReward = descent ? data.run.gateReward : undefined;
-    this.emberTally = descent ? new EmberTally(gateEmbersMultiplier(this.gateReward, DESCENT_GATES)) : null;
+    this.eclipseIndex = descent ? clampEclipse(data.run.eclipse ?? 0, ECLIPSE_CONFIG.levels.length - 1) : 0;
+    this.eclipse = eclipseLevel(this.eclipseIndex, ECLIPSE_CONFIG.levels);
+    this.newRank = null;
+    this.emberTally = descent ? new EmberTally(gateEmbersMultiplier(this.gateReward, DESCENT_GATES) * this.eclipse.embersMultiplier) : null;
     this.merchant = null;
     this.merchantStock = [];
     this.embers = descent ? new EmberPurse(data.run.embers ?? 0) : null;
@@ -642,6 +661,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       const lines = [
         this.gateReward ? GATE_TEXT.toast(GATE_TEXT.rewards[this.gateReward].title) : null,
         this.depth === 1 ? DESCENT_TEXT.startToast : DESCENT_TEXT.rule,
+        this.eclipseIndex > 0 && this.depth === 1 ? ECLIPSE_TEXT.startToast(this.eclipse.name, this.eclipse.rule) : null,
         this.floorModifier && this.depth > 1 ? `${this.floorModifier.name}: ${this.floorModifier.description}` : null,
         this.merchant ? MERCHANT_TEXT.arrivedToast : null,
       ];
@@ -847,7 +867,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       arenaLabel: this.bossRush
         ? arenaLabel(this.floorNumber, this.bossFight.name, TOWER_CONFIG)
         : this.route
-          ? DESCENT_TEXT.hudLabel(this.depth, DESCENT_CONFIG.floors, this.biome?.name ?? '')
+          ? `${DESCENT_TEXT.hudLabel(this.depth, DESCENT_CONFIG.floors, this.biome?.name ?? '')}${this.eclipseIndex > 0 ? ` · ${ECLIPSE_TEXT.badge(this.eclipseIndex)}` : ''}`
           : null,
       floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
@@ -1192,7 +1212,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.lurkerDens = spawns.filter((s) => s.type === EnemyType.Lurker).map((s) => s.tile);
       // Elity (krok 42): własny strumień RNG — nie zmienia rozmieszczenia wrogów.
       const eliteRng = createRng(deriveSeed(this.dungeon.seed, ELITE_SEED_SALT));
-      this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
+      this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eclipseEliteAffixes(eliteAffixCount(this.floorNumber, TOWER_CONFIG), this.eclipse, TOWER_CONFIG.eliteMaxAffixes), eliteRng));
     }
     this.horde = this.createHorde();
     const biome = this.bossRush ? null : this.biome;
@@ -1315,6 +1335,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       walls: this.dungeonView.collisionLayer,
       party: this.party,
       bossHpMultiplier: this.balance.bossHpMultiplier,
+      ...(this.route && { eclipse: this.eclipse }),
       projectiles: this.projectiles,
       effects: this.effects,
       decals: this.combatDecals,
@@ -1593,11 +1614,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.effects.floatingText(position.x, position.y, `+${drop.amount}`, '#f5c542');
         sound.play(SoundCue.Coin, position);
         break;
-      case PickupKind.Health:
-        collector.heal(drop.amount);
-        this.effects.floatingText(position.x, position.y, `+${drop.amount} HP`, '#ff6b8a');
+      case PickupKind.Health: {
+        // Krok Z5: Zaćmienie I+ — mikstury leczą mniej.
+        const amount = eclipseHeal(drop.amount, this.eclipse);
+        collector.heal(amount);
+        this.effects.floatingText(position.x, position.y, `+${amount} HP`, '#ff6b8a');
         sound.play(SoundCue.Heal, position);
         break;
+      }
       case PickupKind.Item:
         sound.play(SoundCue.ItemPickup, position);
         this.grantItem(drop.itemId, collector);
@@ -1913,14 +1937,16 @@ export class GameScene extends Phaser.Scene implements HudSource {
    */
   private createHorde(): HordeManager {
     const rng = createRng(deriveSeed(this.dungeon.seed, HORDE_SEED_SALT));
-    const plans = this.bossRush ? [] : planHordeRooms(this.dungeon, this.floorNumber, HORDE_CONFIG, this.coop !== null, rng);
+    // Krok Z5: Zaćmienie II+ dokłada fale nawały.
+    const config = withExtraHordeWaves(HORDE_CONFIG, this.eclipse.extraHordeWaves);
+    const plans = this.bossRush ? [] : planHordeRooms(this.dungeon, this.floorNumber, config, this.coop !== null, rng);
     return new HordeManager({
       scene: this,
       floor: this.dungeon,
       party: this.party,
       enemies: this.enemies,
       effects: this.effects,
-      config: HORDE_CONFIG,
+      config,
       plans,
       minion: hordeMinionVariant(this.biome.enemyVariants, ENEMY_VARIANTS, ENEMY_DEFINITIONS[EnemyType.Nester].attack),
       rng,
@@ -1993,6 +2019,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       timestamp: Date.now(),
       hero: this.run.hero,
       ...(this.coop && { partner: this.coop.partner.hero }),
+      // Krok Z5: tablica Zejścia pokazuje poziom Zaćmienia.
+      ...(this.route && { eclipse: this.eclipseIndex }),
     };
     // Bez zapisu i bez pytania o imię: run testowy z adresu (krok 41g), run ze slotu i od wybranego piętra (krok 91).
     // Areny bossów (krok 91a) mają własną tablicę — wynik idzie na nią, a nie na tablicę wspinaczki.
@@ -2058,7 +2086,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Krok Z1: dopiski ekranu końca runu — podsumowanie Zejścia i wyjście do Popielnika. */
   private descentFlag(): Pick<DeathSummary, 'descent' | 'toHideout'> {
     return {
-      ...(this.route && { descent: { depth: this.depth, floors: DESCENT_CONFIG.floors, embers: this.embersBanked } }),
+      ...(this.route && {
+        descent: { depth: this.depth, floors: DESCENT_CONFIG.floors, embers: this.embersBanked, eclipse: this.eclipseIndex, ...(this.newRank && { newRank: this.newRank }) },
+      }),
       ...(this.hideoutExit && { toHideout: true }),
     };
   }
@@ -2074,10 +2104,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (this.replay || this.run.practice) return;
     if (this.route && this.embers) {
       if (this.run.fromSave) return;
-      this.embersBanked = this.embers.payout(victory, DESCENT_CONFIG.deathKeepRatio) + (victory ? DESCENT_CONFIG.embers.victory : 0);
-      const outcome = { embers: this.embersBanked, depth: this.depth, victory };
-      this.meta.update((profile) => bankDescent(profile, outcome));
-      diag.note('descent-banked', outcome);
+      const bonus = victory ? Math.round(DESCENT_CONFIG.embers.victory * this.eclipse.embersMultiplier) : 0;
+      this.embersBanked = this.embers.payout(victory, DESCENT_CONFIG.deathKeepRatio) + bonus;
+      const outcome = { embers: this.embersBanked, depth: this.depth, victory, eclipse: this.eclipseIndex };
+      const before = metaRank(this.meta.load(), ECLIPSE_CONFIG.ranks);
+      const after = this.meta.update((profile) => bankDescent(profile, outcome, ECLIPSE_CONFIG.levels.length));
+      const rank = metaRank(after, ECLIPSE_CONFIG.ranks);
+      this.newRank = rank !== before ? rank : null;
+      diag.note('descent-banked', { ...outcome, rank });
       return;
     }
     if (!victory || this.bossRush) return;
@@ -2265,6 +2299,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           ...(this.embers && this.embers.secured > 0 && { embers: this.embers.secured }),
           ...(this.route && { descentPath: [...this.route, nextFloor] }),
           ...(gate && { gateReward: gate.reward }),
+          ...(this.route && { eclipse: this.eclipseIndex }),
         },
         ...this.coopForNextFloor(),
       };
@@ -2312,8 +2347,10 @@ export class GameScene extends Phaser.Scene implements HudSource {
     if (!this.route || !merchantHere(this.depth, this.gateReward, DESCENT_GATES)) return;
     const tile = planMerchantTile(this.dungeon);
     if (!tile) return;
-    const offers = rollMerchantStock(this.usefulPoolFor(this.player), this.depth, merchantRng(this.dungeon.seed, MERCHANT_CONFIG), MERCHANT_CONFIG);
-    this.merchantStock = offers.map((offer) => ({ offer, sold: false }));
+    // Krok Z5: Kram kupca z Popielnika — przedmiot więcej; Zaćmienie II+ — wyższe ceny.
+    const rules = { ...MERCHANT_CONFIG, items: MERCHANT_CONFIG.items + (this.meta.load().stallBought ? STALL_CONFIG.extraItems : 0) };
+    const offers = rollMerchantStock(this.usefulPoolFor(this.player), this.depth, merchantRng(this.dungeon.seed, MERCHANT_CONFIG), rules);
+    this.merchantStock = offers.map((offer) => ({ offer: { ...offer, price: eclipsePrice(offer.price, this.eclipse) }, sold: false }));
     this.merchant = new MerchantSite({ scene: this, tile, party: this.party, onOpen: (hero) => this.openMerchant(hero) });
   }
 

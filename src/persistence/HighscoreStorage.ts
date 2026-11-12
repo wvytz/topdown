@@ -68,5 +68,6 @@ export function isScoreEntry(value: unknown): value is ScoreEntry {
   const v = value as Record<string, unknown>;
   const numbersOk = [v.score, v.floor, v.timestamp].every((n) => typeof n === 'number' && Number.isFinite(n));
   const textOk = (field: unknown) => field === undefined || typeof field === 'string';
-  return numbersOk && textOk(v.name) && textOk(v.hero) && textOk(v.partner);
+  const eclipseOk = v.eclipse === undefined || (typeof v.eclipse === 'number' && Number.isInteger(v.eclipse) && v.eclipse >= 0);
+  return numbersOk && textOk(v.name) && textOk(v.hero) && textOk(v.partner) && eclipseOk;
 }

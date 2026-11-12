@@ -15,6 +15,8 @@ export interface ScoreEntry {
   readonly hero?: string;
   /** Co-op (etap C7): bohater P2 na tablicy co-op; brak w grze solo. */
   readonly partner?: string;
+  /** Zejście (krok Z5): poziom Zaćmienia runu; brak = 0 albo inna tablica. */
+  readonly eclipse?: number;
 }
 
 export interface RankedEntry {

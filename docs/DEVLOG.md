@@ -6199,6 +6199,46 @@ Etap Z4 z `docs/AKT2.md` §4 i §9 na gałęzi `akt-2`, razem z drugą paczką w
 
 **Testy:** nowe `tests/systems/DescentGates.test.ts` (pełna długość każdej drogi, różne drogi z jednego seeda, różne nagrody, brak podwójnego kupca, determinizm, droga ze starego zapisu, mnożniki, ułamki Żaru, lada kupca), `Votives.test.ts` (maska, zwierciadło z odnowieniem, ciernie i pióro z limitami), `saveGame.test.ts` (droga i nagroda w zapisie). `npm run build` (2937 testów). W przeglądarce: Zejście na głębi 3 — kupiec przy wejściu, zakup Butów 120 → 70 złota; bramy „więcej Żaru” (odbicie 4) i „kupiec” (odbicie 5) → wejście na 5 z drogą [1, 2, 3, 5] i kupcem; pocisk 12 obrażeń: pierwszy odbity przez zwierciadło (HP bez zmian), drugi po masce 9.
 
+## Krok Z5 — Akt II: Zaćmienia, rangi i wspólna tablica Zejścia `#akt2` `#zejscie` `#zacmienia`
+
+Etap Z5 z `docs/AKT2.md` §6 i §9 na gałęzi `akt-2`, razem z trzecią kartą u kupca (§5, odłożona z Z4). Właściciel 12.11: „kupiec jest spoko. ceny zostawmy a itemy dostosujemy później jak więcej osób zagra. ruszaj Z5”.
+
+**Co powstało**
+- **Zaćmienia 0–III** (`config/eclipseConfig.ts`, `systems/Eclipse.ts`): po pierwszym zdobyciu Dna Brama Zejścia (solo i we dwoje) pokazuje karty poziomów — mysz, 1–4, pad, dotyk; zamknięte są wyszarzone, Esc zostaje w Popielniku. Wybór zapamiętuje profil, a napis nad bramą go podaje („Zejdź sam · Zaćmienie II”). Każdy poziom zawiera reguły poprzednich:
+  - **0** — zwykłe Zejście, Żar ×1;
+  - **I** — elity mają cechę więcej (do sufitu 3), mikstury leczą o 40% mniej; Żar ×1,25;
+  - **II** — każda nawała ma falę więcej, kupiec drożeje o połowę; Żar ×1,5;
+  - **III** — świta bossa: +1 pomocnik na wezwanie, +1 żywy naraz, wezwania co 75% czasu; Żar ×2.
+  Mnożnik obejmuje Żar z wrogów, bossów (razem z bramą „więcej Żaru”) i premię za Dno. Poziom jedzie z runem w `RunSnapshot.eclipse` (zapis gry go waliduje; run z zapisu sprzed Z5 to poziom 0). HUD: „Zejście 2/6 · odbicie: … · Zać. II”, a na starcie runu napis z regułą poziomu.
+- **Rangi** (§6): za ukończone poziomy — Śmiałek → Zahartowany (Dno na 0) → Godny (I) → Posłaniec (II) → Wybraniec (III) (`MetaProfile.eclipseCleared`, `ECLIPSE_CONFIG.ranks`). Zastąpiły rangi z Z1 liczone ze zwycięstw; stary profil z co najmniej jednym Dnem dostaje ukończony poziom 0, więc nikt rangi nie traci. Ranga jest w nagłówku Popielnika, na Ścianie imion i w menu; ekran końca runu pokazuje poziom („ZAĆ. II”) i „NOWA RANGA: …”, gdy zwycięstwo ją dało.
+- **Tablica Zejścia z poziomem:** wiersz „… · głębia 6 · Zać. II” (poziom 0 bez znaku), też na Ścianie imion. **Wspólna tablica w workerze:** trasa `/descent-scores`, tabela `descent_scores` (złoto, głębia, poziom, bohater, P2), migracja `worker/migrations/0006_descent_scores.sql`; walidacja przyjmuje opcjonalne `eclipse` 0–3. Stare trasy (`/scores`, `/arena-scores`, `/coop-scores`) zapisują dokładnie te same kolumny co dotąd (test). Gra wysyła na nią wyniki tylko z adresem workera — podgląd bez `.env.production` zostaje przy tablicy lokalnej.
+- **Kram kupca** (nowe stanowisko Popielnika, prawy dół; `STALL_CONFIG`): jednorazowo za **60 Żaru** kupiec Zejścia wykłada 3 przedmioty zamiast 2 — wygoda, nie siła (§5).
+- **Pomiar botem:** `npm run measure:eclipse` (`tools/eclipse-measure.mjs`) — bot ze smoke przechodzi te same 6 odbić z tymi samymi seedami na każdym poziomie, bohater nieśmiertelny; liczy obrażenia, które by przyjął w pokojach i przy bossie, wrogów, elity. Wynik niżej.
+- Skrót testowy `?hub=1&eclipse=1` otwiera wszystkie poziomy.
+
+**Pomiar botem** (barbarzyńca, 2 seedy × 6 odbić, 25 s przy bossie; względem poziomu 0):
+
+| Poziom | cechy elit | fale nawały (plan) | stworki (plan) | wrogowie przy bossie | obrażenia w pokojach | obrażenia przy bossie |
+|---|---|---|---|---|---|---|
+| 0 | 29 | 100 | 583 | 331 | 225 | 1096 |
+| I | ×1,86 | ×1,00 | ×1,00 | ×1,01 | ×0,90 | ×0,83 |
+| II | ×1,86 | ×1,44 | ×1,42 | ×1,04 | ×1,14 | ×1,00 |
+| III | ×1,86 | ×1,44 | ×1,42 | ×1,16 | ×1,48 | ×0,92 |
+
+Wniosek: reguły działają tam, gdzie powinny (cechy elit prawie ×2 od I, nawała +44% od II, świta +16% wrogów przy bossie na III), ale bot ze smoke chodzi losowo, więc jego obrażenia to szum ±20% — mierzy obciążenie, nie to, czy człowiek przeżyje. Reguła III jest z trzech najsłabsza (+16% wrogów przy bossie, obrażenia bez wyraźnej zmiany) — kandydat do wzmocnienia po teście właściciela. Pierwszy przebieg (8 s przy bossie) w ogóle nie widział świty i dodatkowych fal, bo bot nie czyści pokojów — stąd fale liczone z planu nawały, a okno bossa wydłużone do 25 s. Prawdziwy pomiar trudności potrzebuje bota, który walczy celowo (`PartnerBotBrain` jako P1) — w backlogu.
+
+**Decyzje w trakcie (na mocy zgody właściciela)**
+- Ranking tablicy Zejścia dalej po złocie (wynik = złoto), poziom tylko jako znak przy wierszu; osobne tablice na poziom — gdy będzie więcej graczy.
+- „Leczenia mniej” = mikstury z łupów (także 30 HP po bossie); leczenie u kupca i kieł bez zmian. „Kupiec drożeje” = ceny ×1,5 (na II i III).
+- III: większa świta zamiast dodatkowej fazy bossa — działa od razu na wszystkich 8 bossach bez nowych animacji.
+- Poziom wybiera się raz przy bramie, nie na każdej głębi.
+- Worker niewdrożony: trasa wejdzie razem ze scaleniem Aktu II do `main` (wtedy `wrangler d1 migrations apply` + `wrangler deploy`). Do tego czasu tablica testerów działa bez zmian.
+- Druga podpowiedź na bramie za Żar (§5) — odłożona.
+
+**Do oceny:** odczuwalność poziomów, mnożniki Żaru (czy warto ryzykować), −40% mikstur, cena Kramu, nazwy rang.
+
+**Testy:** nowe `tests/systems/Eclipse.test.ts` (poziomy narastają, reguły: cechy, fale, świta, leczenie, ceny; poziom runu i zapis; rangi, wybór, migracja profilu, Kram, skrót testowy), `tests/worker/index.test.ts` (tablica Zejścia: walidacja poziomu, kolumny zapisu, odczyt; stare tablice bez zmian), `deathScreen.test.ts` (znak poziomu w wierszu), `MetaProgress.test.ts` (rangi z poziomów). `npm run build` (2954 testy), `npm run smoke`, `npm run measure:eclipse`. W przeglądarce: profil z dwoma ukończonymi poziomami → karty 0–III (III zamknięte) → Zaćmienie II → HUD „Zać. II”, Żar ×1,5; głębia 3 z kupcem: na 0 ceny 50/25 i 3 przedmioty po Kramie, na III 75/38; elity 1 → 2 cechy; świta Palacza 1/2/16 s → 2/3/12 s.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6227,8 +6267,8 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 **3a. Do zrobienia — Akt II** (`docs/AKT2.md`, gałąź `akt-2`, podgląd `/topdown/akt2/`)
 - **Z1 zrobione (krok Z1):** profil trwały, Popielnik, Zejście na odbiciach, Żar.
 - **Z3 zrobione (krok Z3):** 4 Wota ochronne, Piec wotów, przedmiot startowy.
-- **Z4 zrobione (krok Z4):** dwie bramy po bossie z podpowiedzią nagrody, kupiec (głębie 3 i 5 i za bramą), druga paczka 4 wot. Zostało: fizyczne bramy i grafika kupca z generatora, wydatki Żaru u kupca (trzecia karta) — z Z5.
-- **Z5:** Zaćmienia 0–III, wspólna tablica Zejścia w workerze.
+- **Z4 zrobione (krok Z4):** dwie bramy po bossie z podpowiedzią nagrody, kupiec (głębie 3 i 5 i za bramą), druga paczka 4 wot. Zostało: fizyczne bramy i grafika kupca z generatora.
+- **Z5 zrobione (krok Z5):** Zaćmienia 0–III, rangi, tablica Zejścia w workerze (do wdrożenia ze scaleniem do `main`), Kram kupca, pomiar botem. Zostało: druga podpowiedź bramy za Żar, ewentualne osobne tablice na poziom, wzmocnienie reguły III po teście, pomiar trudności botem walczącym celowo (`PartnerBotBrain` jako P1), wdrożenie trasy `/descent-scores` w workerze przy scaleniu do `main`.
 - **Z6+:** próby Mictlanu jako własne biomy (po U4), finał z czerwonym odbiciem Czarnego Słońca.
 - Oprawa: własny arkusz kafli i stanowisk Popielnika z generatora, dźwięki stanowisk; Zejście w `npm run smoke`.
 

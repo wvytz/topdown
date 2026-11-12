@@ -408,7 +408,8 @@ export const HIGHSCORE_BOARDS = {
     storageKey: 'tower-crawler.descent-highscores.v1',
     outboxKey: 'tower-crawler.descent-highscores.outbox.v1',
     seenKey: 'tower-crawler.descent-highscores.seen.v1',
-    path: null,
+    // Krok Z5: wspólna tablica w workerze (podgląd bez `.env.production` i tak zostaje przy lokalnej).
+    path: '/descent-scores',
   },
 } as const;
 

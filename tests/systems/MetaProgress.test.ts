@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { META_CONFIG } from '@/config/metaConfig';
+import { ECLIPSE_CONFIG } from '@/config/eclipseConfig';
 import { EMPTY_META, addTrophy, bankDescent, markArrivalSeen, metaRank, openHideoutForTest, parseMetaProfile, unlockHideout } from '@/systems/MetaProgress';
 
 describe('profil trwały', () => {
@@ -53,11 +54,12 @@ describe('profil trwały', () => {
     expect(markArrivalSeen(seen)).toBe(seen);
   });
 
-  it('ranga rośnie z ukończonymi Zejściami', () => {
-    expect(metaRank({ wins: 0 }, META_CONFIG.ranks)).toBe('Śmiałek');
-    expect(metaRank({ wins: 1 }, META_CONFIG.ranks)).toBe('Zahartowany');
-    expect(metaRank({ wins: 5 }, META_CONFIG.ranks)).toBe('Godny');
-    expect(metaRank({ wins: 99 }, META_CONFIG.ranks)).toBe('Wybraniec');
+  it('ranga rośnie z ukończonymi poziomami Zaćmienia (krok Z5)', () => {
+    expect(metaRank({ eclipseCleared: 0 }, ECLIPSE_CONFIG.ranks)).toBe('Śmiałek');
+    expect(metaRank({ eclipseCleared: 1 }, ECLIPSE_CONFIG.ranks)).toBe('Zahartowany');
+    expect(metaRank({ eclipseCleared: 2 }, ECLIPSE_CONFIG.ranks)).toBe('Godny');
+    expect(metaRank({ eclipseCleared: 4 }, ECLIPSE_CONFIG.ranks)).toBe('Wybraniec');
+    expect(metaRank({ eclipseCleared: 99 }, ECLIPSE_CONFIG.ranks)).toBe('Wybraniec');
   });
 
   it('skrót testowy otwiera Popielnik bez sceny upadku i bez Żaru', () => {

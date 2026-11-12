@@ -408,3 +408,68 @@ describe('worker: tablica aren bossów (krok 91a)', () => {
     expect(db.queries.filter((q) => q.includes('COUNT(*)') && q.includes('arena_scores'))).toHaveLength(2);
   });
 });
+
+describe('worker: tablica Zejścia (Akt II, krok Z5)', () => {
+  function recordingDb() {
+    const queries: string[] = [];
+    const inserted: Array<{ sql: string; args: unknown[] }> = [];
+    return {
+      queries,
+      inserted,
+      prepare(sql: string) {
+        queries.push(sql);
+        let args: unknown[] = [];
+        const st = {
+          bind(...a: unknown[]) {
+            args = a;
+            return st;
+          },
+          first: async () => ({ n: 0 }),
+          async run() {
+            if (sql.startsWith('INSERT')) inserted.push({ sql, args });
+            return { meta: {} };
+          },
+          all: async () => ({ results: [] }),
+        };
+        return st;
+      },
+    };
+  }
+  const now = 1_800_000_000_000;
+
+  it('poziom Zaćmienia jest opcjonalny, 0–3; stare tablice nie dostają nowego pola', () => {
+    expect(validate({ score: 1, floor: 2, timestamp: now, eclipse: 2 }, now)?.eclipse).toBe(2);
+    expect(validate({ score: 1, floor: 2, timestamp: now }, now)).not.toHaveProperty('eclipse');
+    for (const eclipse of [4, -1, 1.5, '2']) expect(validate({ score: 1, floor: 2, timestamp: now, eclipse }, now)).toBeNull();
+  });
+
+  it('POST zapisuje głębię, poziom i P2 do własnej tabeli; wspinaczka i co-op bez zmian', async () => {
+    const db = recordingDb();
+    const send = (path: string, body: Record<string, unknown>) =>
+      worker.fetch(
+        new Request(`https://w.example${path}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+          body: JSON.stringify({ score: 40, floor: 5, timestamp: Date.now(), name: 'Wicio', hero: 'archer', ...body }),
+        }),
+        { DB: db, ALLOWED_ORIGINS: ORIGIN },
+      );
+    expect((await send('/descent-scores', { eclipse: 3, partner: 'barbarian' })).status).toBe(201);
+    expect((await send('/descent-scores', {})).status).toBe(201);
+    expect((await send('/scores', {})).status).toBe(201);
+    expect((await send('/coop-scores', { partner: 'sorceress' })).status).toBe(201);
+    const [descent, plain, tower, coop] = db.inserted;
+    expect(descent?.sql).toContain('INSERT INTO descent_scores (score, floor, timestamp, name, hero, partner, eclipse, ip_hash, created_at)');
+    expect(descent?.args.slice(0, 7)).toEqual([40, 5, expect.any(Number), 'Wicio', 'archer', 'barbarian', 3]);
+    expect(plain?.args[6]).toBe(0);
+    expect(tower?.sql).toContain('INSERT INTO scores (score, floor, timestamp, name, hero, ip_hash, created_at)');
+    expect(coop?.sql).toContain('INSERT INTO coop_scores (score, floor, timestamp, name, hero, partner, ip_hash, created_at)');
+  });
+
+  it('GET czyta tabelę Zejścia z poziomem Zaćmienia', async () => {
+    const db = recordingDb();
+    const res = await worker.fetch(new Request('https://w.example/descent-scores?limit=5', { headers: { Origin: ORIGIN } }), { DB: db, ALLOWED_ORIGINS: ORIGIN });
+    expect(res.status).toBe(200);
+    expect(db.queries[0]).toContain('SELECT score, floor, timestamp, name, hero, partner, eclipse FROM descent_scores ORDER BY score DESC');
+  });
+});

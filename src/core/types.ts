@@ -229,7 +229,14 @@ export interface DeathSummary {
   /** Krok 169: run skończony zwycięstwem (po bossie ostatniego piętra kręgu), nie śmiercią. */
   readonly victory?: boolean;
   /** Zejście (krok Z1): głębia, długość trasy i Żar oddany do Popielnika; tablica Zejścia. */
-  readonly descent?: { readonly depth: number; readonly floors: number; readonly embers: number };
+  readonly descent?: {
+    readonly depth: number;
+    readonly floors: number;
+    readonly embers: number;
+    /** Krok Z5: poziom Zaćmienia runu i nowa ranga, gdy zwycięstwo ją dało. */
+    readonly eclipse?: number;
+    readonly newRank?: string;
+  };
   /** Po tym ekranie wyjście prowadzi do Popielnika (Zejście albo wieża zdobyta po jego odblokowaniu), nie do menu. */
   readonly toHideout?: boolean;
 }
