@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { loadArenaArt } from '@/effects/ArenaConditionArt';
+import { loadSpiderVaultArt, registerSpiderVaultAnimations } from '@/effects/SpiderVaultView';
 import { diag } from '@/diagnostics/DiagnosticsHub';
 import type { FloorSceneData } from '@/core/types';
 import type { SplashSceneData } from '@/scenes/SplashScene';
@@ -39,6 +40,8 @@ export class BootScene extends Phaser.Scene {
     loadSpriteSheets(this);
     // Rekwizyty zmiennych aren 6–7 (krok U6, tools/arena_props.py).
     loadArenaArt(this);
+    // Skarbiec pająków w ukrytej komnacie Grzybni (krok U4f, tools/spider_vault_sprites.py).
+    loadSpiderVaultArt(this);
     // Arkusze kafli wszystkich biomów (krok 23a) — piętro wybiera swój w GameScene.
     for (const { tileset } of Object.values(BIOMES)) {
       this.load.image(tileset.imageKey, tileset.imageUrl);
@@ -50,6 +53,7 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     registerSpriteAnimations(this);
     registerLootAnimations(this);
+    registerSpiderVaultAnimations(this);
     for (const { tileset } of Object.values(BIOMES)) {
       registerTorchAnimation(this, tileset, this.cache.json.get(tileset.jsonKey) as TilesetMeta);
     }

@@ -1681,14 +1681,15 @@ export const SPRITE_SHEETS = {
       burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
     },
   },
-  // Kokon skarbu ukrytej komnaty (krok U4b, tools/lair_enemies.py): złoty szew i błysk — „coś cennego w środku”.
+  // Kokon skarbu ukrytej komnaty: od kroku U4f własny model 2x (prośba właściciela, tools/spider_vault_sprites.py) —
+  // jajo z jedwabiu w złotych taśmach, tętniący złoty szew, złoto widoczne przez rozdarcie oplotu.
   treasureCocoon: {
     key: 'sheet-treasure-cocoon',
-    url: 'assets/sprites/treasure-cocoon.png',
-    frameWidth: 32,
-    frameHeight: 32,
-    sheetWidth: 256,
-    sheetHeight: 32,
+    url: 'assets/sprites/vault/vault-cocoon.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    sheetWidth: 512,
+    sheetHeight: 64,
     directions: 1,
     fps: SPRITE_FPS,
     animations: {
@@ -2471,7 +2472,8 @@ export const TRAP_VISUAL = {
 export const SECRET_ROOM_VISUAL = {
   /** Zapas (kafle) wokół komnaty przy podmianie obrazu — cienie i mury sąsiadów też się zmieniają. */
   redrawMargin: 3,
-  cocoonRadius: 9,
+  /** Strefa trafienia kokonu skarbu (od kroku U4f model 2x — było 9). */
+  cocoonRadius: 16,
   revealFlashRadius: 40,
   prizeFlashRadius: 26,
   shakeMs: 180,

@@ -12,8 +12,7 @@ Arkusze (STYLEGUIDE §2, §8, §10; wiersze = 8 kierunków N..NW z obrotu, obrys
   bat_wave.png           32x32; kolumny 0–3 migotanie fali, wiersze = kierunek lotu
   cocoon.png             32x32, bez kierunków (krok 23d); 0–1 spoczynek (puls szwu), 2–3 drżenie (telegraf),
                          4–7 rozdarcie; klatka 7 = strzępy, które zostają na podłodze
-  treasure-cocoon.png    32x32 (krok U4b): kokon skarbu ukrytej komnaty — złoty szew, złote nici, wędrujący błysk;
-                         0–3 spoczynek, 4–7 rozdarcie (złota szczelina)
+  (kokon skarbu ukrytej komnaty z kroku U4b zastąpiony w U4f modelem 2x z tools/spider_vault_sprites.py)
   sticky-web_small.png   32x32 (1 kafel), sticky-web_large.png 64x64 (2x2 kafle), krok 23e: lepka pajęczyna
                          na podłodze; 4 klatki = błysk przesuwa się po zielonych kroplach kleju. Pełna, okrągła
                          sieć z obrysem i kroplami — celowo inna niż narożne pajęczyny-dekoracje (trójkąt, bez obrysu)
@@ -232,52 +231,6 @@ def cocoon_frame(f):
     return img
 
 
-# ---------------- kokon skarbu (krok U4b) ----------------
-TREASURE_GOLD = trt.GOLD  # złoto łupów (STYLEGUIDE §6c): sygnał „tu może być coś cennego”
-TREASURE_GLINTS = ((-3, -4), (2, 1), (-2, 4), (3, -2))  # błysk wędruje po oplocie w spoczynku
-
-
-def treasure_cocoon_frame(f):
-    """Kokon skarbu w ukrytej komnacie Grzybni (prośba właściciela: ma delikatnie wskazywać, że to nie zwykły
-    kokon). Ta sama sylwetka co kokon leża, ale szew tli się złotem łupów, w oplot wplecione są dwie złote nici,
-    a po jedwabiu wędruje jeden błysk. Bez zieleni — nic z niego nie wyskoczy.
-    0–3 spoczynek (wędrujący błysk), 4–7 rozdarcie; klatka 7 = strzępy na podłodze."""
-    img = Img(COCOON, COCOON)
-    cx = COCOON / 2
-    G = TREASURE_GOLD
-    if f < 4:
-        silk_body(img, cx, COCOON_CY, 6.5, 9, 1 if f % 2 == 0 else 2, G)
-        for k, dy in enumerate((-3, 3)):  # złote nici w oplocie
-            for x in range(int(cx - 5), int(cx + 6)):
-                y = int(COCOON_CY + dy + (x - cx) * .45)
-                c = img.get(x, y)
-                if c and c[3] and c == SILK[1]:
-                    img.put(x, y, G[1] if k == 0 else G[0])
-        gx, gy = TREASURE_GLINTS[f]
-        img.put(int(cx + gx), COCOON_CY + gy, G[3])
-        return img
-    if f == 4:  # pęknięcie: szew rozchodzi się w złotą szczelinę
-        silk_body(img, cx, COCOON_CY, 7.2, 9.4, None)
-        for y in range(COCOON_CY - 6, COCOON_CY + 5):
-            w = 1 if abs(y - COCOON_CY) > 3 else 2
-            for x in range(int(cx) - w + 1, int(cx) + w):
-                img.put(x, y, G[3] if abs(x - cx + .5) < 1 else G[2])
-        return img
-    spread = (3, 5, 6)[f - 5]
-    lift = (2, 1, 0)[f - 5]
-    for side in (-1, 1):
-        hx = cx + side * spread
-        ry = (7, 5, 3)[f - 5]
-        ellipse(img, hx, COCOON_CY + 5 - ry + 4 - lift, 4, ry, band_shade(SILK))
-    r = random.Random(2400 + f)
-    for _ in range((6, 5, 4)[f - 5]):  # nitki, część złota
-        a = r.uniform(0, math.tau)
-        d = r.uniform(5, 6 + spread)
-        px, py = cx + math.cos(a) * d, COCOON_CY + 3 + math.sin(a) * d * .6
-        stroke(img, [(px, py), (px + math.cos(a) * 2, py + math.sin(a))], 1.2, G[1] if r.random() < .4 else SILK[3])
-    return img
-
-
 # ---------------- lepka pajęczyna (krok 23e) ----------------
 def line(img, p0, p1, color):
     """Linia 1 px (Bresenham) — nici pajęczyny."""
@@ -372,7 +325,6 @@ def build():
     bat, bf = directional_sheet(CELL, bat_frame, 8)
     wave, wf = directional_sheet(WAVE, wave_frame, 4)
     cocoon, cf = strip_sheet(COCOON, cocoon_frame, 8)
-    treasure, tf = strip_sheet(COCOON, treasure_cocoon_frame, 8)
     web_s, wsf = strip_sheet(32, sticky_web_frame(32, 7, (.5, 1), 2310), 4)
     web_l, wlf = strip_sheet(64, sticky_web_frame(64, 12, (.25, .5, .75, 1), 2320), 4)
     boss_web, bwf = strip_sheet(BOSS_WEB, sticky_web_frame(BOSS_WEB, 14, (.25, .5, .75, 1), 2330,
@@ -383,7 +335,6 @@ def build():
         'bat_fly-screech.png': (bat, bf, CELL, MARGIN),
         'bat_wave.png': (wave, wf, WAVE, 1),
         'cocoon.png': (cocoon, cf, COCOON, 2),
-        'treasure-cocoon.png': (treasure, tf, COCOON, 2),
         'sticky-web_small.png': (web_s, wsf, 32, 1),
         'sticky-web_large.png': (web_l, wlf, 64, 1),
         'boss-web.png': (boss_web, bwf, BOSS_WEB, 1),
