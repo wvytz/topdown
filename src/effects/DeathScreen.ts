@@ -7,6 +7,7 @@ import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import { COOP_BOARD_HEADERS } from '@/config/coopConfig';
 import { DESCENT_TEXT } from '@/config/descentConfig';
+import { ECLIPSE_TEXT } from '@/config/eclipseConfig';
 import { SAVE_TEXT } from '@/config/saveConfig';
 import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
@@ -179,9 +180,7 @@ export class DeathScreen {
     const result = death.arenas
       ? `ARENA ${death.floor} · ${death.score} ZŁOTA`
       : death.descent
-        ? death.victory
-          ? DESCENT_TEXT.victoryResult(death.score, death.descent.embers)
-          : DESCENT_TEXT.deathResult(death.score, death.descent.depth, death.descent.floors, death.descent.embers)
+        ? `${death.victory ? DESCENT_TEXT.victoryResult(death.score, death.descent.embers) : DESCENT_TEXT.deathResult(death.score, death.descent.depth, death.descent.floors, death.descent.embers)}${descentExtras(death.descent)}`
       : death.victory
         ? VICTORY_SCREEN.result(death.score)
         : `${death.score} ZŁOTA · PIĘTRO ${death.floor}`;
@@ -349,4 +348,10 @@ export class DeathScreen {
     canvas.refresh();
     return VIGNETTE_TEXTURE;
   }
+}
+
+/** Krok Z5: poziom Zaćmienia i nowa ranga w wierszu wyniku Zejścia. */
+function descentExtras(descent: NonNullable<DeathSummary['descent']>): string {
+  const badge = descent.eclipse ? ` · ${ECLIPSE_TEXT.badge(descent.eclipse).toUpperCase()}` : '';
+  return descent.newRank ? `${badge} · ${ECLIPSE_TEXT.newRank(descent.newRank)}` : badge;
 }

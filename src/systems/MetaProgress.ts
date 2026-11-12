@@ -24,6 +24,12 @@ export interface MetaProfile {
   readonly burnedVotives: readonly ItemId[];
   /** Krok Z3: przedmiot startowy Zejścia (jedno z wypalonych Wot); null — bez. */
   readonly startItem: ItemId | null;
+  /** Krok Z5: ukończone poziomy Zaćmienia (0 — żadnego; 1 — Dno na poziomie 0 …) — z nich ranga. */
+  readonly eclipseCleared: number;
+  /** Krok Z5: poziom Zaćmienia wybrany przy Bramie (następne Zejście). */
+  readonly eclipse: number;
+  /** Krok Z5: Kram kupca wykupiony — kupiec Zejścia wykłada przedmiot więcej. */
+  readonly stallBought: boolean;
 }
 
 export const META_VERSION = 1;
@@ -40,6 +46,9 @@ export const EMPTY_META: MetaProfile = {
   foundVotives: [],
   burnedVotives: [],
   startItem: null,
+  eclipseCleared: 0,
+  eclipse: 0,
+  stallBought: false,
 };
 
 const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
@@ -66,6 +75,9 @@ export function parseMetaProfile(raw: string | null, knownVotives: readonly Item
   const burnedVotives = votives(data.burnedVotives);
   const foundVotives = votives(data.foundVotives).filter((id) => !burnedVotives.includes(id));
   const startItem = burnedVotives.includes(data.startItem as ItemId) ? (data.startItem as ItemId) : null;
+  // Krok Z5: profil sprzed Zaćmień — każde zdobyte Dno było poziomem 0 (ranga Zahartowany zostaje).
+  const eclipseCleared = isCount(data.eclipseCleared) ? data.eclipseCleared : wins > 0 ? 1 : 0;
+  const eclipse = isCount(data.eclipse) && data.eclipse <= eclipseCleared ? data.eclipse : 0;
   const shelf = Array.isArray(trophies) ? [...new Set(trophies.filter((floor): floor is number => isCount(floor) && floor >= 1))].sort((a, b) => a - b) : [];
   return {
     version: META_VERSION,
@@ -79,6 +91,9 @@ export function parseMetaProfile(raw: string | null, knownVotives: readonly Item
     foundVotives,
     burnedVotives,
     startItem,
+    eclipseCleared,
+    eclipse,
+    stallBought: data.stallBought === true,
   };
 }
 
@@ -112,12 +127,19 @@ export interface DescentOutcome {
   /** Głębia, na której run się skończył (1..n). */
   readonly depth: number;
   readonly victory: boolean;
+  /** Krok Z5: poziom Zaćmienia runu (brak — 0). */
+  readonly eclipse?: number;
 }
 
-/** Koniec Zejścia: Żar do profilu, statystyki i najgłębsza głębia. */
-export function bankDescent(profile: MetaProfile, outcome: DescentOutcome): MetaProfile {
+/**
+ * Koniec Zejścia: Żar do profilu, statystyki i najgłębsza głębia. Krok Z5: zwycięstwo zalicza poziom Zaćmienia
+ * (`levelCount` — ile poziomów istnieje; ukończone nie przekraczają tej liczby).
+ */
+export function bankDescent(profile: MetaProfile, outcome: DescentOutcome, levelCount = 1): MetaProfile {
+  const level = Math.max(0, Math.floor(outcome.eclipse ?? 0));
   return {
     ...profile,
+    eclipseCleared: outcome.victory ? Math.min(levelCount, Math.max(profile.eclipseCleared, level + 1)) : profile.eclipseCleared,
     embers: profile.embers + Math.max(0, Math.floor(outcome.embers)),
     runs: profile.runs + 1,
     wins: profile.wins + (outcome.victory ? 1 : 0),
@@ -131,11 +153,27 @@ export function addTrophy(profile: MetaProfile, towerFloor: number): MetaProfile
   return { ...profile, trophies: [...profile.trophies, towerFloor].sort((a, b) => a - b) };
 }
 
-/** Ranga gracza: najwyższa, na którą wystarcza ukończonych Zejść. */
-export function metaRank(profile: Pick<MetaProfile, 'wins'>, ranks: readonly { readonly wins: number; readonly name: string }[]): string {
-  let name = ranks[0]?.name ?? '';
-  for (const rank of ranks) if (profile.wins >= rank.wins) name = rank.name;
-  return name;
+/** Ranga gracza (krok Z5, §6): za ukończone poziomy Zaćmienia. */
+export function metaRank(profile: Pick<MetaProfile, 'eclipseCleared'>, ranks: readonly string[]): string {
+  return ranks[Math.max(0, Math.min(profile.eclipseCleared, ranks.length - 1))] ?? '';
+}
+
+/** Wybór poziomu Zaćmienia przy Bramie (tylko otwarte: 0..ukończone, do `max`). */
+export function chooseEclipse(profile: MetaProfile, level: number, max: number): MetaProfile {
+  const open = Math.min(profile.eclipseCleared, max);
+  if (!Number.isInteger(level) || level < 0 || level > open || level === profile.eclipse) return profile;
+  return { ...profile, eclipse: level };
+}
+
+/** Skrót testowy `?hub=1&eclipse=1` (krok Z5): wszystkie poziomy Zaćmienia do wyboru (ranga rośnie razem z nimi). */
+export function openEclipsesForTest(profile: MetaProfile, max: number): MetaProfile {
+  return profile.eclipseCleared >= max ? profile : { ...profile, eclipseCleared: max };
+}
+
+/** Kram kupca (krok Z5): jednorazowy zakup za Żar. Bez Żaru albo już kupiony — bez zmian. */
+export function buyStall(profile: MetaProfile, cost: number): MetaProfile {
+  if (profile.stallBought || profile.embers < cost) return profile;
+  return { ...profile, embers: profile.embers - cost, stallBought: true };
 }
 
 // ---------------- Wota (krok Z3) ----------------

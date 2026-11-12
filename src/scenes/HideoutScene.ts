@@ -7,7 +7,9 @@ import { CAMERA_CONFIG, GAME_HEIGHT, GAME_WIDTH, STAIRS_SIZE, TILE_SIZE } from '
 import { DEFAULT_HERO } from '@/config/heroConfig';
 import { HIDEOUT_CONFIG, HIDEOUT_TEXT, HIDEOUT_VISUAL as V, HideoutStation } from '@/config/hideoutConfig';
 import type { HideoutStationSpot } from '@/config/hideoutConfig';
-import { META_CONFIG } from '@/config/metaConfig';
+import { ECLIPSE_CONFIG, ECLIPSE_TEXT, STALL_CONFIG } from '@/config/eclipseConfig';
+import type { ChoiceCard, ChoiceSceneData } from '@/scenes/ChoiceScene';
+import { highestOpenEclipse } from '@/systems/Eclipse';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { MusicTheme } from '@/core/audioTypes';
@@ -38,10 +40,10 @@ import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { LastHero } from '@/persistence/LastHero';
 import { MetaStorage } from '@/persistence/MetaStorage';
 import { createBoardHighscores } from '@/persistence/highscoreBoards';
-import { hubParam, openMainMenu } from '@/scenes/BootScene';
+import { eclipseTestParam, hubParam, openMainMenu } from '@/scenes/BootScene';
 import { NO_FLOOR_EFFECTS } from '@/systems/FloorModifiers';
 import { MenuCommand } from '@/systems/gamepadInput';
-import { burnVotive, cycleStartItem, markArrivalSeen, openHideoutForTest, metaRank } from '@/systems/MetaProgress';
+import { burnVotive, buyStall, chooseEclipse, cycleStartItem, markArrivalSeen, openEclipsesForTest, openHideoutForTest, metaRank } from '@/systems/MetaProgress';
 import { ITEM_DEFINITIONS } from '@/config/lootConfig';
 import { KILN_CONFIG, VOTIVE_ORDER } from '@/config/votiveConfig';
 import type { MetaProfile } from '@/systems/MetaProgress';
@@ -115,6 +117,7 @@ export class HideoutScene extends Phaser.Scene {
   create(): void {
     // `?hub=1`: tester dostaje Popielnik na stałe (pozycja w menu, trofea), bez pokonania Wiedźmy.
     this.profile = hubParam() ? this.meta.update(openHideoutForTest) : this.meta.load();
+    if (hubParam() && eclipseTestParam()) this.profile = this.meta.update((profile) => openEclipsesForTest(profile, ECLIPSE_CONFIG.levels.length - 1));
     this.layout = buildHideout(HIDEOUT_CONFIG);
     const { floor } = this.layout;
     const biome = BIOMES[BiomeId.Infernal];
@@ -215,7 +218,7 @@ export class HideoutScene extends Phaser.Scene {
     const runSeed = Date.now() >>> 0;
     switch (station.id) {
       case HideoutStation.Gate:
-        this.toHeroSelect({ runSeed, floor: DESCENT_CONFIG.firstFloor, mode: RunMode.Descent });
+        this.pickEclipse(() => this.toHeroSelect({ runSeed, floor: DESCENT_CONFIG.firstFloor, mode: RunMode.Descent }));
         break;
       case HideoutStation.GateCoop: {
         if (currentPlatform() === 'mobile') {
@@ -223,9 +226,12 @@ export class HideoutScene extends Phaser.Scene {
           break;
         }
         const coop: CoopSelectData = { runSeed, mode: RunMode.Descent, fromHideout: true };
-        this.leave(() => this.scene.start(SceneKey.CoopSelect, coop));
+        this.pickEclipse(() => this.leave(() => this.scene.start(SceneKey.CoopSelect, coop)));
         break;
       }
+      case HideoutStation.Stall:
+        this.useStall();
+        break;
       case HideoutStation.Shaft:
         this.toHeroSelect({ runSeed, floor: 1 });
         break;
@@ -252,6 +258,12 @@ export class HideoutScene extends Phaser.Scene {
   private promptFor(station: HideoutStationSpot): string {
     const waiting = this.profile.foundVotives[0];
     if (station.id === HideoutStation.Kiln && waiting) return HIDEOUT_TEXT.kilnPromptBurn(ITEM_DEFINITIONS[waiting].name, KILN_CONFIG.burnCost);
+    if (station.id === HideoutStation.Stall && !this.profile.stallBought) return HIDEOUT_TEXT.stallPromptBuy(STALL_CONFIG.cost);
+    // Krok Z5: przy otwartych Zaćmieniach brama podaje wybrany poziom.
+    const open = highestOpenEclipse(this.profile.eclipseCleared, ECLIPSE_CONFIG.levels) > 0;
+    const level = ECLIPSE_CONFIG.levels[this.chosenEclipse()]?.name ?? '';
+    if (open && station.id === HideoutStation.Gate) return ECLIPSE_TEXT.gatePrompt(level);
+    if (open && station.id === HideoutStation.GateCoop) return ECLIPSE_TEXT.gateCoopPrompt(level);
     return station.prompt ?? '';
   }
 
@@ -273,6 +285,75 @@ export class HideoutScene extends Phaser.Scene {
     this.refreshStatus();
     this.drawKilnFire();
     this.say(HIDEOUT_TEXT.kilnBurned(item.name, item.effect));
+  }
+
+  /** Wybrany poziom Zaćmienia, ucięty do otwartych. */
+  private chosenEclipse(): number {
+    return Math.min(this.profile.eclipse, highestOpenEclipse(this.profile.eclipseCleared, ECLIPSE_CONFIG.levels));
+  }
+
+  /**
+   * Krok Z5: Brama Zejścia pyta o poziom Zaćmienia, gdy gracz ma ich więcej niż jeden (karty: mysz, 1–4, pad,
+   * dotyk). Zablokowane poziomy są widoczne, ale wyszarzone. Esc / B — zostaje w Popielniku.
+   */
+  private pickEclipse(next: () => void): void {
+    const levels = ECLIPSE_CONFIG.levels;
+    const open = highestOpenEclipse(this.profile.eclipseCleared, levels);
+    if (open === 0) {
+      next();
+      return;
+    }
+    const cards: ChoiceCard[] = levels.map((level, index) => {
+      const cleared = index < this.profile.eclipseCleared;
+      const rank = ECLIPSE_CONFIG.ranks[index + 1] ?? '';
+      return {
+        title: level.name,
+        subtitle: ECLIPSE_TEXT.embers(level.embersMultiplier),
+        body: index > 1 ? ECLIPSE_TEXT.cumulative(level.rule) : level.rule,
+        footer: index > open ? ECLIPSE_TEXT.locked : cleared ? `${ECLIPSE_TEXT.rankReward(rank)} ✓` : ECLIPSE_TEXT.rankReward(rank),
+        accent: ECLIPSE_CONFIG.colors[index] ?? 0xb8b0a0,
+        disabled: index > open,
+      };
+    });
+    this.busy = true;
+    const resume = (): void => {
+      this.scene.resume();
+      this.busy = false;
+    };
+    const data: ChoiceSceneData = {
+      headline: ECLIPSE_TEXT.headline,
+      hint: ECLIPSE_TEXT.hint,
+      cards,
+      onPick: (index) => {
+        resume();
+        this.profile = this.meta.update((profile) => chooseEclipse(profile, index, levels.length - 1));
+        diag.note('eclipse-chosen', { level: index });
+        this.refreshStatus();
+        next();
+      },
+      onCancel: resume,
+    };
+    this.scene.pause();
+    this.scene.launch(SceneKey.Choice, data);
+    // Nakładka jest w kolejce scen pod Popielnikiem — bez tego rysowałaby się pod nim.
+    this.scene.bringToTop(SceneKey.Choice);
+  }
+
+  /** Kram kupca (krok Z5): jednorazowo za Żar — kupiec Zejścia wykłada przedmiot więcej. */
+  private useStall(): void {
+    if (this.profile.stallBought) {
+      this.say(HIDEOUT_TEXT.stallDone);
+      return;
+    }
+    if (this.profile.embers < STALL_CONFIG.cost) {
+      this.say(HIDEOUT_TEXT.stallOffer(STALL_CONFIG.cost, this.profile.embers));
+      return;
+    }
+    this.profile = this.meta.update((profile) => buyStall(profile, STALL_CONFIG.cost));
+    diag.note('stall-bought', { embers: this.profile.embers });
+    sound.play(SoundCue.Coin, this.player);
+    this.refreshStatus();
+    this.say(HIDEOUT_TEXT.stallBought);
   }
 
   /** Palenisko (krok Z3): kolejny przedmiot startowy spośród wypalonych Wot (albo żaden). */
@@ -299,8 +380,8 @@ export class HideoutScene extends Phaser.Scene {
     const top = createBoardHighscores('descent')
       .localEntries()
       .slice(0, 3)
-      .map((entry, i) => `${i + 1}. ${entry.name ?? 'bez imienia'} — ${entry.score} złota, głębia ${entry.floor}`);
-    const stats = HIDEOUT_TEXT.wall(runs, wins, bestDepth, DESCENT_CONFIG.floors, metaRank(this.profile, META_CONFIG.ranks));
+      .map((entry, i) => `${i + 1}. ${entry.name ?? 'bez imienia'} — ${entry.score} złota, głębia ${entry.floor}${entry.eclipse ? `, ${ECLIPSE_TEXT.badge(entry.eclipse)}` : ''}`);
+    const stats = HIDEOUT_TEXT.wall(runs, wins, bestDepth, DESCENT_CONFIG.floors, metaRank(this.profile, ECLIPSE_CONFIG.ranks));
     return [stats, ...top].join('\n');
   }
 
@@ -459,6 +540,16 @@ export class HideoutScene extends Phaser.Scene {
         }
         break;
       }
+      case HideoutStation.Stall: {
+        // Lada z latarnią; po opłaceniu trzy towary zamiast dwóch.
+        g.fillStyle(0x3a2a1c, 1).fillRect(x - 22, y - 6, 44, 16);
+        g.lineStyle(2, 0x1e140c, 1).strokeRect(x - 22, y - 6, 44, 16);
+        g.fillStyle(0x5c574e, 1).fillRect(x + 14, y - 26, 2, 20);
+        g.fillStyle(0xf5c542, 0.9).fillCircle(x + 15, y - 27, 4);
+        const goods = this.profile.stallBought ? 3 : 2;
+        for (let i = 0; i < goods; i++) g.fillStyle([0xc8201c, 0xffe08a, 0x7fd4a0][i] ?? 0xffffff, 1).fillRect(x - 17 + i * 9, y - 12, 6, 6);
+        break;
+      }
       default:
     }
   }
@@ -524,7 +615,9 @@ export class HideoutScene extends Phaser.Scene {
 
   private refreshStatus(): void {
     const start = this.profile.startItem ? ` · Na start: ${ITEM_DEFINITIONS[this.profile.startItem].name}` : '';
-    this.status.setText(`${HIDEOUT_TEXT.hearth(this.profile.embers, metaRank(this.profile, META_CONFIG.ranks))}${start}`);
+    const level = this.chosenEclipse();
+    const eclipse = level > 0 ? HIDEOUT_TEXT.eclipseStatus(ECLIPSE_CONFIG.levels[level]?.name ?? '') : '';
+    this.status.setText(`${HIDEOUT_TEXT.hearth(this.profile.embers, metaRank(this.profile, ECLIPSE_CONFIG.ranks))}${eclipse}${start}`);
   }
 
   // ---------------- pierwsze lądowanie ----------------

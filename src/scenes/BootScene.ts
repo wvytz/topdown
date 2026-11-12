@@ -101,6 +101,11 @@ export function hubParam(): boolean {
   return new URLSearchParams(window.location.search).get('hub') === '1';
 }
 
+/** Krok Z5: `?eclipse=1` (razem z `?hub=1`) otwiera wszystkie poziomy Zaćmienia do testów. */
+export function eclipseTestParam(): boolean {
+  return new URLSearchParams(window.location.search).get('eclipse') === '1';
+}
+
 /**
  * Po ładowaniu: z `?hero=` w adresie od razu gra (testy, smoke), bez niego — menu główne na tle ekranu startowego
  * (krok 91). Zwykle menu otwiera sam ekran startowy; tu trafiamy, gdy ekran startowy już się skończył.

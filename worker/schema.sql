@@ -44,6 +44,22 @@ CREATE TABLE IF NOT EXISTS coop_scores (
 CREATE INDEX IF NOT EXISTS coop_scores_rank ON coop_scores (score DESC, floor DESC, id ASC);
 CREATE INDEX IF NOT EXISTS coop_scores_ip ON coop_scores (ip_hash, created_at);
 
+-- Tablica Zejścia (Akt II, krok Z5): `floor` = głębia, `eclipse` = poziom Zaćmienia. Starą bazę uzupełnia migrations/0006_descent_scores.sql.
+CREATE TABLE IF NOT EXISTS descent_scores (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  score      INTEGER NOT NULL,
+  floor      INTEGER NOT NULL,
+  eclipse    INTEGER NOT NULL DEFAULT 0,
+  timestamp  INTEGER NOT NULL,
+  name       TEXT,
+  hero       TEXT,
+  partner    TEXT,
+  ip_hash    TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS descent_scores_rank ON descent_scores (score DESC, floor DESC, id ASC);
+CREATE INDEX IF NOT EXISTS descent_scores_ip ON descent_scores (ip_hash, created_at);
+
 -- Zgłoszenia diagnostyczne z gry (krok 57). Koperta: patrz worker/src/reports.js.
 CREATE TABLE IF NOT EXISTS reports (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,

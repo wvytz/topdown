@@ -167,6 +167,11 @@ describe('wiersz tablicy i miniaturka bohatera (krok 89)', () => {
     expect(formatScoreRow(row(true))).toBe('› 2. Wicio · 120 złota · piętro 4 ‹');
     // Tablica Zejścia (krok Z1) liczy głębie.
     expect(formatScoreRow(row(), false, true)).toBe('2. Wicio · 120 złota · głębia 4');
+    // Krok Z5: poziom Zaćmienia przy wierszu Zejścia (poziom 0 bez znaku).
+    const eclipse = (level: number) => ({ ...row(), entry: { ...row().entry, eclipse: level } });
+    expect(formatScoreRow(eclipse(2), false, true)).toBe('2. Wicio · 120 złota · głębia 4 · Zać. II');
+    expect(formatScoreRow(eclipse(0), false, true)).toBe('2. Wicio · 120 złota · głębia 4');
+    expect(formatScoreRow(eclipse(2))).toBe('2. Wicio · 120 złota · piętro 4');
   });
 
   it('miniaturka tylko dla znanego bohatera', () => {

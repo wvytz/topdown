@@ -30,6 +30,8 @@ export function createWorkerScoreSource(baseUrl: string, fetchFn: FetchFn, path 
           hero: entry.hero,
           // Co-op (etap C7): bohater P2 — tylko na tablicy co-op.
           ...(entry.partner !== undefined && { partner: entry.partner }),
+          // Zejście (krok Z5): poziom Zaćmienia — tylko na tablicy Zejścia.
+          ...(entry.eclipse !== undefined && { eclipse: entry.eclipse }),
         }),
         signal,
       });

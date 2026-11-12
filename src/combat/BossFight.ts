@@ -19,6 +19,8 @@ import type { BossDefinition, BossDogDefinition, BossId, GrateRow } from '@/core
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
 import { BOSS_SCALING } from '@/config/combatConfig';
+import type { EclipseLevel } from '@/config/eclipseConfig';
+import { withRetinueBoost } from '@/systems/Eclipse';
 import { TILE_SIZE } from '@/config/gameConfig';
 import type { BossEmpowerment } from '@/systems/AmbushVariants';
 import { empowerBossDefinition } from '@/systems/BossEmpower';
@@ -103,6 +105,8 @@ export interface BossFightDeps {
   readonly party: Party;
   /** Co-op (etap C6): mnożnik HP bossa; solo — brak (1). */
   readonly bossHpMultiplier?: number;
+  /** Zejście (krok Z5): poziom Zaćmienia — od III świta bossa jest większa i częstsza. */
+  readonly eclipse?: EclipseLevel;
   readonly projectiles: ProjectileManager;
   readonly effects: CombatEffects;
   /** Trwałe ślady walki: przypalenie po uderzeniu obszarowym, szlam po śmierci bossa. */
@@ -337,7 +341,8 @@ export class BossFight {
     if (!arena) throw new Error('BossFight: brak komnaty bossa w danych piętra.');
     this.arena = arena;
 
-    const scaled = withHpMultiplier(scaleBossForFloor(this.baseDefinition(), deps.floorNumber, BOSS_SCALING), deps.bossHpMultiplier ?? 1);
+    const floorScaled = withHpMultiplier(scaleBossForFloor(this.baseDefinition(), deps.floorNumber, BOSS_SCALING), deps.bossHpMultiplier ?? 1);
+    const scaled = deps.eclipse ? withRetinueBoost(floorScaled, deps.eclipse) : floorScaled;
     // Wracający z windy boss już raz uciekł — tym razem walczy do końca.
     const definition = deps.arrival ? withoutEscape(scaled) : withEscapeRatio(scaled, deps.escapeHpRatio);
     this.maxHp = definition.maxHp;
