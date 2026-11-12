@@ -50,26 +50,12 @@ export const BOSS_INTRO_CARD = {
 } as const;
 
 /**
- * Widoczne fazy: kreski progów (wściekłość, ucieczka windą, wejście partnera) na pasku HP bossa, a przy
- * przekroczeniu progu kreska rozbłyskuje i pasek na chwilę jaśnieje. Obok imienia — „faza 2/3”.
+ * Progi faz bossa (wściekłość, ucieczka windą, wejście partnera). Krok U7h (ocena właściciela: „nie
+ * informujmy gracza o fazach, jest to zbyt transparentne”) — HUD ich nie pokazuje; zostają dane o progach.
  */
 export const BOSS_PHASE_MARKS = {
-  enabled: true,
-  /** Kreska progu: szerokość i wysunięcie ponad pasek (px HUD). */
-  tickWidth: 2,
-  tickOverhang: 3,
-  tickColor: 0xefe4d2,
-  /** Przekroczony próg — przygaszona kreska. */
-  passedColor: 0x5a4a44,
-  passedAlpha: 0.8,
-  /** Rozbłysk po przekroczeniu progu. */
-  flashMs: 900,
-  flashColor: 0xffe2b0,
-  /** Progi bliżej końca paska niż to (ułamek HP) nie dostają kreski — nie byłoby jej widać. */
+  /** Progi bliżej końca paska niż to (ułamek HP) są pomijane. */
   minGap: 0.04,
-  /** Podpis fazy (tylko gdy boss ma więcej niż jedną fazę). */
-  label: (phase: number, total: number): string => `faza ${phase}/${total}`,
-  labelColor: '#c8a890',
 } as const;
 
 /**

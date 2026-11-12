@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { uiText } from '@/ui/UiText';
 import type { EliteAffix } from '@/core/combatTypes';
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { ELITE_VISUAL, SHIELD_ARC_VISUAL } from '@/config/spriteConfig';
@@ -46,7 +47,7 @@ function ringTexture(scene: Phaser.Scene, size: number, thickness: number): stri
  */
 export function attachEliteMarker(owner: EliteMarkerOwner, affixes: readonly EliteAffix[]): void {
   const scene = owner.scene;
-  const { ringGap, ringThickness, ringAlpha, pulseMs, labelOffset, fontSize } = ELITE_VISUAL;
+  const { ringGap, ringThickness, ringAlpha, pulseMs, labelOffset } = ELITE_VISUAL;
   const colors = affixes.map((a) => ELITE_CONFIG.affixes[a].color);
   const size = (owner.radius + ringGap) * 2;
   const ring = scene.add
@@ -54,14 +55,7 @@ export function attachEliteMarker(owner: EliteMarkerOwner, affixes: readonly Eli
     .setDepth(RENDER_DEPTH.groundFlash)
     .setBlendMode(Phaser.BlendModes.ADD)
     .setTint(colors[0]!);
-  const label = scene.add
-    .text(owner.x, owner.y, eliteTitle(affixes, ELITE_CONFIG), {
-      fontFamily: 'monospace',
-      fontSize: `${fontSize}px`,
-      color: hex(colors[0]!),
-      stroke: '#1b1a22',
-      strokeThickness: 3,
-    })
+  const label = uiText(scene, owner.x, owner.y, eliteTitle(affixes, ELITE_CONFIG), { color: hex(colors[0]!) })
     .setOrigin(0.5, 1)
     .setDepth(RENDER_DEPTH.worldText);
   const arc = owner.shieldAngle !== null ? scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) : null;

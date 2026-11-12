@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { UiText, uiTextFromStyle } from '@/ui/UiText';
 import { SceneKey } from '@/core/types';
 import { DEATH_TIMING } from '@/config/deathScreenConfig';
 import { TOUCH_BUTTONS, TOUCH_DEATH_BUTTONS, TOUCH_LABELS, TOUCH_SHOT_HOLD_MS, TOUCH_STICK, TOUCH_TAP_MAX_MS } from '@/config/touchConfig';
@@ -64,10 +65,10 @@ const BUTTONS: readonly ButtonId[] = ['attack', 'shoot', 'dash', 'interact', 'ul
  */
 export class TouchScene extends Phaser.Scene {
   private gfx!: Phaser.GameObjects.Graphics;
-  private pauseLabel!: Phaser.GameObjects.Text;
+  private pauseLabel!: UiText;
   private overlay!: TouchOverlay;
   private page!: HTMLElement;
-  private deathLabels: Phaser.GameObjects.Text[] = [];
+  private deathLabels: UiText[] = [];
   private moveStick: Stick | null = null;
   /**
    * Przyciski ataku jako gałki (krok 96a): duże kółko (LPM) i PPM. Przeciągnięcie od przycisku wybiera
@@ -93,7 +94,7 @@ export class TouchScene extends Phaser.Scene {
 
   create(): void {
     this.gfx = this.add.graphics();
-    this.pauseLabel = this.add.text(0, 0, '', { ...STYLE, fontSize: '16px' }).setOrigin(0.5).setVisible(false);
+    this.pauseLabel = uiTextFromStyle(this, 0, 0, '', { ...STYLE, fontSize: '16px' }).setOrigin(0.5).setVisible(false);
     const page = document.getElementById('game') ?? document.body;
     this.page = page;
     this.overlay = new TouchOverlay(page);
@@ -314,7 +315,7 @@ export class TouchScene extends Phaser.Scene {
       this.deathButtons = [];
     }
     while (this.deathLabels.length < this.deathButtons.length) {
-      this.deathLabels.push(this.add.text(0, 0, '', { ...STYLE, fontSize: '15px' }).setOrigin(0.5));
+      this.deathLabels.push(uiTextFromStyle(this, 0, 0, '', { ...STYLE, fontSize: '15px' }).setOrigin(0.5));
     }
     this.deathLabels.forEach((label, i) => {
       const button = this.deathButtons[i];
@@ -374,7 +375,7 @@ export class TouchScene extends Phaser.Scene {
   }
 
   /** Pauza: ciemna pigułka ze złotą obwódką, ikonka ⏸ i podpis — widać ją od razu, w przeciwieństwie do samego „II”. */
-  private drawPauseButton(g: Phaser.GameObjects.Graphics, label: Phaser.GameObjects.Text): void {
+  private drawPauseButton(g: Phaser.GameObjects.Graphics, label: UiText): void {
     const c = this.pauseCenter();
     const { width, height } = TOUCH_BUTTONS.pause;
     const left = c.x - width / 2;

@@ -6195,7 +6195,42 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** test biomów 2.0 obejmuje Grzybnię, Cmentarzysko, Piekło, Lustrzaną komnatę i Ogród (grupy w arkuszach, progi, wyrwy); palarnia i leże bez progów i wyrw.
 
-**Weryfikacja:** `npm run build` (2969 testów); `npm run shots` przed i po (zmieniły się tylko piętra 4, 6 i 7 oraz krew), `npm run perf` w granicach szumu; `npm run smoke` przez 7 pięter bez błędów. Zrzuty: `/mnt/project-files/screens/krokU4c-kafle/`. **Czeka na ocenę właściciela.**
+**Weryfikacja:** `npm run build` (2969 testów); `npm run shots` przed i po (zmieniły się tylko piętra 4, 6 i 7 oraz krew), `npm run perf` w granicach szumu; `npm run smoke` przez 7 pięter bez błędów. Zrzuty: `/mnt/project-files/screens/krokU4c-kafle/`.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: „podoba mi się” — scalone, U4 zamknięte.
+
+## Krok U4e — Bez krwi; odrzut wrogów o połowę `#upgrade` `#decyzja` `#ocena`
+
+**Etap pośredni (tego samego wieczoru, w commicie opisany jako „Krok U4d”; numer U4d ma skarbiec pająków):**
+
+**Uwaga właściciela (12.11.2026)** `#ocena`: „od kiedy zostawiamy plamy krwi? nasza gra tego nie robi” (zrzut z Cmentarzyska na podglądzie).
+
+**Przyczyna:** trwałe ślady walki są w grze od kroku 19b (pula 180 plam, `effects/CombatDecals.ts`), ale dotąd były ciemnobrązowe i zlewały się z posadzką. Krok U4c przemalował je na jaskrawą czerwień, więc nagle stały się widoczne jako kałuże krwi, które zostają.
+
+**Co zmienione:** trwała plama wraca do dawnego, ciemnego wyglądu (arkusze jak przed U4c w tych kaflach). Jaskrawa krew z U4c to teraz osobna nakładka `combat.fresh` (`FRESH_BLOOD_V2` w `config/dressingConfig.ts`): pojawia się nad plamą, trzyma 0,9 s i wygasa przez 1,4 s (własna pula 24 obrazków, głębokość `freshBlood`). Grzybnia bez zmian (turkusowa posoka).
+
+**Weryfikacja:** `npm run build`, w przeglądarce: świeża czerwień po ciosie, po 3 s sama ciemna plama. Zrzut: `/mnt/project-files/screens/krokU4c-kafle/krew-swieza-i-plama.png`.
+
+**Decyzja właściciela (12.11.2026, po etapie pośrednim)** `#decyzja`: „zlikwiduj tę krew całkowicie. Gramy ARCADE, musimy wymyślić lepszy sposób na sygnalizację odniesienia obrażeń. BTW musimy zmniejszyć push back mobów o połowę, bo nie stanowią żadnego wyzwania.”
+
+**Co zmienione**
+- **Bez plam krwi:** `combatDecals.blood: false` (`config/dressingConfig.ts`) — śmierć wrogów, bossów, pająków i wybuchy nie kładą już plam; przypalenia i szlam zostają (pokazują ogień i strefy). Nakładka świeżej krwi z etapu pośredniego usunięta; kafle plam w arkuszach jak przed U4c (nieużywane).
+- **Odrzut wrogów o połowę:** `ENEMY_KNOCKBACK_TAKEN = 0.5` (`config/combatConfig.ts`) mnoży odrzut, który wróg dostaje od trafienia (ciosy, strzały, magia, wybuchy); bossowie, ogłuszenie po trafieniu i odrzut bohatera bez zmian. To zmiana balansu na gałęzi upgradu — do `main` z kolejną paczką.
+- **Sygnalizacja obrażeń** — właściciel wybrał własny pomysł: „system wag” ataków (zmęczenie, combo, podatność) — osobny wątek i `docs/WAGI.md`.
+
+**Weryfikacja:** `npm run build` (2973 testy), `npm run smoke -- --floors 2`.
+
+## Krok U5a — Postacie 2.0: pilot barbarzyńcy `#upgrade` `#postacie`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: po U4c „lecimy dalej U5 i U6”. Wg planu (`docs/UPGRADE.md`) najpierw arkusz jednej postaci do akceptacji, potem reszta.
+
+**Co powstało**
+- **Nowy arkusz barbarzyńcy** `blond-barbarian_v2.png` z generatora `tools/hero_v2_sprites.py` (na klatkach z `barbarian_sword.py`, 8 kierunków z obrotu, obrys po obrocie): chód i cios bez zmian w tych samych kolumnach, a do tego **bezruch** (oddech: barki i miecz o piksel, 1 s na cykl), **trafienie** (odskok, głowa odchylona, ramiona rozrzucone), **dash** (głowa w przód, ramiona w tył) i **śmierć** (6 klatek: trafienie, kolana, pad w przód, leżące ciało z mieczem obok; ostatnia klatka zostaje na posadzce zamiast szarego stojącego bohatera).
+- **Akcent barwy klasy** (STYLEGUIDE §13.9, ok. 10% sylwetki): karwasze i rzemienie z barwionej skóry w bursztynie barbarzyńcy (`HERO_HUES` 38°).
+- **W grze** (`entities/Player.ts`): pola `hurt`, `dash`, `death` w `HeroVisual`; dash i świeże trafienie (260 ms, `HERO_HURT_POSE_MS`) mają pierwszeństwo przed chodem i bezruchem, cios — przed nimi. Bohater bez tych pól zachowuje się jak dotąd. Wyłącznik `HERO_SPRITES_V2` w `config/spriteConfig.ts` wraca do starego arkusza (stary plik zostaje).
+- Ciało fizyczne, pivot i komórka 48×48 bez zmian (test `tests/config/heroSpritesV2.test.ts`).
+
+**Weryfikacja:** `npm run build` (2973 testy), pozy w przeglądarce (bezruch, trafienie, pad), `npm run smoke -- --floors 2`. Arkusz: `/mnt/project-files/screens/krokU5a-barbarzynca/arkusz.png`. **Czeka na ocenę właściciela** — po akceptacji ta sama metoda dla Czarodziejki i łucznika, potem Totem i co-op.
 
 ## Krok U6 — Bossowie: karta wejścia, widoczne fazy, śmierć Pożeracza i Palacza, smagnięcie Matki Pająków, rekwizyty aren 6–7 `#upgrade` `#bossowie` `#pozeracz` `#palacz` `#matka-pajakow` `#areny-zmienne`
 
@@ -6241,6 +6276,118 @@ Numer U4f, bo U4d i U4e zajęły równoległe poprawki krwi z gałęzi U5a (PR #
 - **Własny model kokonu skarbu 2×** (`tools/spider_vault_sprites.py` → `vault-cocoon.png`, 64×64): jajo z jedwabiu w złotych taśmach, tętniący złoty szew, przez rozdarcie oplotu widać złoto; przy rozbiciu złota szczelina z promieniami, skorupa pęka na dwie połówki z ciemnym środkiem i złotym pyłem, które zostają w gnieździe. Strefa trafienia 16 px (było 9). Stary kokon skarbu (`treasure-cocoon.png` z `tools/lair_enemies.py`) usunięty.
 - Weryfikacja: Playwright na seedach 3 i 12 — 5 i 3 kokony na piedestałach, mnożnik prędkości bohatera w skarbcu 0,6, rozbicie wszystkich kokonów bez błędów.
 
+## Krok U7 — Interfejs: pikselowy krój, nowy HUD, karty w ramkach, „Moje przedmioty” na ekranie końca `#upgrade` `#interfejs` `#hud`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: po U6 „zbliżamy się do idealnej wizji. scalaj i lecimy dalej” — etap U7 wg `docs/UPGRADE.md`.
+
+**Co powstało**
+- **Jeden pikselowy krój** (`core/pixelFont.ts`, bez silnika): wersaliki 5×7, małe litery z wydłużeniami, wszystkie polskie litery (akcent nad wersalikiem z pustym wierszem odstępu, ogonki pod linią), cyfry o jednej szerokości (liczby w HUD-zie nie skaczą), interpunkcja i symbole gry (★ ◆ ▶ → × … 💬). Znak spoza fontu traci akcent (é → e) albo staje się „?”. Warstwa Phasera (`ui/PixelFont.ts`) wypala z tych danych teksturę z obrysem 1 px `#1b1a22` — osobną dla każdej barwy (małe, ok. 900×14 px), więc tak samo działa w WebGL i na płótnie. `ui/UiText.ts` to BitmapText z `setColor` i polem kliknięcia z marginesem. Wielkość = całkowita skala pikseli fontu (1 drobny, 2 zwykły, 3–4 tytuły). Czcionka systemowa zniknęła ze wszystkich ekranów gry i z napisów w świecie (schody, kapliczka, elity, okrzyki bossów, unoszące się liczby); zostaje tylko w okienkach DOM (F9, czat) i na ekranie Safari. Przyciski telefonu rysują ten sam krój na płótnie nakładki.
+- **Nowy HUD** (`scenes/HudScene.ts`, liczby w `config/uiConfig.ts` `HUD_LAYOUT`): portret bohatera 1:1 w ramce z nitami, nad paskami nagłówek „Piętro N · modyfikator”, pasek HP z liczbą w środku, dash, ładunki i promień jako paski z rampą (światło–barwa–cień, `ui/UiFrame.ts`), ultimate w ramce obok HP (gotowe — obwódka miga skokowo, bez tego przy „mniej błysków”), złoto z monetą w skali 2, cel piętra, sloty przedmiotów w ramkach (`ui/ItemSlotView.ts`). Minimapa dostała ramkę, wnętrze dalej ledwie przyciemnione (krok 147). Pasek bossa w ramce z czerwonymi nitami; karta wejścia bossa i kreski faz z U6 piszą nowym krojem. Panel partnera w co-opie ma portret i ten sam styl.
+- **HUD nie zasłania walki** (STYLEGUIDE §13.10, `systems/hudText.ts`): pełna podpowiedź celu („znajdź komnatę bossa…”) przez 6 s po zmianie celu, potem skrót („Wrogowie: 5”, „Schody otwarte”); opis modyfikatora piętra przez 9 s, potem sama nazwa; linia sterowania tylko przez pierwsze 25 s runu.
+- **Telefon:** drobne napisy HUD-u w skali 2 (płótno jest tam pomniejszone), paski schodzą niżej. Ten sam wygląd, inny rozmiar.
+- **Karty nagrody** (`scenes/RewardScene.ts`): pikselowa ramka w barwie rodzaju, nity, cokół pod ikoną, kropki postępu jako romby z pełnych pikseli zamiast kółek, wstążka jako mała ramka, przy rodzaju znak (★ efekt broni, ◆ relikwia). Najechanie/pad — jasna ramka.
+- **Pauza, menu, wybór bohatera i co-opu w jednym stylu:** panele i karty w tej samej ramce (`ui/FrameRect.ts` — prostokąt Phasera rysowany ramką, bez zmian w logice ekranów), „Moje przedmioty” z ikoną przy każdym przedmiocie.
+- **Ekran końca runu** (śmierć i ZWYCIĘSTWO): pod wynikiem **podpis runu** (`systems/runSignature.ts`: bohater/drużyna, tryb, ziarno, liczba przedmiotów i przemian — ziarno pozwala powtórzyć układ pięter) i rząd **„Moje przedmioty”** w ramkach jak w HUD-zie. Komunikat R / C / M drobniejszy, żeby mieścił się w szerokości.
+
+**Decyzje:** ekran startowy nietknięty (logo z kroku 34 dalej z `core/pixelArt.ts`). Barwy UI z palety ekranu startowego (`UI_PALETTE`). Bez flagi starego HUD-u: krój dotyka wszystkich ekranów, a dwie wersje każdego podwoiłyby kod — wycofaniem jest `main` (stary interfejs do scalenia paczki). Format zapisu bez zmian (podpis runu liczy się z bieżącego runu, bez nowych pól w zapisie).
+
+**Testy:** `tests/core/pixelFont.test.ts` (komplet polskich liter i cyfr, piksele w komórce, akcenty nie dotykają liter, cyfry jednej szerokości, zastępowanie znaków, **każdy znak z napisów gry ma kształt w foncie**, mierzenie i łamanie linii), `tests/systems/hudText.test.ts` (cel pełny/krótki, nagłówek z modyfikatorem, wygaszanie), `tests/systems/runSignature.test.ts` (podpis, tryby, odmiana liczebników); pas ekranu śmierci przesunięty pod nowy HUD (`deathScreen.test.ts`).
+
+**Weryfikacja:** `npm run build` (3024 testy); `npm run smoke -- --floors 3 --seeds 1` i `-- --coop --floors 2` bez błędów; Playwright: HUD (PC, telefon, co-op z botem), boss, karty po bossie, pauza i „Moje przedmioty”, wybór bohatera, ekran śmierci i zwycięstwa. Zrzuty: `/mnt/project-files/screens/krokU7-interfejs/` (arkusz HUD-u przed | po). `npm run perf` pominięty (HUD to kilkadziesiąt prostokątów i napisów bitmapowych). **Czeka na ocenę właściciela.**
+
+## Krok U7a — Krój z głębią: cień, rampa lica, grube tytuły i podkładki pod napisami HUD-u `#upgrade` `#interfejs` `#ocena`
+
+**Ocena właściciela po U7 (12.11.2026) `#ocena`:** „czcionka jest tragiczna. zero głębi i odróżnienia od całości ekranu. powinna być wyraźna acz dyskretna z wyraźną manifestacją”.
+
+**Co powstało:**
+- Lico litery z rampą: górne wiersze rozjaśnione w stronę kremu, dolne przyciemnione (`UI_FONT_RAMP`), pod obrysem cień przesunięty o piksel w prawo i w dół — litera „stoi” nad sceną.
+- Gruby krój: kreski 2 px; piksel nie dostaje sąsiada, gdy zalałby jednopikselowe światło. M, W, m, w mają własne, szersze wzory (`FONT_BOLD_GLYPHS` w `core/pixelFont.ts`), bo przesunięcie robiło z nich H i N.
+- Podkładki pod napisami HUD-u (`drawTextPlate` w `ui/UiFrame.ts`, `UI_TEXT_PLATE`): ciemny, półprzezroczysty prostokąt ze ściętymi rogami, gaśnie razem z napisem.
+- Trzy warianty do porównania w grze (`UI_FONT_STYLES`, `?font=a|b|c`): A „Kuty” — wszystko grubo, bez podkładek; **B „Tytuły kute, tabliczki” (domyślny)** — drobne napisy zwykłą kreską, większe (skala ≥ 2) grubą, podkładki; C „Lekki na tabliczce” — zwykła kreska z głębią i podkładki. Tekstura fontu zależy od wariantu, barwy i grubości; `UiText.setFontSize` przełącza grubość.
+
+**Decyzje:** domyślny B — tytuły i menu mają „manifestację”, drobne napisy HUD-u zostają dyskretne, a podkładka oddziela je od jasnej posadzki. Po wyborze właściciela zbędne warianty można usunąć.
+
+**Testy:** wzory grubego kroju są szersze od zwykłych i mają kreski 2 px na brzegach. `npm run build`, smoke solo.
+
+**Weryfikacja:** zrzuty HUD-u, pauzy i kart nagrody we wszystkich wariantach — `/mnt/project-files/screens/krokU7-interfejs/U7a-kroj-warianty.png`.
+
+## Krok U7b — Wersaliki według napisu POLEGŁEŚ: cienki obrys krzyżem, barwny cień, rampa lica, większy HUD `#upgrade` `#interfejs` `#ocena` `#decyzja`
+
+**Ocena właściciela po U7a (12.11.2026) `#ocena`:** „nie no wszystkie są złe. zbyt pixelowe, zbyt pionowe, bez obramowania jak np napis »poległeś« który fine tuningowaliśmy jakiś czas”. Warianty `?font=a|b|c`, pogrubienie i podkładki z U7a usunięte.
+
+**Co powstało:**
+- Makiety czterech kierunków na tle gry (`/mnt/project-files/screens/krokU7-interfejs/U7b-kierunki-kroju.png`): 1 — wersaliki według recepty POLEGŁEŚ w pikselowym kroju, 2–4 — gładkie kroje (Alegreya Sans SC, Cinzel, Pixelify Sans), które wymagałyby rysowania napisów nad płótnem 960×540 w pełnej rozdzielczości ekranu. **`#decyzja` właściciel wybrał 1 — „wersaliki jak POLEGŁEŚ” w całej grze.**
+- Wszystkie napisy interfejsu wersalikami (`toCapsText` w `core/pixelFont.ts`, `UiText.setText`).
+- Recepta POLEGŁEŚ dla każdej wielkości (`fontLook`, `rampIndex` w `core/pixelFont.ts`, liczby w `UI_FONT_LOOK`): tekstura fontu rysowana od razu w docelowej skali (para barwa × wielkość), obrys = ¼ piksela fontu (min. 1 px) krzyżem, bez rogów; cień = lico przesunięte w dół o 2 obrysy w ciemnym odcieniu barwy; lico paskami po 2 px od jasnego wierzchu do ciemnego spodu; odstęp liter +½ piksela fontu. Przy pikselu 8 daje dokładnie obrys 2 i cień 4 jak POLEGŁEŚ.
+- HUD w skali 2 także na PC (`HUD_LAYOUT.textScale`): obrys jest wtedy cieńszy od kreski litery. Złoto w skali 3, dopisek wyrównany do spodu cyfr. Nagłówek piętra to sama nazwa modyfikatora; opis ma własną linię pod przedmiotami (`floorModifierNote`), gaśnie po 9 s, a wiadomość o nowym przedmiocie schodzi pod nią.
+- `UiText.setLetterSpacing`/`setLineSpacing` przeliczają odstęp z pikseli fontu na płótno (font nie jest już skalowany, więc układ ekranów się nie zmienił).
+
+**Do zrobienia po ocenie:** drobne napisy w skali 1 (opisy na kartach nagrody i wyboru bohatera, podpis runu, linia sterowania) mają nadal obrys grubości kreski — w skali 2 nie mieszczą się w obecnym układzie kart; do decyzji, czy przebudować karty pod większe napisy.
+
+**Testy:** recepta (piksel 8 → obrys 2, cień 4; piksel 1 → obrys 1; odstęp przy pikselu 2), rampa (akcent — pierwszy ton, spód i ogonek — ostatni), wersaliki po polsku, nagłówek i opis modyfikatora. `npm run build`, smoke solo i co-op.
+
+## Krok U7c — HUD mniejszy i oszczędniejszy, mocniejsza rampa i cień liter `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7b (12.11.2026) `#ocena`:** „napisy w HUD są za duże, zero cieniowania! Zobacz jak ponad pół ekranu zajmuje zbędna informacja. gdzie masz cieniowanie?”
+
+**Co się zmieniło:**
+- Drobne napisy HUD-u na PC wracają do skali 1 (`HUD_LAYOUT.textScale.pc`; telefon dalej 2). W skali 2 zostaje tylko krótki nagłówek piętra i złoto.
+- Mniej tekstu: cel zawsze w skrócie („WROGOWIE: 6”, „SCHODY OTWARTE”, `objectiveLongMs` 0), przy złocie w zwykłym runie brak dopisku „wynik”.
+- Cieniowanie liter: rampa lica dwa razy mocniejsza (od kremowego wierzchu do ciemnego spodu, `UI_FONT_LOOK.ramp`), cień jaśniejszy od obrysu (ciemny odcień barwy napisu, `shadowDarken` 0,5) — widać go jako „wyciągnięcie” litery jak w POLEGŁEŚ.
+
+**Testy:** dopisek złota w zwykłym runie pusty. `npm run build`, smoke solo.
+
+## Krok U7d — Powrót do prostego HUD-u: czytelnie, bez fajerwerków `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7c (12.11.2026) `#ocena`:** „jak my tak zboczyliśmy z podstawowego widoku? ma być czytelnie bez fajerwerków. to z pierwszego screena jest odrażające — to ma najważniejsza informacja? dłuższa niż pasek zdrowia?”
+
+**Co się zmieniło:**
+- Nad paskiem zdrowia tylko krótki numer piętra („PIĘTRO 3”), drobnymi literami — jak w HUD-zie sprzed U7. Pasek zdrowia jest najważniejszym i najdłuższym elementem.
+- Modyfikator piętra we własnej linii pod przedmiotami: przez 9 s z opisem, potem sama nazwa przygaszona (`floorModifierNote`).
+- Złoto w skali drobnych napisów, obok monety.
+- Drobne napisy (piksel fontu 1–2: HUD, menu, opisy) mają płaskie lico z obrysem, bez cienia i rampy; cień i rampa zostają od piksela 3 (tytuły: PAUZA, nazwy na kartach, POLEGŁEŚ) — `UI_FONT_LOOK.effectsFromPx`.
+
+**Testy:** recepta (drobne napisy bez cienia i rampy), linia modyfikatora. `npm run build`, smoke solo.
+
+## Krok U7e — Żywe wskaźniki klasy pod paskiem zdrowia, bez portretu i napisu piętra `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena i prośba właściciela po U7d (12.11.2026) `#ocena`:** „zepsuliśmy cały feel… pozbądź się tej szkaradnej miniaturki i napisu piętro 1. przetwórz te charge dasha i strzały na coś żywego — w przypadku barby krwistego, czarki magicznego, a łucznika naciągniętej cięciwy etc. usuń tekst o pokonanych wrogach — co on w ogóle oznacza? umieść pod zmodyfikowanym paskiem hp zdobyte itemy i golda”.
+
+**Co powstało:**
+- Lewy panel od góry: pasek zdrowia (ultimate obok), żywe wskaźniki klasy, złoto, zdobyte przedmioty; pod nimi tylko cel, gdy coś znaczy (schody otwarte, „naciśnij E”), modyfikator piętra i wiadomość o przedmiocie. Portret i napis piętra usunięte.
+- Wskaźniki w motywie klasy (`config/hudGaugeConfig.ts`, ruch w `systems/hudGauges.ts`, rysunek `ui/ClassGauges.ts`):
+  - barbarzyńca — dash to żyła: krew płynie do czoła wypełnienia, gotowa żyła bije jak serce („lub-dub”); ładunki strzału to krople krwi wypełniające się od dołu, pełne z odblaskiem (ikony ładunków usunięte w U7f);
+  - Czarodziejka — dash i promień to strumienie magii z płynącymi iskrami (promień w działaniu jaśniejszy i szybszy); kule to fioletowe kule z wędrującym błyskiem;
+  - łucznik — dash to cięciwa między końcami ramion: luźna zwisa, gotowa jest napięta i chwilę drga; ładunki to łuki, których cięciwa naciąga się w trakcie ładowania, a gotowy łuk ma strzałę na cięciwie.
+- Bicie serca wyłącza „Ogranicz błyski”.
+- Cel w zwykłej walce bez tekstu (dawne „Wrogowie: N”) — `objectiveHint` daje pusty skrót poza schodami.
+
+**Testy:** `tests/systems/hudGauges.test.ts` (motyw z broni, bicie serca, przepływ i iskry w wypełnionej części, ugięcie i drganie cięciwy, wiersze ładunku i naciąg łuku), cel bez liczby wrogów. `npm run build`, smoke solo i co-op.
+
+## Krok U7f — Bez ikon ładunków strzału `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7e (12.11.2026) `#ocena`:** „nie no co?! te bukłaki/krople krwi to nasz dash?” → „zrezygnujmy całkowicie z tego widoku. usuń te charge bukłaki… nie daje to żadnej informacji a wprowadza dezinformację”.
+
+**Co się zmieniło:** ikony ładunków (krople krwi, kule Czarodziejki, łuki łucznika) usunięte z HUD-u u wszystkich klas razem z kodem i wzorami. Pod paskiem zdrowia zostaje pasek dasha w motywie klasy (u Czarodziejki też promień), a zaraz pod nim złoto i przedmioty.
+
+**Testy:** `npm run build`, smoke solo.
+
+## Krok U7g — Pierwszy boss to Slimer `#upgrade` `#interfejs` `#krol-szlamu` `#decyzja`
+
+**Decyzja właściciela (12.11.2026) `#decyzja`:** „niech zostanie jak jest. [wyrzuć] informację o strażniku piętra czy kolejnego bossa. to jest Slimer”.
+
+**Co się zmieniło:** pierwszy boss nazywa się **Slimer** (tytuł „Król Szlamu” zostaje) — karta wejścia, pasek bossa i podpisy pokazują „SLIMER” zamiast ogólnego „STRAŻNIK PIĘTRA”. Napis nad kartami nagrody to „BOSS POKONANY” zamiast „STRAŻNIK POKONANY” dla każdego bossa. Identyfikator bossa (`BossId.FloorGuardian`) i zapisy postępu bez zmian. HUD bez zmian.
+
+**Testy:** `npm run build`.
+
+## Krok U7h — Fazy bossa bez komunikatów `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela (12.11.2026) `#ocena`:** „nie no nie informujmy gracza o fazach, jest to zbyt transparentne i za mało się zmienia by to komunikować”.
+
+**Co się zmieniło:** pasek bossa nie pokazuje już dopisku „· FAZA x/y” ani kresek progów i ich rozbłysku (pojedynczy boss i duet). Zostaje imię i okrzyk wściekłości („SLIMER — WŚCIEKŁY!”) oraz plansza przy wściekłości. Usunięty rysownik `effects/BossPhaseBar.ts`; `BOSS_PHASE_MARKS` ma już tylko `minGap` (progi faz dalej liczy `BossFight.phaseMarks`, ale HUD ich nie używa).
+
+**Testy:** `npm run build`, kadry paska Slimera i pajęczego duetu.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6259,10 +6406,10 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
 - **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c, smagnięcie Matki Pająków — w U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
-- **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata, Ogród i jaskrawsza krew (czeka na ocenę). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138). U4f: skarbiec pająków w ukrytej komnacie Grzybni (czeka na ocenę: gęstość oplotu, piedestały, śluz).
-- **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
+- **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata i Ogród. Krew usunięta całkowicie (krok U4e, decyzja właściciela). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138). U4f: skarbiec pająków w ukrytej komnacie Grzybni (czeka na ocenę: gęstość oplotu, piedestały, śluz).
+- **U5 postacie — pilot barbarzyńcy (krok U5a) czeka na ocenę:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
-- **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.
+- **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
 - **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
 

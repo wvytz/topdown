@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { UiText, uiText } from '@/ui/UiText';
 import { SoundCue, sound } from '@/audio/SoundBoard';
 import { MUSIC_BY_BIOME, MUSIC_DUCK, MUTE_KEY } from '@/config/audioConfig';
 import type {
@@ -148,6 +149,7 @@ import { usefulItemPool } from '@/systems/ItemUsefulness';
 import type { RewardSceneData } from '@/scenes/RewardScene';
 import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
+import { runSignature } from '@/systems/runSignature';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { createBoardHighscores } from '@/persistence/highscoreBoards';
 import { PlayerName } from '@/persistence/PlayerName';
@@ -402,7 +404,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private stairsUnlocked = false;
   /** Gracz stoi na otwartych schodach (HUD i napis nad schodami). */
   private onStairs = false;
-  private stairsPrompt: Phaser.GameObjects.Text | null = null;
+  private stairsPrompt: UiText | null = null;
   private isTransitioning = false;
   private deathHandled = false;
   /** Krok 169: run zakończony zwycięstwem (ekran ZWYCIĘSTWO zamiast POLEGŁEŚ). */
@@ -772,6 +774,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const ready = Boolean(this.player?.active);
     return {
       floor: this.floorNumber,
+      hero: this.run.hero,
       arenaLabel: this.bossRush ? arenaLabel(this.floorNumber, this.bossFight.name, TOWER_CONFIG) : null,
       floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
@@ -824,6 +827,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const hero = HERO_DEFINITIONS[this.heroIdOf(partner)];
     return {
       label: `${this.playerTag(partner)} · ${hero.name}`,
+      hero: this.heroIdOf(partner),
       hp: Math.round(partner.health.value),
       maxHp: Math.round(partner.health.max),
       dashReadiness: partner.dashReadiness(now),
@@ -1856,7 +1860,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           ? 'floorSelect'
           : null;
     if (unranked) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag(), ...this.runEndExtras() };
       this.awaitNewRun();
       return;
     }
@@ -1869,7 +1873,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
-    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag(), ...this.victoryFlag() };
+    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag(), ...this.victoryFlag(), ...this.runEndExtras() };
     const finish = (raw: string | null): void => {
       this.input.keyboard?.off('keydown', onKey);
       this.deathPad = null;
@@ -1898,6 +1902,23 @@ export class GameScene extends Phaser.Scene implements HudSource {
     };
   }
 
+  /** Krok U7: podpis runu i zebrane przedmioty na ekranie końca. */
+  private runEndExtras(): { signature: string; items: HudItem[] } {
+    const items = hudItems(this.run.itemCounts());
+    const heroes = [HERO_DEFINITIONS[this.run.hero].name, ...(this.coop ? [HERO_DEFINITIONS[this.coop.partner.hero].name] : [])];
+    const signature = runSignature({
+      heroes,
+      mode: this.run.mode,
+      seed: this.runSeed,
+      startFloor: this.run.startFloor,
+      practice: this.run.practice,
+      fromSave: this.run.fromSave,
+      itemCount: this.run.items.length,
+      evolvedCount: items.filter((item) => item.evolved).length,
+    });
+    return { signature, items };
+  }
+
   private victoryFlag(): { victory?: true } {
     return this.victory ? { victory: true } : {};
   }
@@ -1911,7 +1932,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private recordDeath(entry: ScoreEntry): void {
     const highscores = this.bossRush ? this.arenaHighscores : this.coop ? this.coopHighscores : this.highscores;
     const { rank, board } = highscores.record(entry);
-    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag(), ...this.runEndExtras() };
     this.death = death;
     if (highscores.hasRemote) {
       this.death = { ...death, source: 'pending' };
@@ -2032,15 +2053,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   /** Napis nad schodami, widoczny, gdy gracz na nich stoi. */
   private createStairsPrompt(): void {
     const { x, y } = DungeonView.tileToWorldCenter(this.dungeon.stairs);
-    this.stairsPrompt = this.add
-      .text(x + (STAIRS_SIZE - 1) * (TILE_SIZE / 2), y - TILE_SIZE, STAIRS_PROMPT, {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#ffe08a',
-        stroke: '#000000',
-        strokeThickness: 3,
-        align: 'center',
-      })
+    this.stairsPrompt = uiText(this, x + (STAIRS_SIZE - 1) * (TILE_SIZE / 2), y - TILE_SIZE, STAIRS_PROMPT, { color: '#ffe08a', align: 'center' })
       .setOrigin(0.5, 1)
       .setDepth(RENDER_DEPTH.worldText)
       .setVisible(false);
