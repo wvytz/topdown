@@ -226,6 +226,7 @@ Osobne ustawienie, niezależne od jakości: wyłącza drżenie kamery, błyski p
 - Źródłem światła może być pocisk, zaklęcie, wybuch, płonąca plama i element biomu. Każde ma barwę z rampy tego, co świeci.
 - Światło rozjaśnia mrok płynnie i gaśnie skokowo w rytmie animacji (§6b). Nie rysujemy kręgów z twardą krawędzią.
 - Światło Czarnego Słońca: jedno zimne, stałe światło z tej samej strony na każdym piętrze, mocniejsze im wyżej. Wzmacnia gradient ruiny, nie konkuruje z pochodniami.
+- Wdrożenie (krok U3): liczby w `config/dynamicLightConfig.ts`. Na Średniej światło tylko rozjaśnia mrok, a barwa (ADD) dochodzi na Wysokiej. Pociski wrogów mają pierwszeństwo przy limicie świateł. Światła dynamiczne nie odsłaniają wrogów w „Mroku” i we mgle, bo widoczność wrogów to mechanika.
 
 ### 13.8 Kafle i biomy 2.0
 

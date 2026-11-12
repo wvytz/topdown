@@ -15,7 +15,8 @@ const TILESET = loadTileset();
 const SEED = 1234;
 
 /** Pokój 4×4 otoczony murem grubości 3 — do sprawdzania masek, pasm i cieni kafel po kaflu. */
-const BOX = floorFromAscii(
+// Schody (3×3 od kroku 187) daleko poza salą, żeby ich strefa nie zabierała kafli testowanych nakładek.
+const BOX = withStairsAway(floorFromAscii(
   [
     '##########',
     '##########',
@@ -29,7 +30,11 @@ const BOX = floorFromAscii(
     '##########',
   ],
   [room(0, 3, 3, 4, 4, RoomKind.Normal)],
-);
+));
+
+function withStairsAway(floor: DungeonFloor): DungeonFloor {
+  return { ...floor, stairs: { x: -10, y: -10 } };
+}
 
 /**
  * Sala z przejściami: od północy szerokości 2 (łuk), od południa szerokości 3 (bez łuku),

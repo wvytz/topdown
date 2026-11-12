@@ -30,6 +30,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 import gamer_den_tiles
 import ruins_wreck_tiles
+import stairs_tiles
 
 T = 32
 FACE = 8  # wysokość lica ściany (południowa, widoczna strona) w pikselach
@@ -959,57 +960,9 @@ def seal(p, r):
 
 
 def stairs(open_):
+    """Klatka schodowa (krok 187, 3x3): biegi, spocznik i szyb w ciemność — rysuje tools/stairs_tiles.py."""
     def gen(p, r):
-        W, G, I, O = p.wall_top, p.accent, p.iron, p.outline
-        img = floor_slabs(p, r, grid_slabs(64, 64), 64, 64)
-        x0, x1, y0, y1 = 6, 58, 4, 60
-        for y in range(y0, y1):
-            for x in range(x0, x1):
-                img.put(x, y, W[2])
-        for x in range(x0, x1):
-            img.put(x, y0, O); img.put(x, y0 + 1, W[4]); img.put(x, y1 - 1, O); img.put(x, y1 - 2, W[1])
-        for y in range(y0, y1):
-            img.put(x0, y, O); img.put(x0 + 1, y, W[3]); img.put(x1 - 1, y, O); img.put(x1 - 2, y, W[1])
-        for (x, y) in ((x0, y0), (x1 - 1, y0), (x0, y1 - 1), (x1 - 1, y1 - 1)):
-            img.put(x, y, p.floor[1])
-        sx0, sx1, sy0, steps, sh = 11, 53, 9, 6, 8  # stopnie w górę ku północy => wyższe jaśniejsze
-        for i in range(steps):
-            yt = sy0 + i * sh
-            tread = W[4] if i == 0 else (W[3] if i < 3 else W[2])
-            riser = W[1] if i < 3 else W[0]
-            for y in range(yt, yt + sh):
-                ly = y - yt
-                for x in range(sx0, sx1):
-                    c = tread if ly < 5 else riser
-                    if ly == 0: c = W[5] if i < 2 else W[4]
-                    if ly == 5: c = W[0]
-                    img.put(x, y, c)
-            for (x, y) in ((sx0 + 7 + i * 3, yt + 2), (sx1 - 9 - i * 2, yt + 3)):
-                img.put(x, y, W[1])
-        for y in range(sy0, sy0 + steps * sh):
-            img.put(sx0 - 1, y, W[0]); img.put(sx0 - 2, y, W[1]); img.put(sx1, y, W[0]); img.put(sx1 + 1, y, W[0])
-        img.put(sx0, sy0 + 2 * sh, W[0]); img.put(sx1 - 1, sy0 + 4 * sh + 1, W[0]); img.put(sx1 - 2, sy0 + 4 * sh, W[0])
-        for (x, y) in ((8, 14), (8, 30), (8, 46), (55, 14), (55, 30), (55, 46)):  # runy na obramowaniu
-            for k in range(3):
-                img.put(x, y + k, G[2] if open_ else G[0])
-            if open_: img.put(x, y + 1, G[3])
-        if not open_:  # żelazne pręty i pieczęć
-            for bx in range(sx0 + 3, sx1, 7):
-                for y in range(sy0 - 2, sy0 + steps * sh):
-                    img.put(bx, y, O); img.put(bx + 1, y, I[1] if y % 8 == 0 else I[0])
-            for by in (sy0 + 10, sy0 + 34):
-                for x in range(sx0, sx1):
-                    img.put(x, by, O); img.put(x, by + 1, I[1]); img.put(x, by + 2, I[0])
-            for y in range(20, 40):
-                for x in range(22, 42):
-                    d = ((x + .5 - 32) ** 2 + (y + .5 - 30) ** 2) ** .5
-                    if d < 9: img.put(x, y, O if d > 8 else (G[1] if d > 6.5 else (G[0] if d > 3 else G[1])))
-            for (x, y) in ((31, 28), (32, 29), (31, 30), (32, 31)):
-                img.put(x, y, G[2])
-        else:
-            for x in range(sx0 + 4, sx1 - 4, 6):
-                img.put(x, sy0, G[2])
-        return img
+        return stairs_tiles.draw(p, r, open_, BIOME, Img, outline)
     return gen
 
 
@@ -2195,8 +2148,8 @@ def manifest():
     for orient in ('h', 'v'):
         for state in ('open', 'half', 'closed'):
             m.append(Entry(f'gate_{orient}_{state}', gate(orient, state), 'gate', group=f'gate.{orient}'))
-    m.append(Entry('stairs_sealed_2x2', stairs(False), 'floorFeature', 2, 2))
-    m.append(Entry('stairs_open_2x2', stairs(True), 'floorFeature', 2, 2))
+    m.append(Entry('stairs_sealed_3x3', stairs(False), 'floorFeature', 3, 3))
+    m.append(Entry('stairs_open_3x3', stairs(True), 'floorFeature', 3, 3))
     m.append(Entry('seal_2x2', seal, 'floorFeature', 2, 2))
     m.append(Entry('torch_sconce', torch_sconce, 'wallDecor', group='torchSconce'))
     for v in ('a', 'b', 'c'):
@@ -2672,7 +2625,7 @@ def compose_mockup(p, tiles, meta, seed=16):
     # 3. elementy podłogi
     for y in range(H):
         for x in range(Wd):
-            if grid[y][x] == 'S': put('stairs_sealed_2x2', x, y)
+            if grid[y][x] == 'S': put('stairs_sealed_3x3', x, y)
             if grid[y][x] == 'O': put('seal_2x2', x, y)
     # 4. cienie środowiska
     for y in range(H):

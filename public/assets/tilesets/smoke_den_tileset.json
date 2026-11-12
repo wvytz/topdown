@@ -837,89 +837,83 @@
    "h": 1,
    "layer": "gate"
   },
-  "stairs_sealed_2x2": {
+  "stairs_sealed_3x3": {
    "frame": 97,
    "col": 1,
    "row": 6,
-   "w": 2,
-   "h": 2,
+   "w": 3,
+   "h": 3,
    "layer": "floorFeature",
    "frames": [
     [
      97,
-     98
+     98,
+     99
     ],
     [
      113,
-     114
-    ]
-   ]
-  },
-  "stairs_open_2x2": {
-   "frame": 99,
-   "col": 3,
-   "row": 6,
-   "w": 2,
-   "h": 2,
-   "layer": "floorFeature",
-   "frames": [
-    [
-     99,
-     100
+     114,
+     115
     ],
     [
-     115,
-     116
+     129,
+     130,
+     131
     ]
    ]
   },
-  "seal_2x2": {
-   "frame": 101,
-   "col": 5,
+  "stairs_open_3x3": {
+   "frame": 100,
+   "col": 4,
    "row": 6,
-   "w": 2,
-   "h": 2,
+   "w": 3,
+   "h": 3,
    "layer": "floorFeature",
    "frames": [
     [
+     100,
      101,
      102
     ],
     [
+     116,
      117,
      118
+    ],
+    [
+     132,
+     133,
+     134
+    ]
+   ]
+  },
+  "seal_2x2": {
+   "frame": 103,
+   "col": 7,
+   "row": 6,
+   "w": 2,
+   "h": 2,
+   "layer": "floorFeature",
+   "frames": [
+    [
+     103,
+     104
+    ],
+    [
+     119,
+     120
     ]
    ]
   },
   "torch_sconce": {
-   "frame": 103,
-   "col": 7,
+   "frame": 105,
+   "col": 9,
    "row": 6,
    "w": 1,
    "h": 1,
    "layer": "wallDecor"
   },
   "floor_cobble_a": {
-   "frame": 104,
-   "col": 8,
-   "row": 6,
-   "w": 1,
-   "h": 1,
-   "layer": "floorBase",
-   "weight": 1,
-   "flipX": true
-  },
-  "floor_cobble_b": {
-   "frame": 105,
-   "col": 9,
-   "row": 6,
-   "w": 1,
-   "h": 1,
-   "layer": "floorBase",
-   "weight": 1,
-   "flipX": true
-  },
-  "floor_cobble_c": {
    "frame": 106,
    "col": 10,
    "row": 6,
@@ -929,9 +923,29 @@
    "weight": 1,
    "flipX": true
   },
-  "face_banner": {
+  "floor_cobble_b": {
    "frame": 107,
    "col": 11,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 1,
+   "flipX": true
+  },
+  "floor_cobble_c": {
+   "frame": 108,
+   "col": 12,
+   "row": 6,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 1,
+   "flipX": true
+  },
+  "face_banner": {
+   "frame": 109,
+   "col": 13,
    "row": 6,
    "w": 1,
    "h": 1,
@@ -939,8 +953,8 @@
    "weight": 2
   },
   "face_grate": {
-   "frame": 108,
-   "col": 12,
+   "frame": 110,
+   "col": 14,
    "row": 6,
    "w": 1,
    "h": 1,
@@ -948,8 +962,8 @@
    "weight": 2
   },
   "face_alcove": {
-   "frame": 109,
-   "col": 13,
+   "frame": 111,
+   "col": 15,
    "row": 6,
    "w": 1,
    "h": 1,
@@ -957,85 +971,45 @@
    "weight": 1
   },
   "face_brick": {
-   "frame": 110,
-   "col": 14,
-   "row": 6,
+   "frame": 112,
+   "col": 0,
+   "row": 7,
    "w": 1,
    "h": 1,
    "layer": "wallDecor",
    "weight": 3
   },
   "arch_2x1": {
-   "frame": 119,
-   "col": 7,
+   "frame": 121,
+   "col": 9,
    "row": 7,
    "w": 2,
    "h": 1,
    "layer": "overheadDecor",
    "frames": [
     [
-     119,
-     120
+     121,
+     122
     ]
    ]
   },
   "cobweb_nw": {
-   "frame": 111,
-   "col": 15,
-   "row": 6,
+   "frame": 123,
+   "col": 11,
+   "row": 7,
    "w": 1,
    "h": 1,
    "layer": "overheadDecor"
   },
   "cobweb_ne": {
-   "frame": 112,
-   "col": 0,
+   "frame": 124,
+   "col": 12,
    "row": 7,
    "w": 1,
    "h": 1,
    "layer": "overheadDecor"
   },
   "combat_splat_a": {
-   "frame": 121,
-   "col": 9,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_splat_b": {
-   "frame": 122,
-   "col": 10,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_scorch_a": {
-   "frame": 123,
-   "col": 11,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_scorch_b": {
-   "frame": 124,
-   "col": 12,
-   "row": 7,
-   "w": 1,
-   "h": 1,
-   "layer": "combatDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "combat_slime_a": {
    "frame": 125,
    "col": 13,
    "row": 7,
@@ -1045,7 +1019,7 @@
    "weight": 1,
    "flipX": true
   },
-  "combat_slime_b": {
+  "combat_splat_b": {
    "frame": 126,
    "col": 14,
    "row": 7,
@@ -1055,104 +1029,144 @@
    "weight": 1,
    "flipX": true
   },
-  "torch_flame_0": {
+  "combat_scorch_a": {
    "frame": 127,
    "col": 15,
    "row": 7,
    "w": 1,
    "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_scorch_b": {
+   "frame": 128,
+   "col": 0,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_slime_a": {
+   "frame": 135,
+   "col": 7,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "combat_slime_b": {
+   "frame": 136,
+   "col": 8,
+   "row": 8,
+   "w": 1,
+   "h": 1,
+   "layer": "combatDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "torch_flame_0": {
+   "frame": 137,
+   "col": 9,
+   "row": 8,
+   "w": 1,
+   "h": 1,
    "layer": "fx"
   },
   "torch_flame_1": {
-   "frame": 128,
-   "col": 0,
+   "frame": 138,
+   "col": 10,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "fx"
   },
   "torch_flame_2": {
-   "frame": 129,
-   "col": 1,
+   "frame": 139,
+   "col": 11,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "fx"
   },
   "torch_flame_3": {
-   "frame": 130,
-   "col": 2,
+   "frame": 140,
+   "col": 12,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "fx"
   },
   "pillar": {
-   "frame": 131,
-   "col": 3,
+   "frame": 141,
+   "col": 13,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "pillar_cracked": {
-   "frame": 132,
-   "col": 4,
+   "frame": 142,
+   "col": 14,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "pillar_stump": {
-   "frame": 133,
-   "col": 5,
+   "frame": 143,
+   "col": 15,
    "row": 8,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "fallen_pillar_2x1": {
-   "frame": 134,
-   "col": 6,
-   "row": 8,
+   "frame": 144,
+   "col": 0,
+   "row": 9,
    "w": 2,
    "h": 1,
    "layer": "prop",
    "frames": [
     [
-     134,
-     135
+     144,
+     145
     ]
    ]
   },
   "rubble_a": {
-   "frame": 136,
-   "col": 8,
-   "row": 8,
+   "frame": 146,
+   "col": 2,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "rubble_b": {
-   "frame": 137,
-   "col": 9,
-   "row": 8,
+   "frame": 147,
+   "col": 3,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "bones": {
-   "frame": 138,
-   "col": 10,
-   "row": 8,
+   "frame": 148,
+   "col": 4,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "prop"
   },
   "decal_can_a": {
-   "frame": 139,
-   "col": 11,
-   "row": 8,
+   "frame": 149,
+   "col": 5,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1160,9 +1174,9 @@
    "flipX": true
   },
   "decal_can_b": {
-   "frame": 140,
-   "col": 12,
-   "row": 8,
+   "frame": 150,
+   "col": 6,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1170,9 +1184,9 @@
    "flipX": true
   },
   "decal_can_c": {
-   "frame": 141,
-   "col": 13,
-   "row": 8,
+   "frame": 151,
+   "col": 7,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1180,9 +1194,9 @@
    "flipX": true
   },
   "decal_can_d": {
-   "frame": 142,
-   "col": 14,
-   "row": 8,
+   "frame": 152,
+   "col": 8,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1190,9 +1204,9 @@
    "flipX": true
   },
   "decal_can_e": {
-   "frame": 143,
-   "col": 15,
-   "row": 8,
+   "frame": 153,
+   "col": 9,
+   "row": 9,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1200,99 +1214,6 @@
    "flipX": true
   },
   "decal_bucket": {
-   "frame": 144,
-   "col": 0,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_box": {
-   "frame": 145,
-   "col": 1,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_butts": {
-   "frame": 146,
-   "col": 2,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
-  },
-  "face_poster_a": {
-   "frame": 147,
-   "col": 3,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "wallDecor",
-   "weight": 3
-  },
-  "face_poster_b": {
-   "frame": 148,
-   "col": 4,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "wallDecor",
-   "weight": 2
-  },
-  "face_socket": {
-   "frame": 149,
-   "col": 5,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "wallDecor",
-   "weight": 3
-  },
-  "face_shelf": {
-   "frame": 150,
-   "col": 6,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "wallDecor",
-   "weight": 3
-  },
-  "face_hole": {
-   "frame": 151,
-   "col": 7,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "wallDecor",
-   "weight": 2
-  },
-  "face_window": {
-   "frame": 152,
-   "col": 8,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "wallDecor",
-   "weight": 2
-  },
-  "face_calendar": {
-   "frame": 153,
-   "col": 9,
-   "row": 9,
-   "w": 1,
-   "h": 1,
-   "layer": "wallDecor",
-   "weight": 1
-  },
-  "decal_pizza_a": {
    "frame": 154,
    "col": 10,
    "row": 9,
@@ -1302,7 +1223,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_pizza_b": {
+  "decal_box": {
    "frame": 155,
    "col": 11,
    "row": 9,
@@ -1312,7 +1233,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_slice": {
+  "decal_butts": {
    "frame": 156,
    "col": 12,
    "row": 9,
@@ -1322,77 +1243,70 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_chips": {
+  "face_poster_a": {
    "frame": 157,
    "col": 13,
    "row": 9,
    "w": 1,
    "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
+   "layer": "wallDecor",
+   "weight": 3
   },
-  "decal_noodles": {
+  "face_poster_b": {
    "frame": 158,
    "col": 14,
    "row": 9,
    "w": 1,
    "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
+   "layer": "wallDecor",
+   "weight": 2
   },
-  "decal_socks": {
+  "face_socket": {
    "frame": 159,
    "col": 15,
    "row": 9,
    "w": 1,
    "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
+   "layer": "wallDecor",
+   "weight": 3
   },
-  "decal_shirt": {
+  "face_shelf": {
    "frame": 160,
    "col": 0,
    "row": 10,
    "w": 1,
    "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
+   "layer": "wallDecor",
+   "weight": 3
   },
-  "decal_pad": {
+  "face_hole": {
    "frame": 161,
    "col": 1,
    "row": 10,
    "w": 1,
    "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
+   "layer": "wallDecor",
+   "weight": 2
   },
-  "decal_pad_broken": {
+  "face_window": {
    "frame": 162,
    "col": 2,
    "row": 10,
    "w": 1,
    "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
+   "layer": "wallDecor",
+   "weight": 2
   },
-  "decal_headset": {
+  "face_calendar": {
    "frame": 163,
    "col": 3,
    "row": 10,
    "w": 1,
    "h": 1,
-   "layer": "floorDecal",
-   "weight": 1,
-   "flipX": true
+   "layer": "wallDecor",
+   "weight": 1
   },
-  "decal_papers": {
+  "decal_pizza_a": {
    "frame": 164,
    "col": 4,
    "row": 10,
@@ -1402,7 +1316,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_bottle": {
+  "decal_pizza_b": {
    "frame": 165,
    "col": 5,
    "row": 10,
@@ -1412,7 +1326,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_grease": {
+  "decal_slice": {
    "frame": 166,
    "col": 6,
    "row": 10,
@@ -1422,7 +1336,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_grease_b": {
+  "decal_chips": {
    "frame": 167,
    "col": 7,
    "row": 10,
@@ -1432,7 +1346,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_slime": {
+  "decal_noodles": {
    "frame": 168,
    "col": 8,
    "row": 10,
@@ -1442,7 +1356,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_mold": {
+  "decal_socks": {
    "frame": 169,
    "col": 9,
    "row": 10,
@@ -1452,7 +1366,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_mold_b": {
+  "decal_shirt": {
    "frame": 170,
    "col": 10,
    "row": 10,
@@ -1462,7 +1376,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_mush_a": {
+  "decal_pad": {
    "frame": 171,
    "col": 11,
    "row": 10,
@@ -1472,7 +1386,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_mush_b": {
+  "decal_pad_broken": {
    "frame": 172,
    "col": 12,
    "row": 10,
@@ -1482,7 +1396,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_mush_c": {
+  "decal_headset": {
    "frame": 173,
    "col": 13,
    "row": 10,
@@ -1492,107 +1406,107 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_mound_a_2x2": {
+  "decal_papers": {
    "frame": 174,
    "col": 14,
    "row": 10,
-   "w": 2,
-   "h": 2,
+   "w": 1,
+   "h": 1,
    "layer": "floorDecal",
-   "frames": [
-    [
-     174,
-     175
-    ],
-    [
-     190,
-     191
-    ]
-   ],
    "weight": 1,
    "flipX": true
   },
-  "decal_mound_b_2x2": {
+  "decal_bottle": {
+   "frame": 175,
+   "col": 15,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_grease": {
    "frame": 176,
    "col": 0,
    "row": 11,
-   "w": 2,
-   "h": 2,
+   "w": 1,
+   "h": 1,
    "layer": "floorDecal",
-   "frames": [
-    [
-     176,
-     177
-    ],
-    [
-     192,
-     193
-    ]
-   ],
    "weight": 1,
    "flipX": true
   },
-  "decal_mound_c_2x2": {
+  "decal_grease_b": {
+   "frame": 177,
+   "col": 1,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_slime": {
    "frame": 178,
    "col": 2,
    "row": 11,
-   "w": 2,
-   "h": 2,
+   "w": 1,
+   "h": 1,
    "layer": "floorDecal",
-   "frames": [
-    [
-     178,
-     179
-    ],
-    [
-     194,
-     195
-    ]
-   ],
    "weight": 1,
    "flipX": true
   },
-  "decal_trash_a_2x2": {
+  "decal_mold": {
+   "frame": 179,
+   "col": 3,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mold_b": {
    "frame": 180,
    "col": 4,
    "row": 11,
-   "w": 2,
-   "h": 2,
+   "w": 1,
+   "h": 1,
    "layer": "floorDecal",
-   "frames": [
-    [
-     180,
-     181
-    ],
-    [
-     196,
-     197
-    ]
-   ],
    "weight": 1,
    "flipX": true
   },
-  "decal_trash_b_2x2": {
+  "decal_mush_a": {
+   "frame": 181,
+   "col": 5,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mush_b": {
    "frame": 182,
    "col": 6,
    "row": 11,
-   "w": 2,
-   "h": 2,
+   "w": 1,
+   "h": 1,
    "layer": "floorDecal",
-   "frames": [
-    [
-     182,
-     183
-    ],
-    [
-     198,
-     199
-    ]
-   ],
    "weight": 1,
    "flipX": true
   },
-  "decal_laundry_2x2": {
+  "decal_mush_c": {
+   "frame": 183,
+   "col": 7,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_mound_a_2x2": {
    "frame": 184,
    "col": 8,
    "row": 11,
@@ -1612,7 +1526,7 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_cables_2x2": {
+  "decal_mound_b_2x2": {
    "frame": 186,
    "col": 10,
    "row": 11,
@@ -1632,30 +1546,18 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_boxes_2x1": {
+  "decal_mound_c_2x2": {
    "frame": 188,
    "col": 12,
    "row": 11,
    "w": 2,
-   "h": 1,
+   "h": 2,
    "layer": "floorDecal",
    "frames": [
     [
      188,
      189
-    ]
-   ],
-   "weight": 1,
-   "flipX": true
-  },
-  "decal_keyboard_2x1": {
-   "frame": 204,
-   "col": 12,
-   "row": 12,
-   "w": 2,
-   "h": 1,
-   "layer": "floorDecal",
-   "frames": [
+    ],
     [
      204,
      205
@@ -1664,10 +1566,122 @@
    "weight": 1,
    "flipX": true
   },
-  "decal_trail_h_a": {
-   "frame": 206,
+  "decal_trash_a_2x2": {
+   "frame": 190,
    "col": 14,
+   "row": 11,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     190,
+     191
+    ],
+    [
+     206,
+     207
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trash_b_2x2": {
+   "frame": 192,
+   "col": 0,
    "row": 12,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     192,
+     193
+    ],
+    [
+     208,
+     209
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_laundry_2x2": {
+   "frame": 194,
+   "col": 2,
+   "row": 12,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     194,
+     195
+    ],
+    [
+     210,
+     211
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_cables_2x2": {
+   "frame": 196,
+   "col": 4,
+   "row": 12,
+   "w": 2,
+   "h": 2,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     196,
+     197
+    ],
+    [
+     212,
+     213
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_boxes_2x1": {
+   "frame": 198,
+   "col": 6,
+   "row": 12,
+   "w": 2,
+   "h": 1,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     198,
+     199
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_keyboard_2x1": {
+   "frame": 214,
+   "col": 6,
+   "row": 13,
+   "w": 2,
+   "h": 1,
+   "layer": "floorDecal",
+   "frames": [
+    [
+     214,
+     215
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "decal_trail_h_a": {
+   "frame": 216,
+   "col": 8,
+   "row": 13,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1675,9 +1689,9 @@
    "flipX": true
   },
   "decal_trail_h_b": {
-   "frame": 207,
-   "col": 15,
-   "row": 12,
+   "frame": 217,
+   "col": 9,
+   "row": 13,
    "w": 1,
    "h": 1,
    "layer": "floorDecal",
@@ -1685,8 +1699,8 @@
    "flipX": true
   },
   "decal_trail_v_a": {
-   "frame": 208,
-   "col": 0,
+   "frame": 218,
+   "col": 10,
    "row": 13,
    "w": 1,
    "h": 1,
@@ -1695,8 +1709,8 @@
    "flipX": true
   },
   "decal_trail_v_b": {
-   "frame": 209,
-   "col": 1,
+   "frame": 219,
+   "col": 11,
    "row": 13,
    "w": 1,
    "h": 1,
@@ -1705,8 +1719,8 @@
    "flipX": true
   },
   "decal_trail_drops_a": {
-   "frame": 210,
-   "col": 2,
+   "frame": 220,
+   "col": 12,
    "row": 13,
    "w": 1,
    "h": 1,
@@ -1715,8 +1729,8 @@
    "flipX": true
   },
   "decal_trail_drops_b": {
-   "frame": 211,
-   "col": 3,
+   "frame": 221,
+   "col": 13,
    "row": 13,
    "w": 1,
    "h": 1,

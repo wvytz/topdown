@@ -6087,6 +6087,60 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Testy:** `tests/systems/cameraZoom.test.ts` (zoom 1,6, skala płótna od 2,0, widok gwarantowany), test czytelności w mroku z przestrojonym mrokiem. `npm run build`, `npm run smoke`, kadry `npm run shots`.
 
+## Krok 186 — Schody, które prowadzą w górę `#ocena` `#schody` `#lore` `#obraz`
+
+**Prośba właściciela (11.11.2026):** „mega słabe są te schody … stwórz model, który odpowiada naszym obecnym standardom. Idziemy w górę — schody mają jednoznacznie to komunikować”. Stare schody z kroku 17 wyglądały jak kratka wentylacyjna w posadzce.
+
+**Co zrobione**
+- **Nowy model w generatorze** `tools/stairs_tiles.py` (wołany z `tools/tower_ruins_tiles.py`, kafle `stairs_sealed_2x2` / `stairs_open_2x2` bez zmiany nazw i miejsc w arkuszu — przegenerowane wszystkie 8 arkuszy biomów, poza schodami piksel w piksel bez zmian). Wolnostojąca budowla na przezroczystym tle, więc pod spodem widać prawdziwą podłogę biomu (wykładzina mieszkania, posadzka-lustro).
+- Czytelność „w górę” z kilku stron naraz: bieg zwęża się ku północy (perspektywa), stopnie ku górze krótsze i jaśniejsze, balustrady z klinem lica rosną ku górze (niski słupek na dole), u szczytu łuk z nadprożem — bieg znika pod nim i ciągnie się dalej w świetle wyższego piętra; na nadprożu podwójny szewron.
+- **Zamknięte** (przed bossem): krata w łuku, łańcuch z kłódką w poprzek biegu, przygaszone szewrony. **Otwarte:** świetlisty prześwit, złote nosy górnych stopni i świecący szewron.
+- **Gradient zniszczeń (lore):** `WEAR` per biom — ruiny 3 (wyłamana balustrada, zapadnięty stopień, pęknięte i odłupane nadproże, gruz), leże/Grzybnia/Cmentarzysko 2, Piekło i mieszkanie 1, Lustrzana komnata i Bociani Ogród 0 (złota listwa, kule na słupkach). Dodatki: pajęczyna w łuku (Grzybnia, leże), żar w pęknięciach (Piekło), bordowy chodnik z mosiężnymi prętami (mieszkanie gracza), trawa przy balustradach (Bociani Ogród).
+- **Blask otwartych schodów** (`effects/StairsGlow.ts`, liczby w `config/stairsGlowConfig.ts`): po pokonaniu bossa światło z wyższego piętra rozjaśnia mrok nad łukiem, a złote pyłki wznoszą się po stopniach (liczba pyłków wg jakości obrazu z U1).
+
+**Do oceny:** czy schody czytają się jako „w górę” na wszystkich biomach (najciemniej: Lustrzana komnata i Bociani Ogród — kolory murów biomu); siła zniszczeń w ruinach; blask i pyłki.
+
+**Weryfikacja:** `npm run build` (typy, testy, build); kadry przed/po na piętrach 1–7 (zamknięte i otwarte) w przeglądarce — `/mnt/project-files/screens/krok186-schody/`.
+
+## Krok 187 — Kręcona klatka schodowa w narożniku runu `#ocena` `#schody` `#lore` `#obraz`
+
+**Prośba właściciela (11.11.2026, po kroku 186):** „przesuńmy schody w losowy narożnik pomieszczenia i przerysujmy model jeszcze raz, tak by stwarzał złudzenie 3D i faktycznie ukazywał głębię ciemności i ryzyko, jakie podejmujemy. Trzymajmy się jednej części areny bossa, utrzymując logikę budowy klatki schodowej w jednym pionie”.
+
+**Odczytanie:** „jeden pion” = klatka schodowa w tym samym miejscu na każdym piętrze. Narożnik losujemy raz na run (seed runu) i trzymamy go na wszystkich piętrach; wieża ma klatkę w jednym pionie, więc model to spirala w okrągłym szybie.
+
+**Co zrobione**
+- **Narożnik runu** (`runStairsCorner`, `StairsCorner` w `dungeon/stairs.ts`, własna sól RNG): `planStairs` bierze go, o ile środek bloku leży co najmniej `STAIRS_PLACEMENT.minEntranceDistance` (5) kafli od każdego wejścia do areny; inaczej — jak w kroku 75 — narożnik najdalszy od wejść. Na seedzie 7 ten sam narożnik ma 6 z 7 pięter (Lustrzana komnata ma wejście w tym rogu).
+- **Klatka 3×3** (`STAIRS_SIZE` 3, kafle `stairs_sealed_3x3` / `stairs_open_3x3`, `tools/stairs_tiles.py`): wejście od południa, stopnie-kliny wznoszą się zgodnie z ruchem wskazówek zegara i z każdym stopniem ciemnieją, a od wschodu spirala znika w czerni. Wąska szczelina, lico i cień pod nawisem każdego stopnia dają złudzenie wysokości. W środku szyb w głąb: wewnętrzne lico opada w czerń, a w dole majaczą coraz mniejsze zwoje tej samej spirali (piętra już przebyte). Mur szybu ma lico północnej ściany i przednie lico od południa. Zamknięte: krata w wejściu z kłódką.
+- Gradient zniszczeń z kroku 186 zostaje (ruiny: wyłamana poręcz nad szybem, wyszczerbiony mur, gruz; Lustrzana komnata i Ogród: złota poręcz) i dodatki biomów (pajęczyna w poprzek szybu, żar na dnie szybu w Piekle, chodnik w mieszkaniu, trawa przy murze).
+- **Otwarte schody** (`effects/StairsGlow.ts`): zamiast złotego blasku słabe światło u wejścia i blade pyłki w barwie popiołu biomu, które ciąg powietrza wciąga w górę, w mrok spirali.
+
+**Do oceny:** czy spirala czyta się jako „w górę, w ciemność”; bohater może przejść po szybie (schody nie mają kolizji, jak dotąd) — czy szyb ma blokować ruch; czy narożnik runu ma się też powtarzać w Lustrzanej komnacie kosztem bliskości wejścia.
+
+**Testy:** `tests/dungeon/stairs.test.ts` (blok 3×3, narożnik runu z pierwszeństwem i odrzuceniem przy wejściu, stały narożnik dla seeda), `FloorDressing.test.ts` (schody poza testowaną salą). `npm run build`, `npm run smoke`, kadry pięter 1–7 — `/mnt/project-files/screens/krok187-klatka-schodowa/`.
+
+## Krok U3 — Światło 2.0: pociski, magia, wybuchy i Czarne Słońce `#upgrade` `#swiatlo`
+
+**Zakres (etap U3 z `docs/UPGRADE.md`, STYLEGUIDE §13.6–13.7):** światło od pocisków, magii i wybuchów w warstwie mroku, barwa światła, światło Czarnego Słońca, poświata pochodni tylko w kadrze (uwaga z U1). Same efekty obrazu: widoczność wrogów w „Mroku” i we mgle (`EnemyVisibility`), liczby walki, czas logiki i strumienie RNG bez zmian. **Niska = gra sprzed upgradu** (test pilnuje, że na Niskiej żadne światło dynamiczne nie działa). Przed etapem scalony `main` (kroki 186–187, `docs/AKT2.md`) — bez konfliktów.
+
+**Co powstało**
+- **Czysta warstwa** `systems/DynamicLights.ts` (typy `core/lightTypes.ts`, liczby `config/dynamicLightConfig.ts`): poziom świateł z profilu obrazu, promień gasnącego błysku (szybko, potem łagodnie, skokowo co 4 px — §13.7 „gaśnie skokowo”), światła wzdłuż promienia, wybór świateł do kadru z limitem (pociski wrogów pierwsze — to, co rani, widać zawsze), siła i gradient Czarnego Słońca.
+- **Światła dynamiczne** (`effects/DynamicLights.ts`, obiekt `dynamicLights`): warstwa mroku wyciera ich stemple jak pochodnie (ten sam płynny stempel — bez pasm). Świecą: pociski bohaterów (ciepła biel; kule Czarodziejki — fiolet), pociski wrogów (czerwień), promień-Wyrwa (światła co 32 px wzdłuż), błyski Supernowej, fali, rozprysku i teleportu, wybuchy bez ognia (sok Pożeracza w turkusie swojego wybuchu; ogniste wybuchy miały własne światło od kroku 144). Działają też przy „Mroku” i — przez drugą warstwę — w **Zaduchu zasadzki**: strzały w ciemności są czytelne (kryterium etapu).
+- **Barwa światła (Wysoka):** każde światło dynamiczne dostaje poświatę ADD w barwie źródła nad mrokiem (`RENDER_DEPTH.dynamicLight`), z puli obrazów — bez nowego obiektu na pocisk. Średnia — samo rozjaśnienie mroku, bez barwy.
+- **Limit:** Średnia 12, Wysoka 20 świateł w kadrze naraz; błysków w pamięci najwyżej 16. „Mniej błysków” gasi błyski wybuchów i magii, pociski świecą dalej.
+- **Czarne Słońce** (`effects/BlackSunLight.ts`): zimny, łagodny gradient ADD z prawego górnego narożnika kadru (ta sama strona na każdym piętrze), mocniejszy im wyżej — alfa 0,05 na piętrze 1 do 0,158 na piętrze 7, w kolejnym kręgu od nowa. Średnia i Wysoka; nigdy przy „Mroku” (tam ciemność to mechanika).
+- **Poświata tylko w kadrze:** `screenFx.cullGlow` raz na klatkę wyłącza preFX glow pochodni i ognia poza kadrem (z zapasem 32 px) i włącza go, gdy wejdą do kadru — przejście GPU tylko dla tego, co widać.
+- „Świecące elementy biomów” już są (żywe otoczenie z kroku 156: lampy, znicze, ogniki, ćmy; paleniska, schody) — w U3 bez zmian; nowe elementy przyjdą z kaflami w U4.
+
+**Testy:** `tests/systems/dynamicLights.test.ts` — Niska bez światła (także z „mniej błysków”), wyższy poziom nigdy uboższy, barwa dopiero na Wysokiej, „mniej błysków” gasi błyski, a nie pociski, kwantyzacja promienia, szczyt i gaśnięcie błysku, światła promienia, wybór do kadru (poza kadrem, zgasłe, kolejność, limit), poświata w kadrze z zapasem, Czarne Słońce (rośnie z piętrem, rytm kręgu, gradient bez twardej krawędzi).
+
+**Weryfikacja:** `npm run build` (2891 testów); w przeglądarce kadry pocisków, kul, Supernowej i wybuchu soku na Niskiej, Średniej i Wysokiej na Cmentarzysku i w Zaduchu (`/mnt/project-files/screens/krokU3-swiatlo/`); kadry bazowe `npm run shots` przed i po (Wysoka); `npm run perf` przed i po. 
+
+Pomiar `npm run perf` (piętro 7, kontener bez GPU, automat jakości — PC Wysoka, telefon Niska), przed → po: PC nawała praca p50 2,1 → 2,0 ms, co-op 2,8 → 2,3 ms, telefon nawała 7,8 → 7,5 ms — praca gry w JS bez zmian (różnice w szumie pomiaru). Telefon na Wysokiej (`--query gfx=high`, nawała): praca p50 9,5 → 9,6 ms, ale klatka p50 57 → 64 ms (programowe rysowanie poświat ADD i stempli) — na Wysokiej światło kosztuje przy rysowaniu, dlatego automat telefonu zostaje na Niskiej. FPS w kontenerze to programowe rysowanie — kryterium „telefon trzyma 60 klatek” sprawdzi dopiero licznik `?perf=1&gfx=medium` na telefonie właściciela (strona „Do oceny”).
+
+**Ocena właściciela (12.11.2026)** `#ocena`: „światło jest petarda”.
+
+**Do oceny (strona „Do oceny”):** czy strzały w mroku czytają się dobrze, czy barwy nie są za mocne, siła Czarnego Słońca na piętrach 1 i 7, czas klatki na telefonie z `?gfx=medium`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6102,9 +6156,9 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - Większe nagrody i trudność w kolejnych kręgach (endless loop), finałowy boss wieży — z Aktem II.
 
 **3. Do zrobienia — upgrade Aktu I** (`docs/UPGRADE.md`, gałąź `upgrade-fable`; przed każdym etapem i po nim `npm run shots` i `npm run perf`)
-- **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — w U3 włączać ją tylko w kadrze (albo zastąpić wspólną warstwą światła).
+- **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
 - **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Zostało: jaskrawsza krew (uwaga po kroku 24) → U4, smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
-- **U3 światło 2.0:** światło pocisków, magii i ognia; postFX z przełącznikiem jakości (po kroku 144).
+- **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
 - **U4 kafle:** pilot ruin; ozdobna obwódka areny i przejścia materiałów (dual-grid — dotąd odłożone, teraz w zakresie).
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
@@ -6117,7 +6171,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - Szukanie bohatera przez wrogów po całym piętrze (od kroku 152 omijają rogi do miejsca, gdzie go widzieli).
 - Synergie przedmiotów; kupiec między piętrami (z Aktem II); nowe rodzaje przedmiotów.
 - Trzecia faza Wiedźmy z tarczą z ptaków i Wiedźma jako bohaterka — po upgradzie.
-- Akt II (piekło z azteckimi torturami) — po upgradzie.
+- Akt II (piekło z azteckimi torturami) — po upgradzie. **Propozycja z 11.11.2026: `docs/AKT2.md`** (Popielnik jako kryjówka po Wiedźmie, Zejście jako powtarzalne runy, Żar i Wota, etapy Z0–Z6+); zaakceptowana 11.11.2026, praca na gałęzi `akt-2`.
 
 **5. Odrzucone:** ewolucje przedmiotów zmieniające sterowanie; lewitacja jako przemiana Butów (krok 151); beczki z prochem w ruinach (krok 48).
 

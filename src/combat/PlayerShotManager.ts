@@ -8,6 +8,13 @@ import type { AimTarget } from '@/systems/touchAim';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { LOOT_ATLAS, lootAnimationKey } from '@/config/spriteConfig';
+import { LightKind } from '@/core/lightTypes';
+import { dynamicLights } from '@/effects/DynamicLights';
+
+/** Strzelec z bronią Czarodziejki (kula) — bez importu klasy gracza. */
+function isSorceress(owner: object | undefined): boolean {
+  return !!owner && 'sorceryConfig' in owner && !!(owner as { readonly sorceryConfig: unknown }).sorceryConfig;
+}
 
 /** Parametry lotu i trafienia pocisku gracza (strzał barbarzyńcy, kula Czarodziejki, strzała łucznika). */
 export type ShotSpec = Pick<RangedConfig, 'damage' | 'knockback' | 'projectileSpeed' | 'projectileLifetimeMs' | 'projectileRadius'>;
@@ -57,6 +64,8 @@ export class PlayerShotManager {
     walls: Phaser.Tilemaps.TilemapLayer,
   ) {
     this.group = scene.physics.add.group({ classType: Projectile });
+    // Krok U3: pociski świecą w mroku — kule Czarodziejki fioletem, reszta ciepłą bielą.
+    dynamicLights.trackShots(this.group, (shot) => (isSorceress(this.owners.get(shot as Projectile)) ? LightKind.Magic : LightKind.Shot));
     scene.physics.add.collider(this.group, walls, (shot, tile) => {
       if (!(shot instanceof Projectile)) return;
       // Lustro odbija (fizyka już odbiła pocisk — każdy ma sprężystość 1), przeszkoda areny przyjmuje trafienie.

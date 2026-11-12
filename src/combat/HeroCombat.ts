@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { dynamicLights } from '@/effects/DynamicLights';
 import type { DungeonFloor } from '@/core/dungeonTypes';
 import type { HeroId } from '@/core/heroTypes';
 import type { ItemId } from '@/core/lootTypes';
@@ -413,6 +414,7 @@ export class HeroCombat {
     const halfWidth = config.halfWidth * beamGrowth(charge, config.growth.widthMultiplier);
     const damage = Math.max(1, Math.round(config.damagePerTick * beamGrowth(charge, config.growth.damageMultiplier)));
     this.drawBeam(from, to, halfWidth);
+    dynamicLights.beam(this.deps.scene, from, to);
     for (let i = 0; i < ticks; i++) {
       // Krok 180: impuls niesie statusy przedmiotów, leczy kłem i liczy się jako atak główny (Rozpęd, Fala ostrza).
       const pulse = isBeamPulse(this.beamTicksDone++, config.pulseEveryTicks);

@@ -54,6 +54,10 @@ export const RENDER_DEPTH = {
   fogWisps: 14.5,
   /** Warstwa mroku i świateł (LightingOverlay); przy modyfikatorze „Mrok” prawie nieprzezroczysta. */
   darkness: 15,
+  /** Barwna poświata świateł dynamicznych (krok U3, ADD): pociski, magia, wybuchy — nad mrokiem, pod pochodniami. */
+  dynamicLight: 15.4,
+  /** Zimne światło Czarnego Słońca z narożnika kadru (krok U3, ADD) — pod światłami pocisków. */
+  blackSun: 15.35,
   /** Ciepła poświata pochodni (mieszanie ADD) i same płomienie — świecą, więc nad mrokiem. */
   torchGlow: 15.5,
   torchFlame: 15.6,
