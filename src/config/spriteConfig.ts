@@ -1440,18 +1440,6 @@ export const SPRITE_SHEETS = {
       tear: { frames: [10, 11, 12, 13], loop: false, fps: 10 },
     },
   },
-  // Tron z grzybni (krok 39): dekoracja areny Pożeracza bez kolizji, oparcie na północy.
-  fungalThrone: {
-    key: 'sheet-fungal-throne',
-    url: 'assets/sprites/fungal-throne.png',
-    frameWidth: 96,
-    frameHeight: 96,
-    sheetWidth: 96,
-    sheetHeight: 96,
-    directions: 1,
-    fps: SPRITE_FPS,
-    animations: {},
-  },
   // Efekty Pożeracza (krok 39): wiersz 0 krew (trafienie gracza), wiersz 1 sok (leczenie bossa).
   fungalFx: {
     key: 'sheet-fungal-fx',
@@ -1564,6 +1552,22 @@ export const SPRITE_SHEETS = {
       idle: { frames: [0, 1], loop: true },
       // Telegraf (300 ms) i rozdarcie szybciej niż spoczynek, żeby zmieściły się w czasie gry.
       fuse: { frames: [2, 3], loop: true, fps: 14 },
+      burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
+    },
+  },
+  // Kokon skarbu ukrytej komnaty (krok U4b, tools/lair_enemies.py): złoty szew i błysk — „coś cennego w środku”.
+  treasureCocoon: {
+    key: 'sheet-treasure-cocoon',
+    url: 'assets/sprites/treasure-cocoon.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 256,
+    sheetHeight: 32,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      // Błysk wędruje po oplocie wolniej niż puls zwykłego kokonu.
+      idle: { frames: [0, 1, 2, 3], loop: true, fps: 3 },
       burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
     },
   },
@@ -2323,11 +2327,10 @@ export const LARDER_VISUAL = {
 } as const;
 
 /**
- * Sala tronowa Pożeracza (krok 39): tron i naklejki podłogi (kolumny `throneDecals` w kolejności
+ * Sala tronowa Pożeracza (krok 39; tron usunięty w kroku U4b): naklejki podłogi (kolumny `throneDecals` w kolejności
  * `ThroneDecalKind`), krew na graczu po trafieniu i sok nad bossem przy leczeniu (wiersze `fungalFx`).
  */
 export const THRONE_ROOM_VISUAL = {
-  throne: 'fungalThrone',
   decals: 'throneDecals',
   fx: { sheet: 'fungalFx', animation: 'burst', bloodRow: 0, sapRow: 1 },
 } as const;
@@ -2362,6 +2365,14 @@ export const COCOON_VISUAL = {
   fuse: 'fuse',
   burst: 'burst',
   groundShadow: { width: 16, height: 6, offsetX: 1, offsetY: 9 },
+} as const;
+
+/** Kokon skarbu (krok U4b): ta sama sylwetka co kokon leża, własny arkusz ze złotym szwem. */
+export const TREASURE_COCOON_VISUAL = {
+  sheet: 'treasureCocoon',
+  idle: 'idle',
+  burst: 'burst',
+  groundShadow: COCOON_VISUAL.groundShadow,
 } as const;
 
 /** Purchawka i jej chmura (krok 28c). Chmura półprzezroczysta — gaz, pod którym widać walkę. */

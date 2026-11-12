@@ -97,6 +97,19 @@ export interface TrailDressing {
   readonly dropChance: number;
 }
 
+/** Oprawa 2.0 (kroki U4a–U4b): grupy progów i obwódki areny — te same nazwy w każdym arkuszu z dodatkiem `v2`. */
+const SILLS_V2 = { h: 'floorSill.h', v: 'floorSill.v' } as const;
+const ARENA_BORDER_V2: Readonly<Record<ArenaBorderSide, string>> = {
+  n: 'arenaBorder.n',
+  s: 'arenaBorder.s',
+  e: 'arenaBorder.e',
+  w: 'arenaBorder.w',
+  nw: 'arenaBorder.nw',
+  ne: 'arenaBorder.ne',
+  sw: 'arenaBorder.sw',
+  se: 'arenaBorder.se',
+};
+
 const TRAIL: TrailDressing = { lengthTiles: 18, chanceNear: 0.85, chanceFar: 0.2, dropChance: 0.3 };
 
 /** Gniazdo pająków (krok 52–53): Pajęcze leże i Grzybnia, czyli piętra z bossami-pająkami. */
@@ -193,17 +206,8 @@ export const RUINS_DRESSING: FloorDressingConfig = {
   // Oprawa 2.0 (krok U4a, pilot kafli upgradu): więcej wzorów 2×2, progi, obwódka areny i wyrwy w murze wieży.
   // Parter jest najbardziej zrujnowany (gradient ruiny), więc wyrw jest tu najwięcej.
   macroChance: 0.06,
-  sills: { h: 'floorSill.h', v: 'floorSill.v' },
-  arenaBorder: {
-    n: 'arenaBorder.n',
-    s: 'arenaBorder.s',
-    e: 'arenaBorder.e',
-    w: 'arenaBorder.w',
-    nw: 'arenaBorder.nw',
-    ne: 'arenaBorder.ne',
-    sw: 'arenaBorder.sw',
-    se: 'arenaBorder.se',
-  },
+  sills: SILLS_V2,
+  arenaBorder: ARENA_BORDER_V2,
   breaches: { group: 'wallBreach', chance: 0.035, minWallDistance: 4, spacing: 5 },
 };
 
@@ -244,6 +248,11 @@ export const FUNGAL_GROVE_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.22, group: 'wallFace.fungus' },
   cobweb: { ...FLOOR_DRESSING.cobweb, chance: 0.5 },
   nest: SPIDER_NEST,
+  // Oprawa 2.0 (krok U4b): wyżej w wieży mniej wyrw niż na parterze; na krawędziach wyrw świeci grzybnia.
+  macroChance: 0.06,
+  sills: SILLS_V2,
+  arenaBorder: ARENA_BORDER_V2,
+  breaches: { group: 'wallBreach', chance: 0.022, minWallDistance: 4, spacing: 6 },
 };
 
 /**
@@ -281,6 +290,11 @@ export const GRAVEYARD_DRESSING: FloorDressingConfig = {
     decals: { group: 'decal.bones', chance: 0.22 },
     trail: TRAIL,
   },
+  // Oprawa 2.0 (krok U4b): wyrw jeszcze mniej, za to w murze wieży nisze grobowe z czaszkami (warianty masy).
+  macroChance: 0.06,
+  sills: SILLS_V2,
+  arenaBorder: ARENA_BORDER_V2,
+  breaches: { group: 'wallBreach', chance: 0.015, minWallDistance: 4, spacing: 6 },
 };
 
 /**
@@ -445,10 +459,6 @@ export const INFERNAL_DRESSING: FloorDressingConfig = {
  * Kolejność wag = kolumny arkusza `throne-decals.png` (`ThroneDecalKind`).
  */
 export const THRONE_ROOM = {
-  /** Kokony spiżarni nie stoją bliżej tronu (Czebyszew, kafle). */
-  throneClearTiles: 2,
-  /** Wejście na północnej ścianie w tylu kaflach od osi tronu przesuwa tron w bok. */
-  entranceClearTiles: 2,
   decals: {
     count: { min: 7, max: 10 },
     /** Kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata. */

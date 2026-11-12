@@ -685,6 +685,21 @@ describe('FloorDressing — oprawa 2.0 ruin (krok U4a)', () => {
     for (const g of groups) expect(TILESET.groups, g).toHaveProperty(g);
   });
 
+  it('Grzybnia i Cmentarzysko (krok U4b): grupy oprawy 2.0 w ich arkuszach, wyrw mniej niż w ruinach', () => {
+    for (const [file, config] of [
+      ['fungal_grove_tileset.json', FUNGAL_GROVE_DRESSING],
+      ['graveyard_tileset.json', GRAVEYARD_DRESSING],
+    ] as const) {
+      const sheet = loadTileset(file);
+      const groups = [...Object.values(config.sills ?? {}), ...Object.values(config.arenaBorder ?? {}), config.breaches?.group ?? ''];
+      expect(groups.length).toBe(11);
+      for (const g of groups) expect(sheet.groups, `${file}: ${g}`).toHaveProperty(g);
+      expect(sheet.autotile.wall.bands.groups.deep).toBe('wallBand.tower');
+      expect(config.breaches!.chance).toBeLessThan(RUINS_DRESSING.breaches!.chance);
+    }
+    expect(GRAVEYARD_DRESSING.breaches!.chance).toBeLessThan(FUNGAL_GROVE_DRESSING.breaches!.chance);
+  });
+
   it('próg leży na każdym wejściu do pokoju, w orientacji przejścia; bez konfiguracji progów nie ma', () => {
     const d = dress(HALLS, V2);
     const room0 = HALLS.rooms[0]!;

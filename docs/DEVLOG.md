@@ -6165,6 +6165,25 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Do oceny (strona „Do oceny”):** czytelność w walce, częstość i kształt wyrw, jasność muru wieży, obwódka areny. Po akceptacji pilota te same zasady dostaną Grzybnia i Cmentarzysko (U4b), potem reszta biomów.
 
+## Krok U4b — Kafle 2.0: Grzybnia i Cmentarzysko; bez tronu Pożeracza, sine kokony `#upgrade` `#kafle` `#decyzja` `#grzybowy-pozeracz` `#cmentarzysko`
+
+**Decyzje właściciela (12.11.2026)** `#decyzja`: po akceptacji pilota (krok U4a) „scalaj i ruszaj z U4b”; „usuń ten tron pożeracza, bo już nie pasuje do wizji” (Pożeracz to od kroku 184 kula z ciał); „zmień kolory kokonów na bardziej blado sine”.
+
+**Co powstało**
+- **Grzybnia i Cmentarzysko w oprawie 2.0** — ten sam moduł co ruiny (`tools/ruins_v2_tiles.py`, dodatek `v2` w `BIOMES`, rampy `sky` w paletach `grzybnia` i `cmentarz_trupi`): warianty płyt i wzory 2×2, progi wejść, obwódka areny, ciosy nierównej długości, pasmo przejściowe i mur wieży. Akcenty biomów: w Grzybni na krawędziach wyrw świecą drobiny grzybni (bioluminescencja), za wyrwą fioletowa noc; w Cmentarzysku za wyrwą chorobliwa, zielonkawa mgła, a w murze wieży rzadkie **nisze grobowe z czaszkami** (warianty masy). Gradient ruiny: wyrw mniej, im wyżej (ruiny 3,5%, Grzybnia 2,2%, Cmentarzysko 1,5%, odstęp 6 kafli). Naleciałości biomów (pleśń, zgnilizna) nakładają się na nowe kafle tak jak na stare.
+- **Bez tronu Pożeracza:** arena nie stawia już tronu z grzybni (`fungal-throne.png` usunięty, `planThrone` i strefa kokonów wokół tronu usunięte); zostają naklejki krwi, grzybni i soku, efekty i kokony spiżarni.
+- **Sine kokony:** oplot kokonów spiżarni w bladej, sinej rampie `SILK` (`tools/devourer_sprites.py`) zamiast brązu kapelusza; żyły soku i zarażeni bez zmian. Pozostałe arkusze Pożeracza generują się identycznie.
+
+- **Kokony skarbu w ukrytej komnacie Grzybni** (prośba właściciela tego samego dnia: „ich wygląd ma delikatnie wskazywać, że nie są to zwykłe kokony i coś wartościowego może się w nich kryć”): własny arkusz `treasure-cocoon.png` (`tools/lair_enemies.py`, `TREASURE_COCOON_VISUAL`) — ta sama sylwetka co kokon leża, ale szew tli się złotem łupów, w oplot wplecione są złote nici, a po jedwabiu powoli wędruje jeden błysk; przy rozbiciu złota szczelina i złote nitki zamiast zielonej mazi. Wszystkie kokony komnaty wyglądają tak samo (który ma skarb, dalej nie widać).
+
+**Testy:** grupy oprawy 2.0 w arkuszach Grzybni i Cmentarzyska, pasmo głębi = mur wieży, wyrw mniej niż w ruinach i mniej w Cmentarzysku niż w Grzybni; testy sali tronowej bez tronu (naklejki).
+
+**Weryfikacja:** `npm run build` (2967 testów); kadry `npm run shots` (`--before` z U4a: zmieniły się tylko Grzybnia i Cmentarzysko), arena Pożeracza w przeglądarce (kokony, brak tronu); `npm run smoke -- --floors 3`. Zrzuty: `/mnt/project-files/screens/krokU4b-kafle/`.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: kokony areny Pożeracza i nowe biomy „wygląda ok”.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: kokony skarbu — „nie widać praktycznie różnicy”; właściciel sam zaprojektuje nowy wygląd (do tego czasu zostaje złoty szew). Następny krok U4c: Piekło, Zadymiona palarnia, Lustrzana komnata i Bociani Ogród (każdy z własnym akcentem; mieszkanie gracza ma kafle z `gamer_den_tiles.py`).
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6183,7 +6202,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
 - **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Zostało: jaskrawsza krew (uwaga po kroku 24) → U4, smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
-- **U4 kafle — pilot ruin zrobiony (krok U4a):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Czeka na ocenę właściciela; potem U4b Grzybnia i Cmentarzysko, dalej reszta biomów. Jaskrawsza krew (z U2) — razem z biomami.
+- **U4 kafle — pilot ruin zrobiony (krok U4a):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zaakceptowany; U4b Grzybnia i Cmentarzysko zrobione, dalej U4c reszta biomów. Jaskrawsza krew (z U2) — razem z biomami.
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
 - **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.

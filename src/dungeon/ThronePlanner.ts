@@ -1,7 +1,6 @@
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { TileType } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
-import { findRoomEntrances } from '@/dungeon/arenaGates';
 
 /** Naklejki sali tronowej — kolejność kolumn arkusza `throne-decals.png`. */
 export enum ThroneDecalKind {
@@ -26,33 +25,12 @@ export interface ThroneDecalConfig {
 }
 
 /**
- * Tron Grzybowego Pożeracza (krok 39): środek bloku 3×3 kafli, oparciem do północnej ściany areny
- * (górny rząd bloku to pierwszy rząd areny). Najbliżej osi areny, na samej podłodze i z dala od wejść
- * w północnej ścianie (`entranceClear` kafli od osi). Brak miejsca = null (sala bez tronu).
- */
-export function planThrone(floor: DungeonFloor, arena: Room, entranceClear: number): TilePoint | null {
-  const y = arena.y + 1;
-  const centerX = arena.x + Math.floor(arena.width / 2);
-  const northEntrances = findRoomEntrances(floor, arena).filter((tile) => tile.y === arena.y - 1);
-  const xs: number[] = [];
-  for (let x = arena.x + 1; x <= arena.x + arena.width - 2; x++) xs.push(x);
-  xs.sort((a, b) => Math.abs(a - centerX) - Math.abs(b - centerX) || a - b);
-  for (const x of xs) {
-    if (northEntrances.some((tile) => Math.abs(tile.x - x) <= entranceClear)) continue;
-    if (!blockIsFloor(floor, x, y)) continue;
-    return { x, y };
-  }
-  return null;
-}
-
-/**
  * Naklejki krwi, grzybni i soku na podłodze areny: losowe kafle podłogi (własny strumień RNG), z odstępem,
- * poza środkiem areny (schody) i poza blokiem tronu. Rodzaj losowany z wag.
+ * poza środkiem areny (schody). Rodzaj losowany z wag. Sam tron usunięty w kroku U4b (decyzja właściciela).
  */
 export function planThroneDecals(
   floor: DungeonFloor,
   arena: Room,
-  throne: TilePoint | null,
   config: ThroneDecalConfig,
   rng: Rng,
 ): ThroneDecal[] {
@@ -63,7 +41,6 @@ export function planThroneDecals(
       const tile = { x, y };
       if (floor.tiles[y * floor.width + x] !== TileType.Floor) continue;
       if (chebyshev(tile, center) <= config.centerClearTiles) continue;
-      if (throne && chebyshev(tile, throne) <= 1) continue;
       candidates.push(tile);
     }
   }
@@ -89,15 +66,6 @@ function pickWeighted(weights: readonly number[], rng: Rng): ThroneDecalKind {
     if (roll < 0) return i as ThroneDecalKind;
   }
   return (weights.length - 1) as ThroneDecalKind;
-}
-
-function blockIsFloor(floor: DungeonFloor, cx: number, cy: number): boolean {
-  for (let y = cy - 1; y <= cy + 1; y++) {
-    for (let x = cx - 1; x <= cx + 1; x++) {
-      if (floor.tiles[y * floor.width + x] !== TileType.Floor) return false;
-    }
-  }
-  return true;
 }
 
 export function chebyshev(a: TilePoint, b: TilePoint): number {

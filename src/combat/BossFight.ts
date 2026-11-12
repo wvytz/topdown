@@ -13,7 +13,7 @@ import type {
   WebShot,
 } from '@/core/bossTypes';
 import { TileType } from '@/core/dungeonTypes';
-import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
+import type { DungeonFloor, Room } from '@/core/dungeonTypes';
 import type { BossHudData, Vector2 } from '@/core/types';
 import type { BossDefinition, BossDogDefinition, BossId, GrateRow } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
@@ -57,7 +57,7 @@ import { BossDog } from '@/entities/BossDog';
 import { DogPhase } from '@/ai/BossDogBrain';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { planLarders } from '@/dungeon/LarderPlanner';
-import { planThrone, planThroneDecals } from '@/dungeon/ThronePlanner';
+import { planThroneDecals } from '@/dungeon/ThronePlanner';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
@@ -385,9 +385,8 @@ export class BossFight {
     const feast = definition.feast;
     this.throneRoomFx = Boolean(feast);
     if (feast) {
-      const throne = planThrone(deps.floor, arena, THRONE_ROOM.entranceClearTiles);
-      this.dressThroneRoom(throne);
-      const tiles = planLarders(deps.floor, arena, feast.larders, this.larderRng, throne, THRONE_ROOM.throneClearTiles);
+      this.dressThroneRoom();
+      const tiles = planLarders(deps.floor, arena, feast.larders, this.larderRng);
       tiles.forEach((tile, i) => {
         const at = DungeonView.tileToWorldCenter(tile);
         this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius, i));
@@ -431,18 +430,15 @@ export class BossFight {
     return { sprite, door: { x, y: wallBottom + bossRadius + 2 } };
   }
 
-  /** Tron z grzybni i naklejki krwi, grzybni i soku (dekoracje bez kolizji; zostają po walce). */
-  private dressThroneRoom(throne: TilePoint | null): void {
+  /** Naklejki krwi, grzybni i soku (dekoracje bez kolizji; zostają po walce). Tron usunięty w kroku U4b. */
+  private dressThroneRoom(): void {
     const { scene, floor } = this.deps;
     const rng = createRng(deriveSeed(floor.seed, THRONE_SEED_SALT));
     const decalsKey = SPRITE_SHEETS[THRONE_ROOM_VISUAL.decals].key;
-    for (const decal of planThroneDecals(floor, this.arena, throne, THRONE_ROOM.decals, rng)) {
+    for (const decal of planThroneDecals(floor, this.arena, THRONE_ROOM.decals, rng)) {
       const at = DungeonView.tileToWorldCenter(decal.tile);
       scene.add.image(at.x, at.y, decalsKey, decal.kind).setDepth(RENDER_DEPTH.floorDecal);
     }
-    if (!throne) return;
-    const at = DungeonView.tileToWorldCenter(throne);
-    scene.add.image(at.x, at.y, SPRITE_SHEETS[THRONE_ROOM_VISUAL.throne].key).setDepth(RENDER_DEPTH.floorFeature);
   }
 
   /** Jednorazowy efekt sali tronowej (krew albo sok) w punkcie. */
