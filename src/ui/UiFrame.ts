@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { UI_PALETTE } from '@/config/uiConfig';
+import { UI_PALETTE, UI_TEXT_PLATE } from '@/config/uiConfig';
 
 /** Wygląd ramki panelu. */
 export interface FrameStyle {
@@ -76,4 +76,34 @@ export function rampOf(base: number): BarRamp {
     return ch(16) | ch(8) | ch(0);
   };
   return { light: shift(base, 0.35), base, dark: shift(base, -0.35) };
+}
+
+/** Napis, pod którym można położyć podkładkę: pozycja, wymiary, kotwica, widoczność. */
+interface PlatedText {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly originX: number;
+  readonly originY: number;
+  readonly alpha: number;
+  readonly visible: boolean;
+  readonly text: string;
+}
+
+/**
+ * Podkładka pod napisem HUD-u (krok U7a): ciemny prostokąt ze ściętymi rogami — litera odcina się od
+ * jasnej posadzki, a sama podkładka znika razem z napisem (ta sama alfa).
+ */
+export function drawTextPlate(g: Phaser.GameObjects.Graphics, text: PlatedText, alpha = 1): void {
+  if (!text.visible || text.text === '' || text.alpha <= 0.02) return;
+  const P = UI_TEXT_PLATE;
+  const x = Math.round(text.x - text.originX * text.width) - P.padX;
+  const y = Math.round(text.y - text.originY * text.height) - P.padY;
+  const w = Math.round(text.width) + P.padX * 2;
+  const h = Math.round(text.height) + P.padY * 2;
+  g.fillStyle(P.color, P.alpha * text.alpha * alpha);
+  g.fillRect(x + 1, y, w - 2, h);
+  g.fillRect(x, y + 1, 1, h - 2);
+  g.fillRect(x + w - 1, y + 1, 1, h - 2);
 }

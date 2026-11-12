@@ -233,6 +233,22 @@ function buildGlyphs(): ReadonlyMap<string, FontGlyph> {
 export const FONT_GLYPHS: ReadonlyMap<string, FontGlyph> = buildGlyphs();
 
 /**
+ * Gruby krój (krok U7a): litery z jednopikselowymi światłami, których nie da się pogrubić przesunięciem
+ * (kreska zalałaby środek), mają własne, szersze wzory. Resztę znaków pogrubia warstwa rysująca.
+ */
+const BOLD_PATTERNS: Readonly<Record<string, GlyphPattern>> = {
+  M: caps('##...##', '###.###', '##.#.##', '##.#.##', '##...##', '##...##', '##...##'),
+  W: caps('##...##', '##...##', '##...##', '##.#.##', '##.#.##', '###.###', '##...##'),
+  m: lower('######.', '##.#.##', '##.#.##', '##.#.##', '##.#.##'),
+  w: lower('##...##', '##...##', '##.#.##', '##.#.##', '.##.##.'),
+};
+
+/** Wzory grubego kroju dla znaków, które ich potrzebują (pozostałe — brak wpisu). */
+export const FONT_BOLD_GLYPHS: ReadonlyMap<string, FontGlyph> = new Map(
+  Object.entries(BOLD_PATTERNS).map(([char, pattern]) => [char, buildGlyph(pattern)]),
+);
+
+/**
  * Znak, którym font narysuje `char`: on sam, litera bez akcentu (é → e) albo znak zastępczy.
  * Tabulator i inne białe znaki stają się spacją.
  */

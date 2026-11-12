@@ -6234,6 +6234,22 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Weryfikacja:** `npm run build` (3024 testy); `npm run smoke -- --floors 3 --seeds 1` i `-- --coop --floors 2` bez błędów; Playwright: HUD (PC, telefon, co-op z botem), boss, karty po bossie, pauza i „Moje przedmioty”, wybór bohatera, ekran śmierci i zwycięstwa. Zrzuty: `/mnt/project-files/screens/krokU7-interfejs/` (arkusz HUD-u przed | po). `npm run perf` pominięty (HUD to kilkadziesiąt prostokątów i napisów bitmapowych). **Czeka na ocenę właściciela.**
 
+## Krok U7a — Krój z głębią: cień, rampa lica, grube tytuły i podkładki pod napisami HUD-u `#upgrade` `#interfejs` `#ocena`
+
+**Ocena właściciela po U7 (12.11.2026) `#ocena`:** „czcionka jest tragiczna. zero głębi i odróżnienia od całości ekranu. powinna być wyraźna acz dyskretna z wyraźną manifestacją”.
+
+**Co powstało:**
+- Lico litery z rampą: górne wiersze rozjaśnione w stronę kremu, dolne przyciemnione (`UI_FONT_RAMP`), pod obrysem cień przesunięty o piksel w prawo i w dół — litera „stoi” nad sceną.
+- Gruby krój: kreski 2 px; piksel nie dostaje sąsiada, gdy zalałby jednopikselowe światło. M, W, m, w mają własne, szersze wzory (`FONT_BOLD_GLYPHS` w `core/pixelFont.ts`), bo przesunięcie robiło z nich H i N.
+- Podkładki pod napisami HUD-u (`drawTextPlate` w `ui/UiFrame.ts`, `UI_TEXT_PLATE`): ciemny, półprzezroczysty prostokąt ze ściętymi rogami, gaśnie razem z napisem.
+- Trzy warianty do porównania w grze (`UI_FONT_STYLES`, `?font=a|b|c`): A „Kuty” — wszystko grubo, bez podkładek; **B „Tytuły kute, tabliczki” (domyślny)** — drobne napisy zwykłą kreską, większe (skala ≥ 2) grubą, podkładki; C „Lekki na tabliczce” — zwykła kreska z głębią i podkładki. Tekstura fontu zależy od wariantu, barwy i grubości; `UiText.setFontSize` przełącza grubość.
+
+**Decyzje:** domyślny B — tytuły i menu mają „manifestację”, drobne napisy HUD-u zostają dyskretne, a podkładka oddziela je od jasnej posadzki. Po wyborze właściciela zbędne warianty można usunąć.
+
+**Testy:** wzory grubego kroju są szersze od zwykłych i mają kreski 2 px na brzegach. `npm run build`, smoke solo.
+
+**Weryfikacja:** zrzuty HUD-u, pauzy i kart nagrody we wszystkich wariantach — `/mnt/project-files/screens/krokU7-interfejs/U7a-kroj-warianty.png`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

@@ -25,7 +25,8 @@ const ALIGN = { left: 0, center: 1, right: 2 } as const;
  */
 export class UiText extends Phaser.GameObjects.BitmapText {
   constructor(scene: Phaser.Scene, x: number, y: number, text: string, style: UiTextStyle = {}) {
-    super(scene, x, y, pixelFontKey(scene, style.color ?? UI_TEXT_COLORS.text), toFontText(text), style.size ?? 1, ALIGN[style.align ?? 'left']);
+    super(scene, x, y, pixelFontKey(scene, style.color ?? UI_TEXT_COLORS.text, style.size ?? 1), toFontText(text), style.size ?? 1, ALIGN[style.align ?? 'left']);
+    this.color = style.color ?? UI_TEXT_COLORS.text;
     if (style.wrap) this.setMaxWidth(style.wrap);
     if (style.lineSpacing) this.setLineSpacing(style.lineSpacing);
     if (style.letterSpacing) this.setLetterSpacing(style.letterSpacing);
@@ -33,10 +34,22 @@ export class UiText extends Phaser.GameObjects.BitmapText {
 
   /** Barwa napisu (CSS albo liczba). */
   setColor(color: string | number): this {
-    const key = pixelFontKey(this.scene, color);
+    this.color = color;
+    const key = pixelFontKey(this.scene, color, this.fontSize);
     if (key !== this.font) this.setFont(key);
     return this;
   }
+
+  /** Wielkość napisu; przy zmianie progu grubości przełącza teksturę fontu (krok U7a). */
+  override setFontSize(size: number): this {
+    super.setFontSize(size);
+    if (this.color === undefined) return this;
+    const key = pixelFontKey(this.scene, this.color, size);
+    if (key !== this.font) this.setFont(key);
+    return this;
+  }
+
+  private color: string | number | undefined;
 
   override setText(value: string | number | string[]): this {
     const text = Array.isArray(value) ? value.join('\n') : String(value);

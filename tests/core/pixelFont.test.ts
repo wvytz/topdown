@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  FONT_BOLD_GLYPHS,
   FONT_BOTTOM_ROW,
   FONT_FALLBACK,
   FONT_GLYPHS,
@@ -96,5 +97,17 @@ describe('pikselowy krój pisma (krok U7)', () => {
     const pixels = layoutLine('I.');
     const i = FONT_GLYPHS.get('I')?.width ?? 0;
     expect(pixels.some((p) => p.x === i + FONT_LETTER_GAP && p.y === 6)).toBe(true);
+  });
+
+  it('gruby krój: własne wzory są szersze od zwykłych i mają kreski 2 px na brzegach', () => {
+    for (const [char, bold] of FONT_BOLD_GLYPHS) {
+      const regular = FONT_GLYPHS.get(char);
+      expect(regular, char).toBeDefined();
+      expect(bold.width, char).toBeGreaterThan(regular?.width ?? 0);
+      const has = (x: number, y: number) => bold.pixels.some((p) => p.x === x && p.y === y);
+      const rows = [...new Set(bold.pixels.map((p) => p.y))];
+      const stems = rows.filter((y) => has(0, y) && has(1, y));
+      expect(stems.length, char).toBeGreaterThanOrEqual(rows.length - 1);
+    }
   });
 });

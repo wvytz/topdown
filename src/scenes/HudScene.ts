@@ -24,7 +24,8 @@ import { HUD_LAYOUT as L, UI_PALETTE as P, UI_TEXT_COLORS as C } from '@/config/
 import { heroIconTexture } from '@/effects/heroIcon';
 import { fadingAlpha, floorHeadline, goldNote, objectiveHint, type ObjectiveTone } from '@/systems/hudText';
 import { UiText, uiText } from '@/ui/UiText';
-import { drawBar, drawFrame, rampOf } from '@/ui/UiFrame';
+import { drawBar, drawFrame, drawTextPlate, rampOf } from '@/ui/UiFrame';
+import { uiFontStyle } from '@/ui/PixelFont';
 import { ItemSlotView } from '@/ui/ItemSlotView';
 
 /** Lewy górny panel: portret, obok niego nagłówek piętra i paski. */
@@ -100,6 +101,8 @@ export class HudScene extends Phaser.Scene {
   private geo!: HudGeometry;
   /** Ramki (portret, sloty, minimapa) — przerysowywane co klatkę razem z paskami. */
   private bars!: Phaser.GameObjects.Graphics;
+  /** Podkładki pod napisami (krok U7a, warianty kroju z `plates`). */
+  private plates!: Phaser.GameObjects.Graphics;
   private portrait!: Phaser.GameObjects.Image;
   private portraitHero: HeroId | null = null;
   private headlineText!: UiText;
@@ -157,6 +160,7 @@ export class HudScene extends Phaser.Scene {
     const t = geo.t;
 
     this.bars = this.add.graphics();
+    this.plates = this.add.graphics();
     this.portrait = this.add.image(PORTRAIT_X + L.portrait.size / 2, PORTRAIT_Y + L.portrait.size / 2, '__DEFAULT').setVisible(false);
     this.headlineText = uiText(this, BAR_X, geo.headlineY, '', { size: t, color: C.bright });
     this.hpText = uiText(this, BAR_X + L.hp.width - 3, geo.hpY - 1, '', { color: C.bright, align: 'right' }).setOrigin(1, 0);
@@ -242,7 +246,19 @@ export class HudScene extends Phaser.Scene {
     this.updateBanner(hud.boss);
     this.playerLabelText.setText(hud.playerLabel);
     this.drawPartner(hud.partner, time);
+    this.drawPlates();
     this.deathScreen.update(hud.death, time);
+  }
+
+  /** Ciemne podkładki pod napisami HUD-u, gdy wariant kroju ich chce (krok U7a). */
+  private drawPlates(): void {
+    this.plates.clear();
+    if (!uiFontStyle().plates) return;
+    const plated = [
+      this.headlineText, this.playerLabelText, this.goldText, this.goldNoteText, this.hintText, this.itemNoticeText,
+      this.toastText, this.helpText, this.bossNameText, ...this.duetNameTexts, this.partnerLabel, this.partnerHpText,
+    ];
+    for (const text of plated) drawTextPlate(this.plates, text);
   }
 
   /** Portret bohatera w ramce (krok U7): pierwsza klatka chodu 1:1, jak miniaturka z ekranu śmierci. */

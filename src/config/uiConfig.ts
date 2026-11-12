@@ -83,3 +83,34 @@ export const REWARD_CARD = {
   /** Ikona przedmiotu w całkowitej skali (§6c). */
   iconScale: 3,
 } as const;
+
+/**
+ * Wygląd liter (krok U7a, ocena właściciela: „zero głębi i odróżnienia od całości ekranu; wyraźna acz dyskretna
+ * z wyraźną manifestacją”). Lico z rampą (jaśniejszy wierzch, ciemniejszy spód), obrys i cień pod literą;
+ * `boldFrom` — od jakiej wielkości napisu kreski mają 2 px szerokości (`null` — nigdy); `plates` — ciemna,
+ * półprzezroczysta podkładka pod napisami HUD-u. Wariant wybiera `?font=a|b|c` (porównanie na podglądzie),
+ * domyślny — `UI_FONT_DEFAULT`.
+ */
+export interface UiFontStyle {
+  readonly boldFrom: UiTextSize | null;
+  readonly shadow: boolean;
+  readonly ramp: boolean;
+  readonly plates: boolean;
+}
+
+export const UI_FONT_STYLES: Readonly<Record<'a' | 'b' | 'c', UiFontStyle>> = {
+  /** A „Kuty”: wszystko grubym krojem, z głębią, bez podkładek. */
+  a: { boldFrom: 1, shadow: true, ramp: true, plates: false },
+  /** B „Tytuły kute, tabliczki”: drobne napisy zwykłą kreską, większe grubą; podkładki pod napisami HUD-u. */
+  b: { boldFrom: 2, shadow: true, ramp: true, plates: true },
+  /** C „Lekki na tabliczce”: zwykła grubość z głębią + podkładki. */
+  c: { boldFrom: null, shadow: true, ramp: true, plates: true },
+};
+
+export const UI_FONT_DEFAULT: keyof typeof UI_FONT_STYLES = 'b';
+
+/** Rampa lica: wierzch rozjaśniony, spód przyciemniony (ułamek drogi do jasnego kremu / do czerni). */
+export const UI_FONT_RAMP = { lightRowsUntil: 1, light: 0.38, darkRowsFrom: 6, dark: 0.3, shadowColor: 0x07060b, lightTone: 0xfff4d8 } as const;
+
+/** Podkładka pod napisem HUD-u: ciemny prostokąt ze ściętymi rogami. */
+export const UI_TEXT_PLATE = { color: 0x07060b, alpha: 0.62, padX: 3, padY: 1 } as const;
