@@ -6199,6 +6199,16 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Ocena właściciela (12.11.2026)** `#ocena`: „podoba mi się” — scalone, U4 zamknięte.
 
+## Krok U4d — Jaskrawa krew tylko na chwilę `#upgrade` `#kafle` `#ocena`
+
+**Uwaga właściciela (12.11.2026)** `#ocena`: „od kiedy zostawiamy plamy krwi? nasza gra tego nie robi” (zrzut z Cmentarzyska na podglądzie).
+
+**Przyczyna:** trwałe ślady walki są w grze od kroku 19b (pula 180 plam, `effects/CombatDecals.ts`), ale dotąd były ciemnobrązowe i zlewały się z posadzką. Krok U4c przemalował je na jaskrawą czerwień, więc nagle stały się widoczne jako kałuże krwi, które zostają.
+
+**Co zmienione:** trwała plama wraca do dawnego, ciemnego wyglądu (arkusze jak przed U4c w tych kaflach). Jaskrawa krew z U4c to teraz osobna nakładka `combat.fresh` (`FRESH_BLOOD_V2` w `config/dressingConfig.ts`): pojawia się nad plamą, trzyma 0,9 s i wygasa przez 1,4 s (własna pula 24 obrazków, głębokość `freshBlood`). Grzybnia bez zmian (turkusowa posoka).
+
+**Weryfikacja:** `npm run build`, w przeglądarce: świeża czerwień po ciosie, po 3 s sama ciemna plama. Zrzut: `/mnt/project-files/screens/krokU4c-kafle/krew-swieza-i-plama.png`.
+
 ## Krok U5a — Postacie 2.0: pilot barbarzyńcy `#upgrade` `#postacie`
 
 **Decyzja właściciela (12.11.2026)** `#decyzja`: po U4c „lecimy dalej U5 i U6”. Wg planu (`docs/UPGRADE.md`) najpierw arkusz jednej postaci do akceptacji, potem reszta.

@@ -9,6 +9,8 @@ export const RENDER_DEPTH = {
   floorFeature: 1,
   /** Trwałe ślady walki: nad nakładkami i schodami, pod cieniami (mur nadal je przyciemnia). */
   combatDecal: 1.5,
+  /** Świeża, jaskrawa krew nad plamą (krok U4d): chwilę widoczna, potem wygasa. */
+  freshBlood: 1.55,
   /** Lepkie pajęczyny na podłodze (krok 23e): element rozgrywki, nad śladami walki, pod cieniami. */
   floorHazard: 1.6,
   /** Żywe otoczenie na posadzce (krok 156): kępy grzybów, lampy, znicze — pod cieniami murów. */

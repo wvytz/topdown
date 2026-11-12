@@ -356,7 +356,7 @@ def glow_rim(gen, ramp, count):
 
 
 def blood_splat(p, r):
-    """Krok U4c (uwaga właściciela po kroku 24): jaskrawsza krew na posadzce — rozbryzg z kroplami i połyskiem."""
+    """Krok U4c (uwaga właściciela po kroku 24): jaskrawa, świeża krew — od kroku U4d tylko chwilowa nakładka (znika)."""
     B, T = p.blood, K.T
     img = K.Img(T, T)
     rad = r.uniform(4.5, 6)
@@ -386,8 +386,6 @@ def apply(entries, Entry, kit, biome='tower_ruins'):
     for slabs in MACRO.values():
         _check_layout(slabs, 2 * K.T)
     out = list(entries)
-    if biome != 'fungal_grove':  # w Grzybni plamy to turkusowa posoka zarażonych — zostaje
-        out = [dataclasses.replace(e, gen=blood_splat) if e.name.startswith('combat_splat_') else e for e in out]
     for kind, layout, weight in FLOOR:
         if kind in FLOOR_SKIP.get(biome, ()):
             continue
@@ -414,4 +412,9 @@ def apply(entries, Entry, kit, biome='tower_ruins'):
     if biome == 'graveyard':
         for v in ('a', 'b'):
             out.append(Entry(f'wall_tower_niche_{v}', niche, 'wall', group='wallBand.tower', weight=.15))
+    if biome != 'fungal_grove':  # w Grzybni plamy to turkusowa posoka zarażonych — bez świeżej krwi
+        # Krok U4d: jaskrawa krew tylko na chwilę — gra kładzie ją na trwały, ciemny ślad i wygasza (FRESH_BLOOD).
+        for v in ('a', 'b'):
+            out.append(Entry(f'combat_fresh_{v}', blood_splat, 'combatDecal', group='combat.fresh', weight=1,
+                             flip_x=True))
     return out
