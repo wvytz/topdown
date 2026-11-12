@@ -6174,11 +6174,15 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 - **Bez tronu Pożeracza:** arena nie stawia już tronu z grzybni (`fungal-throne.png` usunięty, `planThrone` i strefa kokonów wokół tronu usunięte); zostają naklejki krwi, grzybni i soku, efekty i kokony spiżarni.
 - **Sine kokony:** oplot kokonów spiżarni w bladej, sinej rampie `SILK` (`tools/devourer_sprites.py`) zamiast brązu kapelusza; żyły soku i zarażeni bez zmian. Pozostałe arkusze Pożeracza generują się identycznie.
 
+- **Kokony skarbu w ukrytej komnacie Grzybni** (prośba właściciela tego samego dnia: „ich wygląd ma delikatnie wskazywać, że nie są to zwykłe kokony i coś wartościowego może się w nich kryć”): własny arkusz `treasure-cocoon.png` (`tools/lair_enemies.py`, `TREASURE_COCOON_VISUAL`) — ta sama sylwetka co kokon leża, ale szew tli się złotem łupów, w oplot wplecione są złote nici, a po jedwabiu powoli wędruje jeden błysk; przy rozbiciu złota szczelina i złote nitki zamiast zielonej mazi. Wszystkie kokony komnaty wyglądają tak samo (który ma skarb, dalej nie widać).
+
 **Testy:** grupy oprawy 2.0 w arkuszach Grzybni i Cmentarzyska, pasmo głębi = mur wieży, wyrw mniej niż w ruinach i mniej w Cmentarzysku niż w Grzybni; testy sali tronowej bez tronu (naklejki).
 
 **Weryfikacja:** `npm run build` (2967 testów); kadry `npm run shots` (`--before` z U4a: zmieniły się tylko Grzybnia i Cmentarzysko), arena Pożeracza w przeglądarce (kokony, brak tronu); `npm run smoke -- --floors 3`. Zrzuty: `/mnt/project-files/screens/krokU4b-kafle/`.
 
-**Do oceny:** Grzybnia i Cmentarzysko w nowej oprawie, kolor kokonów, nisze grobowe. Następny krok U4c: Piekło, Zadymiona palarnia, Lustrzana komnata i Bociani Ogród (każdy z własnym akcentem; mieszkanie gracza ma kafle z `gamer_den_tiles.py`).
+**Ocena właściciela (12.11.2026)** `#ocena`: kokony areny Pożeracza i nowe biomy „wygląda ok”.
+
+**Do oceny:** kokony skarbu w ukrytej komnacie Grzybni. Następny krok U4c: Piekło, Zadymiona palarnia, Lustrzana komnata i Bociani Ogród (każdy z własnym akcentem; mieszkanie gracza ma kafle z `gamer_den_tiles.py`).
 
 ## Znane ograniczenia i backlog
 

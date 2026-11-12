@@ -5,7 +5,7 @@ import { PickupKind } from '@/core/lootTypes';
 import type { LootDrop } from '@/core/lootTypes';
 import type { Rng } from '@/core/random';
 import { ITEM_POOL, SECRET_ROOM_CONFIG } from '@/config/lootConfig';
-import { COCOON_VISUAL, SECRET_ROOM_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { SECRET_ROOM_VISUAL, TREASURE_COCOON_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { SecretArea } from '@/dungeon/SecretRoom';
@@ -87,7 +87,7 @@ export class SecretRoomManager {
   private crack(cocoon: TreasureCocoon): void {
     const at = { x: cocoon.x, y: cocoon.y };
     cocoon.destroy();
-    const { sheet, burst } = COCOON_VISUAL;
+    const { sheet, burst } = TREASURE_COCOON_VISUAL;
     const tear = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
     tear.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => tear.setDepth(RENDER_DEPTH.combatDecal));
     tear.play(animationKey(sheet, burst));

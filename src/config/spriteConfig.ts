@@ -1555,6 +1555,22 @@ export const SPRITE_SHEETS = {
       burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
     },
   },
+  // Kokon skarbu ukrytej komnaty (krok U4b, tools/lair_enemies.py): złoty szew i błysk — „coś cennego w środku”.
+  treasureCocoon: {
+    key: 'sheet-treasure-cocoon',
+    url: 'assets/sprites/treasure-cocoon.png',
+    frameWidth: 32,
+    frameHeight: 32,
+    sheetWidth: 256,
+    sheetHeight: 32,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      // Błysk wędruje po oplocie wolniej niż puls zwykłego kokonu.
+      idle: { frames: [0, 1, 2, 3], loop: true, fps: 3 },
+      burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
+    },
+  },
   // Purchawka Grzybni (krok 28c, tools/grove_enemies.py): 32×32, bez kierunków.
   puffball: {
     key: 'sheet-puffball',
@@ -2349,6 +2365,14 @@ export const COCOON_VISUAL = {
   fuse: 'fuse',
   burst: 'burst',
   groundShadow: { width: 16, height: 6, offsetX: 1, offsetY: 9 },
+} as const;
+
+/** Kokon skarbu (krok U4b): ta sama sylwetka co kokon leża, własny arkusz ze złotym szwem. */
+export const TREASURE_COCOON_VISUAL = {
+  sheet: 'treasureCocoon',
+  idle: 'idle',
+  burst: 'burst',
+  groundShadow: COCOON_VISUAL.groundShadow,
 } as const;
 
 /** Purchawka i jej chmura (krok 28c). Chmura półprzezroczysta — gaz, pod którym widać walkę. */
