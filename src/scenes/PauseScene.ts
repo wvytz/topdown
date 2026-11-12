@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { UiText, uiTextFromStyle } from '@/ui/UiText';
 import { PAUSE_CONFIG } from '@/config/pauseConfig';
 import type { PauseReason } from '@/config/pauseConfig';
 import { SAVE_TEXT } from '@/config/saveConfig';
@@ -23,6 +24,10 @@ import type { PauseMenuOptions } from '@/systems/pauseMenu';
 import { ResumeCountdown } from '@/systems/ResumeCountdown';
 import type { BuildRow } from '@/systems/BuildSummary';
 import { feedbackUi } from '@/diagnostics/FeedbackBox';
+import { drawFrame } from '@/ui/UiFrame';
+import { UI_PALETTE } from '@/config/uiConfig';
+import { LOOT_ATLAS } from '@/config/spriteConfig';
+import { itemIconFrame } from '@/entities/Pickup';
 
 export interface PauseSceneData {
   readonly reason: PauseReason;
@@ -49,7 +54,7 @@ export interface BuildSection {
 /** Wiersz strony: napis pozycji (dla głośności także − i +). */
 interface PauseRow {
   readonly item: PauseItem;
-  readonly text: Phaser.GameObjects.Text;
+  readonly text: UiText;
 }
 
 /** Tyle ms po zamknięciu okienka czatu kliknięcie obok listy nie wznawia gry. */
@@ -80,15 +85,15 @@ export class PauseScene extends Phaser.Scene {
   private pendingPage: { readonly page: PausePage; readonly cursor: PauseItem | null } | null = null;
   private pageLayer!: Phaser.GameObjects.Container;
   private rows: PauseRow[] = [];
-  private note: Phaser.GameObjects.Text | null = null;
-  private status!: Phaser.GameObjects.Text;
+  private note: UiText | null = null;
+  private status!: UiText;
   private style!: Phaser.Types.GameObjects.Text.TextStyle;
   private overlay!: Phaser.GameObjects.Rectangle;
-  private panel!: Phaser.GameObjects.Rectangle;
+  private panel!: Phaser.GameObjects.Graphics;
   /** Odliczanie po „Wznów” (krok 130); null = menu pauzy. */
   private countdown: ResumeCountdown | null = null;
   private countdownLayer!: Phaser.GameObjects.Container;
-  private countdownText!: Phaser.GameObjects.Text;
+  private countdownText!: UiText;
   /** Chwila zamknięcia okienka czatu — kliknięcie, które je zamknęło, nie może jeszcze wznowić gry. */
   private feedbackClosedAt = -Infinity;
 
@@ -109,12 +114,11 @@ export class PauseScene extends Phaser.Scene {
 
     this.overlay = this.add.rectangle(width / 2, height / 2, width, height, PAUSE_CONFIG.overlay.color, PAUSE_CONFIG.overlay.alpha);
     const P = L.panel;
-    this.panel = this.add
-      .rectangle(width / 2, P.top, P.width, P.bottom - P.top, P.color, P.alpha)
-      .setOrigin(0.5, 0)
-      .setStrokeStyle(2, P.border);
+    // Krok U7: panel w pikselowej ramce ze złotymi nitami (jak menu i karty).
+    this.panel = this.add.graphics();
+    drawFrame(this.panel, width / 2 - P.width / 2, P.top, P.width, P.bottom - P.top, { fill: P.color, fillAlpha: P.alpha, edge: P.border, rivets: UI_PALETTE.gold });
     this.pageLayer = this.add.container(0, 0);
-    this.status = this.add.text(width / 2, L.statusY, '', { ...this.style, fontSize: '14px', color: COLORS.ok }).setOrigin(0.5);
+    this.status = uiTextFromStyle(this, width / 2, L.statusY, '', { ...this.style, fontSize: '14px', color: COLORS.ok }).setOrigin(0.5);
     this.showPage(PausePage.Main, this.mobile ? null : PauseItem.Resume);
     this.createCountdown(width);
 
@@ -334,21 +338,20 @@ export class PauseScene extends Phaser.Scene {
     };
 
     if (page === PausePage.Main) {
-      add(this.add.text(cx, L.titleY, PAUSE_CONFIG.title, { ...this.style, fontSize: '40px', color: '#f0d27a', strokeThickness: 6 }).setOrigin(0.5));
-      add(this.add.text(cx, L.subtitleY, PAUSE_CONFIG.reasonText[this.pauseData.reason], { ...this.style, fontSize: '14px', color: '#d8c0ff' }).setOrigin(0.5));
+      add(uiTextFromStyle(this, cx, L.titleY, PAUSE_CONFIG.title, { ...this.style, fontSize: '40px', color: '#f0d27a', strokeThickness: 6 }).setOrigin(0.5));
+      add(uiTextFromStyle(this, cx, L.subtitleY, PAUSE_CONFIG.reasonText[this.pauseData.reason], { ...this.style, fontSize: '14px', color: '#d8c0ff' }).setOrigin(0.5));
     } else {
-      add(this.add.text(cx, L.titleY, PAUSE_CONFIG.pageTitles[page], { ...this.style, fontSize: '28px', color: '#f0d27a', strokeThickness: 5 }).setOrigin(0.5));
+      add(uiTextFromStyle(this, cx, L.titleY, PAUSE_CONFIG.pageTitles[page], { ...this.style, fontSize: '28px', color: '#f0d27a', strokeThickness: 5 }).setOrigin(0.5));
     }
     if (page === PausePage.Save) {
       const unavailable = !this.pauseData.onSave;
       const subtitle = unavailable ? PAUSE_CONFIG.saveUnavailable : PAUSE_CONFIG.notes.save;
-      add(this.add.text(cx, L.subtitleY, subtitle, { ...this.style, fontSize: '14px', color: unavailable ? COLORS.error : '#d8c0ff' }).setOrigin(0.5));
+      add(uiTextFromStyle(this, cx, L.subtitleY, subtitle, { ...this.style, fontSize: '14px', color: unavailable ? COLORS.error : '#d8c0ff' }).setOrigin(0.5));
     }
     if (page === PausePage.Controls) {
       const lines = this.mobile ? PAUSE_CONFIG.mobile.controls : PAUSE_CONFIG.controls;
       add(
-        this.add
-          .text(cx, L.controlsY, lines.join('\n'), { ...this.style, fontSize: '13px', color: '#c8c8d8', align: 'center', lineSpacing: 4 })
+        uiTextFromStyle(this, cx, L.controlsY, lines.join('\n'), { ...this.style, fontSize: '13px', color: '#c8c8d8', align: 'center', lineSpacing: 4 })
           .setOrigin(0.5, 0),
       );
     }
@@ -360,22 +363,18 @@ export class PauseScene extends Phaser.Scene {
     items.forEach((item, i) => {
       const y = firstY + i * (page === PausePage.Settings ? L.settingsItemStep : L.itemStep);
       const text = add(
-        this.add
-          .text(cx, y, '', { ...this.style, fontSize: `${slotOf(item) === null ? L.itemFontSize : L.slotFontSize}px` })
+        uiTextFromStyle(this, cx, y, '', { ...this.style, fontSize: `${slotOf(item) === null ? L.itemFontSize : L.slotFontSize}px` })
           .setOrigin(0.5)
-          .setPadding(16, 4, 16, 4)
-          .setInteractive({ useHandCursor: true }),
+          .setHitPadding(16, 4),
       );
       text.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.hover(item));
       text.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.activate(item));
       if (item === PauseItem.Music || item === PauseItem.Sfx) {
         const button = (dx: number, label: string, steps: number): void => {
           add(
-            this.add
-              .text(cx + dx, y, label, { ...this.style, fontSize: '22px', color: '#f0d27a' })
+            uiTextFromStyle(this, cx + dx, y, label, { ...this.style, fontSize: '22px', color: '#f0d27a' })
               .setOrigin(0.5)
-              .setPadding(10, 2, 10, 2)
-              .setInteractive({ useHandCursor: true })
+              .setHitPadding(10, 2)
               .on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.hover(item))
               .on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.changeVolume(item, steps)),
           );
@@ -387,10 +386,10 @@ export class PauseScene extends Phaser.Scene {
     });
     if (page === PausePage.Main) {
       const noteY = firstY + items.length * L.itemStep + L.noteGap;
-      this.note = add(this.add.text(cx, noteY, '', { ...this.style, fontSize: '13px', color: COLORS.hint }).setOrigin(0.5));
+      this.note = add(uiTextFromStyle(this, cx, noteY, '', { ...this.style, fontSize: '13px', color: COLORS.hint }).setOrigin(0.5));
     }
     const hint = this.mobile ? PAUSE_CONFIG.mobile.hint : page === PausePage.Main ? PAUSE_CONFIG.hints.main : page === PausePage.Settings ? PAUSE_CONFIG.hints.settings : PAUSE_CONFIG.hints.sub;
-    add(this.add.text(cx, L.hintY, hint, { ...this.style, fontSize: '13px', color: COLORS.hint }).setOrigin(0.5));
+    add(uiTextFromStyle(this, cx, L.hintY, hint, { ...this.style, fontSize: '13px', color: COLORS.hint }).setOrigin(0.5));
     this.refresh();
   }
 
@@ -477,18 +476,19 @@ export class PauseScene extends Phaser.Scene {
       const left = x - columnWidth / 2;
       let y: number = B.top;
       if (sections.length > 1 && section.title) {
-        put(this.add.text(x, y, section.title, { ...this.style, fontSize: '14px', color: '#d8c0ff', strokeThickness: 3 }).setOrigin(0.5, 0));
+        put(uiTextFromStyle(this, x, y, section.title, { ...this.style, fontSize: '14px', color: '#d8c0ff', strokeThickness: 3 }).setOrigin(0.5, 0));
         y += B.sectionGap;
       }
       if (section.rows.length === 0) {
-        put(this.add.text(x, y, B.empty, { ...this.style, fontSize: '12px', color: COLORS.dim, strokeThickness: 3, align: 'center', wordWrap: { width: columnWidth } }).setOrigin(0.5, 0));
+        put(uiTextFromStyle(this, x, y, B.empty, { ...this.style, fontSize: '12px', color: COLORS.dim, strokeThickness: 3, align: 'center', wordWrap: { width: columnWidth } }).setOrigin(0.5, 0));
         return;
       }
       for (const row of section.rows) {
         const color = `#${row.color.toString(16).padStart(6, '0')}`;
-        put(this.add.text(left, y, row.title, { ...this.style, fontSize: `${B.titleSize}px`, color: row.evolved ? COLORS.selected : color, strokeThickness: 3 }));
+        put(this.add.image(left + 8, y + 9, LOOT_ATLAS.key, itemIconFrame(row.id)));
+        put(uiTextFromStyle(this, left + B.indent, y, row.title, { ...this.style, fontSize: `${B.titleSize}px`, color: row.evolved ? COLORS.selected : color, strokeThickness: 3 }));
         const detail = put(
-          this.add.text(left + B.indent, y + B.titleSize + 2, row.detail, {
+          uiTextFromStyle(this, left + B.indent, y + B.titleSize + 2, row.detail, {
             ...this.style,
             fontSize: `${B.detailSize}px`,
             color: '#c8c8d8',
@@ -632,11 +632,9 @@ export class PauseScene extends Phaser.Scene {
 
   private createCountdown(width: number): void {
     const C = PAUSE_CONFIG.countdown;
-    this.countdownText = this.add
-      .text(width / 2, C.y, '', { ...this.style, fontSize: `${C.fontSize}px`, color: C.color, strokeThickness: 10 })
+    this.countdownText = uiTextFromStyle(this, width / 2, C.y, '', { ...this.style, fontSize: `${C.fontSize}px`, color: C.color, strokeThickness: 10 })
       .setOrigin(0.5);
-    const caption = this.add
-      .text(width / 2, C.y + C.captionDy, C.caption, { ...this.style, fontSize: '16px', color: '#d8c0ff' })
+    const caption = uiTextFromStyle(this, width / 2, C.y + C.captionDy, C.caption, { ...this.style, fontSize: '16px', color: '#d8c0ff' })
       .setOrigin(0.5);
     this.countdownLayer = this.add.container(0, 0, [this.countdownText, caption]).setVisible(false);
   }

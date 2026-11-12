@@ -2352,7 +2352,7 @@ export const ELITE_VISUAL = {
   ringAlpha: 0.85,
   pulseMs: 700,
   labelOffset: 10,
-  fontSize: 9,
+  /** Krok U7: napis w pikselowym kroju (skala 1 — piksel fontu = piksel świata). */
   /** Plama wybuchu Wybuchowego i kolor jego strefy. */
   volatileZone: 0xffb02e,
   lifestealText: '#7dff9a',

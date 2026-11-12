@@ -43,7 +43,7 @@ export const PAUSE_CONFIG = {
   },
   /** Układ (y w pikselach płótna 960×540). */
   layout: {
-    panel: { width: 680, top: 28, bottom: 512, color: 0x0c0c16, alpha: 0.85, border: 0x5a4a2a },
+    panel: { width: 680, top: 28, bottom: 512, color: 0x0f0e18, alpha: 0.9, border: 0x573e38 },
     titleY: 76,
     subtitleY: 116,
     itemsY: 176,
@@ -69,7 +69,8 @@ export const PAUSE_CONFIG = {
     sectionGap: 22,
     titleSize: 13,
     detailSize: 11,
-    indent: 12,
+    /** Krok U7: ikona przedmiotu (16×16) przed nazwą, opis wcięty pod nią. */
+    indent: 22,
     rowGap: 6,
     /** Solo: od tylu przedmiotów lista idzie w dwóch kolumnach. */
     splitAfter: 6,

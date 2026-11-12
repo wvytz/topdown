@@ -6215,6 +6215,25 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Weryfikacja:** `npm run build` (2995 testów); Playwright: karta na piętrach 1–7, rozbłysk progu, śmierć Pożeracza i Palacza w grze, błysk pazurów, rekwizyty aren 6–7; `npm run smoke -- --floors 7 --sweep-only` bez błędów. `npm run perf` pominięty (karta i kreski to kilka obiektów HUD-u). Zrzuty: `/mnt/project-files/screens/krokU6-bossowie/`. **Czeka na ocenę właściciela.**
 
+## Krok U7 — Interfejs: pikselowy krój, nowy HUD, karty w ramkach, „Moje przedmioty” na ekranie końca `#upgrade` `#interfejs` `#hud`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: po U6 „zbliżamy się do idealnej wizji. scalaj i lecimy dalej” — etap U7 wg `docs/UPGRADE.md`.
+
+**Co powstało**
+- **Jeden pikselowy krój** (`core/pixelFont.ts`, bez silnika): wersaliki 5×7, małe litery z wydłużeniami, wszystkie polskie litery (akcent nad wersalikiem z pustym wierszem odstępu, ogonki pod linią), cyfry o jednej szerokości (liczby w HUD-zie nie skaczą), interpunkcja i symbole gry (★ ◆ ▶ → × … 💬). Znak spoza fontu traci akcent (é → e) albo staje się „?”. Warstwa Phasera (`ui/PixelFont.ts`) wypala z tych danych teksturę z obrysem 1 px `#1b1a22` — osobną dla każdej barwy (małe, ok. 900×14 px), więc tak samo działa w WebGL i na płótnie. `ui/UiText.ts` to BitmapText z `setColor` i polem kliknięcia z marginesem. Wielkość = całkowita skala pikseli fontu (1 drobny, 2 zwykły, 3–4 tytuły). Czcionka systemowa zniknęła ze wszystkich ekranów gry i z napisów w świecie (schody, kapliczka, elity, okrzyki bossów, unoszące się liczby); zostaje tylko w okienkach DOM (F9, czat) i na ekranie Safari. Przyciski telefonu rysują ten sam krój na płótnie nakładki.
+- **Nowy HUD** (`scenes/HudScene.ts`, liczby w `config/uiConfig.ts` `HUD_LAYOUT`): portret bohatera 1:1 w ramce z nitami, nad paskami nagłówek „Piętro N · modyfikator”, pasek HP z liczbą w środku, dash, ładunki i promień jako paski z rampą (światło–barwa–cień, `ui/UiFrame.ts`), ultimate w ramce obok HP (gotowe — obwódka miga skokowo, bez tego przy „mniej błysków”), złoto z monetą w skali 2, cel piętra, sloty przedmiotów w ramkach (`ui/ItemSlotView.ts`). Minimapa dostała ramkę, wnętrze dalej ledwie przyciemnione (krok 147). Pasek bossa w ramce z czerwonymi nitami; karta wejścia bossa i kreski faz z U6 piszą nowym krojem. Panel partnera w co-opie ma portret i ten sam styl.
+- **HUD nie zasłania walki** (STYLEGUIDE §13.10, `systems/hudText.ts`): pełna podpowiedź celu („znajdź komnatę bossa…”) przez 6 s po zmianie celu, potem skrót („Wrogowie: 5”, „Schody otwarte”); opis modyfikatora piętra przez 9 s, potem sama nazwa; linia sterowania tylko przez pierwsze 25 s runu.
+- **Telefon:** drobne napisy HUD-u w skali 2 (płótno jest tam pomniejszone), paski schodzą niżej. Ten sam wygląd, inny rozmiar.
+- **Karty nagrody** (`scenes/RewardScene.ts`): pikselowa ramka w barwie rodzaju, nity, cokół pod ikoną, kropki postępu jako romby z pełnych pikseli zamiast kółek, wstążka jako mała ramka, przy rodzaju znak (★ efekt broni, ◆ relikwia). Najechanie/pad — jasna ramka.
+- **Pauza, menu, wybór bohatera i co-opu w jednym stylu:** panele i karty w tej samej ramce (`ui/FrameRect.ts` — prostokąt Phasera rysowany ramką, bez zmian w logice ekranów), „Moje przedmioty” z ikoną przy każdym przedmiocie.
+- **Ekran końca runu** (śmierć i ZWYCIĘSTWO): pod wynikiem **podpis runu** (`systems/runSignature.ts`: bohater/drużyna, tryb, ziarno, liczba przedmiotów i przemian — ziarno pozwala powtórzyć układ pięter) i rząd **„Moje przedmioty”** w ramkach jak w HUD-zie. Komunikat R / C / M drobniejszy, żeby mieścił się w szerokości.
+
+**Decyzje:** ekran startowy nietknięty (logo z kroku 34 dalej z `core/pixelArt.ts`). Barwy UI z palety ekranu startowego (`UI_PALETTE`). Bez flagi starego HUD-u: krój dotyka wszystkich ekranów, a dwie wersje każdego podwoiłyby kod — wycofaniem jest `main` (stary interfejs do scalenia paczki). Format zapisu bez zmian (podpis runu liczy się z bieżącego runu, bez nowych pól w zapisie).
+
+**Testy:** `tests/core/pixelFont.test.ts` (komplet polskich liter i cyfr, piksele w komórce, akcenty nie dotykają liter, cyfry jednej szerokości, zastępowanie znaków, **każdy znak z napisów gry ma kształt w foncie**, mierzenie i łamanie linii), `tests/systems/hudText.test.ts` (cel pełny/krótki, nagłówek z modyfikatorem, wygaszanie), `tests/systems/runSignature.test.ts` (podpis, tryby, odmiana liczebników); pas ekranu śmierci przesunięty pod nowy HUD (`deathScreen.test.ts`).
+
+**Weryfikacja:** `npm run build` (3024 testy); `npm run smoke -- --floors 3 --seeds 1` i `-- --coop --floors 2` bez błędów; Playwright: HUD (PC, telefon, co-op z botem), boss, karty po bossie, pauza i „Moje przedmioty”, wybór bohatera, ekran śmierci i zwycięstwa. Zrzuty: `/mnt/project-files/screens/krokU7-interfejs/` (arkusz HUD-u przed | po). `npm run perf` pominięty (HUD to kilkadziesiąt prostokątów i napisów bitmapowych). **Czeka na ocenę właściciela.**
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6236,7 +6255,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata, Ogród i jaskrawsza krew (czeka na ocenę). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138).
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
-- **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.
+- **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
 - **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
 

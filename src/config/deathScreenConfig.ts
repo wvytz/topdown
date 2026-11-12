@@ -116,20 +116,23 @@ export type DeathTiming = typeof DEATH_TIMING;
 export const DEATH_LAYOUT = {
   centerX: 480,
   /** Litery szeroko rozstawione (gap 2) — spokojny, ciężki napis. */
-  title: { centerY: 196, unit: 8, gap: 2, outline: 2 },
+  title: { centerY: 184, unit: 8, gap: 2, outline: 2 },
   /**
    * Pas: pełna szerokość ekranu. Pełna czerń zaczyna się tuż pod HUD-em (od kroku 67 rząd ikon przedmiotów
    * kończy się na y = 147, pod paskiem promienia Czarodziejki; nad nią krótkie rozmycie), a w dół sięga o połowę dalej niż w kroku 63 (dół 271 → 346).
    */
-  band: { top: 135, bottom: 346, fadeTopPx: 12, fadeBottomPx: 46, alpha: 0.85 },
+  band: { top: 127, bottom: 360, fadeTopPx: 12, fadeBottomPx: 46, alpha: 0.85 },
   glow: { width: 620, height: 150, alpha: 0.3 },
-  score: { y: 296, fontSize: 15 },
+  /** Krok U7: wynik w pikselowym kroju (skala 2), pod nim podpis runu i rząd „Moje przedmioty”. */
+  score: { y: 250, fontSize: 15 },
+  signature: { y: 274 },
+  items: { y: 290, size: 20, gap: 4 },
   /** Gotycki ozdobnik: cienkie linie i mały krzyż pośrodku. */
-  ornament: { y: 326, width: 130, gap: 14 },
-  header: { y: 342, fontSize: 12 },
+  ornament: { y: 330, width: 130, gap: 14 },
+  header: { y: 340, fontSize: 12 },
   /** Krok 89: 7 wierszy (podium 5 + separator + bieżący run) — gęściej i drobniej niż przy podium 3 (krok 22 px, 14 px). */
-  rows: { y: 362, step: 18, fontSize: 13 },
-  prompt: { y: 502, fontSize: 14 },
+  rows: { y: 358, step: 18, fontSize: 13 },
+  prompt: { y: 506, fontSize: 12 },
   vignetteAlpha: 0.9,
 } as const;
 

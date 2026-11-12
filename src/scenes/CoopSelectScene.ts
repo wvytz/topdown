@@ -1,4 +1,6 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { addFrameRect } from '@/ui/FrameRect';
+import { UiText, uiTextFromStyle } from '@/ui/UiText';
 import Phaser from 'phaser';
 import type { HeroId } from '@/core/heroTypes';
 import type { CoopSelectData, FloorSceneData } from '@/core/types';
@@ -25,9 +27,9 @@ interface Card {
   readonly hero: HeroId;
   readonly frame: Phaser.GameObjects.Rectangle;
   readonly sprite: Phaser.GameObjects.Sprite;
-  readonly name: Phaser.GameObjects.Text;
-  readonly tag: Phaser.GameObjects.Text;
-  readonly texts: readonly Phaser.GameObjects.Text[];
+  readonly name: UiText;
+  readonly tag: UiText;
+  readonly texts: readonly UiText[];
 }
 
 /** Kolory graczy jak w HUD: P1 zielony, P2 niebieski. */
@@ -43,7 +45,7 @@ export class CoopSelectScene extends Phaser.Scene {
   private selectData!: CoopSelectData;
   private lobby!: CoopLobby;
   private cards: Card[] = [];
-  private seatTexts: Phaser.GameObjects.Text[] = [];
+  private seatTexts: UiText[] = [];
   private readonly padReaders = new Map<number, PadMenuReader>();
   private starting = false;
   private readonly lastHero = new LastHero(HighscoreStorage.browserStorage());
@@ -64,7 +66,7 @@ export class CoopSelectScene extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor(P.background);
     const style: Phaser.Types.GameObjects.Text.TextStyle = { fontFamily: 'monospace', color: P.text };
-    this.add.text(L.centerX, L.title.y, T.title, { ...style, fontSize: `${L.title.fontSize}px`, color: P.title }).setOrigin(0.5).setLetterSpacing(L.title.letterSpacing);
+    uiTextFromStyle(this, L.centerX, L.title.y, T.title, { ...style, fontSize: `${L.title.fontSize}px`, color: P.title }).setOrigin(0.5).setLetterSpacing(L.title.letterSpacing);
 
     const { width, gap, top } = L.card;
     const totalWidth = HERO_ORDER.length * width + (HERO_ORDER.length - 1) * gap;
@@ -74,9 +76,9 @@ export class CoopSelectScene extends Phaser.Scene {
     });
     for (let seat = 0; seat < COOP_CONFIG.maxPlayers; seat++) {
       const x = L.centerX + (seat === 0 ? -1 : 1) * 220;
-      this.seatTexts.push(this.add.text(x, L.mode.y + 6, '', { ...style, fontSize: '13px', align: 'center' }).setOrigin(0.5));
+      this.seatTexts.push(uiTextFromStyle(this, x, L.mode.y + 6, '', { ...style, fontSize: '13px', align: 'center' }).setOrigin(0.5));
     }
-    this.add.text(L.centerX, L.hint.y, T.hint, { ...style, fontSize: `${L.hint.fontSize}px`, color: P.hint }).setOrigin(0.5).setLetterSpacing(L.hint.letterSpacing);
+    uiTextFromStyle(this, L.centerX, L.hint.y, T.hint, { ...style, fontSize: `${L.hint.fontSize}px`, color: P.hint }).setOrigin(0.5).setLetterSpacing(L.hint.letterSpacing);
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       if (event.repeat) return;
@@ -92,15 +94,14 @@ export class CoopSelectScene extends Phaser.Scene {
   private buildCard(hero: HeroId, centerX: number, top: number, style: Phaser.Types.GameObjects.Text.TextStyle): Card {
     const def = HERO_DEFINITIONS[hero];
     const { width, height, borderWidth } = L.card;
-    const frame = this.add.rectangle(centerX, top + height / 2, width, height, P.card).setStrokeStyle(borderWidth, P.border);
+    const frame = addFrameRect(this, centerX, top + height / 2, width, height, P.card).setStrokeStyle(borderWidth, P.border);
     const sprite = this.add.sprite(centerX, top + L.sprite.offsetY, SPRITE_SHEETS[HERO_VISUALS[hero].sheet].key).setScale(L.sprite.scale);
-    const tag = this.add.text(centerX, top + 14, '', { ...style, fontSize: '16px', fontStyle: 'bold' }).setOrigin(0.5, 0);
-    const name = this.add
-      .text(centerX, top + L.name.offsetY, def.name.toUpperCase(), { ...style, fontSize: `${L.name.fontSize}px` })
+    const tag = uiTextFromStyle(this, centerX, top + 14, '', { ...style, fontSize: '16px', fontStyle: 'bold' }).setOrigin(0.5, 0);
+    const name = uiTextFromStyle(this, centerX, top + L.name.offsetY, def.name.toUpperCase(), { ...style, fontSize: `${L.name.fontSize}px` })
       .setOrigin(0.5, 0)
       .setLetterSpacing(L.name.letterSpacing);
-    const tagline = this.add.text(centerX, top + L.tagline.offsetY, def.tagline, { ...style, fontSize: `${L.tagline.fontSize}px` }).setOrigin(0.5, 0);
-    const stats = this.add.text(centerX, top + L.stats.offsetY, heroStatLine(def), { ...style, fontSize: `${L.stats.fontSize}px` }).setOrigin(0.5, 0);
+    const tagline = uiTextFromStyle(this, centerX, top + L.tagline.offsetY, def.tagline, { ...style, fontSize: `${L.tagline.fontSize}px` }).setOrigin(0.5, 0);
+    const stats = uiTextFromStyle(this, centerX, top + L.stats.offsetY, heroStatLine(def), { ...style, fontSize: `${L.stats.fontSize}px` }).setOrigin(0.5, 0);
     return { hero, frame, sprite, name, tag, texts: [tagline, stats] };
   }
 

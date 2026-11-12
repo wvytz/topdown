@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { UiText, uiTextFromStyle } from '@/ui/UiText';
 import Phaser from 'phaser';
 import type { ItemId } from '@/core/lootTypes';
 import { ItemKind } from '@/core/lootTypes';
@@ -9,6 +10,32 @@ import { itemIconFrame } from '@/entities/Pickup';
 import { LOOT_ATLAS } from '@/config/spriteConfig';
 import { MenuCommand } from '@/systems/gamepadInput';
 import { bindPadMenu } from '@/input/PadMenuInput';
+import { drawFrame } from '@/ui/UiFrame';
+import { REWARD_CARD, UI_PALETTE } from '@/config/uiConfig';
+
+/** Romb kropki postępu (7×7 pikseli). */
+const PIP_PATTERN = ['...#...', '..###..', '.#####.', '#######', '.#####.', '..###..', '...#...'];
+
+/** Kropki postępu do przemiany jako romby z pełnych pikseli: wypełnione = kopie po wzięciu tej karty. */
+function drawPips(g: Phaser.GameObjects.Graphics, x: number, y: number, pips: { readonly filled: number; readonly total: number }, evolution: boolean): void {
+  const unit = 2;
+  const size = PIP_PATTERN.length * unit;
+  const gap = size + 8;
+  const left = Math.round(x - ((pips.total - 1) * gap) / 2 - size / 2);
+  const top = Math.round(y - size / 2);
+  for (let i = 0; i < pips.total; i++) {
+    const on = i < pips.filled;
+    const color = on ? (evolution ? 0xf5c542 : 0x9fe0a0) : 0x30303c;
+    const ox = left + i * gap;
+    const cells = PIP_PATTERN.flatMap((row, py) => [...row].flatMap((c, px) => (c === '#' ? [{ px, py }] : [])));
+    g.fillStyle(UI_PALETTE.ink, 1);
+    for (const { px, py } of cells) g.fillRect(ox + px * unit - 1, top + py * unit - 1, unit + 2, unit + 2);
+    g.fillStyle(color, 1);
+    for (const { px, py } of cells) g.fillRect(ox + px * unit, top + py * unit, unit, unit);
+    // Blask na górnej ściance pełnego rombu.
+    if (on) g.fillStyle(0xf8f0d0, 0.9).fillRect(ox + 3 * unit, top + unit, unit, unit * 2);
+  }
+}
 
 export interface RewardSceneData {
   readonly choices: readonly ItemId[];
@@ -23,14 +50,14 @@ export interface RewardSceneData {
   readonly development?: ItemId | null;
 }
 
-const CARD_WIDTH = 210;
-const CARD_HEIGHT = 292;
+const CARD_WIDTH = REWARD_CARD.width;
+const CARD_HEIGHT = REWARD_CARD.height;
 /** Krok 150: złoto karty przemiany i zieleń karty rozwoju. */
 const EVOLUTION_GOLD = 0xf5c542;
 /** Krok 170: relikwia bossa. */
 const RELIC_CRIMSON = 0xc8304a;
 const DEVELOPMENT_GREEN = 0x8affa0;
-const CARD_GAP = 28;
+const CARD_GAP = REWARD_CARD.gap;
 const KEY_NAMES = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'] as const;
 const DIMMED_ALPHA = 0.35;
 
@@ -51,9 +78,9 @@ export class RewardScene extends Phaser.Scene {
   /** Klawisze wciśnięte po uaktywnieniu kart. */
   private readonly armedKeys = new Set<number>();
   private cardObjects: Phaser.GameObjects.GameObject[] = [];
-  private hintText!: Phaser.GameObjects.Text;
+  private hintText!: UiText;
   /** Ramki kart i ich kolor obwódki — do podświetlenia (mysz, pad). */
-  private cards: { readonly frame: Phaser.GameObjects.Rectangle; readonly accent: number }[] = [];
+  private cards: { readonly draw: (hover: boolean) => void }[] = [];
   /** Karta zaznaczona padem; null — pad jeszcze nie wybierał. */
   private padCard: number | null = null;
 
@@ -79,20 +106,18 @@ export class RewardScene extends Phaser.Scene {
     };
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x05050a, 0.78);
-    this.add.text(width / 2, 70, data.headline ?? 'STRAŻNIK POKONANY', { ...style, fontSize: '28px', color: '#f5c542' }).setOrigin(0.5);
-    this.hintText = this.add
-      .text(width / 2, 108, '…', { ...style, fontSize: '14px', color: '#8080a0' })
+    uiTextFromStyle(this, width / 2, 70, data.headline ?? 'STRAŻNIK POKONANY', { ...style, fontSize: '28px', color: '#f5c542' }).setOrigin(0.5);
+    this.hintText = uiTextFromStyle(this, width / 2, 108, '…', { ...style, fontSize: '14px', color: '#8080a0' })
       .setOrigin(0.5);
     // Krok 150: zasada przemian wprost pod kartami.
-    this.add
-      .text(width / 2, height / 2 + 40 + CARD_HEIGHT / 2 + 22, `${ITEM_EFFECTS.evolution.copies} kopie przedmiotu = PRZEMIANA w nową mechanikę  ·  zielona wstążka = przedmiot, który już zbierasz\nkarmazynowa wstążka = relikwia pokonanego bossa`, {
+    uiTextFromStyle(this, width / 2, height / 2 + 40 + CARD_HEIGHT / 2 + 22, `${ITEM_EFFECTS.evolution.copies} kopie przedmiotu = PRZEMIANA w nową mechanikę  ·  zielona wstążka = przedmiot, który już zbierasz\nkarmazynowa wstążka = relikwia pokonanego bossa`, {
         ...style,
         fontSize: '12px',
         color: '#b8b8c8',
         align: 'center',
       })
       .setOrigin(0.5);
-    if (data.picker) this.add.text(width / 2, 136, data.picker, { ...style, fontSize: '16px', color: '#8affa0' }).setOrigin(0.5);
+    if (data.picker) uiTextFromStyle(this, width / 2, 136, data.picker, { ...style, fontSize: '16px', color: '#8affa0' }).setOrigin(0.5);
 
     const total = data.choices.length * CARD_WIDTH + (data.choices.length - 1) * CARD_GAP;
     const left = (width - total) / 2 + CARD_WIDTH / 2;
@@ -153,39 +178,42 @@ export class RewardScene extends Phaser.Scene {
       ...extra,
     });
 
-    const card = this.add
-      .rectangle(x, y, CARD_WIDTH, CARD_HEIGHT, evolution ? 0x2a2414 : relic ? 0x2a1418 : 0x1a1a24, 0.96)
-      .setStrokeStyle(evolution || relic ? 3 : 2, accent)
-      .setInteractive({ useHandCursor: true });
+    // Krok U7: karta w pikselowej ramce (obrys, ramka w barwie rodzaju, nity), cokół pod ikoną, kropki postępu
+    // jako romby z pełnych pikseli i wstążka jako mała ramka — jeden język z HUD-em i pauzą.
+    const ribbon = evolution ? 'PRZEMIANA' : relic ? 'RELIKWIA' : development ? 'KARTA ROZWOJU' : null;
+    const ribbonColor = evolution ? EVOLUTION_GOLD : relic ? RELIC_CRIMSON : DEVELOPMENT_GREEN;
+    const fill = evolution ? 0x2a2414 : relic ? 0x2a1418 : 0x1a1a24;
+    const left = x - CARD_WIDTH / 2;
+    const g = this.add.graphics();
+    const draw = (hover: boolean): void => {
+      g.clear();
+      drawFrame(g, left, top, CARD_WIDTH, CARD_HEIGHT, { fill: hover ? 0x2a2a3a : fill, fillAlpha: 0.97, edge: hover ? UI_PALETTE.goldLight : accent, rivets: evolution || relic || hover ? accent : UI_PALETTE.edge });
+      drawFrame(g, x - 31, top + 27, 62, 62, { fill: UI_PALETTE.void, fillAlpha: 0.55, edge: hover ? accent : UI_PALETTE.edge, bevel: null });
+      drawPips(g, x, top + 150, info.pips, evolution);
+      if (ribbon) drawFrame(g, x - 68, top - 9, 136, 19, { fill: 0x101018, fillAlpha: 1, edge: ribbonColor, bevel: null, rivets: ribbonColor });
+    };
+    draw(false);
+    const card = this.add.rectangle(x, y, CARD_WIDTH, CARD_HEIGHT, 0x000000, 0).setInteractive({ useHandCursor: true });
+    const kind = relic ? '◆ relikwia bossa' : isEffect ? '★ efekt broni' : 'przedmiot bazowy';
 
     const parts: Phaser.GameObjects.GameObject[] = [
+      g,
       card,
-      this.add.text(x - CARD_WIDTH / 2 + 10, top + 10, `[${index + 1}]`, textStyle(13, '#8080a0')).setOrigin(0, 0),
-      this.add.image(x, top + 58, LOOT_ATLAS.key, itemIconFrame(itemId)).setScale(3),
-      this.add.text(x, top + 98, info.title, textStyle(17, evolution ? '#f5c542' : '#ffffff')).setOrigin(0.5, 0),
-      this.add.text(x, top + 120, info.subtitle, textStyle(12, evolution ? '#f5c542' : relic ? '#ff8aa0' : owned > 0 ? '#9fe0a0' : '#8080a0')).setOrigin(0.5, 0),
-      ...this.createPips(x, top + 150, info.pips, evolution),
-      this.add.text(x, top + 164, info.effect, textStyle(13, '#e0e0ec')).setOrigin(0.5, 0),
-      this.add.text(x, top + CARD_HEIGHT - 62, info.progress, textStyle(11, evolution ? '#f5c542' : '#b8b8c8')).setOrigin(0.5, 0),
-      this.add
-        
-        .text(x, top + CARD_HEIGHT - 22, relic ? 'relikwia bossa' : isEffect ? 'efekt broni' : 'przedmiot bazowy', textStyle(11, relic ? '#ff8aa0' : isEffect ? '#d0a040' : '#a0a0b8'))
-        .setOrigin(0.5, 0),
+      uiTextFromStyle(this, left + 10, top + 8, `[${index + 1}]`, textStyle(13, '#8f7f72')).setOrigin(0, 0),
+      this.add.image(x, top + 58, LOOT_ATLAS.key, itemIconFrame(itemId)).setScale(REWARD_CARD.iconScale),
+      uiTextFromStyle(this, x, top + 96, info.title, textStyle(17, evolution ? '#f5c542' : '#f1e2a9')).setOrigin(0.5, 0),
+      uiTextFromStyle(this, x, top + 122, info.subtitle, textStyle(12, evolution ? '#f5c542' : relic ? '#ff8aa0' : owned > 0 ? '#9fe0a0' : '#9c8f74')).setOrigin(0.5, 0),
+      uiTextFromStyle(this, x, top + 164, info.effect, textStyle(13, '#d8ccb0')).setOrigin(0.5, 0),
+      uiTextFromStyle(this, x, top + CARD_HEIGHT - 62, info.progress, textStyle(11, evolution ? '#f5c542' : '#b8ab90')).setOrigin(0.5, 0),
+      uiTextFromStyle(this, x, top + CARD_HEIGHT - 22, kind, textStyle(11, relic ? '#ff8aa0' : isEffect ? '#d0a040' : '#9c8f74')).setOrigin(0.5, 0),
     ];
     // Wstążka u góry karty: przemiana albo karta rozwoju (przedmiot, który już zbierasz).
     // Krok 170: relikwia bossa ma własną, karmazynową wstążkę.
-    const ribbon = evolution ? 'PRZEMIANA' : relic ? 'RELIKWIA' : development ? 'KARTA ROZWOJU' : null;
-    if (ribbon) {
-      const ribbonColor = evolution ? EVOLUTION_GOLD : relic ? RELIC_CRIMSON : DEVELOPMENT_GREEN;
-      parts.push(
-        this.add.rectangle(x, top, 132, 18, 0x101018, 1).setStrokeStyle(2, ribbonColor),
-        this.add.text(x, top, ribbon, { ...style, fontSize: '12px', color: evolution ? '#f5c542' : relic ? '#ff8aa0' : '#8affa0' }).setOrigin(0.5),
-      );
-    }
+    if (ribbon) parts.push(uiTextFromStyle(this, x, top + 1, ribbon, { ...style, fontSize: '12px', color: evolution ? '#f5c542' : relic ? '#ff8aa0' : '#8affa0' }).setOrigin(0.5));
     for (const part of parts) (part as unknown as Phaser.GameObjects.Components.Alpha).setAlpha(DIMMED_ALPHA);
     this.cardObjects.push(...parts);
 
-    this.cards.push({ frame: card, accent });
+    this.cards.push({ draw });
     card.on(Phaser.Input.Events.POINTER_OVER, () => {
       if (this.armed) this.highlight(index, true);
     });
@@ -201,22 +229,8 @@ export class RewardScene extends Phaser.Scene {
     });
   }
 
-  /** Kropki postępu do przemiany: wypełnione = kopie po wzięciu tej karty. */
-  private createPips(x: number, y: number, pips: { readonly filled: number; readonly total: number }, evolution: boolean): Phaser.GameObjects.Arc[] {
-    const gap = 16;
-    const left = x - ((pips.total - 1) * gap) / 2;
-    return Array.from({ length: pips.total }, (_, i) =>
-      this.add
-        .circle(left + i * gap, y, 5, i < pips.filled ? (evolution ? EVOLUTION_GOLD : 0x9fe0a0) : 0x30303c)
-        .setStrokeStyle(1, i < pips.filled ? 0xffffff : 0x60607a),
-    );
-  }
-
   private highlight(index: number, on: boolean): void {
-    const card = this.cards[index];
-    if (!card) return;
-    if (on) card.frame.setFillStyle(0x2a2a3a, 0.98).setStrokeStyle(3, 0xffffff);
-    else card.frame.setFillStyle(0x1a1a24, 0.96).setStrokeStyle(2, card.accent);
+    this.cards[index]?.draw(on);
   }
 
   /** Pad: zaznaczanie działa dopiero na aktywnych kartach, a A wybiera zaznaczoną. */
