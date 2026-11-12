@@ -6182,7 +6182,7 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Ocena właściciela (12.11.2026)** `#ocena`: kokony areny Pożeracza i nowe biomy „wygląda ok”.
 
-**Do oceny:** kokony skarbu w ukrytej komnacie Grzybni. Następny krok U4c: Piekło, Zadymiona palarnia, Lustrzana komnata i Bociani Ogród (każdy z własnym akcentem; mieszkanie gracza ma kafle z `gamer_den_tiles.py`).
+**Ocena właściciela (12.11.2026)** `#ocena`: kokony skarbu — „nie widać praktycznie różnicy”; właściciel sam zaprojektuje nowy wygląd (do tego czasu zostaje złoty szew). Następny krok U4c: Piekło, Zadymiona palarnia, Lustrzana komnata i Bociani Ogród (każdy z własnym akcentem; mieszkanie gracza ma kafle z `gamer_den_tiles.py`).
 
 ## Znane ograniczenia i backlog
 
