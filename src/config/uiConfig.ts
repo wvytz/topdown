@@ -50,8 +50,11 @@ export type UiTextSize = 1 | 2 | 3 | 4 | 5 | 6 | 8;
  */
 export const HUD_LAYOUT = {
   margin: 8,
-  /** Skala drobnych napisów HUD-u (krok U7b: 2 także na PC — piksel fontu 2, cienki obrys jak POLEGŁEŚ). */
-  textScale: 2 as 1 | 2,
+  /**
+   * Skala drobnych napisów HUD-u. Na telefonie 2 (płótno jest pomniejszone). Krok U7b: próba ze skalą 2 na PC
+   * odrzucona przez właściciela („napisy w HUD są za duże… ponad pół ekranu zajmuje zbędna informacja”).
+   */
+  textScale: { pc: 1 as const, mobile: 2 as const },
   /** Ramka portretu bohatera (miniaturka jak na ekranie śmierci). */
   portrait: { size: 36, icon: 32 },
   /** Paski: HP z liczbą w środku, pod nim dash, ładunki strzału i promień Czarodziejki. */
@@ -64,8 +67,11 @@ export const HUD_LAYOUT = {
   /** Złoto i cel pod paskami. */
   goldGap: 6,
   itemSlot: { size: 24, gap: 3 },
-  /** Ile ms po zmianie celu widać pełną podpowiedź („znajdź komnatę bossa…”), potem zostaje skrót. */
-  objectiveLongMs: 6000,
+  /**
+   * Ile ms po zmianie celu widać pełną podpowiedź („znajdź komnatę bossa…”), potem zostaje skrót.
+   * Krok U7b: 0 — sam skrót („WROGOWIE: 6”, „SCHODY OTWARTE”), bo pełna podpowiedź to „zbędna informacja”.
+   */
+  objectiveLongMs: 0,
   /** Opis modyfikatora piętra (własna linia pod przedmiotami): widoczny przez tyle ms od wejścia na piętro, potem gaśnie. */
   modifierLongMs: 9000,
   /** Szerokość łamania opisu modyfikatora i wiadomości o przedmiocie pod rzędem przedmiotów. */
@@ -101,14 +107,14 @@ export const UI_FONT_LOOK = {
   /** Cień: lico przesunięte w dół o tyle obrysów (POLEGŁEŚ: 2). */
   shadowOutlines: 2,
   /** Cień w barwie napisu przyciemnionej o ten ułamek (POLEGŁEŚ: ciemna krew pod czerwienią). */
-  shadowDarken: 0.66,
+  shadowDarken: 0.5,
   /** Wysokość paska rampy (px płótna; POLEGŁEŚ: 2) — barwa zmienia się skokowo, po pikselowemu. */
   stripPx: 2,
   /**
    * Rampa lica od wierzchu do spodu wersalika: dodatnie = ułamek drogi do jasnego kremu, ujemne = do czerni.
    * Akcenty nad literą biorą pierwszy ton, ogonki i dolne wydłużenia — ostatni.
    */
-  ramp: [0.5, 0.3, 0.14, 0.04, 0, -0.1, -0.22, -0.34],
+  ramp: [0.62, 0.42, 0.2, 0, -0.16, -0.32, -0.46, -0.56],
   lightTone: 0xfff4d8,
   /** Dodatkowy odstęp między literami: ułamek piksela fontu (POLEGŁEŚ: odstęp 2 piksele fontu zamiast 1). */
   extraGapFraction: 0.5,

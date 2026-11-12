@@ -6265,6 +6265,17 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** recepta (piksel 8 → obrys 2, cień 4; piksel 1 → obrys 1; odstęp przy pikselu 2), rampa (akcent — pierwszy ton, spód i ogonek — ostatni), wersaliki po polsku, nagłówek i opis modyfikatora. `npm run build`, smoke solo i co-op.
 
+## Krok U7c — HUD mniejszy i oszczędniejszy, mocniejsza rampa i cień liter `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7b (12.11.2026) `#ocena`:** „napisy w HUD są za duże, zero cieniowania! Zobacz jak ponad pół ekranu zajmuje zbędna informacja. gdzie masz cieniowanie?”
+
+**Co się zmieniło:**
+- Drobne napisy HUD-u na PC wracają do skali 1 (`HUD_LAYOUT.textScale.pc`; telefon dalej 2). W skali 2 zostaje tylko krótki nagłówek piętra i złoto.
+- Mniej tekstu: cel zawsze w skrócie („WROGOWIE: 6”, „SCHODY OTWARTE”, `objectiveLongMs` 0), przy złocie w zwykłym runie brak dopisku „wynik”.
+- Cieniowanie liter: rampa lica dwa razy mocniejsza (od kremowego wierzchu do ciemnego spodu, `UI_FONT_LOOK.ramp`), cień jaśniejszy od obrysu (ciemny odcień barwy napisu, `shadowDarken` 0,5) — widać go jako „wyciągnięcie” litery jak w POLEGŁEŚ.
+
+**Testy:** dopisek złota w zwykłym runie pusty. `npm run build`, smoke solo.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

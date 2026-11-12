@@ -37,7 +37,7 @@ describe('napisy HUD-u (krok U7)', () => {
   });
 
   it('dopisek przy złocie', () => {
-    expect(goldNote({ bossRush: false, practice: false }, 'x')).toBe('wynik');
+    expect(goldNote({ bossRush: false, practice: false }, 'x')).toBe('');
     expect(goldNote({ bossRush: false, practice: true }, 'x')).toContain('bez wyniku');
     expect(goldNote({ bossRush: true, practice: true }, 'tablica aren')).toBe('tablica aren');
   });

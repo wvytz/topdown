@@ -39,7 +39,8 @@ const ULT_X = BAR_X + L.hp.width + 7;
  */
 function hudGeometry(t: 1 | 2) {
   const headlineY = L.margin - 3;
-  const hpY = L.margin + 12 * t;
+  // Nagłówek piętra zawsze w skali 2 (krok U7b) — krótki: „PIĘTRO 3 · ZŁOTA ŻYŁA”.
+  const hpY = L.margin + 24;
   const dashY = hpY + L.hp.height + L.barGap + 1;
   const chargesY = dashY + L.dash.height + L.barGap + 1;
   const beamY = chargesY + L.charges.height + L.barGap + 1;
@@ -155,12 +156,12 @@ export class HudScene extends Phaser.Scene {
     this.floorShown = -1;
     this.objectiveKey = '';
     this.portraitHero = null;
-    const geo = (this.geo = hudGeometry(L.textScale));
+    const geo = (this.geo = hudGeometry(currentPlatform() === 'mobile' ? L.textScale.mobile : L.textScale.pc));
     const t = geo.t;
 
     this.bars = this.add.graphics();
     this.portrait = this.add.image(PORTRAIT_X + L.portrait.size / 2, PORTRAIT_Y + L.portrait.size / 2, '__DEFAULT').setVisible(false);
-    this.headlineText = uiText(this, BAR_X, geo.headlineY, '', { size: t, color: C.bright });
+    this.headlineText = uiText(this, BAR_X, geo.headlineY, '', { size: 2, color: C.bright });
     this.hpText = uiText(this, BAR_X + L.hp.width - 3, geo.hpY - 1, '', { color: C.bright, align: 'right' }).setOrigin(1, 0);
     // Na telefonie ultimate ma własny przycisk — kwadrat bez litery klawisza.
     this.ultimateText = uiText(this, ULT_X + L.ultimate.size / 2, geo.ultY + L.ultimate.size / 2, currentPlatform() === 'mobile' ? '' : 'R', { color: C.bright }).setOrigin(0.5);

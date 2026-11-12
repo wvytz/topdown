@@ -67,5 +67,6 @@ export function fadingAlpha(elapsedMs: number, visibleMs: number, fadeMs: number
 export function goldNote(state: { readonly bossRush: boolean; readonly practice: boolean }, arenaSuffix: string): string {
   if (state.bossRush) return arenaSuffix;
   if (state.practice) return 'run testowy — bez wyniku';
-  return 'wynik';
+  // Zwykły run: samo złoto, bez dopisku (krok U7b, „zbędna informacja”).
+  return '';
 }
