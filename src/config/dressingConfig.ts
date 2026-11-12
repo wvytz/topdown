@@ -46,7 +46,15 @@ export interface FloorDressingConfig {
    */
   readonly nest: NestDressing | null;
   /** Trwałe ślady walki: pojemność puli (FIFO) i grupy kafli. */
-  readonly combatDecals: { readonly capacity: number; readonly groups: Readonly<Record<CombatDecalKind, string>> };
+  readonly combatDecals: {
+    readonly capacity: number;
+    readonly groups: Readonly<Record<CombatDecalKind, string>>;
+    /**
+     * Krok U4e (decyzja właściciela 12.11.2026: „zlikwiduj tę krew całkowicie, gramy arcade”): plamy krwi po śmierci
+     * wrogów i bossów wyłączone; przypalenia i szlam zostają (pokazują strefy i ogień).
+     */
+    readonly blood: boolean;
+  };
   readonly stairsTiles: { readonly locked: string; readonly open: string };
   /** Krok U4a (oprawa 2.0): kamienny próg na wejściu do pokoju — grupa wg orientacji przejścia; brak = bez progów. */
   readonly sills?: Readonly<Record<'h' | 'v', string>>;
@@ -159,7 +167,7 @@ export const FLOOR_DRESSING: FloorDressingConfig = {
   wallFace: { chance: 0.1, group: 'wallFace' },
   archGroup: 'overhead.arch',
   cobweb: { chance: 0.35, nwGroup: 'overhead.cobwebNW', neGroup: 'overhead.cobwebNE' },
-  combatDecals: { capacity: 180, groups: { splat: 'combat.splat', scorch: 'combat.scorch', slime: 'combat.slime' } },
+  combatDecals: { capacity: 180, groups: { splat: 'combat.splat', scorch: 'combat.scorch', slime: 'combat.slime' }, blood: false },
   stairsTiles: { locked: 'stairs_sealed_3x3', open: 'stairs_open_3x3' },
   gateTiles: {
     h: { open: 'gate_h_open', half: 'gate_h_half', closed: 'gate_h_closed' },

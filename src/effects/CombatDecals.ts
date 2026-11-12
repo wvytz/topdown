@@ -18,6 +18,7 @@ export class CombatDecals {
   private readonly frames: Readonly<Record<CombatDecalKind, readonly number[]>>;
   private created = 0;
   private recycled = 0;
+  private readonly blood: boolean;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -33,6 +34,7 @@ export class CombatDecals {
       return names.map((name) => tileset.tiles[name]?.frame ?? 0);
     };
     this.frames = { splat: framesOf('splat'), scorch: framesOf('scorch'), slime: framesOf('slime') };
+    this.blood = config.blood;
   }
 
   /** Statystyki puli (debug/weryfikacja): aktywne ślady, utworzone obiekty, ponowne użycia. */
@@ -41,6 +43,7 @@ export class CombatDecals {
   }
 
   add(kind: CombatDecalKind, x: number, y: number): void {
+    if (kind === 'splat' && !this.blood) return; // krok U4e: bez plam krwi
     const tx = Math.floor(x / TILE_SIZE);
     const ty = Math.floor(y / TILE_SIZE);
     if (tx < 0 || ty < 0 || tx >= this.floor.width || ty >= this.floor.height) return;
@@ -59,4 +62,5 @@ export class CombatDecals {
     image.setFrame(frame).setPosition(Math.round(x), Math.round(y)).setFlipX(Math.random() < 0.5);
     this.ring.push(image);
   }
+
 }

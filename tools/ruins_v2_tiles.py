@@ -356,7 +356,7 @@ def glow_rim(gen, ramp, count):
 
 
 def blood_splat(p, r):
-    """Krok U4c (uwaga właściciela po kroku 24): jaskrawsza krew na posadzce — rozbryzg z kroplami i połyskiem."""
+    """Krok U4c: jaskrawa krew — od kroku U4e nieużywana (właściciel: gra bez plam krwi), zostaje do ewentualnego powrotu."""
     B, T = p.blood, K.T
     img = K.Img(T, T)
     rad = r.uniform(4.5, 6)
@@ -386,8 +386,6 @@ def apply(entries, Entry, kit, biome='tower_ruins'):
     for slabs in MACRO.values():
         _check_layout(slabs, 2 * K.T)
     out = list(entries)
-    if biome != 'fungal_grove':  # w Grzybni plamy to turkusowa posoka zarażonych — zostaje
-        out = [dataclasses.replace(e, gen=blood_splat) if e.name.startswith('combat_splat_') else e for e in out]
     for kind, layout, weight in FLOOR:
         if kind in FLOOR_SKIP.get(biome, ()):
             continue
