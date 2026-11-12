@@ -55,6 +55,8 @@ const ITEM_FRAME_EVOLVED = 0x9fe8ff;
 const ITEM_FRAME_RARE = 0xe7b140;
 /** Krok 170: ramka relikwii bossa (karmazyn jak obwódka ikony). */
 const ITEM_FRAME_RELIC = 0xc8304a;
+/** Krok Z3: wotum — jadeitowa ramka (ten sam kolor co obwódka ikony z `tools/loot_sprites.py`). */
+const ITEM_FRAME_VOTIVE = 0x3fb08a;
 /** Nazwa i efekt zdobytego przedmiotu — mniejsza złota czcionka pod ikonami. */
 const ITEM_NOTICE_Y = ITEM_SLOT_Y + ITEM_SLOT_SIZE + 6;
 const ITEM_NOTICE_FADE_MS = 800;
@@ -414,7 +416,7 @@ export class HudScene extends Phaser.Scene {
       for (const part of [slot.frame, slot.icon, slot.count]) part.setVisible(item !== undefined);
       if (!item) return;
       // Krok 150: przemieniony przedmiot ma jasną ramkę i gwiazdkę zamiast licznika 3.
-      slot.frame.setStrokeStyle(ITEM_SLOT_BORDER, item.evolved ? ITEM_FRAME_EVOLVED : item.relic ? ITEM_FRAME_RELIC : item.rare ? ITEM_FRAME_RARE : ITEM_FRAME_COMMON);
+      slot.frame.setStrokeStyle(ITEM_SLOT_BORDER, item.evolved ? ITEM_FRAME_EVOLVED : item.relic ? ITEM_FRAME_RELIC : item.votive ? ITEM_FRAME_VOTIVE : item.rare ? ITEM_FRAME_RARE : ITEM_FRAME_COMMON);
       slot.icon.setFrame(item.frame);
       slot.count.setText(item.evolved ? (item.count > 3 ? `★${item.count}` : '★') : item.count > 1 ? `×${item.count}` : '');
     });

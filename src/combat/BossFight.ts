@@ -1388,6 +1388,8 @@ export class BossFight {
       damage: strike.damage,
       knockback: knockbackFrom(strike.center, player, strike.knockback),
       ...(strike.status && { status: strike.status }),
+      // Krok Z3: ogień bossów (ruszty Palacza, żar bocianów) gasi Rdzeń Tarczownika.
+      ...(isFireStrike(strike) && { element: 'fire' as const }),
     };
     if (player.takeHit(hit, now)) {
       onPlayerHit(player);
@@ -1715,7 +1717,7 @@ export class BossFight {
     gfx.lineStyle(edgeWidth, edge, edgeAlpha).strokeCircle(center.x, center.y, radius);
     for (const player of this.deps.party.living) {
       if (Math.hypot(player.x - center.x, player.y - center.y) <= radius) continue;
-      const hit = { damage: ring.damage, knockback: knockbackFrom(player, center, ring.knockback) };
+      const hit = { damage: ring.damage, knockback: knockbackFrom(player, center, ring.knockback), element: 'fire' as const };
       if (player.takeHit(hit, now)) this.deps.onPlayerHit(player);
     }
   }
@@ -2079,4 +2081,9 @@ function drawBurstTelegraph(gfx: Phaser.GameObjects.Graphics, burst: ProjectileB
   // Król Szlamu (krok 153): liliowy pierścień szlamu zamiast pomarańczowego.
   const ring = sludge ? SLUDGE_FX.burstRing : { color: 0xffa040, width: 3 };
   gfx.lineStyle(ring.width, ring.color, 0.3 + 0.6 * progress).strokeCircle(burst.origin.x, burst.origin.y, 30 + 20 * progress);
+}
+
+/** Krok Z3: strefy bossów, które są ogniem (ruszty Palacza, żar spod bocianów). */
+function isFireStrike(strike: AreaStrike): boolean {
+  return strike.look === 'grate' || strike.look === 'embers';
 }

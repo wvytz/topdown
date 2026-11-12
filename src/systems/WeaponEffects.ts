@@ -2,6 +2,7 @@ import type { EvolvedEffects, StatusApplication, WeaponEffects } from '@/core/co
 import type { ItemEffectsConfig } from '@/core/lootTypes';
 import { ItemId } from '@/core/lootTypes';
 import { NO_RELIC_EFFECTS, computeRelicEffects, withRelicStatus } from '@/systems/Relics';
+import { NO_WARD_EFFECTS, computeWardEffects } from '@/systems/Votives';
 
 /** Krok 150: brak przemian i łańcucha pioruna. */
 export const NO_EVOLVED_EFFECTS: EvolvedEffects = {
@@ -28,6 +29,7 @@ export const NO_WEAPON_EFFECTS: WeaponEffects = {
   dashDamage: 0,
   evolved: NO_EVOLVED_EFFECTS,
   relics: NO_RELIC_EFFECTS,
+  wards: NO_WARD_EFFECTS,
 };
 
 /** Wartość dla `stacks` kopii: pierwsza daje `base`, każda kolejna dodaje `perStack`. */
@@ -139,5 +141,6 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
     dashDamage,
     evolved: evolvedEffects,
     relics: computeRelicEffects(itemIds, config.relics),
+    wards: computeWardEffects(itemIds, config.votives),
   };
 }

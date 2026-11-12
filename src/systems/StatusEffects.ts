@@ -46,6 +46,12 @@ class DamageOverTime {
   isActive(now: number): boolean {
     return now < this.until;
   }
+
+  /** Krok Z3: zdjęcie efektu (ratunek Kości psa-przewodnika). */
+  clear(): void {
+    this.until = -Infinity;
+    this.nextAt = Infinity;
+  }
 }
 
 /**
@@ -121,6 +127,12 @@ export class StatusEffects {
   /** Obrażenia od podpalenia należne do chwili `now` (nadrabia tyknięcia, jeśli klatki były rzadkie). */
   takeBurnDamage(now: number): number {
     return this.burn.takeDamage(now);
+  }
+
+  /** Krok Z3: ratunek przed śmiercią zdejmuje truciznę i podpalenie — inaczej następne tyknięcie i tak zabija. */
+  cleanseDamageOverTime(): void {
+    this.poison.clear();
+    this.burn.clear();
   }
 
   /** Obrażenia od trucizny należne do chwili `now`. */

@@ -35,9 +35,13 @@ import { statusTint } from '@/effects/statusTints';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { attachGroundShadow } from '@/effects/GroundShadow';
 import { JellyGuard } from '@/systems/Relics';
+import { GuideRescue, PoisonWard, wardedHitDamage } from '@/systems/Votives';
 
 /** Krok 170: Korona Szlamu zbiła trafienie — scena pokazuje napis nad bohaterem. */
 export const PLAYER_JELLY_EVENT = 'player-jelly';
+/** Krok Z3: zadziałało wotum (odporność albo ratunek) — scena pokazuje błysk i napis. */
+export const PLAYER_WARD_EVENT = 'player-ward';
+export type WardSignal = 'poison' | 'fire' | 'rescue';
 
 /** Abstrakcyjne akcje gracza w danej klatce — produkuje je InputController. */
 export interface PlayerActions {
@@ -148,6 +152,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly ultimateConfig: UltimateConfig;
   private readonly ultimateGauge: UltimateGauge;
   private readonly jellyGuard = new JellyGuard();
+  /** Krok Z3: Pancerz z odwłoka (ułamki tyknięć) i Kość psa-przewodnika (ratunek raz na piętro — bohater żyje z piętrem). */
+  private readonly poisonWard = new PoisonWard();
+  private readonly guideRescue = new GuideRescue();
+  private readonly wardFlash = new Timer();
+  private wardFlashColor = 0;
   private readonly ultimateGuard = new Timer();
   /** Kule krążące wokół Czarodziejki (tyle, ile jest gotowych do rzutu). */
   private readonly orbitSprites: Phaser.GameObjects.Sprite[] = [];
@@ -421,9 +430,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Trucizna tyka niezależnie od nietykalności (to status, nie nowe trafienie) i może zabić.
-    const poisonDamage = this.status.takePoisonDamage(now);
+    const rawPoison = this.status.takePoisonDamage(now);
+    const poisonDamage = this.poisonWard.reduce(rawPoison, this.weaponEffects.wards.poisonResist);
+    if (poisonDamage < rawPoison) this.scene.events.emit(PLAYER_WARD_EVENT, this, 'poison' satisfies WardSignal);
     if (poisonDamage > 0) {
-      this.health.takeDamage(poisonDamage);
+      this.suffer(poisonDamage, now);
       if (this.isDead) {
         this.die();
         return { ...IDLE, poisonDamage };
@@ -584,13 +595,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   takeHit(hit: Hit, now: number): boolean {
     if (this.isDead || this.isInvulnerable(now)) return false;
 
+    // Wota (krok Z3): odporność na ogień i Kamienna łuska. Pełna odporność — trafienie nie przechodzi wcale.
+    const wards = this.weaponEffects.wards;
+    const warded = wardedHitDamage(hit.damage, hit.element, wards);
+    if (hit.element === 'fire' && wards.fireResist > 0) this.scene.events.emit(PLAYER_WARD_EVENT, this, 'fire' satisfies WardSignal);
+    if (warded <= 0 && hit.damage > 0) return false;
     // Korona Szlamu (krok 170): co kilka sekund jedno trafienie o połowę słabsze.
-    const jelly = this.jellyGuard.absorb(hit.damage, now, this.weaponEffects.relics.jelly);
+    const jelly = this.jellyGuard.absorb(warded, now, this.weaponEffects.relics.jelly);
     if (jelly.absorbed) this.scene.events.emit(PLAYER_JELLY_EVENT, this);
     // Krwawa tarcza (krok 150) zbija obrażenia przed zdrowiem.
     const absorbed = Math.min(this.bloodShield, jelly.damage);
     this.bloodShield -= absorbed;
-    this.health.takeDamage(jelly.damage - absorbed);
+    this.suffer(jelly.damage - absorbed, now);
     this.hurtFlash.start(now, COMBAT_FEEL_CONFIG.heroHurt.ms);
     this.invulnerability.start(now, this.combat.invulnerabilityMs);
     this.knockbackStun.start(now, KNOCKBACK_STUN_MS);
@@ -601,6 +617,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.isDead) this.die();
     return true;
+  }
+
+  /**
+   * Utrata zdrowia z ratunkiem Kości psa-przewodnika (krok Z3): śmiertelny cios raz na piętro zostawia 1 HP
+   * (z 2. kością — trochę więcej) i daje chwilę nietykalności.
+   */
+  private suffer(amount: number, now: number): void {
+    const rescue = this.weaponEffects.wards.rescue;
+    const saved = this.guideRescue.tryRescue(this.health.value, amount, this.health.max, rescue);
+    if (saved === null || !rescue) {
+      this.health.takeDamage(amount);
+      return;
+    }
+    this.health.takeDamage(this.health.value - 1);
+    if (saved > 1) this.health.heal(saved - 1);
+    this.status.cleanseDamageOverTime();
+    this.invulnerability.start(now, rescue.invulnerableMs);
+    this.scene.events.emit(PLAYER_WARD_EVENT, this, 'rescue' satisfies WardSignal);
+  }
+
+  /** Krok Z3: krótki błysk barwy wotum, które właśnie zadziałało. */
+  flashWard(color: number, now: number, ms: number): void {
+    this.wardFlashColor = color;
+    this.wardFlash.start(now, ms);
   }
 
   isPoisoned(now: number): boolean {
@@ -662,7 +702,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Trucizna migocze na zielono, spowolnienie barwi na niebiesko (statusTint).
     const tint = statusTint(this.status, now);
     // Krok U2: trafiony bohater błyska barwą ostrzegawczą (Średnia, Wysoka); Niska — jak przed upgradem.
-    if (this.hurtFlash.isActive(now) && combatFeel.level.heroHurtFlash) this.setTintFill(COMBAT_FEEL_CONFIG.heroHurt.color);
+    if (this.wardFlash.isActive(now)) this.setTintFill(this.wardFlashColor);
+    else if (this.hurtFlash.isActive(now) && combatFeel.level.heroHurtFlash) this.setTintFill(COMBAT_FEEL_CONFIG.heroHurt.color);
     else if (tint !== null) this.setTint(tint);
     else if (this.ultimateGuard.isActive(now)) this.setTint(ULTIMATE_GUARD_TINT[this.ultimateConfig.kind]);
     else this.clearTint();

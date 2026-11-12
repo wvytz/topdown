@@ -29,6 +29,8 @@ const CARD_HEIGHT = 292;
 const EVOLUTION_GOLD = 0xf5c542;
 /** Krok 170: relikwia bossa. */
 const RELIC_CRIMSON = 0xc8304a;
+/** Krok Z3: wotum (przedmiot ochronny Aktu II). */
+const VOTIVE_JADE = 0x3fb08a;
 const DEVELOPMENT_GREEN = 0x8affa0;
 const CARD_GAP = 28;
 const KEY_NAMES = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'] as const;
@@ -136,13 +138,14 @@ export class RewardScene extends Phaser.Scene {
     const item = ITEM_DEFINITIONS[itemId];
     const isEffect = item.kind === ItemKind.Effect;
     const relic = item.kind === ItemKind.Relic;
+    const votive = item.kind === ItemKind.Votive;
     const owned = data.owned[itemId] ?? 0;
     // Krok 150 (prośba właściciela i testera: karta rozwoju niejasna): karta mówi poziom, co da ta kopia
     // i ile brakuje do przemiany; karta przemiany jest złota i opisuje nową mechanikę.
     const info = describeRewardCard(item, owned, ITEM_EFFECTS.evolution);
     const evolution = info.kind === 'evolution';
     const development = data.development === itemId;
-    const accent = evolution ? EVOLUTION_GOLD : relic ? RELIC_CRIMSON : development ? DEVELOPMENT_GREEN : isEffect ? 0xd0a040 : 0xa0a0b8;
+    const accent = evolution ? EVOLUTION_GOLD : relic ? RELIC_CRIMSON : votive ? VOTIVE_JADE : development ? DEVELOPMENT_GREEN : isEffect ? 0xd0a040 : 0xa0a0b8;
     const top = y - CARD_HEIGHT / 2;
     const textStyle = (size: number, color: string, extra: Phaser.Types.GameObjects.Text.TextStyle = {}): Phaser.Types.GameObjects.Text.TextStyle => ({
       ...style,

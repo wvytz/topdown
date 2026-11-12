@@ -244,6 +244,8 @@ export interface HudItem {
   readonly evolved?: boolean;
   /** Krok 170: relikwia bossa — karmazynowa ramka. */
   readonly relic?: boolean;
+  /** Krok Z3: wotum (przedmiot ochronny Aktu II) — jadeitowa ramka. */
+  readonly votive?: boolean;
 }
 
 /** Nazwa i efekt świeżo zdobytego przedmiotu — HUD pokazuje je pod ikonami i wygasza. */

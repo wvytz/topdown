@@ -399,7 +399,7 @@ export class EnemyManager implements EnemyAttackHandler {
     if (living.length === 0) this.firePatches.update(null, now);
     for (const player of living) {
       const damage = this.firePatches.update(player, now);
-      if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 } }, now)) this.deps.onPlayerHit(player);
+      if (damage > 0 && player.takeHit({ damage, knockback: { x: 0, y: 0 }, element: 'fire' }, now)) this.deps.onPlayerHit(player);
     }
     this.fire.draw(this.firePatches, now);
   }

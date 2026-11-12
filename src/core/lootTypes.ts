@@ -31,6 +31,11 @@ export enum ItemId {
   BaronPipe = 'baron-pipe',
   WetMop = 'wet-mop',
   StorkFeather = 'stork-feather',
+  // Krok Z3 (Akt II): Wota — przedmioty ochronne, w puli dopiero po wypaleniu w Piecu wotów w Popielniku.
+  Carapace = 'carapace',
+  ShieldCore = 'shield-core',
+  StoneScale = 'stone-scale',
+  GuideBone = 'guide-bone',
 }
 
 export enum ItemKind {
@@ -40,6 +45,8 @@ export enum ItemKind {
   Effect = 'effect',
   /** Krok 170: relikwia bossa — jedna sztuka, tylko z karty za bossa (nie z łupów ani kapliczki). */
   Relic = 'relic',
+  /** Krok Z3: wotum — przedmiot ochronny Aktu II; wypada dopiero po wypaleniu w Piecu wotów. */
+  Votive = 'votive',
 }
 
 /**
@@ -131,6 +138,20 @@ export interface ItemEffectsConfig {
   };
   /** Krok 170: relikwie bossów. */
   readonly relics: RelicConfig;
+  /** Krok Z3: wota (przedmioty ochronne). */
+  readonly votives: VotiveConfig;
+}
+
+/** Krok Z3: liczby wot — przedmiotów ochronnych Aktu II (`config/votiveConfig.ts`). */
+export interface VotiveConfig {
+  /** Pancerz z odwłoka: ułamek obrażeń trucizny ścięty za każdą kopię (2 kopie = pełna odporność). */
+  readonly carapace: { readonly resistPerCopy: number };
+  /** Rdzeń Tarczownika: to samo dla ognia (strefy, smugi, paleniska, ogień bossów). */
+  readonly shieldCore: { readonly resistPerCopy: number };
+  /** Kamienna łuska: każda kopia ścina tyle obrażeń (malejąco: 1 − (1 − x)^n), najwyżej `max`. */
+  readonly stoneScale: { readonly reductionPerCopy: number; readonly max: number };
+  /** Kość psa-przewodnika: raz na piętro śmiertelny cios zostawia 1 HP i daje nietykalność; 2. kopia dokłada leczenie. */
+  readonly guideBone: { readonly invulnerableMs: number; readonly healPctPerExtraCopy: number; readonly maxCopies: number };
 }
 
 /** Krok 170: liczby relikwii bossów (`config/relicConfig.ts`). */

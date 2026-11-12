@@ -69,6 +69,10 @@ export function describeRewardCard(item: ItemDefinition, owned: number, config: 
   if (item.kind === ItemKind.Relic) {
     return { kind: 'relic', title: item.name, subtitle: 'relikwia bossa', effect: item.effect, pips: { filled: 0, total: 0 }, progress: 'jedna na run · tylko z tego bossa' };
   }
+  if (item.kind === ItemKind.Votive) {
+    // Krok Z3: wotum z Popielnika — bez przemiany, kolejne kopie mówi opis.
+    return { kind: owned === 0 ? 'new' : 'growth', title: item.name, subtitle: owned === 0 ? 'wotum · ochrona' : `masz ×${owned} — wzmacnia`, effect: item.effect, pips: { filled: 0, total: 0 }, progress: 'wotum wypalone w Popielniku' };
+  }
   if (!evolution) {
     // Przedmiot bez przemiany (krok 151): zwykła karta, bez kropek postępu.
     return {

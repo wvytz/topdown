@@ -6144,6 +6144,33 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Testy:** `tests/systems/Descent.test.ts` (trasa z seeda, głębia, następne piętro, reguła, sakiewka Żaru), `tests/systems/MetaProgress.test.ts` (parsowanie, odblokowanie, bankowanie, trofea, rangi), `tests/dungeon/HideoutLayout.test.ts` (komora, zasięg stanowisk), `deathScreen.test.ts` (wiersz z głębią), `architecture.test.ts` (`HideoutLayout` na liście czystych plików). `npm run build` (2906 testów), `npm run smoke`. W przeglądarce: `?hub=1` → brama → Zejście 1/6 → boss (Żar 34) → głębia 2 → śmierć (Żar +39, połowa luźnych 10) → Popielnik; zwycięstwo na Dnie (+85, ranga, trofeum); zwycięstwo we wspinaczce → scena upadku → +15 Żaru → „POPIELNIK” w menu. Kadry: `/mnt/project-files/screens/krokZ1-popielnik/`.
 
+## Krok Z3 — Akt II: Wota i Piec wotów `#akt2` `#popielnik` `#wota`
+
+Etap Z3 z `docs/AKT2.md` §9 na gałęzi `akt-2`. Właściciel zatwierdził Wota („tak zrób”, rekomendacja „po 4 na etap”) i każdą propozycję, która wyniknie w trakcie.
+
+**Co powstało**
+- **Nowy rodzaj przedmiotu `ItemKind.Votive`** — jadeitowa obwódka i iskra (ikony z `tools/loot_sprites.py`, ramka w HUD i na kartach). Pierwsze 4 Wota to przedmioty ochronne z projektu z 25.10 (`config/votiveConfig.ts`, `systems/Votives.ts`):
+  - **Pancerz z odwłoka** — trucizna rani o połowę mniej, 2 kopie — wcale (ułamki tyknięć przechodzą na następne, `PoisonWard`);
+  - **Rdzeń Tarczownika** — to samo dla ognia: plamy żaru i smugi (elity, ogary, kultyści), paleniska, pierścień ognia, ruszty Palacza i żar spod bocianów (`Hit.element: 'fire'`); wybuchy celowo nie;
+  - **Kamienna łuska** — −8% wszystkich obrażeń za kopię, malejąco, sufit 30%;
+  - **Kość psa-przewodnika** — raz na piętro śmiertelny cios zostawia 1 HP, zdejmuje truciznę i podpalenie, daje 1 s nietykalności; 2. kopia leczy przy ratunku 10% maks. HP.
+- **Skąd Wota:** każdy boss Zejścia i każdy boss wieży przy pierwszym zabiciu po odblokowaniu Popielnika zostawia jedno nieznane jeszcze Wotum (własny strumień RNG: seed runu + piętro). Znalezione od razu jest bezpieczne, jak Żar po bossie. Napis: „Wotum: … — wypal je w Piecu wotów”.
+- **Piec wotów** (Popielnik): E wypala pierwsze czekające Wotum za **30 Żaru**; wypalone wchodzi do puli łupów wspinaczki i Zejścia (`poolWithVotives`), a w piecu zapala się kolejny język ognia. Napis nad piecem podaje nazwę i cenę.
+- **Palenisko:** E przełącza przedmiot startowy Zejścia (wypalone Wota albo nic); pierwsze wypalone Wotum ustawia się samo. Przedmiot dostaje świeży run na pierwszym piętrze (w co-opie obaj), nie run z zapisu ani testowy (`withStartItem`). Nagłówek Popielnika pokazuje „Na start: …”.
+- **Sygnał:** gdy wotum zadziała, bohater błyska barwą przedmiotu, a nad nim pojawia się „jad odparty” / „żar odparty” (najwyżej co 2,5 s) albo „pies cię przeprowadził”.
+- Profil `tower-crawler.meta.v1` dostał `foundVotives`, `burnedVotives`, `startItem` (stare profile z Z1 czytają się bez zmian, obce wpisy odpadają).
+
+**Decyzje w trakcie (na mocy zgody właściciela)**
+- 4 Wota w tym etapie (rekomendacja z §10 „po 4 na etap”); Jadeitowa maska, Obsydianowe zwierciadło, Skóra jaguara i Pióro kecala — kolejna paczka.
+- Liczby wg poleconych odpowiedzi z Q&A przedmiotów ochronnych (odpowiedzi nie zostały zapisane na stronie): odporność 50% na kopię, Rdzeń gasi strefy i ogień bossów bez wybuchów, ochrona to czysty plus, osobny rodzaj „wotum”, sygnał błyskiem.
+- Wota bez przemiany 3. kopii; nadmiarowe kopie (np. 3. Pancerz) nie trafiają na karty ani do kapliczki, bo nic już nie dają (zasada z kroku 117).
+- Zasadzki i ukryta komnata losują dalej z puli Aktu I; Wota przychodzą z łupów, kart za bossa i kapliczki.
+- Kupiec i inne wydatki Żaru — etap Z4.
+
+**Do oceny:** odczuwalność 4 wot, cena 30 Żaru, ikony, błysk i napisy, czy Kość „raz na piętro” to dobra miara.
+
+**Testy:** `tests/systems/Votives.test.ts` (odporności, łuska, ułamki trucizny, ratunek, znajdowanie, wypalanie, pula, Palenisko, zapis profilu, przedmiot startowy), poprawione `HideoutLayout.test.ts` (Palenisko jest stanowiskiem) i `itemEvolution.test.ts` (wota bez przemian). `npm run build` (2928 testów), `npm run smoke`. W przeglądarce: profil z dwoma znalezionymi Wotami → Piec wypala pierwsze (45 → 15 Żaru), drugie czeka („masz 15”), Palenisko przełącza start; Zejście startuje z Pancerzem, Wota w puli, trucizna 4×2 zabiera 4 HP, boss zostawia trzecie Wotum.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6171,7 +6198,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 
 **3a. Do zrobienia — Akt II** (`docs/AKT2.md`, gałąź `akt-2`, podgląd `/topdown/akt2/`)
 - **Z1 zrobione (krok Z1):** profil trwały, Popielnik, Zejście na odbiciach, Żar.
-- **Z3 Wota:** Piec wotów, pierwsze 8 wotów (przedmioty ochronne), wydawanie Żaru, przedmiot startowy.
+- **Z3 zrobione (krok Z3):** 4 Wota ochronne, Piec wotów, przedmiot startowy. Zostały 4 kolejne Wota (Jadeitowa maska, Obsydianowe zwierciadło, Skóra jaguara, Pióro kecala).
 - **Z4:** wybór 1 z 2 bram po bossie, kupiec między głębiami.
 - **Z5:** Zaćmienia 0–III, wspólna tablica Zejścia w workerze.
 - **Z6+:** próby Mictlanu jako własne biomy (po U4), finał z czerwonym odbiciem Czarnego Słońca.

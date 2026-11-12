@@ -82,6 +82,10 @@ export const AMBUSH_VARIANTS: AmbushVariantsConfig = {
       [ItemId.BaronPipe]: BossBoon.Vitality,
       [ItemId.WetMop]: BossBoon.Vitality,
       [ItemId.StorkFeather]: BossBoon.Vitality,
+      [ItemId.Carapace]: BossBoon.Vitality,
+      [ItemId.ShieldCore]: BossBoon.Vitality,
+      [ItemId.StoneScale]: BossBoon.Vitality,
+      [ItemId.GuideBone]: BossBoon.Vitality,
     },
     boons: {
       [BossBoon.Vitality]: { hpMultiplier: 1.3, damageMultiplier: 1, speedMultiplier: 1, label: '+30% życia' },

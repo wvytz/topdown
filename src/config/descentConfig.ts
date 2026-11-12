@@ -43,6 +43,8 @@ export const DESCENT_TEXT = {
   stairsPromptFinal: '[E] Dotknij Dna',
   embersHud: (secured: number, loose: number) => (loose > 0 ? `Żar: ${secured} (+${loose})` : `Żar: ${secured}`),
   embersSecured: (amount: number) => `Żar bezpieczny: ${amount}`,
+  /** Krok Z3: boss zostawił Wotum — trafia do Pieca wotów w Popielniku. */
+  votiveFound: (name: string) => `Wotum: ${name} — wypal je w Piecu wotów`,
   deathResult: (score: number, depth: number, floors: number, embers: number) => `${score} ZŁOTA · GŁĘBIA ${depth}/${floors} · ŻAR +${embers}`,
   victoryResult: (score: number, embers: number) => `DNO ZDOBYTE · ${score} ZŁOTA · ŻAR +${embers}`,
   deathPrompt: 'R — ZEJDŹ ZNOWU · C — ZMIEŃ BOHATERA · M — POPIELNIK',

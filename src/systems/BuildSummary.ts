@@ -29,6 +29,8 @@ export function summarizeBuild(
     const evolution = config.items[id];
     // Krok 170: relikwia bossa — jedna sztuka.
     if (item.kind === ItemKind.Relic) return { id, color: item.color, title: `◆ ${item.name} (relikwia)`, detail: item.effect, evolved: false };
+    // Krok Z3: wotum — opis już mówi, co dają kolejne kopie.
+    if (item.kind === ItemKind.Votive) return { id, color: item.color, title: `${item.name} ×${copies} (wotum)`, detail: item.effect, evolved: false };
     // Statystyka rośnie liczbą („+3 obrażeń za kopię”), efekt broni — siłą efektu.
     const base = item.kind === ItemKind.Effect ? (copies > 1 ? `${item.effect}, mocniej z każdą kopią` : item.effect) : `${item.effect} za kopię`;
     if (!evolution) {
