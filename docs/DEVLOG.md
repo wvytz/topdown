@@ -6161,6 +6161,8 @@ Pomiar `npm run perf` (piętro 7, kontener bez GPU, automat jakości — PC Wyso
 
 Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU), przed → po: PC praca p50 2,2 → 1,9 ms, telefon (CPU ×4) 7,3 → 7,9 ms — w szumie pomiaru; kafle to te same warstwy mapy, nowych obiektów nie ma. Kadry pozostałych biomów bez zmian. Smoke (3 bohaterów, piętra 1–2) bez błędów.
 
+**Ocena właściciela (12.11.2026)** `#ocena`: „wszystko wygląda smooooth”; mur wieży nie jest za jasny — pasuje do początku gry i łagodnego startu.
+
 **Do oceny (strona „Do oceny”):** czytelność w walce, częstość i kształt wyrw, jasność muru wieży, obwódka areny. Po akceptacji pilota te same zasady dostaną Grzybnia i Cmentarzysko (U4b), potem reszta biomów.
 
 ## Znane ograniczenia i backlog
