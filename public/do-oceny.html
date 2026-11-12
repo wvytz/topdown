@@ -58,6 +58,10 @@
 <script>
   // Pozycje: grupa, tytuł, kroki, co ocenić, linki [podpis, adres]. W adresie {hero} = wybrany bohater.
   const ITEMS = [
+    ['Akt II', 'Popielnik — kryjówka pod piecami', 'Z1', 'Układ komory i stanowisk (bramy, szyb, lustro, ściana imion, półka trofeów, piec), klimat, czytelność podpisów. Grafika stanowisk jest tymczasowa.', [['Popielnik', './?hub=1'], ['telefon', 'mobile.html?hub=1']]],
+    ['Akt II', 'Zejście: 6 pięter-odbić i Żar', 'Z1', 'Wejdź Bramą Zejścia. Czy 6 pięter to dobra długość, czy wrogowie +10% i czerwony mrok są odczuwalne, tempo Żaru (boss zabezpiecza, śmierć zabiera połowę luźnego), powrót do Popielnika po śmierci (M).', [['Popielnik', './?hub=1']]],
+    ['Akt II', 'Upadek po Wiedźmie', 'Z1', 'Pokonaj Wiedźmę we wspinaczce z menu i na ekranie zwycięstwa naciśnij M: scena upadku, Żar za spalone przedmioty, pozycja „POPIELNIK” w menu.', [['menu', './'], ['arena Wiedźmy (bez odblokowania)', './?hero={hero}&floor=7&boss=1']]],
+
     ['Wydajność', 'Czas klatki na twoim telefonie', 'U0', 'Otwórz na telefonie, wejdź do kilku pokojów z nawałą i zrób zrzut licznika w lewym dolnym rogu (FPS, p95, wrogów). To brakujący pomiar przed upgradem.', [['telefon, piętro 7', 'mobile.html?hero={hero}&floor=7&perf=1'], ['PC, piętro 7', './?hero={hero}&floor=7&perf=1']]],
     ['Wydajność', 'Jakość obrazu: Średnia na telefonie?', 'U1', 'Ten sam pomiar co wyżej, ale z poświatą pochodni (Średnia). Jeśli FPS trzyma się blisko Niskiej, telefon dostanie Średnią z automatu.', [['telefon, Średnia', 'mobile.html?hero={hero}&floor=4&perf=1&gfx=medium'], ['telefon, Niska', 'mobile.html?hero={hero}&floor=4&perf=1&gfx=low']]],
     ['Oprawa', 'Poziomy jakości i „Mniej błysków”', 'U1', 'Pauza → „Dźwięk i obraz”: przełącz Jakość (Niska ma wyglądać jak dawniej; Średnia — poświata pochodni; Wysoka — także ogień walki i więcej pyłków) i „Mniej błysków” (bez drżenia kamery i migotania).', [['Piekło, Wysoka', './?hero={hero}&floor=4&gfx=high'], ['Piekło, Niska', './?hero={hero}&floor=4&gfx=low']]],

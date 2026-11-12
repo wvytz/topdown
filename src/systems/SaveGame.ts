@@ -69,7 +69,7 @@ function parsePartner(value: unknown): CoopPartnerSnapshot | null {
 function parseRunSnapshot(value: unknown): RunSnapshot | null {
   if (!isRecord(value)) return null;
   const hero = parseHeroId(typeof value.hero === 'string' ? value.hero : null);
-  const { gold, items, hp, practice, mode, fromSave, startFloor } = value;
+  const { gold, items, hp, practice, mode, fromSave, startFloor, embers } = value;
   if (!hero || !isCount(gold) || !Array.isArray(items)) return null;
   if (!items.every((id): id is ItemId => typeof id === 'string' && ITEM_IDS.has(id))) return null;
   if (hp !== null && !(typeof hp === 'number' && Number.isFinite(hp) && hp > 0)) return null;
@@ -77,6 +77,7 @@ function parseRunSnapshot(value: unknown): RunSnapshot | null {
   if (fromSave !== undefined && typeof fromSave !== 'boolean') return null;
   if (mode !== undefined && !(typeof mode === 'string' && RUN_MODES.has(mode))) return null;
   if (startFloor !== undefined && !(isCount(startFloor) && startFloor >= 1)) return null;
+  if (embers !== undefined && !isCount(embers)) return null;
   return {
     hero,
     gold,
@@ -86,6 +87,7 @@ function parseRunSnapshot(value: unknown): RunSnapshot | null {
     ...(mode !== undefined && mode !== RunMode.Tower ? { mode: mode as RunMode } : {}),
     ...(fromSave ? { fromSave } : {}),
     ...(startFloor !== undefined ? { startFloor } : {}),
+    ...(embers !== undefined && embers > 0 ? { embers } : {}),
   };
 }
 

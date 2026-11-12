@@ -6,6 +6,7 @@ import type { HeroId } from '@/core/heroTypes';
 import { HIGHSCORE_CONFIG } from '@/config/lootConfig';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import { COOP_BOARD_HEADERS } from '@/config/coopConfig';
+import { DESCENT_TEXT } from '@/config/descentConfig';
 import { SAVE_TEXT } from '@/config/saveConfig';
 import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
 import { GLYPH_WIDTH, pixelText } from '@/core/pixelArt';
@@ -18,6 +19,8 @@ const VIGNETTE_TEXTURE = 'death-vignette';
 const BAND_TEXTURE = 'death-band';
 const GLOW_TEXTURE = 'death-glow';
 const TOWER_PROMPT = 'R — NOWA WSPINACZKA · C — ZMIANA BOHATERA · M — MENU';
+/** Krok Z1: wieża zdobyta przy odblokowanym Popielniku — wyjście prowadzi do kryjówki. */
+const TOWER_PROMPT_HIDEOUT = 'M — ZEJDŹ DO POPIELNIKA · R — NOWA WSPINACZKA · C — ZMIANA BOHATERA';
 /** Wiersze tablicy: podium + separator + wiersz bieżącego runu. */
 const ROWS = HIGHSCORE_CONFIG.podiumSize + 2;
 
@@ -175,11 +178,23 @@ export class DeathScreen {
     // Na tablicy aren (krok 91a) o miejscu decyduje arena, więc idzie pierwsza.
     const result = death.arenas
       ? `ARENA ${death.floor} · ${death.score} ZŁOTA`
+      : death.descent
+        ? death.victory
+          ? DESCENT_TEXT.victoryResult(death.score, death.descent.embers)
+          : DESCENT_TEXT.deathResult(death.score, death.descent.depth, death.descent.floors, death.descent.embers)
       : death.victory
         ? VICTORY_SCREEN.result(death.score)
         : `${death.score} ZŁOTA · PIĘTRO ${death.floor}`;
     this.score.setText(`${result}${place}`);
-    const prompt = death.arenas ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT;
+    const prompt = death.descent
+      ? DESCENT_TEXT.deathPrompt
+      : death.arenas
+        ? BOSS_RUSH_TEXT.deathPrompt
+        : death.source === 'floorSelect'
+          ? FLOOR_SELECT_TEXT.deathPrompt
+          : death.toHideout
+            ? TOWER_PROMPT_HIDEOUT
+            : TOWER_PROMPT;
     // Wersja mobilna (krok 96): zamiast klawiszy są przyciski dotykowe w tym samym miejscu.
     this.prompt.setText(currentPlatform() === 'mobile' ? '' : prompt);
     if (death.nameEntry !== null) {
@@ -218,12 +233,13 @@ export class DeathScreen {
   private headerFor(death: DeathSummary): string {
     const source = death.source;
     if (death.arenas && (source === 'local' || source === 'pending' || source === 'shared')) return BOSS_RUSH_TEXT.boardHeaders[source];
+    if (death.descent && (source === 'local' || source === 'pending' || source === 'shared')) return DESCENT_TEXT.boardHeaders[source];
     if (death.coop && (source === 'local' || source === 'pending' || source === 'shared')) return COOP_BOARD_HEADERS[source];
     return HEADERS[source];
   }
 
   private line(row: RankedEntry): { text: string; current: boolean; hero: HeroId | null } {
-    return { text: formatScoreRow(row, this.shownFor?.arenas === true), current: row.isCurrent, hero: knownHero(row.entry.hero) };
+    return { text: formatScoreRow(row, this.shownFor?.arenas === true, this.shownFor?.descent !== undefined), current: row.isCurrent, hero: knownHero(row.entry.hero) };
   }
 
   private reset(): void {

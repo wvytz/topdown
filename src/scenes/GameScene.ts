@@ -149,6 +149,12 @@ import type { PlayerLoadout } from '@/systems/PlayerLoadout';
 import { NEW_RUN, RunState, newRun } from '@/systems/RunState';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { createBoardHighscores } from '@/persistence/highscoreBoards';
+import { DESCENT_CONFIG, DESCENT_ROUTE_SALT, DESCENT_TEXT } from '@/config/descentConfig';
+import { META_CONFIG } from '@/config/metaConfig';
+import { MetaStorage } from '@/persistence/MetaStorage';
+import { EmberPurse, descentDepth, descentRoute, nextDescentFloor, withUnderworldRule } from '@/systems/Descent';
+import { addTrophy, bankDescent, unlockHideout } from '@/systems/MetaProgress';
+import type { HideoutSceneData } from '@/core/types';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
 import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
@@ -379,6 +385,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private readonly arenaHighscores = createBoardHighscores('arenas');
   /** Co-op (etap C7): osobna tablica drużyn. */
   private readonly coopHighscores = createBoardHighscores('coop');
+  /** Zejście (Akt II, krok Z1): własna tablica — na razie tylko lokalna. */
+  private readonly descentHighscores = createBoardHighscores('descent');
+  /** Trwały profil (krok Z1): Żar, odblokowanie Popielnika, trofea. */
+  private readonly meta = MetaStorage.browser();
+  /** Zejście: trasa odbić z seeda runu; null w innych trybach. */
+  private route: readonly number[] | null = null;
+  /** Zejście: sakiewka Żaru (bezpieczny z poprzednich pięter + zebrany na tym). */
+  private embers: EmberPurse | null = null;
+  /** Żar oddany do Popielnika na koniec Zejścia (do ekranu podsumowania). */
+  private embersBanked = 0;
+  /** Po ekranie końca runu wyjście prowadzi do Popielnika; liczba = Żar z pierwszego lądowania do pokazania. */
+  private hideoutExit: { readonly arrivalEmbers?: number } | null = null;
   private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
   private runSeed = 0;
   /** Zapis gry (krok 91): autozapis przy wejściu na piętro i ręczne sloty z pauzy. */
@@ -426,6 +444,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.shrine = null;
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
+    const descent = this.run.mode === RunMode.Descent;
+    this.route = descent ? descentRoute(data.runSeed, DESCENT_CONFIG, DESCENT_ROUTE_SALT) : null;
+    this.embers = descent ? new EmberPurse(data.run.embers ?? 0) : null;
+    this.embersBanked = 0;
+    this.hideoutExit = null;
     this.startHp = data.run.hp;
     this.toast = null;
     this.itemNotice = null;
@@ -523,7 +546,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
           FLOOR_MODIFIER_CONFIG,
           (floor, modifier) => biomeForFloor(floor).fog === null || !limitsVision(modifier),
         );
-    this.floorEffects = floorEffectsOf(this.floorModifier);
+    // Zejście (krok Z1): reguła zaświatów na każdym piętrze, razem z modyfikatorem piętra.
+    this.floorEffects = this.route ? withUnderworldRule(floorEffectsOf(this.floorModifier), DESCENT_CONFIG.rule) : floorEffectsOf(this.floorModifier);
 
     this.physics.world.setBounds(0, 0, this.dungeonView.widthPx, this.dungeonView.heightPx);
     // Krok 114: fizyka krokiem klatki obrazu — bez szarpania na monitorach 120/144 Hz.
@@ -572,6 +596,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
     if (this.bossRush) {
       this.showToast(BOSS_RUSH_TEXT.startToast);
+    } else if (this.route) {
+      const modifier = this.floorModifier ? ` · ${this.floorModifier.name}: ${this.floorModifier.description}` : '';
+      this.showToast(this.depth === 1 ? DESCENT_TEXT.startToast : `${DESCENT_TEXT.rule}${modifier}`, FLOOR_MODIFIER_TOAST_MS);
     } else if (this.floorModifier) {
       this.showToast(`${this.floorModifier.name}: ${this.floorModifier.description}`, FLOOR_MODIFIER_TOAST_MS);
     } else if (this.run.practice) {
@@ -769,7 +796,11 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const ready = Boolean(this.player?.active);
     return {
       floor: this.floorNumber,
-      arenaLabel: this.bossRush ? arenaLabel(this.floorNumber, this.bossFight.name, TOWER_CONFIG) : null,
+      arenaLabel: this.bossRush
+        ? arenaLabel(this.floorNumber, this.bossFight.name, TOWER_CONFIG)
+        : this.route
+          ? DESCENT_TEXT.hudLabel(this.depth, this.route.length, this.biome?.name ?? '')
+          : null,
       floorModifier: this.floorModifier && { name: this.floorModifier.name, description: this.floorModifier.description },
       hp: ready ? this.player.health.value : 0,
       maxHp: ready ? this.player.health.max : this.hero.stats.maxHp,
@@ -788,6 +819,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       boss: ready ? this.bossFight.getStatus() : null,
       bossPointers: ready ? this.bossPointers() : [],
       gold: this.run.gold,
+      embers: this.embers ? DESCENT_TEXT.embersHud(this.embers.secured, this.embers.loose) : null,
+      descent: this.route !== null,
       practice: this.run.practice,
       bossRush: this.bossRush,
       items: hudItems(this.run.itemCounts()),
@@ -940,6 +973,25 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return sorceryOf(this.hero.kit)?.orbs.maxOrbs ?? this.hero.combat.ranged.maxCharges;
   }
 
+  /** Głębia bieżącego piętra na trasie Zejścia (1..n); 0 poza Zejściem. */
+  private get depth(): number {
+    return this.route ? descentDepth(this.route, this.floorNumber) : 0;
+  }
+
+  /**
+   * Krok Z1: pokonany boss zostawia trofeum na półce Popielnika (gdy kryjówka jest już odblokowana), a w Zejściu
+   * zabezpiecza Żar zebrany na piętrze. Nie przy nagraniu, runie testowym ani w arenach.
+   */
+  private onBossDown(): void {
+    if (this.replay || this.run.practice || this.bossRush) return;
+    this.meta.update((profile) => addTrophy(profile, this.floorNumber));
+    if (!this.embers) return;
+    this.embers.add(DESCENT_CONFIG.embers.boss);
+    const secured = this.embers.secure();
+    diag.note('embers-secured', { floor: this.floorNumber, depth: this.depth, secured });
+    this.showToast(DESCENT_TEXT.embersSecured(secured));
+  }
+
   /** Wywoływane po pokonaniu bossa — zamyka pętlę piętra. */
   private unlockStairs(): void {
     if (this.stairsUnlocked) return;
@@ -1030,6 +1082,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         // Upiory zasadzki rozwiewają się bez łupu — nagrodą jest przynęta.
         this.player.addUltimateKill(this.time.now);
         if (this.ambushGhosts.has(enemy)) return;
+        this.embers?.add(isElite(enemy.definition) ? DESCENT_CONFIG.embers.elite : DESCENT_CONFIG.embers.enemy);
         this.devourerHeal();
         const table = applyFloorToEnemyLoot(ENEMY_LOOT[enemy.definition.type], this.floorEffects);
         this.dropLoot({ x: enemy.x, y: enemy.y }, isElite(enemy.definition) ? eliteLoot(table, ELITE_CONFIG) : table);
@@ -1188,6 +1241,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onDefeated: (position) => {
         this.dropLoot(position, BOSS_LOOT);
         this.dropStolenReward(position);
+        this.onBossDown();
         // Areny bossów: nagrodę i teleport prowadzi `updateBossRush` (najpierw arena musi być pusta).
         if (this.bossRush) return;
         this.unlockStairs();
@@ -1658,6 +1712,15 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return ok;
   }
 
+  /** Krok Z1: z ekranu końca runu do Popielnika. */
+  private goToHideout(arrivalEmbers?: number): void {
+    diag.note('to-hideout', { floor: this.floorNumber, mode: this.run.mode });
+    this.scene.stop(SceneKey.Pause);
+    this.scene.stop(SceneKey.Hud);
+    const data: HideoutSceneData = { hero: this.run.hero, ...(arrivalEmbers !== undefined && { arrivalEmbers }) };
+    this.scene.start(SceneKey.Hideout, data);
+  }
+
   /** Wyjście do menu głównego z pauzy albo ekranu śmierci; autozapis zostaje (Kontynuuj), chyba że trwa walka z bossem (krok 121). */
   private quitToMenu(): void {
     if (this.gamePaused) {
@@ -1833,11 +1896,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.victory = victory;
     // Śmierć kończy run — „Kontynuuj” znika (ręczne sloty zostają).
     if (this.checkpoint) this.saves.remove('auto');
+    this.settleMeta(victory);
 
     // Złoto w chwili śmierci to wynik runu.
     const base: ScoreEntry = {
       score: this.run.gold,
-      floor: this.floorNumber,
+      // Tablica Zejścia: „piętro” to osiągnięta głębia.
+      floor: this.route ? this.depth : this.floorNumber,
       timestamp: Date.now(),
       hero: this.run.hero,
       ...(this.coop && { partner: this.coop.partner.hero }),
@@ -1852,7 +1917,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
           ? 'floorSelect'
           : null;
     if (unranked) {
-      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
+      this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: unranked, nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag(), ...this.descentFlag() };
       this.awaitNewRun();
       return;
     }
@@ -1865,7 +1930,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Pierwsza śmierć bez imienia: panel czeka na wpisanie imienia (Enter zapisuje, Esc pomija).
     const maxLength = HIGHSCORE_CONFIG.nameMaxLength;
     let typed = '';
-    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag(), ...this.victoryFlag() };
+    this.death = { score: base.score, floor: base.floor, rank: 0, board: { top: [], current: null }, source: 'local', nameEntry: '', ...this.arenaFlag(), ...this.victoryFlag(), ...this.descentFlag() };
     const finish = (raw: string | null): void => {
       this.input.keyboard?.off('keydown', onKey);
       this.deathPad = null;
@@ -1898,16 +1963,51 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return this.victory ? { victory: true } : {};
   }
 
-  /** Znacznik tablicy aren na panelu śmierci (krok 91a). */
+  /** Znacznik tablicy aren na panelu śmierci (krok 91a). Zejście ma jedną tablicę solo i we dwoje (do etapu Z5). */
   private arenaFlag(): { arenas?: true; coop?: true } {
-    return this.bossRush ? { arenas: true } : this.coop ? { coop: true } : {};
+    return this.bossRush ? { arenas: true } : this.coop && !this.route ? { coop: true } : {};
+  }
+
+  /** Krok Z1: dopiski ekranu końca runu — podsumowanie Zejścia i wyjście do Popielnika. */
+  private descentFlag(): Pick<DeathSummary, 'descent' | 'toHideout'> {
+    return {
+      ...(this.route && { descent: { depth: this.depth, floors: this.route.length, embers: this.embersBanked } }),
+      ...(this.hideoutExit && { toHideout: true }),
+    };
+  }
+
+  /**
+   * Krok Z1: rozliczenie runu z trwałym profilem. Zejście oddaje Żar (po śmierci przepada połowa zebranego od
+   * ostatniego bossa) i zawsze wraca do Popielnika; pierwsza zdobyta wieża odblokowuje Popielnik, a przedmioty
+   * z runu spalają się na pierwszy Żar. Nagranie i run testowy profilu nie ruszają; run ze slotu nie oddaje Żaru
+   * (inaczej zapis dałby się „farmić”).
+   */
+  private settleMeta(victory: boolean): void {
+    if (this.route) this.hideoutExit = {};
+    if (this.replay || this.run.practice) return;
+    if (this.route && this.embers) {
+      if (this.run.fromSave) return;
+      this.embersBanked = this.embers.payout(victory, DESCENT_CONFIG.deathKeepRatio) + (victory ? DESCENT_CONFIG.embers.victory : 0);
+      const outcome = { embers: this.embersBanked, depth: this.depth, victory };
+      this.meta.update((profile) => bankDescent(profile, outcome));
+      diag.note('descent-banked', outcome);
+      return;
+    }
+    if (!victory || this.bossRush) return;
+    const before = this.meta.load();
+    const { profile, embers } = unlockHideout(before, this.run.items.length + this.partnerItems.length, META_CONFIG);
+    if (profile !== before) {
+      this.meta.save(profile);
+      diag.note('hideout-unlocked', { embers });
+    }
+    this.hideoutExit = embers > 0 ? { arrivalEmbers: embers } : {};
   }
 
   /** Zapis wyniku (lokalnie od razu, wspólnie w tle) i czekanie na R. Areny bossów — na własnej tablicy (krok 91a). */
   private recordDeath(entry: ScoreEntry): void {
-    const highscores = this.bossRush ? this.arenaHighscores : this.coop ? this.coopHighscores : this.highscores;
+    const highscores = this.bossRush ? this.arenaHighscores : this.route ? this.descentHighscores : this.coop ? this.coopHighscores : this.highscores;
     const { rank, board } = highscores.record(entry);
-    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag() };
+    const death: DeathSummary = { score: entry.score, floor: entry.floor, rank, board, source: 'local', nameEntry: null, ...this.arenaFlag(), ...this.victoryFlag(), ...this.descentFlag() };
     this.death = death;
     if (highscores.hasRemote) {
       this.death = { ...death, source: 'pending' };
@@ -1934,13 +2034,14 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const restart = once(() => {
       // Ten sam bohater i tryb co w zakończonym runie.
       // Wybór piętra (krok 91): R zaczyna od tego samego piętra startowego.
-      const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
-      // Co-op: nowy run z tym samym partnerem (bez przedmiotów); run testowy do czasu tablicy co-op (etap C7).
+      // Zejście (krok Z1): nowa trasa z nowego seeda, od pierwszego odbicia.
+      const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : this.route ? DESCENT_CONFIG.firstFloor : 1;
+      // Co-op: nowy run z tym samym partnerem (bez przedmiotów). Zejście we dwoje liczy się normalnie (Żar, tablica).
       const coop = this.coop ? freshCoop(this.coop.partner.hero, this.coop.devices) : null;
       const fresh: FloorSceneData = {
         runSeed: freshSeed,
         floor,
-        run: newRun(this.run.hero, coop !== null, this.run.mode, floor),
+        run: newRun(this.run.hero, this.route ? this.run.practice : coop !== null, this.run.mode, floor),
         ...(coop && { coop }),
       };
       // Run testowy z `?floor=` (krok 148): R wraca na to samo piętro / arenę z nowym zestawem.
@@ -1948,20 +2049,21 @@ export class GameScene extends Phaser.Scene implements HudSource {
     });
     // C — zmiana bohatera (krok 38): ekran wyboru z zaznaczonym bohaterem zakończonego runu; HUD wróci z grą.
     const changeHero = once(() => {
-      const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : 1;
+      const floor = this.run.mode === RunMode.FloorSelect ? (this.run.startFloor ?? 1) : this.route ? DESCENT_CONFIG.firstFloor : 1;
+      const fromHideout = this.route ? { fromHideout: true } : {};
       this.scene.stop(SceneKey.Hud);
       // Co-op (etap C5): zmiana bohaterów na ekranie co-opu — obaj dołączają i wybierają od nowa.
       // Bot-partner (krok 149): zwykły ekran wyboru — bot wraca sam z adresu.
       if (this.coop && !this.botPartner) {
-        const coop: CoopSelectData = { runSeed: freshSeed, practice: this.run.practice };
+        const coop: CoopSelectData = { runSeed: freshSeed, practice: this.run.practice, ...(this.route && { mode: RunMode.Descent }), ...fromHideout };
         this.scene.start(SceneKey.CoopSelect, coop);
         return;
       }
-      const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode };
+      const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode, ...fromHideout };
       this.scene.start(SceneKey.Select, select);
     });
-    // M — menu główne (krok 91).
-    const toMenu = once(() => this.quitToMenu());
+    // M — menu główne (krok 91); po Zejściu i po zdobyciu wieży z odblokowanym Popielnikiem — kryjówka (krok Z1).
+    const toMenu = once(() => (this.hideoutExit ? this.goToHideout(this.hideoutExit.arrivalEmbers) : this.quitToMenu()));
     this.input.keyboard?.once('keydown-R', restart);
     this.input.keyboard?.once('keydown-C', changeHero);
     this.input.keyboard?.once('keydown-M', toMenu);
@@ -2018,7 +2120,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const climber = this.party.living.find((hero) => isStairsTile(this.dungeon, DungeonView.worldToTile(hero.x, hero.y)));
     this.onStairs = this.stairsUnlocked && climber !== undefined;
     const waiting = this.party.members.some((hero) => hero.isDead);
-    this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG) ? STAIRS_PROMPT_FINAL : STAIRS_PROMPT).setVisible(this.onStairs);
+    const last = this.route ? nextDescentFloor(this.route, this.floorNumber) === null : runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG);
+    const prompt = this.route ? (last ? DESCENT_TEXT.stairsPromptFinal : DESCENT_TEXT.stairsPrompt) : last ? STAIRS_PROMPT_FINAL : STAIRS_PROMPT;
+    this.stairsPrompt?.setText(waiting ? STAIRS_PROMPT_REVIVE : prompt).setVisible(this.onStairs);
     if (this.onStairs && climber && !waiting && interactPressed(climber)) {
       this.stairsPrompt?.setVisible(false);
       this.goToNextFloor();
@@ -2044,11 +2148,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private goToNextFloor(): void {
     // Krok 169: po bossie ostatniego piętra kręgu schody kończą run zwycięstwem.
-    if (runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG)) {
+    // Zejście (krok Z1): następne odbicie z trasy; po ostatnim — Dno zdobyte.
+    const nextFloor = this.route ? nextDescentFloor(this.route, this.floorNumber) : this.floorNumber + 1;
+    if (nextFloor === null || (!this.route && runEndsAfterFloor(this.floorNumber, this.bossRush, TOWER_CONFIG))) {
       this.finishRunVictory();
       return;
     }
-    diag.note('stairs-up', { from: this.floorNumber });
+    diag.note('stairs-up', { from: this.floorNumber, to: nextFloor });
     sound.play(SoundCue.Stairs);
     this.isTransitioning = true;
     this.player.setVelocity(0, 0);
@@ -2056,8 +2162,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       const next: FloorSceneData = {
         runSeed: this.runSeed,
-        floor: this.floorNumber + 1,
-        run: this.run.snapshot(this.player.health.value),
+        floor: nextFloor,
+        run: { ...this.run.snapshot(this.player.health.value), ...(this.embers && this.embers.secured > 0 && { embers: this.embers.secured }) },
         ...this.coopForNextFloor(),
       };
       this.scene.restart(next);
@@ -2134,6 +2240,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       flares: () => this.effects?.fire.activeLights() ?? [],
       hideable: () => this.hideableEnemies(),
       ambientRevealsEnemies: AMBIENT_CONFIG.revealsEnemies,
+      ...(this.route && { darknessColor: DESCENT_CONFIG.darknessColor }),
     });
     this.lighting = this.floorLighting.overlay;
   }

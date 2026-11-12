@@ -226,7 +226,11 @@ export class HudScene extends Phaser.Scene {
       this.hintText.setText(hud.boss ? BOSS_RUSH_TEXT.fightHint : `Wrogowie: ${hud.enemiesAlive} · ${BOSS_RUSH_TEXT.arenaHint}`).setColor('#c8a8ff');
     } else if (hud.stairsUnlocked) {
       this.hintText
-        .setText(hud.onStairs ? `${pressE()}, aby wspiąć się wyżej` : `Schody otwarte — stań na nich i ${pressE().toLowerCase()}, aby wspiąć się wyżej`)
+        .setText(
+          hud.onStairs
+            ? `${pressE()}, aby ${hud.descent ? 'zejść głębiej' : 'wspiąć się wyżej'}`
+            : `Schody otwarte — stań na nich i ${pressE().toLowerCase()}, aby ${hud.descent ? 'zejść głębiej' : 'wspiąć się wyżej'}`,
+        )
         .setColor('#e0b84a');
     } else if (hud.boss) {
       this.hintText.setText('Pokonaj bossa, aby otworzyć schody · unikaj stref ataku').setColor('#ffb0a0');
@@ -239,7 +243,7 @@ export class HudScene extends Phaser.Scene {
         ? `Złoto: ${hud.gold} ${BOSS_RUSH_TEXT.goldSuffix}`
         : hud.practice
           ? `Złoto: ${hud.gold} (run testowy — bez wyniku)`
-          : `Złoto (wynik): ${hud.gold}`,
+          : `Złoto (wynik): ${hud.gold}${hud.embers ? ` · ${hud.embers}` : ''}`,
     );
     this.updateItemSlots(hud.items);
     this.updateItemNotice(hud.itemNotice);

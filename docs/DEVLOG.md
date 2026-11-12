@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#upgrade`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie`, `#zaduch` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#upgrade`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie`, `#zaduch`, `#akt2`, `#popielnik`, `#zejscie` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -6118,6 +6118,32 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Testy:** `tests/dungeon/stairs.test.ts` (blok 3×3, narożnik runu z pierwszeństwem i odrzuceniem przy wejściu, stały narożnik dla seeda), `FloorDressing.test.ts` (schody poza testowaną salą). `npm run build`, `npm run smoke`, kadry pięter 1–7 — `/mnt/project-files/screens/krok187-klatka-schodowa/`.
 
+## Krok Z1 — Akt II: Popielnik i pierwsze Zejście `#decyzja` `#akt2` `#popielnik` `#zejscie` `#lore`
+
+**Decyzja właściciela (11.11.2026):** propozycja z `docs/AKT2.md` przyjęta w całości (9 decyzji z §10: „popielnik jest ideolo”, przy śmierci przepada **połowa** luźnego Żaru, 6 pięter „później doprecyzujemy”) i zgoda na propozycje, które wynikną w trakcie. Praca na gałęzi **`akt-2`**, podgląd `/topdown/akt2/`, kroki „Krok Z<n>”. Ten krok łączy etapy Z0–Z2 z §9 w pierwszą grywalną pętlę: wieża → Popielnik → Zejście → Popielnik.
+
+**Co powstało**
+- **Profil trwały** (`systems/MetaProgress.ts`, `persistence/MetaStorage.ts`, `config/metaConfig.ts`; klucz `tower-crawler.meta.v1`): odblokowanie Popielnika, Żar, liczba Zejść i zwycięstw, najgłębsza głębia, trofea bossów, rangi (Śmiałek → Wybraniec). Zepsuty albo obcy zapis daje pusty profil.
+- **Odblokowanie:** zwycięstwo we wspinaczce (solo i co-op; nie run testowy z adresu, nie powtórka) otwiera Popielnik. Przedmioty z runu „spłonęły w locie” i dają Żar na dobry początek (3 za przedmiot, najmniej 15). Ekran zwycięstwa dostaje „M — ZEJDŹ DO POPIELNIKA”; pierwsze wejście to krótka scena upadku (3 plansze, upadek, wstrząs, chmura popiołu).
+- **Popielnik** (`scenes/HideoutScene.ts`, `dungeon/HideoutLayout.ts`, `config/hideoutConfig.ts`): owalna komora 31×23 na kaflach Piekła, bohater chodzi bez ataków. Stanowiska (E / pad / dotyk): **Brama Zejścia** z czarnym dogiem, **Brama we dwoje** (Zejście w co-opie), **Szyb w górę** (wspinaczka), **Popielne lustro** (areny bossów), **Ściana imion** (statystyki Zejść i podium lokalnej tablicy), **Półka trofeów** (liczba pokonanych bossów), **Piec wotów** (zimny, zapowiedź etapu Z3) i **Palenisko** na środku (na razie tylko światło). Żar i ranga są w nagłówku. W menu nowa pierwsza pozycja „POPIELNIK” (po odblokowaniu); Esc w Popielniku wraca do menu.
+- **Zejście** (`RunMode.Descent`, `systems/Descent.ts`, `config/descentConfig.ts`): 6 pięter-„odbić” wieży. Trasa z seeda runu: zawsze ruiny na początku i Bociani Ogród na Dnie, a między nimi 4 z 5 pozostałych biomów w kolejności wieży, więc każde Zejście pomija inny biom. Numer piętra to piętro wieży, więc skalowanie wrogów zostaje z Aktu I. **Reguła zaświatów:** wrogowie o 10% szybsi i mocniejsi, mrok ma czerwony odcień (`FloorLighting.darknessColor`). HUD: „Zejście 2/6 · odbicie: Grzybnia”, schody „zejdź głębiej”.
+- **Żar:** 1 za wroga, 4 za elitę, 25 za bossa, 40 za Dno. Boss **zabezpiecza** zebrany Żar; śmierć zabiera połowę luźnego. HUD pokazuje „Żar: 34 (+10)”. Wynik runu to dalej złoto; Zejście ma własną, na razie tylko lokalną tablicę (głębia w wierszu), bo podgląd nie pisze do workera.
+- **Powrót:** śmierć i zwycięstwo w Zejściu prowadzą do Popielnika (M), R schodzi znowu, C zmienia bohatera. Autozapis „Kontynuuj” działa, ale run wczytany z zapisu nie oddaje Żaru (jak z tablicą wyników).
+- `?hub=1` otwiera Popielnik od razu i na stałe (skrót dla testera, bez sceny upadku).
+
+**Decyzje w trakcie (na mocy zgody właściciela)**
+- „Odbicia” zamiast nowych biomów: próby Mictlanu wejdą jako biomy w Z6+, pętla ma działać już teraz.
+- Popielnik tymczasowo na kaflach Piekła, stanowiska rysowane figurami w kodzie; własny arkusz z generatora w `tools/` to osobny krok.
+- Trofea zbiera każdy run po odblokowaniu Popielnika (wieża i Zejście), nie areny.
+- Co-op w Zejściu dostępny od razu osobną bramą; telefon ma tylko bramę solo (co-op nie ma wersji mobilnej).
+- Bez zmian w Akcie I: trudność, łupy i przedmioty te same; nowych rodzajów przedmiotów nie ma (Wota to Z3).
+
+**Odłożone:** Wota i Piec wotów (Z3), wybór 1 z 2 bram po bossie i kupiec (Z4), Zaćmienia i wspólna tablica Zejścia (Z5), przedmiot startowy, wydawanie Żaru (dziś tylko się zbiera), dźwięki stanowisk, własna grafika Popielnika.
+
+**Do oceny:** układ i klimat Popielnika; czy 6 pięter to dobra długość; tempo Żaru (ok. 60–90 za pełne Zejście); czy reguła +10% jest odczuwalna; czerwony mrok; teksty sceny upadku.
+
+**Testy:** `tests/systems/Descent.test.ts` (trasa z seeda, głębia, następne piętro, reguła, sakiewka Żaru), `tests/systems/MetaProgress.test.ts` (parsowanie, odblokowanie, bankowanie, trofea, rangi), `tests/dungeon/HideoutLayout.test.ts` (komora, zasięg stanowisk), `deathScreen.test.ts` (wiersz z głębią), `architecture.test.ts` (`HideoutLayout` na liście czystych plików). `npm run build` (2906 testów), `npm run smoke`. W przeglądarce: `?hub=1` → brama → Zejście 1/6 → boss (Żar 34) → głębia 2 → śmierć (Żar +39, połowa luźnych 10) → Popielnik; zwycięstwo na Dnie (+85, ranga, trofeum); zwycięstwo we wspinaczce → scena upadku → +15 Żaru → „POPIELNIK” w menu. Kadry: `/mnt/project-files/screens/krokZ1-popielnik/`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6142,6 +6168,14 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
 - **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
+
+**3a. Do zrobienia — Akt II** (`docs/AKT2.md`, gałąź `akt-2`, podgląd `/topdown/akt2/`)
+- **Z1 zrobione (krok Z1):** profil trwały, Popielnik, Zejście na odbiciach, Żar.
+- **Z3 Wota:** Piec wotów, pierwsze 8 wotów (przedmioty ochronne), wydawanie Żaru, przedmiot startowy.
+- **Z4:** wybór 1 z 2 bram po bossie, kupiec między głębiami.
+- **Z5:** Zaćmienia 0–III, wspólna tablica Zejścia w workerze.
+- **Z6+:** próby Mictlanu jako własne biomy (po U4), finał z czerwonym odbiciem Czarnego Słońca.
+- Oprawa: własny arkusz kafli i stanowisk Popielnika z generatora, dźwięki stanowisk; Zejście w `npm run smoke`.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - Kolidujące rekwizyty (zmieniają linię wzroku Kiterów).

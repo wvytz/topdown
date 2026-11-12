@@ -322,6 +322,13 @@ export const HIGHSCORE_BOARDS = {
     seenKey: 'tower-crawler.coop-highscores.seen.v1',
     path: '/coop-scores',
   },
+  /** Zejście (Akt II, krok Z1): własna tablica; do czasu trasy w workerze (etap Z5) tylko lokalna (`path: null`). */
+  descent: {
+    storageKey: 'tower-crawler.descent-highscores.v1',
+    outboxKey: 'tower-crawler.descent-highscores.outbox.v1',
+    seenKey: 'tower-crawler.descent-highscores.seen.v1',
+    path: null,
+  },
 } as const;
 
 export type HighscoreBoardId = keyof typeof HIGHSCORE_BOARDS;

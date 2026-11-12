@@ -60,6 +60,7 @@ export const MENU_LAYOUT = {
 
 /** Nazwy pozycji menu. */
 export const MENU_LABELS: Readonly<Record<MenuEntry, string>> = {
+  [MenuEntry.Hideout]: 'POPIELNIK',
   [MenuEntry.Continue]: 'KONTYNUUJ',
   [MenuEntry.NewTower]: 'NOWA WSPINACZKA',
   [MenuEntry.Coop]: 'CO-OP · 2 GRACZY',
@@ -113,6 +114,7 @@ export const MENU_SCORES = {
     tower: { local: 'WSPINACZKA', pending: 'WSPINACZKA · ŁĄCZENIE…', shared: 'WSPINACZKA' },
     arenas: { local: 'ARENY BOSSÓW', pending: 'ARENY BOSSÓW · ŁĄCZENIE…', shared: 'ARENY BOSSÓW' },
     coop: { local: 'CO-OP', pending: 'CO-OP · ŁĄCZENIE…', shared: 'CO-OP' },
+    descent: { local: 'ZEJŚCIE', pending: 'ZEJŚCIE', shared: 'ZEJŚCIE' },
   },
   text: {
     empty: '  brak wyników',

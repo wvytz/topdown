@@ -6,4 +6,6 @@ export enum RunMode {
   BossRush = 'boss-rush',
   /** Wybór piętra (krok 91): zwykła wspinaczka od piętra, którego bossa gracz już pokonał. */
   FloorSelect = 'floor-select',
+  /** Zejście (Akt II, krok Z1): run z Popielnika w dół przez odbicia pięter wieży; trasa z seeda runu. */
+  Descent = 'descent',
 }

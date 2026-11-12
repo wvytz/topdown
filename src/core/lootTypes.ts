@@ -167,6 +167,8 @@ export interface RunSnapshot {
   readonly fromSave?: boolean;
   /** Wybór piętra (krok 91): piętro startowe — R po śmierci zaczyna od niego. */
   readonly startFloor?: number;
+  /** Zejście (krok Z1): Żar zabezpieczony na poprzednich piętrach runu. */
+  readonly embers?: number;
 }
 
 /** Krok 150: opis przemiany przedmiotu na kartach i w HUD. */

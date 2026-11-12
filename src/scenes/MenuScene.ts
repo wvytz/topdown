@@ -13,7 +13,11 @@ import { SAVE_CONFIG, SAVE_TEXT } from '@/config/saveConfig';
 import { SaveStorage } from '@/persistence/SaveStorage';
 import type { SaveSlot } from '@/persistence/SaveStorage';
 import { diag } from '@/diagnostics/DiagnosticsHub';
-import { MENU_ORDER, MenuEntry, initialEntry, isEntryEnabled, moveCursor } from '@/systems/mainMenu';
+import { MenuEntry, initialEntry, isEntryEnabled, menuOrder, moveCursor } from '@/systems/mainMenu';
+import { HIDEOUT_TEXT } from '@/config/hideoutConfig';
+import { META_CONFIG } from '@/config/metaConfig';
+import { MetaStorage } from '@/persistence/MetaStorage';
+import { metaRank } from '@/systems/MetaProgress';
 import type { MenuAvailability } from '@/systems/mainMenu';
 import { loadFromRecord, saveSummary } from '@/systems/SaveGame';
 import { BossProgress } from '@/persistence/BossProgress';
@@ -56,6 +60,9 @@ export class MenuScene extends Phaser.Scene {
   private startData!: FloorSceneData;
   private readonly saves = new SaveStorage(SaveStorage.browserStorage());
   private readonly bossProgress = new BossProgress(HighscoreStorage.browserStorage());
+  /** Trwały profil (krok Z1): po pierwszej Wiedźmie menu dostaje pozycję „Popielnik”. */
+  private readonly meta = MetaStorage.browser();
+  private order: readonly MenuEntry[] = [];
   /** Wybór piętra: zaznaczony wiersz (0 = piętro, 1 = wróć) i wybrane piętro. */
   private floorCursor = 0;
   private startFloor = 1;
@@ -83,17 +90,20 @@ export class MenuScene extends Phaser.Scene {
     this.rows = [];
     this.pendingDelete = null;
     this.leaving = false;
+    this.order = menuOrder(this.availability());
     const preferred = data.start.run.mode === RunMode.BossRush ? MenuEntry.BossRush : null;
-    this.cursor = initialEntry(MENU_ORDER, this.availability(), preferred);
+    this.cursor = initialEntry(this.order, this.availability(), preferred);
   }
 
   create(): void {
     const style: Phaser.Types.GameObjects.Text.TextStyle = { fontFamily: 'monospace', color: P.text };
     const { menu, info, borderWidth } = L;
-    this.add.rectangle(menu.x, menu.y, menu.width, menu.height, P.panel, P.panelAlpha).setOrigin(0).setStrokeStyle(borderWidth, P.border);
+    // Z Popielnikiem lista ma o wiersz więcej — panel rośnie razem z nią.
+    const menuHeight = Math.max(menu.height, menu.firstItemY + this.order.length * menu.step + 4);
+    this.add.rectangle(menu.x, menu.y, menu.width, menuHeight, P.panel, P.panelAlpha).setOrigin(0).setStrokeStyle(borderWidth, P.border);
     this.add.rectangle(info.x, info.y, info.width, info.height, P.panel, P.panelAlpha).setOrigin(0).setStrokeStyle(borderWidth, P.border);
     // Pozycje menu (stała liczba wierszy — widok slotów używa pierwszych slotCount + 1).
-    const rowCount = Math.max(MENU_ORDER.length, SAVE_CONFIG.slotCount + 1);
+    const rowCount = Math.max(this.order.length, SAVE_CONFIG.slotCount + 1);
     for (let i = 0; i < rowCount; i++) {
       const y = menu.y + menu.firstItemY + i * menu.step;
       const text = this.add
@@ -151,7 +161,7 @@ export class MenuScene extends Phaser.Scene {
     const { hasAutosave } = this.availability();
     if (this.view === 'floors') return this.floorCursor === 1 || !hasAutosave;
     if (this.view === 'slots') return this.slotCursor === SAVE_CONFIG.slotCount || !hasAutosave;
-    return isMenuEntrySpaceSafe(MENU_ORDER[this.cursor], hasAutosave);
+    return isMenuEntrySpaceSafe(this.order[this.cursor], hasAutosave);
   }
 
   private availability(): MenuAvailability {
@@ -160,6 +170,7 @@ export class MenuScene extends Phaser.Scene {
       hasSlots: this.saves.slots.some((slot) => this.saves.load(slot) !== null),
       bestBossFloor: this.bossProgress.load(),
       coop: currentPlatform() !== 'mobile',
+      hideout: this.meta.load().hideoutUnlocked,
     };
   }
 
@@ -230,7 +241,7 @@ export class MenuScene extends Phaser.Scene {
     this.pendingDelete = null;
     if (this.view === 'main') {
       const availability = this.availability();
-      this.cursor = moveCursor(MENU_ORDER.map((entry) => isEntryEnabled(entry, availability)), this.cursor, delta);
+      this.cursor = moveCursor(this.order.map((entry) => isEntryEnabled(entry, availability)), this.cursor, delta);
     } else if (this.view === 'floors') {
       this.floorCursor = this.floorCursor === 0 ? 1 : 0;
     } else {
@@ -244,7 +255,7 @@ export class MenuScene extends Phaser.Scene {
   private hover(row: number): void {
     if (this.leaving) return;
     if (this.view === 'main') {
-      const entry = MENU_ORDER[row];
+      const entry = this.order[row];
       if (entry === undefined || !isEntryEnabled(entry, this.availability()) || row === this.cursor) return;
       this.cursor = row;
     } else if (this.view === 'floors') {
@@ -272,9 +283,12 @@ export class MenuScene extends Phaser.Scene {
       else this.loadSlot(this.slotCursor + 1);
       return;
     }
-    const entry = MENU_ORDER[this.cursor];
+    const entry = this.order[this.cursor];
     if (entry === undefined || !isEntryEnabled(entry, this.availability())) return;
     switch (entry) {
+      case MenuEntry.Hideout:
+        this.leave(() => this.scene.start(SceneKey.Hideout, {}));
+        break;
       case MenuEntry.Continue:
         this.loadSlot('auto');
         break;
@@ -310,7 +324,7 @@ export class MenuScene extends Phaser.Scene {
     this.pendingDelete = null;
     // Po usunięciu ostatniego slotu „Wczytaj” mogło zgasnąć — kursor wraca na aktywną pozycję.
     const availability = this.availability();
-    if (!isEntryEnabled(MENU_ORDER[this.cursor]!, availability)) this.cursor = initialEntry(MENU_ORDER, availability, null);
+    if (!isEntryEnabled(this.order[this.cursor]!, availability)) this.cursor = initialEntry(this.order, availability, null);
     this.refresh();
   }
 
@@ -379,7 +393,7 @@ export class MenuScene extends Phaser.Scene {
   private refreshMain(): void {
     const availability = this.availability();
     this.rows.forEach((row, i) => {
-      const entry = MENU_ORDER[i];
+      const entry = this.order[i];
       if (entry === undefined) {
         row.text.setText('');
         return;
@@ -390,12 +404,17 @@ export class MenuScene extends Phaser.Scene {
       row.text.setText(`${active ? '▸ ' : '  '}${MENU_LABELS[entry]}`).setColor(!enabled ? P.itemDisabled : active ? accent : P.item);
     });
     this.hint.setText(T.mainHint);
-    this.describe(MENU_ORDER[this.cursor] ?? MenuEntry.NewTower);
+    this.describe(this.order[this.cursor] ?? MenuEntry.NewTower);
   }
 
   private describe(entry: MenuEntry): void {
     this.infoBody.setColor(P.text);
     switch (entry) {
+      case MenuEntry.Hideout: {
+        const profile = this.meta.load();
+        this.setInfo(HIDEOUT_TEXT.title, `${HIDEOUT_TEXT.menuInfo}\n\n${HIDEOUT_TEXT.hearth(profile.embers, metaRank(profile, META_CONFIG.ranks))}`);
+        break;
+      }
       case MenuEntry.Continue: {
         const record = this.saves.load('auto');
         if (!record) {

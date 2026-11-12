@@ -34,8 +34,14 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - Praca nad upgradem: gałąź robocza → PR do `upgrade-fable`, **nie do `main`**. Każdy etap zaczyna od scalenia `main` do `upgrade-fable`.
 - Kroki na gałęzi nazywają się „Krok U<etap><litera>” (np. „Krok U2a”); numery 185+ zostają dla `main`.
 - Podgląd: `npm run deploy:pages -- --subdir upgrade` **bez** `.env.production` (wyniki z podglądu nie mogą trafiać na wspólne tablice). Zasada „commit i push na `main` po każdym kroku” gałęzi nie dotyczy.
-- Scalenie do `main` tylko na wyraźne „tak” właściciela. Akt II poza zakresem.
+- Scalenie do `main` tylko na wyraźne „tak” właściciela. Akt II poza zakresem (ma własną gałąź `akt-2`, niżej).
 - **11.11.2026 (krok 185):** pierwsza paczka (U0–U2) i zoom 1,6 scalone do `main` i wdrożone na prośbę właściciela; dalsze etapy tak samo — przez `upgrade-fable`, do `main` paczkami.
+
+## Akt II — gałąź `akt-2` (decyzja właściciela 11.11.2026: propozycja z `docs/AKT2.md` przyjęta w całości)
+
+- `akt-2` = Akt II z podglądem pod `/topdown/akt2/`. Praca: gałąź robocza → PR do `akt-2`, **nie do `main`**; każdy etap zaczyna od scalenia `main` do `akt-2`. Kroki nazywają się „Krok Z<n>”. Podgląd: `npm run deploy:pages -- --subdir akt2` **bez** `.env.production`. Scalenie do `main` tylko na wyraźne „tak” właściciela.
+- **Krok Z1:** po zwycięstwie we wspinaczce otwiera się **Popielnik** (`scenes/HideoutScene.ts`, `config/hideoutConfig.ts`) — kryjówka pod piecami Palacza i punkt startu: bramy **Zejścia** (solo i co-op), szyb na wieżę, lustro aren. Zejście = `RunMode.Descent`: 6 pięter-odbić wieży z trasą z seeda i regułą zaświatów (`config/descentConfig.ts`, `systems/Descent.ts`). Profil trwały `tower-crawler.meta.v1` (`systems/MetaProgress.ts`): **Żar** (boss zabezpiecza, śmierć zabiera **połowę** luźnego), trofea, rangi. Wynik runu to dalej złoto. `?hub=1` otwiera Popielnik do testów.
+- Zasada Aktu II: odblokowania poszerzają wybór, nie statystyki. Wota (nowe przedmioty, etap Z3) mają zgodę właściciela w zakresie opisanym w `docs/AKT2.md`; cokolwiek ponad to — najpierw pytanie.
 
 ## Decyzje projektowe właściciela
 
