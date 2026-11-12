@@ -3,7 +3,17 @@ import type { DungeonFloor } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, RUINS_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import {
+  FLOOR_DRESSING,
+  FUNGAL_GROVE_DRESSING,
+  GRAVEYARD_DRESSING,
+  INFERNAL_DRESSING,
+  MIRROR_HALL_DRESSING,
+  RUINS_DRESSING,
+  SMOKE_DEN_DRESSING,
+  SPIDER_LAIR_DRESSING,
+  STORK_GARDEN_DRESSING,
+} from '@/config/dressingConfig';
 import type { DressedFloor, DressedLayer, DressingExtras } from '@/dungeon/FloorDressing';
 import { EMPTY_TILE, arenaBorderTiles, dressFloor, gateOrientation, wallDistances } from '@/dungeon/FloorDressing';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
@@ -685,10 +695,13 @@ describe('FloorDressing — oprawa 2.0 ruin (krok U4a)', () => {
     for (const g of groups) expect(TILESET.groups, g).toHaveProperty(g);
   });
 
-  it('Grzybnia i Cmentarzysko (krok U4b): grupy oprawy 2.0 w ich arkuszach, wyrw mniej niż w ruinach', () => {
+  it('biomy 2.0 (kroki U4b–U4c): grupy oprawy w ich arkuszach, wyrw mniej niż w ruinach; mieszkanie gracza bez niej', () => {
     for (const [file, config] of [
       ['fungal_grove_tileset.json', FUNGAL_GROVE_DRESSING],
       ['graveyard_tileset.json', GRAVEYARD_DRESSING],
+      ['infernal_tileset.json', INFERNAL_DRESSING],
+      ['mirror_hall_tileset.json', MIRROR_HALL_DRESSING],
+      ['stork_garden_tileset.json', STORK_GARDEN_DRESSING],
     ] as const) {
       const sheet = loadTileset(file);
       const groups = [...Object.values(config.sills ?? {}), ...Object.values(config.arenaBorder ?? {}), config.breaches?.group ?? ''];
@@ -698,6 +711,11 @@ describe('FloorDressing — oprawa 2.0 ruin (krok U4a)', () => {
       expect(config.breaches!.chance).toBeLessThan(RUINS_DRESSING.breaches!.chance);
     }
     expect(GRAVEYARD_DRESSING.breaches!.chance).toBeLessThan(FUNGAL_GROVE_DRESSING.breaches!.chance);
+    // Mieszkanie gracza (krok 138) ma własne kafle — kamienne progi i wyrwy do niego nie pasują; leże poza wspinaczką.
+    for (const config of [SMOKE_DEN_DRESSING, SPIDER_LAIR_DRESSING]) {
+      expect(config.sills).toBeUndefined();
+      expect(config.breaches).toBeUndefined();
+    }
   });
 
   it('próg leży na każdym wejściu do pokoju, w orientacji przejścia; bez konfiguracji progów nie ma', () => {

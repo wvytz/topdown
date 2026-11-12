@@ -104,6 +104,8 @@ IRON = hexes('#3a3f4a', '#646c79', '#8d96a3')  # rampa pokrywy Trashcan Mana
 DIRT = hexes('#120c0a', '#261a13', '#37271c', '#523b29', '#6e5038')  # rampa kałuży Sludge Kinga
 # Szlam Sludge Kinga (STYLEGUIDE §4.5) — ślady po kulach bossa (krok 19b).
 SLIME = hexes('#1f1420', '#3b2140', '#5c3560', '#83558a', '#b88ab8')
+# Krew na posadzce w oprawie 2.0 (krok U4c): żywa czerwień zamiast przygaszonej plamy.
+BLOOD = hexes('#3a0c14', '#7a1520', '#b0222a', '#d8483a')
 # Ogień pochodni (krok 19a): czerwień → pomarańcz → żółć złota → blask. Bez czystej bieli.
 FLAME = oks((.48, .150, 35), (.64, .160, 55), (.79, .140, 82), (.91, .075, 95))
 
@@ -149,6 +151,9 @@ class Palette:
     # Oprawa 2.0 (krok U4a): niebo i otchłań za wyrwami w murze wieży (5: otchłań, noc, mgła, chmura, gwiazda/iskra).
     # Puste w biomach bez dodatku `v2`.
     sky: tuple = ()
+    # Krok U4c (uwaga właściciela po kroku 24: „krew mogłaby być jaskrawsza”): ślady walki w oprawie 2.0.
+    # 4: cień, krew, jasna krew, połysk. Domyślnie wspólna dla wszystkich palet.
+    blood: tuple = BLOOD
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
@@ -401,6 +406,8 @@ PALETTES = {
         stain=oks((.36, .040, 100), (.46, .045, 105)),
         ash=oks((.58, .016, 95), (.48, .016, 90)),
         opal=oks((.86, .075, 350), (.87, .070, 200), (.82, .080, 300), (.90, .075, 95)),
+        # Krok U4c: widok za wyrwami w murze wieży.
+        sky=oks((.10, .020, 250), (.14, .026, 248), (.19, .026, 245), (.25, .022, 240), (.88, .040, 300)),
     ),
     # Bociani Ogród (krok 137, `#brudna-wiedzma`): zarośnięty taras nocą — po jasnej Lustrzanej komnacie „totalny mrok”.
     # Omszałe płyty w kolorze mokrej ziemi (barwa z dala od fioletu Czarodziejki i zieleni łucznika), mury z ciemnego,
@@ -419,6 +426,8 @@ PALETTES = {
         bone=oks((.74, .010, 250), (.84, .010, 250), (.92, .008, 250)),
         grass=oks((.30, .075, 145), (.40, .095, 140), (.52, .105, 132)),
         bloom=oks((.46, .170, 28), (.58, .180, 34), (.84, .120, 85)),
+        # Krok U4c: widok za wyrwami w murze wieży.
+        sky=oks((.12, .040, 255), (.16, .048, 252), (.21, .046, 248), (.27, .040, 244), (.90, .030, 95)),
     ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
     # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
@@ -439,6 +448,8 @@ PALETTES = {
         ember=oks((.46, .160, 28), (.63, .170, 45), (.80, .140, 72)),
         # Pochodnie piekła: czerwieńszy ogień niż w ruinach.
         flame=oks((.44, .160, 28), (.60, .170, 42), (.76, .150, 65), (.90, .080, 85)),
+        # Krok U4c: widok za wyrwami w murze wieży.
+        sky=oks((.13, .060, 25), (.19, .090, 28), (.27, .120, 33), (.38, .150, 42), (.80, .140, 72)),
     ),
     # B: zaschnięta krew — rdzawy bordo posadzki, mury z ciemnej, krwistej cegły.
     'pieklo_krew': Palette(
@@ -484,14 +495,14 @@ BIOMES = {
     'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave', 'v2'), 'reserved_hues': True},
     # Piekło (krok 41a): krwisty, demoniczny biom z paleniskami; czerwień i pomarańcz z prośby właściciela,
     # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
-    'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
+    'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal', 'v2'), 'reserved_hues': False},
     # Zadymiona palarnia (krok 83): piętro Barona Dymu. Od kroku 137 (prośba właściciela) zagracone, zadymione
     # mieszkanie nałogowego gracza: dodatek `gamer` podmienia kafle wspólne (tools/gamer_den_tiles.py).
     'smoke_den': {'palette': 'mieszkanie_gracza', 'extras': ('smoke', 'gamer'), 'reserved_hues': True},
     # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): piętra dwóch Sprzątaczek; błyszcząca posadzka, mury w ruinie.
-    'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror', 'feathers'), 'reserved_hues': True},
+    'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror', 'feathers', 'v2'), 'reserved_hues': True},
     # Bociani Ogród (krok 137): taras Brudnej Wiedźmy nocą; zieleń trawy z założenia, więc bez rezerwy barw (jak leże).
-    'stork_garden': {'palette': 'bociani_noc', 'extras': ('garden', 'feathers'), 'reserved_hues': False},
+    'stork_garden': {'palette': 'bociani_noc', 'extras': ('garden', 'feathers', 'v2'), 'reserved_hues': False},
 }
 
 
