@@ -386,6 +386,11 @@ export const MIRROR_HALL_DRESSING: FloorDressingConfig = {
     decals: { group: 'decal.suds', chance: 0.22 },
     trail: TRAIL,
   },
+  // Oprawa 2.0 (krok U4c). Lustrzana komnata: opalizujące odpryski na krawędziach rzadkich wyrw.
+  macroChance: 0.06,
+  sills: SILLS_V2,
+  arenaBorder: ARENA_BORDER_V2,
+  breaches: { group: 'wallBreach', chance: 0.008, minWallDistance: 4, spacing: 6 },
 };
 
 /**
@@ -420,6 +425,11 @@ export const STORK_GARDEN_DRESSING: FloorDressingConfig = {
     decals: { group: 'decal.feathers', chance: 0.25 },
     trail: TRAIL,
   },
+  // Oprawa 2.0 (krok U4c). Bociani Ogród (taras na szczycie): trawa na krawędziach wyrw, za nimi rozgwieżdżone niebo.
+  macroChance: 0.06,
+  sills: SILLS_V2,
+  arenaBorder: ARENA_BORDER_V2,
+  breaches: { group: 'wallBreach', chance: 0.01, minWallDistance: 4, spacing: 6 },
 };
 
 /**
@@ -451,6 +461,11 @@ export const INFERNAL_DRESSING: FloorDressingConfig = {
     decals: { group: 'decal.ember', chance: 0.2 },
     trail: TRAIL,
   },
+  // Oprawa 2.0 (krok U4c). Piekło: żar na krawędziach wyrw, za nimi łuna.
+  macroChance: 0.06,
+  sills: SILLS_V2,
+  arenaBorder: ARENA_BORDER_V2,
+  breaches: { group: 'wallBreach', chance: 0.012, minWallDistance: 4, spacing: 6 },
 };
 
 /**

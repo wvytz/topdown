@@ -6184,6 +6184,19 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Ocena właściciela (12.11.2026)** `#ocena`: kokony skarbu — „nie widać praktycznie różnicy”; właściciel sam zaprojektuje nowy wygląd (do tego czasu zostaje złoty szew). Następny krok U4c: Piekło, Zadymiona palarnia, Lustrzana komnata i Bociani Ogród (każdy z własnym akcentem; mieszkanie gracza ma kafle z `gamer_den_tiles.py`).
 
+## Krok U4c — Kafle 2.0: Piekło, Lustrzana komnata, Bociani Ogród; jaskrawsza krew `#upgrade` `#kafle` `#palacz` `#lustrzana-komnata` `#brudna-wiedzma`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: „scalaj i ruszaj z U4c”.
+
+**Co powstało**
+- **Piekło, Lustrzana komnata i Bociani Ogród w oprawie 2.0** — ten sam moduł co ruiny (`tools/ruins_v2_tiles.py`, dodatek `v2`, rampy `sky` w paletach `pieklo_bazalt`, `lustro_opal`, `bociani_noc`): warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Akcenty krawędzi wyrw (`RIM_ACCENT`): w Piekle żar, w Lustrzanej komnacie opalowy połysk, w Ogrodzie trawa wrastająca w wyrwę. Lustrzana posadzka bez płyt wyszczerbionych, łatanych i z popiołem w spoinach (`FLOOR_SKIP`) — lustro ma zostać czyste. Gradient ruiny dalej maleje z wysokością: Piekło 1,2%, Lustrzana komnata 0,8%, Ogród 1%.
+- **Jaskrawsza krew** (uwaga właściciela po kroku 24, przeniesiona z U2): plamy walki we wszystkich biomach 2.0 poza Grzybnią (tam zostaje zielony sok) w nowej rampie `BLOOD` (od ciemnego bordo po żywą czerwień).
+- **Zadymiona palarnia bez zmian** — mieszkanie gracza ma własne kafle z kroku 138 (`gamer_den_tiles.py`), kamienna oprawa 2.0 do niego nie pasuje. Ewentualnie później: okna na miasto zamiast wyrw. Arkusze `smoke_den` i `spider_lair` generują się identycznie.
+
+**Testy:** test biomów 2.0 obejmuje Grzybnię, Cmentarzysko, Piekło, Lustrzaną komnatę i Ogród (grupy w arkuszach, progi, wyrwy); palarnia i leże bez progów i wyrw.
+
+**Weryfikacja:** `npm run build` (2969 testów); `npm run shots` przed i po (zmieniły się tylko piętra 4, 6 i 7 oraz krew), `npm run perf` w granicach szumu; `npm run smoke` przez 7 pięter bez błędów. Zrzuty: `/mnt/project-files/screens/krokU4c-kafle/`. **Czeka na ocenę właściciela.**
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6200,9 +6213,9 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 
 **3. Do zrobienia — upgrade Aktu I** (`docs/UPGRADE.md`, gałąź `upgrade-fable`; przed każdym etapem i po nim `npm run shots` i `npm run perf`)
 - **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
-- **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Zostało: jaskrawsza krew (uwaga po kroku 24) → U4, smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
+- **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c; zostało smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
-- **U4 kafle — pilot ruin zrobiony (krok U4a):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zaakceptowany; U4b Grzybnia i Cmentarzysko zrobione, dalej U4c reszta biomów. Jaskrawsza krew (z U2) — razem z biomami.
+- **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata, Ogród i jaskrawsza krew (czeka na ocenę). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138).
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
 - **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.

@@ -331,16 +331,52 @@ def niche(p, r):
     return img
 
 
-def glow_rim(gen):
-    """Grzybnia (krok U4b): na oświetlonej krawędzi wyrwy świecące drobiny grzybni."""
+# Akcent na krawędzi wyrwy wg biomu (krok U4b–U4c): rampa palety i liczba drobin.
+RIM_ACCENT = {
+    'fungal_grove': ('flame', 6),   # świecąca grzybnia
+    'infernal': ('ember', 8),       # żar w spękanym bazalcie
+    'mirror_hall': ('opal', 5),     # opalizujące odpryski luster
+    'stork_garden': ('grass', 10),  # trawa i bluszcz na krawędzi
+}
+# Płyty, które nie pasują do biomu: polerowana posadzka Lustrzanej komnaty nie ma łat, wykruszeń ani popiołu.
+FLOOR_SKIP = {'mirror_hall': {'chipped', 'patch', 'ashjoint'}}
+
+
+def glow_rim(gen, ramp, count):
+    """Na oświetlonej krawędzi wyrwy drobiny w barwie akcentu biomu."""
     def wrapped(p, r):
         img = gen(p, r)
         rim = [(x, y) for y in range(1, img.h - 1) for x in range(1, img.w - 1)
                if img.get(x, y) == p.wall_face[2] and img.get(x, y - 1) != p.wall_face[2]]
-        for (x, y) in r.sample(rim, min(len(rim), 6)):
-            img.put(x, y - 1, r.choice(p.flame[1:3]))
+        colors = getattr(p, ramp)
+        for (x, y) in r.sample(rim, min(len(rim), count)):
+            img.put(x, y - 1, r.choice(colors[1:3]))
         return img
     return wrapped
+
+
+def blood_splat(p, r):
+    """Krok U4c (uwaga właściciela po kroku 24): jaskrawsza krew na posadzce — rozbryzg z kroplami i połyskiem."""
+    B, T = p.blood, K.T
+    img = K.Img(T, T)
+    rad = r.uniform(4.5, 6)
+    for y in range(T):
+        for x in range(T):
+            d = ((x + .5 - 16) ** 2 + ((y + .5 - 16) * 1.3) ** 2) ** .5
+            if d < rad + r.uniform(-1.5, 1.5):
+                img.put(x, y, B[2] if d < rad * .55 else B[1])
+    for _ in range(7):  # krople wokół
+        a, dist = r.uniform(0, 2 * math.pi), r.uniform(rad + 2, rad + 8)
+        x, y = int(16 + math.cos(a) * dist), int(16 + math.sin(a) * dist * .8)
+        img.put(x, y, B[1])
+        if r.random() < .5:
+            img.put(x + 1, y, B[0])
+    img.put(14, 14, B[3])  # połysk świeżej krwi
+    for y in range(T):  # ciemny brzeg od południa
+        for x in range(T):
+            if img.get(x, y)[3] and img.get(x, y + 1) is not None and not img.get(x, y + 1)[3] and img.get(x, y) == B[1]:
+                img.put(x, y, B[0])
+    return img
 
 
 def apply(entries, Entry, kit, biome='tower_ruins'):
@@ -350,7 +386,11 @@ def apply(entries, Entry, kit, biome='tower_ruins'):
     for slabs in MACRO.values():
         _check_layout(slabs, 2 * K.T)
     out = list(entries)
+    if biome != 'fungal_grove':  # w Grzybni plamy to turkusowa posoka zarażonych — zostaje
+        out = [dataclasses.replace(e, gen=blood_splat) if e.name.startswith('combat_splat_') else e for e in out]
     for kind, layout, weight in FLOOR:
+        if kind in FLOOR_SKIP.get(biome, ()):
+            continue
         out.append(Entry(f'floor_v2_{kind}', floor_variant(kind, layout), 'floorBase', group='floor', weight=weight,
                          flip_x=True))
     for style in MACRO:
@@ -369,7 +409,7 @@ def apply(entries, Entry, kit, biome='tower_ruins'):
     for v in ('a', 'b', 'c'):
         out.append(Entry(f'wall_tower_{v}', tower, 'wall', group='wallBand.tower', weight=1))
     for v, w, h, weight in BREACHES:
-        gen = glow_rim(breach(w, h)) if biome == 'fungal_grove' else breach(w, h)
+        gen = glow_rim(breach(w, h), *RIM_ACCENT[biome]) if biome in RIM_ACCENT else breach(w, h)
         out.append(Entry(f'wall_breach_{v}_{w}x{h}', gen, 'wall', w, h, group='wallBreach', weight=weight))
     if biome == 'graveyard':
         for v in ('a', 'b'):
