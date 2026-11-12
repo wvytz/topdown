@@ -63,6 +63,7 @@ Każdy etap to osobny wątek. U0–U3 po kolei, od U4 najwyżej dwa wątki naraz
 | **U7. Interfejs** | Jeden pikselowy krój pisma, nowy HUD, karty z ikonami, pauza/menu/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranach końca | Ten sam wygląd na PC, padzie i telefonie; ekran startowy nietknięty | Stary HUD za flagą |
 | **U8. Rozgrywka** | Wydarzenia w pokojach, przeklęta skrzynia, przemiana Butów, własni wrogowie luster i ogrodu, skok pajączka, pomiar bohaterów botem | Dwa runy tym samym bohaterem różnią się przebiegiem pokojów; raport balansu | Wyłącznik każdej nowości w config |
 | **U9. Platformy** | Telefon, naprawa bota i „Graj z botem”, zmiana imienia i filtr, dźwięki nowych efektów | Smoke solo, co-op i bot zielone | Małe osobne PR-y |
+| **U11. System wag** | Wagi ataków, Oddech z automatyczną gardą, Zadyszka i atak kary, Szala, sygnalizacja trafień zamiast krwi (`docs/WAGI.md`, kroki U11a–U11d) | Akceptacja właściciela na podglądzie, raport trudności botem przed i po | `?wagi=0`, `COMBAT_WEIGHT_CONFIG.enabled` |
 | **U10. Scalenie** | Paczkami do `main`, pełny smoke, wdrożenie z `.env.production` | „Tak” właściciela dla każdej paczki | Tag na `main` |
 
 ## 5. Zabezpieczenia (dla każdego etapu)
