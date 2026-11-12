@@ -6141,6 +6141,28 @@ Pomiar `npm run perf` (piętro 7, kontener bez GPU, automat jakości — PC Wyso
 
 **Do oceny (strona „Do oceny”):** czy strzały w mroku czytają się dobrze, czy barwy nie są za mocne, siła Czarnego Słońca na piętrach 1 i 7, czas klatki na telefonie z `?gfx=medium`.
 
+## Krok U4a — Kafle 2.0: pilot ruin `#upgrade` `#kafle` `#ruiny`
+
+**Zakres (etap U4 z `docs/UPGRADE.md`, STYLEGUIDE §13.8):** pilot nowej oprawy kafli na piętrze 1 (ruiny) — warianty płyt, przejścia materiałów, głębia murów, „wieża za oknem”, obwódka areny. Inne biomy bez zmian (ich arkusze generują się bajt w bajt tak samo). Kolizja, linia wzroku, liczby gry i strumienie RNG systemów gry bez zmian — to tylko obraz z danych piętra. Przed etapem `main` był już w `upgrade-fable` (nic do scalenia).
+
+**Co powstało**
+- **Generator:** nowy moduł `tools/ruins_v2_tiles.py` (dodatek `v2` biomu `tower_ruins`), dopisany na końcu manifestu (first-fit), więc kafle sprzed upgradu zostają na swoich miejscach w arkuszu. Paleta `piaskowiec` dostała rampę `sky` (otchłań i nocne niebo za wieżą); reszta to stare rampy. Walidator generatora przechodzi (tylko barwy palety, krycie 0/255).
+  - **Płyty:** 6 nowych wariantów w grupie `floor` (obtłuczone narożniki, rysa, osiadła płyta, łata z bruku, wytarcia, popiół w fugach; ok. 1/4 posadzki) i 2 nowe wzory 2×2 (duża płyta w ramie, jodełka); `macroChance` ruin 0,04 → 0,06.
+  - **Próg** (przejście materiałów): kamienny próg w poprzek przejścia na każdym wejściu do pokoju — granica bruku korytarza i płyt pokoju; rowek pod kratę.
+  - **Obwódka areny:** pas wpuszczony w posadzkę wzdłuż murów areny (rowek, oświetlona krawędź, spoiny), kamienie narożne z wyrytym rombem. Nakładka podłogi, więc zwykłe nakładki omijają te kafle; bez obwódki pod klatką schodową.
+  - **Mur:** ciosy o nierównej długości (`ashlar_irregular`) jako warianty najczęstszych masek — w kadrze nie widać powtarzalnego wzoru cegieł; wiersze co 8 px, więc łączą się ze starymi kaflami.
+  - **Głębia muru i „wieża za oknem”:** pasmo przejściowe (2 kafle od podłogi) w chłodnych tonach lica zamiast prawie czarnej cegły, a dalej mur wieży z dużych bloków 32×16 (jaśniejszy niż dawna „głębia”) z wyrwami 1×1–2×2, przez które widać nocne niebo z pasmami popiołu; pod północną krawędzią wyrwy widać grubość muru. Arkusz ruin wskazuje nowe grupy pasm (`wallBand.fade2`, `wallBand.tower`).
+- **Dekorowanie** (`dungeon/FloorDressing.ts`, liczby w `config/dressingConfig.ts` → `RUINS_DRESSING`): opcjonalne `sills`, `arenaBorder`, `breaches` — biomy bez nich dekorują się jak dotąd. Wyrwy: szansa 3,5% na kaflu masy, każdy kafel wyrwy co najmniej 4 kafle od podłogi, odstęp 5 kafli, **własny strumień RNG** (sól `BREACH_SALT`), więc reszta obrazu piętra nie zależy od wyrw.
+- Stary arkusz ruin: `tools/reference/tower_ruins_tileset_pre-u4.{png,json}` (plan wycofania: podmiana pliku i usunięcie `v2` z `BIOMES`).
+
+**Testy:** `tests/dungeon/FloorDressing.test.ts` — konfiguracja ruin wskazuje istniejące grupy; próg na każdym wejściu w orientacji przejścia, bez konfiguracji brak progów; obwódka na skrajnych kaflach areny z właściwym bokiem i narożnikiem, środek i inne pokoje bez niej; wyrwy tylko na ścianach co najmniej 4 kafle od podłogi, bez kafli nad postaciami, dane piętra nietknięte, pozostałe warstwy identyczne jak bez wyrw; determinizm i rzadkość wyrw (<15% ścian). Pasma ścian czytają grupę z arkusza.
+
+**Weryfikacja:** `npm run build` (2972 testy); generator pozostałych 7 biomów daje identyczne arkusze; kadry `npm run shots` przed i po (`.shots/u4-po/arkusz.png`, kopia w `/mnt/project-files/screens/krokU4a-kafle/`); `npm run perf -- --floor 1` przed i po; `npm run smoke`.
+
+Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU), przed → po: PC praca p50 2,2 → 1,9 ms, telefon (CPU ×4) 7,3 → 7,9 ms — w szumie pomiaru; kafle to te same warstwy mapy, nowych obiektów nie ma. Kadry pozostałych biomów bez zmian. Smoke (3 bohaterów, piętra 1–2) bez błędów.
+
+**Do oceny (strona „Do oceny”):** czytelność w walce, częstość i kształt wyrw, jasność muru wieży, obwódka areny. Po akceptacji pilota te same zasady dostaną Grzybnia i Cmentarzysko (U4b), potem reszta biomów.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6159,7 +6181,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
 - **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Zostało: jaskrawsza krew (uwaga po kroku 24) → U4, smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
-- **U4 kafle:** pilot ruin; ozdobna obwódka areny i przejścia materiałów (dual-grid — dotąd odłożone, teraz w zakresie).
+- **U4 kafle — pilot ruin zrobiony (krok U4a):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Czeka na ocenę właściciela; potem U4b Grzybnia i Cmentarzysko, dalej reszta biomów. Jaskrawsza krew (z U2) — razem z biomami.
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
 - **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
 - **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.

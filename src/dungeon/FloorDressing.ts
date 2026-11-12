@@ -1,9 +1,9 @@
 import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
-import { createRng } from '@/core/random';
+import { createRng, deriveSeed } from '@/core/random';
 import type { TilesetMeta, TilesetTile } from '@/core/tilesetTypes';
-import type { FloorDressingConfig } from '@/config/dressingConfig';
+import type { ArenaBorderSide, FloorDressingConfig } from '@/config/dressingConfig';
 import { STAIRS_SIZE } from '@/config/gameConfig';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
 import { isStairsTile } from '@/dungeon/stairs';
@@ -149,11 +149,14 @@ export function dressFloor(
   const inRoom = (x: number, y: number) => floor.rooms.some((room) => roomContainsTile(room, { x, y }));
 
   dressFloorBase(ctx, floorBase, isPlain, inRoom);
+  dressSills(ctx, floorBase);
+  dressArenaBorder(ctx, floorDecal, isPlain);
   dressTrail(ctx, floorDecal, isPlain);
   dressDecals(ctx, floorDecal, isPlain, clearZone(floor, gates, config.clearRadius));
   const stairs = dressStairs(ctx, floorFeature);
   dressEnvShadow(ctx, envShadow);
   dressWalls(ctx, walls, overhead);
+  dressBreaches(ctx, walls, seed);
   dressWallFaces(ctx, wallDecor, extras.torches ?? [], isPlain);
   dressOverheadDecor(ctx, overheadDecor, gateSet);
 
@@ -401,6 +404,90 @@ function placeLargeDecal(
     return true;
   }
   return false;
+}
+
+// ---------------- oprawa 2.0: progi, obwódka areny, wyrwy (krok U4a) ----------------
+
+/** Sól osobnego strumienia losowań wyrw — dekorowanie reszty piętra nie zmienia się przez ich dodanie. */
+const BREACH_SALT = 0xb4ea;
+
+/**
+ * Próg (krok U4a, przejście materiałów): kafel wejścia do każdego pokoju dostaje kamienny próg w poprzek przejścia
+ * zamiast bruku — granica korytarz/pokój jest czytelna. Czysto wizualne; kraty leżą nad progiem.
+ */
+function dressSills(ctx: DressingContext, layer: LayerBuilder): void {
+  const sills = ctx.config.sills;
+  if (!sills) return;
+  const { floor } = ctx;
+  for (const room of floor.rooms) {
+    for (const point of findRoomEntrances(floor, room)) {
+      const name = ctx.pickVariant(sills[gateOrientation(room, point)], []);
+      layer.set(point.x, point.y, ctx.tile(name).frame, false, name);
+    }
+  }
+}
+
+/**
+ * Obwódka areny bossa (krok U4a): pas wpuszczony w posadzkę na skrajnych kaflach areny, z narożnikami. Nakładka
+ * podłogi, więc zwykłe nakładki omijają te kafle. Bez obwódki pod schodami (zasłania je klatka) i na kratach.
+ */
+function dressArenaBorder(ctx: DressingContext, layer: LayerBuilder, isPlain: (x: number, y: number) => boolean): void {
+  const border = ctx.config.arenaBorder;
+  const arena = ctx.floor.rooms[ctx.floor.bossRoomId];
+  if (!border || !arena || arena.width < 3 || arena.height < 3) return;
+  for (const tile of arenaBorderTiles(arena)) {
+    if (!isPlain(tile.x, tile.y) || isStairsTile(ctx.floor, tile)) continue;
+    const name = ctx.pickVariant(border[tile.side], []);
+    layer.set(tile.x, tile.y, ctx.tile(name).frame, false, name);
+  }
+}
+
+/** Skrajne kafle prostokąta pokoju z bokiem obwódki (n, s, e, w albo narożnik). */
+export function arenaBorderTiles(room: Room): { readonly x: number; readonly y: number; readonly side: ArenaBorderSide }[] {
+  const out: { x: number; y: number; side: ArenaBorderSide }[] = [];
+  const x1 = room.x + room.width - 1;
+  const y1 = room.y + room.height - 1;
+  for (let y = room.y; y <= y1; y++) {
+    for (let x = room.x; x <= x1; x++) {
+      const ns = y === room.y ? 'n' : y === y1 ? 's' : '';
+      const we = x === room.x ? 'w' : x === x1 ? 'e' : '';
+      if (ns || we) out.push({ x, y, side: (ns + we) as ArenaBorderSide });
+    }
+  }
+  return out;
+}
+
+/**
+ * Wyrwy w murze wieży (krok U4a, „wieża za oknem”): w głębokiej masie muru, z dala od podłogi, kilkukaflowe otwory
+ * z widokiem na otchłań. Tylko obraz — kolizja i linia wzroku idą z danych piętra. Własny strumień RNG.
+ */
+function dressBreaches(ctx: DressingContext, walls: LayerBuilder, seed: number): void {
+  const breaches = ctx.config.breaches;
+  if (!breaches) return;
+  const { floor } = ctx;
+  const rng = createRng(deriveSeed(seed, BREACH_SALT));
+  const dist = wallDistances(floor);
+  const names = ctx.group(breaches.group);
+  const placed: { x: number; y: number; w: number; h: number }[] = [];
+  const deepEnough = (x: number, y: number) => ctx.inBounds(x, y) && dist[y * floor.width + x]! >= breaches.minWallDistance;
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      if (!deepEnough(x, y) || !rng.chance(breaches.chance)) continue;
+      const name = pickWeighted(rng, names, (n) => ctx.tile(n).weight ?? 1);
+      const tile = ctx.tile(name);
+      let fits = true;
+      for (let dy = 0; dy < tile.h && fits; dy++) {
+        for (let dx = 0; dx < tile.w && fits; dx++) fits = deepEnough(x + dx, y + dy);
+      }
+      const gap = breaches.spacing;
+      const crowded = placed.some(
+        (b) => x < b.x + b.w + gap && x + tile.w + gap > b.x && y < b.y + b.h + gap && y + tile.h + gap > b.y,
+      );
+      if (!fits || crowded) continue;
+      placeTile(walls, x, y, name, tile, false);
+      placed.push({ x, y, w: tile.w, h: tile.h });
+    }
+  }
 }
 
 // ---------------- schody i kraty ----------------
