@@ -6137,6 +6137,8 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 Pomiar `npm run perf` (piętro 7, kontener bez GPU, automat jakości — PC Wysoka, telefon Niska), przed → po: PC nawała praca p50 2,1 → 2,0 ms, co-op 2,8 → 2,3 ms, telefon nawała 7,8 → 7,5 ms — praca gry w JS bez zmian (różnice w szumie pomiaru). Telefon na Wysokiej (`--query gfx=high`, nawała): praca p50 9,5 → 9,6 ms, ale klatka p50 57 → 64 ms (programowe rysowanie poświat ADD i stempli) — na Wysokiej światło kosztuje przy rysowaniu, dlatego automat telefonu zostaje na Niskiej. FPS w kontenerze to programowe rysowanie — kryterium „telefon trzyma 60 klatek” sprawdzi dopiero licznik `?perf=1&gfx=medium` na telefonie właściciela (strona „Do oceny”).
 
+**Ocena właściciela (12.11.2026)** `#ocena`: „światło jest petarda”.
+
 **Do oceny (strona „Do oceny”):** czy strzały w mroku czytają się dobrze, czy barwy nie są za mocne, siła Czarnego Słońca na piętrach 1 i 7, czas klatki na telefonie z `?gfx=medium`.
 
 ## Znane ograniczenia i backlog
