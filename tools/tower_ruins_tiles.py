@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 
 import gamer_den_tiles
+import ruins_v2_tiles
 import ruins_wreck_tiles
 import stairs_tiles
 
@@ -145,6 +146,9 @@ class Palette:
     # Ruiny po apokalipsie (krok 155): rdza, zwęglenie, stare drewno, wyblakła tkanina, szkło, papier —
     # indeksy w tools/ruins_wreck_tiles.py. Puste w innych biomach.
     wreck: tuple = ()
+    # Oprawa 2.0 (krok U4a): niebo i otchłań za wyrwami w murze wieży (5: otchłań, noc, mgła, chmura, gwiazda/iskra).
+    # Puste w biomach bez dodatku `v2`.
+    sky: tuple = ()
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
@@ -216,6 +220,7 @@ PALETTES = {
                   (.33, .022, 230), (.41, .024, 225), (.50, .022, 220),  # wyblakła tkanina
                   (.60, .018, 210), (.76, .014, 200),                    # szkło
                   (.68, .028, 85)),                                      # zżółkły papier
+        sky=oks((.20, .040, 262), (.25, .045, 258), (.31, .040, 252), (.38, .032, 245), (.70, .020, 85)),
     ),
     # Pajęcze leże (krok 23a, poprawka właściciela): fiolet, zieleń i biel — mroczne leże w starej wieży.
     # Zasady biomu inne niż w ruinach: fioletowy kamień, zielona posoka i upiorny zielony ogień, białe nici i jaja.
@@ -465,7 +470,9 @@ DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 # decyzja właściciela: ten biom ma być fioletowo-zielony.
 BIOMES = {
     # Od kroku 155 (prośba właściciela: świat po apokalipsie) z dodatkiem `wreck` — śmieci i zniszczenie.
-    'tower_ruins': {'palette': 'piaskowiec', 'extras': ('wreck',), 'reserved_hues': True},
+    # Od kroku U4a (upgrade Aktu I, pilot kafli) z dodatkiem `v2`: warianty płyt, progi, obwódka areny, nieregularne
+    # ciosy muru, masa wieży i wyrwy z widokiem na otchłań (tools/ruins_v2_tiles.py).
+    'tower_ruins': {'palette': 'piaskowiec', 'extras': ('wreck', 'v2'), 'reserved_hues': True},
     'spider_lair': {'palette': 'pajeczy', 'extras': ('spider',), 'reserved_hues': False},
     # Grzybnia (krok 28a): dalszy ciąg leża (jaja, nici, pancerzyki) porośnięty grzybem; fiolet z wyboru właściciela.
     'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
@@ -799,12 +806,44 @@ def ashlar(img, r, mortar, block, lit, block_alt=None, edge_hi=None, specks=None
                 img.put(x, y, r.choice(specks))
 
 
-def wall_tile(mask, dmg=None, diag=0):
-    """diag (tylko dla maski 15): podłoga po skosie NE1 SE2 SW4 NW8 — domyka obrys w narożnikach."""
+def ashlar_irregular(img, r, mortar, block, lit, block_alt=None, edge_hi=None, specks=None):
+    """Ciosy o nierównej długości (krok U4a): te same wiersze co `ashlar` (co 8 px, więc łączą się z sąsiadami),
+    ale spoiny pionowe w losowych miejscach — w kadrze nie widać powtarzalnego wzoru muru."""
+    for row in range(T // 8):
+        x = -r.randint(0, 12)
+        while x < T:
+            bw = r.choice((10, 12, 14, 16, 18, 20))
+            alt = block_alt if (block_alt and r.random() < .35) else block
+            for y in range(row * 8, row * 8 + 8):
+                ly = y - row * 8
+                for xx in range(max(0, x), min(T, x + bw)):
+                    lx = xx - x
+                    if ly == 0 or lx == 0:
+                        c = mortar
+                    elif ly == 1:
+                        c = lit
+                    elif ly == 7:
+                        c = mortar if lx > 1 else alt
+                    else:
+                        c = alt if 2 <= ly <= 6 else block
+                    img.put(xx, y, c)
+            if edge_hi and 0 <= x + 2 < T:
+                img.put(x + 2, row * 8 + 1, edge_hi)
+            x += bw
+    if specks:
+        for _ in range(10):
+            x, y = r.randint(1, 30), r.randint(1, 30)
+            if img.get(x, y) in (block, block_alt):
+                img.put(x, y, r.choice(specks))
+
+
+def wall_tile(mask, dmg=None, diag=0, irregular=False):
+    """diag (tylko dla maski 15): podłoga po skosie NE1 SE2 SW4 NW8 — domyka obrys w narożnikach.
+    irregular (krok U4a): ciosy o nierównej długości zamiast regularnego wzoru."""
     def gen(p, r):
         wt, wf, O = p.wall_top, p.wall_face, p.outline
         img = Img(T, T)
-        ashlar(img, r, wt[1], wt[2], wt[3], p.wall_block_alt, wt[4], (wt[1], wt[3]))
+        (ashlar_irregular if irregular else ashlar)(img, r, wt[1], wt[2], wt[3], p.wall_block_alt, wt[4], (wt[1], wt[3]))
         S, N, E, Wo = not mask & 4, not mask & 1, not mask & 2, not mask & 8
         fy = T - FACE
         if S:  # lico od południa — widoczny bok muru, w cieniu
@@ -2107,6 +2146,8 @@ WALL_COMMON = (7, 11, 13, 14)
 GAMER_KIT = dataclasses.make_dataclass('GamerKit', ['Img', 'outline', 'T', 'FACE', 'CLR', 'flame_base_y'])(
     Img, outline, T, FACE, CLR, TORCH_FLAME_BASE_Y)
 # Narzędzia generatora dla modułu ruin po apokalipsie (krok 155) — definiowane niżej, zestaw składa manifest().
+V2_KIT_TYPE = dataclasses.make_dataclass('V2Kit', ['Img', 'T', 'FACE', 'CLR', 'crack', 'pebble', 'floor_slabs',
+                                                  'SLAB_LAYOUTS', 'cobble', 'wall_tile', 'ashlar'])
 WRECK_KIT_TYPE = dataclasses.make_dataclass('WreckKit', ['Img', 'outline', 'T', 'FACE', 'CLR', 'crack', 'pebble'])  # ~82% widocznych ścian na wygenerowanych mapach (pomiar, krok 16)
 
 
@@ -2248,6 +2289,10 @@ def manifest():
     for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
                         ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):
         m.append(Entry(f'decal_trail_{kind}', trail_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+    if 'v2' in BIOMES[BIOME]['extras']:
+        # Oprawa 2.0 (krok U4a): na samym końcu (first-fit), kafle sprzed upgradu zostają na swoich miejscach.
+        m = ruins_v2_tiles.apply(m, Entry, V2_KIT_TYPE(Img, T, FACE, CLR, crack, pebble, floor_slabs, SLAB_LAYOUTS,
+                                                         cobble, wall_tile, ashlar))
     return m
 
 
@@ -2366,7 +2411,9 @@ def build_sheet(p):
             'diagonal': {'appliesToMask': 15, 'bits': {'NE': 1, 'SE': 2, 'SW': 4, 'NW': 8},
                          'tiles': {str(d): f'wall_15_d{d:02d}' for d in range(1, 16)}},
             'bands': {'edge': 1, 'fade': 2, 'deep': 3, 'meaning': 'odległość Czebyszewa od najbliższej podłogi',
-                      'groups': {'fade': 'wallBand.fade', 'deep': 'wallBand.deep'}},
+                      # Krok U4a: w oprawie 2.0 głęboką masę rysuje mur wieży z wyrwami (ruins_v2_tiles).
+                      'groups': {'fade': 'wallBand.fade2' if 'v2' in BIOMES[BIOME]['extras'] else 'wallBand.fade',
+                                 'deep': 'wallBand.tower' if 'v2' in BIOMES[BIOME]['extras'] else 'wallBand.deep'}},
             'overhead': 'ściany bez bitu N (podłoga od północy) rysujemy nad postaciami',
         },
         'envShadow': {'bits': {'N': 1, 'E': 2, 'W': 8}, 'meaning': 'sąsiad podłogi jest ścianą',

@@ -48,7 +48,27 @@ export interface FloorDressingConfig {
   /** Trwałe ślady walki: pojemność puli (FIFO) i grupy kafli. */
   readonly combatDecals: { readonly capacity: number; readonly groups: Readonly<Record<CombatDecalKind, string>> };
   readonly stairsTiles: { readonly locked: string; readonly open: string };
+  /** Krok U4a (oprawa 2.0): kamienny próg na wejściu do pokoju — grupa wg orientacji przejścia; brak = bez progów. */
+  readonly sills?: Readonly<Record<'h' | 'v', string>>;
+  /** Krok U4a: obwódka areny bossa — grupa nakładki dla boku albo narożnika; brak = bez obwódki. */
+  readonly arenaBorder?: Readonly<Record<ArenaBorderSide, string>>;
+  /** Krok U4a („wieża za oknem”): wyrwy z widokiem na otchłań w głębokiej masie muru; brak = bez wyrw. */
+  readonly breaches?: BreachDressing;
   readonly gateTiles: Readonly<Record<'h' | 'v', Readonly<Record<'open' | 'half' | 'closed', string>>>>;
+}
+
+/** Bok obwódki areny: krawędź albo narożnik prostokąta pokoju. */
+export type ArenaBorderSide = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+
+export interface BreachDressing {
+  /** Grupa kafli wyrw (różne rozmiary, losowane wg wag). */
+  readonly group: string;
+  /** Szansa, że na kaflu głębokiej masy zaczyna się wyrwa. */
+  readonly chance: number;
+  /** Każdy kafel wyrwy co najmniej tyle kafli (Czebyszewa) od podłogi. */
+  readonly minWallDistance: number;
+  /** Odstęp między wyrwami (kafle). */
+  readonly spacing: number;
 }
 
 export interface NestDressing {
@@ -170,6 +190,21 @@ export const RUINS_DRESSING: FloorDressingConfig = {
     east: { chance: 0.4, group: 'decal.dustE' },
   },
   wallFace: { chance: 0.3, group: 'wallFace.wreck' },
+  // Oprawa 2.0 (krok U4a, pilot kafli upgradu): więcej wzorów 2×2, progi, obwódka areny i wyrwy w murze wieży.
+  // Parter jest najbardziej zrujnowany (gradient ruiny), więc wyrw jest tu najwięcej.
+  macroChance: 0.06,
+  sills: { h: 'floorSill.h', v: 'floorSill.v' },
+  arenaBorder: {
+    n: 'arenaBorder.n',
+    s: 'arenaBorder.s',
+    e: 'arenaBorder.e',
+    w: 'arenaBorder.w',
+    nw: 'arenaBorder.nw',
+    ne: 'arenaBorder.ne',
+    sw: 'arenaBorder.sw',
+    se: 'arenaBorder.se',
+  },
+  breaches: { group: 'wallBreach', chance: 0.035, minWallDistance: 4, spacing: 5 },
 };
 
 /**

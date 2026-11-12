@@ -236,6 +236,7 @@ Osobne ustawienie, niezależne od jakości: wyłącza drżenie kamery, błyski p
 - Poza pokojami nie ma jednolitej czerni: widać mur wieży, a przez wyrwy niebo. Im wyższe piętro, tym mniej wyrw i więcej śladów życia.
 - Reguły czytelności podłogi z §6a i walidator generatora obowiązują bez wyjątków.
 - Dekoracje dalej bez kolizji.
+- Wdrożenie (krok U4a, pilot ruin): kafle w `tools/ruins_v2_tiles.py` (dodatek `v2` biomu), dekorowanie w `RUINS_DRESSING` (`sills`, `arenaBorder`, `breaches`). Kolejność jasności muru: wierzch przy pokoju → pasmo przejściowe w tonach lica → mur wieży z dużych bloków; wyrwy pokazują niebo (rampa `sky`), nigdy jaśniejsze od posadzki. Wyrwy mają własny strumień losowań.
 
 ### 13.9 Postacie 2.0
 
