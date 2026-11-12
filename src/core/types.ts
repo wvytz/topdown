@@ -246,6 +246,16 @@ export interface BossHudData {
   readonly enraged: boolean;
   /** Duet (krok 136): osobny pasek każdego bossa; brak = jeden pasek. */
   readonly members?: readonly BossBarData[];
+  /** Krok U6: progi faz na pasku (ułamki HP, malejąco); brak — bez kresek. */
+  readonly phaseMarks?: readonly number[];
+  /** Krok U6: portrety na karcie wejścia (duet — dwa). */
+  readonly portraits?: readonly BossPortrait[];
+}
+
+/** Portret bossa na karcie wejścia (krok U6): klatka arkusza bossa, przodem do gracza. */
+export interface BossPortrait {
+  readonly texture: string;
+  readonly frame: number;
 }
 
 /** Pasek jednego bossa duetu (krok 136). */
@@ -255,6 +265,8 @@ export interface BossBarData {
   readonly maxHp: number;
   readonly enraged: boolean;
   readonly defeated: boolean;
+  /** Krok U6: progi faz tego bossa. */
+  readonly phaseMarks?: readonly number[];
 }
 
 /** Strzałka przy krawędzi ekranu do bossa poza kadrem (krok 136), w pikselach ekranu. */

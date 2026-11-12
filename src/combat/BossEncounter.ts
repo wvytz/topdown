@@ -69,6 +69,8 @@ export class BossEncounter {
       ...(!duet.arrival && { spawnAvoid: partnerSpot }),
       ...(duet.opener && { arrival: hostArrivalAfterOpener(duet.opener) }),
       ...(sharedElevator && { sharedElevator }),
+      // Krok U6: przy tym progu HP gospodarza wraca partner — widoczny na pasku jako faza.
+      ...(duet.arrival && { extraPhaseMarks: [duet.arrival.hostHpRatio] }),
     });
     const partnerElevator = sharedElevator ?? host.elevatorSprite;
     const partner = new BossFight({
@@ -138,6 +140,8 @@ export class BossEncounter {
         defeated: fight.isDefeated,
         enraged: status?.enraged ?? false,
         enragedLabel: status?.enragedLabel ?? '',
+        phaseMarks: fight.phaseMarks,
+        portrait: fight.portrait,
       };
     });
     return duetStatus(members, this.duet);

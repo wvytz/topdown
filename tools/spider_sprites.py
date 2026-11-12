@@ -12,6 +12,8 @@ Arkusze (STYLEGUIDE §2, §8, §10):
                                jadowymi pazurami — ostatnia klatka = chwila uderzenia)
   spiderling_walk-prime.png    48x48, 8 kierunków; kolumny 0–3 bieg, 4–7 „zapłon” przed wybuchem (bez pętli)
   spiderling_burst.png         48x48, bez kierunków; 4 klatki wybuchu (bez pętli)
+  spider-queen_lash-fx.png     64x64, 8 kierunków (krok U6); 4 klatki błysku pazurów smagnięcia (wejście, cięcie,
+                               gaśnięcie, krople) — gra kładzie je przed królową w chwili uderzenia
   spider-queen_death.png       96x96, 8 kierunków (krok 24); 0 wzdrygnięcie, 1–3 nogi się podkulają, jaja gasną,
                                4 odwłok flaczeje, jaja pękają, 5 posoka, 6–7 ciało rozpada się w posokę
                                (po animacji gra zostawia plamę `splat`)
@@ -437,6 +439,51 @@ def burst_frame(f):
     return img
 
 
+# ---------------- smagnięcie (krok U6) ----------------
+
+LASH = 64
+LASH_ORIGIN = (32, 58)   # gdzie stoi królowa względem komórki (przód = góra); gra kładzie komórkę przed nią
+LASH_ARCS = (21, 28, 35)  # trzy pazury: promienie łuków od królowej
+LASH_SPAN = 40            # pół rozwarcia łuku (°)
+
+
+def lash_fx_frame(f):
+    """Smagnięcie Matki Pająków (krok U6, ocena właściciela po kroku 27: „animacja smagnięcia słabo widoczna —
+    błysk pazurów”): trzy łuki pazurów przecinają strefę od lewej do prawej. 0 — pazury wchodzą (lewa część
+    łuku, jasny jad), 1 — pełne cięcie z kościanymi szpicami, 2 — ślad gaśnie w ciemniejszy jad, 3 — krople."""
+    img = Img(LASH, LASH)
+    ox, oy = LASH_ORIGIN
+    sweep = (0.45, 1.0, 1.0, 1.0)[f]
+    core = (VENOM[3], VENOM[3], VENOM[1], VENOM[0])[f]
+    rim = (VENOM[2], VENOM[2], VENOM[0], VENOM[0])[f]
+    rng = random.Random(2711 + f)
+    for r in LASH_ARCS:
+        a0 = -LASH_SPAN
+        a1 = -LASH_SPAN + 2 * LASH_SPAN * sweep
+        steps = int(r * math.radians(a1 - a0) * 2) + 2
+        for i in range(steps + 1):
+            t = i / steps
+            # W klatce 3 z łuków zostają tylko krople.
+            if f == 3 and rng.random() > 0.18:
+                continue
+            a = math.radians(a0 + (a1 - a0) * t)
+            x, y = ox + math.sin(a) * r, oy - math.cos(a) * r
+            # Pazur najgrubszy w środku łuku, ostry na końcach.
+            thick = 2 if (f <= 1 and 0.2 < t < 0.85) else 1
+            for d in range(thick):
+                img.put(int(round(x - math.sin(a) * d)), int(round(y + math.cos(a) * d)), core if d == 0 else rim)
+        if f == 1:  # kościany szpic na czubku pazura (prawy koniec łuku)
+            a = math.radians(a1)
+            img.put(int(round(ox + math.sin(a) * r)), int(round(oy - math.cos(a) * r)), BONE[2])
+            img.put(int(round(ox + math.sin(a) * (r + 1))), int(round(oy - math.cos(a) * (r + 1))), BONE[1])
+    if f >= 2:  # krople jadu odpryskują za cięciem
+        for _ in range(6 if f == 2 else 4):
+            a = math.radians(rng.uniform(-LASH_SPAN, LASH_SPAN))
+            r = rng.uniform(LASH_ARCS[0], LASH_ARCS[-1] + 3)
+            img.put(int(ox + math.sin(a) * r), int(oy - math.cos(a) * r), VENOM[2] if f == 2 else VENOM[1])
+    return img
+
+
 # ---------------- arkusze ----------------
 def directional_sheet(size, frame_fn, cols=8):
     sheet = Img(size * cols, size * 8)
@@ -455,6 +502,7 @@ def build():
     queen, qf = directional_sheet(BOSS, queen_frame, cols=12)
     death, df = directional_sheet(BOSS, queen_death_frame)
     baby, bf = directional_sheet(SMALL, spiderling_frame)
+    lash, lf = directional_sheet(LASH, lash_fx_frame, cols=4)
     burst = Img(SMALL * 4, SMALL)
     uf = []
     for f in range(4):
@@ -466,6 +514,7 @@ def build():
         'spider-queen_death.png': (death, df, BOSS),
         'spiderling_walk-prime.png': (baby, bf, SMALL),
         'spiderling_burst.png': (burst, uf, SMALL),
+        'spider-queen_lash-fx.png': (lash, lf, LASH),
     }
 
 

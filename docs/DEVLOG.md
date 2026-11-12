@@ -6197,6 +6197,24 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Weryfikacja:** `npm run build` (2969 testów); `npm run shots` przed i po (zmieniły się tylko piętra 4, 6 i 7 oraz krew), `npm run perf` w granicach szumu; `npm run smoke` przez 7 pięter bez błędów. Zrzuty: `/mnt/project-files/screens/krokU4c-kafle/`. **Czeka na ocenę właściciela.**
 
+## Krok U6 — Bossowie: karta wejścia, widoczne fazy, śmierć Pożeracza i Palacza, smagnięcie Matki Pająków, rekwizyty aren 6–7 `#upgrade` `#bossowie` `#pozeracz` `#palacz` `#matka-pajakow` `#areny-zmienne`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: „podoba mi się, scalaj i lecimy dalej U5 i U6” (U5 równolegle w osobnym wątku).
+
+**Co powstało**
+- **Karta wejścia bossa** (`effects/BossIntroCard.ts`, przebieg w czasie — `systems/BossPresentation.ts`, liczby — `config/bossPresentationConfig.ts` `BOSS_INTRO_CARD`): przy przebudzeniu przez dół kadru przejeżdża ciemny pas z czerwonymi krawędziami (barwy ekranu startowego), portret bossa 2× (pierwsza klatka chodu, przodem do gracza; najpierw sylwetka, potem odsłonięcie z jedną klatką bieli — bez niej przy „mniej błysków”), podpis „BOSS”/„BOSSOWIE”, imię i tytuł. Duet ma dwa portrety. Karta zastępuje planszę z napisem przy przebudzeniu (okrzyk wściekłości dalej daje plansza). Gra w tym czasie trwa, karta znika po ok. 2,6 s. Wyłącznik: `BOSS_INTRO_CARD.enabled` albo `?bossCard=0`.
+- **Widoczne fazy** (`effects/BossPhaseBar.ts`, `BOSS_PHASE_MARKS`): kreski progów na pasku HP — wściekłość, ucieczka windą, powrót partnera duetu (`BossFightDeps.extraPhaseMarks`); przed graczem jasna kreska wystająca ponad pasek, przekroczona — przygaszona. Przy przekroczeniu kreska i pasek rozbłyskują (0,9 s, skokowo). Przy imieniu „faza N/M”. Progi poniżej ucieczki windą odpadają (blondynka ucieka przy 2/3, zanim by się wściekła). Duet: kreski na obu paskach.
+- **Śmierć Grzybowego Pożeracza** (`tools/devourer_sprites.py` → `fungal-devourer_death.png`): konwulsja i ryk, kula puchnie, pęka — ciała odpadają na boki, reszta osiada w kałuży krwi, ostatni wydech zarodników; sterta zostaje na posadzce.
+- **Śmierć Palacza** (`tools/stoker_sprites.py` → `stoker_death.png`): szufla wypada, kolana i drzwiczki na posadzce, ostatnie buchnięcie pieca, upadek twarzą w posadzkę, żar stygnie; zwłoki zostają. Od tego kroku każdy boss wspinaczki (i partner duetu) ma animację śmierci (test).
+- **Smagnięcie Matki Pająków** (ocena właściciela po kroku 27: „słabo widoczne”, przeniesione z U2): w chwili uderzenia przed królową przelatują trzy zielone łuki pazurów z kościanymi szpicami (`tools/spider_sprites.py` → `spider-queen_lash-fx.png`, 8 kierunków; `effects/BossLashFx.ts`, `BOSS_LASH_FX`). Smagnięcie nie daje już ognistego wybuchu i wypalonego śladu — to był domyślny wygląd stref bez własnego `look`. Strefa, obrażenia i trucizna bez zmian.
+- **Rekwizyty aren 6–7 z generatora** (`tools/arena_props.py` → `public/assets/sprites/arena/`): wiadro (całe i przewrócone z wodą), butla chloru, wózek sprzątaczki, znak „ślisko”, lustro (całe i pęknięte), słup w bluszczu, gniazdo z bocianem (całe i rozbite), żywopłot — obrys 1 px, rampy palet `lustro_opal` i `bociani_noc`, cień α 0,4. Klucze i rozmiary tekstur jak w kroku 160, więc `ArenaConditionManager` kładzie je tak samo; `effects/ArenaConditionArt.ts` tylko je ładuje (BootScene).
+
+**Decyzje:** karta nie zatrzymuje gry (liczby walk bez zmian — plan U6), leży w dolnej części kadru nad paskiem HP, bo bohater stoi w środku, a boss zwykle nad nim. Portret to klatka z istniejącego arkusza, bez nowych grafik. Generatory zachowują dotychczasowe arkusze bajt w bajt (sprawdzone `cmp`); arkusze Matki Pająków w repo różnią się od wyjścia generatora już przed tym krokiem, więc nie są nadpisywane — dochodzi tylko nowy plik.
+
+**Testy:** `tests/systems/bossPresentation.test.ts` — przebieg karty (wjazd, postój, zjazd, czas ≤ 3 s), progi faz (kolejność, scalanie bliskich, odcięcie poniżej ucieczki), numer fazy zgodny z progiem wściekłości w `BossBrain`, portret każdego bossa w granicach arkusza, animacja śmierci każdego bossa wspinaczki.
+
+**Weryfikacja:** `npm run build` (2995 testów); Playwright: karta na piętrach 1–7, rozbłysk progu, śmierć Pożeracza i Palacza w grze, błysk pazurów, rekwizyty aren 6–7; `npm run smoke -- --floors 7 --sweep-only` bez błędów. `npm run perf` pominięty (karta i kreski to kilka obiektów HUD-u). Zrzuty: `/mnt/project-files/screens/krokU6-bossowie/`. **Czeka na ocenę właściciela.**
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6213,11 +6231,11 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 
 **3. Do zrobienia — upgrade Aktu I** (`docs/UPGRADE.md`, gałąź `upgrade-fable`; przed każdym etapem i po nim `npm run shots` i `npm run perf`)
 - **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
-- **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c; zostało smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
+- **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c, smagnięcie Matki Pająków — w U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
 - **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
 - **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata, Ogród i jaskrawsza krew (czeka na ocenę). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138).
 - **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
-- **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
+- **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
 - **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
