@@ -47,7 +47,7 @@ export function pixelFontKey(scene: Phaser.Scene, color: string | number, size =
 
   const base = Number.parseInt(hex, 16);
   const R = UI_FONT_LOOK;
-  const ramp = R.ramp.map((t) => (t >= 0 ? mix(base, R.lightTone, t) : mix(base, 0x000000, -t)));
+  const ramp = look.effects ? R.ramp.map((t) => (t >= 0 ? mix(base, R.lightTone, t) : mix(base, 0x000000, -t))) : [`#${hex}`];
   const shadowColor = mix(base, 0x000000, R.shadowDarken);
   const chars: Record<number, unknown> = {};
   let left = 0;
@@ -63,7 +63,7 @@ export function pixelFontKey(scene: Phaser.Scene, color: string | number, size =
       }
     };
     // Cień pod literą, potem obrys krzyżem (bez rogów — litera ma ścięte narożniki jak POLEGŁEŚ).
-    layer(0, shadow, shadowColor);
+    if (shadow > 0) layer(0, shadow, shadowColor);
     for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o]] as const) layer(dx, dy, INK);
     // Lico paskami rampy: wierzch jasny, spód ciemny.
     for (const p of glyph.pixels) {

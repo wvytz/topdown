@@ -22,7 +22,7 @@ import { BOSS_POINTER_CONFIG } from '@/config/gameConfig';
 import { DEATH_HERO_ICON } from '@/config/deathScreenConfig';
 import { HUD_LAYOUT as L, UI_PALETTE as P, UI_TEXT_COLORS as C } from '@/config/uiConfig';
 import { heroIconTexture } from '@/effects/heroIcon';
-import { fadingAlpha, floorHeadline, floorModifierNote, goldNote, objectiveHint, type ObjectiveTone } from '@/systems/hudText';
+import { fadingAlpha, floorModifierNote, goldNote, objectiveHint, type ObjectiveTone } from '@/systems/hudText';
 import { UiText, uiText } from '@/ui/UiText';
 import { drawBar, drawFrame, rampOf } from '@/ui/UiFrame';
 import { ItemSlotView } from '@/ui/ItemSlotView';
@@ -39,13 +39,13 @@ const ULT_X = BAR_X + L.hp.width + 7;
  */
 function hudGeometry(t: 1 | 2) {
   const headlineY = L.margin - 3;
-  // Nagłówek piętra zawsze w skali 2 (krok U7b) — krótki: „PIĘTRO 3 · ZŁOTA ŻYŁA”.
-  const hpY = L.margin + 24;
+  // Nad paskiem zdrowia tylko krótki numer piętra w skali drobnych napisów (krok U7d).
+  const hpY = L.margin + 12 * t;
   const dashY = hpY + L.hp.height + L.barGap + 1;
   const chargesY = dashY + L.dash.height + L.barGap + 1;
   const beamY = chargesY + L.charges.height + L.barGap + 1;
   const goldY = Math.max(PORTRAIT_Y + L.portrait.size, beamY + L.beam.height) + L.goldGap;
-  const objectiveY = goldY + 22 + (t - 1) * 10;
+  const objectiveY = goldY + 13 * t;
   const itemY = objectiveY + 2 + 14 * t;
   return { t, headlineY, hpY, dashY, chargesY, beamY, ultY: hpY - 1, goldY, objectiveY, itemY, noticeY: itemY + L.itemSlot.size + 4 };
 }
@@ -161,14 +161,14 @@ export class HudScene extends Phaser.Scene {
 
     this.bars = this.add.graphics();
     this.portrait = this.add.image(PORTRAIT_X + L.portrait.size / 2, PORTRAIT_Y + L.portrait.size / 2, '__DEFAULT').setVisible(false);
-    this.headlineText = uiText(this, BAR_X, geo.headlineY, '', { size: 2, color: C.bright });
+    this.headlineText = uiText(this, BAR_X, geo.headlineY, '', { size: t, color: C.text });
     this.hpText = uiText(this, BAR_X + L.hp.width - 3, geo.hpY - 1, '', { color: C.bright, align: 'right' }).setOrigin(1, 0);
     // Na telefonie ultimate ma własny przycisk — kwadrat bez litery klawisza.
     this.ultimateText = uiText(this, ULT_X + L.ultimate.size / 2, geo.ultY + L.ultimate.size / 2, currentPlatform() === 'mobile' ? '' : 'R', { color: C.bright }).setOrigin(0.5);
     this.playerLabelText = uiText(this, ULT_X + L.ultimate.size + 6, geo.hpY, '', { size: t, color: '#3ddc84' });
 
     // Złoto o stopień większe od drobnych napisów; dopisek wyrównany do spodu cyfr.
-    const goldSize = t === 1 ? 2 : 3;
+    const goldSize = t;
     this.add.image(PORTRAIT_X + 8, geo.goldY + 5 + 4 * goldSize, LOOT_ATLAS.key, 'coin_0');
     this.goldText = uiText(this, PORTRAIT_X + 20, geo.goldY, '', { size: goldSize, color: C.gold });
     this.goldNoteText = uiText(this, PORTRAIT_X + 20, geo.goldY + 10 * (goldSize - t), '', { size: t, color: C.dim });
@@ -211,10 +211,10 @@ export class HudScene extends Phaser.Scene {
       this.floorShown = hud.floor;
       this.floorSince = time;
     }
-    this.headlineText.setText(floorHeadline(hud.arenaLabel ?? floorLabel(hud.floor, TOWER_CONFIG), hud.floorModifier));
+    this.headlineText.setText(hud.arenaLabel ?? floorLabel(hud.floor, TOWER_CONFIG));
     const sinceFloor = time - this.floorSince;
-    this.modifierText.setText(floorModifierNote(hud.floorModifier, sinceFloor, L.modifierLongMs + L.helpFadeMs));
-    this.modifierText.setAlpha(fadingAlpha(sinceFloor, L.modifierLongMs, L.helpFadeMs));
+    const modifierLong = sinceFloor < L.modifierLongMs;
+    this.modifierText.setText(floorModifierNote(hud.floorModifier, sinceFloor, L.modifierLongMs)).setColor(modifierLong ? C.magic : C.dim);
     this.drawPortrait(hud.hero);
     this.hpText.setText(`${hud.hp}/${hud.maxHp}`);
 

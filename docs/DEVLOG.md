@@ -6276,6 +6276,18 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** dopisek złota w zwykłym runie pusty. `npm run build`, smoke solo.
 
+## Krok U7d — Powrót do prostego HUD-u: czytelnie, bez fajerwerków `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7c (12.11.2026) `#ocena`:** „jak my tak zboczyliśmy z podstawowego widoku? ma być czytelnie bez fajerwerków. to z pierwszego screena jest odrażające — to ma najważniejsza informacja? dłuższa niż pasek zdrowia?”
+
+**Co się zmieniło:**
+- Nad paskiem zdrowia tylko krótki numer piętra („PIĘTRO 3”), drobnymi literami — jak w HUD-zie sprzed U7. Pasek zdrowia jest najważniejszym i najdłuższym elementem.
+- Modyfikator piętra we własnej linii pod przedmiotami: przez 9 s z opisem, potem sama nazwa przygaszona (`floorModifierNote`).
+- Złoto w skali drobnych napisów, obok monety.
+- Drobne napisy (piksel fontu 1–2: HUD, menu, opisy) mają płaskie lico z obrysem, bez cienia i rampy; cień i rampa zostają od piksela 3 (tytuły: PAUZA, nazwy na kartach, POLEGŁEŚ) — `UI_FONT_LOOK.effectsFromPx`.
+
+**Testy:** recepta (drobne napisy bez cienia i rampy), linia modyfikatora. `npm run build`, smoke solo.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

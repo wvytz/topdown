@@ -102,9 +102,10 @@ describe('pikselowy krój pisma (krok U7)', () => {
     expect(pixels.some((p) => p.x === i + FONT_LETTER_GAP && p.y === 6)).toBe(true);
   });
 
-  it('recepta liter jak POLEGŁEŚ: przy pikselu 8 obrys 2 i cień 4, przy drobnym napisie obrys 1', () => {
+  it('recepta liter jak POLEGŁEŚ: przy pikselu 8 obrys 2 i cień 4; drobne napisy bez cienia i rampy', () => {
     expect(fontLook(8, UI_FONT_LOOK)).toMatchObject({ px: 8, outline: 2, shadow: 4, strip: 2 });
-    expect(fontLook(1, UI_FONT_LOOK)).toMatchObject({ px: 1, outline: 1, strip: 1 });
+    expect(fontLook(1, UI_FONT_LOOK)).toMatchObject({ px: 1, outline: 1, strip: 1, shadow: 0, effects: false });
+    expect(fontLook(2, UI_FONT_LOOK)).toMatchObject({ shadow: 0, effects: false });
     // Szersze odstępy: przy pikselu 2 odstęp liter to 3 px płótna zamiast 2.
     expect(fontLook(2, UI_FONT_LOOK).gap).toBe(3);
   });

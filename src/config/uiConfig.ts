@@ -102,6 +102,11 @@ export const REWARD_CARD = {
  * i szersze odstępy między literami. Wszystkie wielkości w pikselach płótna 960×540.
  */
 export const UI_FONT_LOOK = {
+  /**
+   * Cień i rampa tylko od tej wielkości piksela fontu (tytuły, menu, karty). Drobne napisy (HUD, opisy) mają
+   * samo lico z obrysem — krok U7d, ocena właściciela: „ma być czytelnie bez fajerwerków”.
+   */
+  effectsFromPx: 3,
   /** Obrys = ułamek piksela fontu (POLEGŁEŚ: piksel 8, obrys 2), co najmniej 1 px. */
   outlineFraction: 0.25,
   /** Cień: lico przesunięte w dół o tyle obrysów (POLEGŁEŚ: 2). */

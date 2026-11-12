@@ -311,9 +311,12 @@ export interface FontLook {
   readonly strip: number;
   /** Odstęp między literami. */
   readonly gap: number;
+  /** Cień i rampa lica (duże napisy); drobne — płaskie lico z obrysem. */
+  readonly effects: boolean;
 }
 
 export interface FontLookConfig {
+  readonly effectsFromPx: number;
   readonly outlineFraction: number;
   readonly shadowOutlines: number;
   readonly stripPx: number;
@@ -324,10 +327,12 @@ export interface FontLookConfig {
 export function fontLook(size: number, config: FontLookConfig): FontLook {
   const px = Math.max(1, Math.round(size));
   const outline = Math.max(1, Math.round(px * config.outlineFraction));
+  const effects = px >= config.effectsFromPx;
   return {
     px,
     outline,
-    shadow: outline * config.shadowOutlines,
+    shadow: effects ? outline * config.shadowOutlines : 0,
+    effects,
     strip: Math.max(1, Math.min(px, config.stripPx)),
     gap: FONT_LETTER_GAP * px + Math.round(px * config.extraGapFraction),
   };
