@@ -307,8 +307,44 @@ def breach(w, h):
     return gen
 
 
-def apply(entries, Entry, kit):
-    """Dopisuje kafle oprawy 2.0 na końcu (first-fit)."""
+def niche(p, r):
+    """Cmentarzysko (krok U4b): nisza grobowa w murze wieży — prostokątne wgłębienie z czaszką."""
+    img = tower(p, r)
+    WF, D, B = p.wall_fade, p.deep, p.bone
+    x0, y0, w, h = 8 + r.randint(-2, 2), 10, 16, 11
+    for y in range(y0, y0 + h):
+        for x in range(x0, x0 + w):
+            img.put(x, y, D[0] if y > y0 + 2 else WF[0])  # górne wiersze: grubość muru nad niszą
+    for x in range(x0 - 1, x0 + w + 1):
+        img.put(x, y0 - 1, WF[2])       # oświetlone nadproże
+        img.put(x, y0 + h, p.outline)   # ciemna krawędź dolna
+    for y in range(y0, y0 + h):
+        img.put(x0 - 1, y, D[1])
+        img.put(x0 + w, y, D[1])
+    cx, cy = x0 + w // 2 + r.choice([-3, 0, 3]), y0 + h - 4
+    for y in range(cy - 2, cy + 2):
+        for x in range(cx - 2, cx + 3):
+            if (x - cx) ** 2 + (y - cy + .5) ** 2 <= 5:
+                img.put(x, y, B[1] if y < cy else B[0])
+    img.put(cx - 1, cy - 1, D[0]); img.put(cx + 1, cy - 1, D[0])  # oczodoły
+    img.put(cx - 4, y0 + h - 1, B[0]); img.put(cx + 4, y0 + h - 1, B[0])  # kości
+    return img
+
+
+def glow_rim(gen):
+    """Grzybnia (krok U4b): na oświetlonej krawędzi wyrwy świecące drobiny grzybni."""
+    def wrapped(p, r):
+        img = gen(p, r)
+        rim = [(x, y) for y in range(1, img.h - 1) for x in range(1, img.w - 1)
+               if img.get(x, y) == p.wall_face[2] and img.get(x, y - 1) != p.wall_face[2]]
+        for (x, y) in r.sample(rim, min(len(rim), 6)):
+            img.put(x, y - 1, r.choice(p.flame[1:3]))
+        return img
+    return wrapped
+
+
+def apply(entries, Entry, kit, biome='tower_ruins'):
+    """Dopisuje kafle oprawy 2.0 na końcu (first-fit). Krok U4b: Grzybnia i Cmentarzysko z własnymi akcentami."""
     global K
     K = kit
     for slabs in MACRO.values():
@@ -333,5 +369,9 @@ def apply(entries, Entry, kit):
     for v in ('a', 'b', 'c'):
         out.append(Entry(f'wall_tower_{v}', tower, 'wall', group='wallBand.tower', weight=1))
     for v, w, h, weight in BREACHES:
-        out.append(Entry(f'wall_breach_{v}_{w}x{h}', breach(w, h), 'wall', w, h, group='wallBreach', weight=weight))
+        gen = glow_rim(breach(w, h)) if biome == 'fungal_grove' else breach(w, h)
+        out.append(Entry(f'wall_breach_{v}_{w}x{h}', gen, 'wall', w, h, group='wallBreach', weight=weight))
+    if biome == 'graveyard':
+        for v in ('a', 'b'):
+            out.append(Entry(f'wall_tower_niche_{v}', niche, 'wall', group='wallBand.tower', weight=.15))
     return out

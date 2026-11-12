@@ -264,6 +264,8 @@ PALETTES = {
         bone=oks((.72, .030, 310), (.83, .026, 315), (.92, .014, 320)),
         # Bioluminescencja: grzyby-latarnie zamiast pochodni (poświata gry też bierze barwę z tej rampy).
         flame=oks((.48, .090, 230), (.63, .120, 220), (.80, .120, 205), (.92, .060, 195)),
+        # Krok U4b: fioletowa noc za wyrwami, iskra = bioluminescencja.
+        sky=oks((.12, .050, 290), (.16, .060, 288), (.21, .060, 285), (.27, .050, 280), (.80, .120, 205)),
     ),
     # Cmentarzysko (krok 32a): ludzkie miejsce pochówku, gdzie upadli zatruci; grzyb ledwo dociera.
     # Trzy kandydatki do wyboru przez właściciela. Jasność podłogi jak w Grzybni (czytelność postaci),
@@ -329,6 +331,8 @@ PALETTES = {
         flesh=oks((.40, .030, 135), (.49, .036, 128), (.58, .036, 122)),
         # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
         mycel=oks((.55, .045, 215), (.76, .075, 205)),
+        # Krok U4b: chorobliwa, zielonkawa mgła za wyrwami, iskra = płomyk świecy.
+        sky=oks((.13, .020, 170), (.17, .024, 165), (.22, .024, 160), (.28, .020, 150), (.70, .060, 98)),
     ),
     # Zadymiona palarnia (piętro 7, krok 83): brudny kamień zżółkły od nikotyny, dym zamiast mroku. Ciemniejsza od ruin
     # (każdy biom mroczniejszy), ale jaśniejsza niż Piekło — dym ma być szary, nie czarny. Plamy to nikotynowa żółć.
@@ -475,9 +479,9 @@ BIOMES = {
     'tower_ruins': {'palette': 'piaskowiec', 'extras': ('wreck', 'v2'), 'reserved_hues': True},
     'spider_lair': {'palette': 'pajeczy', 'extras': ('spider',), 'reserved_hues': False},
     # Grzybnia (krok 28a): dalszy ciąg leża (jaja, nici, pancerzyki) porośnięty grzybem; fiolet z wyboru właściciela.
-    'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
+    'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus', 'v2'), 'reserved_hues': False},
     # Cmentarzysko (krok 32a): ludzki biom — groby, kości, zwłoki zatrutych; grzybnia ledwo dociera.
-    'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave',), 'reserved_hues': True},
+    'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave', 'v2'), 'reserved_hues': True},
     # Piekło (krok 41a): krwisty, demoniczny biom z paleniskami; czerwień i pomarańcz z prośby właściciela,
     # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
     'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
@@ -2292,7 +2296,7 @@ def manifest():
     if 'v2' in BIOMES[BIOME]['extras']:
         # Oprawa 2.0 (krok U4a): na samym końcu (first-fit), kafle sprzed upgradu zostają na swoich miejscach.
         m = ruins_v2_tiles.apply(m, Entry, V2_KIT_TYPE(Img, T, FACE, CLR, crack, pebble, floor_slabs, SLAB_LAYOUTS,
-                                                         cobble, wall_tile, ashlar))
+                                                         cobble, wall_tile, ashlar), BIOME)
     return m
 
 

@@ -7,15 +7,12 @@ import type { FeastDefinition } from '@/core/bossTypes';
  * Spiżarnia Grzybowego Pożeracza (krok 33): kokony z zarażonymi na podłodze areny, przy ścianach
  * (`wallMarginTiles` od muru), z dala od środka (tam staje boss i schody) i od siebie nawzajem.
  * Kolejność kandydatów losowa (własny strumień RNG), wybór zachłanny z odstępem.
- * Krok 39: kokony nie stoją przy tronie Pożeracza (`throne`) — w promieniu `throneClear` kafli (Czebyszew).
  */
 export function planLarders(
   floor: DungeonFloor,
   arena: Room,
   config: FeastDefinition['larders'],
   rng: Rng,
-  throne: TilePoint | null = null,
-  throneClear = 0,
 ): TilePoint[] {
   const m = config.wallMarginTiles;
   const center = { x: arena.x + Math.floor(arena.width / 2), y: arena.y + Math.floor(arena.height / 2) };
@@ -25,7 +22,6 @@ export function planLarders(
       const ring = x === arena.x + m || x === arena.x + arena.width - 1 - m || y === arena.y + m || y === arena.y + arena.height - 1 - m;
       if (!ring || floor.tiles[y * floor.width + x] !== TileType.Floor) continue;
       if (chebyshev({ x, y }, center) <= config.centerClearTiles) continue;
-      if (throne && chebyshev({ x, y }, throne) <= throneClear) continue;
       candidates.push({ x, y });
     }
   }

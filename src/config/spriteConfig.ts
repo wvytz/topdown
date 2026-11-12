@@ -1440,18 +1440,6 @@ export const SPRITE_SHEETS = {
       tear: { frames: [10, 11, 12, 13], loop: false, fps: 10 },
     },
   },
-  // Tron z grzybni (krok 39): dekoracja areny Pożeracza bez kolizji, oparcie na północy.
-  fungalThrone: {
-    key: 'sheet-fungal-throne',
-    url: 'assets/sprites/fungal-throne.png',
-    frameWidth: 96,
-    frameHeight: 96,
-    sheetWidth: 96,
-    sheetHeight: 96,
-    directions: 1,
-    fps: SPRITE_FPS,
-    animations: {},
-  },
   // Efekty Pożeracza (krok 39): wiersz 0 krew (trafienie gracza), wiersz 1 sok (leczenie bossa).
   fungalFx: {
     key: 'sheet-fungal-fx',
@@ -2323,11 +2311,10 @@ export const LARDER_VISUAL = {
 } as const;
 
 /**
- * Sala tronowa Pożeracza (krok 39): tron i naklejki podłogi (kolumny `throneDecals` w kolejności
+ * Sala tronowa Pożeracza (krok 39; tron usunięty w kroku U4b): naklejki podłogi (kolumny `throneDecals` w kolejności
  * `ThroneDecalKind`), krew na graczu po trafieniu i sok nad bossem przy leczeniu (wiersze `fungalFx`).
  */
 export const THRONE_ROOM_VISUAL = {
-  throne: 'fungalThrone',
   decals: 'throneDecals',
   fx: { sheet: 'fungalFx', animation: 'burst', bloodRow: 0, sapRow: 1 },
 } as const;
