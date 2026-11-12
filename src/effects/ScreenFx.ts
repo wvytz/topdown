@@ -6,6 +6,7 @@ import { RENDER_QUALITY_CONFIG } from '@/config/renderQualityConfig';
 import { display } from '@/input/DisplayControls';
 import { HitstopClock } from '@/systems/CombatFeel';
 import type { HitstopKind } from '@/core/combatFeelTypes';
+import { inViewWithMargin } from '@/systems/DynamicLights';
 import { qualityFromSearch, renderProfile, resolveQuality, scaledParticleCount } from '@/systems/RenderQuality';
 
 /** Obiekt, który może dostać poświatę (preFX istnieje tylko w WebGL). */
@@ -133,6 +134,22 @@ class ScreenFxHub {
     this.glowing.set(target, group);
     target.once(Phaser.GameObjects.Events.DESTROY, () => this.glowing.delete(target));
     this.applyGlow(target, group);
+  }
+
+  /**
+   * Poświata tylko w kadrze (krok U3): preFX glow to osobne przejście GPU na obiekt, także poza ekranem.
+   * Poza kadrem (z zapasem) filtr się wyłącza, a wraca, gdy obiekt do kadru wejdzie. Wołane raz na klatkę.
+   */
+  cullGlow(view: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }): void {
+    for (const target of this.glowing.keys()) {
+      const fx = target.preFX;
+      if (!fx || fx.list.length === 0) continue;
+      const half = Math.max(target.displayWidth, target.displayHeight) / 2;
+      const inView = inViewWithMargin({ x: target.x, y: target.y }, half, view);
+      if (inView === fx.enabled) continue;
+      if (inView) fx.enable();
+      else fx.disable();
+    }
   }
 
   private refreshGlow(): void {

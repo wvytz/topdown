@@ -2134,6 +2134,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       flares: () => this.effects?.fire.activeLights() ?? [],
       hideable: () => this.hideableEnemies(),
       ambientRevealsEnemies: AMBIENT_CONFIG.revealsEnemies,
+      floor: this.floorNumber,
     });
     this.lighting = this.floorLighting.overlay;
   }

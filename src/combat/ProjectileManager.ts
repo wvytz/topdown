@@ -1,4 +1,6 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { dynamicLights } from '@/effects/DynamicLights';
+import { LightKind } from '@/core/lightTypes';
 import { combatFeel } from '@/effects/CombatFeel';
 import Phaser from 'phaser';
 import type { Vector2 } from '@/core/types';
@@ -62,6 +64,7 @@ export class ProjectileManager {
     this.group = scene.physics.add.group({ classType: Projectile });
     // Krok U2: pociski wrogów dostają małe światło nad mrokiem (STYLEGUIDE §13.5).
     combatFeel.trackProjectiles(this.group);
+    dynamicLights.trackShots(this.group, () => LightKind.EnemyShot);
 
     scene.physics.add.collider(this.group, walls, (projectile, tile) => {
       if (!(projectile instanceof Projectile)) return;
