@@ -22,10 +22,9 @@ import { BOSS_POINTER_CONFIG } from '@/config/gameConfig';
 import { DEATH_HERO_ICON } from '@/config/deathScreenConfig';
 import { HUD_LAYOUT as L, UI_PALETTE as P, UI_TEXT_COLORS as C } from '@/config/uiConfig';
 import { heroIconTexture } from '@/effects/heroIcon';
-import { fadingAlpha, floorHeadline, goldNote, objectiveHint, type ObjectiveTone } from '@/systems/hudText';
+import { fadingAlpha, floorHeadline, floorModifierNote, goldNote, objectiveHint, type ObjectiveTone } from '@/systems/hudText';
 import { UiText, uiText } from '@/ui/UiText';
-import { drawBar, drawFrame, drawTextPlate, rampOf } from '@/ui/UiFrame';
-import { uiFontStyle } from '@/ui/PixelFont';
+import { drawBar, drawFrame, rampOf } from '@/ui/UiFrame';
 import { ItemSlotView } from '@/ui/ItemSlotView';
 
 /** Lewy górny panel: portret, obok niego nagłówek piętra i paski. */
@@ -45,7 +44,7 @@ function hudGeometry(t: 1 | 2) {
   const chargesY = dashY + L.dash.height + L.barGap + 1;
   const beamY = chargesY + L.charges.height + L.barGap + 1;
   const goldY = Math.max(PORTRAIT_Y + L.portrait.size, beamY + L.beam.height) + L.goldGap;
-  const objectiveY = goldY + 22;
+  const objectiveY = goldY + 22 + (t - 1) * 10;
   const itemY = objectiveY + 2 + 14 * t;
   return { t, headlineY, hpY, dashY, chargesY, beamY, ultY: hpY - 1, goldY, objectiveY, itemY, noticeY: itemY + L.itemSlot.size + 4 };
 }
@@ -101,8 +100,6 @@ export class HudScene extends Phaser.Scene {
   private geo!: HudGeometry;
   /** Ramki (portret, sloty, minimapa) — przerysowywane co klatkę razem z paskami. */
   private bars!: Phaser.GameObjects.Graphics;
-  /** Podkładki pod napisami (krok U7a, warianty kroju z `plates`). */
-  private plates!: Phaser.GameObjects.Graphics;
   private portrait!: Phaser.GameObjects.Image;
   private portraitHero: HeroId | null = null;
   private headlineText!: UiText;
@@ -123,6 +120,8 @@ export class HudScene extends Phaser.Scene {
   private goldNoteText!: UiText;
   private items!: ItemSlotView;
   private itemNoticeText!: UiText;
+  /** Opis modyfikatora piętra pod przedmiotami (krok U7b), gaśnie po `modifierLongMs`. */
+  private modifierText!: UiText;
   private toastText!: UiText;
   private bannerTitle!: UiText;
   private bannerSubtitle!: UiText;
@@ -156,11 +155,10 @@ export class HudScene extends Phaser.Scene {
     this.floorShown = -1;
     this.objectiveKey = '';
     this.portraitHero = null;
-    const geo = (this.geo = hudGeometry(currentPlatform() === 'mobile' ? 2 : 1));
+    const geo = (this.geo = hudGeometry(L.textScale));
     const t = geo.t;
 
     this.bars = this.add.graphics();
-    this.plates = this.add.graphics();
     this.portrait = this.add.image(PORTRAIT_X + L.portrait.size / 2, PORTRAIT_Y + L.portrait.size / 2, '__DEFAULT').setVisible(false);
     this.headlineText = uiText(this, BAR_X, geo.headlineY, '', { size: t, color: C.bright });
     this.hpText = uiText(this, BAR_X + L.hp.width - 3, geo.hpY - 1, '', { color: C.bright, align: 'right' }).setOrigin(1, 0);
@@ -168,15 +166,18 @@ export class HudScene extends Phaser.Scene {
     this.ultimateText = uiText(this, ULT_X + L.ultimate.size / 2, geo.ultY + L.ultimate.size / 2, currentPlatform() === 'mobile' ? '' : 'R', { color: C.bright }).setOrigin(0.5);
     this.playerLabelText = uiText(this, ULT_X + L.ultimate.size + 6, geo.hpY, '', { size: t, color: '#3ddc84' });
 
-    this.add.image(PORTRAIT_X + 8, geo.goldY + 15, LOOT_ATLAS.key, 'coin_0');
-    this.goldText = uiText(this, PORTRAIT_X + 18, geo.goldY, '', { size: 2, color: C.gold });
-    this.goldNoteText = uiText(this, PORTRAIT_X + 18, t === 1 ? geo.goldY + 10 : geo.goldY, '', { size: t, color: C.dim });
+    // Złoto o stopień większe od drobnych napisów; dopisek wyrównany do spodu cyfr.
+    const goldSize = t === 1 ? 2 : 3;
+    this.add.image(PORTRAIT_X + 8, geo.goldY + 5 + 4 * goldSize, LOOT_ATLAS.key, 'coin_0');
+    this.goldText = uiText(this, PORTRAIT_X + 20, geo.goldY, '', { size: goldSize, color: C.gold });
+    this.goldNoteText = uiText(this, PORTRAIT_X + 20, geo.goldY + 10 * (goldSize - t), '', { size: t, color: C.dim });
     this.hintText = uiText(this, PORTRAIT_X, geo.objectiveY, '', { size: t, color: C.dim });
 
     this.minimapMap = this.add.graphics();
     this.minimapMarks = this.add.graphics();
     this.items = new ItemSlotView(this, { x: PORTRAIT_X, y: geo.itemY, size: L.itemSlot.size, gap: L.itemSlot.gap, iconScale: 1, capacity: ALL_ITEMS.length });
-    this.itemNoticeText = uiText(this, PORTRAIT_X, geo.noticeY, '', { size: t, color: C.gold }).setAlpha(0);
+    this.modifierText = uiText(this, PORTRAIT_X, geo.noticeY, '', { size: t, color: C.magic, wrap: L.noteWrap });
+    this.itemNoticeText = uiText(this, PORTRAIT_X, geo.noticeY, '', { size: t, color: C.gold, wrap: L.noteWrap }).setAlpha(0);
     this.toastText = uiText(this, this.scale.width / 2, 70, '', { size: 2, color: '#ffe08a', align: 'center' }).setOrigin(0.5);
 
     this.bossNameText = uiText(this, this.scale.width / 2, BOSS.y - 24, '', { size: 2, color: C.boss }).setOrigin(0.5, 0).setVisible(false);
@@ -209,7 +210,10 @@ export class HudScene extends Phaser.Scene {
       this.floorShown = hud.floor;
       this.floorSince = time;
     }
-    this.headlineText.setText(floorHeadline(hud.arenaLabel ?? floorLabel(hud.floor, TOWER_CONFIG), hud.floorModifier, time - this.floorSince, L.modifierLongMs));
+    this.headlineText.setText(floorHeadline(hud.arenaLabel ?? floorLabel(hud.floor, TOWER_CONFIG), hud.floorModifier));
+    const sinceFloor = time - this.floorSince;
+    this.modifierText.setText(floorModifierNote(hud.floorModifier, sinceFloor, L.modifierLongMs + L.helpFadeMs));
+    this.modifierText.setAlpha(fadingAlpha(sinceFloor, L.modifierLongMs, L.helpFadeMs));
     this.drawPortrait(hud.hero);
     this.hpText.setText(`${hud.hp}/${hud.maxHp}`);
 
@@ -246,19 +250,7 @@ export class HudScene extends Phaser.Scene {
     this.updateBanner(hud.boss);
     this.playerLabelText.setText(hud.playerLabel);
     this.drawPartner(hud.partner, time);
-    this.drawPlates();
     this.deathScreen.update(hud.death, time);
-  }
-
-  /** Ciemne podkładki pod napisami HUD-u, gdy wariant kroju ich chce (krok U7a). */
-  private drawPlates(): void {
-    this.plates.clear();
-    if (!uiFontStyle().plates) return;
-    const plated = [
-      this.headlineText, this.playerLabelText, this.goldText, this.goldNoteText, this.hintText, this.itemNoticeText,
-      this.toastText, this.helpText, this.bossNameText, ...this.duetNameTexts, this.partnerLabel, this.partnerHpText,
-    ];
-    for (const text of plated) drawTextPlate(this.plates, text);
   }
 
   /** Portret bohatera w ramce (krok U7): pierwsza klatka chodu 1:1, jak miniaturka z ekranu śmierci. */
@@ -375,6 +367,9 @@ export class HudScene extends Phaser.Scene {
   /** „Nazwa — efekt” pod ikonami; wygasa pod koniec wyświetlania. */
   private updateItemNotice(notice: HudItemNotice | null): void {
     this.itemNoticeText.setText(notice ? `${notice.name} — ${notice.effect}` : '');
+    // Pod opisem modyfikatora, jeśli ten jeszcze widać.
+    const below = this.modifierText.text !== '' ? this.modifierText.height + 4 : 0;
+    this.itemNoticeText.setY(this.geo.noticeY + below);
     this.itemNoticeText.setAlpha(notice ? Math.min(1, notice.remainingMs / ITEM_NOTICE_FADE_MS) : 0);
   }
 

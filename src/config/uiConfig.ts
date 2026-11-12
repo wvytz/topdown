@@ -50,6 +50,8 @@ export type UiTextSize = 1 | 2 | 3 | 4 | 5 | 6 | 8;
  */
 export const HUD_LAYOUT = {
   margin: 8,
+  /** Skala drobnych napisów HUD-u (krok U7b: 2 także na PC — piksel fontu 2, cienki obrys jak POLEGŁEŚ). */
+  textScale: 2 as 1 | 2,
   /** Ramka portretu bohatera (miniaturka jak na ekranie śmierci). */
   portrait: { size: 36, icon: 32 },
   /** Paski: HP z liczbą w środku, pod nim dash, ładunki strzału i promień Czarodziejki. */
@@ -64,8 +66,10 @@ export const HUD_LAYOUT = {
   itemSlot: { size: 24, gap: 3 },
   /** Ile ms po zmianie celu widać pełną podpowiedź („znajdź komnatę bossa…”), potem zostaje skrót. */
   objectiveLongMs: 6000,
-  /** Opis modyfikatora piętra: pełny przez tyle ms od wejścia na piętro, potem sama nazwa. */
+  /** Opis modyfikatora piętra (własna linia pod przedmiotami): widoczny przez tyle ms od wejścia na piętro, potem gaśnie. */
   modifierLongMs: 9000,
+  /** Szerokość łamania opisu modyfikatora i wiadomości o przedmiocie pod rzędem przedmiotów. */
+  noteWrap: 480,
   /** Linia sterowania na dole: tylko na początku runu (STYLEGUIDE §13.10). */
   helpVisibleMs: 25000,
   helpFadeMs: 1500,
@@ -85,32 +89,27 @@ export const REWARD_CARD = {
 } as const;
 
 /**
- * Wygląd liter (krok U7a, ocena właściciela: „zero głębi i odróżnienia od całości ekranu; wyraźna acz dyskretna
- * z wyraźną manifestacją”). Lico z rampą (jaśniejszy wierzch, ciemniejszy spód), obrys i cień pod literą;
- * `boldFrom` — od jakiej wielkości napisu kreski mają 2 px szerokości (`null` — nigdy); `plates` — ciemna,
- * półprzezroczysta podkładka pod napisami HUD-u. Wariant wybiera `?font=a|b|c` (porównanie na podglądzie),
- * domyślny — `UI_FONT_DEFAULT`.
+ * Wygląd liter (krok U7b) — recepta napisu POLEGŁEŚ z ekranu śmierci przeniesiona na cały interfejs
+ * (ocena właściciela po U7a: „wszystkie są złe… zbyt pixelowe, zbyt pionowe, bez obramowania jak np. napis
+ * »poległeś«”). Litera z dużych pikseli fontu, cienki czarny obrys krzyżem (ścięte rogi), pod nią lico
+ * przesunięte w dół w ciemnym odcieniu barwy (cień), lico w paskach rampy od jasnego wierzchu do ciemnego spodu
+ * i szersze odstępy między literami. Wszystkie wielkości w pikselach płótna 960×540.
  */
-export interface UiFontStyle {
-  readonly boldFrom: UiTextSize | null;
-  readonly shadow: boolean;
-  readonly ramp: boolean;
-  readonly plates: boolean;
-}
-
-export const UI_FONT_STYLES: Readonly<Record<'a' | 'b' | 'c', UiFontStyle>> = {
-  /** A „Kuty”: wszystko grubym krojem, z głębią, bez podkładek. */
-  a: { boldFrom: 1, shadow: true, ramp: true, plates: false },
-  /** B „Tytuły kute, tabliczki”: drobne napisy zwykłą kreską, większe grubą; podkładki pod napisami HUD-u. */
-  b: { boldFrom: 2, shadow: true, ramp: true, plates: true },
-  /** C „Lekki na tabliczce”: zwykła grubość z głębią + podkładki. */
-  c: { boldFrom: null, shadow: true, ramp: true, plates: true },
-};
-
-export const UI_FONT_DEFAULT: keyof typeof UI_FONT_STYLES = 'b';
-
-/** Rampa lica: wierzch rozjaśniony, spód przyciemniony (ułamek drogi do jasnego kremu / do czerni). */
-export const UI_FONT_RAMP = { lightRowsUntil: 1, light: 0.38, darkRowsFrom: 6, dark: 0.3, shadowColor: 0x07060b, lightTone: 0xfff4d8 } as const;
-
-/** Podkładka pod napisem HUD-u: ciemny prostokąt ze ściętymi rogami. */
-export const UI_TEXT_PLATE = { color: 0x07060b, alpha: 0.62, padX: 3, padY: 1 } as const;
+export const UI_FONT_LOOK = {
+  /** Obrys = ułamek piksela fontu (POLEGŁEŚ: piksel 8, obrys 2), co najmniej 1 px. */
+  outlineFraction: 0.25,
+  /** Cień: lico przesunięte w dół o tyle obrysów (POLEGŁEŚ: 2). */
+  shadowOutlines: 2,
+  /** Cień w barwie napisu przyciemnionej o ten ułamek (POLEGŁEŚ: ciemna krew pod czerwienią). */
+  shadowDarken: 0.66,
+  /** Wysokość paska rampy (px płótna; POLEGŁEŚ: 2) — barwa zmienia się skokowo, po pikselowemu. */
+  stripPx: 2,
+  /**
+   * Rampa lica od wierzchu do spodu wersalika: dodatnie = ułamek drogi do jasnego kremu, ujemne = do czerni.
+   * Akcenty nad literą biorą pierwszy ton, ogonki i dolne wydłużenia — ostatni.
+   */
+  ramp: [0.5, 0.3, 0.14, 0.04, 0, -0.1, -0.22, -0.34],
+  lightTone: 0xfff4d8,
+  /** Dodatkowy odstęp między literami: ułamek piksela fontu (POLEGŁEŚ: odstęp 2 piksele fontu zamiast 1). */
+  extraGapFraction: 0.5,
+} as const;

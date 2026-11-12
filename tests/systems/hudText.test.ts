@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fadingAlpha, floorHeadline, goldNote, objectiveHint } from '@/systems/hudText';
+import { fadingAlpha, floorHeadline, floorModifierNote, goldNote, objectiveHint } from '@/systems/hudText';
 
 const ARENA = { fightHint: 'Pokonaj bossa i pomocników', arenaHint: 'teleport dalej' };
 const base = { bossRush: false, boss: false, stairsUnlocked: false, onStairs: false, enemiesAlive: 4 };
@@ -20,11 +20,13 @@ describe('napisy HUD-u (krok U7)', () => {
     expect(objectiveHint({ ...base, bossRush: true }, 'Naciśnij E', ARENA)).toMatchObject({ key: 'arena', tone: 'arena' });
   });
 
-  it('nagłówek piętra: pełny opis modyfikatora tylko na początku piętra', () => {
+  it('nagłówek piętra z nazwą modyfikatora; opis tylko na początku piętra, we własnej linii', () => {
     const modifier = { name: 'Złota żyła', description: '+50% złota' };
-    expect(floorHeadline('Piętro 5', modifier, 1000, 9000)).toBe('Piętro 5 · Złota żyła: +50% złota');
-    expect(floorHeadline('Piętro 5', modifier, 9000, 9000)).toBe('Piętro 5 · Złota żyła');
-    expect(floorHeadline('Piętro 5', null, 0, 9000)).toBe('Piętro 5');
+    expect(floorHeadline('Piętro 5', modifier)).toBe('Piętro 5 · Złota żyła');
+    expect(floorHeadline('Piętro 5', null)).toBe('Piętro 5');
+    expect(floorModifierNote(modifier, 1000, 9000)).toBe('+50% złota');
+    expect(floorModifierNote(modifier, 9000, 9000)).toBe('');
+    expect(floorModifierNote(null, 0, 9000)).toBe('');
   });
 
   it('napis pomocy gaśnie po czasie', () => {

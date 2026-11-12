@@ -46,10 +46,14 @@ export function objectiveHint(state: ObjectiveState, pressE: string, arena: Obje
   return { key: 'explore', long: `${enemies} · znajdź komnatę bossa (zakratowane schody)`, short: enemies, tone: 'plain' };
 }
 
-/** Nagłówek piętra: „Piętro 5 · Złota żyła”, przez pierwsze `longMs` z opisem modyfikatora. */
-export function floorHeadline(label: string, modifier: { readonly name: string; readonly description: string } | null, sinceFloorMs: number, longMs: number): string {
-  if (!modifier) return label;
-  return sinceFloorMs < longMs ? `${label} · ${modifier.name}: ${modifier.description}` : `${label} · ${modifier.name}`;
+/** Nagłówek piętra: „Piętro 5 · Złota żyła” (krok U7b: opis modyfikatora ma własną linię — `floorModifierNote`). */
+export function floorHeadline(label: string, modifier: { readonly name: string } | null): string {
+  return modifier ? `${label} · ${modifier.name}` : label;
+}
+
+/** Opis modyfikatora piętra pod przedmiotami: tylko przez pierwsze `longMs` na piętrze, potem pusty. */
+export function floorModifierNote(modifier: { readonly description: string } | null, sinceFloorMs: number, longMs: number): string {
+  return modifier && sinceFloorMs < longMs ? modifier.description : '';
 }
 
 /** Krycie napisu widocznego przez `visibleMs`, który potem gaśnie przez `fadeMs`. */

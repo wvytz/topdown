@@ -1,29 +1,11 @@
 import Phaser from 'phaser';
-import { FONT_BOLD_GLYPHS, FONT_CELL_HEIGHT, FONT_GLYPHS, FONT_LETTER_GAP, FONT_LINE_HEIGHT, FONT_TOP_ROW } from '@/core/pixelFont';
-import { UI_FONT_DEFAULT, UI_FONT_RAMP, UI_FONT_STYLES, UI_PALETTE, type UiFontStyle } from '@/config/uiConfig';
+import { FONT_CELL_HEIGHT, FONT_GLYPHS, FONT_LINE_HEIGHT, FONT_TOP_ROW, fontLook, rampIndex } from '@/core/pixelFont';
+import { UI_FONT_LOOK } from '@/config/uiConfig';
 
 /** Odstęp między znakami w teksturze — żeby filtr tekstury nie złapał sąsiada. */
-const ATLAS_PADDING = 1;
-/** Obrys liter (piksele fontu) — wypalony w teksturze, w barwie obrysu postaci. */
-const OUTLINE = 1;
-
-/** Wariant liter z adresu (`?font=a|b|c`) albo domyślny. */
-let chosenStyle: keyof typeof UI_FONT_STYLES | null = null;
-export function uiFontVariant(): keyof typeof UI_FONT_STYLES {
-  if (chosenStyle) return chosenStyle;
-  let variant: string | null = null;
-  try {
-    variant = new URLSearchParams(window.location.search).get('font');
-  } catch {
-    variant = null;
-  }
-  chosenStyle = variant && variant in UI_FONT_STYLES ? (variant as keyof typeof UI_FONT_STYLES) : UI_FONT_DEFAULT;
-  return chosenStyle;
-}
-
-export function uiFontStyle(): UiFontStyle {
-  return UI_FONT_STYLES[uiFontVariant()];
-}
+const ATLAS_PADDING = 2;
+/** Obrys liter: czerń ekranu startowego, jak pod napisem POLEGŁEŚ. */
+const INK = '#07060b';
 
 /** Mieszanie barw: `t` = 0 → a, 1 → b. */
 function mix(a: number, b: number, t: number): string {
@@ -40,79 +22,56 @@ export function normalizeColor(color: string | number): string {
 }
 
 /**
- * Pogrubienie: piksel dostaje sąsiada z prawej (kreski 2 px), chyba że zalałby jednopikselowe światło litery
- * (w, m, ukośne kreski) — wtedy w tym wierszu kreska zostaje cienka, a litera otwarta.
- */
-function emboldened(pixels: readonly { x: number; y: number }[]): { x: number; y: number }[] {
-  const set = new Set(pixels.map((p) => `${p.x},${p.y}`));
-  const out = [...pixels];
-  for (const { x, y } of pixels) {
-    if (set.has(`${x + 1},${y}`) || set.has(`${x + 2},${y}`)) continue;
-    out.push({ x: x + 1, y });
-  }
-  return out;
-}
-
-/** Czy napis tej wielkości dostaje gruby krój w bieżącym wariancie. */
-export function isBoldSize(size: number): boolean {
-  const from = uiFontStyle().boldFrom;
-  return from !== null && size >= from;
-}
-
-/**
- * Pikselowy krój interfejsu jako font bitmapowy Phasera (krok U7). Każda barwa napisu to osobna mała tekstura
- * (ok. 900×14 px) — działa tak samo w WebGL i na płótnie (bez barwienia tintem), a obrys zostaje ciemny.
- * Tekstury i dane fontu są wspólne dla wszystkich scen; powstają przy pierwszym użyciu barwy.
+ * Pikselowy krój interfejsu jako font bitmapowy Phasera (krok U7, wygląd z kroku U7b). Każda para
+ * barwa × wielkość to osobna mała tekstura narysowana od razu w docelowej skali — dzięki temu obrys jest
+ * cieńszy od kreski litery, jak w napisie POLEGŁEŚ: cień w ciemnym odcieniu barwy (przesunięty w dół),
+ * obrys krzyżem w czerni i lico w paskach rampy. Tekstury są wspólne dla scen; powstają przy pierwszym użyciu.
  */
 export function pixelFontKey(scene: Phaser.Scene, color: string | number, size = 1): string {
   const hex = normalizeColor(color);
-  const style = uiFontStyle();
-  const bold = isBoldSize(size);
-  const key = `ui-font-${uiFontVariant()}-${bold ? 'b' : 'r'}-${hex}`;
+  const look = fontLook(size, UI_FONT_LOOK);
+  const key = `ui-font-${look.px}-${hex}`;
   const cache = scene.sys.cache.bitmapFont;
   if (cache.exists(key)) return key;
 
-  // Gruby krój: każdy piksel litery ma sąsiada z prawej (kreski 2 px), znak jest o 1 szerszy.
-  const extra = bold ? 1 : 0;
-  const shadow = style.shadow ? 1 : 0;
-  const glyphs = [...FONT_GLYPHS.entries()].map(([char, glyph]) => {
-    const own = bold ? FONT_BOLD_GLYPHS.get(char) : undefined;
-    if (own) return [char, own] as const;
-    const pixels = bold ? emboldened(glyph.pixels) : glyph.pixels;
-    return [char, { width: glyph.width + extra, pixels }] as const;
-  });
-  const cellHeight = FONT_CELL_HEIGHT + OUTLINE * 2 + shadow;
-  const width = glyphs.reduce((sum, [, glyph]) => sum + glyph.width + OUTLINE * 2 + shadow + ATLAS_PADDING, 0);
+  const { px, outline: o, shadow } = look;
+  const glyphs = [...FONT_GLYPHS.entries()];
+  const cellHeight = FONT_CELL_HEIGHT * px + o * 2 + shadow;
+  const cellWidth = (width: number): number => width * px + o * 2;
+  const atlasWidth = glyphs.reduce((sum, [, glyph]) => sum + cellWidth(glyph.width) + ATLAS_PADDING, 0);
   const textures = scene.sys.textures;
   if (textures.exists(key)) textures.remove(key);
-  const canvas = textures.createCanvas(key, width, cellHeight);
+  const canvas = textures.createCanvas(key, atlasWidth, cellHeight);
   const ctx = canvas?.getContext();
   if (!canvas || !ctx) return key;
 
   const base = Number.parseInt(hex, 16);
-  const R = UI_FONT_RAMP;
-  const ink = `#${normalizeColor(UI_PALETTE.ink)}`;
-  const fillFor = (row: number): string => {
-    if (!style.ramp) return `#${hex}`;
-    if (row <= R.lightRowsUntil) return mix(base, R.lightTone, R.light);
-    if (row >= R.darkRowsFrom) return mix(base, 0x000000, R.dark);
-    return `#${hex}`;
-  };
+  const R = UI_FONT_LOOK;
+  const ramp = R.ramp.map((t) => (t >= 0 ? mix(base, R.lightTone, t) : mix(base, 0x000000, -t)));
+  const shadowColor = mix(base, 0x000000, R.shadowDarken);
   const chars: Record<number, unknown> = {};
   let left = 0;
   for (const [char, glyph] of glyphs) {
-    const w = glyph.width + OUTLINE * 2 + shadow;
-    // Cień: obrys przesunięty o piksel w dół i w prawo, w czerni ekranu startowego — litera „stoi” nad sceną.
-    if (shadow) {
-      ctx.fillStyle = `#${normalizeColor(R.shadowColor)}`;
-      for (const { x, y } of glyph.pixels) ctx.fillRect(left + x + 1, y - FONT_TOP_ROW + 1, 3, 3);
-    }
-    // Obrys: każdy piksel litery rozlany na 8 sąsiadów, potem lico z rampą.
-    ctx.fillStyle = ink;
-    for (const { x, y } of glyph.pixels) ctx.fillRect(left + x, y - FONT_TOP_ROW, 3, 3);
-    for (const { x, y } of glyph.pixels) {
-      ctx.fillStyle = fillFor(y);
-      ctx.fillRect(left + x + OUTLINE, y - FONT_TOP_ROW + OUTLINE, 1, 1);
+    const w = cellWidth(glyph.width);
+    // Lewy górny róg piksela fontu (x, y) w teksturze.
+    const at = (x: number, y: number) => ({ x: left + o + x * px, y: o + (y - FONT_TOP_ROW) * px });
+    const layer = (dx: number, dy: number, fill: string): void => {
+      ctx.fillStyle = fill;
+      for (const p of glyph.pixels) {
+        const { x, y } = at(p.x, p.y);
+        ctx.fillRect(x + dx, y + dy, px, px);
+      }
+    };
+    // Cień pod literą, potem obrys krzyżem (bez rogów — litera ma ścięte narożniki jak POLEGŁEŚ).
+    layer(0, shadow, shadowColor);
+    for (const [dx, dy] of [[-o, 0], [o, 0], [0, -o], [0, o]] as const) layer(dx, dy, INK);
+    // Lico paskami rampy: wierzch jasny, spód ciemny.
+    for (const p of glyph.pixels) {
+      const { x, y } = at(p.x, p.y);
+      for (let dy = 0; dy < px; dy += look.strip) {
+        ctx.fillStyle = ramp[rampIndex(p.y * px + dy, look, ramp.length)] ?? `#${hex}`;
+        ctx.fillRect(x, y + dy, px, Math.min(look.strip, px - dy));
+      }
     }
     const code = char.codePointAt(0) ?? 63;
     chars[code] = {
@@ -122,21 +81,22 @@ export function pixelFontKey(scene: Phaser.Scene, color: string | number, size =
       height: cellHeight,
       centerX: Math.floor(w / 2),
       centerY: Math.floor(cellHeight / 2),
-      xOffset: -OUTLINE,
+      xOffset: -o,
       yOffset: 0,
-      xAdvance: glyph.width + FONT_LETTER_GAP,
+      xAdvance: glyph.width * px + look.gap,
       data: {},
       kerning: {},
-      u0: left / width,
+      u0: left / atlasWidth,
       v0: 0,
-      u1: (left + w) / width,
+      u1: (left + w) / atlasWidth,
       v1: 1,
     };
     left += w + ATLAS_PADDING;
   }
   canvas.refresh();
+  // `size` = piksel fontu: BitmapText w wielkości `px` rysuje teksturę 1:1.
   cache.add(key, {
-    data: { font: key, size: 1, lineHeight: FONT_LINE_HEIGHT, chars },
+    data: { font: key, size: px, lineHeight: FONT_LINE_HEIGHT * px, chars },
     texture: key,
     frame: null,
   });

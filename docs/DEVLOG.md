@@ -6250,6 +6250,21 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Weryfikacja:** zrzuty HUD-u, pauzy i kart nagrody we wszystkich wariantach — `/mnt/project-files/screens/krokU7-interfejs/U7a-kroj-warianty.png`.
 
+## Krok U7b — Wersaliki według napisu POLEGŁEŚ: cienki obrys krzyżem, barwny cień, rampa lica, większy HUD `#upgrade` `#interfejs` `#ocena` `#decyzja`
+
+**Ocena właściciela po U7a (12.11.2026) `#ocena`:** „nie no wszystkie są złe. zbyt pixelowe, zbyt pionowe, bez obramowania jak np napis »poległeś« który fine tuningowaliśmy jakiś czas”. Warianty `?font=a|b|c`, pogrubienie i podkładki z U7a usunięte.
+
+**Co powstało:**
+- Makiety czterech kierunków na tle gry (`/mnt/project-files/screens/krokU7-interfejs/U7b-kierunki-kroju.png`): 1 — wersaliki według recepty POLEGŁEŚ w pikselowym kroju, 2–4 — gładkie kroje (Alegreya Sans SC, Cinzel, Pixelify Sans), które wymagałyby rysowania napisów nad płótnem 960×540 w pełnej rozdzielczości ekranu. **`#decyzja` właściciel wybrał 1 — „wersaliki jak POLEGŁEŚ” w całej grze.**
+- Wszystkie napisy interfejsu wersalikami (`toCapsText` w `core/pixelFont.ts`, `UiText.setText`).
+- Recepta POLEGŁEŚ dla każdej wielkości (`fontLook`, `rampIndex` w `core/pixelFont.ts`, liczby w `UI_FONT_LOOK`): tekstura fontu rysowana od razu w docelowej skali (para barwa × wielkość), obrys = ¼ piksela fontu (min. 1 px) krzyżem, bez rogów; cień = lico przesunięte w dół o 2 obrysy w ciemnym odcieniu barwy; lico paskami po 2 px od jasnego wierzchu do ciemnego spodu; odstęp liter +½ piksela fontu. Przy pikselu 8 daje dokładnie obrys 2 i cień 4 jak POLEGŁEŚ.
+- HUD w skali 2 także na PC (`HUD_LAYOUT.textScale`): obrys jest wtedy cieńszy od kreski litery. Złoto w skali 3, dopisek wyrównany do spodu cyfr. Nagłówek piętra to sama nazwa modyfikatora; opis ma własną linię pod przedmiotami (`floorModifierNote`), gaśnie po 9 s, a wiadomość o nowym przedmiocie schodzi pod nią.
+- `UiText.setLetterSpacing`/`setLineSpacing` przeliczają odstęp z pikseli fontu na płótno (font nie jest już skalowany, więc układ ekranów się nie zmienił).
+
+**Do zrobienia po ocenie:** drobne napisy w skali 1 (opisy na kartach nagrody i wyboru bohatera, podpis runu, linia sterowania) mają nadal obrys grubości kreski — w skali 2 nie mieszczą się w obecnym układzie kart; do decyzji, czy przebudować karty pod większe napisy.
+
+**Testy:** recepta (piksel 8 → obrys 2, cień 4; piksel 1 → obrys 1; odstęp przy pikselu 2), rampa (akcent — pierwszy ton, spód i ogonek — ostatni), wersaliki po polsku, nagłówek i opis modyfikatora. `npm run build`, smoke solo i co-op.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.

@@ -233,22 +233,6 @@ function buildGlyphs(): ReadonlyMap<string, FontGlyph> {
 export const FONT_GLYPHS: ReadonlyMap<string, FontGlyph> = buildGlyphs();
 
 /**
- * Gruby krój (krok U7a): litery z jednopikselowymi światłami, których nie da się pogrubić przesunięciem
- * (kreska zalałaby środek), mają własne, szersze wzory. Resztę znaków pogrubia warstwa rysująca.
- */
-const BOLD_PATTERNS: Readonly<Record<string, GlyphPattern>> = {
-  M: caps('##...##', '###.###', '##.#.##', '##.#.##', '##...##', '##...##', '##...##'),
-  W: caps('##...##', '##...##', '##...##', '##.#.##', '##.#.##', '###.###', '##...##'),
-  m: lower('######.', '##.#.##', '##.#.##', '##.#.##', '##.#.##'),
-  w: lower('##...##', '##...##', '##.#.##', '##.#.##', '.##.##.'),
-};
-
-/** Wzory grubego kroju dla znaków, które ich potrzebują (pozostałe — brak wpisu). */
-export const FONT_BOLD_GLYPHS: ReadonlyMap<string, FontGlyph> = new Map(
-  Object.entries(BOLD_PATTERNS).map(([char, pattern]) => [char, buildGlyph(pattern)]),
-);
-
-/**
  * Znak, którym font narysuje `char`: on sam, litera bez akcentu (é → e) albo znak zastępczy.
  * Tabulator i inne białe znaki stają się spacją.
  */
@@ -265,6 +249,14 @@ export function fontCharFor(char: string): string {
 /** Tekst sprowadzony do znaków fontu (zachowuje znaki nowej linii). */
 export function toFontText(text: string): string {
   return [...text].map((char) => (char === '\n' ? char : fontCharFor(char))).join('');
+}
+
+/**
+ * Napis interfejsu wersalikami (krok U7b, decyzja właściciela: „wersaliki jak POLEGŁEŚ”) — po polsku
+ * (ą → Ą), potem sprowadzony do znaków fontu.
+ */
+export function toCapsText(text: string): string {
+  return toFontText(text.toLocaleUpperCase('pl-PL'));
 }
 
 function glyphOf(char: string): FontGlyph {
@@ -308,3 +300,48 @@ export function layoutLine(line: string): FontPixel[] {
   }
   return out;
 }
+
+/** Recepta rysowania liter jednej wielkości (krok U7b, wzór: POLEGŁEŚ). Wszystko w pikselach płótna. */
+export interface FontLook {
+  /** Piksel fontu. */
+  readonly px: number;
+  readonly outline: number;
+  /** Przesunięcie cienia w dół. */
+  readonly shadow: number;
+  readonly strip: number;
+  /** Odstęp między literami. */
+  readonly gap: number;
+}
+
+export interface FontLookConfig {
+  readonly outlineFraction: number;
+  readonly shadowOutlines: number;
+  readonly stripPx: number;
+  readonly extraGapFraction: number;
+}
+
+/** Recepta dla napisu w skali `size` (1 piksel fontu = `size` pikseli płótna). */
+export function fontLook(size: number, config: FontLookConfig): FontLook {
+  const px = Math.max(1, Math.round(size));
+  const outline = Math.max(1, Math.round(px * config.outlineFraction));
+  return {
+    px,
+    outline,
+    shadow: outline * config.shadowOutlines,
+    strip: Math.max(1, Math.min(px, config.stripPx)),
+    gap: FONT_LETTER_GAP * px + Math.round(px * config.extraGapFraction),
+  };
+}
+
+/**
+ * Ton rampy lica dla wiersza tekstury: `y` = piksel płótna liczony od wierzchu wersalika (wiersz 0 fontu),
+ * ujemny nad literą. Zwraca indeks w rampie długości `rampLength` — akcenty dostają pierwszy ton, spód ostatni.
+ */
+export function rampIndex(y: number, look: FontLook, rampLength: number): number {
+  const capHeight = 7 * look.px;
+  const t = Math.floor(y / look.strip) * look.strip;
+  if (t < 0) return 0;
+  if (t >= capHeight) return rampLength - 1;
+  return Math.min(rampLength - 1, Math.floor((t / capHeight) * rampLength));
+}
+

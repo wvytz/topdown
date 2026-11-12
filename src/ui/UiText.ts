@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { toFontText } from '@/core/pixelFont';
+import { toCapsText } from '@/core/pixelFont';
 import { UI_TEXT_COLORS, type UiTextSize } from '@/config/uiConfig';
 import { pixelFontKey } from '@/ui/PixelFont';
 
@@ -21,11 +21,11 @@ const ALIGN = { left: 0, center: 1, right: 2 } as const;
 
 /**
  * Napis interfejsu w pikselowym kroju (krok U7). To zwykły BitmapText Phasera z dwiema zmianami:
- * `setColor` przełącza teksturę fontu danej barwy, a `setText` zamienia znaki spoza fontu (é → e, inne → ?).
+ * `setColor` przełącza teksturę fontu danej barwy, a `setText` pisze wersalikami (krok U7b) i zamienia znaki spoza fontu (é → e, inne → ?).
  */
 export class UiText extends Phaser.GameObjects.BitmapText {
   constructor(scene: Phaser.Scene, x: number, y: number, text: string, style: UiTextStyle = {}) {
-    super(scene, x, y, pixelFontKey(scene, style.color ?? UI_TEXT_COLORS.text, style.size ?? 1), toFontText(text), style.size ?? 1, ALIGN[style.align ?? 'left']);
+    super(scene, x, y, pixelFontKey(scene, style.color ?? UI_TEXT_COLORS.text, style.size ?? 1), toCapsText(text), style.size ?? 1, ALIGN[style.align ?? 'left']);
     this.color = style.color ?? UI_TEXT_COLORS.text;
     if (style.wrap) this.setMaxWidth(style.wrap);
     if (style.lineSpacing) this.setLineSpacing(style.lineSpacing);
@@ -40,7 +40,7 @@ export class UiText extends Phaser.GameObjects.BitmapText {
     return this;
   }
 
-  /** Wielkość napisu; przy zmianie progu grubości przełącza teksturę fontu (krok U7a). */
+  /** Wielkość napisu; każda wielkość ma własną teksturę fontu (krok U7b). */
   override setFontSize(size: number): this {
     super.setFontSize(size);
     if (this.color === undefined) return this;
@@ -49,11 +49,21 @@ export class UiText extends Phaser.GameObjects.BitmapText {
     return this;
   }
 
+  /** Odstęp liter w pikselach fontu (jak przed krokiem U7b, gdy font był skalowany) — tu przeliczony na płótno. */
+  override setLetterSpacing(spacing = 0): this {
+    return super.setLetterSpacing(spacing * this.fontSize);
+  }
+
+  /** Odstęp wierszy w pikselach fontu, przeliczony na płótno. */
+  override setLineSpacing(spacing = 0): this {
+    return super.setLineSpacing(spacing * this.fontSize);
+  }
+
   private color: string | number | undefined;
 
   override setText(value: string | number | string[]): this {
     const text = Array.isArray(value) ? value.join('\n') : String(value);
-    super.setText(toFontText(text));
+    super.setText(toCapsText(text));
     this.refreshHitArea();
     return this;
   }

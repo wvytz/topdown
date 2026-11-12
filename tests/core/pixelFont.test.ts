@@ -3,18 +3,21 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-  FONT_BOLD_GLYPHS,
   FONT_BOTTOM_ROW,
   FONT_FALLBACK,
   FONT_GLYPHS,
   FONT_LETTER_GAP,
   FONT_TOP_ROW,
   fontCharFor,
+  fontLook,
+  rampIndex,
   layoutLine,
   measureLine,
+  toCapsText,
   toFontText,
   wrapText,
 } from '@/core/pixelFont';
+import { UI_FONT_LOOK } from '@/config/uiConfig';
 
 const SRC = fileURLToPath(new URL('../../src', import.meta.url));
 
@@ -99,15 +102,25 @@ describe('pikselowy krój pisma (krok U7)', () => {
     expect(pixels.some((p) => p.x === i + FONT_LETTER_GAP && p.y === 6)).toBe(true);
   });
 
-  it('gruby krój: własne wzory są szersze od zwykłych i mają kreski 2 px na brzegach', () => {
-    for (const [char, bold] of FONT_BOLD_GLYPHS) {
-      const regular = FONT_GLYPHS.get(char);
-      expect(regular, char).toBeDefined();
-      expect(bold.width, char).toBeGreaterThan(regular?.width ?? 0);
-      const has = (x: number, y: number) => bold.pixels.some((p) => p.x === x && p.y === y);
-      const rows = [...new Set(bold.pixels.map((p) => p.y))];
-      const stems = rows.filter((y) => has(0, y) && has(1, y));
-      expect(stems.length, char).toBeGreaterThanOrEqual(rows.length - 1);
-    }
+  it('recepta liter jak POLEGŁEŚ: przy pikselu 8 obrys 2 i cień 4, przy drobnym napisie obrys 1', () => {
+    expect(fontLook(8, UI_FONT_LOOK)).toMatchObject({ px: 8, outline: 2, shadow: 4, strip: 2 });
+    expect(fontLook(1, UI_FONT_LOOK)).toMatchObject({ px: 1, outline: 1, strip: 1 });
+    // Szersze odstępy: przy pikselu 2 odstęp liter to 3 px płótna zamiast 2.
+    expect(fontLook(2, UI_FONT_LOOK).gap).toBe(3);
+  });
+
+  it('rampa lica: akcent bierze pierwszy ton, spód wersalika i ogonek — ostatni', () => {
+    const look = fontLook(4, UI_FONT_LOOK);
+    const n = UI_FONT_LOOK.ramp.length;
+    expect(rampIndex(-4, look, n)).toBe(0);
+    expect(rampIndex(0, look, n)).toBe(0);
+    expect(rampIndex(7 * 4 - 1, look, n)).toBe(n - 1);
+    expect(rampIndex(7 * 4 + 3, look, n)).toBe(n - 1);
+    expect(rampIndex(14, look, n)).toBeGreaterThan(rampIndex(4, look, n));
+  });
+
+  it('wersaliki: polskie litery przechodzą na wielkie, znaki spoza fontu jak zwykle', () => {
+    expect(toCapsText('Moje przedmioty · żółć ×2')).toBe('MOJE PRZEDMIOTY · ŻÓŁĆ ×2');
+    expect(toCapsText('dwa\nwiersze')).toBe('DWA\nWIERSZE');
   });
 });
