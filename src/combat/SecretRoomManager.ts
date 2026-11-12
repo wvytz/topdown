@@ -9,7 +9,11 @@ import { SECRET_ROOM_VISUAL, TREASURE_COCOON_VISUAL, SPRITE_SHEETS, animationKey
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { DungeonView } from '@/dungeon/DungeonView';
 import type { SecretArea } from '@/dungeon/SecretRoom';
-import { areaBounds, planTreasureCocoons, revealMask } from '@/dungeon/SecretRoom';
+import { areaBounds, revealMask } from '@/dungeon/SecretRoom';
+import { planVaultDecor, planVaultLayout } from '@/dungeon/SpiderVault';
+import { SPIDER_VAULT_CONFIG } from '@/config/spiderVaultConfig';
+import type { PointLight } from '@/effects/LightingOverlay';
+import { SpiderVaultView } from '@/effects/SpiderVaultView';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Party } from '@/entities/Party';
 import { TreasureCocoon } from '@/entities/TreasureCocoon';
@@ -32,20 +36,25 @@ export interface SecretRoomDeps {
   /** Bohaterowie (co-op, etap C0). */
   readonly party: Party;
   readonly effects: CombatEffects;
-  /** RNG komnaty: rozmieszczenie kokonów i przedmiot. */
+  /** RNG komnaty: piedestały, kokon z przedmiotem i przedmiot. */
   readonly rng: Rng;
+  /** RNG ozdób skarbca (krok U4d) — osobny strumień, żeby oplot nie zmieniał nagrody. */
+  readonly decorRng: Rng;
   readonly dropLoot: (at: { x: number; y: number }, drops: readonly LootDrop[]) => void;
   readonly onRevealed: () => void;
 }
 
 /**
  * Ukryta komnata za areną (krok 46): pokazuje się, gdy gracz podejdzie na 2 kafle; wtedy pojawiają się kokony skarbu.
- * Każde trafienie rozbija kokon; z jednego wypada losowy przedmiot z puli. Decyzje — czysty `dungeon/SecretRoom`.
+ * Od kroku U4d to skarbiec pająków: kokony stoją na piedestałach, komnata gęsto opleciona jedwabiem i śluzem.
+ * Każde trafienie rozbija kokon; z jednego wypada losowy przedmiot z puli. Decyzje — czyste `dungeon/SecretRoom`
+ * i `dungeon/SpiderVault`.
  */
 export class SecretRoomManager {
   private readonly mask: Uint8Array;
   private revealed = false;
   private cocoons: TreasureCocoon[] = [];
+  private vault: SpiderVaultView | null = null;
 
   constructor(private readonly deps: SecretRoomDeps) {
     this.mask = revealMask(deps.floor, deps.area, SECRET_ROOM_CONFIG.revealRadius);
@@ -72,10 +81,13 @@ export class SecretRoomManager {
     const { scene, floor, area, view, rng } = this.deps;
     this.revealed = true;
     view.revealSecret(areaBounds(floor, area, SECRET_ROOM_VISUAL.redrawMargin));
-    const plan = planTreasureCocoons(area.room, SECRET_ROOM_CONFIG, rng);
-    plan.tiles.forEach((tile, i) => {
-      const at = DungeonView.tileToWorldCenter(tile);
-      this.cocoons.push(new TreasureCocoon(scene, at.x, at.y, SECRET_ROOM_VISUAL.cocoonRadius, i === plan.prize));
+    const layout = planVaultLayout(floor, area, SPIDER_VAULT_CONFIG, rng);
+    const decor = planVaultDecor(floor, area, layout, SPIDER_VAULT_CONFIG, this.deps.decorRng);
+    const vault = new SpiderVaultView(scene, floor, area, layout, decor);
+    this.vault = vault;
+    layout.pedestals.forEach((_, i) => {
+      const at = vault.cocoonSpot(i);
+      this.cocoons.push(new TreasureCocoon(scene, at.x, at.y, SECRET_ROOM_VISUAL.cocoonRadius, i === layout.prize));
     });
     const center = DungeonView.tileToWorldCenter({ x: area.room.x + Math.floor(area.room.width / 2), y: area.room.y + Math.floor(area.room.height / 2) });
     this.deps.effects.impact(center.x, center.y, SECRET_ROOM_VISUAL.revealFlashRadius);
@@ -89,7 +101,8 @@ export class SecretRoomManager {
     cocoon.destroy();
     const { sheet, burst } = TREASURE_COCOON_VISUAL;
     const tear = this.deps.scene.add.sprite(at.x, at.y, SPRITE_SHEETS[sheet].key).setDepth(RENDER_DEPTH.deathBurst);
-    tear.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => tear.setDepth(RENDER_DEPTH.combatDecal));
+    // Strzępy zostają w gnieździe na piedestale (nad nim, pod łupami i postaciami).
+    tear.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => tear.setDepth(RENDER_DEPTH.vaultProp + 0.05));
     tear.play(animationKey(sheet, burst));
     sound.play(SoundCue.Break, at);
     if (!cocoon.hasPrize) {
@@ -99,6 +112,11 @@ export class SecretRoomManager {
     const itemId = pickWeightedItem(ITEM_POOL, this.deps.rng);
     if (itemId !== null) this.deps.dropLoot(at, [{ kind: PickupKind.Item, itemId }]);
     this.deps.effects.impact(at.x, at.y, SECRET_ROOM_VISUAL.prizeFlashRadius);
+  }
+
+  /** Światła piedestałów (po odsłonięciu). */
+  get lights(): readonly PointLight[] {
+    return this.vault?.lights ?? [];
   }
 
   resolvePlayerMelee(swing: MeleeSwing): void {

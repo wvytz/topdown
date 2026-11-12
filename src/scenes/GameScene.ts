@@ -57,6 +57,7 @@ import { roomMarkers } from '@/systems/RoomMarkers';
 import { MinimapExplorer } from '@/systems/Minimap';
 import { MinimapRoute } from '@/systems/MinimapRoute';
 import { SecretRoomManager } from '@/combat/SecretRoomManager';
+import { SPIDER_VAULT_DECOR_SALT, SPIDER_VAULT_VISUAL } from '@/config/spiderVaultConfig';
 import { TrapManager } from '@/combat/TrapManager';
 import { arenaCenter } from '@/dungeon/stairs';
 import { parseStartOverrides } from '@/systems/startOverrides';
@@ -529,7 +530,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Krok 114: fizyka krokiem klatki obrazu — bez szarpania na monitorach 120/144 Hz.
     installSmoothPhysics(this);
 
-    const spawn = DungeonView.tileToWorldCenter(this.atBoss || this.bossRush ? this.bossStartTile() : this.dungeon.playerSpawn);
+    const spawn = DungeonView.tileToWorldCenter(
+      this.atBoss || this.bossRush ? this.bossStartTile() : this.vaultStartTile() ?? this.dungeon.playerSpawn,
+    );
     this.player = new Player(this, spawn.x, spawn.y, this.run.hero, this.currentLoadout(), this.startHp);
     this.physics.add.collider(this.player, this.dungeonView.collisionLayer);
     this.partner = this.coop ? this.spawnPartner(this.coop, spawn) : null;
@@ -1288,8 +1291,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
           party: this.party,
           effects: this.effects,
           rng: createRng(deriveSeed(this.dungeon.seed, SECRET_ROOM_SEED_SALT)),
+          decorRng: createRng(deriveSeed(this.dungeon.seed, SPIDER_VAULT_DECOR_SALT)),
           dropLoot: (at, drops) => this.loot.spawn(at, drops),
-          onRevealed: () => this.showToast('Ukryta komnata! Rozbij kokony — w jednym jest skarb.', SECRET_ROOM_VISUAL.toastMs),
+          onRevealed: () => this.showToast(SPIDER_VAULT_VISUAL.toast, SECRET_ROOM_VISUAL.toastMs),
         })
       : null;
   }
@@ -2116,6 +2120,13 @@ export class GameScene extends Phaser.Scene implements HudSource {
     return { x: arena.x + 2, y: arena.y + Math.floor(arena.height / 2) };
   }
 
+  /** `?vault=1` (krok U4d, run testowy): start w środku skarbca pająków, gdy piętro go ma. */
+  private vaultStartTile(): { x: number; y: number } | null {
+    if (!this.secretArea || !parseStartOverrides(window.location.search).atVault) return null;
+    const room = this.secretArea.room;
+    return { x: room.x + Math.floor(room.width / 2), y: room.y + Math.floor(room.height / 2) };
+  }
+
   private setupDebugKeys(): void {
     if (!import.meta.env.DEV) return;
     this.input.keyboard?.on('keydown-B', () => this.bossFight.debugDefeat());
@@ -2130,7 +2141,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       visionRadius: this.floorEffects.visionRadius,
       fog: this.biome.fog,
       bearers: () => this.lightBearers(),
-      extraLights: (withAmbient) => [...(this.braziers?.lights ?? []), ...this.stairsGlow.lights, ...(withAmbient ? (this.ambient?.lights ?? []) : [])],
+      extraLights: (withAmbient) => [...(this.braziers?.lights ?? []), ...this.stairsGlow.lights, ...(this.secretRoom?.lights ?? []), ...(withAmbient ? (this.ambient?.lights ?? []) : [])],
       flares: () => this.effects?.fire.activeLights() ?? [],
       hideable: () => this.hideableEnemies(),
       ambientRevealsEnemies: AMBIENT_CONFIG.revealsEnemies,

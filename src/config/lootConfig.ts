@@ -344,11 +344,12 @@ export const PICKUP_CONFIG = {
   goldHoming: { startSpeed: 160, acceleration: 1600, maxSpeed: 900 },
 } as const;
 
-/** Ukryta komnata za areną (krok 46): widać ją z 2 kafli; 4–6 kokonów, jeden z losowym przedmiotem. */
+/**
+ * Ukryta komnata za areną (krok 46): widać ją z 2 kafli; jeden kokon z losowym przedmiotem. Od kroku U4d kokony
+ * stoją na piedestałach skarbca (wielki + 2–3 pary, czyli 5–7 kokonów; było 4–6) — `config/spiderVaultConfig.ts`.
+ */
 export const SECRET_ROOM_CONFIG: SecretRoomConfig = {
   revealRadius: 2,
-  cocoons: { min: 4, max: 6 },
-  wallMargin: 1,
 };
 
 /** Urny i skrzynie w ruinach (krok 48): drobne złoto, rzadko mała mikstura, bez przedmiotów. */
