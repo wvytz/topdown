@@ -54,13 +54,14 @@ const ENRAGE_FURY = {
 } as const;
 
 /**
- * Pierwszy boss: „Strażnik Piętra”, od kroku 151 Król Szlamu (`#krol-szlamu`, prośba właściciela: „ma zaszlamiać”).
+ * Pierwszy boss: „Strażnik Piętra”, od kroku 151 Król Szlamu (`#krol-szlamu`, prośba właściciela: „ma zaszlamiać”),
+ * od kroku U7g — Slimer (decyzja właściciela 12.11.2026: „to jest Slimer”; bez ogólnego „Strażnika Piętra”).
  * Sekwencja: rozbryzg wokół siebie → pierścień kul szlamu → flegma → skok. Wszystko pluje szlamem zamiast ognia:
  * fioletowe telegrafy, rozbryzgi i kałuże, które lekko spowalniają; od ścian pełznie szlam i zwęża arenę.
  */
 export const FLOOR_GUARDIAN = {
   id: BossId.FloorGuardian,
-  name: 'Strażnik Piętra',
+  name: 'Slimer',
   title: 'Król Szlamu',
   radius: 26,
   color: 0xb5452a,

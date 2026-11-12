@@ -44,7 +44,7 @@ export interface RewardSceneData {
   readonly onPick: (itemId: ItemId) => void;
   /** Co-op (etap C4): kto teraz wybiera, np. „P2 — Łucznik wybiera”. */
   readonly picker?: string;
-  /** Napis nad kartami zamiast „STRAŻNIK POKONANY” (np. sprzątaczka uciekła windą, krok 125). */
+  /** Napis nad kartami zamiast „BOSS POKONANY” (np. sprzątaczka uciekła windą, krok 125). */
   readonly headline?: string;
   /** Krok 150: karta rozwoju — przedmiot, który bohater już zbiera (wstążka na karcie). */
   readonly development?: ItemId | null;
@@ -106,7 +106,7 @@ export class RewardScene extends Phaser.Scene {
     };
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x05050a, 0.78);
-    uiTextFromStyle(this, width / 2, 70, data.headline ?? 'STRAŻNIK POKONANY', { ...style, fontSize: '28px', color: '#f5c542' }).setOrigin(0.5);
+    uiTextFromStyle(this, width / 2, 70, data.headline ?? 'BOSS POKONANY', { ...style, fontSize: '28px', color: '#f5c542' }).setOrigin(0.5);
     this.hintText = uiTextFromStyle(this, width / 2, 108, '…', { ...style, fontSize: '14px', color: '#8080a0' })
       .setOrigin(0.5);
     // Krok 150: zasada przemian wprost pod kartami.

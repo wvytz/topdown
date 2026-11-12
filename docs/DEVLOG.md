@@ -6311,6 +6311,14 @@ Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU
 
 **Testy:** `npm run build`, smoke solo.
 
+## Krok U7g — Pierwszy boss to Slimer `#upgrade` `#interfejs` `#krol-szlamu` `#decyzja`
+
+**Decyzja właściciela (12.11.2026) `#decyzja`:** „niech zostanie jak jest. [wyrzuć] informację o strażniku piętra czy kolejnego bossa. to jest Slimer”.
+
+**Co się zmieniło:** pierwszy boss nazywa się **Slimer** (tytuł „Król Szlamu” zostaje) — karta wejścia, pasek bossa i podpisy pokazują „SLIMER” zamiast ogólnego „STRAŻNIK PIĘTRA”. Napis nad kartami nagrody to „BOSS POKONANY” zamiast „STRAŻNIK POKONANY” dla każdego bossa. Identyfikator bossa (`BossId.FloorGuardian`) i zapisy postępu bez zmian. HUD bez zmian.
+
+**Testy:** `npm run build`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
