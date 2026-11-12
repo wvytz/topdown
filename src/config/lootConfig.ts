@@ -5,6 +5,7 @@ import { ItemId, ItemKind } from '@/core/lootTypes';
 import type { ShrineConfig } from '@/systems/Shrine';
 import { ITEM_EVOLUTION } from '@/config/itemEvolutionConfig';
 import { RELIC_CONFIG } from '@/config/relicConfig';
+import { VOTIVE_CONFIG } from '@/config/votiveConfig';
 
 /** Pula przedmiotów pasywnych (5 bazowych + 7 z efektem) — kumulują się w trakcie runu. */
 export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
@@ -186,6 +187,45 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
     weight: 0,
     modifiers: { moveSpeedPct: 0.15, attackSpeedPct: 0.1 },
   },
+
+  // Krok Z3 (Akt II): Wota — przedmioty ochronne. W puli dopiero po wypaleniu w Piecu wotów (`poolWithVotives`);
+  // waga jak u przedmiotów z efektem. Bez przemiany 3. kopii.
+  [ItemId.Carapace]: {
+    id: ItemId.Carapace,
+    kind: ItemKind.Votive,
+    name: 'Pancerz z odwłoka',
+    effect: 'trucizna rani o połowę mniej (2 kopie — wcale)',
+    color: 0x6fae3a,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.ShieldCore]: {
+    id: ItemId.ShieldCore,
+    kind: ItemKind.Votive,
+    name: 'Rdzeń Tarczownika',
+    effect: 'ogień rani o połowę mniej (2 kopie — wcale)',
+    color: 0xe0782a,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.StoneScale]: {
+    id: ItemId.StoneScale,
+    kind: ItemKind.Votive,
+    name: 'Kamienna łuska',
+    effect: '−8% wszystkich obrażeń (do −30%)',
+    color: 0xa8a090,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.GuideBone]: {
+    id: ItemId.GuideBone,
+    kind: ItemKind.Votive,
+    name: 'Kość psa-przewodnika',
+    effect: 'raz na piętro śmiertelny cios zostawia 1 HP',
+    color: 0xe8dcc0,
+    weight: 3,
+    modifiers: {},
+  },
 };
 
 /** Siła efektów przedmiotów: pierwsza kopia + przyrost za każdą kolejną. */
@@ -203,10 +243,14 @@ export const ITEM_EFFECTS: ItemEffectsConfig = {
   frostShard: { slowPct: 0.4, slowPctPerStack: 0.1, maxSlowPct: 0.7, durationMs: 1500 },
   evolution: ITEM_EVOLUTION,
   relics: RELIC_CONFIG,
+  votives: VOTIVE_CONFIG,
 };
 
-/** Pula łupów, kart i kapliczki — bez relikwii (krok 170: relikwia tylko z karty za swojego bossa). */
-export const ITEM_POOL: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS).filter((item) => item.kind !== ItemKind.Relic);
+/**
+ * Pula łupów, kart i kapliczki — bez relikwii (krok 170: relikwia tylko z karty za swojego bossa) i bez wot
+ * (krok Z3: wotum wchodzi do puli dopiero po wypaleniu w Popielniku — `poolWithVotives`).
+ */
+export const ITEM_POOL: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS).filter((item) => item.kind !== ItemKind.Relic && item.kind !== ItemKind.Votive);
 
 /** Wszystkie przedmioty z relikwiami (sloty HUD, opisy). */
 export const ALL_ITEMS: readonly ItemDefinition[] = Object.values(ITEM_DEFINITIONS);

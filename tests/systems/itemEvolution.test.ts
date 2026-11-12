@@ -39,7 +39,9 @@ describe('przemiany przedmiotów (krok 150)', () => {
     // Krok 151: lewitacja cofnięta — Buty czekają na nową przemianę.
     expect(ITEM_EVOLUTION.items[ItemId.Boots]).toBeUndefined();
     // Krok 170: relikwie bossów są pojedyncze, bez przemian.
-    for (const id of ALL_ITEM_IDS.filter((item) => item !== ItemId.Boots && ITEM_DEFINITIONS[item].kind !== ItemKind.Relic)) {
+    // Krok Z3: wota (przedmioty ochronne Aktu II) też bez przemian.
+    const evolving = (item: ItemId): boolean => ![ItemKind.Relic, ItemKind.Votive].includes(ITEM_DEFINITIONS[item].kind);
+    for (const id of ALL_ITEM_IDS.filter((item) => item !== ItemId.Boots && evolving(item))) {
       const evo = ITEM_EVOLUTION.items[id];
       if (!evo) throw new Error(`brak przemiany: ${id}`);
       expect(evo.name.length).toBeGreaterThan(0);

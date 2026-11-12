@@ -50,7 +50,8 @@ describe('układ Popielnika', () => {
       expect(stationInReach(stations, stand, HIDEOUT_CONFIG.reachTiles)?.id, station.id).toBe(station.id);
     }
     expect(stationInReach(stations, floor.playerSpawn, HIDEOUT_CONFIG.reachTiles)).toBeNull();
+    // Krok Z3: Palenisko też jest stanowiskiem (przedmiot startowy) — działa przy samym ogniu.
     const hearth = stations.find((s) => s.id === HideoutStation.Hearth)!;
-    expect(stationInReach(stations, stationCenter(hearth), 0.5)).toBeNull();
+    expect(stationInReach(stations, stationCenter(hearth), 0.5)?.id).toBe(HideoutStation.Hearth);
   });
 });

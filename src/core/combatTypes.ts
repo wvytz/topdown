@@ -200,7 +200,12 @@ export interface Hit {
   readonly magic?: boolean;
   /** Wybuch spadający z góry (bomba, krok 99): tarcza Tarczownika go nie zatrzymuje. */
   readonly unblockable?: boolean;
+  /** Krok Z3: żywioł trafienia — ogień gasi Rdzeń Tarczownika. Brak = zwykłe obrażenia. */
+  readonly element?: DamageElement;
 }
+
+/** Krok Z3: żywioł obrażeń zadawanych bohaterowi (trucizna idzie statusem, nie trafieniem). */
+export type DamageElement = 'fire';
 
 /** Efekty broni gracza wynikające z przedmiotów (zero/puste = brak przedmiotu). */
 export interface WeaponEffects {
@@ -222,6 +227,18 @@ export interface WeaponEffects {
   readonly evolved: EvolvedEffects;
   /** Krok 170: relikwie bossów działające poza bronią. */
   readonly relics: RelicEffects;
+  /** Krok Z3: ochrona z wot (odporności, pancerz, ratunek). */
+  readonly wards: WardEffects;
+}
+
+/** Krok Z3: ochrona z wot — ułamki ściętych obrażeń (0 = brak, 1 = pełna odporność). */
+export interface WardEffects {
+  readonly poisonResist: number;
+  readonly fireResist: number;
+  /** Kamienna łuska: ułamek ścięty z każdego trafienia. */
+  readonly damageReduction: number;
+  /** Kość psa-przewodnika: ratunek przed śmiercią raz na piętro; null — brak kości. */
+  readonly rescue: { readonly invulnerableMs: number; readonly healPct: number } | null;
 }
 
 /** Krok 170: efekty relikwii bossów (zero/null = brak relikwii). */

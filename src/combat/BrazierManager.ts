@@ -90,7 +90,7 @@ export class BrazierManager {
         const hurt = brazierDamage(config, state, brazier.at, player);
         if (!hurt) continue;
         if (hurt === config.burst && burstHitCycle === cycleIndex) continue;
-        const hit = { damage: hurt.damage, knockback: knockbackFrom(brazier.at, player, hurt.knockback) };
+        const hit = { damage: hurt.damage, knockback: knockbackFrom(brazier.at, player, hurt.knockback), element: 'fire' as const };
         if (!player.takeHit(hit, now)) continue;
         if (hurt === config.burst) brazier.burstHitCycle = cycleIndex;
         this.deps.onPlayerHit(player);

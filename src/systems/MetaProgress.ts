@@ -1,3 +1,5 @@
+import type { ItemId } from '@/core/lootTypes';
+
 /**
  * Trwały profil gracza (Akt II, krok Z1): czysta logika — odblokowanie Popielnika, Żar, statystyki Zejść i rangi.
  * Zapis i odczyt z magazynu: `persistence/MetaStorage.ts`.
@@ -16,6 +18,12 @@ export interface MetaProfile {
   readonly bestDepth: number;
   /** Piętra wieży, których bossów (albo ich odbicia) gracz pokonał od odblokowania Popielnika — półka trofeów. */
   readonly trophies: readonly number[];
+  /** Krok Z3: Wota znalezione w runach, czekające na wypalenie w Piecu wotów. */
+  readonly foundVotives: readonly ItemId[];
+  /** Krok Z3: Wota wypalone — są w puli łupów i można je wybrać na start Zejścia. */
+  readonly burnedVotives: readonly ItemId[];
+  /** Krok Z3: przedmiot startowy Zejścia (jedno z wypalonych Wot); null — bez. */
+  readonly startItem: ItemId | null;
 }
 
 export const META_VERSION = 1;
@@ -29,12 +37,18 @@ export const EMPTY_META: MetaProfile = {
   wins: 0,
   bestDepth: 0,
   trophies: [],
+  foundVotives: [],
+  burnedVotives: [],
+  startItem: null,
 };
 
 const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
 
-/** Odczyt profilu z tekstu (JSON z magazynu). Brak, uszkodzony albo z innej wersji = pusty profil. */
-export function parseMetaProfile(raw: string | null): MetaProfile {
+/**
+ * Odczyt profilu z tekstu (JSON z magazynu). Brak, uszkodzony albo z innej wersji = pusty profil.
+ * `knownVotives` — identyfikatory Wot, które gra zna (obce wpisy odpadają; profil z kroku Z1 nie ma ich wcale).
+ */
+export function parseMetaProfile(raw: string | null, knownVotives: readonly ItemId[] = []): MetaProfile {
   if (raw === null) return EMPTY_META;
   let value: unknown;
   try {
@@ -47,6 +61,11 @@ export function parseMetaProfile(raw: string | null): MetaProfile {
   if (data.version !== META_VERSION) return EMPTY_META;
   const { embers, runs, wins, bestDepth, trophies } = data;
   if (!isCount(embers) || !isCount(runs) || !isCount(wins) || !isCount(bestDepth)) return EMPTY_META;
+  const votives = (list: unknown): ItemId[] =>
+    Array.isArray(list) ? [...new Set(list.filter((id): id is ItemId => knownVotives.includes(id as ItemId)))] : [];
+  const burnedVotives = votives(data.burnedVotives);
+  const foundVotives = votives(data.foundVotives).filter((id) => !burnedVotives.includes(id));
+  const startItem = burnedVotives.includes(data.startItem as ItemId) ? (data.startItem as ItemId) : null;
   const shelf = Array.isArray(trophies) ? [...new Set(trophies.filter((floor): floor is number => isCount(floor) && floor >= 1))].sort((a, b) => a - b) : [];
   return {
     version: META_VERSION,
@@ -57,6 +76,9 @@ export function parseMetaProfile(raw: string | null): MetaProfile {
     wins,
     bestDepth,
     trophies: shelf,
+    foundVotives,
+    burnedVotives,
+    startItem,
   };
 }
 
@@ -114,4 +136,40 @@ export function metaRank(profile: Pick<MetaProfile, 'wins'>, ranks: readonly { r
   let name = ranks[0]?.name ?? '';
   for (const rank of ranks) if (profile.wins >= rank.wins) name = rank.name;
   return name;
+}
+
+// ---------------- Wota (krok Z3) ----------------
+
+/** Znalezione Wotum trafia na listę do wypalenia (bez powtórek; wypalone i znane — bez zmian). */
+export function findVotive(profile: MetaProfile, votive: ItemId): MetaProfile {
+  if (profile.foundVotives.includes(votive) || profile.burnedVotives.includes(votive)) return profile;
+  return { ...profile, foundVotives: [...profile.foundVotives, votive] };
+}
+
+/** Wota znane profilowi (znalezione albo wypalone) — tych już się nie znajduje. */
+export function knownVotives(profile: MetaProfile): ItemId[] {
+  return [...profile.burnedVotives, ...profile.foundVotives];
+}
+
+/**
+ * Wypalenie Wotum w Piecu: kosztuje Żar, przedmiot wchodzi do puli łupów. Pierwsze wypalone od razu staje się
+ * przedmiotem startowym (gracz zmienia go przy Palenisku). Bez Żaru albo bez tego Wotum — profil bez zmian.
+ */
+export function burnVotive(profile: MetaProfile, votive: ItemId, cost: number): MetaProfile {
+  if (!profile.foundVotives.includes(votive) || profile.embers < cost) return profile;
+  return {
+    ...profile,
+    embers: profile.embers - cost,
+    foundVotives: profile.foundVotives.filter((id) => id !== votive),
+    burnedVotives: [...profile.burnedVotives, votive],
+    startItem: profile.startItem ?? votive,
+  };
+}
+
+/** Palenisko: następny przedmiot startowy w kolejce (wypalone Wota, potem „bez przedmiotu”). */
+export function cycleStartItem(profile: MetaProfile): MetaProfile {
+  const options: (ItemId | null)[] = [...profile.burnedVotives, null];
+  if (options.length === 1) return profile;
+  const index = options.indexOf(profile.startItem);
+  return { ...profile, startItem: options[(index + 1) % options.length] ?? null };
 }

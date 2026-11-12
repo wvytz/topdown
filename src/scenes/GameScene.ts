@@ -89,6 +89,7 @@ import {
   ITEM_DEFINITIONS,
   ITEM_EFFECTS,
   ITEM_POOL,
+  ALL_ITEMS,
   LOOT_SCALING,
   SHRINE_CONFIG,
   STAT_LIMITS,
@@ -136,7 +137,8 @@ import { ReviveProgress, reviveHp } from '@/systems/Revive';
 import { SOLO_BALANCE, withExtraEnemies } from '@/systems/CoopBalance';
 import type { CoopBalanceConfig } from '@/systems/CoopBalance';
 import { isDeepInsideRoom } from '@/dungeon/arenaGates';
-import { PLAYER_JELLY_EVENT, Player } from '@/entities/Player';
+import { PLAYER_JELLY_EVENT, PLAYER_WARD_EVENT, Player } from '@/entities/Player';
+import type { WardSignal } from '@/entities/Player';
 import { relicForFloor, withRelicCard } from '@/systems/Relics';
 import { RELIC_CONFIG } from '@/config/relicConfig';
 import type { PlayerActions } from '@/entities/Player';
@@ -153,7 +155,10 @@ import { DESCENT_CONFIG, DESCENT_ROUTE_SALT, DESCENT_TEXT } from '@/config/desce
 import { META_CONFIG } from '@/config/metaConfig';
 import { MetaStorage } from '@/persistence/MetaStorage';
 import { EmberPurse, descentDepth, descentRoute, nextDescentFloor, withUnderworldRule } from '@/systems/Descent';
-import { addTrophy, bankDescent, unlockHideout } from '@/systems/MetaProgress';
+import type { MetaProfile } from '@/systems/MetaProgress';
+import { addTrophy, bankDescent, findVotive, knownVotives, unlockHideout } from '@/systems/MetaProgress';
+import { poolWithVotives, votiveToFind, withStartItem } from '@/systems/Votives';
+import { KILN_CONFIG, VOTIVE_ORDER, WARD_VISUAL } from '@/config/votiveConfig';
 import type { HideoutSceneData } from '@/core/types';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
@@ -247,6 +252,7 @@ function hudItems(counts: readonly { readonly id: ItemId; readonly count: number
       frame: itemFrames(id, ITEM_DEFINITIONS[id].kind)[0] ?? '',
       rare: ITEM_DEFINITIONS[id].kind === ItemKind.Effect,
       relic: ITEM_DEFINITIONS[id].kind === ItemKind.Relic,
+      votive: ITEM_DEFINITIONS[id].kind === ItemKind.Votive,
       evolved,
     };
   });
@@ -393,6 +399,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private route: readonly number[] | null = null;
   /** Zejście: sakiewka Żaru (bezpieczny z poprzednich pięter + zebrany na tym). */
   private embers: EmberPurse | null = null;
+  /** Krok Z3: pula łupów z Wotami wypalonymi w Popielniku (bez nich — pula Aktu I). */
+  private itemPool: readonly ItemDefinition[] = ITEM_POOL;
   /** Żar oddany do Popielnika na koniec Zejścia (do ekranu podsumowania). */
   private embersBanked = 0;
   /** Po ekranie końca runu wyjście prowadzi do Popielnika; liczba = Żar z pierwszego lądowania do pokazania. */
@@ -432,7 +440,18 @@ export class GameScene extends Phaser.Scene implements HudSource {
   init(sceneData: FloorSceneData): void {
     // Ukryty bot-partner (krok 149): `?bot=1` w adresie dokłada P2 sterowanego przez AI (też po menu i ekranie wyboru).
     const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), SELECTABLE_HEROES);
-    const data = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
+    const botData = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
+    // Krok Z3: przedmiot startowy Zejścia z Paleniska (obaj bohaterowie w co-opie).
+    const startItem = botData.replay ? null : this.meta.load().startItem;
+    const startRun = withStartItem(botData.run, botData.floor, DESCENT_CONFIG.firstFloor, startItem);
+    const data: FloorSceneData =
+      startRun === botData.run
+        ? botData
+        : {
+            ...botData,
+            run: startRun,
+            ...(botData.coop && { coop: { ...botData.coop, partner: { ...botData.coop.partner, items: withStartItem({ ...startRun, items: botData.coop.partner.items }, botData.floor, DESCENT_CONFIG.firstFloor, startItem).items } } }),
+          };
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;
     this.runSeed = data.runSeed;
@@ -447,6 +466,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const descent = this.run.mode === RunMode.Descent;
     this.route = descent ? descentRoute(data.runSeed, DESCENT_CONFIG, DESCENT_ROUTE_SALT) : null;
     this.embers = descent ? new EmberPurse(data.run.embers ?? 0) : null;
+    // Krok Z3: wypalone Wota wypadają we wspinaczce i w Zejściu (nie w nagraniu — ono ma pulę z chwili zapisu).
+    const profile = this.meta.load();
+    this.itemPool = this.replay || !profile.hideoutUnlocked ? ITEM_POOL : poolWithVotives(ALL_ITEMS, profile.burnedVotives);
     this.embersBanked = 0;
     this.hideoutExit = null;
     this.startHp = data.run.hp;
@@ -984,12 +1006,31 @@ export class GameScene extends Phaser.Scene implements HudSource {
    */
   private onBossDown(): void {
     if (this.replay || this.run.practice || this.bossRush) return;
-    this.meta.update((profile) => addTrophy(profile, this.floorNumber));
-    if (!this.embers) return;
+    const before = this.meta.load();
+    const after = this.meta.update((profile) => addTrophy(profile, this.floorNumber));
+    // Krok Z3: Wotum zostawia każdy boss Zejścia i boss wieży przy pierwszym zabiciu po odblokowaniu Popielnika.
+    // Znalezione jest od razu bezpieczne (boss zabezpiecza łup, jak Żar); wypala się je w Piecu wotów.
+    const firstKill = after.trophies.length > before.trophies.length;
+    const votive = after.hideoutUnlocked && (this.embers || firstKill) ? this.findVotiveHere(after) : null;
+    if (votive) {
+      this.meta.update((profile) => findVotive(profile, votive));
+      diag.note('votive-found', { floor: this.floorNumber, votive });
+    }
+    const found = votive ? DESCENT_TEXT.votiveFound(ITEM_DEFINITIONS[votive].name) : null;
+    if (!this.embers) {
+      if (found) this.showToast(found);
+      return;
+    }
     this.embers.add(DESCENT_CONFIG.embers.boss);
     const secured = this.embers.secure();
     diag.note('embers-secured', { floor: this.floorNumber, depth: this.depth, secured });
-    this.showToast(DESCENT_TEXT.embersSecured(secured));
+    this.showToast(found ? `${DESCENT_TEXT.embersSecured(secured)}\n${found}` : DESCENT_TEXT.embersSecured(secured));
+  }
+
+  /** Wotum do znalezienia na tym piętrze — z własnego strumienia RNG (seed runu + piętro). */
+  private findVotiveHere(profile: MetaProfile): ItemId | null {
+    const rng = createRng(deriveSeed(this.runSeed ^ this.floorNumber, KILN_CONFIG.findSeedSalt));
+    return votiveToFind(VOTIVE_ORDER, knownVotives(profile), rng);
   }
 
   /** Wywoływane po pokonaniu bossa — zamyka pętlę piętra. */
@@ -1051,6 +1092,19 @@ export class GameScene extends Phaser.Scene implements HudSource {
     // Krok 170: Korona Szlamu zbiła trafienie.
     this.events.off(PLAYER_JELLY_EVENT);
     this.events.on(PLAYER_JELLY_EVENT, (hero: Player) => this.effects.floatingText(hero.x, hero.y - 22, 'galareta', '#c49aff'));
+    // Krok Z3: wotum zadziałało — błysk barwy nad bohaterem i napis (najwyżej raz na kilka sekund; ratunek zawsze).
+    this.events.off(PLAYER_WARD_EVENT);
+    const wardTextAt = new Map<string, number>();
+    this.events.on(PLAYER_WARD_EVENT, (hero: Player, signal: WardSignal) => {
+      const look = WARD_VISUAL[signal];
+      const now = this.time.now;
+      hero.flashWard(look.tint, now, WARD_VISUAL.flashMs);
+      const key = `${signal}:${hero === this.player ? 1 : 2}`;
+      if (signal !== 'rescue' && now < (wardTextAt.get(key) ?? -Infinity)) return;
+      wardTextAt.set(key, now + WARD_VISUAL.textCooldownMs);
+      this.effects.floatingText(hero.x, hero.y - 22, look.text, `#${look.tint.toString(16).padStart(6, '0')}`);
+      if (signal === 'rescue') diag.note('votive-rescue', { floor: this.floorNumber });
+    });
     // Płomienie ognia walki stają tylko na podłodze (krok 144) — pas bocianów sięga za mury areny.
     const { width, height, tiles } = this.dungeon;
     this.effects.fire.setFloorCheck((x, y) => {
@@ -1496,7 +1550,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
   }
 
   private dropLoot(position: Vector2, table: LootTable): void {
-    this.loot.spawn(position, rollLoot(table, this.floorNumber, LOOT_SCALING, ITEM_POOL, this.lootRng));
+    this.loot.spawn(position, rollLoot(table, this.floorNumber, LOOT_SCALING, this.itemPool, this.lootRng));
   }
 
   private collect(drop: LootDrop, position: Vector2, collector: Player = this.player): void {
@@ -1782,7 +1836,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   private usefulPoolFor(hero: Player): readonly ItemDefinition[] {
     const items = this.itemsOf(hero);
-    return usefulItemPool(ITEM_POOL, HERO_DEFINITIONS[this.heroIdOf(hero)], items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
+    return usefulItemPool(this.itemPool, HERO_DEFINITIONS[this.heroIdOf(hero)], items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
   }
 
   private offerRewardTo(hero: Player, choices: readonly ItemId[], onPicked: () => void, development: ItemId | null = null): void {

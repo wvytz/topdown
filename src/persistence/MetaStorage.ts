@@ -1,4 +1,5 @@
 import { META_CONFIG } from '@/config/metaConfig';
+import { VOTIVE_ORDER } from '@/config/votiveConfig';
 import { browserLocalStorage } from '@/persistence/scopedStorage';
 import type { ScopedStorage } from '@/persistence/scopedStorage';
 import type { MetaProfile } from '@/systems/MetaProgress';
@@ -18,7 +19,7 @@ export class MetaStorage {
   load(): MetaProfile {
     if (!this.storage) return this.memory ?? parseMetaProfile(null);
     try {
-      return parseMetaProfile(this.storage.getItem(META_CONFIG.storageKey));
+      return parseMetaProfile(this.storage.getItem(META_CONFIG.storageKey), VOTIVE_ORDER);
     } catch {
       return this.memory ?? parseMetaProfile(null);
     }

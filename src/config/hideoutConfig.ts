@@ -2,7 +2,7 @@ import type { TilePoint } from '@/core/dungeonTypes';
 
 /** Stanowiska Popielnika (Akt II, krok Z1; `docs/AKT2.md` §3). */
 export enum HideoutStation {
-  /** Palenisko na środku — serce kryjówki; stan profilu (Żar, ranga). */
+  /** Palenisko na środku — serce kryjówki; wybór przedmiotu startowego Zejścia (krok Z3). */
   Hearth = 'hearth',
   /** Brama Zejścia: run w dół, solo. */
   Gate = 'gate',
@@ -12,7 +12,7 @@ export enum HideoutStation {
   Shaft = 'shaft',
   /** Popielne lustro: areny bossów. */
   Mirror = 'mirror',
-  /** Piec wotów: wypalanie Wot za Żar (etap Z3 — na razie zimny). */
+  /** Piec wotów: wypalanie Wot za Żar (krok Z3). */
   Kiln = 'kiln',
   /** Ściana imion: rekordy Zejścia. */
   Wall = 'wall',
@@ -49,7 +49,7 @@ export const HIDEOUT_CONFIG: HideoutConfig = {
   spawn: { x: 15, y: 13 },
   reachTiles: 1.6,
   stations: [
-    { id: HideoutStation.Hearth, tile: { x: 15, y: 11 }, name: 'Palenisko', prompt: null },
+    { id: HideoutStation.Hearth, tile: { x: 15, y: 11 }, name: 'Palenisko', prompt: 'Przedmiot na start' },
     { id: HideoutStation.Shaft, tile: { x: 14, y: 5 }, name: 'Szyb w górę', prompt: 'Wspinaczka na wieżę' },
     { id: HideoutStation.Gate, tile: { x: 12, y: 17 }, name: 'Brama Zejścia', prompt: 'Zejdź sam' },
     { id: HideoutStation.GateCoop, tile: { x: 18, y: 17 }, name: 'Brama we dwoje', prompt: 'Zejdźcie we dwoje' },
@@ -67,6 +67,8 @@ export const HIDEOUT_VISUAL = {
   /** Iskry z paleniska. */
   sparks: { colors: [0xffb347, 0xff7a2a, 0xffe08a], frequencyMs: 160, maxParticles: 24 },
   hearthLightRadius: 150,
+  /** Krok Z3: Piec wotów rozpalony, gdy wypalił choć jedno Wotum. */
+  kilnFire: [0xc8201c, 0xff7a2a, 0xffe08a],
   stationLightRadius: 70,
   gateColor: 0xc8201c,
   emberColor: '#ffb347',
@@ -85,7 +87,14 @@ export const HIDEOUT_TEXT = {
   arrival: ['Wiedźma padła. Nad ogrodem wschodzi Czarne Słońce.', 'Taras pęka. Spadasz szybem wieży — obok pieców, niżej niż ktokolwiek.', 'Popiół spalonych zamortyzował upadek.'],
   arrivalEmbers: (embers: number) => `Twoje przedmioty spłonęły w locie: +${embers} Żaru`,
   hearth: (embers: number, rank: string) => `Żar: ${embers} · ${rank}`,
-  kilnCold: (embers: number) => `Piec jest jeszcze zimny. Wota pojawią się w kolejnym etapie. Masz ${embers} Żaru.`,
+  // Krok Z3: Piec wotów i przedmiot startowy przy Palenisku.
+  kilnPromptBurn: (name: string, cost: number) => `Wypal: ${name} (${cost} Żaru)`,
+  kilnEmpty: (burned: number, total: number) =>
+    `Piec czeka na Wota. Zostawiają je bossowie Zejścia i bossowie wieży przy pierwszym zabiciu. Wypalone: ${burned}/${total}.`,
+  kilnPoor: (name: string, cost: number, embers: number) => `${name} czeka w popiele. Wypalenie kosztuje ${cost} Żaru, masz ${embers}.`,
+  kilnBurned: (name: string, effect: string) => `${name} wypalone: ${effect}. Od teraz wypada w łupach, a przy Palenisku możesz je wziąć na start.`,
+  hearthNone: 'Na start możesz wziąć jedno wypalone Wotum. Piec wotów jeszcze żadnego nie wypalił.',
+  hearthPick: (name: string | null) => (name ? `Na start Zejścia: ${name}. E — następne.` : 'Na start Zejścia: nic. E — następne.'),
   wall: (runs: number, wins: number, bestDepth: number, floors: number, rank: string) =>
     `Zejścia: ${runs} · Dno zdobyte: ${wins} · Najgłębiej: ${bestDepth}/${floors} · Ranga: ${rank}`,
   wallEmpty: 'Ściana jest pusta. Pierwsze Zejście zapisze tu Twoje imię.',

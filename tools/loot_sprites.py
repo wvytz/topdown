@@ -47,9 +47,16 @@ ITEMS = {
     'baron-pipe': ('#9a8f84', 'relic'),
     'wet-mop': ('#5ab8d8', 'relic'),
     'stork-feather': ('#f0ece0', 'relic'),
+    # Krok Z3 (Akt II): wota — przedmioty ochronne, jadeitowa obwódka i iskra.
+    'carapace': ('#6fae3a', 'votive'),
+    'shield-core': ('#e0782a', 'votive'),
+    'stone-scale': ('#a8a090', 'votive'),
+    'guide-bone': ('#e8dcc0', 'votive'),
 }
 RELIC_RIM = '#c8304a'
 RELIC_SPARK = '#ff8aa0'
+VOTIVE_RIM = '#3fb08a'
+VOTIVE_SPARK = '#9ff0d0'
 POTION_COLOR = '#ff4f5e'  # jaśniejsza od dawnego #d93a5a: na piaskowcu tamten miał tylko 1,44:1 (test WCAG)
 SHOT_COLOR = '#5ee0c8'  # turkus jak ładunki w HUD
 
@@ -322,6 +329,66 @@ ICONS = {
         's...........',
         '............',
     ],
+    # Krok Z3: pancerz z odwłoka Matki Pająków — chityna z kościanymi szewronami.
+    'carapace': [
+        '....DBBD....',
+        '...DBLLBD...',
+        '..DBLHHLBD..',
+        '..BkBLLBkB..',
+        '.DBBkBBkBBD.',
+        '.BLBBkkBBLB.',
+        '.BBkBBBBkBB.',
+        '.DBBkBBkBBD.',
+        '..DBBkkBBD..',
+        '..DDBBBBDD..',
+        '...DDBBDD...',
+        '....DDDD....',
+    ],
+    # Rdzeń Tarczownika: żarzący się rdzeń w żelaznym pierścieniu.
+    'shield-core': [
+        '....sSSs....',
+        '..sSTTTTSs..',
+        '.sTSDBBDSTs.',
+        '.STDBLLBDTS.',
+        'sTDBLHHLBDTs',
+        'STBLHHHHLBTS',
+        'STBLHHHHLBTS',
+        'sTDBLHHLBDTs',
+        '.STDBLLBDTS.',
+        '.sTSDBBDSTs.',
+        '..sSTTTTSs..',
+        '....sSSs....',
+    ],
+    # Kamienna łuska: odprysk muru ułożony jak łuska.
+    'stone-scale': [
+        '.....HL.....',
+        '....HLBD....',
+        '...HLBBBD...',
+        '..LBBDDBBD..',
+        '..BBD..DBB..',
+        '.LBBDLLDBBD.',
+        '.BBDLBBLDBD.',
+        '.BBDBBBBDBD.',
+        '..BDBBBBDD..',
+        '...DDBBDD...',
+        '....DDDD....',
+        '............',
+    ],
+    # Kość psa-przewodnika (czarny dog z Popielnika).
+    'guide-bone': [
+        '............',
+        '............',
+        '.LL......LL.',
+        'HLBL....LBLD',
+        'LBBBLLLLBBBD',
+        '.DBBBBBBBBD.',
+        '.LBBBBBBBBD.',
+        'LBBBDDDDBBBD',
+        'DBBD....DBBD',
+        '.DD......DD.',
+        '............',
+        '............',
+    ],
 }
 
 POTION = [
@@ -419,9 +486,11 @@ def item_frames(item_id):
     if kind == 'stat':
         return [base]
     relic = kind == 'relic'
-    # złota obwódka = przedmiot z efektem (ten sam język co dawne gwiazdy); karmazynowa = relikwia bossa (krok 170)
-    outline(base, hx(RELIC_RIM) if relic else GOLD[2])
-    spark = hx(RELIC_SPARK) if relic else GOLD[3]
+    votive = kind == 'votive'
+    # złota obwódka = przedmiot z efektem (ten sam język co dawne gwiazdy); karmazynowa = relikwia bossa (krok 170);
+    # jadeitowa = wotum z Popielnika (krok Z3)
+    outline(base, hx(RELIC_RIM) if relic else hx(VOTIVE_RIM) if votive else GOLD[2])
+    spark = hx(RELIC_SPARK) if relic else hx(VOTIVE_SPARK) if votive else GOLD[3]
     frames = []
     for f in range(4):  # iskra w prawym górnym rogu: brak, punkt, krzyżyk, punkt
         img = Img(CELL, CELL)

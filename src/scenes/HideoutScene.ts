@@ -41,7 +41,9 @@ import { createBoardHighscores } from '@/persistence/highscoreBoards';
 import { hubParam, openMainMenu } from '@/scenes/BootScene';
 import { NO_FLOOR_EFFECTS } from '@/systems/FloorModifiers';
 import { MenuCommand } from '@/systems/gamepadInput';
-import { markArrivalSeen, openHideoutForTest, metaRank } from '@/systems/MetaProgress';
+import { burnVotive, cycleStartItem, markArrivalSeen, openHideoutForTest, metaRank } from '@/systems/MetaProgress';
+import { ITEM_DEFINITIONS } from '@/config/lootConfig';
+import { KILN_CONFIG, VOTIVE_ORDER } from '@/config/votiveConfig';
 import type { MetaProfile } from '@/systems/MetaProgress';
 import { newRun } from '@/systems/RunState';
 import { installSmoothPhysics } from '@/world/SmoothPhysics';
@@ -94,6 +96,7 @@ export class HideoutScene extends Phaser.Scene {
   private glowLights: PointLight[] = [];
   private stairsGlow!: StairsGlow;
   private uiCamera!: Phaser.Cameras.Scene2D.Camera;
+  private kilnFire: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super(SceneKey.Hideout);
@@ -190,7 +193,7 @@ export class HideoutScene extends Phaser.Scene {
     const station = this.busy ? null : this.stationNear();
     if (station) {
       const center = DungeonView.tileToWorldCenter(stationCenter(station));
-      this.prompt.setText(`[E] ${station.prompt}`).setPosition(center.x, center.y - TILE_SIZE * 1.25).setVisible(true);
+      this.prompt.setText(`[E] ${this.promptFor(station)}`).setPosition(center.x, center.y - TILE_SIZE * 1.25).setVisible(true);
       if (calm.interact) this.use(station);
     } else {
       this.prompt.setVisible(false);
@@ -230,7 +233,10 @@ export class HideoutScene extends Phaser.Scene {
         this.toHeroSelect({ runSeed, floor: 1, mode: RunMode.BossRush });
         break;
       case HideoutStation.Kiln:
-        this.say(HIDEOUT_TEXT.kilnCold(this.profile.embers));
+        this.useKiln();
+        break;
+      case HideoutStation.Hearth:
+        this.useHearth();
         break;
       case HideoutStation.Wall:
         this.say(this.wallText());
@@ -240,6 +246,45 @@ export class HideoutScene extends Phaser.Scene {
         break;
       default:
     }
+  }
+
+  /** Krok Z3: napis nad stanowiskiem zależny od profilu (Piec podaje Wotum i cenę). */
+  private promptFor(station: HideoutStationSpot): string {
+    const waiting = this.profile.foundVotives[0];
+    if (station.id === HideoutStation.Kiln && waiting) return HIDEOUT_TEXT.kilnPromptBurn(ITEM_DEFINITIONS[waiting].name, KILN_CONFIG.burnCost);
+    return station.prompt ?? '';
+  }
+
+  /** Piec wotów (krok Z3): wypala pierwsze czekające Wotum za Żar — przedmiot wchodzi do puli łupów. */
+  private useKiln(): void {
+    const votive = this.profile.foundVotives[0];
+    if (!votive) {
+      this.say(HIDEOUT_TEXT.kilnEmpty(this.profile.burnedVotives.length, VOTIVE_ORDER.length));
+      return;
+    }
+    const item = ITEM_DEFINITIONS[votive];
+    if (this.profile.embers < KILN_CONFIG.burnCost) {
+      this.say(HIDEOUT_TEXT.kilnPoor(item.name, KILN_CONFIG.burnCost, this.profile.embers));
+      return;
+    }
+    this.profile = this.meta.update((profile) => burnVotive(profile, votive, KILN_CONFIG.burnCost));
+    diag.note('votive-burned', { votive, embers: this.profile.embers });
+    sound.play(SoundCue.Shrine, this.player);
+    this.refreshStatus();
+    this.drawKilnFire();
+    this.say(HIDEOUT_TEXT.kilnBurned(item.name, item.effect));
+  }
+
+  /** Palenisko (krok Z3): kolejny przedmiot startowy spośród wypalonych Wot (albo żaden). */
+  private useHearth(): void {
+    if (this.profile.burnedVotives.length === 0) {
+      this.say(HIDEOUT_TEXT.hearthNone);
+      return;
+    }
+    this.profile = this.meta.update(cycleStartItem);
+    this.refreshStatus();
+    const start = this.profile.startItem;
+    this.say(HIDEOUT_TEXT.hearthPick(start ? ITEM_DEFINITIONS[start].name : null));
   }
 
   private toHeroSelect(start: Pick<HeroSelectData, 'runSeed' | 'floor' | 'mode'>): void {
@@ -336,6 +381,28 @@ export class HideoutScene extends Phaser.Scene {
       .setVisible(false);
     this.addHearthSparks();
     this.drawDog(g);
+    this.drawKilnFire();
+  }
+
+  /** Krok Z3: Piec wotów płonie, gdy wypalił choć jedno Wotum; liczba języków ognia = liczba wypalonych. */
+  private drawKilnFire(): void {
+    const kiln = this.layout.stations.find((station) => station.id === HideoutStation.Kiln);
+    const burned = this.profile.burnedVotives.length;
+    if (!kiln || burned === 0) return;
+    const { x, y } = DungeonView.tileToWorldCenter(stationCenter(kiln));
+    if (!this.kilnFire) {
+      this.kilnFire = this.add.graphics().setDepth(RENDER_DEPTH.shrine + 1);
+      this.uiCamera?.ignore(this.kilnFire);
+    }
+    const g = this.kilnFire.clear();
+    const [deep, mid, core] = V.kilnFire;
+    g.fillStyle(deep!, 0.9).fillRoundedRect(x - 10, y - 6, 20, 20, { tl: 9, tr: 9, bl: 0, br: 0 });
+    const tongues = Math.min(burned, VOTIVE_ORDER.length);
+    for (let i = 0; i < tongues; i++) {
+      const tx = x - 6 + (12 / Math.max(1, tongues - 1)) * i - (tongues === 1 ? -6 : 0);
+      g.fillStyle(mid!, 0.95).fillTriangle(tx - 3, y + 12, tx + 3, y + 12, tx, y + 1);
+      g.fillStyle(core!, 0.95).fillTriangle(tx - 1.5, y + 12, tx + 1.5, y + 12, tx, y + 6);
+    }
   }
 
   /** Figury zastępcze stanowisk (zasada prototypowania); docelowo arkusz z generatora w `tools/`. */
@@ -456,7 +523,8 @@ export class HideoutScene extends Phaser.Scene {
   }
 
   private refreshStatus(): void {
-    this.status.setText(HIDEOUT_TEXT.hearth(this.profile.embers, metaRank(this.profile, META_CONFIG.ranks)));
+    const start = this.profile.startItem ? ` · Na start: ${ITEM_DEFINITIONS[this.profile.startItem].name}` : '';
+    this.status.setText(`${HIDEOUT_TEXT.hearth(this.profile.embers, metaRank(this.profile, META_CONFIG.ranks))}${start}`);
   }
 
   // ---------------- pierwsze lądowanie ----------------
