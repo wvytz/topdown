@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { HeroId } from '@/core/heroTypes';
-import { ItemId } from '@/core/lootTypes';
+import { GateReward, ItemId } from '@/core/lootTypes';
 import { RunMode } from '@/core/runMode';
 import { RunState, newRun } from '@/systems/RunState';
 import type { SaveData } from '@/systems/SaveGame';
@@ -142,5 +142,21 @@ describe('blokada zapisu w walce z bossem (krok 121)', () => {
     expect(lock.update(defeated)).toBeNull();
     expect(lock.update(fighting)).toBeNull();
     expect(lock.locked).toBe(false);
+  });
+});
+
+describe('zapis Zejścia z bramami (krok Z4)', () => {
+  const run = { ...newRun(HeroId.Archer, false, RunMode.Descent), embers: 12, descentPath: [1, 3], gateReward: GateReward.Merchant };
+  it('pamięta drogę i nagrodę bramy', () => {
+    const record = parseSaveRecord(JSON.stringify(toSaveRecord({ runSeed: 4, floor: 3, run }, 1)));
+    expect(record?.run.descentPath).toEqual([1, 3]);
+    expect(record?.run.gateReward).toBe(GateReward.Merchant);
+  });
+  it('zła droga albo nagroda odpada bez unieważniania zapisu', () => {
+    const broken = { ...toSaveRecord({ runSeed: 4, floor: 3, run }, 1), run: { ...run, descentPath: ['x'], gateReward: 'skarb' } };
+    const record = parseSaveRecord(JSON.stringify(broken));
+    expect(record).not.toBeNull();
+    expect(record?.run.descentPath).toBeUndefined();
+    expect(record?.run.gateReward).toBeUndefined();
   });
 });

@@ -86,6 +86,10 @@ export const AMBUSH_VARIANTS: AmbushVariantsConfig = {
       [ItemId.ShieldCore]: BossBoon.Vitality,
       [ItemId.StoneScale]: BossBoon.Vitality,
       [ItemId.GuideBone]: BossBoon.Vitality,
+      [ItemId.JadeMask]: BossBoon.Vitality,
+      [ItemId.ObsidianMirror]: BossBoon.Might,
+      [ItemId.JaguarHide]: BossBoon.Might,
+      [ItemId.QuetzalFeather]: BossBoon.Swiftness,
     },
     boons: {
       [BossBoon.Vitality]: { hpMultiplier: 1.3, damageMultiplier: 1, speedMultiplier: 1, label: '+30% życia' },

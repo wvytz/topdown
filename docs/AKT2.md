@@ -142,7 +142,7 @@ Model jak przy upgradzie: gałąź `akt-2`, podgląd pod `/topdown/akt2/` bez wo
 | **Z1. Popielnik** | Kafle i światło biomu, układ, stanowiska do istniejących trybów, scena upadku, pozycja w menu; mysz, pad, dotyk, co-op | Da się wejść po Wiedźmie i z Popielnika uruchomić wszystko, co dziś z menu |
 | **Z2. Zejście na odbiciach** | 6 pięter z odbić, Żar, powrót po śmierci z podsumowaniem, lokalna tablica, półka trofeów | Pętla „run → śmierć → Popielnik → run” działa solo i w co-opie; `npm run smoke` ma wariant Zejścia |
 | **Z3. Wota i Piec** | Pierwsze 4 przedmioty ochronne, wypalanie, przedmiot startowy — **zrobione (krok Z3)** | Odblokowany przedmiot wypada w następnym runie |
-| **Z4. Bramy i kupiec** | Wybór drogi, podpowiedzi nagród, kupiec między głębiami | Dwa runy z tego samego Popielnika idą różnymi drogami |
+| **Z4. Bramy i kupiec** | Wybór drogi, podpowiedzi nagród, kupiec między głębiami, druga paczka 4 wot — **zrobione (krok Z4)** | Dwa runy z tego samego Popielnika idą różnymi drogami |
 | **Z5. Zaćmienia i rangi** | Poziomy trudności, rangi, wspólna tablica w workerze, pomiar botem | Jest powód grać po pierwszym zwycięstwie |
 | **Z6+. Próby** | Po jednej próbie na etap, zaczynając od Czarnej Przeprawy (biom, wrogowie, boss, 1–2 Wota) | Próba zastępuje odbicie |
 | **Później** | Wiedźma-bohaterka, finał na Dnie, urządzanie Popielnika, profil w workerze | — |

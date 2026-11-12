@@ -226,6 +226,43 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemId, ItemDefinition>> = {
     weight: 3,
     modifiers: {},
   },
+  // Krok Z4: druga paczka wot (projekty z 25.10).
+  [ItemId.JadeMask]: {
+    id: ItemId.JadeMask,
+    kind: ItemKind.Votive,
+    name: 'Jadeitowa maska',
+    effect: 'pociski ranią o 25% mniej (do 50%)',
+    color: 0x3fb08a,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.ObsidianMirror]: {
+    id: ItemId.ObsidianMirror,
+    kind: ItemKind.Votive,
+    name: 'Obsydianowe zwierciadło',
+    effect: 'co 8 s odbija pocisk we wrogów (×2)',
+    color: 0x6a5a8a,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.JaguarHide]: {
+    id: ItemId.JaguarHide,
+    kind: ItemKind.Votive,
+    name: 'Skóra jaguara',
+    effect: 'wróg, który cię trafi wręcz, dostaje 10 obrażeń',
+    color: 0xd8a040,
+    weight: 3,
+    modifiers: {},
+  },
+  [ItemId.QuetzalFeather]: {
+    id: ItemId.QuetzalFeather,
+    kind: ItemKind.Votive,
+    name: 'Pióro kecala',
+    effect: 'po dashu jeszcze 0,25 s nietykalności',
+    color: 0x40c070,
+    weight: 3,
+    modifiers: {},
+  },
 };
 
 /** Siła efektów przedmiotów: pierwsza kopia + przyrost za każdą kolejną. */

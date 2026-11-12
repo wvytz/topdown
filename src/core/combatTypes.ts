@@ -202,6 +202,8 @@ export interface Hit {
   readonly unblockable?: boolean;
   /** Krok Z3: żywioł trafienia — ogień gasi Rdzeń Tarczownika. Brak = zwykłe obrażenia. */
   readonly element?: DamageElement;
+  /** Krok Z4: pocisk wroga — ścina go Jadeitowa maska. */
+  readonly projectile?: boolean;
 }
 
 /** Krok Z3: żywioł obrażeń zadawanych bohaterowi (trucizna idzie statusem, nie trafieniem). */
@@ -239,6 +241,14 @@ export interface WardEffects {
   readonly damageReduction: number;
   /** Kość psa-przewodnika: ratunek przed śmiercią raz na piętro; null — brak kości. */
   readonly rescue: { readonly invulnerableMs: number; readonly healPct: number } | null;
+  /** Krok Z4 — Jadeitowa maska: ułamek ścięty z trafień pociskami. */
+  readonly projectileResist: number;
+  /** Krok Z4 — Obsydianowe zwierciadło: odbicie pocisku co `cooldownMs`; null — brak zwierciadła. */
+  readonly mirror: { readonly cooldownMs: number; readonly damageMultiplier: number } | null;
+  /** Krok Z4 — Skóra jaguara: obrażenia oddane wrogowi, który trafił wręcz (0 — brak). */
+  readonly thorns: number;
+  /** Krok Z4 — Pióro kecala: nietykalność po dashu (ms, 0 — brak). */
+  readonly dashGraceMs: number;
 }
 
 /** Krok 170: efekty relikwii bossów (zero/null = brak relikwii). */

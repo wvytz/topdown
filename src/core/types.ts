@@ -35,6 +35,8 @@ export enum SceneKey {
   Game = 'GameScene',
   Hud = 'HudScene',
   Reward = 'RewardScene',
+  /** Krok Z4: wybór z kart — bramy Zejścia i lada kupca. */
+  Choice = 'ChoiceScene',
   Pause = 'PauseScene',
   /** Popielnik (Akt II, krok Z1): kryjówka między runami. */
   Hideout = 'HideoutScene',
