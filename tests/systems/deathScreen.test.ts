@@ -165,6 +165,8 @@ describe('wiersz tablicy i miniaturka bohatera (krok 89)', () => {
   it('wiersz bez nazwy bohatera — bohatera pokazuje miniaturka', () => {
     expect(formatScoreRow(row())).toBe('2. Wicio · 120 złota · piętro 4');
     expect(formatScoreRow(row(true))).toBe('› 2. Wicio · 120 złota · piętro 4 ‹');
+    // Tablica Zejścia (krok Z1) liczy głębie.
+    expect(formatScoreRow(row(), false, true)).toBe('2. Wicio · 120 złota · głębia 4');
   });
 
   it('miniaturka tylko dla znanego bohatera', () => {

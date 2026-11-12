@@ -18,6 +18,7 @@ export const BOARD_ORDER: Readonly<Record<HighscoreBoardId, ScoreComparator>> = 
   tower: compareScores,
   arenas: compareArenaScores,
   coop: compareScores,
+  descent: compareScores,
 };
 
 /** Tablica wyników (lokalna + wspólna) w przeglądarce — ta sama dla ekranu śmierci i ekranu startowego. */
@@ -31,7 +32,7 @@ export function createBoardHighscores(board: HighscoreBoardId): SharedHighscores
   const storage = HighscoreStorage.browserStorage();
   return new SharedHighscores(
     new HighscoreStorage(storage, HIGHSCORE_CONFIG.maxEntries, HIGHSCORE_CONFIG.podiumSize, storageKey, compare),
-    mobile ? null : createRemoteScoreSource(path),
+    mobile || path === null ? null : createRemoteScoreSource(path),
     storage,
     {
       maxEntries: HIGHSCORE_CONFIG.maxEntries,

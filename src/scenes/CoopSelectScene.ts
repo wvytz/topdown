@@ -13,6 +13,7 @@ import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { LastHero } from '@/persistence/LastHero';
 import { heroStatLine, initialIndex } from '@/systems/heroSelect';
 import { newRun } from '@/systems/RunState';
+import { DESCENT_CONFIG } from '@/config/descentConfig';
 import { KEYBOARD_MOUSE, padDevice } from '@/systems/coopDevices';
 import type { InputDevice } from '@/systems/coopDevices';
 import { CoopLobby } from '@/systems/coopLobby';
@@ -168,7 +169,11 @@ export class CoopSelectScene extends Phaser.Scene {
     const hero = HERO_ORDER[0]!;
     const start: FloorSceneData = { runSeed: this.selectData.runSeed, floor: 1, run: newRun(hero, this.selectData.practice ?? false) };
     this.cameras.main.fadeOut(L.fadeMs, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => openMainMenu(this, start));
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      // Krok Z1: ekran otwarty z Popielnika wraca do kryjówki.
+      if (this.selectData.fromHideout) this.scene.start(SceneKey.Hideout, {});
+      else openMainMenu(this, start);
+    });
   }
 
   private start(): void {
@@ -178,11 +183,13 @@ export class CoopSelectScene extends Phaser.Scene {
     const hero = HERO_ORDER[p1.hero]!;
     const partner = HERO_ORDER[p2.hero]!;
     this.lastHero.save(hero);
-    diag.note('coop-start', { p1: hero, p2: partner });
+    const mode = this.selectData.mode ?? RunMode.Tower;
+    diag.note('coop-start', { p1: hero, p2: partner, mode });
     const start: FloorSceneData = {
       runSeed: this.selectData.runSeed,
-      floor: 1,
-      run: newRun(hero, this.selectData.practice ?? false, RunMode.Tower, 1),
+      // Zejście we dwoje (krok Z1) zaczyna od pierwszego odbicia trasy.
+      floor: mode === RunMode.Descent ? DESCENT_CONFIG.firstFloor : 1,
+      run: newRun(hero, this.selectData.practice ?? false, mode, 1),
       coop: { partner: { hero: partner, items: [], hp: null }, devices: this.lobby.playerDevices() },
     };
     this.time.delayedCall(400, () => {

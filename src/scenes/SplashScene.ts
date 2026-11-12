@@ -24,7 +24,7 @@ import type { SplashFrame } from '@/systems/splashTimeline';
 import { splashFadeStart, splashFrame, splashImpacts } from '@/systems/splashTimeline';
 import type { Particle } from '@/systems/deathScreen';
 import { stepParticle } from '@/systems/deathScreen';
-import { BOOT_START_DATA_KEY, heroParam, startFirstFloor } from '@/scenes/BootScene';
+import { BOOT_START_DATA_KEY, heroParam, hubParam, startFirstFloor } from '@/scenes/BootScene';
 import type { MenuSceneData } from '@/scenes/MenuScene';
 import { bindPadMenu } from '@/input/PadMenuInput';
 import { screenFx } from '@/effects/ScreenFx';
@@ -157,7 +157,7 @@ export class SplashScene extends Phaser.Scene {
         skipRequested: this.skipRequested,
       });
       // Bez `?hero=` w adresie zamiast wygaszenia pojawia się menu główne (krok 91).
-      if (this.fadeFrom !== null && bootData && heroParam() === null) {
+      if (this.fadeFrom !== null && bootData && heroParam() === null && !hubParam()) {
         this.registry.remove(BOOT_START_DATA_KEY);
         this.holdForMenu({ start: bootData });
       }

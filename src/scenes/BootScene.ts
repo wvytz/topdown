@@ -96,11 +96,22 @@ export function heroParam() {
   return parseHeroId(new URLSearchParams(window.location.search).get('hero'));
 }
 
+/** `?hub=1` w adresie (krok Z1): start w Popielniku. */
+export function hubParam(): boolean {
+  return new URLSearchParams(window.location.search).get('hub') === '1';
+}
+
 /**
  * Po ładowaniu: z `?hero=` w adresie od razu gra (testy, smoke), bez niego — menu główne na tle ekranu startowego
  * (krok 91). Zwykle menu otwiera sam ekran startowy; tu trafiamy, gdy ekran startowy już się skończył.
  */
 export function startFirstFloor(scene: Phaser.Scene, data: FloorSceneData): void {
+  // `?hub=1` (krok Z1): prosto do Popielnika, bez warunku pokonania Wiedźmy — do testów.
+  if (hubParam()) {
+    const hero = heroParam();
+    scene.scene.start(SceneKey.Hideout, hero ? { hero } : {});
+    return;
+  }
   if (heroParam() !== null) {
     scene.scene.start(SceneKey.Game, data);
     return;

@@ -32,6 +32,8 @@ export interface FloorLightingDeps {
   readonly hideable: () => Iterable<Phaser.GameObjects.Sprite>;
   /** Czy światła żywego otoczenia odsłaniają wrogów. */
   readonly ambientRevealsEnemies: boolean;
+  /** Barwa mroku zamiast barwy biomu (krok Z1: czerwone zaświaty) — także zamiast barwy mgły; zasięg widzenia mgły zostaje. */
+  readonly darknessColor?: number;
 }
 
 /**
@@ -48,7 +50,7 @@ export class FloorLighting {
     const vision = deps.visionRadius;
     const fog = vision === null ? deps.fog : null;
     const profile = vision !== null ? darknessModifierProfile(vision, LIGHTING.darknessModifier) : (fog?.profile ?? LIGHTING.ambient);
-    const color = fog?.color ?? hexColor(deps.tileset.colors.ambient);
+    const color = deps.darknessColor ?? fog?.color ?? hexColor(deps.tileset.colors.ambient);
     const torchesLightUp = vision === null;
     this.torches = new Torches(scene, deps.torchSpots, deps.asset, deps.tileset, { glow: torchesLightUp });
     this.overlay = new LightingOverlay(scene, profile, color, torchesLightUp);

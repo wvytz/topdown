@@ -17,6 +17,7 @@ import { nextRunMode } from '@/systems/BossRush';
 import { withPracticeLoadout } from '@/scenes/practiceStart';
 import { openMainMenu } from '@/scenes/BootScene';
 import { FLOOR_SELECT_TEXT } from '@/config/floorSelectConfig';
+import { DESCENT_TEXT } from '@/config/descentConfig';
 import { startFloorInfo } from '@/systems/FloorSelect';
 import { MenuCommand, menuCommandFromKey } from '@/systems/gamepadInput';
 import { spaceConfirms } from '@/systems/spaceConfirm';
@@ -88,7 +89,7 @@ export class HeroSelectScene extends Phaser.Scene {
     });
 
     // Wybór piętra (krok 91) przychodzi z menu z wybranym piętrem — bez zakładek, sam opis startu.
-    if (this.mode !== RunMode.FloorSelect) this.buildModeTabs(style);
+    if (!this.fixedMode) this.buildModeTabs(style);
     else this.modeDescription = this.add.text(L.centerX, L.mode.y, '', { ...style, fontSize: `${L.mode.fontSize}px` }).setOrigin(0.5);
 
     this.add
@@ -166,8 +167,13 @@ export class HeroSelectScene extends Phaser.Scene {
       .setOrigin(0.5);
   }
 
+  /** Tryb ustalony przed ekranem (wybór piętra z menu, Zejście z Popielnika) — bez zakładek. */
+  private get fixedMode(): boolean {
+    return this.mode === RunMode.FloorSelect || this.mode === RunMode.Descent;
+  }
+
   private setMode(mode: RunMode): void {
-    if (this.starting || mode === this.mode || this.mode === RunMode.FloorSelect) return;
+    if (this.starting || mode === this.mode || this.fixedMode) return;
     this.mode = mode;
     this.refresh();
   }
@@ -246,6 +252,10 @@ export class HeroSelectScene extends Phaser.Scene {
       tab.frame.setFillStyle(active ? P.cardSelected : P.card).setStrokeStyle(L.mode.borderWidth, active ? P.borderSelected : P.border);
       tab.label.setColor(active ? accent : P.textDim);
     }
+    if (this.mode === RunMode.Descent) {
+      this.modeDescription.setText(`${DESCENT_TEXT.modeName} · ${DESCENT_TEXT.selectHint}`).setColor(P.name);
+      return;
+    }
     if (this.mode === RunMode.FloorSelect) {
       this.modeDescription.setText(`${FLOOR_SELECT_TEXT.modeName} · ${FLOOR_SELECT_TEXT.selectHint(startFloorInfo(this.selectData.floor).label)}`).setColor(P.name);
       return;
@@ -257,8 +267,8 @@ export class HeroSelectScene extends Phaser.Scene {
 
   /** Podpowiedź klawiszy; przy wyborze piętra trybu się nie zmienia. */
   private hintText(): string {
-    const mode = this.mode === RunMode.FloorSelect ? '' : '   ·   ↑ ↓  TRYB';
-    return `← →  BOHATER${mode}   ·   ENTER — START   ·   ESC — MENU`;
+    const mode = this.fixedMode ? '' : '   ·   ↑ ↓  TRYB';
+    return `← →  BOHATER${mode}   ·   ENTER — START   ·   ESC — ${this.selectData.fromHideout ? 'POPIELNIK' : 'MENU'}`;
   }
 
   /** Esc — powrót do menu głównego (krok 91), z tym samym seedem i trybem. */
@@ -273,7 +283,11 @@ export class HeroSelectScene extends Phaser.Scene {
       run: newRun(hero, this.selectData.practice ?? false, this.mode),
     };
     this.cameras.main.fadeOut(L.fadeMs, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => openMainMenu(this, start));
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      // Krok Z1: ekran otwarty z Popielnika wraca do kryjówki.
+      if (this.selectData.fromHideout) this.scene.start(SceneKey.Hideout, { hero });
+      else openMainMenu(this, start);
+    });
   }
 
   private confirm(): void {

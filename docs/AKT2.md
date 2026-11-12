@@ -1,6 +1,6 @@
 # Akt II — Popielnik i Zejście (propozycja)
 
-Stan: 11.11.2026, **zaakceptowane przez właściciela 11.11.2026 (wszystkie 9 decyzji z §10 wg rekomendacji)**; pierwsza wersja w budowie na gałęzi `akt-2`. Odpowiada na prośbę: „po pierwszym pokonaniu czarownicy nowy biom-kryjówka i nowy rodzaj powtarzalnych runów ze zbieraniem przedmiotów”. Bierzemy mechaniki gatunku (baza wypadowa, runy, trwałe odblokowania), a nazwy, postacie i zasady są nasze.
+Stan: 11.11.2026, **zaakceptowane przez właściciela 11.11.2026 (wszystkie 9 decyzji z §10 wg rekomendacji)**; pierwsza grywalna wersja (Popielnik, Zejście na odbiciach, Żar) to **krok Z1** na gałęzi `akt-2`, podgląd `/topdown/akt2/` (`?hub=1` otwiera Popielnik bez pokonania Wiedźmy). Odpowiada na prośbę: „po pierwszym pokonaniu czarownicy nowy biom-kryjówka i nowy rodzaj powtarzalnych runów ze zbieraniem przedmiotów”. Bierzemy mechaniki gatunku (baza wypadowa, runy, trwałe odblokowania), a nazwy, postacie i zasady są nasze.
 
 Po akceptacji każdy etap z §9 to osobny wątek. Sekcja §10 zbiera decyzje, które należą do właściciela.
 

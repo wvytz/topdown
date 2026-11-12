@@ -36,6 +36,8 @@ export enum SceneKey {
   Hud = 'HudScene',
   Reward = 'RewardScene',
   Pause = 'PauseScene',
+  /** Popielnik (Akt II, krok Z1): kryjówka między runami. */
+  Hideout = 'HideoutScene',
   /** Ekran co-opu (etap C5): dołączanie i wybór bohaterów. */
   CoopSelect = 'CoopSelectScene',
 }
@@ -57,12 +59,26 @@ export interface HeroSelectData {
   readonly mode?: RunMode;
   /** `?boss=1` z adresu (krok 148): po wyborze bohatera start przy arenie bossa. */
   readonly atBoss?: boolean;
+  /** Wejście z Popielnika (krok Z1): Esc wraca do kryjówki, nie do menu. */
+  readonly fromHideout?: boolean;
+}
+
+/** Start Popielnika (krok Z1). */
+export interface HideoutSceneData {
+  /** Bohater chodzący po kryjówce; brak = ostatnio wybrany. */
+  readonly hero?: HeroId;
+  /** Pierwsze lądowanie po Wiedźmie: Żar ze spalonych przedmiotów do pokazania w scenie upadku. */
+  readonly arrivalEmbers?: number;
 }
 
 /** Ekran co-opu (etap C5): tylko wspinaczka od piętra 1. */
 export interface CoopSelectData {
   readonly runSeed: number;
   readonly practice?: boolean;
+  /** Tryb runu (krok Z1): brak = wspinaczka, `Descent` = Zejście we dwoje z Popielnika. */
+  readonly mode?: RunMode;
+  /** Wejście z Popielnika: Esc wraca do kryjówki. */
+  readonly fromHideout?: boolean;
 }
 
 export interface FloorSceneData {
@@ -139,6 +155,10 @@ export interface HudData {
   /** Bossowie poza kadrem (krok 136): strzałki przy krawędzi ekranu. */
   readonly bossPointers: readonly BossPointerData[];
   readonly gold: number;
+  /** Zejście (krok Z1): napis Żaru przy złocie; null poza Zejściem. */
+  readonly embers: string | null;
+  /** Zejście: podpowiedzi HUD mówią o schodzeniu, nie o wspinaczce. */
+  readonly descent: boolean;
   /** Run testowy z adresu (krok 41g) — wynik nie trafia na tablicę. */
   readonly practice: boolean;
   /** Areny bossów (krok 90) — wynik nie trafia na tablicę. */
@@ -206,6 +226,10 @@ export interface DeathSummary {
   readonly nameEntry: string | null;
   /** Krok 169: run skończony zwycięstwem (po bossie ostatniego piętra kręgu), nie śmiercią. */
   readonly victory?: boolean;
+  /** Zejście (krok Z1): głębia, długość trasy i Żar oddany do Popielnika; tablica Zejścia. */
+  readonly descent?: { readonly depth: number; readonly floors: number; readonly embers: number };
+  /** Po tym ekranie wyjście prowadzi do Popielnika (Zejście albo wieża zdobyta po jego odblokowaniu), nie do menu. */
+  readonly toHideout?: boolean;
 }
 
 export interface HudItem {
