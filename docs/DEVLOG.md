@@ -6426,6 +6426,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
 - **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
+- **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. Propozycja czeka na akceptację; etapy U11a–U11d.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - Kolidujące rekwizyty (zmieniają linię wzroku Kiterów).
