@@ -172,13 +172,15 @@ export const HERO_DEFINITIONS: Readonly<Record<HeroId, HeroDefinition>> = {
       },
     },
     // Krok 98 (pomysł właściciela: totem, który przejmuje aggro): wrogowie i bossowie celują w totem, a on strzela.
+    // Krok U5c (ocena właściciela 13.11.2026: „totem jest zbyt OP”): 5 s zamiast 7, strzał co 0,6 s zamiast 0,4,
+    // 10 obrażeń zamiast 12 — ok. 40% dawnych obrażeń i krócej przejmuje wrogów i bossów.
     ultimate: {
       kind: 'totem',
       name: 'Totem',
-      durationMs: 7000,
-      shotIntervalMs: 400,
+      durationMs: 5000,
+      shotIntervalMs: 600,
       range: 240,
-      damage: 12,
+      damage: 10,
       knockback: 80,
       speed: 520,
       lifetimeMs: 600,

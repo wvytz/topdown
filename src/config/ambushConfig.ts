@@ -110,7 +110,13 @@ export const AMBUSH_VARIANTS: AmbushVariantsConfig = {
   },
 };
 
-/** Napisy wersji zasadzki (toast przy zamknięciu krat / ucieczce). */
+/**
+ * Krok U5c (decyzja właściciela 13.11.2026: „ten room miał pełnić funkcję zaskoczenia, nie musimy tłumaczyć graczom,
+ * co się dzieje”): zasadzka nie wyświetla napisów — ani fal, ani wersji, ani nagrody. `true` przywraca napisy poniżej.
+ */
+export const AMBUSH_ANNOUNCE = false;
+
+/** Napisy wersji zasadzki (toast przy zamknięciu krat / ucieczce) — tylko przy `AMBUSH_ANNOUNCE`. */
 export const AMBUSH_VARIANT_TEXT = {
   storm: 'Butla dżina pękła! Upiory wylatują…',
   flightGlow: 'Przedmiot lśni duchową aurą…',

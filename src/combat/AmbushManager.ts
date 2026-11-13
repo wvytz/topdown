@@ -40,7 +40,7 @@ import {
   pointAlongPath,
   stormScenario,
 } from '@/systems/AmbushVariants';
-import { AMBUSH_FORMATION_TEXT, AMBUSH_SCENARIOS, AMBUSH_VARIANTS, AMBUSH_VARIANT_TEXT } from '@/config/ambushConfig';
+import { AMBUSH_ANNOUNCE, AMBUSH_FORMATION_TEXT, AMBUSH_SCENARIOS, AMBUSH_VARIANTS, AMBUSH_VARIANT_TEXT } from '@/config/ambushConfig';
 import { pickWeightedItem } from '@/systems/Loot';
 import { ENEMY_VARIANTS } from '@/config/combatConfig';
 import { findTilePath } from '@/ai/botPath';
@@ -225,14 +225,19 @@ export class AmbushManager {
     sound.play(SoundCue.GatesSlam);
     sound.play(SoundCue.Ambush);
     this.dreadTarget = 1;
-    this.deps.toast(text);
+    this.say(text);
+  }
+
+  /** Napis zasadzki — od kroku U5c wyłączony (`AMBUSH_ANNOUNCE`): pokój ma zaskakiwać, nie tłumaczyć. */
+  private say(text: string): void {
+    if (AMBUSH_ANNOUNCE) this.deps.toast(text);
   }
 
   private release(): void {
     for (const gate of this.gates) this.deps.view.releaseGate(gate);
     this.deps.gateWait.release(this.deps.room, this.deps.scene.time.now);
     this.dreadTarget = 0;
-    this.deps.toast('Upiory rozwiały się — nagroda jest twoja.');
+    this.say('Upiory rozwiały się — nagroda jest twoja.');
   }
 
   private spawnGhost(at: Vector2, options: { readonly elite?: boolean; readonly phaseOffsetMs?: number; readonly riseMs: number; readonly variant?: EnemyVariant }): Enemy {
@@ -279,7 +284,7 @@ export class AmbushManager {
       const phaseOffsetMs = Math.floor((i * GHOST_PHASE_CYCLE) / Math.max(1, wave.ghosts));
       this.pending.push({ at: tile, dueAt: now + i * staggerMs, elite: Boolean(wave.elite) && i === 0, mob: i >= wave.ghosts, phaseOffsetMs });
     });
-    this.deps.toast(`Fala ${index + 1}/${scenario.waves.length} — ${AMBUSH_FORMATION_TEXT[wave.formation]}`);
+    this.say(`Fala ${index + 1}/${scenario.waves.length} — ${AMBUSH_FORMATION_TEXT[wave.formation]}`);
   }
 
   private flushPending(now: number): void {
@@ -306,7 +311,7 @@ export class AmbushManager {
   private updateFlight(inside: boolean, now: number): void {
     const wisp = this.wisp;
     if (!wisp || this.flight === 'done') return;
-    const { scene, toast } = this.deps;
+    const { scene } = this.deps;
     const glow = AMBUSH_VARIANTS.flight;
     if (this.flight === 'waiting') {
       if (!inside || this.deps.party.isDown) return;
@@ -315,7 +320,7 @@ export class AmbushManager {
       this.aura = scene.add.circle(wisp.x, wisp.y, 10, SPIRIT_TINT, 0.35).setDepth(RENDER_DEPTH.item - 0.01).setBlendMode(Phaser.BlendModes.ADD);
       scene.tweens.add({ targets: this.aura, scale: 2.2, alpha: 0.1, duration: 420, yoyo: true, repeat: -1 });
       sound.play(SoundCue.Ambush);
-      toast(AMBUSH_VARIANT_TEXT.flightGlow);
+      this.say(AMBUSH_VARIANT_TEXT.flightGlow);
       return;
     }
     if (this.flight === 'glow') {
@@ -331,7 +336,7 @@ export class AmbushManager {
       this.aura?.setDepth(RENDER_DEPTH.darkness + 0.19);
       // Najpierw na środek pokoju, potem drogą do areny.
       this.flightPathFrom = { x: wisp.x, y: wisp.y };
-      toast(AMBUSH_VARIANT_TEXT.flight(ITEM_DEFINITIONS[this.itemId].name));
+      this.say(AMBUSH_VARIANT_TEXT.flight(ITEM_DEFINITIONS[this.itemId].name));
       sound.play(SoundCue.Dash, { x: wisp.x, y: wisp.y });
       return;
     }
@@ -355,7 +360,7 @@ export class AmbushManager {
 
   /** Uciekinier dotarł: wzmacnia bossa (albo, gdy boss już padł, po prostu spada na ziemię). */
   private arrive(at: Vector2): void {
-    const { boss, effects, scene, toast } = this.deps;
+    const { boss, effects, scene } = this.deps;
     this.flight = 'done';
     this.wisp?.destroy();
     this.aura?.destroy();
@@ -371,7 +376,7 @@ export class AmbushManager {
     effects.impact(at.x, at.y, TILE_SIZE * 1.4);
     screenFx.shake(scene.cameras.main, 220, 0.004);
     sound.play(SoundCue.BossRoar, at);
-    toast(AMBUSH_VARIANT_TEXT.flightArrive(boss.name(), ITEM_DEFINITIONS[this.itemId].name, boon.label));
+    this.say(AMBUSH_VARIANT_TEXT.flightArrive(boss.name(), ITEM_DEFINITIONS[this.itemId].name, boon.label));
   }
 
   // ——— 3. Zaduch ———
@@ -389,11 +394,11 @@ export class AmbushManager {
       this.seal(inside, AMBUSH_VARIANT_TEXT.haunt);
       screenFx.flash(this.deps.scene.cameras.main, 500, 30, 50, 40);
     } else if (event?.kind === 'volley') {
-      if (event.index === 0) this.deps.toast(AMBUSH_VARIANT_TEXT.hauntArrows);
+      if (event.index === 0) this.say(AMBUSH_VARIANT_TEXT.hauntArrows);
       this.volley(event.count, now);
     } else if (event?.kind === 'ribbon') this.raiseGiant(now);
     else if (event?.kind === 'giant') {
-      this.deps.toast(AMBUSH_VARIANT_TEXT.hauntGiant);
+      this.say(AMBUSH_VARIANT_TEXT.hauntGiant);
       sound.play(SoundCue.BossRoar, this.giant ? { x: this.giant.x, y: this.giant.y } : undefined);
       screenFx.shake(this.deps.scene.cameras.main, 260, 0.005);
       this.nextGiantVolleyAt = now + cfg.giantVolleyMs;
@@ -479,7 +484,7 @@ export class AmbushManager {
     this.giant = this.spawnGhost(at, { riseMs: cfg.ribbonMs, variant: EnemyVariant.GreatGhost });
     this.ribbon = this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.darkness + 0.15).setBlendMode(Phaser.BlendModes.ADD);
     this.ribbonUntil = now + cfg.ribbonMs + 2500;
-    this.deps.toast(AMBUSH_VARIANT_TEXT.hauntRibbon);
+    this.say(AMBUSH_VARIANT_TEXT.hauntRibbon);
     sound.play(SoundCue.Nova, at);
   }
 

@@ -2495,6 +2495,11 @@ export const ELITE_VISUAL = {
   lifestealText: '#7dff9a',
   /** Komunikat o elicie, gdy pierwszy raz widzi gracza bliżej niż tyle (px; ok. pół widoku). */
   spotRange: 220,
+  /**
+   * Krok U5c (decyzja właściciela 13.11.2026): bez komunikatu z opisem elity na środku ekranu — napis cech nad wrogiem
+   * („Wampiryczny”) wystarcza. `true` przywraca komunikat.
+   */
+  announceSpotted: false,
   toastMs: 3500,
 } as const;
 

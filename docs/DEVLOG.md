@@ -6402,6 +6402,20 @@ Numer U4f, bo U4d i U4e zajęły równoległe poprawki krwi z gałęzi U5a (PR #
 
 **Weryfikacja:** `npm run build` (3049 testów); `npm run smoke` solo, `--coop` i `--bot`; w przeglądarce łucznik z botem-Czarodziejką: totem, znaczniki P1/P2, leżąca Czarodziejka. Zrzuty: `/mnt/project-files/screens/krokU5b-postacie/`. **Czeka na ocenę właściciela.**
 
+## Krok U5c — Bez podpowiedzi elit i zasadzki, słabszy totem `#upgrade` `#ocena` `#decyzja`
+
+**Ocena właściciela (13.11.2026, po testach podglądu)** `#ocena` `#decyzja`:
+1. „Pozbądźmy się tego powiadomienia z opisem elitarnego mobka — napis nad nim »wampiryczny« dosyć jasno daje do zrozumienia.”
+2. „Nie potrzeba też opisu z pokoju duchów. Ten room miał pełnić funkcję zaskoczenia, nie musimy tłumaczyć graczom, co się dzieje.”
+3. „Totem jest zbyt OP.”
+
+**Co zmienione**
+- **Elity bez komunikatu:** `ELITE_VISUAL.announceSpotted = false` — napis cech nad wrogiem zostaje, opis na środku ekranu znika.
+- **Zasadzka bez napisów:** `AMBUSH_ANNOUNCE = false` (`config/ambushConfig.ts`) — żadnego tekstu przy zamknięciu krat, falach, eterycznych strzałach, wstędze, wielkim duchu, ucieczce przedmiotu do bossa ani nagrodzie. Mechanika bez zmian.
+- **Totem słabszy** (`config/heroConfig.ts`): 5 s zamiast 7, strzał co 0,6 s zamiast 0,4, 10 obrażeń zamiast 12 — ok. 83 obrażeń zamiast 210 i o 2 s krócej przejmuje wrogów i bossów.
+
+**Weryfikacja:** `npm run build`, `npm run smoke`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
