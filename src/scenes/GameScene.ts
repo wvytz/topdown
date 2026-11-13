@@ -1044,7 +1044,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       aggroTarget: () => this.aggroTarget(),
       gateWait: this.gateWait,
       ignoresGates: (enemy) => this.galleryEnemies.has(enemy),
-      onEliteSpotted: (enemy) => this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs),
+      onEliteSpotted: (enemy) => {
+        if (ELITE_VISUAL.announceSpotted) this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs);
+      },
     });
 
     // Areny bossów (krok 90): bez wrogów w pokojach i bez zagrożeń biomu poza areną — tylko boss i jego pomocnicy.
