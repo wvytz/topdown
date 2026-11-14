@@ -6492,7 +6492,18 @@ Ciąg dalszy wersji lekkiej (`docs/WAGI.md` §11, decyzja właściciela 14.11.20
 
 **Weryfikacja:** `npm run build` zielony; w przeglądarce: „!” nad zamachem ognistej elity, przerwany zamach przy ×12 (ogłuszenie), kara Slimera (strefa 14 → 21, czerwony obrys, „!!”), licznik ×9 na `mobile.html`. Pomiar botem — niżej.
 
-POMIAR_BOTEM
+**Pomiar botem** (`npm run bench:wagi -- --floors 1,2,3`, seed 1, 12 zwykłych pokojów na bohatera, limit 25 s gry na pokój; bot bez przedmiotów):
+
+| Bot | Wagi | HP bota na pokój | „Śmierci” | Śr. czas pokoju | Kary | Uniki bota | Passa max |
+|---|---|---|---|---|---|---|---|
+| barbarzyńca | 0 | 39,3 z 80 | 5 | 21,1 s | — | — | — |
+| barbarzyńca | 1 | 34,7 z 80 | 4 | 18,8 s | 7 | 7 | 0 |
+| Czarodziejka | 0 | 22,3 z 80 | 2 | 21,4 s | — | — | — |
+| Czarodziejka | 1 | 28,8 z 80 | 3 | 20,0 s | 8 | 9 | I |
+| łucznik | 0 | 35,3 z 85 | 4 | 23,3 s | — | — | — |
+| łucznik | 1 | 32,2 z 85 | 3 | 20,6 s | 5 | 5 | II |
+
+Wniosek: system wag nie zmienia trudności dla bota w sposób widoczny ponad szum (±15% HP, ±1 „śmierć” w obie strony) — zgodnie z §7 („trudność nie spada”). Kara pojawia się co 1–2 pokoje, gdy bohater dużo przyjmuje; bot odskakuje przy każdej. Bot prawie nie buduje Passy (co chwilę dostaje, a pęknięcia blokują wzrost), więc przerwanych zamachów w pomiarze nie ma — ciężkie ciosy to nagroda dla gracza, który unika ciosów. Ograniczenia pomiaru: bot trzyma się gracza i nie goni dalekich wrogów, więc większość pokojów kończy się limitem 25 s (na piętrze 3 bot prawie nie walczył); to porównanie „przed i po”, nie bezwzględna miara trudności. Strojenie liczb — po ocenie właściciela.
 
 ## Znane ograniczenia i backlog
 
