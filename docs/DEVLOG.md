@@ -6500,6 +6500,16 @@ Z backlogu audytu upgradu („skok pajączka do bohatera — podnosi trudność,
 
 **Testy:** `tests/ai/SpiderQueen.test.ts` — przysiad, wybicie w zapamiętane miejsce, lot z mnożnikiem, zapłon po lądowaniu; żuki bez skoku. Dawne testy pościgu i zapalnika bez zmian.
 
+## Krok U8f — Złapanie uciekiniera w locie `#upgrade` `#zasadzka`
+
+Z backlogu kroku 183 („pomysł na później: dać szansę złapania uciekiniera”) i audytu upgradu („mały, satysfakcjonujący dodatek”, etap U8).
+
+**Co powstało**
+- Uciekinier (zasadzka „flight”) w locie do bossa daje się **złapać dotykiem**: bohater w promieniu 18 px (`AMBUSH_VARIANTS.flight.catchRadius`) — zwykle dashem, bo lot (170 px/s) jest niewiele wolniejszy od chodu. Złapany spada pod nogi jako zwykły przedmiot, boss nie dostaje wzmocnienia, a nagroda po bossie za uciekiniera nie przepada, bo nie było kradzieży.
+- `catcherOfRunaway` w `systems/AmbushVariants.ts`, `AmbushManager.catchRunaway`; `diag.note('ambush-runaway-caught')`. Bez napisu.
+
+**Testy:** `tests/systems/ambushVariants.test.ts` — promień złapania, lot wolniejszy od najwolniejszego bohatera.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6716,6 +6726,6 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 - [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
 - [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.
 
-**Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie).
+**Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie) — na `upgrade-fable` krok U8f (dotyk w locie).
 
 **Pożeracz jako kula z ciał (krok 184)** `#grzybowy-pozeracz`: czeka na ocenę — wygląd kuli, tempo szarpanego chodu, częstotliwość chwytu i leczenie z ugryzienia.

@@ -9,7 +9,7 @@
  * Wynik: tabela w konsoli i `docs/balance/U8e-<data>.md` (z `--out`). Liczby są przybliżone — bot gra gorzej
  * od człowieka, a w co-opie boss ma więcej HP (liczymy surowe obrażenia, nie ułamek paska).
  *
- * Użycie:  node tools/balance.mjs [--heroes barbarian,archer] [--floors 1-7] [--seconds 30] [--out docs/balance]
+ * Użycie:  node tools/balance.mjs [--heroes barbarian,archer] [--floors 1-7] [--seconds 30] [--only boss|horde] [--out docs/balance]
  * Przeglądarka jak w smoke: Chrome albo SMOKE_CHROMIUM=<ścieżka>. Wymaga trybu dev (`window.__game`).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -23,7 +23,8 @@ const SECONDS = Number(argOf(args, 'seconds', 30));
 const OUT = argOf(args, 'out', null);
 const PORT = Number(argOf(args, 'port', 5194));
 const SEED = Number(argOf(args, 'seed', 7));
-const HORDE_FLOORS = [1, 3, 5].filter((f) => f >= FROM && f <= TO);
+const ONLY = argOf(args, 'only', null); // boss | horde
+const HORDE_FLOORS = ONLY === 'boss' ? [] : [1, 3, 5].filter((f) => f >= FROM && f <= TO);
 
 /** Pierwszy gracz musi być innym bohaterem niż bot (co-op: różni bohaterowie). */
 const leaderFor = (hero) => (hero === 'barbarian' ? 'archer' : 'barbarian');
@@ -126,7 +127,7 @@ const results = {};
 try {
   for (const hero of HEROES) {
     results[hero] = { bosses: [], hordes: [] };
-    for (let floor = FROM; floor <= TO; floor++) {
+    for (let floor = FROM; floor <= TO && ONLY !== 'horde'; floor++) {
       const r = await measureBoss(browser, hero, floor);
       results[hero].bosses.push(r);
       process.stdout.write(`${hero} · boss ${floor} (${r.name}): ${fmt(r.dps, 1)} obr./s, HP bota −${fmt(r.lost)}, powalenia ${r.downs}${r.killed ? ', pokonany' : ''}${r.errors.length ? ` · BŁĘDY: ${r.errors.join(' | ')}` : ''}\n`);

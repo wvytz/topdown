@@ -8,7 +8,9 @@ import { RoomKind } from '@/core/dungeonTypes';
 import { createRng } from '@/core/random';
 import { scaleForFloor } from '@/systems/CombatMath';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
-import { HordePhase, HordeRoomState, hordeMinionVariant, hordeRoomForSpawn, hordeWaveSize, isInsideRoom, planHordeRooms } from '@/systems/Horde';
+import { HordePhase, HordeRoomState, hordeMinionVariant, hordeRoomForSpawn, hordeWaveSize, isInsideRoom, pickHordeTiles, planHordeRooms } from '@/systems/Horde';
+import { pickRetinueTiles } from '@/systems/BossRetinue';
+import { TileType } from '@/core/dungeonTypes';
 import { sampleFloors } from '../helpers/floors';
 
 const STATE_CONFIG = HORDE_CONFIG;
@@ -115,5 +117,18 @@ describe('Nawała — stworki biomów i balans', () => {
 
   it('sufit żywych zmieści pokój z największą falą co-opu i jego zwykłych wrogów', () => {
     expect(HORDE_CONFIG.maxAliveEnemies).toBeGreaterThanOrEqual(HORDE_CONFIG.perWave.max + HORDE_CONFIG.coopExtraPerWave + 3);
+  });
+});
+
+describe('Nawała — kafle wyjścia w małym pokoju (krok U8e)', () => {
+  it('gdy nic nie stoi 3 kafle od bohaterów, dystans maleje — fala nie przepada', () => {
+    const width = 8;
+    const tiles = Array.from({ length: width * width }, () => TileType.Floor);
+    const room = { id: 1, x: 1, y: 1, width: 6, height: 6, kind: RoomKind.Normal };
+    const heroes = [{ x: 2, y: 2 }, { x: 3, y: 3 }];
+    expect(pickRetinueTiles({ width, tiles }, room, heroes, 5, 3, createRng(1))).toHaveLength(0);
+    const picked = pickHordeTiles({ width, tiles }, room, heroes, 5, 3, createRng(1));
+    expect(picked.length).toBeGreaterThan(0);
+    for (const t of picked) expect(heroes.every((h) => Math.max(Math.abs(h.x - t.x), Math.abs(h.y - t.y)) >= 1)).toBe(true);
   });
 });
