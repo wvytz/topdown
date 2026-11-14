@@ -6438,6 +6438,24 @@ Numer U4f, bo U4d i U4e zajęły równoległe poprawki krwi z gałęzi U5a (PR #
 
 **Weryfikacja:** `npm run build` zielony; w przeglądarce (`window.__game`): licznik ×9 (złoto) i ×13 (III), przeszywający strzał z linią i zamrożeniem trafia (−22 HP przy III), taran po pasie trafia (−38 HP), `?wagi=0` — Szala wyłączona, bez menedżera kary; `npm run smoke -- --floors 3 --seeds 1` — trzej bohaterowie bez błędów.
 
+## Krok U8a — Wydarzenia w pokojach: pochodnia, sakiewka, ciemny pokój `#upgrade` `#rozgrywka` `#wydarzenia`
+
+Etap U8 („Rozgrywka”) z `docs/UPGRADE.md`, ustalenie 6: lek na „grę powtarzalną” to wydarzenia w pokojach i przeklęta skrzynia. Prośba właściciela 14.11: „wdrażaj wszystkie zaplanowane zmiany” — wybrana rekomendowana ścieżka z audytu.
+
+**Co powstało**
+- **Plan** (`systems/RoomEvents.ts`, liczby w `config/roomEventConfig.ts`, własny strumień RNG `ROOM_EVENT_SEED_SALT`): wydarzenia dostają tylko pokoje z nawałą; na piętrze najwyżej 1/2/2/2/3/3/3 (piętra 1–7), każde z szansą 80%, rodzaje bez powtórzeń, co najmniej jeden pokój nawały zostaje zwykły. Dwa runy tym samym bohaterem mają inny układ wydarzeń (test na 20 seedach).
+- **Pochodnia** — „zabij, zanim zgaśnie”: z przebudzeniem nawały na środku pokoju staje żelazny słup z płomieniem pochodni biomu (bez kolizji). Płonie 10 s + 7,5 s na falę; płomień i jego światło maleją, w ostatniej ćwierci migocze. Pokój wybity przed zgaśnięciem — płomień bucha i sypie złotem (18 + 5 na piętro). Zgasła — mrok jak w zasadzce do końca walki, bez nagrody.
+- **Sakiewka** — „złoto ucieka”: 0,3 s po wejściu z dala od bohatera wyskakuje sakiewka na nóżkach (`purse` w `tools/loot_sprites.py`). Ucieka od bohaterów w promieniu 150 px (135 px/s — wolniej od najwolniejszej Czarodziejki), ślizga się po murach, więc da się ją zagnać w róg; dalej błądzi. Złapana dotykiem pęka złotem (24 + 7 na piętro); po 13 s (ostatnie 3 s miga) zapada się w posadzkę.
+- **Ciemny pokój**: po wejściu światło gaśnie (mrok zasadzki, płynnie), wraca po wybiciu pokoju; za przetrwanie złoto (14 + 4 na piętro).
+- **Bez napisów** — reguła widać w pokoju (uwaga właściciela 13.11 przy zasadzce: „pokój ma zaskakiwać, nie tłumaczyć”). Złoto to zwykły łup, który leci do bohatera.
+- **Wpięcie:** `combat/RoomEventManager.ts` budzi się z nawałą (`HordeManager.roomPhase`), „wybity” = nawała skończona i żaden wróg w pokoju. Mrok idzie osobnym źródłem warstwy zasadzki (`LightingOverlay.setDread(…, 'room-event')`, przy kilku źródłach działa najsilniejsze). Światło pochodni trafia do oświetlenia piętra. W co-opie sakiewkę łapie każdy bohater, mrok działa, gdy ktokolwiek jest w pokoju.
+- **Wyłącznik:** `ROOM_EVENT_CONFIG.enabled` i lista `kinds`; `?event=torch|purse|dark` — każdy pokój nawały dostaje to wydarzenie (run testowy). Diagnostyka: `diag.note('room-event', …)`.
+- Atlas łupów dostał też klatki przeklętej skrzyni (krok U8b) — rząd dużych klatek ma teraz szerokość 320 px.
+
+**Testy:** `tests/systems/roomEvents.test.ts` — limit na piętro i zwykły pokój w zapasie, determinizm i różnorodność między seedami, wyłącznik i `?event`, złoto z piętrem, pochodnia (wygrana raz, zgaśnięcie, promień światła), sakiewka (ucieczka, błądzenie, mur, złapanie, punkt startu).
+
+**Weryfikacja:** `npm run build` zielony; w przeglądarce (piętro 3, seed 7 i piętro 1, seed 11): pochodnia budzi się z nawałą i maleje, wybicie pokoju daje złoto (28 na piętrze 3), skrócona pochodnia gaśnie i zapada mrok 0,85; sakiewka ucieka i po złapaniu daje złoto; ciemny pokój zapada w mrok 0,9 i jaśnieje po wybiciu. Bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6619,7 +6637,7 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
-**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
+**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; wydarzenia w pokojach — krok U8a; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
 **Ruiny po apokalipsie (krok 155)** `#ruiny` `#lore`: śmieci i zniszczenie na piętrze 1 — czeka na ocenę (gęstość, kości vs łupy). Lore: im wyżej, tym mniej ruiny i więcej resztek cywilizacji.
 

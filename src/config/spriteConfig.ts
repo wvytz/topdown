@@ -2818,6 +2818,11 @@ export const LOOT_FRAMES = {
   aim: numbered('aim', 8),
   shrineActive: numbered('shrine_active', 4),
   shrineUsed: numbered('shrine_used', 1),
+  /** Sakiewka na nóżkach (krok U8a, wydarzenie „złoto ucieka”). */
+  purse: numbered('purse', 4),
+  /** Przeklęta skrzynia (krok U8b): puls klątwy i otwarta. */
+  cursedChest: numbered('cursed_chest', 4),
+  cursedChestOpen: numbered('cursed_chest_open', 1),
 } as const;
 
 /** Animacje atlasu łupów: nazwa → klatki (zapętlone). */
@@ -2826,6 +2831,8 @@ export const LOOT_ANIMATIONS = {
   shot: LOOT_FRAMES.shot,
   shotPierce: LOOT_FRAMES.shotPierce,
   shrineActive: LOOT_FRAMES.shrineActive,
+  purse: LOOT_FRAMES.purse,
+  cursedChest: LOOT_FRAMES.cursedChest,
 } as const;
 
 export type LootAnimation = keyof typeof LOOT_ANIMATIONS;

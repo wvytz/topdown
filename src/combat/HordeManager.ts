@@ -93,6 +93,11 @@ export class HordeManager {
     }
   }
 
+  /** Krok U8a: faza nawały pokoju (null — pokój bez nawały); wydarzenia w pokojach startują z jej przebudzeniem. */
+  roomPhase(roomId: number): HordePhase | null {
+    return this.rooms.find((r) => r.room.id === roomId)?.state.currentPhase ?? null;
+  }
+
   private get pendingCount(): number {
     return this.loose.length + this.rooms.reduce((sum, r) => sum + r.pending.length, 0);
   }
