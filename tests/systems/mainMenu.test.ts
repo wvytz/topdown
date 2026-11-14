@@ -15,16 +15,19 @@ describe('menu główne', () => {
     expect(isEntryEnabled(MenuEntry.NewTower, none)).toBe(true);
     expect(isEntryEnabled(MenuEntry.Coop, none)).toBe(true);
     expect(isEntryEnabled(MenuEntry.Coop, { ...none, coop: false })).toBe(false);
+    expect(isEntryEnabled(MenuEntry.BotCoop, { ...none, coop: false })).toBe(false);
   });
 
   it('kursor pomija nieaktywne pozycje i zawija się', () => {
     const enabled = MENU_ORDER.map((e) => isEntryEnabled(e, none));
     const tower = MENU_ORDER.indexOf(MenuEntry.NewTower);
     const coop = MENU_ORDER.indexOf(MenuEntry.Coop);
+    const bot = MENU_ORDER.indexOf(MenuEntry.BotCoop);
     const arenas = MENU_ORDER.indexOf(MenuEntry.BossRush);
     const controls = MENU_ORDER.indexOf(MenuEntry.Controls);
     expect(moveCursor(enabled, tower, 1)).toBe(coop);
-    expect(moveCursor(enabled, coop, 1)).toBe(arenas);
+    expect(moveCursor(enabled, coop, 1)).toBe(bot);
+    expect(moveCursor(enabled, bot, 1)).toBe(arenas);
     expect(moveCursor(enabled, arenas, 1)).toBe(controls);
     expect(moveCursor(enabled, controls, 1)).toBe(tower);
     expect(moveCursor(enabled, tower, -1)).toBe(controls);

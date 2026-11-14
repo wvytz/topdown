@@ -4,7 +4,7 @@ import { MusicTheme } from '@/core/audioTypes';
 import Phaser from 'phaser';
 import type { CoopSelectData, FloorSceneData, HeroSelectData } from '@/core/types';
 import { currentPlatform } from '@/core/platform';
-import { DEFAULT_COOP_DEVICES } from '@/systems/coopDevices';
+import { coopFromSave } from '@/systems/PartnerBot';
 import { SceneKey } from '@/core/types';
 import { RunMode } from '@/core/runMode';
 import { GAME_WIDTH, GAME_HEIGHT } from '@/config/gameConfig';
@@ -284,6 +284,9 @@ export class MenuScene extends Phaser.Scene {
         this.leave(() => this.scene.start(SceneKey.CoopSelect, coop));
         break;
       }
+      case MenuEntry.BotCoop:
+        this.newRun(RunMode.Tower, this.startData.floor, true);
+        break;
       case MenuEntry.BossRush:
         this.newRun(RunMode.BossRush);
         break;
@@ -319,8 +322,9 @@ export class MenuScene extends Phaser.Scene {
     this.refresh();
   }
 
-  private newRun(mode: RunMode, floor = this.startData.floor): void {
+  private newRun(mode: RunMode, floor = this.startData.floor, bot = false): void {
     const select: HeroSelectData = {
+      ...(bot && { bot: true }),
       runSeed: this.startData.runSeed,
       floor,
       practice: this.startData.run.practice ?? false,
@@ -337,7 +341,8 @@ export class MenuScene extends Phaser.Scene {
     diag.note('save-loaded', { slot, floor: data.floor, hero: data.run.hero, mode: data.run.mode ?? null, fromSave: data.run.fromSave ?? false });
     // Co-op (etap C7): zapis pamięta partnera; urządzenia jak w trybie testowym — P1 klawiatura z myszą, P2 pad.
     const { coop, ...solo } = data;
-    const start: FloorSceneData = { ...solo, ...(coop && { coop: { partner: coop, devices: DEFAULT_COOP_DEVICES } }) };
+    // Krok U9a: run z botem wraca z botem.
+    const start: FloorSceneData = { ...solo, ...(coop && { coop: coopFromSave(coop) }) };
     this.leave(() => this.scene.start(SceneKey.Game, start));
   }
 
@@ -409,6 +414,9 @@ export class MenuScene extends Phaser.Scene {
         break;
       case MenuEntry.Coop:
         this.setInfo(T.coopTitle, this.availability().coop === false ? T.coopMobile : T.coop);
+        break;
+      case MenuEntry.BotCoop:
+        this.setInfo(T.botCoopTitle, this.availability().coop === false ? T.botCoopMobile : T.botCoop);
         break;
       case MenuEntry.BossRush:
         this.setInfo(T.bossRushTitle, T.bossRush);
