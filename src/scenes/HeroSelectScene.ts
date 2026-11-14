@@ -6,7 +6,7 @@ import type { HeroId } from '@/core/heroTypes';
 import type { FloorSceneData, HeroSelectData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { HERO_DEFINITIONS, SELECTABLE_HEROES as HERO_ORDER } from '@/config/heroConfig';
-import { HERO_SELECT_LAYOUT as L, HERO_SELECT_PALETTE as P } from '@/config/heroSelectConfig';
+import { HERO_SELECT_BOT_TEXT, HERO_SELECT_LAYOUT as L, HERO_SELECT_PALETTE as P } from '@/config/heroSelectConfig';
 import { HERO_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
 import { LastHero } from '@/persistence/LastHero';
@@ -89,7 +89,8 @@ export class HeroSelectScene extends Phaser.Scene {
     });
 
     // Wybór piętra (krok 91) przychodzi z menu z wybranym piętrem — bez zakładek, sam opis startu.
-    if (this.mode !== RunMode.FloorSelect) this.buildModeTabs(style);
+    // „Graj z botem” (krok U9a) — też bez zakładek: bot gra tylko we wspinaczce.
+    if (this.mode !== RunMode.FloorSelect && !this.selectData.bot) this.buildModeTabs(style);
     else this.modeDescription = uiTextFromStyle(this, L.centerX, L.mode.y, '', { ...style, fontSize: `${L.mode.fontSize}px` }).setOrigin(0.5);
 
     uiTextFromStyle(this, L.centerX, L.hint.y, this.hintText(), { ...style, fontSize: `${L.hint.fontSize}px`, color: P.hint })
@@ -159,7 +160,7 @@ export class HeroSelectScene extends Phaser.Scene {
   }
 
   private setMode(mode: RunMode): void {
-    if (this.starting || mode === this.mode || this.mode === RunMode.FloorSelect) return;
+    if (this.starting || mode === this.mode || this.mode === RunMode.FloorSelect || this.selectData.bot) return;
     this.mode = mode;
     this.refresh();
   }
@@ -238,6 +239,10 @@ export class HeroSelectScene extends Phaser.Scene {
       tab.frame.setFillStyle(active ? P.cardSelected : P.card).setStrokeStyle(L.mode.borderWidth, active ? P.borderSelected : P.border);
       tab.label.setColor(active ? accent : P.textDim);
     }
+    if (this.selectData.bot) {
+      this.modeDescription.setText(HERO_SELECT_BOT_TEXT).setColor(P.name);
+      return;
+    }
     if (this.mode === RunMode.FloorSelect) {
       this.modeDescription.setText(`${FLOOR_SELECT_TEXT.modeName} · ${FLOOR_SELECT_TEXT.selectHint(startFloorInfo(this.selectData.floor).label)}`).setColor(P.name);
       return;
@@ -281,6 +286,7 @@ export class HeroSelectScene extends Phaser.Scene {
         floor: this.selectData.floor,
         run: newRun(hero, this.selectData.practice ?? false, this.mode, this.selectData.floor),
         ...(this.mode === RunMode.Tower && this.selectData.atBoss ? { atBoss: true } : {}),
+        ...(this.mode === RunMode.Tower && this.selectData.bot ? { bot: true } : {}),
       },
       this.selectData.practice ?? false,
     );

@@ -57,6 +57,8 @@ export interface HeroSelectData {
   readonly mode?: RunMode;
   /** `?boss=1` z adresu (krok 148): po wyborze bohatera start przy arenie bossa. */
   readonly atBoss?: boolean;
+  /** „Graj z botem” z menu (krok U9a): run z botem-partnerem jako P2. */
+  readonly bot?: true;
 }
 
 /** Ekran co-opu (etap C5): tylko wspinaczka od piętra 1. */
@@ -76,6 +78,8 @@ export interface FloorSceneData {
   readonly atBoss?: boolean;
   /** Lokalny co-op (krok 101+): drugi bohater i urządzenia graczy; brak = gra solo. */
   readonly coop?: CoopSceneData;
+  /** Prośba o bota-partnera z menu (krok U9a) — działa jak `?bot=1`; dalsze piętra niosą bota w `coop`. */
+  readonly bot?: true;
 }
 
 /** Drugi bohater w co-opie przenoszony między piętrami (pierwszy jest w `run`). */
@@ -85,6 +89,8 @@ export interface CoopPartnerSnapshot {
   readonly items: readonly ItemId[];
   /** null = pełne HP. */
   readonly hp: number | null;
+  /** Partnera prowadzi bot (krok U9a) — tylko w zapisie, żeby wczytany run wrócił z botem. */
+  readonly bot?: true;
 }
 
 export interface CoopSceneData {

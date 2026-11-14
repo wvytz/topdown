@@ -6,6 +6,8 @@ export enum MenuEntry {
   NewTower = 'new-tower',
   /** Lokalny co-op dla dwóch (etap C5): ekran dołączania, potem wspinaczka. */
   Coop = 'coop',
+  /** Wspinaczka z botem-partnerem (krok U9a; wcześniej ukryte `?bot=1`): ekran wyboru, potem bot jako P2. */
+  BotCoop = 'bot-coop',
   BossRush = 'boss-rush',
   /** Wybór piętra: nowy run od piętra, którego bossa gracz już pokonał. */
   FloorSelect = 'floor-select',
@@ -17,6 +19,7 @@ export const MENU_ORDER: readonly MenuEntry[] = [
   MenuEntry.Continue,
   MenuEntry.NewTower,
   MenuEntry.Coop,
+  MenuEntry.BotCoop,
   MenuEntry.BossRush,
   MenuEntry.FloorSelect,
   MenuEntry.Load,
@@ -42,6 +45,7 @@ export function isEntryEnabled(entry: MenuEntry, availability: MenuAvailability)
     case MenuEntry.FloorSelect:
       return availability.bestBossFloor >= 1;
     case MenuEntry.Coop:
+    case MenuEntry.BotCoop:
       return availability.coop !== false;
     default:
       return true;

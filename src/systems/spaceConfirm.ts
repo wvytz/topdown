@@ -37,7 +37,7 @@ export function isPauseItemSpaceSafe(item: PauseItem | null): boolean {
 }
 
 /** Pozycje menu głównego, które zaczynają nowy run — przy istniejącym autozapisie „Kontynuuj” by go zastąpiły. */
-const NEW_RUN_ENTRIES: ReadonlySet<MenuEntry> = new Set([MenuEntry.NewTower, MenuEntry.Coop, MenuEntry.BossRush, MenuEntry.FloorSelect]);
+const NEW_RUN_ENTRIES: ReadonlySet<MenuEntry> = new Set([MenuEntry.NewTower, MenuEntry.Coop, MenuEntry.BotCoop, MenuEntry.BossRush, MenuEntry.FloorSelect]);
 
 export function isMenuEntrySpaceSafe(entry: MenuEntry | undefined, hasAutosave: boolean): boolean {
   if (entry === undefined) return false;

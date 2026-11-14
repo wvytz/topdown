@@ -132,7 +132,7 @@ import { CombatEffects } from '@/effects/CombatEffects';
 import type { PlayerInput } from '@/input/playerInput';
 import { createPlayerInput } from '@/input/playerInput';
 import { BotPartnerInput } from '@/input/BotPartnerInput';
-import { isBotCoop, parseBotParam, withPartnerBot } from '@/systems/PartnerBot';
+import { botRewardPick, isBotCoop, parseBotParam, withPartnerBot } from '@/systems/PartnerBot';
 import { PARTNER_BOT_CONFIG } from '@/config/partnerBotConfig';
 import { bindPadMenu } from '@/input/PadMenuInput';
 import { MenuCommand } from '@/systems/gamepadInput';
@@ -163,6 +163,8 @@ import { createBoardHighscores } from '@/persistence/highscoreBoards';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
 import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
+import { isNameAllowed } from '@/systems/NameFilter';
+import { NAME_FILTER_CONFIG } from '@/config/nameFilterConfig';
 import { FEEDBACK_CONFIG } from '@/config/feedbackConfig';
 import { feedbackUi } from '@/diagnostics/FeedbackBox';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
@@ -432,13 +434,17 @@ export class GameScene extends Phaser.Scene implements HudSource {
 
   init(sceneData: FloorSceneData): void {
     // Ukryty bot-partner (krok 149): `?bot=1` w adresie dokłada P2 sterowanego przez AI (też po menu i ekranie wyboru).
-    const withBot = withPartnerBot(sceneData, parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId), SELECTABLE_HEROES);
+    // Krok U9a: „Graj z botem” z menu prosi o bota w danych sceny (bohater bota — następny po bohaterze gracza).
+    const botRequest = sceneData.bot ? { hero: null } : parseBotParam(window.location.search, PARTNER_BOT_CONFIG.urlParam, parseHeroId);
+    const withBot = withPartnerBot(sceneData, botRequest, SELECTABLE_HEROES);
     const data = withBotPracticeItems(withBot, !sceneData.coop && isBotCoop(withBot));
     this.replay = data.replay && canReplay(data.replay) ? new InputReplay(data.replay) : null;
     this.replayStart = -1;
     this.runSeed = data.runSeed;
     this.bossProgressSaved = false;
-    this.checkpoint = this.replay ? null : { runSeed: data.runSeed, floor: data.floor, run: data.run, ...(data.coop && { coop: data.coop.partner }) };
+    // Krok U9a: zapis runu z botem pamięta bota (wczytany run wraca z nim, a nie z padem jako P2).
+    const savedPartner = data.coop && (isBotCoop(data) ? { ...data.coop.partner, bot: true as const } : data.coop.partner);
+    this.checkpoint = this.replay ? null : { runSeed: data.runSeed, floor: data.floor, run: data.run, ...(savedPartner && { coop: savedPartner }) };
     this.atBoss = data.atBoss === true;
     this.bossRushArena = isBossRush(data.run.mode) ? new BossRushArena(BOSS_RUSH_CONFIG.teleportDelayMs) : null;
     this.saveLock = new BossSaveLock(this.bossRushArena !== null);
@@ -912,6 +918,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       warp: (to) => this.warpBot(partner, to),
       // Krok U11b: bot zna czerwień — odskakuje z pasa ataku kary.
       threats: () => this.punish?.threats() ?? [],
+      // Krok U9a: bossa bot goni po całej arenie.
+      bosses: () => this.bossFight.fightingPositions,
     });
   }
 
@@ -1818,8 +1826,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       onPicked();
       return;
     }
-    // Bot-partner (krok 149) bierze pierwszą kartę od razu — karty i tak są losowe.
-    const botPick = hero === this.partner && this.botPartner ? choices[0] : undefined;
+    // Bot-partner (krok 149) bierze kartę od razu; od kroku U9a — przemianę, relikwię albo rozwój przed nowym przedmiotem.
+    const botPick = hero === this.partner && this.botPartner ? botRewardPick(choices, this.itemsOf(hero), ITEM_DEFINITIONS, ITEM_EFFECTS.evolution) : undefined;
     if (botPick) {
       this.grantItem(botPick, hero);
       onPicked();
@@ -1976,7 +1984,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.awaitNewRun();
       return;
     }
-    const remembered = this.playerName.load();
+    // Krok U9b: imię z filtrem wulgaryzmów — także zapamiętane sprzed filtra.
+    const loaded = this.playerName.load();
+    const remembered = loaded && isNameAllowed(loaded, NAME_FILTER_CONFIG) ? loaded : null;
     if (remembered) {
       this.recordDeath({ ...base, name: remembered });
       return;
@@ -1989,7 +1999,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const finish = (raw: string | null): void => {
       this.input.keyboard?.off('keydown', onKey);
       this.deathPad = null;
-      const name = raw ? sanitizePlayerName(raw, maxLength) : '';
+      const clean = raw ? sanitizePlayerName(raw, maxLength) : '';
+      const name = isNameAllowed(clean, NAME_FILTER_CONFIG) ? clean : '';
       if (name) this.playerName.save(name);
       this.recordDeath(name ? { ...base, name } : base);
     };
@@ -2094,7 +2105,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         this.scene.start(SceneKey.CoopSelect, coop);
         return;
       }
-      const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode };
+      const select: HeroSelectData = { runSeed: freshSeed, floor, preselect: this.run.hero, mode: this.run.mode, ...(this.botPartner && { bot: true as const }) };
       this.scene.start(SceneKey.Select, select);
     });
     // M — menu główne (krok 91).

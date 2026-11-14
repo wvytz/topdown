@@ -5,6 +5,10 @@ import type { PauseReason } from '@/config/pauseConfig';
 import { SAVE_TEXT } from '@/config/saveConfig';
 import { SceneKey } from '@/core/types';
 import { SaveStorage } from '@/persistence/SaveStorage';
+import { PlayerName } from '@/persistence/PlayerName';
+import { HighscoreStorage } from '@/persistence/HighscoreStorage';
+import { NameBox } from '@/browser/NameBox';
+import { NAME_BOX_TEXT } from '@/config/nameFilterConfig';
 import { saveSummary } from '@/systems/SaveGame';
 import { MenuCommand } from '@/systems/gamepadInput';
 import { currentPlatform } from '@/core/platform';
@@ -76,6 +80,9 @@ const COLORS = { item: '#e8e8f0', selected: '#f5c542', dim: '#80809a', hint: '#a
 export class PauseScene extends Phaser.Scene {
   private resumed = false;
   private readonly saves = new SaveStorage(SaveStorage.browserStorage());
+  /** Krok U9b: imię gracza i okienko jego zmiany. */
+  private readonly playerName = new PlayerName(HighscoreStorage.browserStorage());
+  private readonly nameBox = new NameBox(this.playerName);
   private pauseData!: PauseSceneData;
   private options!: PauseMenuOptions;
   private mobile = false;
@@ -130,14 +137,17 @@ export class PauseScene extends Phaser.Scene {
     bindPadMenu(this, (command) => this.onCommand(command));
     // Kliknięcie obok listy na stronie głównej wznawia grę (podstrony: nic — łatwo chybić przycisku głośności).
     this.input.on(Phaser.Input.Events.POINTER_UP, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (feedbackUi.isOpen || performance.now() - this.feedbackClosedAt < FEEDBACK_CLICK_GUARD_MS) return;
+      if (feedbackUi.isOpen || this.nameBox.isOpen || performance.now() - this.feedbackClosedAt < FEEDBACK_CLICK_GUARD_MS) return;
       if (this.countdown) {
         this.skipCountdown(this.countdown);
         return;
       }
       if (over.length === 0 && this.page === PausePage.Main && !this.pendingPage && !this.countdown) this.resume();
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => feedbackUi.close());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      feedbackUi.close();
+      this.nameBox.close();
+    });
     if (data.openFeedback && this.options.feedback) {
       this.cursor = PauseItem.Feedback;
       this.refresh();
@@ -208,6 +218,12 @@ export class PauseScene extends Phaser.Scene {
     if (feedbackUi.isOpen) {
       if (command === MenuCommand.Confirm) feedbackUi.submit();
       else if (command === MenuCommand.Back || command === MenuCommand.Pause) feedbackUi.close();
+      return;
+    }
+    // Okienko imienia (krok U9b) — pad tak samo: A — zapisz, B / Start — anuluj.
+    if (this.nameBox.isOpen) {
+      if (command === MenuCommand.Confirm) this.nameBox.submit();
+      else if (command === MenuCommand.Back || command === MenuCommand.Pause) this.nameBox.close();
       return;
     }
     if (this.pendingPage) return;
@@ -301,6 +317,14 @@ export class PauseScene extends Phaser.Scene {
         break;
       case PauseItem.Feedback:
         this.openFeedback(false);
+        break;
+      case PauseItem.PlayerName:
+        sound.play(SoundCue.UiMove);
+        this.nameBox.open(() => {
+          // Kliknięcie, które zamknęło okienko, nie może wznowić gry (ta sama straż co przy czacie).
+          this.feedbackClosedAt = performance.now();
+          if (this.scene.isActive()) this.refresh();
+        });
         break;
       default:
     }
@@ -445,6 +469,8 @@ export class PauseScene extends Phaser.Scene {
         return DISPLAY_TEXT.fill(display.settings.fillWindow);
       case PauseItem.Fullscreen:
         return DISPLAY_TEXT.fullscreen(display.fullscreen);
+      case PauseItem.PlayerName:
+        return NAME_BOX_TEXT.pauseItem(this.playerName.load());
       default:
         return T[item as keyof typeof T] as string;
     }
