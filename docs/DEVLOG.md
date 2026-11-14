@@ -6489,6 +6489,17 @@ Ustalenie 7 z `docs/UPGRADE.md` (rekomendacja audytu, „pasuje do nawały”): 
 
 **Weryfikacja:** w przeglądarce (`?items=boots*3`, łucznik, piętro 2): efekt włączony, dash przez wroga zabrał mu 14 HP. Bez błędów w konsoli.
 
+## Krok U8d — Skok pajączka `#upgrade` `#matka-pajakow` `#grzybnia`
+
+Z backlogu audytu upgradu („skok pajączka do bohatera — podnosi trudność, czyli zgodnie z kierunkiem”, etap U8).
+
+**Co powstało**
+- `SpiderlingDefinition.leap` (`core/bossTypes.ts`), liczby w `SPIDER_QUEEN.spiderling.leap` (`config/bossConfig.ts`): pajączek, który dobiegnie na 90 px, **przysiada** na 0,22 s (staje, spłaszcza się i patrzy na bohatera — telegraf), potem **skacze** z prędkością ×3 przez 0,26 s w miejsce, gdzie bohater stał w chwili wybicia, i po lądowaniu od razu zapala lont (zapłon i wybuch bez zmian). Uskok w bok w czasie przysiadu albo lotu ratuje — pajączek wyląduje obok.
+- `ai/SpiderlingBrain.ts`: fazy `Crouching` i `Leaping`, decyzja z `speedMultiplier`; `entities/Spiderling.ts` — przysiad i lot czytelne skalą sprite'a (lot ×1,25 — „nad ziemią”).
+- Dotyczy wylęgu Matki Pająków i pajączków z kokonów Grzybni (ta sama definicja). Żuki Brudnej Wiedźmy nie skaczą (`withoutLeap`).
+
+**Testy:** `tests/ai/SpiderQueen.test.ts` — przysiad, wybicie w zapamiętane miejsce, lot z mnożnikiem, zapłon po lądowaniu; żuki bez skoku. Dawne testy pościgu i zapalnika bez zmian.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
