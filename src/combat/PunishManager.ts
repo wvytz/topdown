@@ -102,6 +102,33 @@ export class PunishManager {
     this.updateBolts(now);
   }
 
+  /**
+   * Okno kary bossa (krok U11b): gdy któryś bohater ma pęknięcia III, a wspólna przerwa minęła, najbliższy atak
+   * obszarowy bossa staje się przebijający. Jedna przerwa dla wrogów i bossa — bez serii nie do przeżycia.
+   */
+  claimBossWindow(now: number): boolean {
+    if (this.act || !this.deps.party.living.some((p) => p.weights.isBroken)) return false;
+    return this.planner.claim(now);
+  }
+
+  /**
+   * Czerwone pasy w tej chwili (krok U11b) — dla bota-partnera: linia celownika (do muru) albo pas taranu w zamachu.
+   * Lecący pocisk już nie jest zagrożeniem do uniku (za późno), a bieg taranu — tak (pas dalej leży).
+   */
+  threats(): readonly { readonly from: Vector2; readonly to: Vector2; readonly halfWidth: number }[] {
+    const act = this.act;
+    if (!act || !act.enemy.active || act.enemy.isDead) return [];
+    const { enemy } = act;
+    const config = this.deps.config.punish;
+    if (act.kind === PunishKind.PiercingShot) {
+      const length = this.reach(enemy, Math.atan2(act.direction.y, act.direction.x), config.piercingShot.range);
+      return [{ from: { x: enemy.x, y: enemy.y }, to: { x: enemy.x + act.direction.x * length, y: enemy.y + act.direction.y * length }, halfWidth: config.piercingShot.halfWidth }];
+    }
+    const dir = act.charge.direction;
+    const length = this.reach(enemy, Math.atan2(dir.y, dir.x), config.ram.maxDistance);
+    return [{ from: { x: enemy.x, y: enemy.y }, to: { x: enemy.x + dir.x * length, y: enemy.y + dir.y * length }, halfWidth: enemy.radius + config.ram.hitRadius }];
+  }
+
   /** Odsłonięty bohater (pęknięcia III) — planer wybiera karzącego. */
   private tryStart(now: number): void {
     const hero = this.deps.party.living.find((p) => p.weights.isBroken);

@@ -4,7 +4,8 @@ import type { CombatWeightConfig } from '@/core/combatWeightTypes';
  * System wag, wersja lekka (krok U11a, decyzja właściciela 14.11.2026, docs/WAGI.md §11):
  * 1) trafiasz, to rośniesz (Passa I–III), pudło zbija próg; 2) dostajesz, to pękasz (Odsłonięcie I–III);
  * 3) czerwony znaczy uciekaj — przy III wróg dostaje okno na atak kary, przed którym ratuje tylko dash.
- * Wartości startowe do strojenia botem (U11b), nie decyzja balansu.
+ * Wartości startowe do strojenia botem, nie decyzja balansu.
+ * Krok U11b: znak ciężkiego zamachu, ciężkie ciosy na Passie III, atak kary bossów, licznik na telefonie.
  */
 export const COMBAT_WEIGHT_CONFIG: CombatWeightConfig = {
   enabled: true,
@@ -46,6 +47,25 @@ export const COMBAT_WEIGHT_CONFIG: CombatWeightConfig = {
       hitRecoveryMs: 500,
       wallGraceMs: 60,
     },
+  },
+  heavy: {
+    staggerMs: 500,
+  },
+  marks: {
+    heavyText: '!',
+    heavyCss: '#ffa040',
+    blinkMs: 140,
+    raisePx: 20,
+    gapPx: 6,
+  },
+  bossPunish: {
+    damageMultiplier: 1.5,
+    ringWidth: 2,
+    pulseMs: 90,
+  },
+  mobile: {
+    counterSizeBonus: 1,
+    counterOffset: { x: 14, y: -24 },
   },
   visual: {
     counterFrom: 2,

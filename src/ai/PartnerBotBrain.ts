@@ -19,6 +19,16 @@ export interface BotTarget {
   readonly radius: number;
 }
 
+/**
+ * Zagrożenie do uniku (krok U11b): czerwona linia przeszywającego strzału albo pas taranu — odcinek z połową szerokości.
+ * Bot w pasie odskakuje w bok (dash, gdy gotowy), jak gracz, który zna język czerwieni.
+ */
+export interface BotThreat {
+  readonly from: Vector2;
+  readonly to: Vector2;
+  readonly halfWidth: number;
+}
+
 export interface BotWorld {
   readonly now: number;
   readonly self: {
@@ -38,6 +48,8 @@ export interface BotWorld {
   readonly canSee: (from: Vector2, to: Vector2) => boolean;
   /** Najbliższy punkt drogi do celu po kaflach; null — brak drogi. */
   readonly navigate: (from: Vector2, to: Vector2) => Vector2 | null;
+  /** Ataki kary wymierzone teraz w drużynę (krok U11b); brak — bez uników. */
+  readonly threats?: readonly BotThreat[];
 }
 
 /** Akcje bohatera — ten sam kształt co `PlayerActions` gracza. */
@@ -52,7 +64,7 @@ export interface BotActions {
 }
 
 /** Co bot akurat robi — do diagnostyki i testów. */
-export type BotMode = 'downed' | 'revive' | 'regroup' | 'fight' | 'follow';
+export type BotMode = 'downed' | 'dodge' | 'revive' | 'regroup' | 'fight' | 'follow';
 
 export interface BotDecision {
   readonly actions: BotActions;
@@ -69,6 +81,29 @@ function towards(from: Vector2, to: Vector2): MovementIntent {
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy);
   return length < 1 ? ZERO : { x: dx / length, y: dy / length };
+}
+
+/**
+ * Kierunek uniku z pasa zagrożenia (krok U11b): prostopadle do odcinka, na stronę, po której bot już stoi
+ * (dokładnie na osi — w lewo względem kierunku ataku). Null — bot poza wszystkimi pasami.
+ */
+export function dodgeDirection(here: Vector2, threats: readonly BotThreat[], marginPx: number): MovementIntent | null {
+  for (const threat of threats) {
+    const dx = threat.to.x - threat.from.x;
+    const dy = threat.to.y - threat.from.y;
+    const lengthSq = dx * dx + dy * dy;
+    if (lengthSq < 1) continue;
+    const t = Math.max(0, Math.min(1, ((here.x - threat.from.x) * dx + (here.y - threat.from.y) * dy) / lengthSq));
+    const px = threat.from.x + dx * t;
+    const py = threat.from.y + dy * t;
+    if (Math.hypot(here.x - px, here.y - py) > threat.halfWidth + marginPx) continue;
+    const length = Math.sqrt(lengthSq);
+    const nx = -dy / length;
+    const ny = dx / length;
+    const side = (here.x - px) * nx + (here.y - py) * ny;
+    return side >= 0 ? { x: nx, y: ny } : { x: -nx, y: -ny };
+  }
+  return null;
 }
 
 export class PartnerBotBrain {
@@ -103,7 +138,13 @@ export class PartnerBotBrain {
     let dash = false;
     let aim: Vector2 = this.lastAim ?? leaderAt;
 
-    if (leader.downed) {
+    const dodge = dodgeDirection(here, world.threats ?? [], this.config.dodgeMarginPx);
+    if (dodge) {
+      // Czerwony znaczy uciekaj (krok U11b): unik ma pierwszeństwo przed wszystkim, także przed wskrzeszaniem.
+      mode = 'dodge';
+      move = dodge;
+      dash = this.dashReady(now);
+    } else if (leader.downed) {
       mode = 'revive';
       if (toLeader > this.config.reviveStandPx) move = this.walk(world, here, leaderAt);
     } else if (toLeader > this.config.followMaxPx) {
