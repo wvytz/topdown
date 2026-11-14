@@ -103,11 +103,7 @@ export const MENU_TEXT = {
     'F9 — raport błędów',
   ],
   slotBack: 'WRÓĆ',
-  slotDeleteHint: 'X / DELETE — usuń zapis',
-  slotDeleteConfirm: 'Naciśnij X ponownie, by usunąć',
-  mainHint: '↑ ↓  WYBÓR   ·   ENTER — OK',
-  subHint: '↑ ↓  WYBÓR   ·   ENTER — OK   ·   ESC — WRÓĆ',
-  floorHint: '← →  PIĘTRO   ·   ENTER — DALEJ   ·   ESC — WRÓĆ',
+  // Podpowiedzi klawiszy i usuwania zapisu — zależne od urządzenia (krok U9c): `config/inputHintConfig.ts`.
 } as const;
 
 /** Tablica wyników na ekranie startowym (krok 94): ile wpisów na sekcję i napisy. */
