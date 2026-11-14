@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { PadMenuReader, type MenuCommand } from '@/systems/gamepadInput';
 import { readPadSnapshot } from '@/input/padSnapshot';
 import { sound } from '@/audio/SoundBoard';
+import { lastDevice } from '@/input/lastDevice';
 
 /**
  * Pad na ekranach poza walką (krok 95): co klatkę sceny czyta pad i przekazuje komendy menu.
@@ -13,6 +14,8 @@ export function bindPadMenu(scene: Phaser.Scene, onCommand: (command: MenuComman
     for (const command of reader.read(readPadSnapshot(), time)) {
       // Przycisk pada też może odblokować dźwięk (krok 116) — gracz z samym padem nie dotyka klawiatury.
       sound.unlock();
+      // Krok U9c: podpowiedzi na ekranach przechodzą na pad.
+      lastDevice.use('pad');
       onCommand(command);
     }
   };

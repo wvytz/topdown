@@ -18,7 +18,7 @@ Decyzja właściciela z 10.11.2026: **„Wdrażaj jako osobny branch. Zostawiamy
 - Przed etapem i po nim: `npm run shots -- --label <etap>` (12 kadrów, `--before` daje arkusz „przed | po”) i `npm run perf` (pełna nawała: PC, co-op, telefon). Lista rzeczy do oceny: `public/do-oceny.html`.
 - Scalenie `upgrade-fable` do `main` dopiero na wyraźne „tak” właściciela, paczkami, z tagiem na `main` przed scaleniem.
 - **11.11.2026 — pierwsza paczka w grze testerów** (właściciel: „scal i wdróż na główny page wszystko nad czym pracowaliśmy wczoraj. ustaw ten 1.6 jako domyślny”): U0, U1a, U1, U2 i zoom 1,6 scalone do `main` (krok 185) i wdrożone. Stan sprzed scalenia: commit `110691e` (krok 184a). Kolejne etapy dalej przez `upgrade-fable` i podgląd, do `main` paczkami na „tak”.
-- **14.11.2026 — druga paczka w grze testerów** (właściciel: „możemy wszystko scalić i wrzucić do głównej gry?”): całe `upgrade-fable` do `d6411bb` — U3–U8f, U9a–U9b, U11a–U11b — scalone do `main` (krok 188) i wdrożone. Stan sprzed scalenia: `c3b1d58`.
+- **14.11.2026 — druga paczka w grze testerów** (właściciel: „możemy wszystko scalić i wrzucić do głównej gry?”): całe `upgrade-fable` do `4b24990` — U3–U8f, U9a–U9d, U11a–U11b — scalone do `main` (krok 188) i wdrożone. Stan sprzed scalenia: `c3b1d58`.
 - Kroki na gałęzi mają w DEVLOG-u nazwy **„Krok U<etap><litera>”** (np. „Krok U2a”). Numery 185 i wyższe zostają dla `main`.
 
 ## 2. Kierunek

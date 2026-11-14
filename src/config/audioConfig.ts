@@ -218,6 +218,30 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'saw', freq: 900, freqEnd: 220, attack: 0.002, decay: 0.14, volume: 0.25, lowpass: 2400 },
     ],
   },
+  /** Krok U9d: ciężki zamach wroga — niski, narastający „wuuum”, słyszalny pod nawałą, ale nie głośniejszy od ciosów. */
+  [SoundCue.HeavyWindup]: {
+    gain: 0.28,
+    layers: [
+      { wave: 'saw', freq: 90, freqEnd: 150, attack: 0.04, decay: 0.22, volume: 0.6, lowpass: 700 },
+      { wave: 'sine', freq: 180, freqEnd: 300, attack: 0.04, decay: 0.2, volume: 0.35 },
+    ],
+  },
+  /** Krok U9d: skok pajączka — krótki syk i trzask odnóży. */
+  [SoundCue.SpiderLeap]: {
+    gain: 0.22,
+    layers: [
+      { wave: 'noise', freq: 4500, freqEnd: 2500, attack: 0.002, decay: 0.09, volume: 0.6, lowpass: 3000, curve: 1.4 },
+      { wave: 'square', freq: 600, freqEnd: 900, attack: 0.002, decay: 0.05, volume: 0.25, duty: 0.25, lowpass: 2400 },
+    ],
+  },
+  /** Krok U9d: Rozdeptanie — ciężkie tupnięcie (bas) i chrzęst. */
+  [SoundCue.Stomp]: {
+    gain: 0.45,
+    layers: [
+      { wave: 'sine', freq: 95, freqEnd: 45, attack: 0.002, decay: 0.2, volume: 0.9, curve: 2 },
+      { wave: 'noise', freq: 1800, freqEnd: 500, attack: 0.002, decay: 0.12, volume: 0.45, lowpass: 1200 },
+    ],
+  },
   /** Czyhacz wyskakuje: trzask pękającej kryjówki i niski łomot. */
   [SoundCue.LurkBurst]: {
     gain: 0.45,
@@ -638,6 +662,10 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.CrackPulse]: { minGapMs: 400 },
   [SoundCue.PunishWarn]: { minGapMs: 300 },
   [SoundCue.PunishStrike]: { minGapMs: 150 },
+  // Krok U9d: w nawale zamachów i skoków jest wiele naraz — rzadziej niż ciosy.
+  [SoundCue.HeavyWindup]: { minGapMs: 220 },
+  [SoundCue.SpiderLeap]: { minGapMs: 140 },
+  [SoundCue.Stomp]: { minGapMs: 90 },
   [SoundCue.Explosion]: { minGapMs: 70 },
   [SoundCue.Impact]: { minGapMs: 70 },
   [SoundCue.BossHit]: { minGapMs: 80 },

@@ -550,7 +550,10 @@ export class HeroCombat {
       now,
       ...(stomp && { heading: player.dashHeading(), sideKnockback: stomp.knockback }),
     };
+    const before = this.dashHits.size;
     this.deps.strikes.dash(sweep, this.dashHits, player);
+    // Krok U9d: Rozdeptanie słychać, gdy dash kogoś trafi.
+    if (stomp && this.dashHits.size > before) sound.play(SoundCue.Stomp, player);
   }
 }
 

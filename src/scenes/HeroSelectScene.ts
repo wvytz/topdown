@@ -6,6 +6,8 @@ import type { HeroId } from '@/core/heroTypes';
 import type { FloorSceneData, HeroSelectData } from '@/core/types';
 import { SceneKey } from '@/core/types';
 import { HERO_DEFINITIONS, SELECTABLE_HEROES as HERO_ORDER } from '@/config/heroConfig';
+import { INPUT_HINTS } from '@/config/inputHintConfig';
+import { lastDevice } from '@/input/lastDevice';
 import { HERO_SELECT_BOT_TEXT, HERO_SELECT_LAYOUT as L, HERO_SELECT_PALETTE as P } from '@/config/heroSelectConfig';
 import { HERO_VISUALS, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { HighscoreStorage } from '@/persistence/HighscoreStorage';
@@ -254,8 +256,9 @@ export class HeroSelectScene extends Phaser.Scene {
 
   /** Podpowiedź klawiszy; przy wyborze piętra trybu się nie zmienia. */
   private hintText(): string {
-    const mode = this.mode === RunMode.FloorSelect ? '' : '   ·   ↑ ↓  TRYB';
-    return `← →  BOHATER${mode}   ·   ENTER — START   ·   ESC — MENU`;
+    // Krok U9c: napis dla urządzenia, którego gracz użył ostatnio (klawiatura, pad, dotyk).
+    const noMode = this.mode === RunMode.FloorSelect || this.selectData.bot;
+    return (noMode ? INPUT_HINTS.heroSelectNoMode : INPUT_HINTS.heroSelect)[lastDevice.current];
   }
 
   /** Esc — powrót do menu głównego (krok 91), z tym samym seedem i trybem. */

@@ -36,7 +36,7 @@ Rozmawiamy i dokumentujemy **po polsku**, komentarze w kodzie też są po polsku
 - Podgląd: `npm run deploy:pages -- --subdir upgrade` **bez** `.env.production` (wyniki z podglądu nie mogą trafiać na wspólne tablice). Zasada „commit i push na `main` po każdym kroku” gałęzi nie dotyczy.
 - Scalenie do `main` tylko na wyraźne „tak” właściciela. Akt II poza zakresem.
 - **11.11.2026 (krok 185):** pierwsza paczka (U0–U2) i zoom 1,6 scalone do `main` i wdrożone na prośbę właściciela; dalsze etapy tak samo — przez `upgrade-fable`, do `main` paczkami.
-- **14.11.2026 (krok 188):** druga paczka — wszystko z `upgrade-fable` do `d6411bb` (U3–U9b, U11a–U11b) — scalona do `main` i wdrożona na prośbę właściciela.
+- **14.11.2026 (krok 188):** druga paczka — wszystko z `upgrade-fable` do `4b24990` (U3–U9d, U11a–U11b) — scalona do `main` i wdrożona na prośbę właściciela.
 
 ## Decyzje projektowe właściciela
 

@@ -1,4 +1,7 @@
 import { SORCERY_COLORS } from '@/config/heroColorConfig';
+import { lastDevice } from '@/input/lastDevice';
+import { readPadSnapshot } from '@/input/padSnapshot';
+import { INPUT_HINTS } from '@/config/inputHintConfig';
 import Phaser from 'phaser';
 import { BOSS_RUSH_TEXT } from '@/config/bossRushConfig';
 import type { BeamHudData, BossBarData, BossHudData, BossPointerData, UltimateHudData, HudData, HudItemNotice, HudPartnerData, HudSceneData, HudSource, MinimapHudData } from '@/core/types';
@@ -76,16 +79,17 @@ const TONE_COLORS: Readonly<Record<ObjectiveTone, string>> = { plain: C.dim, sta
 /** Podpowiedź sterowania: Czarodziejka ma kule i promień zamiast ciosu i strzału. */
 function helpLine(sorceress: boolean): string {
   // Wersja mobilna (krok 96): przyciski są podpisane na ekranie, a linia pomocy zasłaniałaby gałkę ruchu.
-  if (currentPlatform() === 'mobile') return '';
-  const attacks = sorceress ? 'LPM — kule energii · PPM — Wyrwa (przytrzymaj, rośnie)' : 'LPM — atak · PPM — strzał';
-  // Krok 98: R — ultimate.
+  // Krok U9c: na PC napisy dla urządzenia, którego gracz użył ostatnio (klawiatura z myszą albo pad).
+  const device = lastDevice.current;
+  if (device === 'touch') return '';
+  const attacks = INPUT_HINTS.hudAttacks[device][sorceress ? 'sorcery' : 'melee'];
   const devHelp = import.meta.env.DEV ? '   [DEV] B — pokonaj bossa' : '';
-  return `WASD — ruch · ${attacks} · R — ultimate · Spacja — dash · E — kapliczka, schody${devHelp}`;
+  return `${INPUT_HINTS.hud[device].replace('{attacks}', attacks)}${devHelp}`;
 }
 
-/** „Naciśnij E” — na telefonie przycisk E pojawia się na ekranie dopiero na schodach. */
+/** „Naciśnij E” — na telefonie przycisk E pojawia się na ekranie dopiero na schodach; pad — Y (krok U9c). */
 function pressE(): string {
-  return currentPlatform() === 'mobile' ? 'Stuknij E' : 'Naciśnij E';
+  return INPUT_HINTS.pressInteract[lastDevice.current];
 }
 
 /**
@@ -197,6 +201,8 @@ export class HudScene extends Phaser.Scene {
   }
 
   override update(time: number): void {
+    // Krok U9c: ruch pada przełącza podpowiedzi na pad (klawiatura i mysz — `lastDevice.install`).
+    lastDevice.notePad(readPadSnapshot());
     const hud = this.source.getHudData();
     this.bars.clear();
 

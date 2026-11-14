@@ -34,6 +34,8 @@ import { bindPadMenu } from '@/input/PadMenuInput';
 import { UiText, uiText } from '@/ui/UiText';
 import { drawFrame } from '@/ui/UiFrame';
 import { UI_PALETTE } from '@/config/uiConfig';
+import { INPUT_HINTS } from '@/config/inputHintConfig';
+import { lastDevice } from '@/input/lastDevice';
 
 export interface MenuSceneData {
   /** Seed, flaga runu testowego i tryb z adresu (BootScene); seed nowej gry losujemy przy wyborze. */
@@ -73,6 +75,9 @@ export class MenuScene extends Phaser.Scene {
   private hint!: UiText;
   private fade!: Phaser.GameObjects.Rectangle;
   private scoresPanel!: StartScoresPanel;
+  /** Dotyk (krok U9c): strzałki zmiany piętra po bokach pierwszego wiersza i przycisk usuwania zapisu. */
+  private floorArrows: Phaser.GameObjects.Zone[] = [];
+  private deleteButton!: UiText;
   /** Numer wejścia do menu — odpowiedź sieci z poprzedniego wejścia nie rysuje się w nowym. */
   private scoresRequest = 0;
 
@@ -109,7 +114,22 @@ export class MenuScene extends Phaser.Scene {
       });
       this.rows.push({ text, zone });
     }
+    // Krok U9c: wybór piętra dotykiem — lewa i prawa część wiersza piętra zmieniają piętro, środek zatwierdza.
+    const arrowWidth = menu.width / 3;
+    this.floorArrows = [-1, 1].map((delta) => {
+      const y = menu.y + menu.firstItemY;
+      const x = delta < 0 ? menu.x : menu.x + menu.width - arrowWidth;
+      const zone = this.add.zone(x, y - menu.step / 4, arrowWidth, menu.step).setOrigin(0).setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', () => {
+        this.floorCursor = 0;
+        this.stepFloor(delta);
+      });
+      return zone;
+    });
     this.infoTitle = uiText(this, info.x + info.padX, info.y + info.padY - 4, '', { size: 2, color: P.title });
+    // Krok U9c: usuwanie zapisu bez klawiatury (telefon, mysz) — przycisk na dole panelu opisu, dwa stuknięcia.
+    this.deleteButton = uiText(this, info.x + info.padX, info.y + info.height - info.padY - 8, `✕ ${INPUT_HINTS.deleteButton}`, { color: P.warn });
+    this.deleteButton.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.deleteSlot());
     this.infoBody = uiText(this, info.x + info.padX, info.y + info.padY + 26, '', {
       color: P.text,
       lineSpacing: info.lineSpacing,
@@ -137,6 +157,9 @@ export class MenuScene extends Phaser.Scene {
       if (!event.repeat) sound.toggleMute();
     });
     bindPadMenu(this, (command) => this.onCommand(command));
+    // Krok U9c: podpowiedzi dla urządzenia, którego gracz użył ostatnio.
+    const unwatchDevice = lastDevice.watch(() => this.refresh());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unwatchDevice);
     // Menu gra muzykę wieży (krok 116); ruszy po pierwszym klawiszu lub kliknięciu (blokada przeglądarki).
     sound.setMusic(MusicTheme.Tower);
     sound.setMusicIntense(false);
@@ -374,6 +397,10 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private refresh(): void {
+    for (const zone of this.floorArrows) if (zone.input) zone.input.enabled = this.view === 'floors';
+    this.deleteButton.setVisible(this.view === 'slots' && this.slotCursor < SAVE_CONFIG.slotCount && this.saves.load(this.slotCursor + 1) !== null);
+    // Kolor ostrzeżenia z potwierdzania usunięcia nie może zostać na następnym opisie.
+    this.infoBody.setColor(P.text);
     if (this.view === 'main') this.refreshMain();
     else if (this.view === 'floors') this.refreshFloors();
     else this.refreshSlots();
@@ -392,7 +419,7 @@ export class MenuScene extends Phaser.Scene {
       const accent = entry === MenuEntry.BossRush ? P.arenaMode : P.itemSelected;
       row.text.setText(`${active ? '▸ ' : '  '}${MENU_LABELS[entry]}`).setColor(!enabled ? P.itemDisabled : active ? accent : P.item);
     });
-    this.hint.setText(T.mainHint);
+    this.hint.setText(INPUT_HINTS.menuMain[lastDevice.current]);
     this.describe(MENU_ORDER[this.cursor] ?? MenuEntry.NewTower);
   }
 
@@ -449,7 +476,7 @@ export class MenuScene extends Phaser.Scene {
         row.text.setText('');
       }
     });
-    this.hint.setText(T.subHint);
+    this.hint.setText(INPUT_HINTS.menuSub[lastDevice.current]);
     if (this.slotCursor === SAVE_CONFIG.slotCount) {
       this.setInfo(T.loadTitle, T.load);
       return;
@@ -462,7 +489,7 @@ export class MenuScene extends Phaser.Scene {
     }
     const summary = saveSummary(record);
     const notes = [SAVE_TEXT.checkpointNote, ...(SAVE_CONFIG.manualLoadRanked ? [] : [SAVE_TEXT.unrankedNote])];
-    const deleteLine = this.pendingDelete === slot ? T.slotDeleteConfirm : T.slotDeleteHint;
+    const deleteLine = (this.pendingDelete === slot ? INPUT_HINTS.slotDeleteConfirm : INPUT_HINTS.slotDelete)[lastDevice.current];
     this.setInfo(SAVE_TEXT.slotName(slot), `${summary.title}\n${summary.details}\n\n${notes.join('\n')}\n\n${deleteLine}`);
     if (this.pendingDelete === slot) this.infoBody.setColor(P.warn);
   }
@@ -478,7 +505,7 @@ export class MenuScene extends Phaser.Scene {
       const active = i === this.floorCursor;
       row.text.setText(label === undefined ? '' : `${active ? '▸ ' : '  '}${label}`).setColor(active ? P.itemSelected : P.item);
     });
-    this.hint.setText(T.floorHint);
+    this.hint.setText(INPUT_HINTS.menuFloor[lastDevice.current]);
     this.setInfo(info.label, `${info.biome}\nBoss: ${info.boss}\n\n${T.floorSelectNote}`);
   }
 
