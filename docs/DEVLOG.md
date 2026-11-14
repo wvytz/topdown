@@ -6500,6 +6500,17 @@ Z backlogu audytu upgradu („skok pajączka do bohatera — podnosi trudność,
 
 **Testy:** `tests/ai/SpiderQueen.test.ts` — przysiad, wybicie w zapamiętane miejsce, lot z mnożnikiem, zapłon po lądowaniu; żuki bez skoku. Dawne testy pościgu i zapalnika bez zmian.
 
+## Krok U8e — Pomiar bohaterów botem i fale nawały w małym pokoju `#upgrade` `#balans`
+
+Plan U8: „pomiar siły 3 bohaterów botem z raportem”.
+
+**Co powstało**
+- `tools/balance.mjs`: bot-partner (`?bot=<bohater>`, krok 149) walczy sam, pierwszy gracz stoi bierny i nietykalny. Mierzy arenę bossa każdego piętra (obrażenia na sekundę, utracone HP, powalenia) i pierwszy pokój z nawałą na piętrach 1, 3 i 5 (czas wybicia). Opcje `--heroes`, `--floors`, `--seconds`, `--only boss|horde`, `--out docs/balance`.
+- Raport: `docs/balance/U8e-2026-11-14.md`. Barbarzyńca bije najmocniej (54–72/s) i najszybciej traci HP, Czarodziejka najsłabiej na bossach (25–43/s, ok. 60% barbarzyńcy), łucznik pośrodku i najbezpieczniejszy. Palacz to najtrudniejsza walka dla bohaterów dystansowych, Brudna Wiedźma powaliła wszystkich trzech. Propozycje zmian liczb są w raporcie i czekają na zgodę właściciela (upgrade nie zmienia balansu).
+- **Poprawka znaleziona pomiarem:** w małym pokoju (6×6) z bohaterami w rogu `pickRetinueTiles` nie znajdował kafli 3 kafle od bohaterów i fale nawały znikały — pokój kończył się od razu (a wydarzenie z U8a dawało darmową nagrodę). Nowe `pickHordeTiles` (`systems/Horde.ts`) zmniejsza odstęp aż do 1 kafla, zanim się podda.
+
+**Testy:** `tests/systems/horde.test.ts` — fala w ciasnym pokoju dostaje kafle.
+
 ## Krok U8f — Złapanie uciekiniera w locie `#upgrade` `#zasadzka`
 
 Z backlogu kroku 183 („pomysł na później: dać szansę złapania uciekiniera”) i audytu upgradu („mały, satysfakcjonujący dodatek”, etap U8).
