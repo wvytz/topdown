@@ -50,6 +50,13 @@ export class CombatScale {
     return this.enabled && this.crackCount >= this.crackConfig.max;
   }
 
+  /**
+   * Passa III (krok U11b): nasze ataki są ciężkie — trafiony wróg w zamachu traci zamach i jest ogłuszony.
+   */
+  get isHeavy(): boolean {
+    return this.enabled && this.tier >= this.streakConfig.tiers.length;
+  }
+
   /** Mnożnik naszych obrażeń z Passy. */
   get outgoingMultiplier(): number {
     const tier = this.tier;

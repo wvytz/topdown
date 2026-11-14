@@ -95,12 +95,63 @@ export interface WeightVisualConfig {
   readonly punishTint: number;
 }
 
+/**
+ * Waga ataku (§2 WAGI.md, wersja lekka — krok U11b): wspólny język ostrzeżeń w zamachu.
+ * Lekki i średni — bez nowego znaku (zostaje pomarańczowy odcień zamachu), ciężki — pomarańczowe „!”,
+ * przebijający (atak kary) — czerwone „!!” z linią albo strefą.
+ */
+export enum AttackWeight {
+  Light = 'light',
+  Medium = 'medium',
+  Heavy = 'heavy',
+  Piercing = 'piercing',
+}
+
+/** Ciężkie ciosy bohatera na Passie III (krok U11b): trafienie wroga w zamachu przerywa zamach i ogłusza. */
+export interface HeavyStrikeConfig {
+  /** Ogłuszenie wroga, któremu przerwaliśmy zamach (ms, przed odpornością). */
+  readonly staggerMs: number;
+}
+
+/** Znak ciężkiego zamachu wroga nad głową. */
+export interface WeightMarkConfig {
+  readonly heavyText: string;
+  readonly heavyCss: string;
+  /** Miganie znaku (ms na fazę). */
+  readonly blinkMs: number;
+  /** „!” wroga tyle px nad brzegiem ciała — ponad nazwą elity. */
+  readonly raisePx: number;
+  /** „!!” bossa tyle px nad brzegiem ciała. */
+  readonly gapPx: number;
+}
+
+/** Atak kary bossa (§5): istniejący atak obszarowy bossa dostaje wagę przebijającą, gdy bohater ma pęknięcia III. */
+export interface BossPunishConfig {
+  /** Obrażenia stref tego ataku (względem zwykłych). */
+  readonly damageMultiplier: number;
+  /** Czerwony obrys stref w telegrafie: grubość (px) i okres pulsu (ms). */
+  readonly ringWidth: number;
+  readonly pulseMs: number;
+}
+
+/** Telefon (krok U11b): licznik czytelny na małym ekranie. */
+export interface WeightMobileConfig {
+  /** O tyle większy krój licznika Passy niż na PC. */
+  readonly counterSizeBonus: number;
+  /** Przesunięcie licznika przy większym kroju (px). */
+  readonly counterOffset: { readonly x: number; readonly y: number };
+}
+
 export interface CombatWeightConfig {
   /** Wyłącznik całego systemu (`?wagi=0|1` nadpisuje). */
   readonly enabled: boolean;
   readonly streak: StreakConfig;
   readonly cracks: CrackConfig;
   readonly punish: PunishConfig;
+  readonly heavy: HeavyStrikeConfig;
+  readonly marks: WeightMarkConfig;
+  readonly bossPunish: BossPunishConfig;
+  readonly mobile: WeightMobileConfig;
   readonly visual: WeightVisualConfig;
 }
 

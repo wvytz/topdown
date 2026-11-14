@@ -49,6 +49,11 @@ export class AttackCycle {
     return true;
   }
 
+  /** Zamach trwa i nie został przerwany (krok U11b: ciężki cios bohatera może go przerwać). */
+  isWindingUp(now: number): boolean {
+    return !this.released && this.phase(now) === AttackPhase.Windup;
+  }
+
   /** Przerywa zamach (np. ogłuszenie): uderzenie nie nastąpi, odnowienie biegnie dalej. */
   interrupt(): void {
     this.released = true;

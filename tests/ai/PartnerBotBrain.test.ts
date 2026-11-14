@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PartnerBotBrain, type BotTarget, type BotWorld } from '@/ai/PartnerBotBrain';
+import { PartnerBotBrain, dodgeDirection, type BotTarget, type BotWorld } from '@/ai/PartnerBotBrain';
 import { PARTNER_BOT_CONFIG } from '@/config/partnerBotConfig';
 import type { HeroKit } from '@/core/heroTypes';
 
@@ -115,5 +115,29 @@ describe('PartnerBotBrain', () => {
     expect(b.decide(world({ ...far, now: 0 })).actions.dash).toBe(true);
     expect(b.decide(world({ ...far, now: 100 })).actions.dash).toBe(false);
     expect(b.decide(world({ ...far, now: PARTNER_BOT_CONFIG.dashCooldownMs })).actions.dash).toBe(true);
+  });
+});
+
+describe('PartnerBotBrain — unik ataku kary (krok U11b)', () => {
+  const lane = { from: { x: -100, y: 0 }, to: { x: 100, y: 0 }, halfWidth: 4 };
+
+  it('w czerwonym pasie bot odskakuje w bok z dashem, przed walką i wskrzeszaniem', () => {
+    const d = brain().decide({ ...world({ self: { y: 3 }, leader: { x: 0, y: 80, downed: true }, targets: [{ x: 20, y: 0, radius: 8 }] }), threats: [lane] });
+    expect(d.mode).toBe('dodge');
+    expect(d.actions.dash).toBe(true);
+    expect(d.actions.move.y).toBeCloseTo(1);
+    expect(d.actions.move.x).toBeCloseTo(0);
+  });
+
+  it('poza pasem bot walczy dalej jak zwykle', () => {
+    const d = brain().decide({ ...world({ self: { y: 60 }, leader: { x: 0, y: 70 } }), threats: [lane] });
+    expect(d.mode).not.toBe('dodge');
+  });
+
+  it('dodgeDirection: strona, po której bot stoi; za końcem odcinka — bez uniku', () => {
+    const away = dodgeDirection({ x: 0, y: -5 }, [lane], 10);
+    expect(away?.x).toBeCloseTo(0);
+    expect(away?.y).toBeCloseTo(-1);
+    expect(dodgeDirection({ x: 150, y: 0 }, [lane], 10)).toBeNull();
   });
 });

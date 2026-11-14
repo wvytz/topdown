@@ -55,6 +55,7 @@ import { drawBurstRing } from '@/effects/EvolutionEffects';
 import { EVOLUTION_VISUAL } from '@/config/itemEvolutionConfig';
 import { diag } from '@/diagnostics/DiagnosticsHub';
 import { screenFx } from '@/effects/ScreenFx';
+import { COMBAT_WEIGHT_CONFIG } from '@/config/combatWeightConfig';
 
 export interface EnemyManagerDeps {
   readonly scene: Phaser.Scene;
@@ -563,15 +564,26 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   /** Cios gracza — trafia wszystkich przeciwników w łuku. Zwraca liczbę trafionych. */
-  resolvePlayerMelee(swing: MeleeSwing): number {
+  resolvePlayerMelee(swing: MeleeSwing, heavy = false): number {
     const { hit, killed } = resolveMeleeSwing(swing, [...this.enemies]);
+    if (heavy) this.staggerAll(hit);
     for (const enemy of killed) this.kill(enemy);
     return hit.length;
   }
 
+  /**
+   * Ciężkie ciosy (Passa III, krok U11b): trafieni wrogowie w zamachu tracą zamach i stoją ogłuszeni.
+   * Bez napisu — wystarczy zgaszony znak „!” i odcień ogłuszenia.
+   */
+  private staggerAll(hit: readonly Enemy[]): void {
+    const now = this.deps.scene.time.now;
+    for (const enemy of hit) enemy.stagger(now, COMBAT_WEIGHT_CONFIG.heavy.staggerMs);
+  }
+
   /** Promień Czarodziejki (krok 37): rani wszystkich na odcinku; zwraca liczbę trafionych. */
-  resolvePlayerBeam(beam: BeamStrike): number {
+  resolvePlayerBeam(beam: BeamStrike, heavy = false): number {
     const { hit, killed } = resolveBeam(beam, [...this.enemies]);
+    if (heavy) this.staggerAll(hit);
     for (const enemy of killed) this.kill(enemy);
     return hit.length;
   }
@@ -583,8 +595,9 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   /** Pocisk gracza — zwraca trafionego przeciwnika albo null. */
-  resolvePlayerShot(shot: PlayerShot): Enemy | null {
+  resolvePlayerShot(shot: PlayerShot, heavy = false): Enemy | null {
     const result = resolvePlayerShot(shot, this.enemies);
+    if (heavy && result) this.staggerAll([result.target]);
     if (result?.died) this.kill(result.target);
     return result?.target ?? null;
   }

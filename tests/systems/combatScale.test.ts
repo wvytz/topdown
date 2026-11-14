@@ -133,3 +133,18 @@ describe('Szala — wyłącznik', () => {
     expect(scaledDamage(7, 1)).toBe(7);
   });
 });
+
+describe('Szala — ciężkie ciosy na Passie III (krok U11b)', () => {
+  it('ciężkie dopiero od progu III, wyłączona Szala nigdy', () => {
+    const scale = make();
+    landHits(scale, streak.tiers[2]! - 1);
+    expect(scale.isHeavy).toBe(false);
+    landHits(scale, 1, 5000);
+    expect(scale.isHeavy).toBe(true);
+    scale.hurt(6000);
+    expect(scale.isHeavy).toBe(false);
+    const off = make(false);
+    landHits(off, 20);
+    expect(off.isHeavy).toBe(false);
+  });
+});

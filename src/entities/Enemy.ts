@@ -36,6 +36,10 @@ import type { ShieldChargeConfig } from '@/systems/ShieldCharge';
 import { ChargeOutcome, ChargePhase, ShieldCharge } from '@/systems/ShieldCharge';
 import type { Lurk } from '@/systems/Lurk';
 import { LURKER_CONFIG } from '@/config/lurkerConfig';
+import { AttackWeight } from '@/core/combatWeightTypes';
+import { COMBAT_WEIGHT_CONFIG } from '@/config/combatWeightConfig';
+import { enemyAttackWeight, hasWindupMark } from '@/systems/AttackWeight';
+import { type UiText, uiText } from '@/ui/UiText';
 
 /** Wykonawca ataków — encja decyduje *kiedy*, a menedżer rozstrzyga *kogo* trafia. */
 export interface EnemyAttackHandler {
@@ -126,6 +130,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly lurkStun = new Timer();
   /** Atak kary (krok U11a): wroga prowadzi `PunishManager` — własne AI i ataki stoją. */
   private seizedTint: number | null = null;
+  /** Krok U11b: waga ataku — ciężki zamach dostaje pomarańczowe „!” nad głową. */
+  readonly attackWeight: AttackWeight;
+  private weightMark: UiText | null = null;
 
   /** Upiór (krok 49): przesunięcie fazy przenikania i koniec wynurzania (do tej chwili nietykalny i bierny). */
   private readonly phaseOffsetMs: number;
@@ -148,6 +155,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const series = definition.attack.kind === EnemyAttackKind.Melee ? definition.attack.series : undefined;
     this.attackCycle = new AttackCycle(definition.attack.windupMs, definition.attack.cooldownMs, series);
     this.charge = definition.affixes?.includes(EliteAffix.Shielded) ? new ShieldCharge(ELITE_CONFIG.shield.charge) : null;
+    this.attackWeight = enemyAttackWeight(definition);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -171,6 +179,45 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.setVisible(false);
       (this.body as Phaser.Physics.Arcade.Body).setImmovable(true);
     }
+  }
+
+  /**
+   * Ciężki cios bohatera (Passa III, krok U11b): wróg w zamachu traci zamach i stoi ogłuszony.
+   * Skoku, szarży i doskoku w locie nie da się przerwać. Zwraca true, gdy zamach przepadł.
+   */
+  stagger(now: number, stunMs: number): boolean {
+    if (this.isDead || this.seizedTint !== null || this.pounce || this.leap || !this.attackCycle.isWindingUp(now)) return false;
+    this.attackCycle.interrupt();
+    this.pounceAim = null;
+    this.status.apply({ stun: { durationMs: stunMs } }, now);
+    return true;
+  }
+
+  /** Znak wagi w zamachu (krok U11b): pomarańczowe „!” nad głową w ciężkim zamachu, miga; poza zamachem ukryty. */
+  private updateWeightMark(now: number): void {
+    if (!hasWindupMark(this.attackWeight)) return;
+    const charging = this.charge?.phase(now) === ChargePhase.Windup;
+    const show = this.active && this.visible && !this.isDead && this.seizedTint === null && (this.attackCycle.isWindingUp(now) || charging);
+    if (!show) {
+      this.weightMark?.setVisible(false);
+      return;
+    }
+    const { marks } = COMBAT_WEIGHT_CONFIG;
+    if (!this.weightMark) {
+      this.weightMark = uiText(this.scene, this.x, this.y, marks.heavyText, { color: marks.heavyCss, size: 2 })
+        .setOrigin(0.5, 1)
+        .setDepth(RENDER_DEPTH.worldText);
+      this.once(Phaser.GameObjects.Events.DESTROY, () => this.weightMark?.destroy());
+    }
+    // Nad głową, ponad nazwą elity (ta stoi tuż nad ciałem).
+    this.weightMark
+      .setVisible(Math.floor(now / marks.blinkMs) % 2 === 0)
+      .setPosition(Math.round(this.x), Math.round(this.y - this.definition.radius - marks.raisePx));
+  }
+
+  protected override preUpdate(time: number, delta: number): void {
+    super.preUpdate(time, delta);
+    this.updateWeightMark(time);
   }
 
   /** Atak kary (krok U11a): przejęcie wroga — przerwany zamach przepada, AI stoi do `release`. */

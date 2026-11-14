@@ -772,7 +772,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
         const shooter = this.heroes.find((hero) => hero.player === owner) ?? this.heroes[0];
         const attacker = shooter?.player;
         // Krok 93: kieł leczy tylko za trafienie wroga lub bossa, nie kokonu (też spiżarni), purchawki czy urny.
-        const creature = this.enemies.resolvePlayerShot(shot) ?? this.bossFight.resolvePlayerShot(shot, attacker);
+        // Krok U11b: na Passie III strzał jest ciężki — przerywa zamach trafionego wroga.
+        const creature = this.enemies.resolvePlayerShot(shot, attacker?.weights.isHeavy ?? false) ?? this.bossFight.resolvePlayerShot(shot, attacker);
         const target =
           creature ?? this.cocoons?.resolvePlayerShot(shot) ?? this.puffballs?.resolvePlayerShot(shot) ?? this.secretRoom?.resolvePlayerShot(shot) ?? this.breakables?.resolvePlayerShot(shot) ?? this.arenaConditions?.resolvePlayerShot(shot) ?? null;
         if (target) shooter?.afterShotHit(shot, target, creature !== null && !(creature instanceof LarderCocoon), time);
@@ -909,6 +910,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       kit: HERO_DEFINITIONS[coop.partner.hero].kit.kind,
       floor: () => this.dungeon,
       warp: (to) => this.warpBot(partner, to),
+      // Krok U11b: bot zna czerwień — odskakuje z pasa ataku kary.
+      threats: () => this.punish?.threats() ?? [],
     });
   }
 
@@ -990,7 +993,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private heroStrikes(): HeroStrikeTargets {
     return {
       melee: (swing, attacker) => {
-        const creatureHits = this.enemies.resolvePlayerMelee(swing) + this.bossFight.resolvePlayerMelee(swing, attacker);
+        // Krok U11b: na Passie III cios jest ciężki — przerywa zamach trafionych wrogów.
+        const creatureHits = this.enemies.resolvePlayerMelee(swing, attacker.weights.isHeavy) + this.bossFight.resolvePlayerMelee(swing, attacker);
         this.cocoons?.resolvePlayerMelee(swing);
         this.puffballs?.resolvePlayerMelee(swing);
         this.secretRoom?.resolvePlayerMelee(swing);
@@ -999,7 +1003,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
         return creatureHits;
       },
       beam: (beam, attacker) => {
-        const creatureHits = this.enemies.resolvePlayerBeam(beam) + this.bossFight.resolvePlayerBeam(beam, attacker);
+        const creatureHits = this.enemies.resolvePlayerBeam(beam, attacker.weights.isHeavy) + this.bossFight.resolvePlayerBeam(beam, attacker);
         this.cocoons?.resolvePlayerBeam(beam);
         this.puffballs?.resolvePlayerBeam(beam);
         this.secretRoom?.resolvePlayerBeam(beam);
@@ -1224,6 +1228,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
       effects: this.effects,
       decals: this.combatDecals,
       onPlayerHit,
+      // Krok U11b: przy pęknięciach III najbliższy atak obszarowy bossa jest przebijający (wspólna przerwa z wrogami).
+      punishGate: (now) => this.punish?.claimBossWindow(now) ?? false,
       spawnRusher: (at) => {
         this.enemies.spawnAt(EnemyType.Rusher, at);
       },

@@ -51,6 +51,16 @@ export class PunishPlanner {
     private readonly rng: Rng,
   ) {}
 
+  /**
+   * Okno kary bossa (krok U11b): boss nie potrzebuje wyboru — zajmuje wspólną przerwę, jeśli minęła.
+   * Jedna przerwa dla wrogów i bossa: najwyżej jeden atak kary na `cooldownMs` w całym pokoju.
+   */
+  claim(now: number): boolean {
+    if (now < this.readyAt) return false;
+    this.readyAt = now + this.config.cooldownMs;
+    return true;
+  }
+
   /** Wybiera karzącego albo null (za wcześnie, nikt nie widzi bohatera, nikt nie stoi w zasięgu). */
   plan<T>(now: number, hero: Vector2, candidates: readonly PunishCandidate<T>[]): PunishPick<T> | null {
     if (now < this.readyAt) return null;
