@@ -1,6 +1,6 @@
 # System wag — dokument projektowy `#wagi` `#decyzja`
 
-Stan: 12.11.2026, propozycja do akceptacji właściciela. Bez kodu. **14.11.2026:** właściciel boi się, że pełna wersja utrudni odbiór i zrozumienie — rekomendowana jest wersja lekka z §11. Po akceptacji system wchodzi etapami U11a–U11d na gałęzi `upgrade-fable` (podgląd `/topdown/upgrade/`), każdy etap w osobnym wątku.
+Stan: 12.11.2026, propozycja do akceptacji właściciela. Bez kodu. **14.11.2026:** właściciel boi się, że pełna wersja utrudni odbiór i zrozumienie — wybrał wersję lekką z §11 (budujemy ją najpierw; §2–§10 to zapas na później). Po akceptacji system wchodzi etapami U11a–U11d na gałęzi `upgrade-fable` (podgląd `/topdown/upgrade/`), każdy etap w osobnym wątku.
 
 ## 0. Skąd ten pomysł
 
@@ -139,7 +139,7 @@ Akt II (`akt-2`) dostanie system po scaleniu do `main`, razem z resztą upgradu.
 3. **Liczby obrażeń** — rekomendacja: tylko obrażenia otrzymane nad bohaterem (i „BLOK”), żeby ekran w nawale nie zalał się cyframi.
 4. **Wartości startowe** z §3–§5 są punktem wyjścia do strojenia botem w U11d, nie decyzją balansu.
 
-## 11. Wersja lekka (rekomendacja z 14.11.2026)
+## 11. Wersja lekka — wybrana przez właściciela 14.11.2026 `#decyzja`
 
 Uwaga właściciela: „Czy nie utrudnimy odbioru i zrozumienia?”. Pełna wersja wymaga śledzenia kilku zasobów naraz, a automatyczna garda jest niewidoczna (gracz nie wie, czemu jeden cios zabrał mniej HP). W grze arcade dla dwojga na kanapie każda zasada ma być widoczna na ekranie w sekundę, bez samouczka. Wersja lekka zostawia sedno pomysłu w trzech zasadach:
 
