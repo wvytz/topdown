@@ -29,6 +29,8 @@ export class LightingOverlay {
   private readonly playerHalf: number;
   /** Mrok zasadzki (krok 49): druga warstwa ciemności z małym kręgiem światła gracza, siła 0..1. */
   private dread = 0;
+  /** Krok U8a: kilka źródeł mroku (zasadzka, wydarzenia w pokojach) — działa najsilniejsze. */
+  private readonly dreadSources = new Map<string, number>();
   private dreadLayer: { readonly rt: Phaser.GameObjects.RenderTexture; readonly key: string; readonly half: number; readonly darkness: number } | null =
     null;
 
@@ -54,10 +56,12 @@ export class LightingOverlay {
 
   /**
    * Przyciemnienie zasadzki: nad zwykłym mrokiem druga warstwa w profilu `profile` (mały krąg światła gracza),
-   * z siłą `level` 0..1 — przejście płynne, pochodnie jej nie rozjaśniają.
+   * z siłą `level` 0..1 — przejście płynne, pochodnie jej nie rozjaśniają. `source` (krok U8a) — kto zaciemnia;
+   * przy kilku naraz działa najsilniejszy, a warstwa zostaje w profilu pierwszego.
    */
-  setDread(level: number, profile: AmbientProfile): void {
-    this.dread = Math.min(1, Math.max(0, level));
+  setDread(level: number, profile: AmbientProfile, source = 'ambush'): void {
+    this.dreadSources.set(source, Math.min(1, Math.max(0, level)));
+    this.dread = Math.max(0, ...this.dreadSources.values());
     if (this.dread > 0 && !this.dreadLayer) {
       const rt = this.scene.add.renderTexture(0, 0, this.halfW * 2, this.halfH * 2).setOrigin(0).setDepth(RENDER_DEPTH.darkness + 0.01);
       const key = stampTexture(

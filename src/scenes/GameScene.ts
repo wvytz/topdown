@@ -98,7 +98,10 @@ import {
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { eliteAffixCount, runEndsAfterFloor } from '@/systems/TowerLoop';
-import { eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
+import { availableAffixes, eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
+import { CURSED_CHEST_CONFIG } from '@/config/cursedChestConfig';
+import { planCursedChest } from '@/systems/CursedChest';
+import { CursedChestSite } from '@/world/CursedChestSite';
 import { BossEncounter } from '@/combat/BossEncounter';
 import { duetForFloor } from '@/systems/BossDuet';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
@@ -115,6 +118,9 @@ import { PlayerShotManager } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
 import { HordeManager } from '@/combat/HordeManager';
 import { HORDE_CONFIG } from '@/config/hordeConfig';
+import { RoomEventManager } from '@/combat/RoomEventManager';
+import { ROOM_EVENT_CONFIG } from '@/config/roomEventConfig';
+import { planRoomEvents } from '@/systems/RoomEvents';
 import { hordeMinionVariant, isInsideRoom, planHordeRooms } from '@/systems/Horde';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
 import { DungeonView } from '@/dungeon/DungeonView';
@@ -261,6 +267,8 @@ const DART_SEED_SALT = 0xda27;
 const BREAKABLE_SEED_SALT = 0xb7ea;
 const AMBIENT_SEED_SALT = 0x11fe;
 const HORDE_SEED_SALT = 0x40de;
+const ROOM_EVENT_SEED_SALT = 0x0e7e;
+const CURSED_CHEST_SEED_SALT = 0xc4e5;
 /** Ostatnia fala nawały wybita (krok 175) — etap „zero błąkania”: wiadomo, że można iść dalej. */
 const HORDE_CLEARED_TOAST = 'Droga wolna';
 const TOAST_DURATION_MS = 2500;
@@ -327,6 +335,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private ambush: AmbushManager | null = null;
   /** Nawała (krok 175): fale stworków w pokojach i tłum świty bossa. */
   private horde: HordeManager | null = null;
+  /** Wydarzenia w pokojach (krok U8a). */
+  private roomEvents: RoomEventManager | null = null;
   /** Upiory zasadzki: zawsze widoczne (świecą nad mrokiem), bez łupu. */
   private ambushGhosts = new Set<Phaser.GameObjects.Sprite>();
   /** Krok 183 (Uciekinier): przedmiot, który wzmocnił bossa — wypada po walce dodatkowo. */
@@ -374,6 +384,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   } | null = null;
   /** Kapliczka piętra; null w arenach bossów (krok 90). */
   private shrine: ShrineSite | null = null;
+  /** Przeklęta skrzynia (krok U8b). */
+  private cursedChest: CursedChestSite | null = null;
   private arenaGates!: ArenaGates;
   /** Krok 99: cofa gracza przepchniętego przez mur lub kratę (i poza zamkniętą arenę). */
   private containment = new Map<Player, PlayerContainment>();
@@ -431,6 +443,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.bossRushArena = isBossRush(data.run.mode) ? new BossRushArena(BOSS_RUSH_CONFIG.teleportDelayMs) : null;
     this.saveLock = new BossSaveLock(this.bossRushArena !== null);
     this.shrine = null;
+    this.cursedChest = null;
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
     this.startHp = data.run.hp;
@@ -461,6 +474,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.lastReviveAt = 0;
     this.leashFrom = null;
     this.ambush = null;
+    this.roomEvents = null;
     this.ambushGhosts = new Set();
     this.stolenItem = null;
     this.lurkerDens = [];
@@ -548,6 +562,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupLoot();
     if (!this.bossRush) {
       this.setupShrine();
+      this.setupCursedChest();
       this.setupRuinsProps();
     }
     this.setupSecretRoom();
@@ -732,6 +747,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.enemies.update(time);
     this.punish?.update(time);
     this.horde?.update(time);
+    this.roomEvents?.update(time);
     this.ceilingDrops?.update(time);
     this.cocoons?.update(time);
     this.stickyWebs?.update(time);
@@ -766,6 +782,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     );
     this.loot.update(time);
     this.shrine?.update(interactOf);
+    this.cursedChest?.update(time, interactOf);
     this.updateRevives(time);
 
     // Co-op: run trwa, dopóki stoi choć jeden bohater (powalonego wskrzesza partner).
@@ -793,7 +810,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
-      canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false)),
+      canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false) || (this.cursedChest?.canOpen ?? false)),
       isPlayerDead: ready && this.party.isDown,
       minimap: ready ? this.minimapData() : null,
       boss: ready ? this.bossFight.getStatus() : null,
@@ -1082,6 +1099,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.enemies.spawnAll(spawns, rollElites(spawns, ELITE_CONFIG, this.floorNumber, eliteAffixCount(this.floorNumber, TOWER_CONFIG), eliteRng));
     }
     this.horde = this.createHorde();
+    this.roomEvents = this.createRoomEvents();
     const biome = this.bossRush ? null : this.biome;
 
     const drops = biome?.ceilingDrops;
@@ -1469,6 +1487,31 @@ export class GameScene extends Phaser.Scene implements HudSource {
     });
   }
 
+  /** Przeklęta skrzynia (krok U8b): z dala od kapliczki i kryjówek Czyhaczy, własny strumień RNG; `?chest=1` — zawsze. */
+  private setupCursedChest(): void {
+    const rng = createRng(deriveSeed(this.dungeon.seed, CURSED_CHEST_SEED_SALT));
+    const shrineTile = planShrineLocation(this.dungeon, createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)));
+    const avoid = [...(shrineTile ? [shrineTile] : []), ...this.lurkerDens];
+    const forced = parseStartOverrides(window.location.search).cursedChest ?? false;
+    const plan = planCursedChest(this.dungeon, this.floorNumber, CURSED_CHEST_CONFIG, rng, avoid, forced);
+    if (!plan) return;
+    this.cursedChest = new CursedChestSite({
+      scene: this,
+      floor: this.dungeon,
+      floorNumber: this.floorNumber,
+      plan,
+      config: CURSED_CHEST_CONFIG,
+      party: this.party,
+      rng,
+      spawnElite: (type, at, affixes, riseMs) => this.enemies.spawnAt(type, at, affixes, { riseMs }),
+      affixPool: (type) => availableAffixes(ELITE_CONFIG, type, this.floorNumber),
+      affixCount: eliteAffixCount(this.floorNumber, TOWER_CONFIG),
+      poolFor: (hero) => this.usefulPoolFor(hero),
+      dropLoot: (at, drops) => this.loot.spawn(at, drops),
+      effects: this.effects,
+    });
+  }
+
   private dropLoot(position: Vector2, table: LootTable): void {
     this.loot.spawn(position, rollLoot(table, this.floorNumber, LOOT_SCALING, ITEM_POOL, this.lootRng));
   }
@@ -1803,9 +1846,12 @@ export class GameScene extends Phaser.Scene implements HudSource {
    * Nawała (krok 175): we wspinaczce fale w zwykłych pokojach; w arenach bossów tylko tłum świty. Własny strumień RNG
    * (planowanie i miejsca wyjścia) — rozmieszczenie reszty piętra bez zmian.
    */
+  private hordePlans: ReturnType<typeof planHordeRooms> = [];
+
   private createHorde(): HordeManager {
     const rng = createRng(deriveSeed(this.dungeon.seed, HORDE_SEED_SALT));
     const plans = this.bossRush ? [] : planHordeRooms(this.dungeon, this.floorNumber, HORDE_CONFIG, this.coop !== null, rng);
+    this.hordePlans = plans;
     return new HordeManager({
       scene: this,
       floor: this.dungeon,
@@ -1820,6 +1866,32 @@ export class GameScene extends Phaser.Scene implements HudSource {
         const inRoom = this.enemies.living.some((e) => isInsideRoom(room, { x: Math.floor(e.x / TILE_SIZE), y: Math.floor(e.y / TILE_SIZE) }, 0));
         if (!inRoom) this.showToast(HORDE_CLEARED_TOAST);
       },
+    });
+  }
+
+  /** Wydarzenia w pokojach (krok U8a): tylko w pokojach z nawałą (biom ze stworkiem), własny strumień RNG. */
+  private createRoomEvents(): RoomEventManager | null {
+    const horde = this.horde;
+    if (!horde || this.bossRush || !hordeMinionVariant(this.biome.enemyVariants, ENEMY_VARIANTS, ENEMY_DEFINITIONS[EnemyType.Nester].attack)) return null;
+    const rng = createRng(deriveSeed(this.dungeon.seed, ROOM_EVENT_SEED_SALT));
+    const forced = parseStartOverrides(window.location.search).roomEvent ?? null;
+    const plans = planRoomEvents(this.hordePlans, this.floorNumber, ROOM_EVENT_CONFIG, rng, forced);
+    if (plans.length === 0) return null;
+    return new RoomEventManager({
+      scene: this,
+      floor: this.dungeon,
+      floorNumber: this.floorNumber,
+      party: this.party,
+      plans,
+      config: ROOM_EVENT_CONFIG,
+      hordePhase: (roomId) => horde.roomPhase(roomId),
+      enemies: () => this.enemies.living,
+      effects: this.effects,
+      dropLoot: (at, drops) => this.loot.spawn(at, drops),
+      lighting: () => this.lighting ?? null,
+      darkProfile: AMBUSH_CONFIG.dread.profile,
+      tileset: this.biome.tileset,
+      rng,
     });
   }
 
@@ -2188,7 +2260,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       visionRadius: this.floorEffects.visionRadius,
       fog: this.biome.fog,
       bearers: () => this.lightBearers(),
-      extraLights: (withAmbient) => [...(this.braziers?.lights ?? []), ...this.stairsGlow.lights, ...(this.secretRoom?.lights ?? []), ...(withAmbient ? (this.ambient?.lights ?? []) : [])],
+      extraLights: (withAmbient) => [...(this.braziers?.lights ?? []), ...this.stairsGlow.lights, ...(this.secretRoom?.lights ?? []), ...(this.roomEvents?.lights ?? []), ...(withAmbient ? (this.ambient?.lights ?? []) : [])],
       flares: () => this.effects?.fire.activeLights() ?? [],
       hideable: () => this.hideableEnemies(),
       ambientRevealsEnemies: AMBIENT_CONFIG.revealsEnemies,
