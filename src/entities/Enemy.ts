@@ -124,6 +124,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly lurk: Lurk | null;
   private leap: LurkLeap | null = null;
   private readonly lurkStun = new Timer();
+  /** Atak kary (krok U11a): wroga prowadzi `PunishManager` — własne AI i ataki stoją. */
+  private seizedTint: number | null = null;
 
   /** Upiór (krok 49): przesunięcie fazy przenikania i koniec wynurzania (do tej chwili nietykalny i bierny). */
   private readonly phaseOffsetMs: number;
@@ -169,6 +171,50 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.setVisible(false);
       (this.body as Phaser.Physics.Arcade.Body).setImmovable(true);
     }
+  }
+
+  /** Atak kary (krok U11a): przejęcie wroga — przerwany zamach przepada, AI stoi do `release`. */
+  seize(tint: number): void {
+    this.seizedTint = tint;
+    this.attackCycle.interrupt();
+    this.pounceAim = null;
+  }
+
+  release(): void {
+    this.seizedTint = null;
+    this.setVelocity(0, 0);
+    this.updateTint(this.scene.time.now);
+  }
+
+  get isSeized(): boolean {
+    return this.seizedTint !== null;
+  }
+
+  /**
+   * Czy wróg może teraz przejść w atak kary: żywy, poza kryjówką, doskokiem, skokiem, szarżą, ogłuszeniem
+   * i wynurzaniem, cielesny i nie Tarczownik (ma własną szarżę).
+   */
+  canBeSeized(now: number): boolean {
+    return (
+      !this.isDead &&
+      this.active &&
+      !this.isLurking &&
+      !this.leap &&
+      !this.pounce &&
+      this.charge === null &&
+      now >= this.riseUntil &&
+      !this.isIntangible(now) &&
+      !this.status.isStunned(now) &&
+      !this.lurkStun.isActive(now) &&
+      this.seizedTint === null
+    );
+  }
+
+  /** Poza wroga w ataku kary: zamach (stoi przodem do celu) albo bieg taranu. */
+  punishPose(direction: Vector2, running: boolean): void {
+    this.animator.face(direction);
+    if (running) this.animator.play(this.visual.move);
+    else this.animator.play(this.visual.attack ?? this.visual.idle ?? this.visual.move);
   }
 
   /** Czyhacz jeszcze w kryjówce (także przy ostrzeżeniu) — nie celujemy w niego automatycznie. */
@@ -278,6 +324,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     if (this.leap) {
       this.updateLeap(now);
+      return;
+    }
+    if (this.seizedTint !== null) {
+      // Atak kary: ruch i pozę nadaje PunishManager; tu tylko barwa (błysk trafienia ma pierwszeństwo).
+      if (this.hitFlash.isActive(now)) this.updateTint(now);
+      else this.setTint(this.seizedTint);
       return;
     }
     if (this.lurkStun.isActive(now)) {

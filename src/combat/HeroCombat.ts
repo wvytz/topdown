@@ -35,6 +35,9 @@ import { chainTargets, sparkLinkRule } from '@/systems/ChainLightning';
 import { StormTrail } from '@/systems/StormTrail';
 import { HeroEvolutionView, drawBolt, ensureCrescentTexture } from '@/effects/EvolutionEffects';
 import { screenFx } from '@/effects/ScreenFx';
+import { WeightFx } from '@/effects/WeightFx';
+import { scaledDamage } from '@/systems/CombatScale';
+import type { ShotFlight } from '@/combat/PlayerShotManager';
 
 /**
  * Cele ataków bohatera w świecie (wrogowie, boss, kokony, purchawki, ukryta komnata, urny). Scena wie, co jest
@@ -98,6 +101,8 @@ export class HeroCombat {
   private nextSparkAt = 0;
   private readonly stormTrail = new StormTrail();
   private readonly evolutionView: HeroEvolutionView;
+  /** Krok U11a: licznik Passy i pęknięcia przy bohaterze. */
+  private readonly weightFx: WeightFx | null;
 
   constructor(private readonly deps: HeroCombatDeps) {
     this.ultimates = new UltimateManager({
@@ -111,7 +116,11 @@ export class HeroCombat {
       floorNumber: deps.floorNumber,
     });
     this.evolutionView = new HeroEvolutionView(deps.scene);
-    deps.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.evolutionView.destroy());
+    this.weightFx = deps.player.weights.enabled ? new WeightFx(deps.scene, deps.player, deps.hero) : null;
+    deps.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.evolutionView.destroy();
+      this.weightFx?.destroy();
+    });
   }
 
   get player(): Player {
@@ -144,8 +153,10 @@ export class HeroCombat {
       const base = Math.atan2(turn.shot.y, turn.shot.x);
       const spread = Phaser.Math.DegToRad(twinSpreadDeg) / 2;
       const angles = twinShot ? [base - spread, base + spread] : [base];
+      const ranged = { ...combatConfig.ranged, damage: this.boost(combatConfig.ranged.damage) };
+      const tally = this.tally(angles.length);
       for (const angle of angles) {
-        playerShots.fire({ x, y }, { x: Math.cos(angle), y: Math.sin(angle) }, combatConfig.ranged, player.effects, undefined, player, { homing: BARBARIAN_SHOT_HOMING });
+        playerShots.fire({ x, y }, { x: Math.cos(angle), y: Math.sin(angle) }, ranged, player.effects, undefined, player, { homing: BARBARIAN_SHOT_HOMING, ...tally });
       }
       sound.play(SoundCue.ArrowShot, player);
     }
@@ -173,6 +184,20 @@ export class HeroCombat {
     this.ultimates.update(time);
     this.resolveDashStrike(time);
     this.updateEvolutions(time);
+    player.weights.update(time);
+    this.weightFx?.update(time);
+  }
+
+  /** Krok U11a: obrażenia ataku bohatera po bonusie Passy. */
+  private boost(damage: number): number {
+    return scaledDamage(damage, this.deps.player.weights.outgoingMultiplier);
+  }
+
+  /** Krok U11a: numer ataku z `parts` pocisków do Szali (trafienie — Passa, sam lot bez trafienia — pudło). */
+  private tally(parts: number): Pick<ShotFlight, 'tally'> {
+    const { weights } = this.deps.player;
+    const attackId = weights.begin(parts);
+    return attackId > 0 ? { tally: { attackId, end: () => weights.endPart(attackId) } } : {};
   }
 
   /**
@@ -260,7 +285,8 @@ export class HeroCombat {
   }
 
   /** Trafienie pocisku tego bohatera: kieł leczy za stworzenie, kula i strzała mają rozprysk magii. */
-  afterShotHit(shot: { readonly position: Vector2; readonly damage: number; readonly vampiric?: boolean; readonly magic?: boolean }, target: object, creature: boolean, now: number): void {
+  afterShotHit(shot: { readonly position: Vector2; readonly damage: number; readonly vampiric?: boolean; readonly magic?: boolean; readonly attackId?: number }, target: object, creature: boolean, now: number): void {
+    if (creature && shot.attackId) this.deps.player.weights.landPart(shot.attackId, now);
     if (creature && shot.vampiric) this.tryVampireHeal(now);
     if (shot.magic) this.orbSplash(shot.position, shot.damage, target, now);
     // Elektryczna strzała (krok 150): piorun przeskakuje z trafionego stworzenia na najbliższych sąsiadów.
@@ -285,7 +311,7 @@ export class HeroCombat {
       origin,
       direction,
       {
-        damage: orbs.damage,
+        damage: this.boost(orbs.damage),
         knockback: orbs.knockback,
         projectileSpeed: orbs.speed,
         projectileLifetimeMs: orbs.lifetimeMs,
@@ -300,6 +326,7 @@ export class HeroCombat {
         magic: true,
       },
       player,
+      this.tally(1),
     );
   }
 
@@ -320,7 +347,7 @@ export class HeroCombat {
       origin,
       direction,
       {
-        damage: spec.damage,
+        damage: this.boost(spec.damage),
         knockback: spec.knockback,
         projectileSpeed: spec.speed,
         projectileLifetimeMs: bow.lifetimeMs,
@@ -329,6 +356,7 @@ export class HeroCombat {
       player.effects,
       this.arrowLook(direction, spec.strong, spec.pierce),
       player,
+      this.tally(1),
     );
   }
 
@@ -341,8 +369,11 @@ export class HeroCombat {
     const angle = Math.atan2(aim.y, aim.x);
     const origin = crystalPoint(player, angle, bow.forwardOffset, bow.sideOffset);
     sound.play(SoundCue.Volley, player);
-    for (const direction of volleyDirections(angle, volley.arrows, volley.spreadDeg)) {
-      this.deps.playerShots.fire(origin, direction, player.combatConfig.ranged, player.effects, this.arrowLook(direction, false, 0), player);
+    const directions = volleyDirections(angle, volley.arrows, volley.spreadDeg);
+    const ranged = { ...player.combatConfig.ranged, damage: this.boost(player.combatConfig.ranged.damage) };
+    const tally = this.tally(directions.length);
+    for (const direction of directions) {
+      this.deps.playerShots.fire(origin, direction, ranged, player.effects, this.arrowLook(direction, false, 0), player, tally);
     }
   }
 
@@ -412,7 +443,7 @@ export class HeroCombat {
     const length = blocked(from) ? 0 : beamReach(from, angle, config.range, blocked);
     const to = { x: from.x + dir.x * length, y: from.y + dir.y * length };
     const halfWidth = config.halfWidth * beamGrowth(charge, config.growth.widthMultiplier);
-    const damage = Math.max(1, Math.round(config.damagePerTick * beamGrowth(charge, config.growth.damageMultiplier)));
+    const damage = this.boost(Math.max(1, Math.round(config.damagePerTick * beamGrowth(charge, config.growth.damageMultiplier))));
     this.drawBeam(from, to, halfWidth);
     dynamicLights.beam(this.deps.scene, from, to);
     for (let i = 0; i < ticks; i++) {
@@ -430,6 +461,8 @@ export class HeroCombat {
       };
       const hits = this.deps.strikes.beam(beam, player);
       if (!pulse) continue;
+      // Krok U11a: impuls promienia to atak Szali — trafił albo spudłował.
+      player.weights.strike(hits > 0, now);
       if (hits > 0) this.tryVampireHeal(now);
       this.afterMainAttack(now);
     }
@@ -480,7 +513,7 @@ export class HeroCombat {
     const swing: MeleeSwing = {
       origin: { x: player.x, y: player.y },
       angle: player.getAimAngle(),
-      combat,
+      combat: { ...combat, meleeDamage: this.boost(combat.meleeDamage) },
       now,
       status: player.effects.meleeStatus,
     };
@@ -489,7 +522,10 @@ export class HeroCombat {
     sound.play(SoundCue.SwordSwing, swing.origin);
     // Wampirzy kieł: leczenie za cios, który trafił wroga lub bossa (raz na cios, niezależnie od liczby celów).
     // Krok 93: kokony, purchawki i urny już nie leczą.
-    if (this.deps.strikes.melee(swing, player) > 0) {
+    const creatureHits = this.deps.strikes.melee(swing, player);
+    // Krok U11a: cios to atak Szali — trafił stworzenie albo spudłował.
+    player.weights.strike(creatureHits > 0, now);
+    if (creatureHits > 0) {
       this.tryVampireHeal(now);
       // Krok 167/171: cięższe ciosy barbarzyńcy — trafienie czuć w kamerze.
       if (combat.hitShake) screenFx.shake(this.deps.scene.cameras.main, combat.hitShake.durationMs, combat.hitShake.intensity);

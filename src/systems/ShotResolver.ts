@@ -21,6 +21,8 @@ export interface PlayerShot {
   readonly vampiric?: boolean;
   /** Kula Czarodziejki to magia — trafia też bezcielesnych (krok 49b). */
   readonly magic?: boolean;
+  /** Krok U11a, Szala: numer ataku bohatera (0 albo brak — nie liczy się do Passy). */
+  readonly attackId?: number;
 }
 
 export interface ShotResult<T> {
