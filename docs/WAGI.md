@@ -1,6 +1,6 @@
 # System wag — dokument projektowy `#wagi` `#decyzja`
 
-Stan: 12.11.2026, propozycja do akceptacji właściciela. Bez kodu. Po akceptacji system wchodzi etapami U11a–U11d na gałęzi `upgrade-fable` (podgląd `/topdown/upgrade/`), każdy etap w osobnym wątku.
+Stan: 12.11.2026, propozycja do akceptacji właściciela. Bez kodu. **14.11.2026:** właściciel boi się, że pełna wersja utrudni odbiór i zrozumienie — rekomendowana jest wersja lekka z §11. Po akceptacji system wchodzi etapami U11a–U11d na gałęzi `upgrade-fable` (podgląd `/topdown/upgrade/`), każdy etap w osobnym wątku.
 
 ## 0. Skąd ten pomysł
 
@@ -138,3 +138,13 @@ Akt II (`akt-2`) dostanie system po scaleniu do `main`, razem z resztą upgradu.
 2. **Garda** — automatyczna z przodu, bez przycisku (rekomendacja: działa na telefonie i padzie, zgodna z zasadą „bez nowych przycisków”) czy osobny przycisk bloku.
 3. **Liczby obrażeń** — rekomendacja: tylko obrażenia otrzymane nad bohaterem (i „BLOK”), żeby ekran w nawale nie zalał się cyframi.
 4. **Wartości startowe** z §3–§5 są punktem wyjścia do strojenia botem w U11d, nie decyzją balansu.
+
+## 11. Wersja lekka (rekomendacja z 14.11.2026)
+
+Uwaga właściciela: „Czy nie utrudnimy odbioru i zrozumienia?”. Pełna wersja wymaga śledzenia kilku zasobów naraz, a automatyczna garda jest niewidoczna (gracz nie wie, czemu jeden cios zabrał mniej HP). W grze arcade dla dwojga na kanapie każda zasada ma być widoczna na ekranie w sekundę, bez samouczka. Wersja lekka zostawia sedno pomysłu w trzech zasadach:
+
+1. **Trafiasz, to rośniesz.** Licznik combo przy bohaterze (Passa z §4, progi I–III, na III ciężkie ciosy). Pudło (zamach, strzał albo kula bez trafienia) zbija Passę o jeden próg — machanie na ślepo nadal „męczy”.
+2. **Dostajesz, to pękasz.** Przyjęty cios zeruje Passę i dodaje pęknięcie na obrysie bohatera (Odsłonięcie z §4, do III). Pęknięcia schodzą, gdy znowu trafiamy.
+3. **Czerwony znaczy uciekaj.** Przy Odsłonięciu III wróg dostaje okno na atak kary z §5 (zamiast Zadyszki). Czerwone „!!” i linia albo strefa, bez bloku, dash ratuje zawsze.
+
+Do tego znaki w zamachu wrogów (pomarańczowy obrys = ciężki, czerwony = przebijający) jako wspólny język ostrzeżeń. **Odłożone** do testów: Oddech, automatyczna garda, Zadyszka, koszty ataków. Wracają, jeśli wersja lekka okaże się za łatwa. Etapy: U11a — Szala, kara i sygnalizacja z wyłącznikiem `?wagi=0|1`; U11b — wagi wrogów i bossów, co-op, telefon, pomiar botem.
