@@ -1,6 +1,6 @@
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { floorInLoop } from '@/systems/TowerLoop';
-import type { BossDefinition } from '@/core/bossTypes';
+import type { BossDefinition, SpiderlingDefinition } from '@/core/bossTypes';
 import type { BossDuetDefinition } from '@/systems/BossDuet';
 import { BossAttackKind, BossId, PatternOrder } from '@/core/bossTypes';
 import type { EnemyScalingConfig, StatusResistance } from '@/core/combatTypes';
@@ -148,6 +148,12 @@ export const FLOOR_GUARDIAN = {
  * spadają z sufitu pierścieniem wokół gracza (zagrożenie i żywa tarcza: strzał trafia najbliższy cel),
  * siecią za plecy gracza i królewskim skokiem na jego miejsce.
  */
+/** Definicja pajączka bez skoku (krok U8d) — dla żuków Wiedźmy. */
+function withoutLeap(definition: SpiderlingDefinition): SpiderlingDefinition {
+  const { leap: _leap, ...rest } = definition;
+  return rest;
+}
+
 export const SPIDER_QUEEN = {
   id: BossId.SpiderQueen,
   name: 'Matka Pająków',
@@ -247,6 +253,9 @@ export const SPIDER_QUEEN = {
     blastRadius: 40,
     damage: 12,
     knockback: 240,
+    // Krok U8d (backlog audytu: „skok pajączka do bohatera”, podnosi trudność): z 90 px przysiad 0,22 s
+    // (telegraf — pajączek staje i drży), potem skok ×3 prędkości przez 0,26 s w zapamiętane miejsce; po lądowaniu zapłon.
+    leap: { range: 90, windupMs: 220, durationMs: 260, speedMultiplier: 3 },
   },
   enrage: {
     ...ENRAGE_FURY,
@@ -973,7 +982,8 @@ export const DIRTY_WITCH = {
   whirl: { telegraphMs: 700, recoveryMs: 650, damage: 16, knockback: 300, radius: 70, projectileCount: 12, projectileSpeed: 150, projectileLifetimeMs: 1300 },
   // Druga faza: rój żuków (jak wylęg Matki Pająków, mniej naraz) i lot na bocianach.
   brood: { count: 3, maxAlive: 6, birthMs: 667, ringRadius: 70, ringJitterDeg: 20, dropIntervalMs: 180, fallMs: 600, recoveryMs: 400 },
-  spiderling: { ...SPIDER_QUEEN.spiderling, look: 'beetle' },
+  // Żuki Wiedźmy bez skoku pajączka (krok U8d) — skok to cecha pajęczego wylęgu.
+  spiderling: { ...withoutLeap(SPIDER_QUEEN.spiderling), look: 'beetle' },
   leap: { telegraphMs: 700, flightMs: 650, radius: 60, damage: 16, knockback: 300, recoveryMs: 700, lead: { ms: 400, maxPx: 90 } },
   shouts: {
     idle: ['Hi hi hi!', 'Hihihi…', 'Za czysto tu!', 'Ptaszki moje!', 'Nabłocę wam!'],

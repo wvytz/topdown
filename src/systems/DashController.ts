@@ -42,6 +42,11 @@ export class DashController {
     return this.active.isActive(now);
   }
 
+  /** Kierunek bieżącego (ostatniego) dasha — wektor jednostkowy (krok U8c: odrzut Rozdeptania na boki). */
+  get heading(): Vector2 {
+    return this.direction;
+  }
+
   velocity(): Vector2 {
     return { x: this.direction.x * this.config.speed, y: this.direction.y * this.config.speed };
   }

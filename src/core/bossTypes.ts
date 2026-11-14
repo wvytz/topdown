@@ -365,6 +365,16 @@ export interface SpiderlingDefinition {
   readonly knockback: number;
   /** Wygląd: pajączek (domyślnie) albo żuk z roju Brudnej Wiedźmy (krok 137). */
   readonly look?: 'beetle';
+  /** Krok U8d: skok do bohatera z bliska (brak — pajączek tylko biegnie). */
+  readonly leap?: SpiderlingLeap;
+}
+
+/** Skok pajączka: w zasięgu `range` przysiad `windupMs`, potem lot `durationMs` z prędkością ×`speedMultiplier`. */
+export interface SpiderlingLeap {
+  readonly range: number;
+  readonly windupMs: number;
+  readonly durationMs: number;
+  readonly speedMultiplier: number;
 }
 
 /**

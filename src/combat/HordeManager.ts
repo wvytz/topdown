@@ -11,9 +11,8 @@ import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Enemy } from '@/entities/Enemy';
 import type { Party } from '@/entities/Party';
 import type { EnemyManager } from '@/combat/EnemyManager';
-import { pickRetinueTiles } from '@/systems/BossRetinue';
 import type { HordeConfig, HordeRoomPlan } from '@/systems/Horde';
-import { HordePhase, HordeRoomState, hordeRoomForSpawn, isInsideRoom } from '@/systems/Horde';
+import { HordePhase, HordeRoomState, hordeRoomForSpawn, isInsideRoom, pickHordeTiles } from '@/systems/Horde';
 
 export interface HordeManagerDeps {
   readonly scene: Phaser.Scene;
@@ -107,7 +106,7 @@ export class HordeManager {
     const { config, floor, rng, scene } = this.deps;
     const room = hordeRoomForSpawn(horde.queued, this.deps.enemies.aliveCount + this.pendingCount, config.maxAliveEnemies);
     if (room <= 0) return;
-    const tiles = pickRetinueTiles(floor, horde.room, heroTiles, room, config.minPlayerDistanceTiles, rng);
+    const tiles = pickHordeTiles(floor, horde.room, heroTiles, room, config.minPlayerDistanceTiles, rng);
     for (const tile of tiles) {
       const position = { x: (tile.x + 0.5) * TILE_SIZE, y: (tile.y + 0.5) * TILE_SIZE };
       horde.pending.push({ at: now + config.telegraphMs, position, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });

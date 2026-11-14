@@ -40,7 +40,7 @@ Właściciel nie odpowiedział na pytania pojedynczo, tylko polecił wdrażać. 
 | 4 | Kto widzi nową oprawę | Najpierw właściciel na podglądzie, testerzy po akceptacji paczki |
 | 5 | Zoom | **Zmienione 11.11.2026 przez właściciela:** kamera 1,6 domyślnie (skala płótna dalej od 2,0) |
 | 6 | Powtarzalność | Wydarzenia w pokojach i przeklęta skrzynia; kupiec z Aktem II |
-| 7 | Przemiana Butów | „Rozdeptanie”: dash przez wrogów rani ich i odpycha. Wchodzi w U8 jako propozycja do oceny na podglądzie |
+| 7 | Przemiana Butów | „Rozdeptanie”: dash przez wrogów rani ich i odpycha. Wchodzi w U8 jako propozycja do oceny na podglądzie (zrobione: krok U8c) |
 | 8 | Balans | Upgrade nie zmienia liczb; w U8 pomiar botem i lista propozycji |
 | 9 | Barwy klas | Akcent na sprite'ach, bez przemalowania postaci |
 | 10 | Wiedźma jako bohaterka, 3. faza | Po upgradzie |
@@ -62,6 +62,7 @@ Każdy etap to osobny wątek. U0–U3 po kolei, od U4 najwyżej dwa wątki naraz
 | **U6. Bossowie** | Wejście bossa z kartą, widoczne fazy, śmierć Pożeracza, smagnięcie Matki Pająków, rekwizyty aren 6–7 z generatora | Każdy z 7 bossów ma wejście, fazy i śmierć; liczby walk bez zmian | Wyłącznik karty w config |
 | **U7. Interfejs** | Jeden pikselowy krój pisma, nowy HUD, karty z ikonami, pauza/menu/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranach końca | Ten sam wygląd na PC, padzie i telefonie; ekran startowy nietknięty | Stary interfejs na `main` do scalenia paczki (krok U7: bez flagi — krój dotyka wszystkich ekranów) |
 | **U8. Rozgrywka** | Wydarzenia w pokojach, przeklęta skrzynia, przemiana Butów, własni wrogowie luster i ogrodu, skok pajączka, pomiar bohaterów botem | Dwa runy tym samym bohaterem różnią się przebiegiem pokojów; raport balansu | Wyłącznik każdej nowości w config |
+| | *Stan 14.11.2026: U8a wydarzenia w pokojach, U8b przeklęta skrzynia, U8c Rozdeptanie, U8d skok pajączka, U8e pomiar botem (`tools/balance.mjs`, raport w `docs/balance/`), U8f złapanie uciekiniera. Zostało z U8: własni wrogowie luster i ogrodu (nowe skórki i zachowania archetypów — generator).* | | |
 | **U9. Platformy** | Telefon, naprawa bota i „Graj z botem”, zmiana imienia i filtr, dźwięki nowych efektów | Smoke solo, co-op i bot zielone | Małe osobne PR-y |
 | **U11. System wag** | Wagi ataków, Oddech z automatyczną gardą, Zadyszka i atak kary, Szala, sygnalizacja trafień zamiast krwi (`docs/WAGI.md`, kroki U11a–U11d) | Akceptacja właściciela na podglądzie, raport trudności botem przed i po | `?wagi=0`, `COMBAT_WEIGHT_CONFIG.enabled` |
 | **U10. Scalenie** | Paczkami do `main`, pełny smoke, wdrożenie z `.env.production` | „Tak” właściciela dla każdej paczki | Tag na `main` |

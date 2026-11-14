@@ -5,6 +5,10 @@ import { directionTo, distance } from '@/systems/CombatMath';
 export enum SpiderlingPhase {
   /** Biegnie do gracza. */
   Chasing = 'chasing',
+  /** Krok U8d: przysiad przed skokiem (telegraf) — stoi i patrzy na bohatera. */
+  Crouching = 'crouching',
+  /** Krok U8d: lot w zapamiętane miejsce bohatera; po lądowaniu zapłon. */
+  Leaping = 'leaping',
   /** Zapłon: stoi i świeci (telegraf), potem wybucha. */
   Priming = 'priming',
   /** Wybuchł — warstwa Phasera zadaje obrażenia i usuwa pajączka. */
@@ -18,6 +22,8 @@ export interface SpiderlingDecision {
   readonly explode: boolean;
   /** Zapłon właśnie się zaczął (warstwa widoku startuje animację i telegraf). */
   readonly primeStarted: boolean;
+  /** Mnożnik prędkości ruchu (skok — szybciej); brak = 1. */
+  readonly speedMultiplier?: number;
 }
 
 const STOP: MovementIntent = { x: 0, y: 0 };
@@ -30,6 +36,10 @@ const STOP: MovementIntent = { x: 0, y: 0 };
 export class SpiderlingBrain {
   private phase = SpiderlingPhase.Chasing;
   private explodeAt = Infinity;
+  /** Koniec przysiadu albo lotu (krok U8d). */
+  private leapPhaseEndsAt = Infinity;
+  /** Miejsce skoku: bohater w chwili wybicia. */
+  private leapTarget: Vector2 | null = null;
 
   constructor(
     private readonly definition: SpiderlingDefinition,
@@ -51,13 +61,32 @@ export class SpiderlingBrain {
     }
 
     let primeStarted = false;
+    const prime = (): void => {
+      this.phase = SpiderlingPhase.Priming;
+      this.explodeAt = now + this.definition.primeMs;
+      primeStarted = true;
+    };
+    const leap = this.definition.leap;
     if (this.phase === SpiderlingPhase.Chasing) {
-      const close = distance(self, target) <= this.definition.primeRange;
-      if (close || now - this.bornAt >= this.definition.fuseMs) {
-        this.phase = SpiderlingPhase.Priming;
-        this.explodeAt = now + this.definition.primeMs;
-        primeStarted = true;
+      const dist = distance(self, target);
+      if (dist <= this.definition.primeRange || now - this.bornAt >= this.definition.fuseMs) prime();
+      else if (leap && dist <= leap.range) {
+        // Krok U8d: z bliska przysiad, potem skok — bohater widzi drgnięcie i ma chwilę na unik.
+        this.phase = SpiderlingPhase.Crouching;
+        this.leapPhaseEndsAt = now + leap.windupMs;
       }
+    }
+    if (this.phase === SpiderlingPhase.Crouching && leap) {
+      if (now < this.leapPhaseEndsAt) return { move: STOP, phase: this.phase, explode: false, primeStarted };
+      this.phase = SpiderlingPhase.Leaping;
+      this.leapTarget = { x: target.x, y: target.y };
+      this.leapPhaseEndsAt = now + leap.durationMs;
+    }
+    if (this.phase === SpiderlingPhase.Leaping && leap) {
+      const aim = this.leapTarget ?? target;
+      // Ląduje po czasie lotu, w zapamiętanym miejscu albo przy bohaterze — i od razu zapala lont.
+      if (now >= this.leapPhaseEndsAt || distance(self, aim) <= this.definition.radius || distance(self, target) <= this.definition.primeRange) prime();
+      else return { move: directionTo(self, aim), phase: this.phase, explode: false, primeStarted, speedMultiplier: leap.speedMultiplier };
     }
 
     if (this.phase === SpiderlingPhase.Priming) {

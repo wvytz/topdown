@@ -4,6 +4,7 @@ import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
 import { RoomKind } from '@/core/dungeonTypes';
 import type { Rng } from '@/core/random';
 import type { EnemyVariantDefinition } from '@/systems/EnemyVariants';
+import { pickRetinueTiles } from '@/systems/BossRetinue';
 
 /** Nawała (krok 175): fale kruchych stworków budzone pierwszym wejściem do pokoju. Liczby w `config/hordeConfig.ts`. */
 export interface HordeConfig {
@@ -131,4 +132,24 @@ export function hordeMinionVariant(
 ): EnemyVariant | null {
   const attack = variants[biomeVariants[EnemyType.Nester]]?.attack ?? fallback;
   return attack?.kind === EnemyAttackKind.Brood ? attack.minion : null;
+}
+
+/**
+ * Kafle wyjścia stworków fali: najpierw co najmniej `minDistance` kafli od bohaterów; gdy takich nie ma (mały pokój,
+ * dwóch bohaterów w co-opie albo bohater na środku), dystans maleje aż do 1 kafla. Krok U8e: wcześniej taka fala
+ * przepadała w całości — pokój bez nawały, a wydarzenie w nim (U8a) kończyło się od razu wygraną.
+ */
+export function pickHordeTiles(
+  floor: Pick<DungeonFloor, 'width' | 'tiles'>,
+  room: Room,
+  heroes: readonly TilePoint[],
+  count: number,
+  minDistance: number,
+  rng: Rng,
+): TilePoint[] {
+  for (let distance = minDistance; distance >= 1; distance--) {
+    const tiles = pickRetinueTiles(floor, room, heroes, count, distance, rng);
+    if (tiles.length > 0) return tiles;
+  }
+  return [];
 }
