@@ -6520,6 +6520,14 @@ Pierwsza część etapu U9 (platformy), wg `docs/UPGRADE.md` i backlogu („bot 
 
 **Do oceny:** czy bot nie odchodzi za daleko na arenie (liczby w `PARTNER_BOT_CONFIG.boss`).
 
+## Krok U9b — Zmiana imienia z gry i filtr wulgaryzmów `#upgrade` `#platformy` `#tablica-wynikow`
+
+- **Imię w pauzie:** „Dźwięk i obraz” → „IMIĘ: …” otwiera okienko DOM (`browser/NameBox.ts`, jak „Napisz do autora” — prawdziwe pole daje klawiaturę ekranową na telefonie). Enter/„Zapisz” zapisuje, Esc/„Anuluj” zamyka, pad: A — zapisz, B — anuluj. Puste pole czyści imię (przy następnej śmierci gra zapyta znowu). Działa na PC, padzie i telefonie.
+- **Filtr wulgaryzmów** (`systems/NameFilter.ts`, rdzenie w `config/nameFilterConfig.ts`): imię sprowadzone do „szkieletu” — małe litery bez ogonków, cyfry jak litery (0→o, 4→a…), bez spacji, „_”, „-” i powtórzeń liter — więc „KuRRw4” czy „f_u_c_k” też odpadają. Rdzenie polskie, angielskie i nazistowskie, dobrane tak, by nie łapać zwykłych imion (test: Łukasz, Hubert, Scipio, Nigel, Kuba…). Filtr działa w okienku (komunikat „Tego imienia nie da się użyć”), przy wpisywaniu imienia na ekranie śmierci (PC i telefon — zakazane imię = wynik bez imienia) i na imieniu zapamiętanym sprzed filtra.
+- Worker wspólnej tablicy bez zmian (filtr tylko po stronie gry) — filtr po stronie workera do rozważenia, gdy ktoś obejdzie grę.
+
+**Testy:** `NameFilter.test.ts`, `pauseMenu.test.ts`. Build zielony (3153 testy). Przeglądarka: pauza → „Dźwięk i obraz” → „IMIĘ: —” → „kurwa” odrzucone z komunikatem, „Wicio” zapisane w `tower-crawler.player-name.v1`.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6542,7 +6550,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
-- **U9 platformy:** zrobione U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu); zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
+- **U9 platformy:** zrobione U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu) i U9b (zmiana imienia w pauzie, filtr wulgaryzmów); telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
 - **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b zrobione, U11a–U11b przyjęte przez właściciela 14.11.2026 (`#ocena`):** „!” w ciężkim zamachu, ciężkie ciosy Passy III, kara bossów, licznik na telefonie, unik bota, `npm run bench:wagi`. Dalej: strojenie liczb po ocenie właściciela; Oddech i garda tylko, jeśli wersja lekka okaże się za łatwa.
 
 **4. Odłożone — tylko za zgodą właściciela**

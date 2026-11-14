@@ -163,6 +163,8 @@ import { createBoardHighscores } from '@/persistence/highscoreBoards';
 import { PlayerName } from '@/persistence/PlayerName';
 import type { ScoreEntry } from '@/systems/Highscores';
 import { isNameChar, sanitizePlayerName } from '@/systems/Highscores';
+import { isNameAllowed } from '@/systems/NameFilter';
+import { NAME_FILTER_CONFIG } from '@/config/nameFilterConfig';
 import { FEEDBACK_CONFIG } from '@/config/feedbackConfig';
 import { feedbackUi } from '@/diagnostics/FeedbackBox';
 import type { FloorModifierDefinition, FloorModifierEffects } from '@/core/floorModifierTypes';
@@ -1982,7 +1984,9 @@ export class GameScene extends Phaser.Scene implements HudSource {
       this.awaitNewRun();
       return;
     }
-    const remembered = this.playerName.load();
+    // Krok U9b: imię z filtrem wulgaryzmów — także zapamiętane sprzed filtra.
+    const loaded = this.playerName.load();
+    const remembered = loaded && isNameAllowed(loaded, NAME_FILTER_CONFIG) ? loaded : null;
     if (remembered) {
       this.recordDeath({ ...base, name: remembered });
       return;
@@ -1995,7 +1999,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
     const finish = (raw: string | null): void => {
       this.input.keyboard?.off('keydown', onKey);
       this.deathPad = null;
-      const name = raw ? sanitizePlayerName(raw, maxLength) : '';
+      const clean = raw ? sanitizePlayerName(raw, maxLength) : '';
+      const name = isNameAllowed(clean, NAME_FILTER_CONFIG) ? clean : '';
       if (name) this.playerName.save(name);
       this.recordDeath(name ? { ...base, name } : base);
     };
