@@ -25,6 +25,12 @@ describe('start z adresu — run testowy (krok 41g)', () => {
     expect(parseStartOverrides('?vault=0')).toEqual({ practice: false });
   });
 
+  it('wydarzenie w pokojach i przeklęta skrzynia z adresu (krok U8) — run testowy', () => {
+    expect(parseStartOverrides('?event=purse')).toEqual({ roomEvent: 'purse', practice: true });
+    expect(parseStartOverrides('?event=nope')).toEqual({ practice: false });
+    expect(parseStartOverrides('?chest=1')).toEqual({ cursedChest: true, practice: true });
+  });
+
   it('błędne wartości są pomijane', () => {
     expect(parseStartOverrides('?floor=0&seed=abc')).toEqual({ practice: false });
     expect(parseStartOverrides('?floor=2.5&seed=')).toEqual({ practice: false });

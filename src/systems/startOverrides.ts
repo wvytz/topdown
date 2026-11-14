@@ -16,6 +16,8 @@ export interface StartOverrides {
   readonly ambush?: AmbushVariant;
   /** `?event=torch|purse|dark` (krok U8a): każdy pokój z nawałą dostaje to wydarzenie. */
   readonly roomEvent?: RoomEventKind;
+  /** `?chest=1` (krok U8b): przeklęta skrzynia na każdym piętrze. */
+  readonly cursedChest?: boolean;
   /** true, gdy adres zmienił piętro albo seed — wynik runu nie jest zapisywany. */
   readonly practice: boolean;
 }
@@ -30,6 +32,7 @@ export function parseStartOverrides(search: string): StartOverrides {
   const atVault = params.get('vault') === '1';
   const ambush = Object.values(AmbushVariant).find((v) => v === params.get('ambush'));
   const roomEvent = Object.values(RoomEventKind).find((v) => v === params.get('event'));
+  const cursedChest = params.get('chest') === '1';
   return {
     ...(atBoss ? { atBoss } : {}),
     ...(atVault ? { atVault } : {}),
@@ -37,6 +40,7 @@ export function parseStartOverrides(search: string): StartOverrides {
     ...(startFloor !== undefined ? { floor: startFloor } : {}),
     ...(ambush ? { ambush } : {}),
     ...(roomEvent ? { roomEvent } : {}),
-    practice: atBoss || atVault || ambush !== undefined || roomEvent !== undefined || runSeed !== undefined || (startFloor !== undefined && startFloor > 1),
+    ...(cursedChest ? { cursedChest } : {}),
+    practice: atBoss || atVault || ambush !== undefined || roomEvent !== undefined || cursedChest || runSeed !== undefined || (startFloor !== undefined && startFloor > 1),
   };
 }

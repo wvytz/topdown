@@ -6456,6 +6456,22 @@ Etap U8 („Rozgrywka”) z `docs/UPGRADE.md`, ustalenie 6: lek na „grę powta
 
 **Weryfikacja:** `npm run build` zielony; w przeglądarce (piętro 3, seed 7 i piętro 1, seed 11): pochodnia budzi się z nawałą i maleje, wybicie pokoju daje złoto (28 na piętrze 3), skrócona pochodnia gaśnie i zapada mrok 0,85; sakiewka ucieka i po złapaniu daje złoto; ciemny pokój zapada w mrok 0,9 i jaśnieje po wybiciu. Bez błędów w konsoli.
 
+## Krok U8b — Przeklęta skrzynia `#upgrade` `#rozgrywka` `#przekleta-skrzynia`
+
+Drugi lek na „grę powtarzalną” z ustalenia 6 (`docs/UPGRADE.md`) i „pokoje ryzyka” z backlogu po kroku 41g. W odróżnieniu od zasadzki to **wybór gracza**: skrzynię można ominąć.
+
+**Co powstało**
+- **Plan** (`systems/CursedChest.ts`, liczby w `config/cursedChestConfig.ts`, strumień RNG `CURSED_CHEST_SEED_SALT`): na piętrze najwyżej jedna skrzynia — szansa 35% na piętrze 1, 60% na 2–3, 70% dalej. Stoi w zwykłym pokoju bez kapliczki i bez kryjówki Czyhacza, najpierw w ślepej odnodze, kafel na północ od środka (środek bywa zajęty przez pochodnię z U8a).
+- **Wygląd** (`tools/loot_sprites.py`, atlas łupów): drewniana skrzynia z okuciami, zamek z fioletowym okiem i przerywany fioletowy pierścień klątwy (puls 4 klatki) + skrzynia otwarta.
+- **Otwarcie** (`world/CursedChestSite.ts`): przy skrzyni podpowiedź „[E] Otwórz” w fiolecie (jak kapliczka — to decyzja gracza, więc klawisz trzeba pokazać; E działa też z pada i przyciskiem na telefonie przez `canInteract`). Otwarcie budzi klątwę: 2 elity (od piętra 4 — 3) wychodzą z fioletowych znaczników w pierścieniu 2 kafli wokół skrzyni (0,7 s telegrafu, 0,5 s biernego wychodzenia). Archetypy Rusher/Kiter w wariancie biomu, cechy z puli elit piętra w liczbie z pętli wieży. Elity mają zwykły łup elit.
+- **Nagroda**: po wybiciu klątwy skrzynia wyrzuca przedmiot z puli otwierającego (bez przedmiotów, które nic mu nie dadzą — krok 117) i złoto (20 + 6 na piętro). Bez napisu „klątwa zdjęta” — nagrodą mówi sam łup.
+- **Wyłącznik:** `CURSED_CHEST_CONFIG.enabled`; `?chest=1` — skrzynia na każdym piętrze (run testowy).
+- Nowy rodzaj przedmiotu nie powstał — skrzynia daje przedmioty z istniejącej puli.
+
+**Testy:** `tests/systems/cursedChest.test.ts` (miejsce na posadzce zwykłego pokoju z dala od kapliczki, szansa wg piętra, wyłącznik i wymuszenie, skład klątwy, pierścień wyjścia, stan: otwarcie raz i zdjęcie po wybiciu); `startOverrides.test.ts` — `?event` i `?chest`.
+
+**Weryfikacja:** w przeglądarce (piętro 4, seed 5, Czarodziejka, `?chest=1`): podpowiedź przy skrzyni, E otwiera, 3 elity (Ognisty, Wybuchowy, Wampiryczny) wychodzą ze znaczników, po ich wybiciu wypadły Buty i złoto (+78 z łupem elit). Bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6637,7 +6653,7 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
-**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; wydarzenia w pokojach — krok U8a; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
+**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; wydarzenia w pokojach — krok U8a; przeklęta skrzynia — krok U8b), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
 **Ruiny po apokalipsie (krok 155)** `#ruiny` `#lore`: śmieci i zniszczenie na piętrze 1 — czeka na ocenę (gęstość, kości vs łupy). Lore: im wyżej, tym mniej ruiny i więcej resztek cywilizacji.
 

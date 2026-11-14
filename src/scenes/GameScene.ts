@@ -98,7 +98,10 @@ import {
 import { ELITE_CONFIG } from '@/config/eliteConfig';
 import { TOWER_CONFIG } from '@/config/towerConfig';
 import { eliteAffixCount, runEndsAfterFloor } from '@/systems/TowerLoop';
-import { eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
+import { availableAffixes, eliteAnnouncement, eliteLoot, isElite, rollElites } from '@/systems/Elites';
+import { CURSED_CHEST_CONFIG } from '@/config/cursedChestConfig';
+import { planCursedChest } from '@/systems/CursedChest';
+import { CursedChestSite } from '@/world/CursedChestSite';
 import { BossEncounter } from '@/combat/BossEncounter';
 import { duetForFloor } from '@/systems/BossDuet';
 import { CeilingDropManager } from '@/combat/CeilingDropManager';
@@ -265,6 +268,7 @@ const BREAKABLE_SEED_SALT = 0xb7ea;
 const AMBIENT_SEED_SALT = 0x11fe;
 const HORDE_SEED_SALT = 0x40de;
 const ROOM_EVENT_SEED_SALT = 0x0e7e;
+const CURSED_CHEST_SEED_SALT = 0xc4e5;
 /** Ostatnia fala nawały wybita (krok 175) — etap „zero błąkania”: wiadomo, że można iść dalej. */
 const HORDE_CLEARED_TOAST = 'Droga wolna';
 const TOAST_DURATION_MS = 2500;
@@ -380,6 +384,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   } | null = null;
   /** Kapliczka piętra; null w arenach bossów (krok 90). */
   private shrine: ShrineSite | null = null;
+  /** Przeklęta skrzynia (krok U8b). */
+  private cursedChest: CursedChestSite | null = null;
   private arenaGates!: ArenaGates;
   /** Krok 99: cofa gracza przepchniętego przez mur lub kratę (i poza zamkniętą arenę). */
   private containment = new Map<Player, PlayerContainment>();
@@ -437,6 +443,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.bossRushArena = isBossRush(data.run.mode) ? new BossRushArena(BOSS_RUSH_CONFIG.teleportDelayMs) : null;
     this.saveLock = new BossSaveLock(this.bossRushArena !== null);
     this.shrine = null;
+    this.cursedChest = null;
     this.floorNumber = data.floor;
     this.run = new RunState(data.run);
     this.startHp = data.run.hp;
@@ -555,6 +562,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     this.setupLoot();
     if (!this.bossRush) {
       this.setupShrine();
+      this.setupCursedChest();
       this.setupRuinsProps();
     }
     this.setupSecretRoom();
@@ -774,6 +782,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     );
     this.loot.update(time);
     this.shrine?.update(interactOf);
+    this.cursedChest?.update(time, interactOf);
     this.updateRevives(time);
 
     // Co-op: run trwa, dopóki stoi choć jeden bohater (powalonego wskrzesza partner).
@@ -801,7 +810,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
       enemiesAlive: ready ? this.enemies.aliveCount : 0,
       stairsUnlocked: this.stairsUnlocked,
       onStairs: this.onStairs,
-      canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false)),
+      canInteract: ready && !this.player.isDead && (this.onStairs || (this.shrine?.canOffer ?? false) || (this.cursedChest?.canOpen ?? false)),
       isPlayerDead: ready && this.party.isDown,
       minimap: ready ? this.minimapData() : null,
       boss: ready ? this.bossFight.getStatus() : null,
@@ -1475,6 +1484,31 @@ export class GameScene extends Phaser.Scene implements HudSource {
         sound.play(SoundCue.Shrine, hero);
         this.grantItem(itemId, hero);
       },
+    });
+  }
+
+  /** Przeklęta skrzynia (krok U8b): z dala od kapliczki i kryjówek Czyhaczy, własny strumień RNG; `?chest=1` — zawsze. */
+  private setupCursedChest(): void {
+    const rng = createRng(deriveSeed(this.dungeon.seed, CURSED_CHEST_SEED_SALT));
+    const shrineTile = planShrineLocation(this.dungeon, createRng(deriveSeed(this.dungeon.seed, SHRINE_SEED_SALT)));
+    const avoid = [...(shrineTile ? [shrineTile] : []), ...this.lurkerDens];
+    const forced = parseStartOverrides(window.location.search).cursedChest ?? false;
+    const plan = planCursedChest(this.dungeon, this.floorNumber, CURSED_CHEST_CONFIG, rng, avoid, forced);
+    if (!plan) return;
+    this.cursedChest = new CursedChestSite({
+      scene: this,
+      floor: this.dungeon,
+      floorNumber: this.floorNumber,
+      plan,
+      config: CURSED_CHEST_CONFIG,
+      party: this.party,
+      rng,
+      spawnElite: (type, at, affixes, riseMs) => this.enemies.spawnAt(type, at, affixes, { riseMs }),
+      affixPool: (type) => availableAffixes(ELITE_CONFIG, type, this.floorNumber),
+      affixCount: eliteAffixCount(this.floorNumber, TOWER_CONFIG),
+      poolFor: (hero) => this.usefulPoolFor(hero),
+      dropLoot: (at, drops) => this.loot.spawn(at, drops),
+      effects: this.effects,
     });
   }
 
