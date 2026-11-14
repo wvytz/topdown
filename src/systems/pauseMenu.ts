@@ -37,6 +37,8 @@ export enum PauseItem {
   ReduceFlashes = 'reduceFlashes',
   Fill = 'fill',
   Fullscreen = 'fullscreen',
+  /** Krok U9b: imię na tablicy wyników — okienko zmiany imienia (z filtrem wulgaryzmów). */
+  PlayerName = 'playerName',
   Back = 'back',
 }
 
@@ -75,6 +77,7 @@ export function pauseItems(page: PausePage, options: PauseMenuOptions): readonly
         PauseItem.Quality,
         PauseItem.ReduceFlashes,
         ...(options.display ? [PauseItem.Fill, PauseItem.Fullscreen] : []),
+        PauseItem.PlayerName,
         PauseItem.Back,
       ];
     case PausePage.Controls:

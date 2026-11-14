@@ -8,6 +8,13 @@ import type { AimTarget } from '@/systems/touchAim';
 import type { PlayerShot } from '@/systems/ShotResolver';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { LOOT_ATLAS, lootAnimationKey } from '@/config/spriteConfig';
+import { LightKind } from '@/core/lightTypes';
+import { dynamicLights } from '@/effects/DynamicLights';
+
+/** Strzelec z bronią Czarodziejki (kula) — bez importu klasy gracza. */
+function isSorceress(owner: object | undefined): boolean {
+  return !!owner && 'sorceryConfig' in owner && !!(owner as { readonly sorceryConfig: unknown }).sorceryConfig;
+}
 
 /** Parametry lotu i trafienia pocisku gracza (strzał barbarzyńcy, kula Czarodziejki, strzała łucznika). */
 export type ShotSpec = Pick<RangedConfig, 'damage' | 'knockback' | 'projectileSpeed' | 'projectileLifetimeMs' | 'projectileRadius'>;
@@ -31,6 +38,11 @@ export interface ShotFlight {
   readonly homing?: HomingConfig;
   /** Krok 150, fala ostrza: przebija tylu wrogów niezależnie od Szurikena. */
   readonly pierce?: number;
+  /**
+   * Krok U11a, Szala: numer ataku (trafienie zgłasza scena przez `PlayerShot.attackId`) i wywołanie na koniec lotu
+   * (mur, wygaśnięcie, ostatnie przebicie) — atak bez trafienia to pudło.
+   */
+  readonly tally?: { readonly attackId: number; readonly end: () => void };
 }
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. `owner` — strzelec (co-op: który bohater). */
@@ -57,6 +69,8 @@ export class PlayerShotManager {
     walls: Phaser.Tilemaps.TilemapLayer,
   ) {
     this.group = scene.physics.add.group({ classType: Projectile });
+    // Krok U3: pociski świecą w mroku — kule Czarodziejki fioletem, reszta ciepłą bielą.
+    dynamicLights.trackShots(this.group, (shot) => (isSorceress(this.owners.get(shot as Projectile)) ? LightKind.Magic : LightKind.Shot));
     scene.physics.add.collider(this.group, walls, (shot, tile) => {
       if (!(shot instanceof Projectile)) return;
       // Lustro odbija (fizyka już odbiła pocisk — każdy ma sprężystość 1), przeszkoda areny przyjmuje trafienie.
@@ -92,6 +106,10 @@ export class PlayerShotManager {
     shot.vampiric = look?.vampiric ?? false;
     shot.magic = look?.magic ?? false;
     shot.homing = flight?.homing ?? null;
+    if (flight?.tally) {
+      shot.attackId = flight.tally.attackId;
+      shot.once(Phaser.GameObjects.Events.DESTROY, flight.tally.end);
+    }
     shot.setDepth(RENDER_DEPTH.projectile);
     if (owner) this.owners.set(shot, owner);
 
@@ -147,6 +165,7 @@ export class PlayerShotManager {
         ignore: child.hitTargets,
         vampiric: child.vampiric,
         magic: child.magic,
+        attackId: child.attackId,
       }, this.owners.get(child) ?? null);
       if (!target) continue;
       child.hitTargets.add(target);

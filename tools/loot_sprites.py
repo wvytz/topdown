@@ -18,7 +18,7 @@ import os
 import sys
 
 import tower_ruins_tiles as trt
-from tower_ruins_tiles import BONE, DIRT, FLAME, GOLD, IRON, OUT, Img, hx, ok, outline, to_hex
+from tower_ruins_tiles import BONE, DIRT, FLAME, GOLD, IRON, OUT, SLIME, Img, hx, ok, outline, to_hex
 
 CELL = 16
 SHRINE = 32
@@ -558,6 +558,104 @@ def shrine_frames():
     return frames
 
 
+def purse_frames():
+    """Sakiewka na nóżkach (krok U8a, „złoto ucieka”): skórzany worek z monetami u wylotu, 4 klatki biegu."""
+    leather = (hx('#5e3a20'), hx('#93602f'), hx('#c48a4a'))  # jaśniejsza skóra niż drewno: czytelna na ciemnej posadzce
+    frames = []
+    for f in range(4):
+        img = Img(CELL, CELL)
+        bob = 1 if f in (1, 3) else 0
+        top = 3 + bob
+        # worek: elipsa 10x8
+        for y in range(top + 3, top + 11):
+            for x in range(3, 13):
+                dx = (x + .5 - 8) / 5
+                dy = (y + .5 - (top + 7)) / 4
+                if dx * dx + dy * dy > 1.0:
+                    continue
+                c = leather[1]
+                if dx < -.3 and dy < 0:
+                    c = leather[2]
+                elif dx > .45 or dy > .55:
+                    c = leather[0]
+                img.put(x, y, c)
+        # szyjka ze sznurkiem
+        for x in range(6, 10):
+            img.put(x, top + 2, leather[1])
+            img.put(x, top + 3, GOLD[1])
+        # monety wystające z wylotu
+        for x, y, c in ((6, top, GOLD[2]), (7, top, GOLD[3]), (8, top + 1, GOLD[2]), (9, top, GOLD[2]), (7, top + 1, GOLD[2])):
+            img.put(x, y, c)
+        # nóżki: na zmianę
+        legs = ((5, 10), (10, 5))[f % 2]
+        for i, lx in enumerate((5, 10)):
+            length = 2 if (f % 2 == 0) == (i == 0) else 1
+            for d in range(length):
+                img.put(lx, top + 11 + d, leather[0])
+        _ = legs
+        # oczko-połysk złota na worku
+        img.put(9, top + 6, GOLD[2])
+        outline(img, OUT)
+        frames.append(img)
+    return frames
+
+
+def cursed_chest_frames():
+    """Przeklęta skrzynia (krok U8b) 32x32: drewno, żelazne okucia, fioletowa poświata klątwy (puls 4 klatki) + otwarta."""
+    wood = (DIRT[2], DIRT[3], DIRT[4])
+
+    def chest(open_lid):
+        img = Img(SHRINE, SHRINE)
+        x0, x1, y0, y1 = 6, 26, 15, 28
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                c = wood[1] if (y - y0) % 4 else wood[0]
+                if x in (x0, x1 - 1) or y == y1 - 1:
+                    c = wood[0]
+                img.put(x, y, c)
+        for x in (x0 + 3, x1 - 4):  # okucia
+            for y in range(y0, y1):
+                img.put(x, y, IRON[1])
+        if open_lid:
+            for y in range(7, 12):
+                for x in range(x0, x1):
+                    img.put(x, y, wood[0] if y in (7, 11) else wood[2])
+            for x in range(x0 + 1, x1 - 1):  # wnętrze — pustka
+                img.put(x, y0, SLIME[0])
+                img.put(x, y0 + 1, SLIME[1])
+        else:
+            for y in range(10, y0):
+                for x in range(x0, x1):
+                    c = wood[2] if y == 10 else wood[1]
+                    img.put(x, y, c)
+            for x in (x0 + 3, x1 - 4):
+                for y in range(10, y0):
+                    img.put(x, y, IRON[2] if y == 10 else IRON[1])
+            # zamek z czaszką klątwy
+            for x, y, c in ((15, 14, BONE[1]), (16, 14, BONE[1]), (15, 15, SLIME[3]), (16, 15, SLIME[3]), (15, 16, BONE[0]), (16, 16, BONE[0])):
+                img.put(x, y, c)
+        return img
+
+    frames = []
+    for f in range(4):
+        img = chest(False)
+        outline(img, OUT)
+        rad = (12, 13, 14, 13)[f]
+        curse = (hx('#9a5ad8'), hx('#c890ff'))
+        for x, y in ((15, 15), (16, 15)):
+            img.put(x, y, curse[1] if f == 2 else curse[0])
+        for a in range(0, 360, 15):  # przerywany fioletowy pierścień klątwy (jak blask kapliczki)
+            ang = math.radians(a + 7 * f)
+            x, y = round(16 + rad * math.cos(ang) - .5), round(19 + rad * .7 * math.sin(ang) - .5)
+            if 0 <= x < SHRINE and 0 <= y < SHRINE and not img.get(x, y)[3]:
+                img.put(x, y, curse[1] if (a // 15 + f) % 2 else curse[0])
+        frames.append(('cursed_chest_%d' % f, img))
+    opened = chest(True)
+    outline(opened, OUT)
+    frames.append(('cursed_chest_open_0', opened))
+    return frames
+
+
 # ---------------- atlas ----------------
 def build():
     small = [(f'coin_{i}', img) for i, img in enumerate(coin_frames())]
@@ -567,11 +665,12 @@ def build():
     small += [(f'shot_{i}', img) for i, img in enumerate(shot_frames())]
     small += [(f'shot_pierce_{i}', img) for i, img in enumerate(pierce_frames())]
     small += [(f'aim_{i}', img) for i, img in enumerate(aim_frames())]
-    big = shrine_frames()
+    small += [(f'purse_{i}', img) for i, img in enumerate(purse_frames())]
+    big = shrine_frames() + cursed_chest_frames()
 
     cols = 16
     small_rows = (len(small) + cols - 1) // cols
-    width = cols * CELL
+    width = max(cols * CELL, len(big) * SHRINE)
     height = small_rows * CELL + SHRINE
     sheet = Img(width, height)
     frames = {}

@@ -60,10 +60,10 @@ export function parseSaveRecord(raw: string | null): SaveRecord | null {
 function parsePartner(value: unknown): CoopPartnerSnapshot | null {
   if (!isRecord(value)) return null;
   const hero = parseHeroId(typeof value.hero === 'string' ? value.hero : null);
-  const { items, hp } = value;
+  const { items, hp, bot } = value;
   if (!hero || !Array.isArray(items) || !items.every((id): id is ItemId => typeof id === 'string' && ITEM_IDS.has(id))) return null;
   if (hp !== null && !(typeof hp === 'number' && Number.isFinite(hp) && hp > 0)) return null;
-  return { hero, items, hp };
+  return { hero, items, hp, ...(bot === true ? { bot } : {}) };
 }
 
 function parseRunSnapshot(value: unknown): RunSnapshot | null {
@@ -116,7 +116,8 @@ export function saveSummary(record: SaveRecord): SaveSummary {
   const where = record.run.mode === RunMode.BossRush ? `Arena ${record.floor}` : floorLabel(record.floor, TOWER_CONFIG);
   const items = record.run.items.length;
   const parts = [`${record.run.gold} złota`, `${items} ${itemsWord(items)}`, formatSavedAt(record.savedAt)];
-  const heroes = record.coop ? `${HERO_DEFINITIONS[hero].name} + ${HERO_DEFINITIONS[record.coop.hero].name}` : HERO_DEFINITIONS[hero].name;
+  const partner = record.coop && `${HERO_DEFINITIONS[record.coop.hero].name}${record.coop.bot ? ' (bot)' : ''}`;
+  const heroes = partner ? `${HERO_DEFINITIONS[hero].name} + ${partner}` : HERO_DEFINITIONS[hero].name;
   return { title: `${heroes} · ${where}`, details: parts.join(' · ') };
 }
 

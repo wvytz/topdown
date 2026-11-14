@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
+import { UiText, uiText } from '@/ui/UiText';
 import { LOOT_ATLAS, LOOT_FRAMES, lootAnimationKey } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 
 /** Widok kapliczki: postument + podpowiedź nad nim. Zasady ofiary są w systems/Shrine.ts. */
 export class Shrine extends Phaser.GameObjects.Sprite {
-  private readonly prompt: Phaser.GameObjects.Text;
+  private readonly prompt: UiText;
   private used = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -12,15 +13,7 @@ export class Shrine extends Phaser.GameObjects.Sprite {
     scene.add.existing(this);
     this.setDepth(RENDER_DEPTH.shrine);
 
-    this.prompt = scene.add
-      .text(x, y - 30, '', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#ffe08a',
-        stroke: '#000000',
-        strokeThickness: 3,
-        align: 'center',
-      })
+    this.prompt = uiText(scene, x, y - 30, '', { color: '#ffe08a', align: 'center' })
       .setOrigin(0.5, 1)
       .setDepth(RENDER_DEPTH.worldText)
       .setVisible(false);

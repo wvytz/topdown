@@ -6,6 +6,9 @@ import type { FogConfig } from '@/config/lightingConfig';
 import type { TorchSpot } from '@/dungeon/LightPlanner';
 import { darknessModifierProfile } from '@/systems/lighting';
 import { DustMotes } from '@/effects/DustMotes';
+import { BlackSunLight } from '@/effects/BlackSunLight';
+import { dynamicLights } from '@/effects/DynamicLights';
+import { screenFx } from '@/effects/ScreenFx';
 import { EnemyVisibility } from '@/effects/EnemyVisibility';
 import { FogWisps } from '@/effects/FogWisps';
 import { LightingOverlay } from '@/effects/LightingOverlay';
@@ -28,6 +31,8 @@ export interface FloorLightingDeps {
   readonly extraLights: (withAmbient: boolean) => readonly PointLight[];
   /** Światło ognia walki (krok 144). */
   readonly flares: () => readonly PointLight[];
+  /** Numer piętra — siła światła Czarnego Słońca (krok U3). */
+  readonly floor: number;
   /** Wrogowie ukrywani poza światłem (mgła, „Mrok”). */
   readonly hideable: () => Iterable<Phaser.GameObjects.Sprite>;
   /** Czy światła żywego otoczenia odsłaniają wrogów. */
@@ -65,8 +70,13 @@ export class FloorLighting {
           })
         : null;
     // Po fizyce: światło gracza i widoczność wrogów nie zostają klatkę za nim.
+    const blackSun = new BlackSunLight(scene, deps.floor, torchesLightUp);
+    // Krok U3: światła pocisków, magii i wybuchów (Niska — brak) i poświata pochodni tylko w kadrze.
     const render = (): void => {
-      this.overlay.render(deps.bearers(), this.pointLights(), deps.flares());
+      const area = this.overlay.area;
+      this.overlay.render(deps.bearers(), this.pointLights(), deps.flares(), dynamicLights.collect(area));
+      screenFx.cullGlow(scene.cameras.main.worldView);
+      blackSun.update(dynamicLights.level.blackSun);
       hiding?.update();
     };
     render();

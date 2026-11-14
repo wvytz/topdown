@@ -57,6 +57,8 @@ export interface AmbushVariantsConfig {
     readonly glowMs: number;
     /** Prędkość lotu do areny (px/s). */
     readonly speed: number;
+    /** Krok U8f: bohater, który w locie dotknie uciekiniera (zwykle dashem), łapie go w tym promieniu (px). */
+    readonly catchRadius: number;
     readonly boonOf: Readonly<Record<ItemId, BossBoon>>;
     readonly boons: Readonly<Record<BossBoon, BossEmpowerment & { readonly label: string }>>;
     /** Nagroda po bossie: przedmiot-uciekinier i tyle dodatkowego złota. */
@@ -270,4 +272,9 @@ export class HauntState {
     this.current = phase;
     this.phaseAt = now;
   }
+}
+
+/** Krok U8f: bohater, który łapie uciekiniera w locie (dotyk w promieniu `radius`); null — nikt. */
+export function catcherOfRunaway<T extends { readonly x: number; readonly y: number }>(at: { readonly x: number; readonly y: number }, heroes: readonly T[], radius: number): T | null {
+  return heroes.find((hero) => Math.hypot(hero.x - at.x, hero.y - at.y) <= radius) ?? null;
 }

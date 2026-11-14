@@ -11,6 +11,8 @@ Użycie (z katalogu głównego repozytorium):
 stoker_walk-swing-throw-stomp-belch.png (1920x768, komórka 96, 8 kierunków z obrotu, obrys po obrocie):
   0–3 chód, 4–7 zamach szuflą (z prawej przed drzwiczkami w lewo), 8–11 rzut żarem (nabranie, zamach, wyrzut,
   powrót), 12–15 ruszt (szufla w górę, uderzenie w posadzkę, iskry, powrót), 16–19 buchnięcie pieca na plecach.
+stoker_death.png (768x768, komórka 96, krok U6): śmierć — 0 cios, 1 szufla wypada, 2 kolana i drzwiczki na posadzce,
+  3 ostatnie buchnięcie pieca, 4 upadek naprzód, 5–6 leży, żar stygnie, 7 zwłoki (zostają na posadzce).
 stoker-grate.png (192x32, komórka 32): ruszt w posadzce areny — 0 tlenie, 1–2 ostrzeżenie (żar jaśnieje),
   3–5 płomienie nad prętami (pętla). Pręty poziome sięgają krawędzi, więc kafle łączą się w pas.
 stoker-coal.png (64x16, komórka 16): bryła żaru w locie, 4 klatki (iskra obiega bryłę).
@@ -171,6 +173,95 @@ def stoker_frame(f):
         img.put(int(C + dx), int(hy - 3), EMBER[0])
     glow = 2 if belch and f in (17, 18) else (1 if throw or stomp else 0)
     door(img, C - 1, sy, 36, 11, glow)
+    return img
+
+
+# Krok U6 (plan upgradu: każdy boss wspinaczki ma śmierć): Palacz upuszcza szuflę, pada na kolana, drzwiczki
+# pieca lądują przed nim, piec na plecach bucha ostatni raz, Palacz wali się twarzą w posadzkę, a żar stygnie.
+# Klatka 7 (zwłoki z zimnym piecem) zostaje na posadzce.
+DEATH_FRAMES = 8
+
+
+def death_frame(f):
+    img = Img(CELL, CELL)
+    cy = C + 4
+    # Pozycja tułowia: stoi (0) → klęczy (1–3) → pada naprzód (4) → leży (5–7). Przód = góra komórki.
+    lean = (0, 2, 3, 3, -5, -9, -9, -9)[f]
+    flat = f >= 5
+    flare = (1, 0, 1, 2, 2, 1, 0, 0)[f]
+    ty = cy + lean
+
+    # Drzwiczki: najpierw w ręce, od klatki 2 leżą przed nim (żar w szczelinach gaśnie).
+    door_on_floor = f >= 2
+    if door_on_floor:
+        door(img, C - 6, cy - 30, 34, 11, (1, 1, 0, 0, 0, 0)[f - 2])
+    # Szufla: wypada z ręki w prawo i leży na posadzce.
+    if f >= 1:
+        shovel(img, (C + 24, cy + 6), (C + 30, cy - 14 if f == 1 else cy - 18))
+
+    # Piec na plecach; leżąc — przesunięty razem z tułowiem.
+    back = ty + 9
+    for y in range(int(back), int(back + 12)):
+        for x in range(int(C - 11), int(C + 12)):
+            edge = x <= C - 10 or y <= back
+            img.put(x, y, IRON[3] if edge else IRON[1])
+    for k in (-1, 0, 1):
+        for x in range(int(C + k * 6 - 2), int(C + k * 6 + 2)):
+            img.put(x, int(back + 6), (COAL[1], EMBER[1], EMBER[2])[flare])
+    ellipse(img, C + 8, back + 13, 3.4, 3.4, lambda nx, ny: IRON[4] if nx + ny < -.6 else IRON[0])
+    img.put(int(C + 8), int(back + 13), EMBER[1] if flare else COAL[1])
+
+    # Nogi: stoi — pod tułowiem; klęczy — krótkie, schowane; leży — wyciągnięte do tyłu.
+    if f == 0:
+        for side in (-1, 1):
+            ellipse(img, C + side * 10, cy + 10, 5, 6, band_shade(LEATHER))
+    elif flat:
+        for side in (-1, 1):
+            ellipse(img, C + side * 7, back + 15, 4.5, 6, band_shade(LEATHER))
+    else:
+        for side in (-1, 1):
+            ellipse(img, C + side * 11, cy + 13, 5, 4, band_shade(LEATHER))
+    # Tułów: fartuch i barki (leżąc — spłaszczony w poziomie, wydłużony w pionie).
+    rx, ry = (21, 14) if not flat else (19, 15)
+    ellipse(img, C, ty, rx, ry, band_shade(SKIN))
+    ellipse(img, C, ty + 1, rx - 6, ry - 3, band_shade(LEATHER))
+    for side in (-1, 1):
+        ellipse(img, C + side * (18 if not flat else 17), ty - 2, 8, 7.5, band_shade(SKIN))
+    for t in range(12):
+        img.put(int(C - 8 + t * 1.4), int(ty + 3 + t * .5), LEATHER[0])
+        img.put(int(C + 8 - t * 1.4), int(ty + 3 + t * .5), LEATHER[0])
+    # Ręce: stoi — trzyma drzwiczki; klęczy — opadły; leży — rozrzucone na boki.
+    if f == 0:
+        stroke(img, [(C - 18, cy - 2), (C - 16, cy - 18), (C - 10, cy - 22)], 6, SKIN[2], edge=SKIN[3])
+        stroke(img, [(C + 18, cy - 1), (C + 20, cy - 6)], 6, SKIN[2], edge=SKIN[3])
+        door(img, C - 1, cy - 26, 36, 11, 2)
+        shovel(img, (C + 20, cy - 6), (C + 21, cy - 26))
+    elif f == 1:  # drzwiczki jeszcze w lewej ręce, opadają
+        stroke(img, [(C - 18, ty - 1), (C - 16, cy - 12), (C - 10, cy - 16)], 6, SKIN[2], edge=SKIN[3])
+        stroke(img, [(C + 18, ty - 1), (C + 22, ty + 10)], 6, SKIN[2], edge=SKIN[3])
+        door(img, C - 2, cy - 20, 36, 11, 1)
+    elif not flat:
+        for side in (-1, 1):
+            stroke(img, [(C + side * 18, ty - 1), (C + side * 22, ty + 10)], 6, SKIN[2], edge=SKIN[3])
+    else:  # leży twarzą w posadzkę: ręce bezwładnie wzdłuż boków
+        for side in (-1, 1):
+            stroke(img, [(C + side * 18, ty - 2), (C + side * 24, ty + 6), (C + side * 23, ty + 15)], 6, SKIN[2], edge=SKIN[3])
+    # Głowa: kaptur i gogle; gogle gasną, gdy Palacz leży.
+    hy = ty - 11 - (3 if flat else 0)
+    ellipse(img, C, hy, 8, 7.5 if not flat else 6.5, band_shade(LEATHER, light=(-.4, -.6)))
+    ellipse(img, C, hy - 2, 5.5, 3.5, band_shade(IRON))
+    lens = (EMBER[2], EMBER[2], EMBER[1], EMBER[1], EMBER[0], EMBER[0], COAL[1], COAL[1])[f]
+    for dx in (-2, 2):
+        img.put(int(C + dx), int(hy - 4), lens)
+    # Ogień pieca nad ciałem: ostatnie buchnięcie (3), iskry przy upadku (4), dogasający żar (6).
+    if f == 3:
+        sparks(img, C, back - 4, 27, 14, .5, FLAME[3])
+        sparks(img, C, back - 4, 22, 10, .9, FLAME[2])
+    if f == 4:
+        sparks(img, C, back + 6, 16, 8, .2, FLAME[2])
+    if f == 6:
+        for dx, dy in ((-6, 2), (3, 0), (7, 4), (-2, 6)):
+            img.put(int(C + dx), int(back + dy), EMBER[1])
     return img
 
 
@@ -351,8 +442,10 @@ def strip(w, h, fn, cols):
 
 def build():
     boss, bf = directional_sheet(CELL, stoker_frame, 20)
+    die, df = directional_sheet(CELL, death_frame, DEATH_FRAMES)
     return {
         'stoker_walk-swing-throw-stomp-belch.png': (boss, bf, CELL, MARGIN),
+        'stoker_death.png': (die, df, CELL, MARGIN),
         'stoker-grate.png': (*strip(32, 32, grate_frame, 6), 32, 0),
         'stoker-coal.png': (*strip(16, 16, coal_frame, 4), 16, 1),
         'stoker-furnace.png': (*strip(96, 64, furnace_frame, 4), 96, 0),

@@ -10,6 +10,7 @@ import { ENEMY_VISUALS } from '@/config/spriteConfig';
 import { bossById } from '@/config/bossConfig';
 import { AmbushPhase, AmbushState } from '@/systems/Ambush';
 import {
+  catcherOfRunaway,
   AmbushVariant,
   BossBoon,
   HauntPhase,
@@ -130,5 +131,15 @@ describe('wersje zasadzki (krok 183)', () => {
     expect(ENEMY_VARIANTS[EnemyVariant.GreatGhost].phasing).toBeDefined();
     expect(ENEMY_VISUALS[EnemyVariant.GreatGhost].sheet).toBe('greatGhost');
     expect(ENEMY_VISUALS[EnemyVariant.GreatGhost].aboveDarkness).toBe(true);
+  });
+});
+
+describe('Uciekinier — złapanie w locie (krok U8f)', () => {
+  it('łapie bohater w promieniu, dalej — nikt', () => {
+    const r = AMBUSH_VARIANTS.flight.catchRadius;
+    expect(catcherOfRunaway({ x: 0, y: 0 }, [{ x: r, y: 0 }], r)).not.toBeNull();
+    expect(catcherOfRunaway({ x: 0, y: 0 }, [{ x: r + 1, y: 0 }], r)).toBeNull();
+    // Lot wolniejszy od najwolniejszego bohatera — da się dogonić.
+    expect(AMBUSH_VARIANTS.flight.speed).toBeLessThan(175);
   });
 });

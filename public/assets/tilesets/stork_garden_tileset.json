@@ -5,7 +5,7 @@
  "image": "stork_garden_tileset.png",
  "tileSize": 32,
  "columns": 16,
- "rows": 11,
+ "rows": 15,
  "envShadowAlpha": 0.4,
  "tiles": {
   "floor_slab16_a": {
@@ -1329,6 +1329,410 @@
    "layer": "floorDecal",
    "weight": 1,
    "flipX": true
+  },
+  "floor_v2_chipped": {
+   "frame": 166,
+   "col": 6,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 4,
+   "flipX": true
+  },
+  "floor_v2_hairline": {
+   "frame": 167,
+   "col": 7,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 3,
+   "flipX": true
+  },
+  "floor_v2_sunken": {
+   "frame": 168,
+   "col": 8,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 3,
+   "flipX": true
+  },
+  "floor_v2_patch": {
+   "frame": 169,
+   "col": 9,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 1.5,
+   "flipX": true
+  },
+  "floor_v2_scuffed": {
+   "frame": 170,
+   "col": 10,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 3,
+   "flipX": true
+  },
+  "floor_v2_ashjoint": {
+   "frame": 171,
+   "col": 11,
+   "row": 10,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 3,
+   "flipX": true
+  },
+  "floor_macro_c_2x2": {
+   "frame": 172,
+   "col": 12,
+   "row": 10,
+   "w": 2,
+   "h": 2,
+   "layer": "floorBase",
+   "frames": [
+    [
+     172,
+     173
+    ],
+    [
+     188,
+     189
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "floor_macro_d_2x2": {
+   "frame": 174,
+   "col": 14,
+   "row": 10,
+   "w": 2,
+   "h": 2,
+   "layer": "floorBase",
+   "frames": [
+    [
+     174,
+     175
+    ],
+    [
+     190,
+     191
+    ]
+   ],
+   "weight": 1,
+   "flipX": true
+  },
+  "floor_sill_h": {
+   "frame": 176,
+   "col": 0,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 1
+  },
+  "floor_sill_v": {
+   "frame": 177,
+   "col": 1,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorBase",
+   "weight": 1
+  },
+  "decal_arena_border_n": {
+   "frame": 178,
+   "col": 2,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "decal_arena_border_s": {
+   "frame": 179,
+   "col": 3,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "decal_arena_border_e": {
+   "frame": 180,
+   "col": 4,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "decal_arena_border_w": {
+   "frame": 181,
+   "col": 5,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "decal_arena_border_nw": {
+   "frame": 182,
+   "col": 6,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "decal_arena_border_ne": {
+   "frame": 183,
+   "col": 7,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "decal_arena_border_sw": {
+   "frame": 184,
+   "col": 8,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "decal_arena_border_se": {
+   "frame": 185,
+   "col": 9,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "floorDecal",
+   "weight": 1
+  },
+  "wall_07_v2_a": {
+   "frame": 186,
+   "col": 10,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_07_v2_b": {
+   "frame": 187,
+   "col": 11,
+   "row": 11,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_11_v2_a": {
+   "frame": 192,
+   "col": 0,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_11_v2_b": {
+   "frame": 193,
+   "col": 1,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_13_v2_a": {
+   "frame": 194,
+   "col": 2,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_13_v2_b": {
+   "frame": 195,
+   "col": 3,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_14_v2_a": {
+   "frame": 196,
+   "col": 4,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_14_v2_b": {
+   "frame": 197,
+   "col": 5,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_15_v2_a": {
+   "frame": 198,
+   "col": 6,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_15_v2_b": {
+   "frame": 199,
+   "col": 7,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 30
+  },
+  "wall_fade2_a": {
+   "frame": 200,
+   "col": 8,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 1
+  },
+  "wall_fade2_b": {
+   "frame": 201,
+   "col": 9,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 1
+  },
+  "wall_tower_a": {
+   "frame": 202,
+   "col": 10,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 1
+  },
+  "wall_tower_b": {
+   "frame": 203,
+   "col": 11,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 1
+  },
+  "wall_tower_c": {
+   "frame": 204,
+   "col": 12,
+   "row": 12,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 1
+  },
+  "wall_breach_a_2x2": {
+   "frame": 205,
+   "col": 13,
+   "row": 12,
+   "w": 2,
+   "h": 2,
+   "layer": "wall",
+   "frames": [
+    [
+     205,
+     206
+    ],
+    [
+     221,
+     222
+    ]
+   ],
+   "weight": 3
+  },
+  "wall_breach_b_2x2": {
+   "frame": 208,
+   "col": 0,
+   "row": 13,
+   "w": 2,
+   "h": 2,
+   "layer": "wall",
+   "frames": [
+    [
+     208,
+     209
+    ],
+    [
+     224,
+     225
+    ]
+   ],
+   "weight": 3
+  },
+  "wall_breach_c_2x1": {
+   "frame": 210,
+   "col": 2,
+   "row": 13,
+   "w": 2,
+   "h": 1,
+   "layer": "wall",
+   "frames": [
+    [
+     210,
+     211
+    ]
+   ],
+   "weight": 2
+  },
+  "wall_breach_d_1x2": {
+   "frame": 207,
+   "col": 15,
+   "row": 12,
+   "w": 1,
+   "h": 2,
+   "layer": "wall",
+   "frames": [
+    [
+     207
+    ],
+    [
+     223
+    ]
+   ],
+   "weight": 2
+  },
+  "wall_breach_e_1x1": {
+   "frame": 212,
+   "col": 4,
+   "row": 13,
+   "w": 1,
+   "h": 1,
+   "layer": "wall",
+   "weight": 2
   }
  },
  "groups": {
@@ -1340,11 +1744,19 @@
    "floor_slab32_b",
    "floor_mixed_h",
    "floor_mixed_v",
-   "floor_worn"
+   "floor_worn",
+   "floor_v2_chipped",
+   "floor_v2_hairline",
+   "floor_v2_sunken",
+   "floor_v2_patch",
+   "floor_v2_scuffed",
+   "floor_v2_ashjoint"
   ],
   "floorMacro": [
    "floor_macro_a_2x2",
-   "floor_macro_b_2x2"
+   "floor_macro_b_2x2",
+   "floor_macro_c_2x2",
+   "floor_macro_d_2x2"
   ],
   "decal.crack": [
    "decal_crack_a",
@@ -1404,7 +1816,9 @@
    "wall_07",
    "wall_07_b",
    "wall_07_crack",
-   "wall_07_chunk"
+   "wall_07_chunk",
+   "wall_07_v2_a",
+   "wall_07_v2_b"
   ],
   "wall.8": [
    "wall_08"
@@ -1419,7 +1833,9 @@
    "wall_11",
    "wall_11_b",
    "wall_11_crack",
-   "wall_11_chunk"
+   "wall_11_chunk",
+   "wall_11_v2_a",
+   "wall_11_v2_b"
   ],
   "wall.12": [
    "wall_12"
@@ -1428,20 +1844,26 @@
    "wall_13",
    "wall_13_b",
    "wall_13_crack",
-   "wall_13_chunk"
+   "wall_13_chunk",
+   "wall_13_v2_a",
+   "wall_13_v2_b"
   ],
   "wall.14": [
    "wall_14",
    "wall_14_b",
    "wall_14_crack",
-   "wall_14_chunk"
+   "wall_14_chunk",
+   "wall_14_v2_a",
+   "wall_14_v2_b"
   ],
   "wall.15": [
    "wall_15",
    "wall_15_b",
    "wall_15_crack",
    "wall_15_chunk",
-   "wall_15_ash"
+   "wall_15_ash",
+   "wall_15_v2_a",
+   "wall_15_v2_b"
   ],
   "wallDiag": [
    "wall_15_d01",
@@ -1569,6 +1991,52 @@
   "decal.trailDrop": [
    "decal_trail_drops_a",
    "decal_trail_drops_b"
+  ],
+  "floorSill.h": [
+   "floor_sill_h"
+  ],
+  "floorSill.v": [
+   "floor_sill_v"
+  ],
+  "arenaBorder.n": [
+   "decal_arena_border_n"
+  ],
+  "arenaBorder.s": [
+   "decal_arena_border_s"
+  ],
+  "arenaBorder.e": [
+   "decal_arena_border_e"
+  ],
+  "arenaBorder.w": [
+   "decal_arena_border_w"
+  ],
+  "arenaBorder.nw": [
+   "decal_arena_border_nw"
+  ],
+  "arenaBorder.ne": [
+   "decal_arena_border_ne"
+  ],
+  "arenaBorder.sw": [
+   "decal_arena_border_sw"
+  ],
+  "arenaBorder.se": [
+   "decal_arena_border_se"
+  ],
+  "wallBand.fade2": [
+   "wall_fade2_a",
+   "wall_fade2_b"
+  ],
+  "wallBand.tower": [
+   "wall_tower_a",
+   "wall_tower_b",
+   "wall_tower_c"
+  ],
+  "wallBreach": [
+   "wall_breach_a_2x2",
+   "wall_breach_b_2x2",
+   "wall_breach_c_2x1",
+   "wall_breach_d_1x2",
+   "wall_breach_e_1x1"
   ]
  },
  "colors": {
@@ -1647,8 +2115,8 @@
     "deep": 3,
     "meaning": "odległość Czebyszewa od najbliższej podłogi",
     "groups": {
-     "fade": "wallBand.fade",
-     "deep": "wallBand.deep"
+     "fade": "wallBand.fade2",
+     "deep": "wallBand.tower"
     }
    },
    "overhead": "ściany bez bitu N (podłoga od północy) rysujemy nad postaciami"

@@ -1,6 +1,10 @@
 import type { HeroId } from '@/core/heroTypes';
 import type { FloorSceneData } from '@/core/types';
+import type { CoopPartnerSnapshot, CoopSceneData } from '@/core/types';
+import type { ItemDefinition, ItemEvolutionConfig, ItemId } from '@/core/lootTypes';
 import { RunMode } from '@/core/runMode';
+import { countItems, describeRewardCard, type RewardCardKind } from '@/systems/ItemEvolution';
+import { DEFAULT_COOP_DEVICES } from '@/systems/coopDevices';
 import { BOT_DEVICES, SOLO_DEVICES } from '@/systems/coopDevices';
 import { freshCoop, partnerHero } from '@/systems/Coop';
 
@@ -32,3 +36,35 @@ export function withPartnerBot(data: FloorSceneData, bot: { hero: HeroId | null 
 
 /** Czy P2 to bot (urządzenia z `withPartnerBot`). */
 export const isBotCoop = (data: Pick<FloorSceneData, 'coop'>): boolean => data.coop?.devices[1]?.bot === true;
+
+/** Kolejność kart dla bota (krok U9a): przemiana, relikwia bossa, kolejna kopia, nowy przedmiot, kopia po przemianie. */
+const BOT_CARD_ORDER: readonly RewardCardKind[] = ['evolution', 'relic', 'growth', 'new', 'evolved'];
+
+/**
+ * Karta za bossa dla bota (krok U9a): zamiast pierwszej z brzegu — ta, która daje przemianę, potem relikwia,
+ * potem rozwój przedmiotu w budowie. Przy remisie wygrywa karta stojąca wcześniej (karty są losowe, więc to uczciwe).
+ */
+export function botRewardPick(
+  choices: readonly ItemId[],
+  owned: readonly ItemId[],
+  definitions: Readonly<Record<ItemId, ItemDefinition>>,
+  evolution: ItemEvolutionConfig,
+): ItemId | undefined {
+  const counts = countItems(owned);
+  let best: ItemId | undefined;
+  let bestRank = Number.POSITIVE_INFINITY;
+  for (const id of choices) {
+    const rank = BOT_CARD_ORDER.indexOf(describeRewardCard(definitions[id], counts.get(id) ?? 0, evolution).kind);
+    if (rank < bestRank) {
+      best = id;
+      bestRank = rank;
+    }
+  }
+  return best;
+}
+
+/** Partner z zapisu (krok U9a): run z botem wraca z botem, zwykły co-op — P1 klawiatura z myszą, P2 pad. */
+export function coopFromSave(partner: CoopPartnerSnapshot): CoopSceneData {
+  const { bot, ...snapshot } = partner;
+  return { partner: snapshot, devices: bot ? [SOLO_DEVICES, BOT_DEVICES] : DEFAULT_COOP_DEVICES };
+}

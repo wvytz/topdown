@@ -1,4 +1,7 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { type UiText, uiText } from '@/ui/UiText';
+import { COMBAT_WEIGHT_CONFIG } from '@/config/combatWeightConfig';
+import { scaledDamage } from '@/systems/CombatScale';
 import { combatFeel } from '@/effects/CombatFeel';
 import Phaser from 'phaser';
 import type {
@@ -13,8 +16,11 @@ import type {
   WebShot,
 } from '@/core/bossTypes';
 import { TileType } from '@/core/dungeonTypes';
-import type { DungeonFloor, Room, TilePoint } from '@/core/dungeonTypes';
-import type { BossHudData, Vector2 } from '@/core/types';
+import type { DungeonFloor, Room } from '@/core/dungeonTypes';
+import type { BossHudData, BossPortrait, Vector2 } from '@/core/types';
+import { bossPhaseMarks, bossPortrait } from '@/systems/BossPresentation';
+import { BOSS_PHASE_MARKS } from '@/config/bossPresentationConfig';
+import { hasLashFx, playLashFx } from '@/effects/BossLashFx';
 import type { BossDefinition, BossDogDefinition, BossId, GrateRow } from '@/core/bossTypes';
 import type { Rng } from '@/core/random';
 import { createRng, deriveSeed } from '@/core/random';
@@ -37,6 +43,7 @@ import {
   SPIDERLING_DROP_VISUAL,
   THRONE_ROOM_VISUAL,
   SPRITE_SHEETS,
+  BOSS_VISUALS,
   animationKey,
 } from '@/config/spriteConfig';
 import type { SpriteSheetId } from '@/config/spriteConfig';
@@ -57,7 +64,7 @@ import { BossDog } from '@/entities/BossDog';
 import { DogPhase } from '@/ai/BossDogBrain';
 import { LarderCocoon } from '@/entities/LarderCocoon';
 import { planLarders } from '@/dungeon/LarderPlanner';
-import { planThrone, planThroneDecals } from '@/dungeon/ThronePlanner';
+import { planThroneDecals } from '@/dungeon/ThronePlanner';
 import type { Party } from '@/entities/Party';
 import type { Player } from '@/entities/Player';
 import type { Spiderling } from '@/entities/Spiderling';
@@ -118,6 +125,11 @@ export interface BossFightDeps {
   readonly spawnSwarm?: (at: Vector2, count: number) => void;
   /** Wabik (totem łucznika, krok 98): boss i jego dog celują w niego zamiast w gracza; null — w gracza. */
   readonly aggroTarget?: () => Vector2 | null;
+  /**
+   * Atak kary (krok U11b, wersja lekka systemu wag): czy najbliższy atak obszarowy ma być przebijający —
+   * bohater ma pęknięcia III i wspólna przerwa kary minęła. Brak — `?wagi=0`.
+   */
+  readonly punishGate?: (now: number) => boolean;
   /** Duet (krok 114): który boss walczy (skalowany do `floorNumber`); brak — boss tego piętra. */
   readonly bossId?: BossId;
   /** Duet: przesunięcie miejsca startu od środka areny (px). */
@@ -133,6 +145,8 @@ export interface BossFightDeps {
   readonly arrival?: DuetArrival;
   /** Jedno piętro sprzątaczek (krok 154): próg ucieczki windą zamiast tego z definicji bossa. */
   readonly escapeHpRatio?: number;
+  /** Krok U6: dodatkowe progi faz na pasku HP (np. powrót partnera duetu). */
+  readonly extraPhaseMarks?: readonly number[];
   /** Jedno piętro sprzątaczek (krok 154): winda wspólna z innym bossem areny (te same drzwi, jeden sprite). */
   readonly sharedElevator?: Phaser.GameObjects.Sprite;
   /** Zmienne warunki areny (krok 160): poprawka planu (słupy z gniazdami) i uderzenia stref (pękające płyty). */
@@ -162,6 +176,10 @@ interface PendingStrike {
   readonly gfx: Phaser.GameObjects.Graphics;
   /** Strefy tego samego ataku uderzające razem (hak, smuga) — telegraf obrysowuje ich sumę (krok 110). */
   readonly group: readonly AreaStrike[];
+  /** Krok U6: smagnięcie z błyskiem pazurów (Matka Pająków) — sam obraz w chwili uderzenia. */
+  readonly lash?: boolean;
+  /** Krok U11b: atak kary — czerwony obrys strefy nad mrokiem, obrażenia już pomnożone. */
+  readonly punish?: boolean;
 }
 
 /** Rzucona sieć: znacznik lądowania, kłąb w locie, potem plama (krok 25). */
@@ -247,6 +265,8 @@ export class BossFight {
   private leap: ActiveLeap | null = null;
   /** Wstrząs „zewu” przy przebudzeniu i przy wściekłości — po razie na walkę. */
   private introduced = false;
+  /** Krok U6: progi faz liczone raz (definicja bossa się nie zmienia w trakcie walki). */
+  private cachedMarks: readonly number[] | null = null;
   private wasEnraged = false;
   /** Żywe pajączki-kamikaze z telegrafem zapłonu. */
   private readonly spiderlings: SpiderlingSwarm;
@@ -284,6 +304,9 @@ export class BossFight {
   private readonly dogGfx: Phaser.GameObjects.Graphics | null;
   /** Ostatnia chwila `update` — zabójstwa psa liczą od niej czas powrotu. */
   private lastNow = 0;
+  /** Krok U11b: czerwone „!!” nad bossem do uderzenia ataku kary i obrys jego stref (nad mrokiem). */
+  private punishBang: { readonly text: UiText; readonly until: number } | null = null;
+  private punishGfx: Phaser.GameObjects.Graphics | null = null;
   private lastUntouchableTextAt = -Infinity;
   /** Ślad grzybów za Pożeraczem (krok 111). */
   private readonly trail: FungalTrail | null;
@@ -292,7 +315,7 @@ export class BossFight {
   private readonly shouts: ShoutSchedule | null;
   private lastSlipTextAt = -Infinity;
   /** Ostatni napis okrzyku — nowy zastępuje go, żeby napisy się nie nakładały. */
-  private lastShout: Phaser.GameObjects.Text | null = null;
+  private lastShout: UiText | null = null;
   private nextPolishAt = 0;
   /** Włosie miotły na stopach zaplątanych bohaterów (brunetka, krok 126). */
   private tangles: Array<{ readonly player: Player; readonly sprite: Phaser.GameObjects.Sprite }> = [];
@@ -385,9 +408,8 @@ export class BossFight {
     const feast = definition.feast;
     this.throneRoomFx = Boolean(feast);
     if (feast) {
-      const throne = planThrone(deps.floor, arena, THRONE_ROOM.entranceClearTiles);
-      this.dressThroneRoom(throne);
-      const tiles = planLarders(deps.floor, arena, feast.larders, this.larderRng, throne, THRONE_ROOM.throneClearTiles);
+      this.dressThroneRoom();
+      const tiles = planLarders(deps.floor, arena, feast.larders, this.larderRng);
       tiles.forEach((tile, i) => {
         const at = DungeonView.tileToWorldCenter(tile);
         this.larders.push(new LarderCocoon(deps.scene, at.x, at.y, feast.larderRadius, i));
@@ -431,18 +453,15 @@ export class BossFight {
     return { sprite, door: { x, y: wallBottom + bossRadius + 2 } };
   }
 
-  /** Tron z grzybni i naklejki krwi, grzybni i soku (dekoracje bez kolizji; zostają po walce). */
-  private dressThroneRoom(throne: TilePoint | null): void {
+  /** Naklejki krwi, grzybni i soku (dekoracje bez kolizji; zostają po walce). Tron usunięty w kroku U4b. */
+  private dressThroneRoom(): void {
     const { scene, floor } = this.deps;
     const rng = createRng(deriveSeed(floor.seed, THRONE_SEED_SALT));
     const decalsKey = SPRITE_SHEETS[THRONE_ROOM_VISUAL.decals].key;
-    for (const decal of planThroneDecals(floor, this.arena, throne, THRONE_ROOM.decals, rng)) {
+    for (const decal of planThroneDecals(floor, this.arena, THRONE_ROOM.decals, rng)) {
       const at = DungeonView.tileToWorldCenter(decal.tile);
       scene.add.image(at.x, at.y, decalsKey, decal.kind).setDepth(RENDER_DEPTH.floorDecal);
     }
-    if (!throne) return;
-    const at = DungeonView.tileToWorldCenter(throne);
-    scene.add.image(at.x, at.y, SPRITE_SHEETS[THRONE_ROOM_VISUAL.throne].key).setDepth(RENDER_DEPTH.floorFeature);
   }
 
   /** Jednorazowy efekt sali tronowej (krew albo sok) w punkcie. */
@@ -510,7 +529,26 @@ export class BossFight {
       hp: boss.health.value,
       maxHp: boss.health.max,
       enraged: boss.isEnraged,
+      phaseMarks: this.phaseMarks,
+      portraits: [this.portrait],
     };
+  }
+
+  /** Krok U6: progi faz na pasku HP — wściekłość, ucieczka windą i progi walki (powrót partnera). */
+  get phaseMarks(): readonly number[] {
+    const definition = this.boss?.definition;
+    if (!definition) return [];
+    this.cachedMarks ??= bossPhaseMarks(
+      { enrageAt: definition.enrage.hpThreshold, escapeAt: definition.escape?.hpRatio, extra: this.deps.extraPhaseMarks },
+      BOSS_PHASE_MARKS.minGap,
+    );
+    return this.cachedMarks;
+  }
+
+  /** Krok U6: portret na karcie wejścia — pierwsza klatka chodu, przodem do gracza (wiersz S). */
+  get portrait(): BossPortrait {
+    const visual = BOSS_VISUALS[this.baseDefinition().id];
+    return bossPortrait(SPRITE_SHEETS[visual.sheet], visual.move);
   }
 
   update(now: number): void {
@@ -826,11 +864,16 @@ export class BossFight {
     if (plan.kind === BossAttackKind.StorkFlight || plan.kind === BossAttackKind.BirdDive) sound.play(SoundCue.WingFlap, this.boss ?? player);
     // Król Szlamu (krok 153): strefy bez własnego wyglądu dostają wygląd bossa (szlam zamiast czerwieni i ognia).
     const strikeLook = this.boss?.definition.strikeLook;
+    // Krok U11b: bohater z pęknięciami III — ten atak obszarowy jest przebijający (czerwień, „!!”, mocniejsze strefy).
+    const punish = plan.strikes.length > 0 && (this.deps.punishGate?.(scene.time.now) ?? false);
+    const punishMultiplier = COMBAT_WEIGHT_CONFIG.bossPunish.damageMultiplier;
     const strikes = plan.strikes.map((strike) => ({
       ...strike,
       center: moved.get(strike.center) ?? strike.center,
       ...(strike.look === undefined && strikeLook && { look: strikeLook }),
+      ...(punish && { damage: scaledDamage(strike.damage, punishMultiplier) }),
     }));
+    if (punish) this.markPunish(strikes);
     // Płat grzybów ze skoku i strąków wyrasta w faktycznym miejscu lądowania.
     const webs = plan.webs.map((web) => {
       const to = moved.get(web.to);
@@ -839,7 +882,8 @@ export class BossFight {
     const throws = plan.throws.map((thrown) => ({ ...thrown, to: moved.get(thrown.to) ?? thrown.to }));
     for (const strike of strikes) {
       const group = strikes.filter((other) => other.impactAt === strike.impactAt && other.telegraphStartAt === strike.telegraphStartAt);
-      this.strikes.push({ strike, group, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph) });
+      const lash = plan.kind === BossAttackKind.Lash && this.boss !== null && hasLashFx(this.boss.definition.id);
+      this.strikes.push({ strike, group, gfx: scene.add.graphics().setDepth(RENDER_DEPTH.telegraph), ...(lash && { lash }), ...(punish && { punish }) });
     }
     for (const planned of plan.bursts) {
       const burst = { ...planned, origin: moved.get(planned.origin) ?? planned.origin };
@@ -1338,15 +1382,54 @@ export class BossFight {
     this.spawns = [];
   }
 
+  /** Krok U11b: „!!” nad bossem (miga) do ostatniego uderzenia ataku kary, ostrzegawczy dźwięk. */
+  private markPunish(strikes: readonly AreaStrike[]): void {
+    const boss = this.boss;
+    if (!boss) return;
+    const until = Math.max(...strikes.map((strike) => strike.impactAt));
+    this.punishBang?.text.destroy();
+    const text = uiText(this.deps.scene, boss.x, boss.y, '!!', { color: COMBAT_WEIGHT_CONFIG.visual.punishCss, size: 2 })
+      .setOrigin(0.5, 1)
+      .setDepth(RENDER_DEPTH.worldText);
+    this.punishBang = { text, until };
+    sound.play(SoundCue.PunishWarn, boss);
+  }
+
+  /** „!!” idzie za bossem i gaśnie po uderzeniu (albo z bossem). */
+  private updatePunishBang(now: number): void {
+    const bang = this.punishBang;
+    if (!bang) return;
+    const boss = this.boss;
+    if (!boss || boss.isDead || now >= bang.until) {
+      bang.text.destroy();
+      this.punishBang = null;
+      return;
+    }
+    bang.text
+      .setVisible(Math.floor(now / COMBAT_WEIGHT_CONFIG.marks.blinkMs) % 2 === 0)
+      .setPosition(Math.round(boss.x), Math.round(boss.y - boss.radius - COMBAT_WEIGHT_CONFIG.marks.gapPx));
+  }
+
   private updateStrikes(now: number): void {
     const { party, effects } = this.deps;
-    this.strikes = this.strikes.filter(({ strike, gfx, group }) => {
+    this.updatePunishBang(now);
+    this.punishGfx ??= this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.combatFx);
+    const punishGfx = this.punishGfx.clear();
+    const { bossPunish, visual } = COMBAT_WEIGHT_CONFIG;
+    this.strikes = this.strikes.filter(({ strike, gfx, group, lash, punish }) => {
       if (now < strike.impactAt) {
         drawAreaTelegraph(gfx, strike, now, group);
+        if (punish) {
+          // Czerwień ataku kary nad mrokiem: pulsujący obrys każdej strefy.
+          const pulse = 0.55 + 0.45 * Math.abs(Math.sin(now / bossPunish.pulseMs));
+          punishGfx.lineStyle(bossPunish.ringWidth, visual.punishColor, pulse).strokeCircle(strike.center.x, strike.center.y, strike.radius);
+        }
         return true;
       }
       gfx.destroy();
-      if (strike.look === 'smoke') this.playSmokeBurst(strike);
+      // Krok U6: smagnięcie Matki Pająków to błysk pazurów zamiast ognistego wybuchu (sam obraz, strefa bez zmian).
+      if (lash && this.boss) playLashFx(this.deps.scene, this.boss.definition.id, this.boss, strike.center);
+      else if (strike.look === 'smoke') this.playSmokeBurst(strike);
       else if (strike.look === 'water') this.playSplash(strike);
       else if (strike.look === 'tangle') this.playTangleBurst(strike);
       else if (strike.look === 'sludge') {
@@ -1783,6 +1866,9 @@ export class BossFight {
   private clearFight(boss: Boss): void {
     this.ropeGfx?.clear();
     for (const pending of [...this.strikes, ...this.bursts, ...this.pendingHelpers]) pending.gfx.destroy();
+    this.punishGfx?.clear();
+    this.punishBang?.text.destroy();
+    this.punishBang = null;
     // Dog ginie razem z Baronem (nie ma już kogo pilnować); nowy już nie wróci.
     this.dogRespawnAt = null;
     if (this.dog) this.killDog(this.lastNow, false);

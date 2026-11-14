@@ -29,6 +29,8 @@ export class LightingOverlay {
   private readonly playerHalf: number;
   /** Mrok zasadzki (krok 49): druga warstwa ciemności z małym kręgiem światła gracza, siła 0..1. */
   private dread = 0;
+  /** Krok U8a: kilka źródeł mroku (zasadzka, wydarzenia w pokojach) — działa najsilniejsze. */
+  private readonly dreadSources = new Map<string, number>();
   private dreadLayer: { readonly rt: Phaser.GameObjects.RenderTexture; readonly key: string; readonly half: number; readonly darkness: number } | null =
     null;
 
@@ -54,10 +56,12 @@ export class LightingOverlay {
 
   /**
    * Przyciemnienie zasadzki: nad zwykłym mrokiem druga warstwa w profilu `profile` (mały krąg światła gracza),
-   * z siłą `level` 0..1 — przejście płynne, pochodnie jej nie rozjaśniają.
+   * z siłą `level` 0..1 — przejście płynne, pochodnie jej nie rozjaśniają. `source` (krok U8a) — kto zaciemnia;
+   * przy kilku naraz działa najsilniejszy, a warstwa zostaje w profilu pierwszego.
    */
-  setDread(level: number, profile: AmbientProfile): void {
-    this.dread = Math.min(1, Math.max(0, level));
+  setDread(level: number, profile: AmbientProfile, source = 'ambush'): void {
+    this.dreadSources.set(source, Math.min(1, Math.max(0, level)));
+    this.dread = Math.max(0, ...this.dreadSources.values());
     if (this.dread > 0 && !this.dreadLayer) {
       const rt = this.scene.add.renderTexture(0, 0, this.halfW * 2, this.halfH * 2).setOrigin(0).setDepth(RENDER_DEPTH.darkness + 0.01);
       const key = stampTexture(
@@ -73,8 +77,14 @@ export class LightingOverlay {
   /**
    * `players` — bohaterowie z własnym kręgiem światła (co-op, etap C2: dwóch; solo — jeden).
    * `flares` — światło ognia walki (krok 144): rozjaśnia mrok zawsze, także przy „Mroku”, bo trwa chwilę.
+   * `dynamic` — światła pocisków, magii i wybuchów (krok U3): jak `flares`, a do tego przebijają mrok zasadzki.
    */
-  render(players: readonly { readonly x: number; readonly y: number }[], lights: readonly PointLight[], flares: readonly PointLight[] = []): void {
+  render(
+    players: readonly { readonly x: number; readonly y: number }[],
+    lights: readonly PointLight[],
+    flares: readonly PointLight[] = [],
+    dynamic: readonly PointLight[] = [],
+  ): void {
     // Warstwa trzyma się kadru kamery (przycięta do granic świata jak kamera), a nie środka bohatera.
     const camera = this.scene.cameras.main;
     const view = { x: camera.worldView.centerX, y: camera.worldView.centerY };
@@ -86,17 +96,37 @@ export class LightingOverlay {
     for (const player of players) {
       rt.erase(this.playerKey, Math.round(player.x) - ox - this.playerHalf, Math.round(player.y) - oy - this.playerHalf);
     }
-    this.renderDread(players, ox, oy);
+    this.renderDread(players, dynamic, ox, oy);
     const area = { x: ox, y: oy, width: this.halfW * 2, height: this.halfH * 2 };
-    for (const light of this.torchesLightUp ? [...lights, ...flares] : flares) {
+    for (const light of this.torchesLightUp ? [...lights, ...flares, ...dynamic] : [...flares, ...dynamic]) {
       if (!lightTouchesView(light, light.radius, area)) continue;
-      const half = Math.ceil(light.radius);
-      rt.erase(torchLightKey(this.scene, light.radius), Math.round(light.x) - ox - half, Math.round(light.y) - oy - half);
+      this.eraseLight(rt, light, ox, oy);
     }
   }
 
-  /** Warstwa mroku zasadzki: w tym samym miejscu co główna, ciemność × siła, wytarte tylko kręgi bohaterów. */
-  private renderDread(players: readonly { readonly x: number; readonly y: number }[], ox: number, oy: number): void {
+  /** Obszar warstwy mroku w świecie (kadr z zapasem) — światła dynamiczne wybierane są tylko w nim. */
+  get area(): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
+    const camera = this.scene.cameras.main;
+    const view = { x: camera.worldView.centerX, y: camera.worldView.centerY };
+    const { x, y } = overlayOrigin(view, { x: this.halfW, y: this.halfH }, camera.getBounds());
+    return { x, y, width: this.halfW * 2, height: this.halfH * 2 };
+  }
+
+  private eraseLight(rt: Phaser.GameObjects.RenderTexture, light: PointLight, ox: number, oy: number): void {
+    const half = Math.ceil(light.radius);
+    rt.erase(torchLightKey(this.scene, light.radius), Math.round(light.x) - ox - half, Math.round(light.y) - oy - half);
+  }
+
+  /**
+   * Warstwa mroku zasadzki: w tym samym miejscu co główna, ciemność × siła, wytarte kręgi bohaterów
+   * i (krok U3) światła pocisków — strzały w Zaduchu są czytelne. Na Niskiej `dynamic` jest puste.
+   */
+  private renderDread(
+    players: readonly { readonly x: number; readonly y: number }[],
+    dynamic: readonly PointLight[],
+    ox: number,
+    oy: number,
+  ): void {
     const layer = this.dreadLayer;
     if (!layer) return;
     layer.rt.setVisible(this.dread > 0);
@@ -107,6 +137,7 @@ export class LightingOverlay {
     for (const player of players) {
       layer.rt.erase(layer.key, Math.round(player.x) - ox - layer.half, Math.round(player.y) - oy - layer.half);
     }
+    for (const light of dynamic) this.eraseLight(layer.rt, light, ox, oy);
   }
 }
 

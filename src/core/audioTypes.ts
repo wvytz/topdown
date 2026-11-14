@@ -40,6 +40,22 @@ export enum SoundCue {
   LurkWake = 'lurk-wake',
   /** Czyhacz wyskakuje: trzask drewna/kamienia. */
   LurkBurst = 'lurk-burst',
+  /** Passa wchodzi na próg I, II, III (krok U11a): krótki, coraz wyższy dźwięk. */
+  StreakTier1 = 'streak-tier-1',
+  StreakTier2 = 'streak-tier-2',
+  StreakTier3 = 'streak-tier-3',
+  /** Odsłonięcie III (krok U11a): niski puls — „teraz cię ukarzą”. */
+  CrackPulse = 'crack-pulse',
+  /** Wróg bierze na cel odsłoniętego bohatera (atak kary): ostry, dwutonowy alarm. */
+  PunishWarn = 'punish-warn',
+  /** Przeszywający strzał albo ruszenie taranu: suchy trzask ze świstem. */
+  PunishStrike = 'punish-strike',
+  /** Krok U9d: wróg zaczyna ciężki zamach (pomarańczowe „!”). */
+  HeavyWindup = 'heavy-windup',
+  /** Krok U9d: pajączek skacze na bohatera. */
+  SpiderLeap = 'spider-leap',
+  /** Krok U9d: Rozdeptanie (Buty ×3) — dash trafia wrogów. */
+  Stomp = 'stomp',
   /** Sprzątaczka krzyczy (krok 125): krótki, piskliwy okrzyk do napisu nad głową. */
   Shout = 'shout',
   /** Chlust wody z wiadra. */

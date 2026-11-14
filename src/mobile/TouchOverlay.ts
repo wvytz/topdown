@@ -1,4 +1,5 @@
 import type { ScreenButton, ScreenSize } from '@/systems/touchLayout';
+import { layoutLine, measureLine } from '@/core/pixelFont';
 
 /** Gałka do narysowania: środek, pozycja gałki pod kciukiem i promień (px CSS). */
 export interface OverlayStick {
@@ -109,14 +110,8 @@ export class TouchOverlay {
     ctx.lineWidth = button.primary ? 3 : 2;
     ctx.strokeStyle = button.primary ? 'rgba(232, 232, 240, 0.75)' : 'rgba(232, 232, 240, 0.55)';
     ctx.stroke();
-    ctx.font = `bold ${button.primary ? 16 : 12}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#000000';
-    ctx.strokeText(button.label, button.x, button.y);
-    ctx.fillStyle = '#e8e8f0';
-    ctx.fillText(button.label, button.x, button.y);
+    // Krok U7: podpis przycisku w pikselowym kroju gry (obrys 1 piksel fontu), nie czcionką systemową.
+    drawPixelLabel(ctx, button.label, button.x, button.y, button.primary ? 3 : 2);
   }
 
   /** Gałka: tarcza z obwódką i kółko pod kciukiem; `alpha` < 1 — blada podpowiedź. */
@@ -137,3 +132,21 @@ export class TouchOverlay {
     ctx.globalAlpha = 1;
   }
 }
+
+/** Napis pikselowym krojem (krok U7) wyśrodkowany w (x, y); `unit` — bok piksela fontu w px CSS. */
+function drawPixelLabel(ctx: CanvasRenderingContext2D, label: string, x: number, y: number, unit: number): void {
+  const lines = label.split('\n');
+  const lineHeight = (GLYPH_CAP_ROWS + 3) * unit;
+  lines.forEach((line, i) => {
+    const pixels = layoutLine(line);
+    const left = Math.round(x - (measureLine(line) * unit) / 2);
+    const top = Math.round(y - (lines.length * lineHeight) / 2 + i * lineHeight + (lineHeight - GLYPH_CAP_ROWS * unit) / 2);
+    ctx.fillStyle = '#1b1a22';
+    for (const p of pixels) ctx.fillRect(left + (p.x - 1) * unit, top + (p.y - 1) * unit, unit * 3, unit * 3);
+    ctx.fillStyle = '#e8e0c0';
+    for (const p of pixels) ctx.fillRect(left + p.x * unit, top + p.y * unit, unit, unit);
+  });
+}
+
+/** Wysokość wersalika w pikselach fontu. */
+const GLYPH_CAP_ROWS = 7;

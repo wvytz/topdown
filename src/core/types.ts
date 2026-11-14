@@ -57,6 +57,8 @@ export interface HeroSelectData {
   readonly mode?: RunMode;
   /** `?boss=1` z adresu (krok 148): po wyborze bohatera start przy arenie bossa. */
   readonly atBoss?: boolean;
+  /** „Graj z botem” z menu (krok U9a): run z botem-partnerem jako P2. */
+  readonly bot?: true;
 }
 
 /** Ekran co-opu (etap C5): tylko wspinaczka od piętra 1. */
@@ -76,6 +78,8 @@ export interface FloorSceneData {
   readonly atBoss?: boolean;
   /** Lokalny co-op (krok 101+): drugi bohater i urządzenia graczy; brak = gra solo. */
   readonly coop?: CoopSceneData;
+  /** Prośba o bota-partnera z menu (krok U9a) — działa jak `?bot=1`; dalsze piętra niosą bota w `coop`. */
+  readonly bot?: true;
 }
 
 /** Drugi bohater w co-opie przenoszony między piętrami (pierwszy jest w `run`). */
@@ -85,6 +89,8 @@ export interface CoopPartnerSnapshot {
   readonly items: readonly ItemId[];
   /** null = pełne HP. */
   readonly hp: number | null;
+  /** Partnera prowadzi bot (krok U9a) — tylko w zapisie, żeby wczytany run wrócił z botem. */
+  readonly bot?: true;
 }
 
 export interface CoopSceneData {
@@ -111,6 +117,8 @@ export interface UltimateHudData {
 
 export interface HudData {
   readonly floor: number;
+  /** Krok U7: bohater gracza (portret w HUD-zie). */
+  readonly hero: import('@/core/heroTypes').HeroId;
   /** Areny bossów (krok 90): napis areny zamiast piętra; null we wspinaczce. */
   readonly arenaLabel: string | null;
   /** Modyfikator bieżącego piętra; null na piętrach bez modyfikatora. */
@@ -159,6 +167,8 @@ export interface HudData {
 /** Panel drugiego gracza w HUD (co-op, etap C5). */
 export interface HudPartnerData {
   readonly label: string;
+  /** Krok U7: bohater partnera (portret w panelu P2). */
+  readonly hero: import('@/core/heroTypes').HeroId;
   readonly hp: number;
   readonly maxHp: number;
   readonly dashReadiness: number;
@@ -206,6 +216,9 @@ export interface DeathSummary {
   readonly nameEntry: string | null;
   /** Krok 169: run skończony zwycięstwem (po bossie ostatniego piętra kręgu), nie śmiercią. */
   readonly victory?: boolean;
+  /** Krok U7: podpis runu (bohater, tryb, ziarno) i zebrane przedmioty na ekranie końca. */
+  readonly signature?: string;
+  readonly items?: readonly HudItem[];
 }
 
 export interface HudItem {
@@ -246,6 +259,16 @@ export interface BossHudData {
   readonly enraged: boolean;
   /** Duet (krok 136): osobny pasek każdego bossa; brak = jeden pasek. */
   readonly members?: readonly BossBarData[];
+  /** Krok U6: progi faz na pasku (ułamki HP, malejąco); brak — bez kresek. */
+  readonly phaseMarks?: readonly number[];
+  /** Krok U6: portrety na karcie wejścia (duet — dwa). */
+  readonly portraits?: readonly BossPortrait[];
+}
+
+/** Portret bossa na karcie wejścia (krok U6): klatka arkusza bossa, przodem do gracza. */
+export interface BossPortrait {
+  readonly texture: string;
+  readonly frame: number;
 }
 
 /** Pasek jednego bossa duetu (krok 136). */
@@ -255,6 +278,8 @@ export interface BossBarData {
   readonly maxHp: number;
   readonly enraged: boolean;
   readonly defeated: boolean;
+  /** Krok U6: progi faz tego bossa. */
+  readonly phaseMarks?: readonly number[];
 }
 
 /** Strzałka przy krawędzi ekranu do bossa poza kadrem (krok 136), w pikselach ekranu. */

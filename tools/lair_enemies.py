@@ -12,6 +12,7 @@ Arkusze (STYLEGUIDE §2, §8, §10; wiersze = 8 kierunków N..NW z obrotu, obrys
   bat_wave.png           32x32; kolumny 0–3 migotanie fali, wiersze = kierunek lotu
   cocoon.png             32x32, bez kierunków (krok 23d); 0–1 spoczynek (puls szwu), 2–3 drżenie (telegraf),
                          4–7 rozdarcie; klatka 7 = strzępy, które zostają na podłodze
+  (kokon skarbu ukrytej komnaty z kroku U4b zastąpiony w U4f modelem 2x z tools/spider_vault_sprites.py)
   sticky-web_small.png   32x32 (1 kafel), sticky-web_large.png 64x64 (2x2 kafle), krok 23e: lepka pajęczyna
                          na podłodze; 4 klatki = błysk przesuwa się po zielonych kroplach kleju. Pełna, okrągła
                          sieć z obrysem i kroplami — celowo inna niż narożne pajęczyny-dekoracje (trójkąt, bez obrysu)
@@ -178,8 +179,10 @@ SILK = (ok(.46, .030, 305), ok(.58, .030, 305), ok(.71, .026, 305), ok(.83, .020
 COCOON_CY = 18  # stopa kokonu przy dolnej krawędzi strefy, środek ciała lekko pod pivotem
 
 
-def silk_body(img, cx, cy, rx, ry, seam):
-    """Owalny kokon z ukośnymi pasmami oplotu i świecącym szwem (zieleń leża: w środku coś żyje)."""
+def silk_body(img, cx, cy, rx, ry, seam, seam_ramp=None):
+    """Owalny kokon z ukośnymi pasmami oplotu i świecącym szwem (zieleń leża: w środku coś żyje).
+    seam_ramp (krok U4b): inna rampa szwu — złoto w kokonach skarbu."""
+    seam_ramp = seam_ramp or GREEN
     shade = band_shade(SILK)
     ellipse(img, cx, cy, rx, ry, shade)
     for y in range(img.h):
@@ -191,7 +194,7 @@ def silk_body(img, cx, cy, rx, ry, seam):
                 img.put(x, y, SILK[1])
     if seam is not None:
         for y in range(int(cy - ry * .45), int(cy + ry * .4)):
-            img.put(int(cx), y, GREEN[seam])
+            img.put(int(cx), y, seam_ramp[seam])
     # Nici kotwiczące kokon do podłogi
     for dx in (-rx - 1, rx + 1):
         stroke(img, [(cx + dx * .6, cy + ry * .7), (cx + dx, cy + ry + 1)], 1.2, SILK[2])

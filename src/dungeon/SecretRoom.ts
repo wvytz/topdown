@@ -1,18 +1,15 @@
-import type { DungeonFloor, IntRange, Room, TilePoint } from '@/core/dungeonTypes';
+import type { DungeonFloor, Room } from '@/core/dungeonTypes';
 import { TileType } from '@/core/dungeonTypes';
-import type { Rng } from '@/core/random';
 
 /**
  * Ukryta komnata (krok 46, pomysł właściciela): pokój końcowy za areną wygląda jak lity mur, dopóki gracz
  * nie podejdzie na `revealRadius` kafli (w każdym kierunku). W środku kokony skarbu — rozbijalne, tylko jeden
- * z nich ma losowy przedmiot. Czysta logika: obszar komnaty, maska odsłonięcia, przebranie piętra, plan kokonów.
+ * z nich ma losowy przedmiot. Czysta logika: obszar komnaty, maska odsłonięcia, przebranie piętra. Od kroku U4f
+ * kokony stoją na piedestałach skarbca pająków (`dungeon/SpiderVault.ts`).
  */
 export interface SecretRoomConfig {
   /** Odsłonięcie, gdy gracz jest najwyżej tyle kafli (Czebyszew) od ukrytego kafla. */
   readonly revealRadius: number;
-  readonly cocoons: IntRange;
-  /** Odstęp kokonów od ścian komnaty (kafle). */
-  readonly wallMargin: number;
 }
 
 export interface SecretArea {
@@ -94,23 +91,4 @@ export function areaBounds(floor: DungeonFloor, area: SecretArea, margin: number
   const x = Math.max(0, minX - margin);
   const y = Math.max(0, minY - margin);
   return { x, y, width: Math.min(floor.width - 1, maxX + margin) - x + 1, height: Math.min(floor.height - 1, maxY + margin) - y + 1 };
-}
-
-export interface TreasureCocoonPlan {
-  readonly tiles: readonly TilePoint[];
-  /** Indeks kokonu z przedmiotem. */
-  readonly prize: number;
-}
-
-/** Kokony skarbu: losowe różne kafle w komnacie (z odstępem od ścian); jeden losowy ma przedmiot. */
-export function planTreasureCocoons(room: Room, config: SecretRoomConfig, rng: Rng): TreasureCocoonPlan {
-  const m = config.wallMargin;
-  const spots: TilePoint[] = [];
-  for (let y = room.y + m; y < room.y + room.height - m; y++) {
-    for (let x = room.x + m; x < room.x + room.width - m; x++) spots.push({ x, y });
-  }
-  const count = Math.min(spots.length, rng.int(config.cocoons.min, config.cocoons.max));
-  const tiles: TilePoint[] = [];
-  for (let i = 0; i < count; i++) tiles.push(spots.splice(Math.floor(rng.next() * spots.length), 1)[0]!);
-  return { tiles, prize: count > 0 ? Math.floor(rng.next() * count) : -1 };
 }

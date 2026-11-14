@@ -39,6 +39,8 @@ export const PARTNER_BOT_CONFIG = {
   reviveStandPx: 10,
   /** Dash doganiania, gdy gracz dalej niż tyle (px) i jest prosta droga. */
   catchUpDashPx: 190,
+  /** Unik ataku kary (krok U11b): bot odskakuje, gdy jego środek jest bliżej pasa niż połowa szerokości pasa + tyle (px; ciało i zapas). */
+  dodgeMarginPx: 14,
   /** Najkrótszy odstęp między dashami bota (ms). */
   dashCooldownMs: 1200,
   /** Teleport do gracza: dalej niż tyle (px)… */
@@ -53,6 +55,11 @@ export const PARTNER_BOT_CONFIG = {
   ultimateCrowdPx: 120,
   /** … albo duży cel (boss — promień od tylu px) w zasięgu ataku. */
   ultimateBossRadiusPx: 18,
+  /**
+   * Walka z bossem (krok U9a): bot goni bossa po arenie (cel do `engageRangePx` od bota, bez limitu od gracza),
+   * wraca do gracza dopiero dalej niż `followMaxPx` i teleportuje się dopiero dalej niż `warpDistancePx`.
+   */
+  boss: { engageRangePx: 420, followMaxPx: 340, warpDistancePx: 460 },
   /** Taktyka według broni bohatera. */
   tactics: {
     melee: { preferredRangePx: 10, retreatBelowPx: 0, attackRangePx: 26, shootRangePx: 160, panicDashPx: 0 },

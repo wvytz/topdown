@@ -226,6 +226,7 @@ Osobne ustawienie, niezależne od jakości: wyłącza drżenie kamery, błyski p
 - Źródłem światła może być pocisk, zaklęcie, wybuch, płonąca plama i element biomu. Każde ma barwę z rampy tego, co świeci.
 - Światło rozjaśnia mrok płynnie i gaśnie skokowo w rytmie animacji (§6b). Nie rysujemy kręgów z twardą krawędzią.
 - Światło Czarnego Słońca: jedno zimne, stałe światło z tej samej strony na każdym piętrze, mocniejsze im wyżej. Wzmacnia gradient ruiny, nie konkuruje z pochodniami.
+- Wdrożenie (krok U3): liczby w `config/dynamicLightConfig.ts`. Na Średniej światło tylko rozjaśnia mrok, a barwa (ADD) dochodzi na Wysokiej. Pociski wrogów mają pierwszeństwo przy limicie świateł. Światła dynamiczne nie odsłaniają wrogów w „Mroku” i we mgle, bo widoczność wrogów to mechanika.
 
 ### 13.8 Kafle i biomy 2.0
 
@@ -235,6 +236,7 @@ Osobne ustawienie, niezależne od jakości: wyłącza drżenie kamery, błyski p
 - Poza pokojami nie ma jednolitej czerni: widać mur wieży, a przez wyrwy niebo. Im wyższe piętro, tym mniej wyrw i więcej śladów życia.
 - Reguły czytelności podłogi z §6a i walidator generatora obowiązują bez wyjątków.
 - Dekoracje dalej bez kolizji.
+- Wdrożenie (krok U4a, pilot ruin): kafle w `tools/ruins_v2_tiles.py` (dodatek `v2` biomu), dekorowanie w `RUINS_DRESSING` (`sills`, `arenaBorder`, `breaches`). Kolejność jasności muru: wierzch przy pokoju → pasmo przejściowe w tonach lica → mur wieży z dużych bloków; wyrwy pokazują niebo (rampa `sky`), nigdy jaśniejsze od posadzki. Wyrwy mają własny strumień losowań.
 
 ### 13.9 Postacie 2.0
 
@@ -249,6 +251,7 @@ Osobne ustawienie, niezależne od jakości: wyłącza drżenie kamery, błyski p
 - Elementy interfejsu w całkowitej skali pikseli, z tym samym obrysem i złotem co łupy (§6c).
 - HUD nie zasłania walki: stałe napisy pomocy pojawiają się tylko na początku runu.
 - Jeden wygląd na PC, padzie i telefonie; różni się tylko rozmiar i podpowiedzi przycisków.
+- Wdrożenie (krok U7): krój w `core/pixelFont.ts` (wersaliki 5×7, małe litery, polskie znaki, cyfry jednej szerokości), w grze `ui/UiText.ts`; ramki `ui/UiFrame.ts` (obrys `#1b1a22` ze ściętymi rogami, ramka 1 px, fazka, nity), barwy `config/uiConfig.ts` z palety ekranu startowego. Wielkości napisów tylko całkowite (1, 2, 3, 4); na telefonie drobne napisy HUD-u w skali 2. Nowy znak w napisach gry trzeba dopisać do fontu — pilnuje tego test.
 
 ### 13.11 Checklista efektu
 

@@ -26,6 +26,8 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
   magic = false;
   /** Strzał barbarzyńcy skręca do celu (krok 146); null — leci prosto. */
   homing: HomingConfig | null = null;
+  /** Krok U11a, Szala: numer ataku bohatera (0 — nie liczy się do Passy). */
+  attackId = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string = TextureKey.Projectile) {
     super(scene, x, y, texture);

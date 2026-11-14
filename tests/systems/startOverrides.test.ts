@@ -20,6 +20,17 @@ describe('start z adresu — run testowy (krok 41g)', () => {
     expect(parseStartOverrides('?boss=0')).toEqual({ practice: false });
   });
 
+  it('?vault=1 (krok U4f): start w skarbcu pająków, run testowy', () => {
+    expect(parseStartOverrides('?vault=1&floor=2')).toEqual({ atVault: true, floor: 2, practice: true });
+    expect(parseStartOverrides('?vault=0')).toEqual({ practice: false });
+  });
+
+  it('wydarzenie w pokojach i przeklęta skrzynia z adresu (krok U8) — run testowy', () => {
+    expect(parseStartOverrides('?event=purse')).toEqual({ roomEvent: 'purse', practice: true });
+    expect(parseStartOverrides('?event=nope')).toEqual({ practice: false });
+    expect(parseStartOverrides('?chest=1')).toEqual({ cursedChest: true, practice: true });
+  });
+
   it('błędne wartości są pomijane', () => {
     expect(parseStartOverrides('?floor=0&seed=abc')).toEqual({ practice: false });
     expect(parseStartOverrides('?floor=2.5&seed=')).toEqual({ practice: false });
@@ -29,5 +40,10 @@ describe('start z adresu — run testowy (krok 41g)', () => {
     const run = new RunState(newRun(HeroId.Sorceress, true));
     expect(run.snapshot(10).practice).toBe(true);
     expect(new RunState(newRun(HeroId.Barbarian)).snapshot(null).practice).toBe(false);
+  });
+
+  it('przełącznik wag z adresu (krok 188) robi run testowy', () => {
+    expect(parseStartOverrides('?wagi=0')).toEqual({ practice: true });
+    expect(parseStartOverrides('?wagi=1')).toEqual({ practice: true });
   });
 });

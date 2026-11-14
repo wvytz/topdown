@@ -3,9 +3,19 @@ import type { DungeonFloor } from '@/core/dungeonTypes';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import type { TilesetMeta } from '@/core/tilesetTypes';
 import type { FloorDressingConfig } from '@/config/dressingConfig';
-import { FLOOR_DRESSING, FUNGAL_GROVE_DRESSING, GRAVEYARD_DRESSING, INFERNAL_DRESSING, SPIDER_LAIR_DRESSING } from '@/config/dressingConfig';
+import {
+  FLOOR_DRESSING,
+  FUNGAL_GROVE_DRESSING,
+  GRAVEYARD_DRESSING,
+  INFERNAL_DRESSING,
+  MIRROR_HALL_DRESSING,
+  RUINS_DRESSING,
+  SMOKE_DEN_DRESSING,
+  SPIDER_LAIR_DRESSING,
+  STORK_GARDEN_DRESSING,
+} from '@/config/dressingConfig';
 import type { DressedFloor, DressedLayer, DressingExtras } from '@/dungeon/FloorDressing';
-import { EMPTY_TILE, dressFloor, gateOrientation, wallDistances } from '@/dungeon/FloorDressing';
+import { EMPTY_TILE, arenaBorderTiles, dressFloor, gateOrientation, wallDistances } from '@/dungeon/FloorDressing';
 import { findRoomEntrances } from '@/dungeon/arenaGates';
 import { isStairsTile, stairsTiles } from '@/dungeon/stairs';
 import { floorFromAscii, room, sampleFloors } from '../helpers/floors';
@@ -118,9 +128,11 @@ describe('FloorDressing — ściany', () => {
     expect(dist[1 * BOX.width + 4]).toBe(2);
     expect(dist[0 * BOX.width + 4]).toBe(3);
     expect(dist[4 * BOX.width + 4]).toBe(0);
-    expect(groupFrames('wallBand.fade').has(at(d.walls, 4, 1))).toBe(true);
-    expect(groupFrames('wallBand.deep').has(at(d.walls, 4, 0))).toBe(true);
-    expect(groupFrames('wallBand.deep').has(at(d.walls, 0, 0))).toBe(true);
+    expect(groupFrames(TILESET.autotile.wall.bands.groups.fade).has(at(d.walls, 4, 1))).toBe(true);
+    // Krok U4a: grupę głębokiej masy wskazuje arkusz (w ruinach 2.0 — mur wieży).
+    const deep = TILESET.autotile.wall.bands.groups.deep;
+    expect(groupFrames(deep).has(at(d.walls, 4, 0))).toBe(true);
+    expect(groupFrames(deep).has(at(d.walls, 0, 0))).toBe(true);
   });
 
   it('maska 4-bit wybiera grupę: mur nad pokojem 11, pod 14, po bokach 13 i 7', () => {
@@ -662,5 +674,117 @@ describe('FloorDressing — gniazdo bossa pająków (krok 52)', () => {
       return n;
     };
     expect(count(GRAVEYARD_DRESSING)).toBeGreaterThan(count({ ...GRAVEYARD_DRESSING, nest: null }));
+  });
+});
+
+describe('FloorDressing — oprawa 2.0 ruin (krok U4a)', () => {
+  const V2: FloorDressingConfig = {
+    ...NO_DECALS,
+    sills: RUINS_DRESSING.sills!,
+    arenaBorder: RUINS_DRESSING.arenaBorder!,
+    breaches: RUINS_DRESSING.breaches!,
+  };
+
+  it('konfiguracja ruin wskazuje istniejące grupy arkusza', () => {
+    const groups = [
+      ...Object.values(RUINS_DRESSING.sills ?? {}),
+      ...Object.values(RUINS_DRESSING.arenaBorder ?? {}),
+      RUINS_DRESSING.breaches?.group ?? '',
+    ];
+    expect(groups.length).toBe(11);
+    for (const g of groups) expect(TILESET.groups, g).toHaveProperty(g);
+  });
+
+  it('biomy 2.0 (kroki U4b–U4c): grupy oprawy w ich arkuszach, wyrw mniej niż w ruinach; mieszkanie gracza bez niej', () => {
+    for (const [file, config] of [
+      ['fungal_grove_tileset.json', FUNGAL_GROVE_DRESSING],
+      ['graveyard_tileset.json', GRAVEYARD_DRESSING],
+      ['infernal_tileset.json', INFERNAL_DRESSING],
+      ['mirror_hall_tileset.json', MIRROR_HALL_DRESSING],
+      ['stork_garden_tileset.json', STORK_GARDEN_DRESSING],
+    ] as const) {
+      const sheet = loadTileset(file);
+      const groups = [...Object.values(config.sills ?? {}), ...Object.values(config.arenaBorder ?? {}), config.breaches?.group ?? ''];
+      expect(groups.length).toBe(11);
+      for (const g of groups) expect(sheet.groups, `${file}: ${g}`).toHaveProperty(g);
+      expect(sheet.autotile.wall.bands.groups.deep).toBe('wallBand.tower');
+      expect(config.breaches!.chance).toBeLessThan(RUINS_DRESSING.breaches!.chance);
+    }
+    expect(GRAVEYARD_DRESSING.breaches!.chance).toBeLessThan(FUNGAL_GROVE_DRESSING.breaches!.chance);
+    // Mieszkanie gracza (krok 138) ma własne kafle — kamienne progi i wyrwy do niego nie pasują; leże poza wspinaczką.
+    for (const config of [SMOKE_DEN_DRESSING, SPIDER_LAIR_DRESSING]) {
+      expect(config.sills).toBeUndefined();
+      expect(config.breaches).toBeUndefined();
+    }
+  });
+
+  it('próg leży na każdym wejściu do pokoju, w orientacji przejścia; bez konfiguracji progów nie ma', () => {
+    const d = dress(HALLS, V2);
+    const room0 = HALLS.rooms[0]!;
+    const entrances = findRoomEntrances(HALLS, room0);
+    expect(entrances.length).toBeGreaterThan(0);
+    for (const p of entrances) {
+      const group = V2.sills![gateOrientation(room0, p)];
+      expect(groupFrames(group).has(at(d.floorBase, p.x, p.y)), `${p.x},${p.y}`).toBe(true);
+    }
+    const sillFrames = new Set([...groupFrames('floorSill.h'), ...groupFrames('floorSill.v')]);
+    const plain = dress(HALLS, NO_DECALS);
+    expect([...plain.floorBase.frames].some((f) => sillFrames.has(f))).toBe(false);
+  });
+
+  it('obwódka areny: skrajne kafle areny z właściwym bokiem, środek i inne pokoje bez obwódki', () => {
+    const arena = ARENA.rooms[ARENA.bossRoomId]!;
+    const d = dress(ARENA, V2);
+    const tiles = arenaBorderTiles(arena);
+    expect(tiles.length).toBe(2 * (arena.width + arena.height) - 4);
+    for (const t of tiles) {
+      if (isStairsTile(ARENA, t)) continue;
+      expect(groupFrames(V2.arenaBorder![t.side]).has(at(d.floorDecal, t.x, t.y)), `${t.x},${t.y} ${t.side}`).toBe(true);
+    }
+    const borderFrames = new Set(Object.values(V2.arenaBorder!).flatMap((g) => [...groupFrames(g)]));
+    for (let y = arena.y + 1; y < arena.y + arena.height - 1; y++) {
+      for (let x = arena.x + 1; x < arena.x + arena.width - 1; x++) expect(borderFrames.has(at(d.floorDecal, x, y))).toBe(false);
+    }
+    expect(arenaBorderTiles(room(0, 0, 0, 3, 3, RoomKind.Boss)).map((t) => t.side)).toEqual(['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']);
+  });
+
+  it('wyrwy: tylko na ścianach z dala od podłogi, bez zmian kolizji; reszta obrazu jak bez wyrw', () => {
+    const breachFrames = new Set(TILESET.groups['wallBreach']!.flatMap((n) => (TILESET.tiles[n]!.frames ?? [[TILESET.tiles[n]!.frame]]).flat()));
+    const often: FloorDressingConfig = { ...V2, breaches: { ...V2.breaches!, chance: 0.5 } };
+    const { breaches: _unused, ...without } = V2;
+    let seen = 0;
+    for (const floor of sampleFloors([1, 3], 2)) {
+      const before = JSON.stringify(floor.tiles);
+      const d = dress(floor, often);
+      const plain = dress(floor, without);
+      expect(JSON.stringify(floor.tiles)).toBe(before);
+      const dist = wallDistances(floor);
+      for (let i = 0; i < floor.tiles.length; i++) {
+        if (!breachFrames.has(d.walls.frames[i]!)) {
+          expect(d.walls.frames[i]).toBe(plain.walls.frames[i]);
+          continue;
+        }
+        seen++;
+        expect(floor.tiles[i]).toBe(TileType.Wall);
+        expect(dist[i]!).toBeGreaterThanOrEqual(often.breaches!.minWallDistance);
+        expect(d.overhead.frames[i]).toBe(EMPTY_TILE);
+      }
+      for (const name of ['floorBase', 'floorDecal', 'envShadow', 'overhead'] as const) {
+        expect(Array.from(d[name].frames)).toEqual(Array.from(plain[name].frames));
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it('wyrwy są deterministyczne i rzadkie przy szansie z konfiguracji ruin', () => {
+    const breachFrames = new Set(TILESET.groups['wallBreach']!.flatMap((n) => (TILESET.tiles[n]!.frames ?? [[TILESET.tiles[n]!.frame]]).flat()));
+    for (const floor of sampleFloors([1], 3)) {
+      const a = dress(floor, RUINS_DRESSING);
+      const b = dress(floor, RUINS_DRESSING);
+      expect(Array.from(a.walls.frames)).toEqual(Array.from(b.walls.frames));
+      const walls = floor.tiles.filter((t) => t === TileType.Wall).length;
+      const breached = Array.from(a.walls.frames).filter((f) => breachFrames.has(f)).length;
+      expect(breached / walls).toBeLessThan(0.15);
+    }
   });
 });

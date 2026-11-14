@@ -16,6 +16,7 @@ export const NO_EVOLVED_EFFECTS: EvolvedEffects = {
   twinSpreadDeg: 0,
   bloodShieldMax: 0,
   stormTrail: null,
+  stomp: null,
 };
 
 export const NO_WEAPON_EFFECTS: WeaponEffects = {
@@ -117,6 +118,9 @@ export function computeWeaponEffects(itemIds: readonly ItemId[], config: ItemEff
     twinShot: evolved(count(ItemId.Quiver)),
     twinSpreadDeg: evolved(count(ItemId.Quiver)) ? evo.quiver.twinSpreadDeg : 0,
     bloodShieldMax: evolved(fangs) ? Math.round(evo.bloodShield.maxBaseHpPct * baseMaxHp) : 0,
+    stomp: evolved(count(ItemId.Boots))
+      ? { damage: evo.stomp.damage + beyond(count(ItemId.Boots)) * evo.stomp.damagePerStack, knockback: evo.stomp.knockback, radiusBonus: evo.stomp.radiusBonus }
+      : null,
     stormTrail: evolved(storm)
       ? {
           durationMs: evo.stormTrail.durationMs,

@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { UiText, uiText, uiTextFromStyle } from '@/ui/UiText';
+import { ItemSlotView } from '@/ui/ItemSlotView';
+import { ALL_ITEMS } from '@/config/lootConfig';
 import type { DeathSummary } from '@/core/types';
 import { DEATH_HERO_ICON as ICON, DEATH_LAYOUT as L, DEATH_PALETTE as P, DEATH_TITLE_FLOW as FLOW, VICTORY_SCREEN, type DeathTitleFlow } from '@/config/deathScreenConfig';
 import { heroIconTexture } from '@/effects/heroIcon';
@@ -51,13 +54,17 @@ export class DeathScreen {
   private titleTop: number;
   private victory = false;
   private flow: DeathTitleFlow = FLOW;
-  private readonly score: Phaser.GameObjects.Text;
+  private readonly score: UiText;
   private readonly ornament: Phaser.GameObjects.Container;
-  private readonly header: Phaser.GameObjects.Text;
-  private readonly rows: Phaser.GameObjects.Text[];
+  private readonly header: UiText;
+  private readonly rows: UiText[];
   /** Miniaturki bohatera po lewej stronie wierszy (krok 89a). */
   private readonly icons: Phaser.GameObjects.Image[];
-  private readonly prompt: Phaser.GameObjects.Text;
+  private readonly prompt: UiText;
+  /** Krok U7: podpis runu i rząd zebranych przedmiotów („Moje przedmioty”). */
+  private readonly signature: UiText;
+  private readonly itemFrames: Phaser.GameObjects.Graphics;
+  private readonly items: ItemSlotView;
   private startedAt: number | null = null;
   private shownFor: DeathSummary | null = null;
 
@@ -81,23 +88,23 @@ export class DeathScreen {
     this.titleFill = scene.add.graphics();
     this.title = this.buildTitle(P.blood0);
 
-    this.score = scene.add
-      .text(L.centerX, L.score.y, '', { ...style, fontSize: `${L.score.fontSize}px`, color: '#9c8f74' })
+    this.score = uiTextFromStyle(scene, L.centerX, L.score.y, '', { ...style, fontSize: `${L.score.fontSize}px`, color: '#9c8f74' })
+      .setOrigin(0.5, 0)
+      .setLetterSpacing(1);
+    this.ornament = this.buildOrnament();
+    this.header = uiTextFromStyle(scene, L.centerX, L.header.y, 'NAJLEPSZE WSPINACZKI', { ...style, fontSize: `${L.header.fontSize}px`, color: '#573e38' })
       .setOrigin(0.5, 0)
       .setLetterSpacing(2);
-    this.ornament = this.buildOrnament();
-    this.header = scene.add
-      .text(L.centerX, L.header.y, 'NAJLEPSZE WSPINACZKI', { ...style, fontSize: `${L.header.fontSize}px`, color: '#573e38' })
-      .setOrigin(0.5, 0)
-      .setLetterSpacing(4);
     this.rows = Array.from({ length: ROWS }, (_, i) =>
-      scene.add.text(L.centerX, L.rows.y + i * L.rows.step, '', { ...style, fontSize: `${L.rows.fontSize}px` }).setOrigin(0.5, 0),
+      uiTextFromStyle(scene, L.centerX, L.rows.y + i * L.rows.step, '', { ...style, fontSize: `${L.rows.fontSize}px` }).setOrigin(0.5, 0),
     );
     this.icons = this.rows.map((row) => scene.add.image(row.x, row.y, '__DEFAULT').setVisible(false));
-    this.prompt = scene.add
-      .text(L.centerX, L.prompt.y, TOWER_PROMPT, { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#9c8f74' })
+    this.prompt = uiTextFromStyle(scene, L.centerX, L.prompt.y, TOWER_PROMPT, { ...style, fontSize: `${L.prompt.fontSize}px`, color: '#9c8f74' })
       .setOrigin(0.5, 0)
-      .setLetterSpacing(5);
+      .setLetterSpacing(2);
+
+    this.signature = uiText(scene, L.centerX, L.signature.y, '', { color: '#7d7060', align: 'center' }).setOrigin(0.5, 0);
+    this.itemFrames = scene.add.graphics();
 
     this.root = scene.add.container(0, 0, [
       this.dim,
@@ -111,8 +118,13 @@ export class DeathScreen {
       ...this.rows,
       ...this.icons,
       this.prompt,
+      this.signature,
+      this.itemFrames,
     ]);
     this.root.setVisible(false);
+    // Ikony przedmiotów leżą poza kontenerem (wspólny widok z HUD-em), więc chowa je `setAlpha`.
+    this.items = new ItemSlotView(scene, { x: 0, y: L.items.y, size: L.items.size, gap: L.items.gap, iconScale: 1, capacity: ALL_ITEMS.length });
+    this.items.setAlpha(0);
   }
 
   /**
@@ -136,6 +148,9 @@ export class DeathScreen {
     this.drawTitleFill(now - (this.startedAt ?? now));
     this.glow.setAlpha(f.titleAlpha).setScale(f.titleScale);
     this.score.setAlpha(f.scoreAlpha);
+    this.signature.setAlpha(f.scoreAlpha);
+    this.itemFrames.setAlpha(f.scoreAlpha);
+    this.items.setAlpha(f.scoreAlpha);
     this.ornament.setAlpha(f.scoreAlpha);
     this.header.setAlpha(f.scoreAlpha);
     this.rows.forEach((row, i) => row.setAlpha(f.rowAlphas[i] ?? 0));
@@ -179,6 +194,7 @@ export class DeathScreen {
         ? VICTORY_SCREEN.result(death.score)
         : `${death.score} ZŁOTA · PIĘTRO ${death.floor}`;
     this.score.setText(`${result}${place}`);
+    this.fillRunEnd(death);
     const prompt = death.arenas ? BOSS_RUSH_TEXT.deathPrompt : death.source === 'floorSelect' ? FLOOR_SELECT_TEXT.deathPrompt : TOWER_PROMPT;
     // Wersja mobilna (krok 96): zamiast klawiszy są przyciski dotykowe w tym samym miejscu.
     this.prompt.setText(currentPlatform() === 'mobile' ? '' : prompt);
@@ -214,6 +230,17 @@ export class DeathScreen {
     });
   }
 
+  /** Krok U7: podpis runu i rząd przedmiotów pośrodku, w ramkach jak w HUD-zie. */
+  private fillRunEnd(death: DeathSummary): void {
+    this.signature.setText(death.signature ?? '');
+    const items = death.items ?? [];
+    const width = this.items.widthOf(items.length);
+    this.items.moveTo(Math.round(L.centerX - width / 2), L.items.y);
+    this.items.update(items, null);
+    this.itemFrames.clear();
+    this.items.drawFrames(this.itemFrames);
+  }
+
   /** Nagłówek tablicy: areny bossów (krok 91a) mają własne nagłówki dla wyników z listy. */
   private headerFor(death: DeathSummary): string {
     const source = death.source;
@@ -230,6 +257,8 @@ export class DeathScreen {
     this.shownFor = null;
     this.startedAt = null;
     this.root.setVisible(false);
+    this.items.update([], null);
+    this.items.setAlpha(0);
   }
 
   /** POLEGŁEŚ: cienki obrys w czerni i płytki cień (nieruchome) + lico ze spływającą czerwienią. */

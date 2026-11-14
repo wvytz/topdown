@@ -14,7 +14,7 @@ import { AttackCycle } from '@/systems/AttackCycle';
 import { angleTo } from '@/systems/CombatMath';
 import { ChargePool } from '@/systems/ChargePool';
 import type { HeroVisual } from '@/config/spriteConfig';
-import { HERO_VISUALS, LOOT_ATLAS, LOOT_FRAMES, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
+import { HERO_CORPSE_TINT, HERO_HURT_POSE_MS, HERO_VISUALS, LOOT_ATLAS, LOOT_FRAMES, SORCERESS_ORB_VISUAL, SPRITE_SHEETS, animationKey } from '@/config/spriteConfig';
 import { facingDirection } from '@/systems/Facing';
 import { playerAnimationState } from '@/systems/PlayerAnimation';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
@@ -26,6 +26,8 @@ import { RootState } from '@/systems/Root';
 import type { RootEffect } from '@/core/bossTypes';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
+import { CombatScale, scaledDamage, weightsEnabled } from '@/systems/CombatScale';
+import { COMBAT_WEIGHT_CONFIG } from '@/config/combatWeightConfig';
 import { BeamChannel, OrbSeries, orbitOffsets } from '@/systems/Sorcery';
 import { BowRepeater } from '@/systems/Archery';
 import { UltimateGauge, gaugeConfigFor, ultimateActiveMs, ultimateGuardMs } from '@/systems/Ultimate';
@@ -127,8 +129,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private shotCharges: ChargePool;
   private shotCycle: AttackCycle;
   private readonly invulnerability = new Timer();
+  /**
+   * Szala (krok U11a, wersja lekka systemu wag): Passa za trafienia, pęknięcia za przyjęte ciosy.
+   * Pęknięcia zwiększają obrażenia w `takeHit`; Passę liczy `HeroCombat`. `?wagi=0` wyłącza.
+   */
+  readonly weights = new CombatScale(
+    COMBAT_WEIGHT_CONFIG.streak,
+    COMBAT_WEIGHT_CONFIG.cracks,
+    weightsEnabled(typeof window === 'undefined' ? '' : window.location.search, COMBAT_WEIGHT_CONFIG.enabled),
+  );
   /** Krok U2: krótki błysk barwą ostrzegawczą po trafieniu (sam obraz). */
   private readonly hurtFlash = new Timer();
+  /** Krok U5a: poza trafienia (tylko arkusze 2.0). */
+  private readonly hurtPose = new Timer();
   private readonly knockbackStun = new Timer();
   /** Statusy na graczu: spowolnienie (kokony, pajęczyny, krok 23d), trucizna (Matka Pająków, krok 27); dash nie spowalnia. */
   private status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
@@ -351,6 +364,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   revive(hp: number, invulnerableMs: number, now: number): void {
     if (!this.isDead) return;
     this.health.revive(hp);
+    this.weights.reset();
     this.status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
     this.root.clear();
     this.invulnerability.start(now, invulnerableMs);
@@ -369,6 +383,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   getAimAngle(): number {
     return this.aimAngle;
+  }
+
+  /** Kierunek dasha (krok U8c, Rozdeptanie). */
+  dashHeading(): Vector2 {
+    return this.dash.heading;
   }
 
   dashReadiness(now: number): number {
@@ -557,7 +576,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       else this.animator.play(this.visual.attack, duration);
       return;
     }
-    this.animator.play(state === 'move' ? this.visual.move : this.visual.idle);
+    this.playBase(state === 'move', now);
   }
 
   /** Łucznik: każda strzała odtwarza zwolnienie cięciwy na czas odstępu między strzałami, potem chód. */
@@ -570,7 +589,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
     const moving = actions.move.x !== 0 || actions.move.y !== 0;
-    this.animator.play(moving ? this.visual.move : this.visual.idle);
+    this.playBase(moving, now);
   }
 
   /** Strzał wymaga odstępu od poprzedniego i wolnego ładunku. */
@@ -584,14 +603,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   takeHit(hit: Hit, now: number): boolean {
     if (this.isDead || this.isInvulnerable(now)) return false;
 
+    // Szala (krok U11a): każde pęknięcie zwiększa obrażenia w nas; przyjęty cios zeruje Passę i dodaje pęknięcie.
+    const damage = scaledDamage(hit.damage, this.weights.incomingMultiplier);
+    this.weights.hurt(now);
     // Korona Szlamu (krok 170): co kilka sekund jedno trafienie o połowę słabsze.
-    const jelly = this.jellyGuard.absorb(hit.damage, now, this.weaponEffects.relics.jelly);
+    const jelly = this.jellyGuard.absorb(damage, now, this.weaponEffects.relics.jelly);
     if (jelly.absorbed) this.scene.events.emit(PLAYER_JELLY_EVENT, this);
     // Krwawa tarcza (krok 150) zbija obrażenia przed zdrowiem.
     const absorbed = Math.min(this.bloodShield, jelly.damage);
     this.bloodShield -= absorbed;
     this.health.takeDamage(jelly.damage - absorbed);
     this.hurtFlash.start(now, COMBAT_FEEL_CONFIG.heroHurt.ms);
+    if (this.visual.hurt) {
+      this.hurtPose.start(now, HERO_HURT_POSE_MS);
+      this.animator.restart(this.visual.hurt, HERO_HURT_POSE_MS);
+    }
     this.invulnerability.start(now, this.combat.invulnerabilityMs);
     this.knockbackStun.start(now, KNOCKBACK_STUN_MS);
     this.setVelocity(hit.knockback.x, hit.knockback.y);
@@ -623,11 +649,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private die(): void {
     this.bloodShield = 0;
+    this.weights.reset();
     sound.play(SoundCue.HeroDeath, this);
     this.setVelocity(0, 0);
     this.setBodyCollision(false);
-    this.setTint(0x555555).setAlpha(1);
-    this.animator.stop();
+    this.setAlpha(1);
+    if (this.visual.death) {
+      // Krok U5a: bohater pada i leży; lekka szarość odróżnia ciało od żywego partnera w co-opie.
+      this.setTint(HERO_CORPSE_TINT);
+      this.animator.restart(this.visual.death);
+    } else {
+      this.setTint(0x555555);
+      this.animator.stop();
+    }
     this.aimMarker.setVisible(false);
     this.beam?.interrupt(this.scene.time.now);
     this.bow?.interrupt();
@@ -644,6 +678,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (direction !== null) this.aimMarker.setFrame(LOOT_FRAMES.aim[direction]!);
   }
 
+  /** Chód albo bezruch; w arkuszach 2.0 dash i świeże trafienie mają pierwszeństwo (krok U5a). */
+  private playBase(moving: boolean, now: number): void {
+    if (this.visual.dash && this.dash.isDashing(now)) {
+      this.animator.play(this.visual.dash);
+      return;
+    }
+    if (this.visual.hurt && this.hurtPose.isActive(now)) return;
+    this.animator.play(moving ? this.visual.move : this.visual.idle);
+  }
+
   /** Barbarzyńca patrzy tam, gdzie celuje; idzie, gdy się porusza; cios trwa cały cykl ataku. */
   private updateAnimation(actions: PlayerActions, now: number, swingStarted: boolean): void {
     this.animator.face({ x: Math.cos(this.aimAngle), y: Math.sin(this.aimAngle) });
@@ -655,7 +699,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       else this.animator.play(this.visual.attack, duration);
       return;
     }
-    this.animator.play(state === 'move' ? this.visual.move : this.visual.idle);
+    this.playBase(state === 'move', now);
   }
 
   private updateVisuals(now: number): void {

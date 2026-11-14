@@ -1,4 +1,4 @@
-import type { BossHudData, Vector2 } from '@/core/types';
+import type { BossHudData, BossPortrait, Vector2 } from '@/core/types';
 import type { BossId } from '@/core/bossTypes';
 import type { TowerLoopConfig } from '@/systems/TowerLoop';
 import { floorInLoop } from '@/systems/TowerLoop';
@@ -90,6 +90,9 @@ export interface DuetMember {
   readonly defeated: boolean;
   readonly enraged: boolean;
   readonly enragedLabel: string;
+  /** Krok U6: progi faz i portret na karcie wejścia. */
+  readonly phaseMarks?: readonly number[];
+  readonly portrait?: BossPortrait;
 }
 
 /**
@@ -113,7 +116,9 @@ export function duetStatus(members: readonly DuetMember[], text: Pick<BossDuetDe
       maxHp: m.maxHp,
       enraged: m.fighting && m.enraged,
       defeated: m.defeated,
+      ...(m.phaseMarks && { phaseMarks: m.phaseMarks }),
     })),
+    portraits: members.flatMap((m) => (m.portrait ? [m.portrait] : [])),
   };
 }
 

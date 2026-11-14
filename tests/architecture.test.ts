@@ -30,6 +30,7 @@ const PURE_FILES = [
   'dungeon/ArenaGalleries.ts',
   'dungeon/bossRoomRule.ts',
   'dungeon/SecretRoom.ts',
+  'dungeon/SpiderVault.ts',
   'dungeon/TrapPlanner.ts',
   'dungeon/AmbushPlanner.ts',
   'dungeon/WallDogPlanner.ts',

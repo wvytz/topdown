@@ -4,7 +4,7 @@ import { MusicTheme } from '@/core/audioTypes';
 import Phaser from 'phaser';
 import type { CoopSelectData, FloorSceneData, HeroSelectData } from '@/core/types';
 import { currentPlatform } from '@/core/platform';
-import { DEFAULT_COOP_DEVICES } from '@/systems/coopDevices';
+import { coopFromSave } from '@/systems/PartnerBot';
 import { SceneKey } from '@/core/types';
 import { RunMode } from '@/core/runMode';
 import { GAME_WIDTH, GAME_HEIGHT } from '@/config/gameConfig';
@@ -31,6 +31,11 @@ import { StartScoresPanel } from '@/effects/StartScoresPanel';
 import { MenuCommand, menuCommandFromKey } from '@/systems/gamepadInput';
 import { isMenuEntrySpaceSafe, spaceConfirms } from '@/systems/spaceConfirm';
 import { bindPadMenu } from '@/input/PadMenuInput';
+import { UiText, uiText } from '@/ui/UiText';
+import { drawFrame } from '@/ui/UiFrame';
+import { UI_PALETTE } from '@/config/uiConfig';
+import { INPUT_HINTS } from '@/config/inputHintConfig';
+import { lastDevice } from '@/input/lastDevice';
 
 export interface MenuSceneData {
   /** Seed, flaga runu testowego i tryb z adresu (BootScene); seed nowej gry losujemy przy wyborze. */
@@ -43,7 +48,7 @@ const SCORE_BOARDS: readonly HighscoreBoardId[] = ['tower', 'arenas', 'coop'];
 type View = 'main' | 'slots' | 'floors';
 
 interface Row {
-  readonly text: Phaser.GameObjects.Text;
+  readonly text: UiText;
   readonly zone: Phaser.GameObjects.Zone;
 }
 
@@ -65,11 +70,14 @@ export class MenuScene extends Phaser.Scene {
   private pendingDelete: number | null = null;
   private leaving = false;
   private rows: Row[] = [];
-  private infoTitle!: Phaser.GameObjects.Text;
-  private infoBody!: Phaser.GameObjects.Text;
-  private hint!: Phaser.GameObjects.Text;
+  private infoTitle!: UiText;
+  private infoBody!: UiText;
+  private hint!: UiText;
   private fade!: Phaser.GameObjects.Rectangle;
   private scoresPanel!: StartScoresPanel;
+  /** Dotyk (krok U9c): strzałki zmiany piętra po bokach pierwszego wiersza i przycisk usuwania zapisu. */
+  private floorArrows: Phaser.GameObjects.Zone[] = [];
+  private deleteButton!: UiText;
   /** Numer wejścia do menu — odpowiedź sieci z poprzedniego wejścia nie rysuje się w nowym. */
   private scoresRequest = 0;
 
@@ -88,17 +96,16 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    const style: Phaser.Types.GameObjects.Text.TextStyle = { fontFamily: 'monospace', color: P.text };
-    const { menu, info, borderWidth } = L;
-    this.add.rectangle(menu.x, menu.y, menu.width, menu.height, P.panel, P.panelAlpha).setOrigin(0).setStrokeStyle(borderWidth, P.border);
-    this.add.rectangle(info.x, info.y, info.width, info.height, P.panel, P.panelAlpha).setOrigin(0).setStrokeStyle(borderWidth, P.border);
+    const { menu, info } = L;
+    // Krok U7: panele w pikselowych ramkach (jak HUD i pauza), napisy w pikselowym kroju.
+    const frames = this.add.graphics();
+    drawFrame(frames, menu.x, menu.y, menu.width, menu.height, { fill: P.panel, fillAlpha: P.panelAlpha, edge: P.border, rivets: UI_PALETTE.gold });
+    drawFrame(frames, info.x, info.y, info.width, info.height, { fill: P.panel, fillAlpha: P.panelAlpha, edge: P.border, rivets: UI_PALETTE.gold });
     // Pozycje menu (stała liczba wierszy — widok slotów używa pierwszych slotCount + 1).
     const rowCount = Math.max(MENU_ORDER.length, SAVE_CONFIG.slotCount + 1);
     for (let i = 0; i < rowCount; i++) {
       const y = menu.y + menu.firstItemY + i * menu.step;
-      const text = this.add
-        .text(menu.x + menu.padX, y, '', { ...style, fontSize: `${menu.fontSize}px` })
-        .setLetterSpacing(menu.letterSpacing);
+      const text = uiText(this, menu.x + menu.padX, y - 6, '', { size: 2, color: P.text });
       const zone = this.add.zone(menu.x, y - menu.step / 4, menu.width, menu.step).setOrigin(0).setInteractive({ useHandCursor: true });
       zone.on('pointerover', () => this.hover(i));
       zone.on('pointerdown', () => {
@@ -107,17 +114,28 @@ export class MenuScene extends Phaser.Scene {
       });
       this.rows.push({ text, zone });
     }
-    this.infoTitle = this.add.text(info.x + info.padX, info.y + info.padY, '', { ...style, fontSize: `${info.titleFontSize}px`, color: P.title });
-    this.infoBody = this.add.text(info.x + info.padX, info.y + info.padY + 30, '', {
-      ...style,
-      fontSize: `${info.fontSize}px`,
-      lineSpacing: info.lineSpacing,
-      wordWrap: { width: info.width - 2 * info.padX },
+    // Krok U9c: wybór piętra dotykiem — lewa i prawa część wiersza piętra zmieniają piętro, środek zatwierdza.
+    const arrowWidth = menu.width / 3;
+    this.floorArrows = [-1, 1].map((delta) => {
+      const y = menu.y + menu.firstItemY;
+      const x = delta < 0 ? menu.x : menu.x + menu.width - arrowWidth;
+      const zone = this.add.zone(x, y - menu.step / 4, arrowWidth, menu.step).setOrigin(0).setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', () => {
+        this.floorCursor = 0;
+        this.stepFloor(delta);
+      });
+      return zone;
     });
-    this.hint = this.add
-      .text(GAME_WIDTH / 2, L.hint.y, '', { ...style, fontSize: `${L.hint.fontSize}px`, color: P.textDim })
-      .setOrigin(0.5)
-      .setLetterSpacing(L.hint.letterSpacing);
+    this.infoTitle = uiText(this, info.x + info.padX, info.y + info.padY - 4, '', { size: 2, color: P.title });
+    // Krok U9c: usuwanie zapisu bez klawiatury (telefon, mysz) — przycisk na dole panelu opisu, dwa stuknięcia.
+    this.deleteButton = uiText(this, info.x + info.padX, info.y + info.height - info.padY - 8, `✕ ${INPUT_HINTS.deleteButton}`, { color: P.warn });
+    this.deleteButton.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.deleteSlot());
+    this.infoBody = uiText(this, info.x + info.padX, info.y + info.padY + 26, '', {
+      color: P.text,
+      lineSpacing: info.lineSpacing,
+      wrap: info.width - 2 * info.padX,
+    });
+    this.hint = uiText(this, GAME_WIDTH / 2, L.hint.y, '', { color: P.textDim, align: 'center' }).setOrigin(0.5);
     this.scoresPanel = new StartScoresPanel(this);
     void this.showScores();
     // Wiersze tablicy dochodzą później (sieć) — wygaszenie musi zostać nad nimi.
@@ -139,6 +157,9 @@ export class MenuScene extends Phaser.Scene {
       if (!event.repeat) sound.toggleMute();
     });
     bindPadMenu(this, (command) => this.onCommand(command));
+    // Krok U9c: podpowiedzi dla urządzenia, którego gracz użył ostatnio.
+    const unwatchDevice = lastDevice.watch(() => this.refresh());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unwatchDevice);
     // Menu gra muzykę wieży (krok 116); ruszy po pierwszym klawiszu lub kliknięciu (blokada przeglądarki).
     sound.setMusic(MusicTheme.Tower);
     sound.setMusicIntense(false);
@@ -286,6 +307,9 @@ export class MenuScene extends Phaser.Scene {
         this.leave(() => this.scene.start(SceneKey.CoopSelect, coop));
         break;
       }
+      case MenuEntry.BotCoop:
+        this.newRun(RunMode.Tower, this.startData.floor, true);
+        break;
       case MenuEntry.BossRush:
         this.newRun(RunMode.BossRush);
         break;
@@ -321,8 +345,9 @@ export class MenuScene extends Phaser.Scene {
     this.refresh();
   }
 
-  private newRun(mode: RunMode, floor = this.startData.floor): void {
+  private newRun(mode: RunMode, floor = this.startData.floor, bot = false): void {
     const select: HeroSelectData = {
+      ...(bot && { bot: true }),
       runSeed: this.startData.runSeed,
       floor,
       practice: this.startData.run.practice ?? false,
@@ -339,7 +364,8 @@ export class MenuScene extends Phaser.Scene {
     diag.note('save-loaded', { slot, floor: data.floor, hero: data.run.hero, mode: data.run.mode ?? null, fromSave: data.run.fromSave ?? false });
     // Co-op (etap C7): zapis pamięta partnera; urządzenia jak w trybie testowym — P1 klawiatura z myszą, P2 pad.
     const { coop, ...solo } = data;
-    const start: FloorSceneData = { ...solo, ...(coop && { coop: { partner: coop, devices: DEFAULT_COOP_DEVICES } }) };
+    // Krok U9a: run z botem wraca z botem.
+    const start: FloorSceneData = { ...solo, ...(coop && { coop: coopFromSave(coop) }) };
     this.leave(() => this.scene.start(SceneKey.Game, start));
   }
 
@@ -371,6 +397,10 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private refresh(): void {
+    for (const zone of this.floorArrows) if (zone.input) zone.input.enabled = this.view === 'floors';
+    this.deleteButton.setVisible(this.view === 'slots' && this.slotCursor < SAVE_CONFIG.slotCount && this.saves.load(this.slotCursor + 1) !== null);
+    // Kolor ostrzeżenia z potwierdzania usunięcia nie może zostać na następnym opisie.
+    this.infoBody.setColor(P.text);
     if (this.view === 'main') this.refreshMain();
     else if (this.view === 'floors') this.refreshFloors();
     else this.refreshSlots();
@@ -389,7 +419,7 @@ export class MenuScene extends Phaser.Scene {
       const accent = entry === MenuEntry.BossRush ? P.arenaMode : P.itemSelected;
       row.text.setText(`${active ? '▸ ' : '  '}${MENU_LABELS[entry]}`).setColor(!enabled ? P.itemDisabled : active ? accent : P.item);
     });
-    this.hint.setText(T.mainHint);
+    this.hint.setText(INPUT_HINTS.menuMain[lastDevice.current]);
     this.describe(MENU_ORDER[this.cursor] ?? MenuEntry.NewTower);
   }
 
@@ -411,6 +441,9 @@ export class MenuScene extends Phaser.Scene {
         break;
       case MenuEntry.Coop:
         this.setInfo(T.coopTitle, this.availability().coop === false ? T.coopMobile : T.coop);
+        break;
+      case MenuEntry.BotCoop:
+        this.setInfo(T.botCoopTitle, this.availability().coop === false ? T.botCoopMobile : T.botCoop);
         break;
       case MenuEntry.BossRush:
         this.setInfo(T.bossRushTitle, T.bossRush);
@@ -443,7 +476,7 @@ export class MenuScene extends Phaser.Scene {
         row.text.setText('');
       }
     });
-    this.hint.setText(T.subHint);
+    this.hint.setText(INPUT_HINTS.menuSub[lastDevice.current]);
     if (this.slotCursor === SAVE_CONFIG.slotCount) {
       this.setInfo(T.loadTitle, T.load);
       return;
@@ -456,7 +489,7 @@ export class MenuScene extends Phaser.Scene {
     }
     const summary = saveSummary(record);
     const notes = [SAVE_TEXT.checkpointNote, ...(SAVE_CONFIG.manualLoadRanked ? [] : [SAVE_TEXT.unrankedNote])];
-    const deleteLine = this.pendingDelete === slot ? T.slotDeleteConfirm : T.slotDeleteHint;
+    const deleteLine = (this.pendingDelete === slot ? INPUT_HINTS.slotDeleteConfirm : INPUT_HINTS.slotDelete)[lastDevice.current];
     this.setInfo(SAVE_TEXT.slotName(slot), `${summary.title}\n${summary.details}\n\n${notes.join('\n')}\n\n${deleteLine}`);
     if (this.pendingDelete === slot) this.infoBody.setColor(P.warn);
   }
@@ -472,7 +505,7 @@ export class MenuScene extends Phaser.Scene {
       const active = i === this.floorCursor;
       row.text.setText(label === undefined ? '' : `${active ? '▸ ' : '  '}${label}`).setColor(active ? P.itemSelected : P.item);
     });
-    this.hint.setText(T.floorHint);
+    this.hint.setText(INPUT_HINTS.menuFloor[lastDevice.current]);
     this.setInfo(info.label, `${info.biome}\nBoss: ${info.boss}\n\n${T.floorSelectNote}`);
   }
 

@@ -1,4 +1,5 @@
 import { SoundCue, sound } from '@/audio/SoundBoard';
+import { UiText, uiText } from '@/ui/UiText';
 import Phaser from 'phaser';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { AREA_TELEGRAPH_VISUAL, BLAST_VISUAL, BLINK_VISUAL, NOVA_VISUAL, ORB_SPLASH_VISUAL } from '@/config/spriteConfig';
@@ -9,6 +10,8 @@ import { exposedArcs } from '@/systems/AreaOutline';
 import type { OutlineCircle } from '@/systems/AreaOutline';
 import { screenFx } from '@/effects/ScreenFx';
 import { combatFeel } from '@/effects/CombatFeel';
+import { dynamicLights } from '@/effects/DynamicLights';
+import { LightKind } from '@/core/lightTypes';
 import { COMBAT_FEEL_CONFIG } from '@/config/combatFeelConfig';
 
 /** Wygląd wybuchu: domyślny ogień (`BLAST_VISUAL`) albo inna paleta o tym samym układzie (zarodniki, krok 111). */
@@ -105,8 +108,10 @@ export class CombatEffects {
       }
     };
     draw(0);
-    // Ogniste wybuchy (domyślna paleta) dostają prawdziwy ogień nad pierścieniem zasięgu (krok 144).
+    // Ogniste wybuchy (domyślna paleta) dostają prawdziwy ogień nad pierścieniem zasięgu (krok 144) — z jego światłem;
+    // pozostałe palety (sok, szlam) błyskają światłem w barwie pierścienia (krok U3).
     if (v === BLAST_VISUAL) this.fire.burst(x, y, radius, { sound: false });
+    else dynamicLights.flash(this.scene, x, y, radius, LightKind.Blast, v.frames[1]?.fill ?? v.frames[0]?.fill);
     let index = 0;
     this.scene.time.addEvent({
       delay: v.frameMs,
@@ -126,6 +131,7 @@ export class CombatEffects {
   splash(x: number, y: number, radius: number): void {
     const { color, alpha, fillAlpha, durationMs } = ORB_SPLASH_VISUAL;
     const ring = this.scene.add.circle(x, y, radius, color, fillAlpha).setStrokeStyle(2, color, alpha).setDepth(RENDER_DEPTH.groundFlash);
+    dynamicLights.flash(this.scene, x, y, radius, LightKind.Magic);
     this.scene.tweens.add({ targets: ring, alpha: 0, scale: 1.15, duration: durationMs, onComplete: () => ring.destroy() });
   }
 
@@ -134,6 +140,7 @@ export class CombatEffects {
     const { color, core, alpha, fillAlpha, startScale, durationMs } = NOVA_VISUAL;
     const ring = this.scene.add.circle(x, y, radius, color, fillAlpha).setStrokeStyle(3, core, alpha).setDepth(RENDER_DEPTH.groundFlash);
     ring.setScale(startScale);
+    dynamicLights.flash(this.scene, x, y, radius, LightKind.Magic);
     this.scene.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: durationMs, ease: 'Quad.easeOut', onComplete: () => ring.destroy() });
   }
 
@@ -142,14 +149,14 @@ export class CombatEffects {
     const { radius, durationMs } = BLINK_VISUAL;
     const ring = this.scene.add.circle(x, y, radius, SORCERY_COLORS.deep, 0.25).setStrokeStyle(2, SORCERY_COLORS.light, 1).setDepth(RENDER_DEPTH.slash);
     const core = this.scene.add.circle(x, y, radius * 0.45, SORCERY_COLORS.core, 0.9).setDepth(RENDER_DEPTH.slash);
+    dynamicLights.flash(this.scene, x, y, radius, LightKind.Magic);
     this.scene.tweens.add({ targets: ring, scale: 0.2, alpha: 0, duration: durationMs, ease: 'Quad.easeIn', onComplete: () => ring.destroy() });
     this.scene.tweens.add({ targets: core, scale: 1.6, alpha: 0, duration: durationMs, ease: 'Quad.easeOut', onComplete: () => core.destroy() });
   }
 
   /** Unoszący się napis (np. „+3” złota) nad miejscem zdarzenia. */
   floatingText(x: number, y: number, text: string, color: string): void {
-    const label = this.scene.add
-      .text(x, y - 8, text, { fontFamily: 'monospace', fontSize: '11px', color, stroke: '#000000', strokeThickness: 3 })
+    const label = uiText(this.scene, x, y - 8, text, { color })
       .setOrigin(0.5)
       .setDepth(RENDER_DEPTH.worldText);
     this.scene.tweens.add({ targets: label, y: y - 30, alpha: 0, duration: 700, onComplete: () => label.destroy() });
@@ -158,9 +165,8 @@ export class CombatEffects {
   /**
    * Okrzyk nad postacią (sprzątaczki, krok 125): większy napis z obrysem, trzyma się `holdMs`, potem unosi i gaśnie.
    */
-  shout(x: number, y: number, text: string, color: string, holdMs: number, riseMs: number): Phaser.GameObjects.Text {
-    const label = this.scene.add
-      .text(Math.round(x), Math.round(y), text, { fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color, stroke: '#000000', strokeThickness: 4 })
+  shout(x: number, y: number, text: string, color: string, holdMs: number, riseMs: number): UiText {
+    const label = uiText(this.scene, x, y, text, { color })
       .setOrigin(0.5, 1)
       .setDepth(RENDER_DEPTH.worldText);
     this.scene.tweens.add({ targets: label, y: y - 14, alpha: 0, delay: holdMs, duration: riseMs, onComplete: () => label.destroy() });

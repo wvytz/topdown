@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 
 import gamer_den_tiles
+import ruins_v2_tiles
 import ruins_wreck_tiles
 import stairs_tiles
 
@@ -103,6 +104,8 @@ IRON = hexes('#3a3f4a', '#646c79', '#8d96a3')  # rampa pokrywy Trashcan Mana
 DIRT = hexes('#120c0a', '#261a13', '#37271c', '#523b29', '#6e5038')  # rampa kałuży Sludge Kinga
 # Szlam Sludge Kinga (STYLEGUIDE §4.5) — ślady po kulach bossa (krok 19b).
 SLIME = hexes('#1f1420', '#3b2140', '#5c3560', '#83558a', '#b88ab8')
+# Krew na posadzce w oprawie 2.0 (krok U4c): żywa czerwień zamiast przygaszonej plamy.
+BLOOD = hexes('#3a0c14', '#7a1520', '#b0222a', '#d8483a')
 # Ogień pochodni (krok 19a): czerwień → pomarańcz → żółć złota → blask. Bez czystej bieli.
 FLAME = oks((.48, .150, 35), (.64, .160, 55), (.79, .140, 82), (.91, .075, 95))
 
@@ -145,6 +148,12 @@ class Palette:
     # Ruiny po apokalipsie (krok 155): rdza, zwęglenie, stare drewno, wyblakła tkanina, szkło, papier —
     # indeksy w tools/ruins_wreck_tiles.py. Puste w innych biomach.
     wreck: tuple = ()
+    # Oprawa 2.0 (krok U4a): niebo i otchłań za wyrwami w murze wieży (5: otchłań, noc, mgła, chmura, gwiazda/iskra).
+    # Puste w biomach bez dodatku `v2`.
+    sky: tuple = ()
+    # Krok U4c (uwaga właściciela po kroku 24: „krew mogłaby być jaskrawsza”): ślady walki w oprawie 2.0.
+    # 4: cień, krew, jasna krew, połysk. Domyślnie wspólna dla wszystkich palet.
+    blood: tuple = BLOOD
     litter: tuple = ()  # 10: puszka cień, puszka, puszka (granat, niebieski, jasny niebieski), srebro cień, srebro, czerwień cień, czerwień, krem, tłuszcz, frytki
 
 
@@ -216,6 +225,7 @@ PALETTES = {
                   (.33, .022, 230), (.41, .024, 225), (.50, .022, 220),  # wyblakła tkanina
                   (.60, .018, 210), (.76, .014, 200),                    # szkło
                   (.68, .028, 85)),                                      # zżółkły papier
+        sky=oks((.20, .040, 262), (.25, .045, 258), (.31, .040, 252), (.38, .032, 245), (.70, .020, 85)),
     ),
     # Pajęcze leże (krok 23a, poprawka właściciela): fiolet, zieleń i biel — mroczne leże w starej wieży.
     # Zasady biomu inne niż w ruinach: fioletowy kamień, zielona posoka i upiorny zielony ogień, białe nici i jaja.
@@ -259,6 +269,8 @@ PALETTES = {
         bone=oks((.72, .030, 310), (.83, .026, 315), (.92, .014, 320)),
         # Bioluminescencja: grzyby-latarnie zamiast pochodni (poświata gry też bierze barwę z tej rampy).
         flame=oks((.48, .090, 230), (.63, .120, 220), (.80, .120, 205), (.92, .060, 195)),
+        # Krok U4b: fioletowa noc za wyrwami, iskra = bioluminescencja.
+        sky=oks((.12, .050, 290), (.16, .060, 288), (.21, .060, 285), (.27, .050, 280), (.80, .120, 205)),
     ),
     # Cmentarzysko (krok 32a): ludzkie miejsce pochówku, gdzie upadli zatruci; grzyb ledwo dociera.
     # Trzy kandydatki do wyboru przez właściciela. Jasność podłogi jak w Grzybni (czytelność postaci),
@@ -324,6 +336,8 @@ PALETTES = {
         flesh=oks((.40, .030, 135), (.49, .036, 128), (.58, .036, 122)),
         # Grzybnia ledwo tu dociera: przygaszony turkus Grzybni, świecąca końcówka.
         mycel=oks((.55, .045, 215), (.76, .075, 205)),
+        # Krok U4b: chorobliwa, zielonkawa mgła za wyrwami, iskra = płomyk świecy.
+        sky=oks((.13, .020, 170), (.17, .024, 165), (.22, .024, 160), (.28, .020, 150), (.70, .060, 98)),
     ),
     # Zadymiona palarnia (piętro 7, krok 83): brudny kamień zżółkły od nikotyny, dym zamiast mroku. Ciemniejsza od ruin
     # (każdy biom mroczniejszy), ale jaśniejsza niż Piekło — dym ma być szary, nie czarny. Plamy to nikotynowa żółć.
@@ -392,6 +406,8 @@ PALETTES = {
         stain=oks((.36, .040, 100), (.46, .045, 105)),
         ash=oks((.58, .016, 95), (.48, .016, 90)),
         opal=oks((.86, .075, 350), (.87, .070, 200), (.82, .080, 300), (.90, .075, 95)),
+        # Krok U4c: widok za wyrwami w murze wieży.
+        sky=oks((.10, .020, 250), (.14, .026, 248), (.19, .026, 245), (.25, .022, 240), (.88, .040, 300)),
     ),
     # Bociani Ogród (krok 137, `#brudna-wiedzma`): zarośnięty taras nocą — po jasnej Lustrzanej komnacie „totalny mrok”.
     # Omszałe płyty w kolorze mokrej ziemi (barwa z dala od fioletu Czarodziejki i zieleni łucznika), mury z ciemnego,
@@ -410,6 +426,8 @@ PALETTES = {
         bone=oks((.74, .010, 250), (.84, .010, 250), (.92, .008, 250)),
         grass=oks((.30, .075, 145), (.40, .095, 140), (.52, .105, 132)),
         bloom=oks((.46, .170, 28), (.58, .180, 34), (.84, .120, 85)),
+        # Krok U4c: widok za wyrwami w murze wieży.
+        sky=oks((.12, .040, 255), (.16, .048, 252), (.21, .046, 248), (.27, .040, 244), (.90, .030, 95)),
     ),
     # Piekło (piętro 5, krok 41a): krwisty, demoniczny biom z pomarańczowym żarem (prośba właściciela).
     # Trzy kandydatki — mury i głębia mroczniejsze niż na Cmentarzysku (każdy biom mroczniejszy).
@@ -430,6 +448,8 @@ PALETTES = {
         ember=oks((.46, .160, 28), (.63, .170, 45), (.80, .140, 72)),
         # Pochodnie piekła: czerwieńszy ogień niż w ruinach.
         flame=oks((.44, .160, 28), (.60, .170, 42), (.76, .150, 65), (.90, .080, 85)),
+        # Krok U4c: widok za wyrwami w murze wieży.
+        sky=oks((.13, .060, 25), (.19, .090, 28), (.27, .120, 33), (.38, .150, 42), (.80, .140, 72)),
     ),
     # B: zaschnięta krew — rdzawy bordo posadzki, mury z ciemnej, krwistej cegły.
     'pieklo_krew': Palette(
@@ -465,22 +485,24 @@ DEFAULT_PALETTE = 'piaskowiec'  # wybór właściciela, krok 16
 # decyzja właściciela: ten biom ma być fioletowo-zielony.
 BIOMES = {
     # Od kroku 155 (prośba właściciela: świat po apokalipsie) z dodatkiem `wreck` — śmieci i zniszczenie.
-    'tower_ruins': {'palette': 'piaskowiec', 'extras': ('wreck',), 'reserved_hues': True},
+    # Od kroku U4a (upgrade Aktu I, pilot kafli) z dodatkiem `v2`: warianty płyt, progi, obwódka areny, nieregularne
+    # ciosy muru, masa wieży i wyrwy z widokiem na otchłań (tools/ruins_v2_tiles.py).
+    'tower_ruins': {'palette': 'piaskowiec', 'extras': ('wreck', 'v2'), 'reserved_hues': True},
     'spider_lair': {'palette': 'pajeczy', 'extras': ('spider',), 'reserved_hues': False},
     # Grzybnia (krok 28a): dalszy ciąg leża (jaja, nici, pancerzyki) porośnięty grzybem; fiolet z wyboru właściciela.
-    'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus'), 'reserved_hues': False},
+    'fungal_grove': {'palette': 'grzybnia', 'extras': ('spider', 'fungus', 'v2'), 'reserved_hues': False},
     # Cmentarzysko (krok 32a): ludzki biom — groby, kości, zwłoki zatrutych; grzybnia ledwo dociera.
-    'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave',), 'reserved_hues': True},
+    'graveyard': {'palette': 'cmentarz_trupi', 'extras': ('grave', 'v2'), 'reserved_hues': True},
     # Piekło (krok 41a): krwisty, demoniczny biom z paleniskami; czerwień i pomarańcz z prośby właściciela,
     # więc podłoga może wejść w barwy bliskie złota łupów — czytelność pilnują testy.
-    'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal',), 'reserved_hues': False},
+    'infernal': {'palette': 'pieklo_bazalt', 'extras': ('infernal', 'v2'), 'reserved_hues': False},
     # Zadymiona palarnia (krok 83): piętro Barona Dymu. Od kroku 137 (prośba właściciela) zagracone, zadymione
     # mieszkanie nałogowego gracza: dodatek `gamer` podmienia kafle wspólne (tools/gamer_den_tiles.py).
     'smoke_den': {'palette': 'mieszkanie_gracza', 'extras': ('smoke', 'gamer'), 'reserved_hues': True},
     # Lustrzana komnata (propozycja, docs/SPRZATACZKI.md): piętra dwóch Sprzątaczek; błyszcząca posadzka, mury w ruinie.
-    'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror', 'feathers'), 'reserved_hues': True},
+    'mirror_hall': {'palette': 'lustro_opal', 'extras': ('mirror', 'feathers', 'v2'), 'reserved_hues': True},
     # Bociani Ogród (krok 137): taras Brudnej Wiedźmy nocą; zieleń trawy z założenia, więc bez rezerwy barw (jak leże).
-    'stork_garden': {'palette': 'bociani_noc', 'extras': ('garden', 'feathers'), 'reserved_hues': False},
+    'stork_garden': {'palette': 'bociani_noc', 'extras': ('garden', 'feathers', 'v2'), 'reserved_hues': False},
 }
 
 
@@ -799,12 +821,44 @@ def ashlar(img, r, mortar, block, lit, block_alt=None, edge_hi=None, specks=None
                 img.put(x, y, r.choice(specks))
 
 
-def wall_tile(mask, dmg=None, diag=0):
-    """diag (tylko dla maski 15): podłoga po skosie NE1 SE2 SW4 NW8 — domyka obrys w narożnikach."""
+def ashlar_irregular(img, r, mortar, block, lit, block_alt=None, edge_hi=None, specks=None):
+    """Ciosy o nierównej długości (krok U4a): te same wiersze co `ashlar` (co 8 px, więc łączą się z sąsiadami),
+    ale spoiny pionowe w losowych miejscach — w kadrze nie widać powtarzalnego wzoru muru."""
+    for row in range(T // 8):
+        x = -r.randint(0, 12)
+        while x < T:
+            bw = r.choice((10, 12, 14, 16, 18, 20))
+            alt = block_alt if (block_alt and r.random() < .35) else block
+            for y in range(row * 8, row * 8 + 8):
+                ly = y - row * 8
+                for xx in range(max(0, x), min(T, x + bw)):
+                    lx = xx - x
+                    if ly == 0 or lx == 0:
+                        c = mortar
+                    elif ly == 1:
+                        c = lit
+                    elif ly == 7:
+                        c = mortar if lx > 1 else alt
+                    else:
+                        c = alt if 2 <= ly <= 6 else block
+                    img.put(xx, y, c)
+            if edge_hi and 0 <= x + 2 < T:
+                img.put(x + 2, row * 8 + 1, edge_hi)
+            x += bw
+    if specks:
+        for _ in range(10):
+            x, y = r.randint(1, 30), r.randint(1, 30)
+            if img.get(x, y) in (block, block_alt):
+                img.put(x, y, r.choice(specks))
+
+
+def wall_tile(mask, dmg=None, diag=0, irregular=False):
+    """diag (tylko dla maski 15): podłoga po skosie NE1 SE2 SW4 NW8 — domyka obrys w narożnikach.
+    irregular (krok U4a): ciosy o nierównej długości zamiast regularnego wzoru."""
     def gen(p, r):
         wt, wf, O = p.wall_top, p.wall_face, p.outline
         img = Img(T, T)
-        ashlar(img, r, wt[1], wt[2], wt[3], p.wall_block_alt, wt[4], (wt[1], wt[3]))
+        (ashlar_irregular if irregular else ashlar)(img, r, wt[1], wt[2], wt[3], p.wall_block_alt, wt[4], (wt[1], wt[3]))
         S, N, E, Wo = not mask & 4, not mask & 1, not mask & 2, not mask & 8
         fy = T - FACE
         if S:  # lico od południa — widoczny bok muru, w cieniu
@@ -2107,6 +2161,8 @@ WALL_COMMON = (7, 11, 13, 14)
 GAMER_KIT = dataclasses.make_dataclass('GamerKit', ['Img', 'outline', 'T', 'FACE', 'CLR', 'flame_base_y'])(
     Img, outline, T, FACE, CLR, TORCH_FLAME_BASE_Y)
 # Narzędzia generatora dla modułu ruin po apokalipsie (krok 155) — definiowane niżej, zestaw składa manifest().
+V2_KIT_TYPE = dataclasses.make_dataclass('V2Kit', ['Img', 'T', 'FACE', 'CLR', 'crack', 'pebble', 'floor_slabs',
+                                                  'SLAB_LAYOUTS', 'cobble', 'wall_tile', 'ashlar'])
 WRECK_KIT_TYPE = dataclasses.make_dataclass('WreckKit', ['Img', 'outline', 'T', 'FACE', 'CLR', 'crack', 'pebble'])  # ~82% widocznych ścian na wygenerowanych mapach (pomiar, krok 16)
 
 
@@ -2248,6 +2304,10 @@ def manifest():
     for kind, group in (('h_a', 'decal.trailH'), ('h_b', 'decal.trailH'), ('v_a', 'decal.trailV'), ('v_b', 'decal.trailV'),
                         ('drops_a', 'decal.trailDrop'), ('drops_b', 'decal.trailDrop')):
         m.append(Entry(f'decal_trail_{kind}', trail_decal(kind), 'floorDecal', group=group, weight=1, flip_x=True))
+    if 'v2' in BIOMES[BIOME]['extras']:
+        # Oprawa 2.0 (krok U4a): na samym końcu (first-fit), kafle sprzed upgradu zostają na swoich miejscach.
+        m = ruins_v2_tiles.apply(m, Entry, V2_KIT_TYPE(Img, T, FACE, CLR, crack, pebble, floor_slabs, SLAB_LAYOUTS,
+                                                         cobble, wall_tile, ashlar), BIOME)
     return m
 
 
@@ -2366,7 +2426,9 @@ def build_sheet(p):
             'diagonal': {'appliesToMask': 15, 'bits': {'NE': 1, 'SE': 2, 'SW': 4, 'NW': 8},
                          'tiles': {str(d): f'wall_15_d{d:02d}' for d in range(1, 16)}},
             'bands': {'edge': 1, 'fade': 2, 'deep': 3, 'meaning': 'odległość Czebyszewa od najbliższej podłogi',
-                      'groups': {'fade': 'wallBand.fade', 'deep': 'wallBand.deep'}},
+                      # Krok U4a: w oprawie 2.0 głęboką masę rysuje mur wieży z wyrwami (ruins_v2_tiles).
+                      'groups': {'fade': 'wallBand.fade2' if 'v2' in BIOMES[BIOME]['extras'] else 'wallBand.fade',
+                                 'deep': 'wallBand.tower' if 'v2' in BIOMES[BIOME]['extras'] else 'wallBand.deep'}},
             'overhead': 'ściany bez bitu N (podłoga od północy) rysujemy nad postaciami',
         },
         'envShadow': {'bits': {'N': 1, 'E': 2, 'W': 8}, 'meaning': 'sąsiad podłogi jest ścianą',

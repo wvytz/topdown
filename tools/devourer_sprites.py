@@ -24,9 +24,8 @@ Arkusze:
                         8–11 karmienie kokonem (leczenie w kolumnie 11), 12–15 zamach łapami (uderzenie w 15),
                         16–19 wyrzut zarodników (krok 111; strąk w paszczy w 18), 20–23 skok (przysiad, wybicie, lot),
                         24–27 chwyt kończynami (krok 184)
-  devourer-cocoon.png   48×48, wiersze = 3 warianty (twarz, dłoń, skulone ciało);
+  devourer-cocoon.png   48×48, wiersze = 3 warianty (twarz, dłoń, skulone ciało); od kroku U4b blady, siny oplot;
                         0–3 oddech, 4–7 zjedzenie (7 zostaje), 8–9 drżenie (zew), 10–13 rozdarcie (wychodzi zarażony)
-  fungal-throne.png     96×96, tron z grzybni, oparcie na północy (dekoracja areny bez kolizji)
   fungal-fx.png         48×48, wiersz 0 krew (trafienie gracza), wiersz 1 sok (leczenie), 4 klatki bez pętli
   throne-decals.png     48×48, 6 naklejek: kałuża krwi, rozbryzg, ślad wleczenia, grzybnia, kałuża soku, krata
   mushroom-trail.png    48×48 (krok 111): płat grzybów ze śladu; 0–5 rozrost (promień 6→18 px = hitbox płatu),
@@ -78,8 +77,10 @@ BONE = list(GRAVE.bone)
 RUST = list(trt.DIRT[2:5])
 # Zarażeni w kokonach (krok 32b): blada, zimna skóra.
 VICTIM = list(SKIN)
+# Oplot kokonów (krok U4b, prośba właściciela: „bardziej blado sine”): blady, siny oprząd zamiast brązu kapelusza.
+SILK = [hx(c) for c in ('#1d1b28', '#474a62', '#6c728c', '#959db3', '#c0c6d4')]
 
-PALETTE = {OUTLINE, VOID, *FLESH, *MYC, *BLOOD, *SAP, *BONE, *RUST, *VICTIM}
+PALETTE = {OUTLINE, VOID, *FLESH, *MYC, *BLOOD, *SAP, *BONE, *RUST, *VICTIM, *SILK}
 
 # Światło z lewej-przodu, z góry (przestrzeń lokalna: przód = -y).
 _L = np.array([-0.55, -0.55, 0.63])
@@ -367,9 +368,9 @@ def draw_mouth(L, cx, cy, k, r):
 EDGE_BODIES = [(60, 5.0), (115, 5.5), (165, 5.0), (210, 6.0), (255, 5.0), (300, 5.5), (95, 3.5), (235, 3.5)]
 
 
-def ball_body(L, cx, cy, rx, ry, roll, glow):
+def ball_body(L, cx, cy, rx, ry, roll, glow, edge=EDGE_BODIES):
     sx, sy = rx / BALL_R, ry / BALL_R
-    for (ang, size) in EDGE_BODIES:
+    for (ang, size) in edge:
         x, y = polar(cx, cy, ang + roll, BALL_R * 0.92)
         x, y = cx + (x - cx) * sx, cy + (y - cy) * sy
         ax, ay = polar(x, y, ang + roll + 90, size * 0.7)
@@ -540,6 +541,89 @@ def grab_pose(i):
     return dict(jaw=4, dy=-2, sy=1.05, glow=1, limbs=crawl(3, 10), reach=[(-14, 7, 40, True), (14, 7, -40, True)])
 
 
+# ---------------------------------------------------------------- śmierć (krok U6)
+
+def loose_body(L, x, y, size, kind, tang):
+    """Ciało, które wypadło z kuli: te same trzy pozy co w kuli (tułów, głowa, plecy), leżące na posadzce."""
+    if kind == 1:
+        ellipse(L, x, y, size, size, VICTIM)
+        ex, ey = polar(x, y, tang, 1.4)
+        L.put(int(ex), int(ey), VICTIM[0])
+        ex, ey = polar(x, y, tang + 180, 1.4)
+        L.put(int(ex), int(ey), VICTIM[0])
+    elif kind == 0:
+        ax, ay = polar(x, y, tang, size * 0.6)
+        bx, by = polar(x, y, tang + 180, size * 0.6)
+        capsule(L, ax, ay, bx, by, size * 0.55, size * 0.5, VICTIM)
+        line(L, [(ax, ay), (bx, by)], VICTIM[1], inside=L)
+    else:
+        ellipse(L, x, y, size, size * 0.75, VICTIM[:4], bias=-0.15)
+
+
+# Klatki śmierci: (skala kuli x, y, rozwarcie paszczy, rozrzut ciał 0..1, kałuża 0..1, sok, kończyny).
+DEATH = [
+    dict(sx=1.08, sy=1.08, jaw=4, spill=0.0, pool=0.0, glow=2, limbs='spasm'),    # 0 konwulsja: ryk, kończyny sztywno na boki
+    dict(sx=1.16, sy=1.14, jaw=4, spill=0.0, pool=0.2, glow=2, limbs='spasm2'),   # 1 kula puchnie, sok pęka krostami
+    dict(sx=0.92, sy=0.88, jaw=3, spill=0.55, pool=0.45, glow=1, limbs='limp'),   # 2 pęka: ciała odpadają, grzybnia puszcza
+    dict(sx=1.00, sy=0.74, jaw=2, spill=0.8, pool=0.65, glow=1, limbs='flat'),    # 3 osiada
+    dict(sx=1.10, sy=0.60, jaw=1, spill=0.95, pool=0.8, glow=0, limbs='flat'),    # 4 rozpływa się
+    dict(sx=1.16, sy=0.52, jaw=0, spill=1.0, pool=0.92, glow=0, limbs='flat'),    # 5 sterta
+    dict(sx=1.16, sy=0.52, jaw=0, spill=1.0, pool=1.0, glow=0, limbs='flat', spores=True),  # 6 ostatni wydech zarodników
+    dict(sx=1.16, sy=0.52, jaw=0, spill=1.0, pool=1.0, glow=0, limbs='flat'),     # 7 zostaje na posadzce
+]
+
+
+def death_limbs(kind):
+    if kind == 'spasm':
+        return [(a * 1.1, l * 1.2, -b * 0.6) for a, l, b in LIMBS]
+    if kind == 'spasm2':
+        return [(a * 1.15, l * 1.25, b * 0.8) for a, l, b in LIMBS]
+    if kind == 'limp':
+        return [(a, l * 1.05, b * 1.4) for a, l, b in LIMBS]
+    return [(a, l * 1.1, b * 0.25) for a, l, b in LIMBS]   # płasko na posadzce, bez zgięć
+
+
+def death_frame(i):
+    """Śmierć Pożeracza (krok U6, plan upgradu: „dziś bez animacji”): konwulsja i ryk, kula puchnie i pęka,
+    ciała odpadają na boki, reszta osiada w kałuży krwi i soku, ostatni wydech zarodników. Klatka 7 zostaje
+    na posadzce (sterta ciał spleciona grzybnią), jak zwłoki Barona i Wiedźmy."""
+    p = DEATH[i]
+    body = Layer(96, 96)
+    fx = Layer(96, 96)
+    cx, cy = BALL
+    rx, ry = BALL_R * p['sx'], BALL_R * p['sy']
+    if p['pool']:
+        blob(body, random.Random(41), cx, cy + 2, 8 + 18 * p['pool'], BLOOD[:3], n=7, spread=0.9)
+    # Ciała odpadają po kolei: najpierw te z brzegu (EDGE_BODIES), potem z wnętrza (BODIES z d > 0.6).
+    spill = p['spill']
+    fallen = []
+    if spill:
+        for k, (ang, size) in enumerate(EDGE_BODIES):
+            if k / len(EDGE_BODIES) < spill:
+                d = BALL_R * (1.0 + 0.45 * spill) + (k % 3)
+                fallen.append((ang, d, size * 0.9, k % 3))
+        for k, (ang, d0, size, kind) in enumerate(BODIES):
+            if d0 > 0.6 and k / len(BODIES) < spill * 0.8:
+                fallen.append((ang + 17, BALL_R * (0.9 + 0.5 * spill), size, kind))
+    for (ang, d, size, kind) in fallen:
+        x, y = polar(cx, cy, ang, d)
+        y = cy + (y - cy) * 0.8   # leżą na posadzce: rozrzut spłaszczony w pionie
+        loose_body(body, x, y, size, kind, ang + 90 + (ang % 40))
+    limbs = death_limbs(p['limbs'])
+    for (ang, length, bend) in limbs:
+        draw_limb(body, cx, cy, min(rx, ry), ang, length, bend, grasp=i >= 3)
+    # Kula: bez ciał z brzegu, kiedy już odpadły (inaczej sylwetka nie zmalałaby).
+    ball_body(body, cx, cy, rx, ry, 0, p['glow'], edge=[] if spill else EDGE_BODIES)
+    draw_mouth(body, cx, cy, p['jaw'], ry)
+    if i == 1:   # krosty soku pękają
+        droplets(fx, random.Random(43), cx, cy, 14, 24, 16, SAP, size=(0.5, 1.2))
+    if i == 2:   # krew w locie przy pęknięciu
+        droplets(fx, random.Random(47), cx, cy, 16, 30, 22, BLOOD, size=(0.6, 1.4))
+    if p.get('spores'):
+        droplets(fx, random.Random(53), cx, cy - 4, 6, 16, 14, SAP, size=(0.5, 1.0))
+    return finish(body, fx, 96)
+
+
 # ---------------------------------------------------------------- kokony
 
 def cocoon(variant, frame):
@@ -570,11 +654,11 @@ def cocoon(variant, frame):
         blob(under, rng, 24, 25, 6 + consumed * 1.3, BLOOD if consumed < 3 else BLOOD[:1] + BLOOD[:3], n=7)
 
     if opened < 1:
-        ellipse(body, cx, 24, rx, ry, MYC)
+        ellipse(body, cx, 24, rx, ry, SILK)
         # Włókna oplotu: krótkie skośne kreski.
         for i in range(-3, 4):
             yy = 24 + i * 4
-            line(body, [(cx - rx + 2, yy + 2), (cx + rx - 3, yy - 2)], MYC[2], inside=body)
+            line(body, [(cx - rx + 2, yy + 2), (cx + rx - 3, yy - 2)], SILK[2], inside=body)
         # Żyły soku.
         vc = SAP[glow]
         line(body, [(cx - 3, 10), (cx - 5, 20), (cx - 3, 30), (cx - 4, 37)], vc, inside=body)
@@ -584,7 +668,7 @@ def cocoon(variant, frame):
             body.put(cx - 2, 12, VICTIM[0]); body.put(cx + 2, 12, VICTIM[0])
             body.put(cx - 1, 16, BLOOD[0]); body.put(cx, 16, BLOOD[0]); body.put(cx, 15, BLOOD[1])
             body.put(cx - 2, 13, BLOOD[2]); body.put(cx - 2, 14, BLOOD[1])  # krwawa łza
-            line(body, [(cx + 2, 9), (cx + 1, 11), (cx + 3, 14)], MYC[3], inside=body)
+            line(body, [(cx + 2, 9), (cx + 1, 11), (cx + 3, 14)], SILK[3], inside=body)
         elif variant == 1:  # dłoń przebija oplot
             capsule(body, cx + 5, 24, cx + 10, 20, 2.6, 2.2, VICTIM)
             ellipse(body, cx + 10, 20, 2.6, 2.6, VICTIM, bias=0.3)
@@ -592,7 +676,7 @@ def cocoon(variant, frame):
                 capsule(body, cx + 10, 20, cx + tx, ty, 1.0, 0.9, VICTIM)
             ellipse(body, cx + 6, 24, 2.5, 3, BLOOD, rim=False)
             # Zarys twarzy pod oplotem.
-            body.put(cx - 1, 12, MYC[1]); body.put(cx + 1, 12, MYC[1]); body.put(cx, 15, MYC[1])
+            body.put(cx - 1, 12, SILK[1]); body.put(cx + 1, 12, SILK[1]); body.put(cx, 15, SILK[1])
         else:  # skulone ciało (pozycja płodowa)
             ellipse(body, cx - 6, 17, 4.5, 4.5, VICTIM, bias=0.35)
             body.put(cx - 7, 16, VICTIM[0]); body.put(cx - 5, 18, BLOOD[0])
@@ -605,89 +689,30 @@ def cocoon(variant, frame):
     else:
         # Rozdarta łupina: połówki rozchylone, w środku żebra (zjedzony) albo wychodzący zarażony.
         open_ = 4 + min(opened, 2)
-        ellipse(body, 24, 24, open_ + 1, ry - 1, BLOOD if consumed >= 0 else MYC[:3], rim=False, bias=-0.3)
+        ellipse(body, 24, 24, open_ + 1, ry - 1, BLOOD if consumed >= 0 else SILK[:3], rim=False, bias=-0.3)
         if consumed >= 0:
             for y in range(15, 34, 3):
                 line(body, [(24 - open_ + 2, y), (24 + open_ - 2, y)], BONE[1] if consumed < 3 else BONE[0])
             body.put(24, 13, BONE[2]); body.put(23, 13, BONE[1])
         hw = 4.5 - (0.5 if opened == 3 else 0)
-        ellipse(body, 24 - open_ - 1, 24, hw, ry - 1, MYC)
-        ellipse(body, 24 + open_ + 1, 24, hw, ry - 1, MYC)
+        ellipse(body, 24 - open_ - 1, 24, hw, ry - 1, SILK)
+        ellipse(body, 24 + open_ + 1, 24, hw, ry - 1, SILK)
         if consumed == 1:
             droplets(fx, rng, 24, 24, 8, 15, 10, BLOOD)
         if torn in (1, 2):  # zarażony wstaje z oplotu: głowa wychodzi do przodu
             hy = 18 - (torn - 1) * 5
             ellipse(body, 24, hy, 4, 4, VICTIM, bias=0.2)
             body.put(22, hy + 2, VICTIM[0]); body.put(24, hy + 3, VICTIM[0]); body.put(26, hy + 2, VICTIM[0])
-            body.put(23, hy - 1, MYC[3])
+            body.put(23, hy - 1, SILK[3])
             if torn == 1:
                 droplets(fx, rng, 24, 22, 8, 14, 8, SAP, size=(0.5, 1.0))
         if opened >= 2:
-            line(body, [(18, 18), (17, 26), (18, 32)], SAP[1] if opened == 2 else MYC[1], inside=body)
+            line(body, [(18, 18), (17, 26), (18, 32)], SAP[1] if opened == 2 else SILK[1], inside=body)
     outline(body)
     res = Layer(48, 48)
     res.paste(under)
     res.paste(body)
     res.paste(fx)
-    return res.a
-
-
-# ---------------------------------------------------------------- tron
-
-def throne():
-    under = Layer(96, 96)
-    body = Layer(96, 96)
-    rng = random.Random(5)
-    # Krew spływa po stopniu (podłoga, bez obrysu).
-    blob(under, rng, 48, 76, 9, BLOOD, n=8, spread=1.0)
-    for x in (40, 45, 52, 57):
-        line(under, [(x, 70), (x + rng.randint(-1, 1), 84)], BLOOD[1])
-    # Masa grzybni.
-    ellipse(body, 48, 50, 33, 26, MYC)
-    ellipse(body, 48, 30, 32, 15, MYC)
-    # Wtopione ciała w oparciu: twarze i ręce.
-    for (fx_, fy_) in ((30, 30), (48, 26), (66, 30)):
-        ellipse(body, fx_, fy_, 4.5, 5, FLESH)
-        body.put(fx_ - 2, fy_ - 1, FLESH[0]); body.put(fx_ + 2, fy_ - 1, FLESH[0])
-        body.put(fx_, fy_ + 2, BLOOD[0]); body.put(fx_ - 1, fy_ + 2, BLOOD[1])
-    for (ax, ay, bx, by) in ((20, 34, 13, 22), (76, 34, 83, 22), (38, 24, 35, 13), (58, 24, 61, 13)):
-        capsule(body, ax, ay, bx, by, 2.6, 2.0, FLESH)
-        for ang in (-0.5, 0.5):
-            dx, dy = bx - ax, by - ay
-            n = math.hypot(dx, dy)
-            dx, dy = dx / n, dy / n
-            cx = dx * math.cos(ang) - dy * math.sin(ang)
-            cy = dx * math.sin(ang) + dy * math.cos(ang)
-            capsule(body, bx, by, bx + cx * 3, by + cy * 3, 1.0, 0.9, FLESH)
-    # Kapelusze koronują oparcie.
-    for (x, y, r) in ((17, 40, 4), (79, 40, 4), (36, 18, 4.5), (60, 18, 4.5), (24, 22, 7), (72, 22, 7), (48, 16, 7.5)):
-        ellipse(body, x, y, r, r * 0.92, MYC)
-        body.put(int(x), int(y), MYC[1])
-    for (x, y) in ((22, 20), (70, 20), (46, 14), (50, 17)):
-        body.put(x, y, BONE[1])
-    # Siedzisko: wgłębienie pełne krwi.
-    ellipse(body, 48, 52, 16, 12, MYC, bias=-0.6)
-    seat = Layer(96, 96)
-    blob(seat, rng, 48, 54, 9, BLOOD, n=6, spread=0.7)
-    m = seat.a[..., 3] > 0
-    body.a[m] = seat.a[m]
-    # Podłokietniki zakończone czaszkami.
-    for sx in (24, 72):
-        capsule(body, sx, 40, sx, 64, 6, 5, MYC)
-        ellipse(body, sx, 67, 4.5, 4.5, BONE, rim=False)
-        body.put(sx - 2, 68, VOID); body.put(sx + 1, 68, VOID); body.put(sx, 70, VOID)
-    # Krosty soku.
-    for (x, y) in ((31, 46), (65, 47), (40, 38), (57, 37), (20, 52), (76, 53), (48, 38)):
-        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
-            body.put(x + dx, y + dy, SAP[2])
-        body.put(x, y, SAP[3])
-    # Grzybnia.
-    for t in ([(32, 60), (28, 66)], [(64, 60), (68, 66)], [(40, 40), (36, 46), (34, 52)], [(56, 40), (60, 46), (62, 52)]):
-        line(body, t, MYC[3], inside=body)
-    outline(body)
-    res = Layer(96, 96)
-    res.paste(under)
-    res.paste(body)
     return res.a
 
 
@@ -911,13 +936,15 @@ def build():
     sheets = {
         'fungal-devourer.png': (sheet(rows, 96), 96, 8),
         'devourer-cocoon.png': (sheet([[cocoon(v, f) for f in range(14)] for v in range(3)], 48), 48, 6),
-        'fungal-throne.png': (throne(), 96, 6),
         'fungal-fx.png': (sheet([[fx_blood(i) for i in range(4)], [fx_spore(i) for i in range(4)]], 48), 48, 2),
         'throne-decals.png': (sheet([[decal(i) for i in range(6)]], 48), 48, 4),
         'mushroom-trail.png': (sheet([[trail_frame(i) for i in range(10)]], TRAIL), TRAIL, 2),
         'spore-pod.png': (sheet([[pod_frame(i) for i in range(4)]], POD), POD, 2),
         'devourer-hand.png': (sheet([[hand_frame(i) for i in range(4)]], HAND), HAND, 1),
     }
+    # Krok U6: śmierć (8 klatek × 8 kierunków), osobny arkusz jak u pozostałych bossów.
+    die = [death_frame(i) for i in range(len(DEATH))]
+    sheets['fungal-devourer_death.png'] = (sheet([[die[i][d] for i in range(len(DEATH))] for d in range(8)], 96), 96, 4)
     return sheets
 
 
@@ -979,14 +1006,12 @@ def scene(sheets):
     bg = floor_bg(W, H)
     dec = sheets['throne-decals.png'][0]
     coc = sheets['devourer-cocoon.png'][0]
-    thr = sheets['fungal-throne.png'][0]
     mb = sheets['fungal-devourer.png'][0]
     d = lambda i: dec[:, i * 48:(i + 1) * 48]
     c = lambda v, f: coc[v * 48:(v + 1) * 48, f * 48:(f + 1) * 48]
     for (i, x, y) in ((5, 120, 128), (0, 104, 92), (2, 150, 120), (3, 40, 14), (3, 200, 120),
                       (1, 70, 130), (4, 190, 30), (0, 214, 82), (2, 56, 70), (5, 10, 136), (1, 230, 140)):
         over(bg, d(i), x, y)
-    over(bg, thr, 96, -6)
     for (v, f, x, y) in ((0, 0, 4, 4), (1, 1, 4, 52), (2, 2, 4, 100), (0, 2, 36, 28), (1, 3, 36, 76),
                          (2, 0, 236, 4), (0, 1, 236, 52), (1, 0, 236, 100), (2, 3, 204, 28), (0, 6, 204, 76),
                          (1, 7, 60, 130), (0, 5, 186, 134), (2, 1, 6, 138), (0, 3, 236, 138)):
@@ -1022,7 +1047,7 @@ def main():
         validate(name, arr, cell, margin)
         save(arr, os.path.join(a.out, name))
         print(f'{name:34s} {arr.shape[1]}×{arr.shape[0]}  komórka {cell}')
-    for nm, c in (('outline', OUTLINE), ('flesh-2', FLESH[2]), ('myc-2', MYC[2]), ('myc-3', MYC[3]), ('blood-2', BLOOD[2])):
+    for nm, c in (('outline', OUTLINE), ('flesh-2', FLESH[2]), ('myc-2', MYC[2]), ('silk-2', SILK[2]), ('blood-2', BLOOD[2])):
         print(f'kontrast {nm:8s} na podłodze Cmentarzyska: {contrast(c, FLOOR):.2f}:1')
     if a.preview:
         previews(sheets, a.preview)

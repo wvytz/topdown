@@ -9,7 +9,7 @@ Dokumentacja zmian i procesu tworzenia gry. Aktualizowana po każdym kroku.
 - **Znaczniki do wyszukiwania** (Ctrl+F albo `grep`):
   - `#ocena` — oceny i feedback właściciela po testach w grze;
   - `#decyzja` — decyzje projektowe właściciela;
-  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#upgrade`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie`, `#zaduch` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
+  - temat, np. `#matka-pajakow`, `#pajecze-leze`, `#grzybnia`, `#krol-pajakow`, `#mrok`, `#cmentarzysko`, `#wampirzy-lord`, `#grzybowy-pozeracz`, `#ekran-startowy`, `#ekran-smierci`, `#czarodziejka`, `#lucznik`, `#pieklo`, `#kat-otchlani`, `#palacz`, `#baron-dymu`, `#zadymiona-palarnia`, `#nazwa`, `#upgrade`, `#przemiany`, `#elity`, `#wieza`, `#ruiny`, `#zasadzka`, `#hud`, `#areny-bossow`, `#areny-zmienne`, `#balans`, `#sterowanie`, `#coop`, `#wydajnosc`, `#dzwiek`, `#obraz`, `#gniazdownik`, `#czyhacz`, `#sprzataczki`, `#lustrzana-komnata`, `#feedback`, `#ikonka`, `#brudna-wiedzma`, `#bociani-ogrod`, `#przegladarki`, `#mieszkanie-gracza`, `#minimapa`, `#bot-partner`, `#krol-szlamu`, `#lore`, `#zywe-otoczenie`, `#zaduch`, `#ukryta-komnata` — wszystko o danym bossie albo biomie (łącz z `#ocena`).
 
 ---
 
@@ -6118,30 +6118,523 @@ Wnioski: praca gry w JS się nie zmienia (efekty nie dotykają logiki). Odstęp 
 
 **Testy:** `tests/dungeon/stairs.test.ts` (blok 3×3, narożnik runu z pierwszeństwem i odrzuceniem przy wejściu, stały narożnik dla seeda), `FloorDressing.test.ts` (schody poza testowaną salą). `npm run build`, `npm run smoke`, kadry pięter 1–7 — `/mnt/project-files/screens/krok187-klatka-schodowa/`.
 
+## Krok U3 — Światło 2.0: pociski, magia, wybuchy i Czarne Słońce `#upgrade` `#swiatlo`
+
+**Zakres (etap U3 z `docs/UPGRADE.md`, STYLEGUIDE §13.6–13.7):** światło od pocisków, magii i wybuchów w warstwie mroku, barwa światła, światło Czarnego Słońca, poświata pochodni tylko w kadrze (uwaga z U1). Same efekty obrazu: widoczność wrogów w „Mroku” i we mgle (`EnemyVisibility`), liczby walki, czas logiki i strumienie RNG bez zmian. **Niska = gra sprzed upgradu** (test pilnuje, że na Niskiej żadne światło dynamiczne nie działa). Przed etapem scalony `main` (kroki 186–187, `docs/AKT2.md`) — bez konfliktów.
+
+**Co powstało**
+- **Czysta warstwa** `systems/DynamicLights.ts` (typy `core/lightTypes.ts`, liczby `config/dynamicLightConfig.ts`): poziom świateł z profilu obrazu, promień gasnącego błysku (szybko, potem łagodnie, skokowo co 4 px — §13.7 „gaśnie skokowo”), światła wzdłuż promienia, wybór świateł do kadru z limitem (pociski wrogów pierwsze — to, co rani, widać zawsze), siła i gradient Czarnego Słońca.
+- **Światła dynamiczne** (`effects/DynamicLights.ts`, obiekt `dynamicLights`): warstwa mroku wyciera ich stemple jak pochodnie (ten sam płynny stempel — bez pasm). Świecą: pociski bohaterów (ciepła biel; kule Czarodziejki — fiolet), pociski wrogów (czerwień), promień-Wyrwa (światła co 32 px wzdłuż), błyski Supernowej, fali, rozprysku i teleportu, wybuchy bez ognia (sok Pożeracza w turkusie swojego wybuchu; ogniste wybuchy miały własne światło od kroku 144). Działają też przy „Mroku” i — przez drugą warstwę — w **Zaduchu zasadzki**: strzały w ciemności są czytelne (kryterium etapu).
+- **Barwa światła (Wysoka):** każde światło dynamiczne dostaje poświatę ADD w barwie źródła nad mrokiem (`RENDER_DEPTH.dynamicLight`), z puli obrazów — bez nowego obiektu na pocisk. Średnia — samo rozjaśnienie mroku, bez barwy.
+- **Limit:** Średnia 12, Wysoka 20 świateł w kadrze naraz; błysków w pamięci najwyżej 16. „Mniej błysków” gasi błyski wybuchów i magii, pociski świecą dalej.
+- **Czarne Słońce** (`effects/BlackSunLight.ts`): zimny, łagodny gradient ADD z prawego górnego narożnika kadru (ta sama strona na każdym piętrze), mocniejszy im wyżej — alfa 0,05 na piętrze 1 do 0,158 na piętrze 7, w kolejnym kręgu od nowa. Średnia i Wysoka; nigdy przy „Mroku” (tam ciemność to mechanika).
+- **Poświata tylko w kadrze:** `screenFx.cullGlow` raz na klatkę wyłącza preFX glow pochodni i ognia poza kadrem (z zapasem 32 px) i włącza go, gdy wejdą do kadru — przejście GPU tylko dla tego, co widać.
+- „Świecące elementy biomów” już są (żywe otoczenie z kroku 156: lampy, znicze, ogniki, ćmy; paleniska, schody) — w U3 bez zmian; nowe elementy przyjdą z kaflami w U4.
+
+**Testy:** `tests/systems/dynamicLights.test.ts` — Niska bez światła (także z „mniej błysków”), wyższy poziom nigdy uboższy, barwa dopiero na Wysokiej, „mniej błysków” gasi błyski, a nie pociski, kwantyzacja promienia, szczyt i gaśnięcie błysku, światła promienia, wybór do kadru (poza kadrem, zgasłe, kolejność, limit), poświata w kadrze z zapasem, Czarne Słońce (rośnie z piętrem, rytm kręgu, gradient bez twardej krawędzi).
+
+**Weryfikacja:** `npm run build` (2891 testów); w przeglądarce kadry pocisków, kul, Supernowej i wybuchu soku na Niskiej, Średniej i Wysokiej na Cmentarzysku i w Zaduchu (`/mnt/project-files/screens/krokU3-swiatlo/`); kadry bazowe `npm run shots` przed i po (Wysoka); `npm run perf` przed i po. 
+
+Pomiar `npm run perf` (piętro 7, kontener bez GPU, automat jakości — PC Wysoka, telefon Niska), przed → po: PC nawała praca p50 2,1 → 2,0 ms, co-op 2,8 → 2,3 ms, telefon nawała 7,8 → 7,5 ms — praca gry w JS bez zmian (różnice w szumie pomiaru). Telefon na Wysokiej (`--query gfx=high`, nawała): praca p50 9,5 → 9,6 ms, ale klatka p50 57 → 64 ms (programowe rysowanie poświat ADD i stempli) — na Wysokiej światło kosztuje przy rysowaniu, dlatego automat telefonu zostaje na Niskiej. FPS w kontenerze to programowe rysowanie — kryterium „telefon trzyma 60 klatek” sprawdzi dopiero licznik `?perf=1&gfx=medium` na telefonie właściciela (strona „Do oceny”).
+
+**Ocena właściciela (12.11.2026)** `#ocena`: „światło jest petarda”.
+
+**Do oceny (strona „Do oceny”):** czy strzały w mroku czytają się dobrze, czy barwy nie są za mocne, siła Czarnego Słońca na piętrach 1 i 7, czas klatki na telefonie z `?gfx=medium`.
+
+## Krok U4a — Kafle 2.0: pilot ruin `#upgrade` `#kafle` `#ruiny`
+
+**Zakres (etap U4 z `docs/UPGRADE.md`, STYLEGUIDE §13.8):** pilot nowej oprawy kafli na piętrze 1 (ruiny) — warianty płyt, przejścia materiałów, głębia murów, „wieża za oknem”, obwódka areny. Inne biomy bez zmian (ich arkusze generują się bajt w bajt tak samo). Kolizja, linia wzroku, liczby gry i strumienie RNG systemów gry bez zmian — to tylko obraz z danych piętra. Przed etapem `main` był już w `upgrade-fable` (nic do scalenia).
+
+**Co powstało**
+- **Generator:** nowy moduł `tools/ruins_v2_tiles.py` (dodatek `v2` biomu `tower_ruins`), dopisany na końcu manifestu (first-fit), więc kafle sprzed upgradu zostają na swoich miejscach w arkuszu. Paleta `piaskowiec` dostała rampę `sky` (otchłań i nocne niebo za wieżą); reszta to stare rampy. Walidator generatora przechodzi (tylko barwy palety, krycie 0/255).
+  - **Płyty:** 6 nowych wariantów w grupie `floor` (obtłuczone narożniki, rysa, osiadła płyta, łata z bruku, wytarcia, popiół w fugach; ok. 1/4 posadzki) i 2 nowe wzory 2×2 (duża płyta w ramie, jodełka); `macroChance` ruin 0,04 → 0,06.
+  - **Próg** (przejście materiałów): kamienny próg w poprzek przejścia na każdym wejściu do pokoju — granica bruku korytarza i płyt pokoju; rowek pod kratę.
+  - **Obwódka areny:** pas wpuszczony w posadzkę wzdłuż murów areny (rowek, oświetlona krawędź, spoiny), kamienie narożne z wyrytym rombem. Nakładka podłogi, więc zwykłe nakładki omijają te kafle; bez obwódki pod klatką schodową.
+  - **Mur:** ciosy o nierównej długości (`ashlar_irregular`) jako warianty najczęstszych masek — w kadrze nie widać powtarzalnego wzoru cegieł; wiersze co 8 px, więc łączą się ze starymi kaflami.
+  - **Głębia muru i „wieża za oknem”:** pasmo przejściowe (2 kafle od podłogi) w chłodnych tonach lica zamiast prawie czarnej cegły, a dalej mur wieży z dużych bloków 32×16 (jaśniejszy niż dawna „głębia”) z wyrwami 1×1–2×2, przez które widać nocne niebo z pasmami popiołu; pod północną krawędzią wyrwy widać grubość muru. Arkusz ruin wskazuje nowe grupy pasm (`wallBand.fade2`, `wallBand.tower`).
+- **Dekorowanie** (`dungeon/FloorDressing.ts`, liczby w `config/dressingConfig.ts` → `RUINS_DRESSING`): opcjonalne `sills`, `arenaBorder`, `breaches` — biomy bez nich dekorują się jak dotąd. Wyrwy: szansa 3,5% na kaflu masy, każdy kafel wyrwy co najmniej 4 kafle od podłogi, odstęp 5 kafli, **własny strumień RNG** (sól `BREACH_SALT`), więc reszta obrazu piętra nie zależy od wyrw.
+- Stary arkusz ruin: `tools/reference/tower_ruins_tileset_pre-u4.{png,json}` (plan wycofania: podmiana pliku i usunięcie `v2` z `BIOMES`).
+
+**Testy:** `tests/dungeon/FloorDressing.test.ts` — konfiguracja ruin wskazuje istniejące grupy; próg na każdym wejściu w orientacji przejścia, bez konfiguracji brak progów; obwódka na skrajnych kaflach areny z właściwym bokiem i narożnikiem, środek i inne pokoje bez niej; wyrwy tylko na ścianach co najmniej 4 kafle od podłogi, bez kafli nad postaciami, dane piętra nietknięte, pozostałe warstwy identyczne jak bez wyrw; determinizm i rzadkość wyrw (<15% ścian). Pasma ścian czytają grupę z arkusza.
+
+**Weryfikacja:** `npm run build` (2972 testy); generator pozostałych 7 biomów daje identyczne arkusze; kadry `npm run shots` przed i po (`.shots/u4-po/arkusz.png`, kopia w `/mnt/project-files/screens/krokU4a-kafle/`); `npm run perf -- --floor 1` przed i po; `npm run smoke`.
+
+Pomiar `npm run perf -- --floor 1 --only pc-horde,phone-horde` (kontener bez GPU), przed → po: PC praca p50 2,2 → 1,9 ms, telefon (CPU ×4) 7,3 → 7,9 ms — w szumie pomiaru; kafle to te same warstwy mapy, nowych obiektów nie ma. Kadry pozostałych biomów bez zmian. Smoke (3 bohaterów, piętra 1–2) bez błędów.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: „wszystko wygląda smooooth”; mur wieży nie jest za jasny — pasuje do początku gry i łagodnego startu.
+
+**Do oceny (strona „Do oceny”):** czytelność w walce, częstość i kształt wyrw, jasność muru wieży, obwódka areny. Po akceptacji pilota te same zasady dostaną Grzybnia i Cmentarzysko (U4b), potem reszta biomów.
+
+## Krok U4b — Kafle 2.0: Grzybnia i Cmentarzysko; bez tronu Pożeracza, sine kokony `#upgrade` `#kafle` `#decyzja` `#grzybowy-pozeracz` `#cmentarzysko`
+
+**Decyzje właściciela (12.11.2026)** `#decyzja`: po akceptacji pilota (krok U4a) „scalaj i ruszaj z U4b”; „usuń ten tron pożeracza, bo już nie pasuje do wizji” (Pożeracz to od kroku 184 kula z ciał); „zmień kolory kokonów na bardziej blado sine”.
+
+**Co powstało**
+- **Grzybnia i Cmentarzysko w oprawie 2.0** — ten sam moduł co ruiny (`tools/ruins_v2_tiles.py`, dodatek `v2` w `BIOMES`, rampy `sky` w paletach `grzybnia` i `cmentarz_trupi`): warianty płyt i wzory 2×2, progi wejść, obwódka areny, ciosy nierównej długości, pasmo przejściowe i mur wieży. Akcenty biomów: w Grzybni na krawędziach wyrw świecą drobiny grzybni (bioluminescencja), za wyrwą fioletowa noc; w Cmentarzysku za wyrwą chorobliwa, zielonkawa mgła, a w murze wieży rzadkie **nisze grobowe z czaszkami** (warianty masy). Gradient ruiny: wyrw mniej, im wyżej (ruiny 3,5%, Grzybnia 2,2%, Cmentarzysko 1,5%, odstęp 6 kafli). Naleciałości biomów (pleśń, zgnilizna) nakładają się na nowe kafle tak jak na stare.
+- **Bez tronu Pożeracza:** arena nie stawia już tronu z grzybni (`fungal-throne.png` usunięty, `planThrone` i strefa kokonów wokół tronu usunięte); zostają naklejki krwi, grzybni i soku, efekty i kokony spiżarni.
+- **Sine kokony:** oplot kokonów spiżarni w bladej, sinej rampie `SILK` (`tools/devourer_sprites.py`) zamiast brązu kapelusza; żyły soku i zarażeni bez zmian. Pozostałe arkusze Pożeracza generują się identycznie.
+
+- **Kokony skarbu w ukrytej komnacie Grzybni** (prośba właściciela tego samego dnia: „ich wygląd ma delikatnie wskazywać, że nie są to zwykłe kokony i coś wartościowego może się w nich kryć”): własny arkusz `treasure-cocoon.png` (`tools/lair_enemies.py`, `TREASURE_COCOON_VISUAL`) — ta sama sylwetka co kokon leża, ale szew tli się złotem łupów, w oplot wplecione są złote nici, a po jedwabiu powoli wędruje jeden błysk; przy rozbiciu złota szczelina i złote nitki zamiast zielonej mazi. Wszystkie kokony komnaty wyglądają tak samo (który ma skarb, dalej nie widać).
+
+**Testy:** grupy oprawy 2.0 w arkuszach Grzybni i Cmentarzyska, pasmo głębi = mur wieży, wyrw mniej niż w ruinach i mniej w Cmentarzysku niż w Grzybni; testy sali tronowej bez tronu (naklejki).
+
+**Weryfikacja:** `npm run build` (2967 testów); kadry `npm run shots` (`--before` z U4a: zmieniły się tylko Grzybnia i Cmentarzysko), arena Pożeracza w przeglądarce (kokony, brak tronu); `npm run smoke -- --floors 3`. Zrzuty: `/mnt/project-files/screens/krokU4b-kafle/`.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: kokony areny Pożeracza i nowe biomy „wygląda ok”.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: kokony skarbu — „nie widać praktycznie różnicy”; właściciel sam zaprojektuje nowy wygląd (do tego czasu zostaje złoty szew). Następny krok U4c: Piekło, Zadymiona palarnia, Lustrzana komnata i Bociani Ogród (każdy z własnym akcentem; mieszkanie gracza ma kafle z `gamer_den_tiles.py`).
+
+## Krok U4c — Kafle 2.0: Piekło, Lustrzana komnata, Bociani Ogród; jaskrawsza krew `#upgrade` `#kafle` `#palacz` `#lustrzana-komnata` `#brudna-wiedzma`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: „scalaj i ruszaj z U4c”.
+
+**Co powstało**
+- **Piekło, Lustrzana komnata i Bociani Ogród w oprawie 2.0** — ten sam moduł co ruiny (`tools/ruins_v2_tiles.py`, dodatek `v2`, rampy `sky` w paletach `pieklo_bazalt`, `lustro_opal`, `bociani_noc`): warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Akcenty krawędzi wyrw (`RIM_ACCENT`): w Piekle żar, w Lustrzanej komnacie opalowy połysk, w Ogrodzie trawa wrastająca w wyrwę. Lustrzana posadzka bez płyt wyszczerbionych, łatanych i z popiołem w spoinach (`FLOOR_SKIP`) — lustro ma zostać czyste. Gradient ruiny dalej maleje z wysokością: Piekło 1,2%, Lustrzana komnata 0,8%, Ogród 1%.
+- **Jaskrawsza krew** (uwaga właściciela po kroku 24, przeniesiona z U2): plamy walki we wszystkich biomach 2.0 poza Grzybnią (tam zostaje zielony sok) w nowej rampie `BLOOD` (od ciemnego bordo po żywą czerwień).
+- **Zadymiona palarnia bez zmian** — mieszkanie gracza ma własne kafle z kroku 138 (`gamer_den_tiles.py`), kamienna oprawa 2.0 do niego nie pasuje. Ewentualnie później: okna na miasto zamiast wyrw. Arkusze `smoke_den` i `spider_lair` generują się identycznie.
+
+**Testy:** test biomów 2.0 obejmuje Grzybnię, Cmentarzysko, Piekło, Lustrzaną komnatę i Ogród (grupy w arkuszach, progi, wyrwy); palarnia i leże bez progów i wyrw.
+
+**Weryfikacja:** `npm run build` (2969 testów); `npm run shots` przed i po (zmieniły się tylko piętra 4, 6 i 7 oraz krew), `npm run perf` w granicach szumu; `npm run smoke` przez 7 pięter bez błędów. Zrzuty: `/mnt/project-files/screens/krokU4c-kafle/`.
+
+**Ocena właściciela (12.11.2026)** `#ocena`: „podoba mi się” — scalone, U4 zamknięte.
+
+## Krok U4e — Bez krwi; odrzut wrogów o połowę `#upgrade` `#decyzja` `#ocena`
+
+**Etap pośredni (tego samego wieczoru, w commicie opisany jako „Krok U4d”; numer U4d ma skarbiec pająków):**
+
+**Uwaga właściciela (12.11.2026)** `#ocena`: „od kiedy zostawiamy plamy krwi? nasza gra tego nie robi” (zrzut z Cmentarzyska na podglądzie).
+
+**Przyczyna:** trwałe ślady walki są w grze od kroku 19b (pula 180 plam, `effects/CombatDecals.ts`), ale dotąd były ciemnobrązowe i zlewały się z posadzką. Krok U4c przemalował je na jaskrawą czerwień, więc nagle stały się widoczne jako kałuże krwi, które zostają.
+
+**Co zmienione:** trwała plama wraca do dawnego, ciemnego wyglądu (arkusze jak przed U4c w tych kaflach). Jaskrawa krew z U4c to teraz osobna nakładka `combat.fresh` (`FRESH_BLOOD_V2` w `config/dressingConfig.ts`): pojawia się nad plamą, trzyma 0,9 s i wygasa przez 1,4 s (własna pula 24 obrazków, głębokość `freshBlood`). Grzybnia bez zmian (turkusowa posoka).
+
+**Weryfikacja:** `npm run build`, w przeglądarce: świeża czerwień po ciosie, po 3 s sama ciemna plama. Zrzut: `/mnt/project-files/screens/krokU4c-kafle/krew-swieza-i-plama.png`.
+
+**Decyzja właściciela (12.11.2026, po etapie pośrednim)** `#decyzja`: „zlikwiduj tę krew całkowicie. Gramy ARCADE, musimy wymyślić lepszy sposób na sygnalizację odniesienia obrażeń. BTW musimy zmniejszyć push back mobów o połowę, bo nie stanowią żadnego wyzwania.”
+
+**Co zmienione**
+- **Bez plam krwi:** `combatDecals.blood: false` (`config/dressingConfig.ts`) — śmierć wrogów, bossów, pająków i wybuchy nie kładą już plam; przypalenia i szlam zostają (pokazują ogień i strefy). Nakładka świeżej krwi z etapu pośredniego usunięta; kafle plam w arkuszach jak przed U4c (nieużywane).
+- **Odrzut wrogów o połowę:** `ENEMY_KNOCKBACK_TAKEN = 0.5` (`config/combatConfig.ts`) mnoży odrzut, który wróg dostaje od trafienia (ciosy, strzały, magia, wybuchy); bossowie, ogłuszenie po trafieniu i odrzut bohatera bez zmian. To zmiana balansu na gałęzi upgradu — do `main` z kolejną paczką.
+- **Sygnalizacja obrażeń** — właściciel wybrał własny pomysł: „system wag” ataków (zmęczenie, combo, podatność) — osobny wątek i `docs/WAGI.md`.
+
+**Weryfikacja:** `npm run build` (2973 testy), `npm run smoke -- --floors 2`.
+
+## Krok U5a — Postacie 2.0: pilot barbarzyńcy `#upgrade` `#postacie`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: po U4c „lecimy dalej U5 i U6”. Wg planu (`docs/UPGRADE.md`) najpierw arkusz jednej postaci do akceptacji, potem reszta.
+
+**Co powstało**
+- **Nowy arkusz barbarzyńcy** `blond-barbarian_v2.png` z generatora `tools/hero_v2_sprites.py` (na klatkach z `barbarian_sword.py`, 8 kierunków z obrotu, obrys po obrocie): chód i cios bez zmian w tych samych kolumnach, a do tego **bezruch** (oddech: barki i miecz o piksel, 1 s na cykl), **trafienie** (odskok, głowa odchylona, ramiona rozrzucone), **dash** (głowa w przód, ramiona w tył) i **śmierć** (6 klatek: trafienie, kolana, pad w przód, leżące ciało z mieczem obok; ostatnia klatka zostaje na posadzce zamiast szarego stojącego bohatera).
+- **Akcent barwy klasy** (STYLEGUIDE §13.9, ok. 10% sylwetki): karwasze i rzemienie z barwionej skóry w bursztynie barbarzyńcy (`HERO_HUES` 38°).
+- **W grze** (`entities/Player.ts`): pola `hurt`, `dash`, `death` w `HeroVisual`; dash i świeże trafienie (260 ms, `HERO_HURT_POSE_MS`) mają pierwszeństwo przed chodem i bezruchem, cios — przed nimi. Bohater bez tych pól zachowuje się jak dotąd. Wyłącznik `HERO_SPRITES_V2` w `config/spriteConfig.ts` wraca do starego arkusza (stary plik zostaje).
+- Ciało fizyczne, pivot i komórka 48×48 bez zmian (test `tests/config/heroSpritesV2.test.ts`).
+
+**Weryfikacja:** `npm run build` (2973 testy), pozy w przeglądarce (bezruch, trafienie, pad), `npm run smoke -- --floors 2`. Arkusz: `/mnt/project-files/screens/krokU5a-barbarzynca/arkusz.png`. **Czeka na ocenę właściciela** — po akceptacji ta sama metoda dla Czarodziejki i łucznika, potem Totem i co-op.
+
+## Krok U6 — Bossowie: karta wejścia, widoczne fazy, śmierć Pożeracza i Palacza, smagnięcie Matki Pająków, rekwizyty aren 6–7 `#upgrade` `#bossowie` `#pozeracz` `#palacz` `#matka-pajakow` `#areny-zmienne`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: „podoba mi się, scalaj i lecimy dalej U5 i U6” (U5 równolegle w osobnym wątku).
+
+**Co powstało**
+- **Karta wejścia bossa** (`effects/BossIntroCard.ts`, przebieg w czasie — `systems/BossPresentation.ts`, liczby — `config/bossPresentationConfig.ts` `BOSS_INTRO_CARD`): przy przebudzeniu przez dół kadru przejeżdża ciemny pas z czerwonymi krawędziami (barwy ekranu startowego), portret bossa 2× (pierwsza klatka chodu, przodem do gracza; najpierw sylwetka, potem odsłonięcie z jedną klatką bieli — bez niej przy „mniej błysków”), podpis „BOSS”/„BOSSOWIE”, imię i tytuł. Duet ma dwa portrety. Karta zastępuje planszę z napisem przy przebudzeniu (okrzyk wściekłości dalej daje plansza). Gra w tym czasie trwa, karta znika po ok. 2,6 s. Wyłącznik: `BOSS_INTRO_CARD.enabled` albo `?bossCard=0`.
+- **Widoczne fazy** (`effects/BossPhaseBar.ts`, `BOSS_PHASE_MARKS`): kreski progów na pasku HP — wściekłość, ucieczka windą, powrót partnera duetu (`BossFightDeps.extraPhaseMarks`); przed graczem jasna kreska wystająca ponad pasek, przekroczona — przygaszona. Przy przekroczeniu kreska i pasek rozbłyskują (0,9 s, skokowo). Przy imieniu „faza N/M”. Progi poniżej ucieczki windą odpadają (blondynka ucieka przy 2/3, zanim by się wściekła). Duet: kreski na obu paskach.
+- **Śmierć Grzybowego Pożeracza** (`tools/devourer_sprites.py` → `fungal-devourer_death.png`): konwulsja i ryk, kula puchnie, pęka — ciała odpadają na boki, reszta osiada w kałuży krwi, ostatni wydech zarodników; sterta zostaje na posadzce.
+- **Śmierć Palacza** (`tools/stoker_sprites.py` → `stoker_death.png`): szufla wypada, kolana i drzwiczki na posadzce, ostatnie buchnięcie pieca, upadek twarzą w posadzkę, żar stygnie; zwłoki zostają. Od tego kroku każdy boss wspinaczki (i partner duetu) ma animację śmierci (test).
+- **Smagnięcie Matki Pająków** (ocena właściciela po kroku 27: „słabo widoczne”, przeniesione z U2): w chwili uderzenia przed królową przelatują trzy zielone łuki pazurów z kościanymi szpicami (`tools/spider_sprites.py` → `spider-queen_lash-fx.png`, 8 kierunków; `effects/BossLashFx.ts`, `BOSS_LASH_FX`). Smagnięcie nie daje już ognistego wybuchu i wypalonego śladu — to był domyślny wygląd stref bez własnego `look`. Strefa, obrażenia i trucizna bez zmian.
+- **Rekwizyty aren 6–7 z generatora** (`tools/arena_props.py` → `public/assets/sprites/arena/`): wiadro (całe i przewrócone z wodą), butla chloru, wózek sprzątaczki, znak „ślisko”, lustro (całe i pęknięte), słup w bluszczu, gniazdo z bocianem (całe i rozbite), żywopłot — obrys 1 px, rampy palet `lustro_opal` i `bociani_noc`, cień α 0,4. Klucze i rozmiary tekstur jak w kroku 160, więc `ArenaConditionManager` kładzie je tak samo; `effects/ArenaConditionArt.ts` tylko je ładuje (BootScene).
+
+**Decyzje:** karta nie zatrzymuje gry (liczby walk bez zmian — plan U6), leży w dolnej części kadru nad paskiem HP, bo bohater stoi w środku, a boss zwykle nad nim. Portret to klatka z istniejącego arkusza, bez nowych grafik. Generatory zachowują dotychczasowe arkusze bajt w bajt (sprawdzone `cmp`); arkusze Matki Pająków w repo różnią się od wyjścia generatora już przed tym krokiem, więc nie są nadpisywane — dochodzi tylko nowy plik.
+
+**Testy:** `tests/systems/bossPresentation.test.ts` — przebieg karty (wjazd, postój, zjazd, czas ≤ 3 s), progi faz (kolejność, scalanie bliskich, odcięcie poniżej ucieczki), numer fazy zgodny z progiem wściekłości w `BossBrain`, portret każdego bossa w granicach arkusza, animacja śmierci każdego bossa wspinaczki.
+
+**Weryfikacja:** `npm run build` (2995 testów); Playwright: karta na piętrach 1–7, rozbłysk progu, śmierć Pożeracza i Palacza w grze, błysk pazurów, rekwizyty aren 6–7; `npm run smoke -- --floors 7 --sweep-only` bez błędów. `npm run perf` pominięty (karta i kreski to kilka obiektów HUD-u). Zrzuty: `/mnt/project-files/screens/krokU6-bossowie/`. **Czeka na ocenę właściciela.**
+
+## Krok U4f — Skarbiec pająków: ukryta komnata Grzybni opleciona jedwabiem, kokony na piedestałach `#upgrade` `#kafle` `#ukryta-komnata` `#ocena`
+
+Numer U4f, bo U4d i U4e zajęły równoległe poprawki krwi z gałęzi U5a (PR #106).
+
+**Ocena właściciela (12.11.2026)** `#ocena` `#ukryta-komnata`: w podglądzie upgradu ukryta komnata za areną Króla Pająków wyglądała jak zwykły pokój — „to sekretne pomieszczenie miało być pełne pajęczej spermy/nici, a kokony stać na piedestałach. Gdzie honor i zaszczyt z odnalezienia ukrytych skarbów potężnych niepokonanych pająków?”.
+
+**Co powstało**
+- **Układ skarbca** (czysty `dungeon/SpiderVault.ts`, liczby `config/spiderVaultConfig.ts`): wejście to strona, którą wchodzi korytarz od areny. Wielki piedestał stoi na osi komnaty w ostatnim rzędzie naprzeciw wejścia, pozostałe parami, symetrycznie wokół osi — najpierw obok wielkiego, potem co drugi rząd ku wejściu, jak w sali tronowej; rząd przy wejściu zostaje wolny. Wielki + 2–3 pary, ile się zmieści, czyli 5–7 kokonów (było 4–6 w losowych miejscach; po ocenie właściciela 3–5, niżej); tylko jeden kryje przedmiot i dalej nie widać który. Pozycje w jednostkach kafli, więc wielki piedestał stoi dokładnie na osi także w komnacie o parzystej szerokości.
+- **Oplot** (`planVaultDecor`, własny strumień losowań — sól `SPIDER_VAULT_DECOR_SALT` — więc ozdoby nie przestawiają piedestałów ani nagrody): płaty jedwabiu gęstsze przy ścianach i wokół piedestałów (95% kafli przy ścianie, 50% w środku, 70% w korytarzu), większe od kafla i przesunięte, więc nie widać siatki; kałuże mlecznego śluzu; wielkie sieci w narożnikach (poza narożnikiem z wejściem); zasłony jedwabiu zwisające z lica północnego muru; 1–2 zawinięte w jedwab ciała śmiałków przy ścianach bocznych (trofea pająków); nici napięte od każdego piedestału do murów, cięciwy w narożnikach i łuk od wielkiego piedestału do sąsiadów.
+- **Grafika z generatora** `tools/spider_vault_sprites.py` → `public/assets/sprites/vault/`: piedestał (kamień Grzybni, złota opaska z pajęczym znakiem, gniazdo z jedwabiu na kapitelu, nici w prześwitach, kropla śluzu spływa po trzonie — 4 klatki), wielki piedestał (dwa stopnie, złota korona-pająk, czaszki pokonanych na stopniach), 6 płatów jedwabiu 48×48, 4 kałuże śluzu, sieć narożna 64×64 (gra odbija ją na inne narożniki), 3 zasłony, 2 ciała. Jedwab w rampie kokonów leża (`SILK`), złoto łupów, iskry bioluminescencji Grzybni w szczelinach.
+- **Rysowanie** (`effects/SpiderVaultView.ts`): wszystko powstaje przy odsłonięciu komnaty, bez kolizji. Nici rasteryzuje czysta `threadPixels` (krzywa z ugięciem, ciągła linia 1 px) do jednej tekstury nad komnatą, z cieniem α 0,4 przesuniętym o 3 px — nić wisi nad posadzką. Kokony stoją w gniazdach na kapitelach (`cocoonSpot`), strzępy po rozbiciu zostają na piedestale. Każdy piedestał świeci w mroku (46 px, wielki 72 px — `extraLights`). Nowe warstwy `RENDER_DEPTH.vaultFloor`, `vaultThreads`, `vaultProp`.
+- Komunikat odsłonięcia: „Skarbiec Króla Pająków! Rozbij kokony — w jednym czeka skarb.”
+- **`?vault=1`** (run testowy): na piętrze z ukrytą komnatą start w środku skarbca, np. `?floor=2&vault=1`.
+
+**Decyzje:** piedestały bez kolizji (dekoracje bez kolizji, CLAUDE.md) — w komnacie nie ma wrogów, więc linii wzroku to nie zmienia. `SECRET_ROOM_CONFIG` ma już tylko promień odsłonięcia; `planTreasureCocoons` zastąpił `planVaultLayout`. HUD nietknięty (równolegle U7).
+
+**Testy:** `tests/dungeon/SpiderVault.test.ts` — strona wejścia (4 strony, komnaty z generatora), wielki piedestał na osi w rzędzie naprzeciw wejścia, pary lustrzane, odstęp od ścian, różne kafle, nic tuż przed wejściem, determinizm i osobne strumienie, gęstość jedwabiu (> 50% kafli), śluz w komnacie, zasłony tylko na murze nad komnatą, ciała przy ścianach bocznych, końce nici w komnacie, ciągłość i ugięcie nici; `?vault=1` w `startOverrides.test.ts`; `SpiderVault.ts` w `PURE_FILES`.
+
+**Weryfikacja:** `npm run build` (3006 testów); Playwright na seedach 3, 7 i 12 (komnaty 8×10 z wejściem od południa, 5×10 od północy, 6×7 od zachodu): oplot, piedestały, kokony w gniazdach, rozbicie wszystkich kokonów (strzępy na piedestałach), bez błędów w konsoli; `?floor=2&vault=1` startuje w skarbcu; `npm run smoke -- --floors 2` (raz wyścig przy przejściu piętra u łucznika w samym skrypcie — powtórka czysta). Zrzuty: `/mnt/project-files/screens/krokU4f-skarbiec/`. **Czeka na ocenę właściciela.**
+
+**Ocena właściciela po podglądzie (12.11.2026, 22:46)** `#ocena` `#ukryta-komnata`: „powinniśmy dostawać tam movement speed slow. Kokonów powinno być mniej, od 3 do 5, i powinny mieć swój własny, dwukrotnie większy model graficzny”. Zrobione w tym samym kroku:
+- **Spowolnienie w skarbcu** (`SPIDER_VAULT_SLOW`, 40%, trwa 0,4 s po wyjściu): po odsłonięciu każdy bohater na kaflu komnaty albo korytarza do niej brnie przez jedwab i śluz (`isInVault`, `SecretRoomManager.update`); dash przechodzi bez spowolnienia, jak w lepkich pajęczynach.
+- **3–5 kokonów:** wielki piedestał + 1–2 pary (`pedestalPairs`).
+- **Własny model kokonu skarbu 2×** (`tools/spider_vault_sprites.py` → `vault-cocoon.png`, 64×64): jajo z jedwabiu w złotych taśmach, tętniący złoty szew, przez rozdarcie oplotu widać złoto; przy rozbiciu złota szczelina z promieniami, skorupa pęka na dwie połówki z ciemnym środkiem i złotym pyłem, które zostają w gnieździe. Strefa trafienia 16 px (było 9). Stary kokon skarbu (`treasure-cocoon.png` z `tools/lair_enemies.py`) usunięty.
+- Weryfikacja: Playwright na seedach 3 i 12 — 5 i 3 kokony na piedestałach, mnożnik prędkości bohatera w skarbcu 0,6, rozbicie wszystkich kokonów bez błędów.
+
+## Krok U7 — Interfejs: pikselowy krój, nowy HUD, karty w ramkach, „Moje przedmioty” na ekranie końca `#upgrade` `#interfejs` `#hud`
+
+**Decyzja właściciela (12.11.2026)** `#decyzja`: po U6 „zbliżamy się do idealnej wizji. scalaj i lecimy dalej” — etap U7 wg `docs/UPGRADE.md`.
+
+**Co powstało**
+- **Jeden pikselowy krój** (`core/pixelFont.ts`, bez silnika): wersaliki 5×7, małe litery z wydłużeniami, wszystkie polskie litery (akcent nad wersalikiem z pustym wierszem odstępu, ogonki pod linią), cyfry o jednej szerokości (liczby w HUD-zie nie skaczą), interpunkcja i symbole gry (★ ◆ ▶ → × … 💬). Znak spoza fontu traci akcent (é → e) albo staje się „?”. Warstwa Phasera (`ui/PixelFont.ts`) wypala z tych danych teksturę z obrysem 1 px `#1b1a22` — osobną dla każdej barwy (małe, ok. 900×14 px), więc tak samo działa w WebGL i na płótnie. `ui/UiText.ts` to BitmapText z `setColor` i polem kliknięcia z marginesem. Wielkość = całkowita skala pikseli fontu (1 drobny, 2 zwykły, 3–4 tytuły). Czcionka systemowa zniknęła ze wszystkich ekranów gry i z napisów w świecie (schody, kapliczka, elity, okrzyki bossów, unoszące się liczby); zostaje tylko w okienkach DOM (F9, czat) i na ekranie Safari. Przyciski telefonu rysują ten sam krój na płótnie nakładki.
+- **Nowy HUD** (`scenes/HudScene.ts`, liczby w `config/uiConfig.ts` `HUD_LAYOUT`): portret bohatera 1:1 w ramce z nitami, nad paskami nagłówek „Piętro N · modyfikator”, pasek HP z liczbą w środku, dash, ładunki i promień jako paski z rampą (światło–barwa–cień, `ui/UiFrame.ts`), ultimate w ramce obok HP (gotowe — obwódka miga skokowo, bez tego przy „mniej błysków”), złoto z monetą w skali 2, cel piętra, sloty przedmiotów w ramkach (`ui/ItemSlotView.ts`). Minimapa dostała ramkę, wnętrze dalej ledwie przyciemnione (krok 147). Pasek bossa w ramce z czerwonymi nitami; karta wejścia bossa i kreski faz z U6 piszą nowym krojem. Panel partnera w co-opie ma portret i ten sam styl.
+- **HUD nie zasłania walki** (STYLEGUIDE §13.10, `systems/hudText.ts`): pełna podpowiedź celu („znajdź komnatę bossa…”) przez 6 s po zmianie celu, potem skrót („Wrogowie: 5”, „Schody otwarte”); opis modyfikatora piętra przez 9 s, potem sama nazwa; linia sterowania tylko przez pierwsze 25 s runu.
+- **Telefon:** drobne napisy HUD-u w skali 2 (płótno jest tam pomniejszone), paski schodzą niżej. Ten sam wygląd, inny rozmiar.
+- **Karty nagrody** (`scenes/RewardScene.ts`): pikselowa ramka w barwie rodzaju, nity, cokół pod ikoną, kropki postępu jako romby z pełnych pikseli zamiast kółek, wstążka jako mała ramka, przy rodzaju znak (★ efekt broni, ◆ relikwia). Najechanie/pad — jasna ramka.
+- **Pauza, menu, wybór bohatera i co-opu w jednym stylu:** panele i karty w tej samej ramce (`ui/FrameRect.ts` — prostokąt Phasera rysowany ramką, bez zmian w logice ekranów), „Moje przedmioty” z ikoną przy każdym przedmiocie.
+- **Ekran końca runu** (śmierć i ZWYCIĘSTWO): pod wynikiem **podpis runu** (`systems/runSignature.ts`: bohater/drużyna, tryb, ziarno, liczba przedmiotów i przemian — ziarno pozwala powtórzyć układ pięter) i rząd **„Moje przedmioty”** w ramkach jak w HUD-zie. Komunikat R / C / M drobniejszy, żeby mieścił się w szerokości.
+
+**Decyzje:** ekran startowy nietknięty (logo z kroku 34 dalej z `core/pixelArt.ts`). Barwy UI z palety ekranu startowego (`UI_PALETTE`). Bez flagi starego HUD-u: krój dotyka wszystkich ekranów, a dwie wersje każdego podwoiłyby kod — wycofaniem jest `main` (stary interfejs do scalenia paczki). Format zapisu bez zmian (podpis runu liczy się z bieżącego runu, bez nowych pól w zapisie).
+
+**Testy:** `tests/core/pixelFont.test.ts` (komplet polskich liter i cyfr, piksele w komórce, akcenty nie dotykają liter, cyfry jednej szerokości, zastępowanie znaków, **każdy znak z napisów gry ma kształt w foncie**, mierzenie i łamanie linii), `tests/systems/hudText.test.ts` (cel pełny/krótki, nagłówek z modyfikatorem, wygaszanie), `tests/systems/runSignature.test.ts` (podpis, tryby, odmiana liczebników); pas ekranu śmierci przesunięty pod nowy HUD (`deathScreen.test.ts`).
+
+**Weryfikacja:** `npm run build` (3024 testy); `npm run smoke -- --floors 3 --seeds 1` i `-- --coop --floors 2` bez błędów; Playwright: HUD (PC, telefon, co-op z botem), boss, karty po bossie, pauza i „Moje przedmioty”, wybór bohatera, ekran śmierci i zwycięstwa. Zrzuty: `/mnt/project-files/screens/krokU7-interfejs/` (arkusz HUD-u przed | po). `npm run perf` pominięty (HUD to kilkadziesiąt prostokątów i napisów bitmapowych). **Czeka na ocenę właściciela.**
+
+## Krok U7a — Krój z głębią: cień, rampa lica, grube tytuły i podkładki pod napisami HUD-u `#upgrade` `#interfejs` `#ocena`
+
+**Ocena właściciela po U7 (12.11.2026) `#ocena`:** „czcionka jest tragiczna. zero głębi i odróżnienia od całości ekranu. powinna być wyraźna acz dyskretna z wyraźną manifestacją”.
+
+**Co powstało:**
+- Lico litery z rampą: górne wiersze rozjaśnione w stronę kremu, dolne przyciemnione (`UI_FONT_RAMP`), pod obrysem cień przesunięty o piksel w prawo i w dół — litera „stoi” nad sceną.
+- Gruby krój: kreski 2 px; piksel nie dostaje sąsiada, gdy zalałby jednopikselowe światło. M, W, m, w mają własne, szersze wzory (`FONT_BOLD_GLYPHS` w `core/pixelFont.ts`), bo przesunięcie robiło z nich H i N.
+- Podkładki pod napisami HUD-u (`drawTextPlate` w `ui/UiFrame.ts`, `UI_TEXT_PLATE`): ciemny, półprzezroczysty prostokąt ze ściętymi rogami, gaśnie razem z napisem.
+- Trzy warianty do porównania w grze (`UI_FONT_STYLES`, `?font=a|b|c`): A „Kuty” — wszystko grubo, bez podkładek; **B „Tytuły kute, tabliczki” (domyślny)** — drobne napisy zwykłą kreską, większe (skala ≥ 2) grubą, podkładki; C „Lekki na tabliczce” — zwykła kreska z głębią i podkładki. Tekstura fontu zależy od wariantu, barwy i grubości; `UiText.setFontSize` przełącza grubość.
+
+**Decyzje:** domyślny B — tytuły i menu mają „manifestację”, drobne napisy HUD-u zostają dyskretne, a podkładka oddziela je od jasnej posadzki. Po wyborze właściciela zbędne warianty można usunąć.
+
+**Testy:** wzory grubego kroju są szersze od zwykłych i mają kreski 2 px na brzegach. `npm run build`, smoke solo.
+
+**Weryfikacja:** zrzuty HUD-u, pauzy i kart nagrody we wszystkich wariantach — `/mnt/project-files/screens/krokU7-interfejs/U7a-kroj-warianty.png`.
+
+## Krok U7b — Wersaliki według napisu POLEGŁEŚ: cienki obrys krzyżem, barwny cień, rampa lica, większy HUD `#upgrade` `#interfejs` `#ocena` `#decyzja`
+
+**Ocena właściciela po U7a (12.11.2026) `#ocena`:** „nie no wszystkie są złe. zbyt pixelowe, zbyt pionowe, bez obramowania jak np napis »poległeś« który fine tuningowaliśmy jakiś czas”. Warianty `?font=a|b|c`, pogrubienie i podkładki z U7a usunięte.
+
+**Co powstało:**
+- Makiety czterech kierunków na tle gry (`/mnt/project-files/screens/krokU7-interfejs/U7b-kierunki-kroju.png`): 1 — wersaliki według recepty POLEGŁEŚ w pikselowym kroju, 2–4 — gładkie kroje (Alegreya Sans SC, Cinzel, Pixelify Sans), które wymagałyby rysowania napisów nad płótnem 960×540 w pełnej rozdzielczości ekranu. **`#decyzja` właściciel wybrał 1 — „wersaliki jak POLEGŁEŚ” w całej grze.**
+- Wszystkie napisy interfejsu wersalikami (`toCapsText` w `core/pixelFont.ts`, `UiText.setText`).
+- Recepta POLEGŁEŚ dla każdej wielkości (`fontLook`, `rampIndex` w `core/pixelFont.ts`, liczby w `UI_FONT_LOOK`): tekstura fontu rysowana od razu w docelowej skali (para barwa × wielkość), obrys = ¼ piksela fontu (min. 1 px) krzyżem, bez rogów; cień = lico przesunięte w dół o 2 obrysy w ciemnym odcieniu barwy; lico paskami po 2 px od jasnego wierzchu do ciemnego spodu; odstęp liter +½ piksela fontu. Przy pikselu 8 daje dokładnie obrys 2 i cień 4 jak POLEGŁEŚ.
+- HUD w skali 2 także na PC (`HUD_LAYOUT.textScale`): obrys jest wtedy cieńszy od kreski litery. Złoto w skali 3, dopisek wyrównany do spodu cyfr. Nagłówek piętra to sama nazwa modyfikatora; opis ma własną linię pod przedmiotami (`floorModifierNote`), gaśnie po 9 s, a wiadomość o nowym przedmiocie schodzi pod nią.
+- `UiText.setLetterSpacing`/`setLineSpacing` przeliczają odstęp z pikseli fontu na płótno (font nie jest już skalowany, więc układ ekranów się nie zmienił).
+
+**Do zrobienia po ocenie:** drobne napisy w skali 1 (opisy na kartach nagrody i wyboru bohatera, podpis runu, linia sterowania) mają nadal obrys grubości kreski — w skali 2 nie mieszczą się w obecnym układzie kart; do decyzji, czy przebudować karty pod większe napisy.
+
+**Testy:** recepta (piksel 8 → obrys 2, cień 4; piksel 1 → obrys 1; odstęp przy pikselu 2), rampa (akcent — pierwszy ton, spód i ogonek — ostatni), wersaliki po polsku, nagłówek i opis modyfikatora. `npm run build`, smoke solo i co-op.
+
+## Krok U7c — HUD mniejszy i oszczędniejszy, mocniejsza rampa i cień liter `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7b (12.11.2026) `#ocena`:** „napisy w HUD są za duże, zero cieniowania! Zobacz jak ponad pół ekranu zajmuje zbędna informacja. gdzie masz cieniowanie?”
+
+**Co się zmieniło:**
+- Drobne napisy HUD-u na PC wracają do skali 1 (`HUD_LAYOUT.textScale.pc`; telefon dalej 2). W skali 2 zostaje tylko krótki nagłówek piętra i złoto.
+- Mniej tekstu: cel zawsze w skrócie („WROGOWIE: 6”, „SCHODY OTWARTE”, `objectiveLongMs` 0), przy złocie w zwykłym runie brak dopisku „wynik”.
+- Cieniowanie liter: rampa lica dwa razy mocniejsza (od kremowego wierzchu do ciemnego spodu, `UI_FONT_LOOK.ramp`), cień jaśniejszy od obrysu (ciemny odcień barwy napisu, `shadowDarken` 0,5) — widać go jako „wyciągnięcie” litery jak w POLEGŁEŚ.
+
+**Testy:** dopisek złota w zwykłym runie pusty. `npm run build`, smoke solo.
+
+## Krok U7d — Powrót do prostego HUD-u: czytelnie, bez fajerwerków `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7c (12.11.2026) `#ocena`:** „jak my tak zboczyliśmy z podstawowego widoku? ma być czytelnie bez fajerwerków. to z pierwszego screena jest odrażające — to ma najważniejsza informacja? dłuższa niż pasek zdrowia?”
+
+**Co się zmieniło:**
+- Nad paskiem zdrowia tylko krótki numer piętra („PIĘTRO 3”), drobnymi literami — jak w HUD-zie sprzed U7. Pasek zdrowia jest najważniejszym i najdłuższym elementem.
+- Modyfikator piętra we własnej linii pod przedmiotami: przez 9 s z opisem, potem sama nazwa przygaszona (`floorModifierNote`).
+- Złoto w skali drobnych napisów, obok monety.
+- Drobne napisy (piksel fontu 1–2: HUD, menu, opisy) mają płaskie lico z obrysem, bez cienia i rampy; cień i rampa zostają od piksela 3 (tytuły: PAUZA, nazwy na kartach, POLEGŁEŚ) — `UI_FONT_LOOK.effectsFromPx`.
+
+**Testy:** recepta (drobne napisy bez cienia i rampy), linia modyfikatora. `npm run build`, smoke solo.
+
+## Krok U7e — Żywe wskaźniki klasy pod paskiem zdrowia, bez portretu i napisu piętra `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena i prośba właściciela po U7d (12.11.2026) `#ocena`:** „zepsuliśmy cały feel… pozbądź się tej szkaradnej miniaturki i napisu piętro 1. przetwórz te charge dasha i strzały na coś żywego — w przypadku barby krwistego, czarki magicznego, a łucznika naciągniętej cięciwy etc. usuń tekst o pokonanych wrogach — co on w ogóle oznacza? umieść pod zmodyfikowanym paskiem hp zdobyte itemy i golda”.
+
+**Co powstało:**
+- Lewy panel od góry: pasek zdrowia (ultimate obok), żywe wskaźniki klasy, złoto, zdobyte przedmioty; pod nimi tylko cel, gdy coś znaczy (schody otwarte, „naciśnij E”), modyfikator piętra i wiadomość o przedmiocie. Portret i napis piętra usunięte.
+- Wskaźniki w motywie klasy (`config/hudGaugeConfig.ts`, ruch w `systems/hudGauges.ts`, rysunek `ui/ClassGauges.ts`):
+  - barbarzyńca — dash to żyła: krew płynie do czoła wypełnienia, gotowa żyła bije jak serce („lub-dub”); ładunki strzału to krople krwi wypełniające się od dołu, pełne z odblaskiem (ikony ładunków usunięte w U7f);
+  - Czarodziejka — dash i promień to strumienie magii z płynącymi iskrami (promień w działaniu jaśniejszy i szybszy); kule to fioletowe kule z wędrującym błyskiem;
+  - łucznik — dash to cięciwa między końcami ramion: luźna zwisa, gotowa jest napięta i chwilę drga; ładunki to łuki, których cięciwa naciąga się w trakcie ładowania, a gotowy łuk ma strzałę na cięciwie.
+- Bicie serca wyłącza „Ogranicz błyski”.
+- Cel w zwykłej walce bez tekstu (dawne „Wrogowie: N”) — `objectiveHint` daje pusty skrót poza schodami.
+
+**Testy:** `tests/systems/hudGauges.test.ts` (motyw z broni, bicie serca, przepływ i iskry w wypełnionej części, ugięcie i drganie cięciwy, wiersze ładunku i naciąg łuku), cel bez liczby wrogów. `npm run build`, smoke solo i co-op.
+
+## Krok U7f — Bez ikon ładunków strzału `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela po U7e (12.11.2026) `#ocena`:** „nie no co?! te bukłaki/krople krwi to nasz dash?” → „zrezygnujmy całkowicie z tego widoku. usuń te charge bukłaki… nie daje to żadnej informacji a wprowadza dezinformację”.
+
+**Co się zmieniło:** ikony ładunków (krople krwi, kule Czarodziejki, łuki łucznika) usunięte z HUD-u u wszystkich klas razem z kodem i wzorami. Pod paskiem zdrowia zostaje pasek dasha w motywie klasy (u Czarodziejki też promień), a zaraz pod nim złoto i przedmioty.
+
+**Testy:** `npm run build`, smoke solo.
+
+## Krok U7g — Pierwszy boss to Slimer `#upgrade` `#interfejs` `#krol-szlamu` `#decyzja`
+
+**Decyzja właściciela (12.11.2026) `#decyzja`:** „niech zostanie jak jest. [wyrzuć] informację o strażniku piętra czy kolejnego bossa. to jest Slimer”.
+
+**Co się zmieniło:** pierwszy boss nazywa się **Slimer** (tytuł „Król Szlamu” zostaje) — karta wejścia, pasek bossa i podpisy pokazują „SLIMER” zamiast ogólnego „STRAŻNIK PIĘTRA”. Napis nad kartami nagrody to „BOSS POKONANY” zamiast „STRAŻNIK POKONANY” dla każdego bossa. Identyfikator bossa (`BossId.FloorGuardian`) i zapisy postępu bez zmian. HUD bez zmian.
+
+**Testy:** `npm run build`.
+
+## Krok U7h — Fazy bossa bez komunikatów `#upgrade` `#interfejs` `#hud` `#ocena`
+
+**Ocena właściciela (12.11.2026) `#ocena`:** „nie no nie informujmy gracza o fazach, jest to zbyt transparentne i za mało się zmienia by to komunikować”.
+
+**Co się zmieniło:** pasek bossa nie pokazuje już dopisku „· FAZA x/y” ani kresek progów i ich rozbłysku (pojedynczy boss i duet). Zostaje imię i okrzyk wściekłości („SLIMER — WŚCIEKŁY!”) oraz plansza przy wściekłości. Usunięty rysownik `effects/BossPhaseBar.ts`; `BOSS_PHASE_MARKS` ma już tylko `minGap` (progi faz dalej liczy `BossFight.phaseMarks`, ale HUD ich nie używa).
+
+**Testy:** `npm run build`, kadry paska Slimera i pajęczego duetu.
+
+## Krok U5b — Postacie 2.0: Czarodziejka, łucznik, Totem i znaczniki co-opu `#upgrade` `#postacie` `#decyzja`
+
+**Decyzja właściciela (12.11.2026, wieczór)** `#decyzja`: „wdrażać, co nie wymaga mojej konsultacji, i zobaczymy jutro rano”. Pilot barbarzyńcy (U5a) scalony bez osobnej oceny; reszta U5 wg rekomendacji.
+
+**Co powstało**
+- **Czarodziejka i łucznik 2.0** (`tools/hero_v2_sprites.py`, arkusze `sorceress_v2.png`, `archer_v2.png`): kolumny 0–7 skopiowane bez zmian ze starych arkuszy, nowe stany w tym samym układzie co u barbarzyńcy — bezruch (Czarodziejka: włosy falują, kryształ ładuje się i rozjaśnia; łucznik: peleryna faluje, łuk opada), trafienie, dash (u Czarodziejki w arkuszu, ale niewidoczny — jej dash to teleport) i śmierć z leżącym ciałem (suknia i rozsypane włosy z kosturem obok; łucznik z łukiem i wysypanym kołczanem). Barwa klasy jest już na sylwetce (suknia z kroku 181, zielona peleryna), więc bez nowych akcentów.
+- **Totem łucznika** (`tools/totem_sprites.py`, `totem.png`): rzeźbiony słup z głową jastrzębia, skrzydłami z desek, zieloną wstęgą i wbitymi strzałami; wyrasta z ziemi (3 klatki), potem oczy pulsują złotem wabika. Pierścień wabika, cień i pasek czasu zostają z figur. Strzały lecą z oczu (`ULTIMATE_VISUAL.totem.height` 25).
+- **Rozróżnianie bohaterów w co-opie:** nad każdym żywym bohaterem trójkąt w barwie gracza z HUD — P1 zielony, P2 (i bot) niebieski (`COOP_CONFIG.seatMarker`). Co-op wymaga różnych klas, więc „ten sam bohater w innym akcencie” nie występuje.
+- Wyłącznik `HERO_SPRITES_V2` obejmuje wszystkich trzech bohaterów i totem.
+
+**Testy:** `tests/config/heroSpritesV2.test.ts` dla trzech par arkuszy (ta sama komórka, dotychczasowe animacje w tych samych kolumnach, nowe stany istnieją).
+
+**Weryfikacja:** `npm run build` (3049 testów); `npm run smoke` solo, `--coop` i `--bot`; w przeglądarce łucznik z botem-Czarodziejką: totem, znaczniki P1/P2, leżąca Czarodziejka. Zrzuty: `/mnt/project-files/screens/krokU5b-postacie/`. **Czeka na ocenę właściciela.**
+
+## Krok U5c — Bez podpowiedzi elit i zasadzki, słabszy totem `#upgrade` `#ocena` `#decyzja`
+
+**Ocena właściciela (13.11.2026, po testach podglądu)** `#ocena` `#decyzja`:
+1. „Pozbądźmy się tego powiadomienia z opisem elitarnego mobka — napis nad nim »wampiryczny« dosyć jasno daje do zrozumienia.”
+2. „Nie potrzeba też opisu z pokoju duchów. Ten room miał pełnić funkcję zaskoczenia, nie musimy tłumaczyć graczom, co się dzieje.”
+3. „Totem jest zbyt OP.”
+
+**Co zmienione**
+- **Elity bez komunikatu:** `ELITE_VISUAL.announceSpotted = false` — napis cech nad wrogiem zostaje, opis na środku ekranu znika.
+- **Zasadzka bez napisów:** `AMBUSH_ANNOUNCE = false` (`config/ambushConfig.ts`) — żadnego tekstu przy zamknięciu krat, falach, eterycznych strzałach, wstędze, wielkim duchu, ucieczce przedmiotu do bossa ani nagrodzie. Mechanika bez zmian.
+- **Totem słabszy** (`config/heroConfig.ts`): 5 s zamiast 7, strzał co 0,6 s zamiast 0,4, 10 obrażeń zamiast 12 — ok. 83 obrażeń zamiast 210 i o 2 s krócej przejmuje wrogów i bossów.
+
+**Weryfikacja:** `npm run build`, `npm run smoke`.
+
+## Krok U11a — System wag, wersja lekka: combo, pęknięcia i atak kary `#upgrade` `#wagi` `#decyzja`
+
+**Decyzja właściciela (14.11.2026)** `#decyzja`: po pytaniu „Czy nie utrudnimy odbioru i zrozumienia?” — wersja lekka z `docs/WAGI.md` §11: trzy zasady widoczne na ekranie w sekundę. Oddech, automatyczna garda i Zadyszka odłożone.
+
+**Co powstało**
+- **Szala** (`systems/CombatScale.ts`, czysta logika; liczby w `config/combatWeightConfig.ts`):
+  - *Passa* — każdy atak, który trafi choć jedno stworzenie, to +1 (zamach w pięciu wrogów i trafiona cała salwa to nadal +1). Progi 4/8/12 trafień = +10/20/30% obrażeń. Pudło (cios, strzała, kula albo impuls promienia bez trafienia) i 2,5 s bez trafienia zbijają Passę o jeden próg. Kokony, urny i purchawki się nie liczą.
+  - *Odsłonięcie* — przyjęty cios zeruje Passę i dodaje pęknięcie (do III, +12% obrażeń w nas za każde). Dwa nasze trafienia zdejmują jedno pęknięcie (dopóki są pęknięcia, Passa nie rośnie), a 5 s bez ciosu też jedno — zapas, żeby III nie trwało wiecznie.
+- **Atak kary** (`ai/PunishPlanner.ts` — kto i kiedy, własny strumień RNG `PUNISH_SEED_SALT`; `combat/PunishManager.ts` — wykonanie): przy pęknięciach III jeden wróg z linią wzroku dostaje okno, najwyżej raz na 6 s. Kiter: *przeszywający strzał* — cienka czerwona linia celownika idzie za bohaterem 0,45 s, ostatnie 0,25 s stoi (gruba linia), potem szybki pocisk przez innych wrogów do muru, ×2 obrażeń. Rusher i Czyhacz: *taran* — czerwony pas na posadzce 0,7 s, rozbieg po prostej, ×1,8 obrażeń i mocny odrzut; wbity w ścianę stoi ogłuszony (efekt jak u Tarczownika, `ShieldCharge` użyte ponownie). Nad karzącym miga czerwone „!!”, a on sam ma jasnoczerwony odcień. Bez bloku — ratuje dash (i zasłona). Stworki nawały, czerwie, upiory, Gniazdownik, Tarczownik i bossowie nie karzą (bossowie — U11b).
+- **Sygnalizacja przy bohaterze** (`effects/WeightFx.ts`, bez HUD-u, bez krwi): licznik „×N” obok postaci od 2 trafień (szary → biel na I → złoto na II → większy, w barwie klasy na III), na progu podskok i coraz wyższy ton; utrata progu rozsypuje licznik. Pęknięcia to 1–3 czerwone rysy-zygzaki na obrysie bohatera, pulsujące tym szybciej, im ich więcej; przy III niski puls. Czerwień kary rysowana nad mrokiem. Nowe dźwięki: `StreakTier1–3`, `CrackPulse`, `PunishWarn`, `PunishStrike`.
+- **Wpięcie:** `Player.weights` (mnożnik obrażeń w `takeHit`), `HeroCombat` liczy trafienia i pudła wszystkich ataków głównych i mnoży ich obrażenia (cios, strzał barbarzyńcy, kule, strzały, salwa, promień); pociski zgłaszają koniec lotu przez `ShotFlight.tally`. Fala ostrza, rozprysk, Supernowa, totem, Burzowy pęd i ultimate nie liczą się do Passy. W co-opie każdy bohater ma własną Szalę; strzał i taran kary ranią każdego żywego bohatera na swojej drodze. Śmierć, powalenie i nowe piętro zerują Szalę.
+- **Wyłącznik:** `?wagi=0` (gra jak przed krokiem), `?wagi=1`, domyślnie `COMBAT_WEIGHT_CONFIG.enabled = true`.
+- **Poprawka przy okazji:** `public/do-oceny.html` na `upgrade-fable` miał nierozwiązany konflikt scalenia (lista się nie wyświetlała) — scalony; dopisana pozycja U11a.
+
+**Decyzje w trakcie**
+- Passa III na razie daje tylko +30% i wyróżniony licznik; „ciężkie ciosy” (przebicie pancerza zamachu, ogłuszenie) wejdą w U11b razem z wagami ataków wrogów — dziś nie ma jeszcze pancerza, który mogłyby przebijać.
+- Pęknięcie dodaje każde przyjęte trafienie (także pułapka czy pocisk bossa) — jedna zasada „dostajesz, to pękasz”.
+
+**Testy:** `tests/systems/combatScale.test.ts` (progi, pudło, spadek po przerwie, pęknięcia i ich zdejmowanie, salwa liczona raz, wyłącznik, `?wagi`), `tests/ai/PunishPlanner.test.ts` (kto karze, pierwszeństwo strzelca, linia wzroku i zasięg, przerwa 6 s, determinizm, fazy celownika).
+
+**Weryfikacja:** `npm run build` zielony; w przeglądarce (`window.__game`): licznik ×9 (złoto) i ×13 (III), przeszywający strzał z linią i zamrożeniem trafia (−22 HP przy III), taran po pasie trafia (−38 HP), `?wagi=0` — Szala wyłączona, bez menedżera kary; `npm run smoke -- --floors 3 --seeds 1` — trzej bohaterowie bez błędów.
+
+## Krok U8a — Wydarzenia w pokojach: pochodnia, sakiewka, ciemny pokój `#upgrade` `#rozgrywka` `#wydarzenia`
+
+Etap U8 („Rozgrywka”) z `docs/UPGRADE.md`, ustalenie 6: lek na „grę powtarzalną” to wydarzenia w pokojach i przeklęta skrzynia. Prośba właściciela 14.11: „wdrażaj wszystkie zaplanowane zmiany” — wybrana rekomendowana ścieżka z audytu.
+
+**Co powstało**
+- **Plan** (`systems/RoomEvents.ts`, liczby w `config/roomEventConfig.ts`, własny strumień RNG `ROOM_EVENT_SEED_SALT`): wydarzenia dostają tylko pokoje z nawałą; na piętrze najwyżej 1/2/2/2/3/3/3 (piętra 1–7), każde z szansą 80%, rodzaje bez powtórzeń, co najmniej jeden pokój nawały zostaje zwykły. Dwa runy tym samym bohaterem mają inny układ wydarzeń (test na 20 seedach).
+- **Pochodnia** — „zabij, zanim zgaśnie”: z przebudzeniem nawały na środku pokoju staje żelazny słup z płomieniem pochodni biomu (bez kolizji). Płonie 10 s + 7,5 s na falę; płomień i jego światło maleją, w ostatniej ćwierci migocze. Pokój wybity przed zgaśnięciem — płomień bucha i sypie złotem (18 + 5 na piętro). Zgasła — mrok jak w zasadzce do końca walki, bez nagrody.
+- **Sakiewka** — „złoto ucieka”: 0,3 s po wejściu z dala od bohatera wyskakuje sakiewka na nóżkach (`purse` w `tools/loot_sprites.py`). Ucieka od bohaterów w promieniu 150 px (135 px/s — wolniej od najwolniejszej Czarodziejki), ślizga się po murach, więc da się ją zagnać w róg; dalej błądzi. Złapana dotykiem pęka złotem (24 + 7 na piętro); po 13 s (ostatnie 3 s miga) zapada się w posadzkę.
+- **Ciemny pokój**: po wejściu światło gaśnie (mrok zasadzki, płynnie), wraca po wybiciu pokoju; za przetrwanie złoto (14 + 4 na piętro).
+- **Bez napisów** — reguła widać w pokoju (uwaga właściciela 13.11 przy zasadzce: „pokój ma zaskakiwać, nie tłumaczyć”). Złoto to zwykły łup, który leci do bohatera.
+- **Wpięcie:** `combat/RoomEventManager.ts` budzi się z nawałą (`HordeManager.roomPhase`), „wybity” = nawała skończona i żaden wróg w pokoju. Mrok idzie osobnym źródłem warstwy zasadzki (`LightingOverlay.setDread(…, 'room-event')`, przy kilku źródłach działa najsilniejsze). Światło pochodni trafia do oświetlenia piętra. W co-opie sakiewkę łapie każdy bohater, mrok działa, gdy ktokolwiek jest w pokoju.
+- **Wyłącznik:** `ROOM_EVENT_CONFIG.enabled` i lista `kinds`; `?event=torch|purse|dark` — każdy pokój nawały dostaje to wydarzenie (run testowy). Diagnostyka: `diag.note('room-event', …)`.
+- Atlas łupów dostał też klatki przeklętej skrzyni (krok U8b) — rząd dużych klatek ma teraz szerokość 320 px.
+
+**Testy:** `tests/systems/roomEvents.test.ts` — limit na piętro i zwykły pokój w zapasie, determinizm i różnorodność między seedami, wyłącznik i `?event`, złoto z piętrem, pochodnia (wygrana raz, zgaśnięcie, promień światła), sakiewka (ucieczka, błądzenie, mur, złapanie, punkt startu).
+
+**Weryfikacja:** `npm run build` zielony; w przeglądarce (piętro 3, seed 7 i piętro 1, seed 11): pochodnia budzi się z nawałą i maleje, wybicie pokoju daje złoto (28 na piętrze 3), skrócona pochodnia gaśnie i zapada mrok 0,85; sakiewka ucieka i po złapaniu daje złoto; ciemny pokój zapada w mrok 0,9 i jaśnieje po wybiciu. Bez błędów w konsoli.
+
+## Krok U8b — Przeklęta skrzynia `#upgrade` `#rozgrywka` `#przekleta-skrzynia`
+
+Drugi lek na „grę powtarzalną” z ustalenia 6 (`docs/UPGRADE.md`) i „pokoje ryzyka” z backlogu po kroku 41g. W odróżnieniu od zasadzki to **wybór gracza**: skrzynię można ominąć.
+
+**Co powstało**
+- **Plan** (`systems/CursedChest.ts`, liczby w `config/cursedChestConfig.ts`, strumień RNG `CURSED_CHEST_SEED_SALT`): na piętrze najwyżej jedna skrzynia — szansa 35% na piętrze 1, 60% na 2–3, 70% dalej. Stoi w zwykłym pokoju bez kapliczki i bez kryjówki Czyhacza, najpierw w ślepej odnodze, kafel na północ od środka (środek bywa zajęty przez pochodnię z U8a).
+- **Wygląd** (`tools/loot_sprites.py`, atlas łupów): drewniana skrzynia z okuciami, zamek z fioletowym okiem i przerywany fioletowy pierścień klątwy (puls 4 klatki) + skrzynia otwarta.
+- **Otwarcie** (`world/CursedChestSite.ts`): przy skrzyni podpowiedź „[E] Otwórz” w fiolecie (jak kapliczka — to decyzja gracza, więc klawisz trzeba pokazać; E działa też z pada i przyciskiem na telefonie przez `canInteract`). Otwarcie budzi klątwę: 2 elity (od piętra 4 — 3) wychodzą z fioletowych znaczników w pierścieniu 2 kafli wokół skrzyni (0,7 s telegrafu, 0,5 s biernego wychodzenia). Archetypy Rusher/Kiter w wariancie biomu, cechy z puli elit piętra w liczbie z pętli wieży. Elity mają zwykły łup elit.
+- **Nagroda**: po wybiciu klątwy skrzynia wyrzuca przedmiot z puli otwierającego (bez przedmiotów, które nic mu nie dadzą — krok 117) i złoto (20 + 6 na piętro). Bez napisu „klątwa zdjęta” — nagrodą mówi sam łup.
+- **Wyłącznik:** `CURSED_CHEST_CONFIG.enabled`; `?chest=1` — skrzynia na każdym piętrze (run testowy).
+- Nowy rodzaj przedmiotu nie powstał — skrzynia daje przedmioty z istniejącej puli.
+
+**Testy:** `tests/systems/cursedChest.test.ts` (miejsce na posadzce zwykłego pokoju z dala od kapliczki, szansa wg piętra, wyłącznik i wymuszenie, skład klątwy, pierścień wyjścia, stan: otwarcie raz i zdjęcie po wybiciu); `startOverrides.test.ts` — `?event` i `?chest`.
+
+**Weryfikacja:** w przeglądarce (piętro 4, seed 5, Czarodziejka, `?chest=1`): podpowiedź przy skrzyni, E otwiera, 3 elity (Ognisty, Wybuchowy, Wampiryczny) wychodzą ze znaczników, po ich wybiciu wypadły Buty i złoto (+78 z łupem elit). Bez błędów w konsoli.
+
+## Krok U8c — Przemiana Butów: Rozdeptanie `#upgrade` `#przemiany`
+
+Ustalenie 7 z `docs/UPGRADE.md` (rekomendacja audytu, „pasuje do nawały”): 3. kopia Butów to **Rozdeptanie** — dash przez wrogów rani ich i odrzuca na boki. Bez nowego przycisku i bez zmian w pułapkach i plamach bossów (powód odrzucenia lewitacji w kroku 151). Propozycja do oceny na podglądzie.
+
+**Co powstało**
+- `ITEM_EVOLUTION.items[Boots]` i `ITEM_EVOLUTION.stomp` (`config/itemEvolutionConfig.ts`): 14 obrażeń za dotknięcie (ok. 2/3 ciosu barbarzyńcy), +4 za każdą kopię ponad trzecią, odrzut 320 (po połowieniu odrzutu wrogów z U4e — ok. 160), dash szerszy o 6 px. Buty dalej bez limitu kopii, prędkość rośnie do dawnego limitu +60%.
+- `WeaponEffects.evolved.stomp`; `DashStrike.sideKnockback` — odrzut prostopadle do toru dasha, w stronę, po której stoi cel (tłum rozstępuje się na boki). `DashSweep` dostał opcjonalne `heading` i `sideKnockback`, Burzowy pęd bez zmian (bez odrzutu); oba się sumują.
+- `HeroCombat.resolveDashStrike` dodaje obrażenia Rozdeptania, `DashController.heading` / `Player.dashHeading()` podają kierunek dasha. Każdy cel raz na dash — jak w Burzowym pędzie.
+- Karta nagrody pokazuje przemianę przy 3. kopii, a Buty z 1–2 kopiami znów mogą być kartą rozwoju.
+- Buty po limicie prędkości zostają w puli kart i kapliczki (krok 117 je usuwał) — każda kolejna kopia wzmacnia Rozdeptanie.
+
+**Uwaga:** dash Czarodziejki to teleport (`dash.blink`) — rani tylko wrogów w miejscu startu i lądowania; do oceny, czy jej Rozdeptanie nie powinno działać na całej linii skoku.
+
+**Testy:** `tests/systems/itemUsefulness.test.ts` (Buty w puli po limicie prędkości), `tests/systems/itemEvolution.test.ts` (Buty mają przemianę, karta przemiany i rozwoju, efekt od 3. kopii, wzrost z kolejnymi), `tests/systems/dashStrike.test.ts` (kierunek odrzutu, Burzowy pęd bez odrzutu, każdy cel raz na dash).
+
+**Weryfikacja:** w przeglądarce (`?items=boots*3`, łucznik, piętro 2): efekt włączony, dash przez wroga zabrał mu 14 HP. Bez błędów w konsoli.
+
+## Krok U8d — Skok pajączka `#upgrade` `#matka-pajakow` `#grzybnia`
+
+Z backlogu audytu upgradu („skok pajączka do bohatera — podnosi trudność, czyli zgodnie z kierunkiem”, etap U8).
+
+**Co powstało**
+- `SpiderlingDefinition.leap` (`core/bossTypes.ts`), liczby w `SPIDER_QUEEN.spiderling.leap` (`config/bossConfig.ts`): pajączek, który dobiegnie na 90 px, **przysiada** na 0,22 s (staje, spłaszcza się i patrzy na bohatera — telegraf), potem **skacze** z prędkością ×3 przez 0,26 s w miejsce, gdzie bohater stał w chwili wybicia, i po lądowaniu od razu zapala lont (zapłon i wybuch bez zmian). Uskok w bok w czasie przysiadu albo lotu ratuje — pajączek wyląduje obok.
+- `ai/SpiderlingBrain.ts`: fazy `Crouching` i `Leaping`, decyzja z `speedMultiplier`; `entities/Spiderling.ts` — przysiad i lot czytelne skalą sprite'a (lot ×1,25 — „nad ziemią”).
+- Dotyczy wylęgu Matki Pająków i pajączków z kokonów Grzybni (ta sama definicja). Żuki Brudnej Wiedźmy nie skaczą (`withoutLeap`).
+
+**Testy:** `tests/ai/SpiderQueen.test.ts` — przysiad, wybicie w zapamiętane miejsce, lot z mnożnikiem, zapłon po lądowaniu; żuki bez skoku. Dawne testy pościgu i zapalnika bez zmian.
+
+## Krok U8e — Pomiar bohaterów botem i fale nawały w małym pokoju `#upgrade` `#balans`
+
+Plan U8: „pomiar siły 3 bohaterów botem z raportem”.
+
+**Co powstało**
+- `tools/balance.mjs`: bot-partner (`?bot=<bohater>`, krok 149) walczy sam, pierwszy gracz stoi bierny i nietykalny. Mierzy arenę bossa każdego piętra (obrażenia na sekundę, utracone HP, powalenia) i pierwszy pokój z nawałą na piętrach 1, 3 i 5 (czas wybicia). Opcje `--heroes`, `--floors`, `--seconds`, `--only boss|horde`, `--out docs/balance`.
+- Raport: `docs/balance/U8e-2026-11-14.md`. Barbarzyńca bije najmocniej (54–72/s) i najszybciej traci HP, Czarodziejka najsłabiej na bossach (25–43/s, ok. 60% barbarzyńcy), łucznik pośrodku i najbezpieczniejszy. Palacz to najtrudniejsza walka dla bohaterów dystansowych, Brudna Wiedźma powaliła wszystkich trzech. Propozycje zmian liczb są w raporcie i czekają na zgodę właściciela (upgrade nie zmienia balansu).
+- **Poprawka znaleziona pomiarem:** w małym pokoju (6×6) z bohaterami w rogu `pickRetinueTiles` nie znajdował kafli 3 kafle od bohaterów i fale nawały znikały — pokój kończył się od razu (a wydarzenie z U8a dawało darmową nagrodę). Nowe `pickHordeTiles` (`systems/Horde.ts`) zmniejsza odstęp aż do 1 kafla, zanim się podda.
+
+**Testy:** `tests/systems/horde.test.ts` — fala w ciasnym pokoju dostaje kafle.
+
+## Krok U8f — Złapanie uciekiniera w locie `#upgrade` `#zasadzka`
+
+Z backlogu kroku 183 („pomysł na później: dać szansę złapania uciekiniera”) i audytu upgradu („mały, satysfakcjonujący dodatek”, etap U8).
+
+**Co powstało**
+- Uciekinier (zasadzka „flight”) w locie do bossa daje się **złapać dotykiem**: bohater w promieniu 18 px (`AMBUSH_VARIANTS.flight.catchRadius`) — zwykle dashem, bo lot (170 px/s) jest niewiele wolniejszy od chodu. Złapany spada pod nogi jako zwykły przedmiot, boss nie dostaje wzmocnienia, a nagroda po bossie za uciekiniera nie przepada, bo nie było kradzieży.
+- `catcherOfRunaway` w `systems/AmbushVariants.ts`, `AmbushManager.catchRunaway`; `diag.note('ambush-runaway-caught')`. Bez napisu.
+
+**Testy:** `tests/systems/ambushVariants.test.ts` — promień złapania, lot wolniejszy od najwolniejszego bohatera.
+
+## Krok U11b — System wag: znak ciężkiego zamachu, ciężkie ciosy, kara bossów, telefon i bot `#upgrade` `#wagi`
+
+Ciąg dalszy wersji lekkiej (`docs/WAGI.md` §11, decyzja właściciela 14.11.2026). Prośba właściciela: „Wdrażaj wszystkie zaplanowane zmiany póki starczy tokenów” — rekomendowane ścieżki bez pytania. Oddech i automatyczna garda nadal odłożone.
+
+**Co powstało**
+- **Waga ataku wroga** (`systems/AttackWeight.ts`, `enum AttackWeight` w `core/combatWeightTypes.ts`): upiory lekkie, elity (każda cecha), skok-szarża (ogar) i Czyhacz ciężcy, reszta średnia. Ciężki zamach (także zamach szarży Tarczownika) ma nad głową migające pomarańczowe „!” — ponad nazwą elity, bez nowego HUD-u (`Enemy.updateWeightMark`). Lekki i średni bez znaku (zostaje dawny pomarańczowy odcień zamachu), przebijający to „!!” ataku kary.
+- **Ciężkie ciosy na Passie III** (`CombatScale.isHeavy`, `Enemy.stagger`, `AttackCycle.isWindingUp`): cios, strzał albo impuls promienia bohatera z Passą III trafiający wroga w zamachu przerywa zamach i ogłusza go na 0,5 s (przez odporność na ogłuszenie). Skoku, szarży i doskoku w locie nie przerywa; bossów też nie. Bez napisu — gaśnie „!” i wróg dostaje odcień ogłuszenia.
+- **Atak kary bossów** (`BossFightDeps.punishGate`, `PunishManager.claimBossWindow`, `PunishPlanner.claim`): gdy bohater ma pęknięcia III, najbliższy atak obszarowy bossa jest przebijający — strefy ×1,5 obrażeń, pulsujący czerwony obrys nad mrokiem, nad bossem miga „!!” do uderzenia, dźwięk `PunishWarn`. Bez nowych animacji. Jedna przerwa 6 s dla wrogów i bossa (także duetu), więc nie ma serii kar. Bossowie bez ataków obszarowych w danej chwili czekają na następny.
+- **Telefon** (`COMBAT_WEIGHT_CONFIG.mobile`): licznik Passy o krój większy (×N rozmiar 2, na III — 3) i odsunięty od postaci. Pad bez zmian — system nie dodaje przycisków.
+- **Bot-partner zna czerwień** (`dodgeDirection` w `ai/PartnerBotBrain.ts`, `PunishManager.threats`): w linii przeszywającego strzału albo w pasie taranu odskakuje w bok z dashem — przed walką i wskrzeszaniem (`dodgeMarginPx`).
+- **Pomiar botem** (`npm run bench:wagi`, `tools/weights-bench.mjs`): ten sam run z `?wagi=0` i `?wagi=1`; bot-partner walczy w każdym zwykłym pokoju, P1 stoi obok nietykalny. Liczy HP utracone przez bota, „śmierci” (dolewka do pełna), czas oczyszczenia pokoju, kary, uniki, przerwane zamachy i najwyższą Passę.
+
+**Decyzje w trakcie**
+- „Pancerz zamachu” z §2 pominięty: zwykłe ciosy i tak nie przerywały zamachu wrogów, więc ciężki cios Passy III jest jedynym, który to robi — nagroda bez nowej zasady do nauki.
+- Kara bossa mnoży całe strefy ataku (w co-opie trafia też partnera bez pęknięć) — jeden znak dla wszystkich, zgodnie z zasadą „czerwony znaczy uciekaj”.
+
+**Testy:** `tests/systems/attackWeight.test.ts` (wagi archetypów, znak, `isWindingUp`), `combatScale.test.ts` (ciężkie dopiero na III), `PunishPlanner.test.ts` (wspólna przerwa bossa i wrogów), `PartnerBotBrain.test.ts` (unik w pasie, kierunek, bez uniku poza pasem).
+
+**Weryfikacja:** `npm run build` zielony; w przeglądarce: „!” nad zamachem ognistej elity, przerwany zamach przy ×12 (ogłuszenie), kara Slimera (strefa 14 → 21, czerwony obrys, „!!”), licznik ×9 na `mobile.html`. Pomiar botem — niżej.
+
+**Pomiar botem** (`npm run bench:wagi -- --floors 1,2,3`, seed 1, 12 zwykłych pokojów na bohatera, limit 25 s gry na pokój; bot bez przedmiotów):
+
+| Bot | Wagi | HP bota na pokój | „Śmierci” | Śr. czas pokoju | Kary | Uniki bota | Passa max |
+|---|---|---|---|---|---|---|---|
+| barbarzyńca | 0 | 39,3 z 80 | 5 | 21,1 s | — | — | — |
+| barbarzyńca | 1 | 34,7 z 80 | 4 | 18,8 s | 7 | 7 | 0 |
+| Czarodziejka | 0 | 22,3 z 80 | 2 | 21,4 s | — | — | — |
+| Czarodziejka | 1 | 28,8 z 80 | 3 | 20,0 s | 8 | 9 | I |
+| łucznik | 0 | 35,3 z 85 | 4 | 23,3 s | — | — | — |
+| łucznik | 1 | 32,2 z 85 | 3 | 20,6 s | 5 | 5 | II |
+
+Wniosek: system wag nie zmienia trudności dla bota w sposób widoczny ponad szum (±15% HP, ±1 „śmierć” w obie strony) — zgodnie z §7 („trudność nie spada”). Kara pojawia się co 1–2 pokoje, gdy bohater dużo przyjmuje; bot odskakuje przy każdej. Bot prawie nie buduje Passy (co chwilę dostaje, a pęknięcia blokują wzrost), więc przerwanych zamachów w pomiarze nie ma — ciężkie ciosy to nagroda dla gracza, który unika ciosów. Ograniczenia pomiaru: bot trzyma się gracza i nie goni dalekich wrogów, więc większość pokojów kończy się limitem 25 s (na piętrze 3 bot prawie nie walczył); to porównanie „przed i po”, nie bezwzględna miara trudności. Strojenie liczb — po ocenie właściciela.
+
+**Ocena właściciela (14.11.2026)** `#ocena` `#wagi`: „Jest ok, zaufajmy botowi. Idziemy z dalszymi pracami” — wersja lekka (U11a–U11b) przyjęta z obecnymi liczbami; pozycje zdjęte z `do-oceny.html`.
+
+## Krok U9a — Bot: goni bossa, wybiera przemianę, „Graj z botem” w menu `#upgrade` `#platformy` `#bot-partner`
+
+Pierwsza część etapu U9 (platformy), wg `docs/UPGRADE.md` i backlogu („bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany”; „Graj z botem — po naprawie bota w U9”).
+
+- **Bot goni bossa** (`ai/PartnerBotBrain.ts`, `PARTNER_BOT_CONFIG.boss`): cel z flagą `boss` (scena oznacza cele na pozycjach walczących bossów — `BotPartnerInput`, `bossFight.fightingPositions`) bot bierze z zasięgu 420 px i bez limitu 220 px od gracza; w walce z bossem wraca do gracza dopiero dalej niż 340 px, a teleport do gracza dopiero od 460 px. Zwykli wrogowie — bez zmian (bot nie odciąga drużyny).
+- **Karta za bossa** (`systems/PartnerBot.ts` `botRewardPick`): przemiana → relikwia → kolejna kopia przedmiotu w budowie → nowy przedmiot → kopia po przemianie; przy remisie pierwsza karta.
+- **„GRAJ Z BOTEM” w menu** (`MenuEntry.BotCoop`, pod co-opem): ekran wyboru bohatera bez zakładek trybu (bot gra tylko we wspinaczce), bot dostaje bohatera po twoim, run treningowy (jak `?bot=1` — wynik nie trafia na tablicę). Tylko na komputerze (jak co-op). Po śmierci „C” wraca do wyboru z botem. Panel menu wyższy o 16 px (8 pozycji).
+- **Zapis z botem:** partner w zapisie ma znacznik `bot`, więc wczytany run wraca z botem, a nie z padem jako P2 (`coopFromSave`); opis zapisu: „Łucznik + Czarodziejka (bot)”.
+
+**Testy:** `PartnerBotBrain.test.ts` (boss daleko od gracza, brak teleportu w zasięgu areny), `PartnerBot.test.ts` (`botRewardPick`, `coopFromSave`), `saveGame.test.ts` (znacznik bota), `mainMenu.test.ts`. Build zielony (3145 testów). `npm run smoke -- --bot --floors 3 --seeds 1` — OK (3 bohaterów, bot wskrzesza). Menu sprawdzone w przeglądarce.
+
+**Do oceny:** czy bot nie odchodzi za daleko na arenie (liczby w `PARTNER_BOT_CONFIG.boss`).
+
+## Krok U9b — Zmiana imienia z gry i filtr wulgaryzmów `#upgrade` `#platformy` `#tablica-wynikow`
+
+- **Imię w pauzie:** „Dźwięk i obraz” → „IMIĘ: …” otwiera okienko DOM (`browser/NameBox.ts`, jak „Napisz do autora” — prawdziwe pole daje klawiaturę ekranową na telefonie). Enter/„Zapisz” zapisuje, Esc/„Anuluj” zamyka, pad: A — zapisz, B — anuluj. Puste pole czyści imię (przy następnej śmierci gra zapyta znowu). Działa na PC, padzie i telefonie.
+- **Filtr wulgaryzmów** (`systems/NameFilter.ts`, rdzenie w `config/nameFilterConfig.ts`): imię sprowadzone do „szkieletu” — małe litery bez ogonków, cyfry jak litery (0→o, 4→a…), bez spacji, „_”, „-” i powtórzeń liter — więc „KuRRw4” czy „f_u_c_k” też odpadają. Rdzenie polskie, angielskie i nazistowskie, dobrane tak, by nie łapać zwykłych imion (test: Łukasz, Hubert, Scipio, Nigel, Kuba…). Filtr działa w okienku (komunikat „Tego imienia nie da się użyć”), przy wpisywaniu imienia na ekranie śmierci (PC i telefon — zakazane imię = wynik bez imienia) i na imieniu zapamiętanym sprzed filtra.
+- Worker wspólnej tablicy bez zmian (filtr tylko po stronie gry) — filtr po stronie workera do rozważenia, gdy ktoś obejdzie grę.
+
+**Testy:** `NameFilter.test.ts`, `pauseMenu.test.ts`. Build zielony (3153 testy). Przeglądarka: pauza → „Dźwięk i obraz” → „IMIĘ: —” → „kurwa” odrzucone z komunikatem, „Wicio” zapisane w `tower-crawler.player-name.v1`.
+
+## Krok U9c — Telefon: usuwanie zapisów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia `#upgrade` `#platformy` `#telefon` `#pad`
+
+- **Podpowiedzi według urządzenia** (`config/inputHintConfig.ts`, czyste `systems/inputHints.ts`, `input/lastDevice.ts`): gra pamięta ostatnio użyte urządzenie — klawisz albo mysz przełącza na klawiaturę, przycisk albo gałka pada (próg 0,5) na pad; telefon zawsze pokazuje dotyk. Zmiana działa od razu: menu główne, „Wczytaj grę”, wybór piętra, wybór bohatera, linia sterowania w HUD (pad: „Gałka — ruch · X / RT — atak · B / LT — strzał · RB — ultimate · A — dash · Y — kapliczka, schody”) i „Naciśnij E / Y / Stuknij E” przy schodach i kapliczce.
+- **Usuwanie zapisu bez klawiatury:** w „Wczytaj grę” przy zajętym slocie na dole panelu opisu jest przycisk „✕ USUŃ ZAPIS” — pierwsze stuknięcie (albo klik) prosi o potwierdzenie, drugie usuwa (ten sam mechanizm co X / DELETE i Y na padzie). Poprawka: czerwony kolor potwierdzenia nie zostaje już na opisie następnej pozycji.
+- **Wybór piętra dotykiem:** lewa i prawa trzecia część wiersza „◂ PIĘTRO N ▸” zmieniają piętro, środek zatwierdza.
+
+**Testy:** `inputHints.test.ts`. Build zielony (3161 testów). Przeglądarka: zapis z botem w slocie 1 („Łucznik + Czarodziejka (bot)”), dwa kliknięcia „USUŃ ZAPIS” usuwają slot.
+
+## Krok U9d — Dźwięki nowych efektów `#upgrade` `#platformy` `#dzwiek`
+
+Ostatnia część etapu U9. Nowe zdarzenia z U8–U11, które dotąd grały w ciszy, dostały efekty z syntezy (przepisy w `config/audioConfig.ts`, bramka `SOUND_GATE_RULES` — w nawale rzadziej niż ciosy):
+- **Ciężki zamach wroga** (`SoundCue.HeavyWindup`, U11b): niski, narastający „wuuum” raz na początku zamachu z pomarańczowym „!” (`Enemy.updateWeightMark`), co najwyżej co 220 ms.
+- **Skok pajączka** (`SoundCue.SpiderLeap`, U8d): krótki syk i trzask odnóży na starcie skoku (`Spiderling.tick`), co najwyżej co 140 ms.
+- **Rozdeptanie** (`SoundCue.Stomp`, U8c, Buty ×3): tupnięcie z basem, gdy dash trafi wroga (`HeroCombat.resolveDashStrike`).
+
+Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miały już dźwięki (U8a–b, U11a–b). Karta wejścia bossa zostaje bez osobnego dźwięku (gra ryk bossa).
+
+**Testy:** ogólne testy przepisów (`sfxTone.test.ts` itd.) obejmują nowe efekty. Build zielony (3173 testy). `npm run smoke -- --floors 3 --seeds 1` solo, `--coop` i `--bot` — OK.
+
+**Do oceny:** głośność i barwa trzech nowych dźwięków (`SOUND_RECIPES`).
+
+## Krok 188 — Druga paczka upgradu w grze testerów: U3–U9 i system wag `#decyzja` `#upgrade`
+
+**Decyzja właściciela (14.11.2026):** „możemy wszystko scalić i wrzucić do głównej gry?” — polecenie scalenia całego `upgrade-fable` do `main` i wdrożenia gry testerów.
+
+**Co weszło do `main`** (stan `upgrade-fable` z `4b24990`; stan `main` sprzed scalenia — punkt powrotu: `c3b1d58`, tagu nie da się wypchnąć z chmury): U3 światło 2.0, U4a–U4f kafle 2.0 wszystkich biomów (bez krwi, odrzut wrogów ×0,5, skarbiec pająków), U5a–U5c postacie 2.0 (bez napisów elit i zasadzki, słabszy totem), U6 bossowie (karta wejścia, śmierci, rekwizyty aren 6–7), U7–U7h interfejs (krój POLEGŁEŚ, prosty HUD, Slimer, fazy bez komunikatów), U8a–U8f rozgrywka (wydarzenia w pokojach, przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem, złapanie Uciekiniera), U9a–U9d platformy („Graj z botem” w menu, zmiana imienia i filtr wulgaryzmów, zapisy i wybór piętra dotykiem, podpowiedzi według urządzenia, dźwięki nowych efektów), U11a–U11b system wag w wersji lekkiej. Akt II (`akt-2`, `/topdown/akt2/`) nietknięty.
+
+**Przegląd przed wdrożeniem dla testerów**
+- **Zapisy graczy:** format zapisu i klucze `tower-crawler.*` bez zmian; jedyna zmiana w `SaveGame.ts` to opcjonalne pole `bot` partnera — stare zapisy wczytują się jak dotąd. `src/persistence/` i worker bez zmian, wspólne tablice (`/scores`, `/arena-scores`, `/coop-scores`) odpowiadają.
+- **Przełączniki z adresu:** `?vault=1`, `?event=`, `?chest=1`, `?ambush=` i bot (z adresu i z menu) dawały już run testowy. **Poprawka:** `?wagi=0|1` zmieniał zasady walki, a wynik szedł na wspólną tablicę — teraz taki run też jest testowy (`systems/startOverrides.ts`).
+- `public/do-oceny.html` ma względne linki, więc w grze testerów otwiera grę testerów (każdy link to run testowy). Wdrożenie z `main` zachowuje podkatalogi `gh-pages` (`/upgrade/`, `/akt2/`).
+
+**Testy:** `startOverrides.test.ts` (wagi z adresu = run testowy). `npm run build` zielony, `npm run smoke` (solo), `-- --coop` i `-- --bot` zielone.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
 
-**1. Do oceny** `#ocena` — jedna lista z linkami do gry: `public/do-oceny.html` (na podglądzie `wvytz.github.io/topdown/upgrade/do-oceny.html`). Nowy krok z „czeka na ocenę” dopisuje tam pozycję; ocenioną przenosimy do wpisu kroku jako `#ocena` i usuwamy ze strony. Najpilniejsze: czas klatki na telefonie właściciela (`?perf=1`) — punkt odniesienia dla U1–U3.
+**1. Do oceny** `#ocena` — jedna lista z linkami do gry: `public/do-oceny.html` (w grze testerów `wvytz.github.io/topdown/do-oceny.html`, na podglądzie `…/topdown/upgrade/do-oceny.html`). Nowy krok z „czeka na ocenę” dopisuje tam pozycję; ocenioną przenosimy do wpisu kroku jako `#ocena` i usuwamy ze strony. Najpilniejsze: czas klatki na telefonie właściciela (`?perf=1`) — punkt odniesienia dla U1–U3.
 
 **2. Otwarte decyzje właściciela** `#decyzja`
 - Nazwa biomu piętra 5 (Zadymiona palarnia / mieszkanie gracza).
 - Wspólna tablica wyników telefonów (zmiana w workerze).
-- Bot-partner w menu („Graj z botem”) — po naprawie bota w U9.
 - Gdzie wraca Pajęcze leże (poza wspinaczką od kroku 127); Kat Otchłani i Strażnik Bram poza wspinaczką od kroku 182.
 - Dodatkowe sekretne komnaty po bossach innych niż Grzybnia.
 - Większe nagrody i trudność w kolejnych kręgach (endless loop), finałowy boss wieży — z Aktem II.
 
 **3. Do zrobienia — upgrade Aktu I** (`docs/UPGRADE.md`, gałąź `upgrade-fable`; przed każdym etapem i po nim `npm run shots` i `npm run perf`)
-- **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — w U3 włączać ją tylko w kadrze (albo zastąpić wspólną warstwą światła).
-- **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Zostało: jaskrawsza krew (uwaga po kroku 24) → U4, smagnięcie Matki Pająków → U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
-- **U3 światło 2.0:** światło pocisków, magii i ognia; postFX z przełącznikiem jakości (po kroku 144).
-- **U4 kafle:** pilot ruin; ozdobna obwódka areny i przejścia materiałów (dual-grid — dotąd odłożone, teraz w zakresie).
-- **U5 postacie:** Totem łucznika (placeholder), akcent barw klas, rozróżnianie bohaterów w co-opie.
-- **U6 bossowie:** śmierć Grzybowego Pożeracza (dziś bez animacji), rekwizyty aren 6–7 przeniesione do generatora w `tools/`, wejście bossa z kartą.
-- **U7 interfejs:** „Moje przedmioty” na ekranie śmierci, jeden krój pisma, karty przemian z arkuszy zamiast figur.
-- **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
-- **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
+- **U1 fundament renderu — zrobione (krok U1).** Po nim: pomiar `?perf=1&gfx=medium` na telefonie właściciela → ewentualnie Średnia jako automat telefonu; poświata pochodni poza kadrem kosztuje przejście GPU — od kroku U3 tylko w kadrze.
+- **U2 feel walki — zrobione (krok U2):** iskry, smuga, rozpad, hitstop tylko obrazu, wybuchy nad mrokiem, światło pocisków wrogów. Jaskrawsza krew — zrobione w U4c, smagnięcie Matki Pająków — w U6. Do oceny: długości hitstopu i próg ciężkiego ciosu (`config/combatFeelConfig.ts`).
+- **U3 światło 2.0 — zrobione (krok U3):** światła pocisków, magii i wybuchów w mroku i Zaduchu, barwa na Wysokiej, Czarne Słońce, poświata tylko w kadrze. Do oceny: siła barw i Czarnego Słońca (`config/dynamicLightConfig.ts`), czas klatki telefonu z `?gfx=medium`. Nowe świecące elementy biomów → U4 razem z kaflami.
+- **U4 kafle — zrobione (kroki U4a–U4c):** warianty płyt, progi, obwódka areny, nieregularny mur, mur wieży z wyrwami. Zrobione: U4b Grzybnia i Cmentarzysko, U4c Piekło, Lustrzana komnata i Ogród. Krew usunięta całkowicie (krok U4e, decyzja właściciela). Zadymiona palarnia zostaje na kaflach mieszkania (krok 138). U4f: skarbiec pająków w ukrytej komnacie Grzybni (czeka na ocenę: gęstość oplotu, piedestały, śluz).
+- **U5 postacie — zrobione (kroki U5a–U5b, czeka na ocenę):** bezruch, trafienie, dash i śmierć wszystkich trzech bohaterów, akcent barwy barbarzyńcy, Totem z generatora, znaczniki P1/P2 w co-opie. Do oceny: czy ciała po śmierci i oddech w bezruchu „siedzą”.
+- **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
+- **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
+- **U8 rozgrywka — zrobione poza wrogami luster i ogrodu (kroki U8a–U8f, czeka na ocenę):** wydarzenia w pokojach (pochodnia, sakiewka, ciemny pokój), przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem (`docs/balance/U8e-2026-11-14.md`; propozycje liczb czekają na zgodę), złapanie Uciekiniera. Zostaje: własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (wygląd i zachowanie z generatora).
+- **U9 platformy — zrobione (kroki U9a–U9d):** U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu), U9b (zmiana imienia w pauzie, filtr wulgaryzmów), U9c (usuwanie zapisów i wybór piętra dotykiem, podpowiedzi zależne od urządzenia), U9d (dźwięki ciężkiego zamachu, skoku pajączka i Rozdeptania) — etap zrobiony, czeka na ocenę.
+- **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b zrobione, U11a–U11b przyjęte przez właściciela 14.11.2026 (`#ocena`):** „!” w ciężkim zamachu, ciężkie ciosy Passy III, kara bossów, licznik na telefonie, unik bota, `npm run bench:wagi`. Dalej: strojenie liczb po ocenie właściciela; Oddech i garda tylko, jeśli wersja lekka okaże się za łatwa.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - Kolidujące rekwizyty (zmieniają linię wzroku Kiterów).
@@ -6298,7 +6791,7 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 
 **Areny bossów (krok 90, tryb testowy)** `#areny-bossow`: osobna tablica wyników zrobiona w kroku 91a (worker czeka na wdrożenie). Czeka na ocenę: leczenie między arenami, losowa kolejność aren.
 
-**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; przeklęta skrzynia), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
+**Wzbogacenie rozgrywki (propozycje po kroku 41g)** `#decyzja`: elity (krok 42) i pętla wieży (krok 43) zrobione. Czekają: **pokoje ryzyka** (zasadzka zrobiona w kroku 49; wydarzenia w pokojach — krok U8a; przeklęta skrzynia — krok U8b), **kupiec** między piętrami (zakup za złoto obniża wynik), **synergie przedmiotów** (tylko za zgodą właściciela), **finałowy boss**. Po kroku 93: nowe przedmioty z ceną/warunkiem i kupiec — następny krok po ocenie balansu (lista do akceptacji właściciela).
 
 **Ruiny po apokalipsie (krok 155)** `#ruiny` `#lore`: śmieci i zniszczenie na piętrze 1 — czeka na ocenę (gęstość, kości vs łupy). Lore: im wyżej, tym mniej ruiny i więcej resztek cywilizacji.
 
@@ -6311,7 +6804,7 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 **Przemiany przedmiotów (krok 150)** `#przemiany`: zrobione — 3. kopia przemienia każdy przedmiot, karta rozwoju, limity 3 kopii. Czeka na ocenę: liczby, wygląd (figury geometryczne → arkusze z generatora), limity, czytelność karty.
 
 **Po przeglądzie buildu (krok 151)** `#przemiany` `#decyzja` — do omówienia z właścicielem („pamiętaj o kolejnych punktach”):
-- **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); pomysł do wymyślenia razem z właścicielem. Do tego czasu Buty bez przemiany.
+- **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); na `upgrade-fable` krok U8c: Rozdeptanie, czeka na ocenę.
 - [x] **Fala ostrza i Rozpęd u Czarodziejki:** od kroku 180 impuls promienia (co 0,6 s) liczy się jako atak główny.
 - **Bot-partner:** goni bossa poza 220 px od gracza (łucznik i Czarodziejka prawie nie biją latającej Wiedźmy), wybiera kartę przemiany/rozwoju zamiast pierwszej; potem rzetelny pomiar siły 3 bohaterów botem.
 
@@ -6333,6 +6826,6 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 - [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
 - [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.
 
-**Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie).
+**Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie) — na `upgrade-fable` krok U8f (dotyk w locie).
 
 **Pożeracz jako kula z ciał (krok 184)** `#grzybowy-pozeracz`: czeka na ocenę — wygląd kuli, tempo szarpanego chodu, częstotliwość chwytu i leczenie z ugryzienia.

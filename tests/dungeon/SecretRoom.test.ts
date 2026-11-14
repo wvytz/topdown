@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { RoomKind, TileType } from '@/core/dungeonTypes';
 import { createRng } from '@/core/random';
-import { SECRET_ROOM_CONFIG } from '@/config/lootConfig';
 import { getDungeonConfigForFloor } from '@/config/gameConfig';
 import { DungeonGenerator } from '@/dungeon/DungeonGenerator';
-import { areaBounds, disguiseFloor, planTreasureCocoons, revealMask, secretArea } from '@/dungeon/SecretRoom';
+import { areaBounds, disguiseFloor, revealMask, secretArea } from '@/dungeon/SecretRoom';
 import { planEncounters } from '@/dungeon/EncounterPlanner';
 import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import { roomContainsTile } from '@/dungeon/rooms';
@@ -64,22 +63,6 @@ describe('ukryta komnata (krok 46)', () => {
       }
       const shrine = planShrineLocation(floor, createRng(2));
       if (shrine) expect(roomContainsTile(room, shrine)).toBe(false);
-    }
-  });
-
-  it('kokony skarbu: różne kafle w komnacie z odstępem od ścian, dokładnie jeden z przedmiotem', () => {
-    for (const floor of floorsWithSecret) {
-      const room = floor.rooms[floor.endRoomId!]!;
-      const plan = planTreasureCocoons(room, SECRET_ROOM_CONFIG, createRng(floor.seed));
-      expect(plan.tiles.length).toBeGreaterThanOrEqual(SECRET_ROOM_CONFIG.cocoons.min);
-      expect(plan.tiles.length).toBeLessThanOrEqual(SECRET_ROOM_CONFIG.cocoons.max);
-      expect(new Set(plan.tiles.map((t) => `${t.x},${t.y}`)).size).toBe(plan.tiles.length);
-      for (const t of plan.tiles) {
-        expect(t.x).toBeGreaterThanOrEqual(room.x + 1);
-        expect(t.x).toBeLessThan(room.x + room.width - 1);
-      }
-      expect(plan.prize).toBeGreaterThanOrEqual(0);
-      expect(plan.prize).toBeLessThan(plan.tiles.length);
     }
   });
 });

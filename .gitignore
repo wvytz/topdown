@@ -15,3 +15,4 @@ __pycache__/
 # Kadry i pomiary z automatu (krok U0: npm run shots / npm run perf)
 .shots/
 .perf/
+.u6/

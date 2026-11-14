@@ -130,6 +130,87 @@ export const SPRITE_SHEETS = {
       attack: { frames: [4, 5, 6, 7], loop: false },
     },
   },
+  // Krok U5a (postacie 2.0, tools/hero_v2_sprites.py): chód (0–3) i cios (4–7) jak wyżej, z akcentem barwy klasy,
+  // oraz nowe stany: bezruch (8–10), trafienie (11–12), dash (13–14), śmierć (15–20, ostatnia klatka zostaje).
+  barbarianV2: {
+    key: 'sheet-blond-barbarian-v2',
+    url: 'assets/sprites/blond-barbarian_v2.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 1008,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      // Oddech: barki rozchodzą się i miecz unosi o piksel (1 s na cykl).
+      idle: { frames: [8, 8, 9, 10, 10, 9], loop: true },
+      attack: { frames: [4, 5, 6, 7], loop: false },
+      hurt: { frames: [11, 12], loop: false },
+      dash: { frames: [13, 14], loop: false },
+      die: { frames: [15, 16, 17, 18, 19, 20], loop: false },
+    },
+  },
+  // Krok U5b (tools/hero_v2_sprites.py): Czarodziejka 2.0 — kolumny 0–7 jak w `sorceress`, nowe stany jak u barbarzyńcy.
+  sorceressV2: {
+    key: 'sheet-sorceress-v2',
+    url: 'assets/sprites/sorceress_v2.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 1008,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      // Bezruch: włosy falują, kryształ ładuje się i rozjaśnia (1 s na cykl).
+      idle: { frames: [8, 8, 9, 10, 10, 9], loop: true },
+      cast: { frames: [4, 5, 6, 7], loop: false },
+      channel: { frames: [5, 6], loop: true },
+      hurt: { frames: [11, 12], loop: false },
+      // Dash Czarodziejki to teleport (postać znika), klatki 13–14 zostają w arkuszu na przyszłość.
+      dash: { frames: [13, 14], loop: false },
+      die: { frames: [15, 16, 17, 18, 19, 20], loop: false },
+    },
+  },
+  // Krok U5b: łucznik 2.0 — kolumny 0–7 jak w `archer`, nowe stany jak u barbarzyńcy.
+  archerV2: {
+    key: 'sheet-archer-v2',
+    url: 'assets/sprites/archer_v2.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 1008,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      // Bezruch: peleryna faluje, łuk opada o piksel.
+      idle: { frames: [8, 8, 9, 10, 10, 9], loop: true },
+      nock: { frames: [4], loop: false },
+      half: { frames: [5], loop: false },
+      full: { frames: [6], loop: false },
+      release: { frames: [7, 0], loop: false },
+      hurt: { frames: [11, 12], loop: false },
+      dash: { frames: [13, 14], loop: false },
+      die: { frames: [15, 16, 17, 18, 19, 20], loop: false },
+    },
+  },
+  // Krok U5c (tools/totem_sprites.py): totem łucznika — wyrastanie (0–2) i pętla z pulsującymi oczami (3–6).
+  totem: {
+    key: 'sheet-totem',
+    url: 'assets/sprites/totem.png',
+    frameWidth: 20,
+    frameHeight: 36,
+    sheetWidth: 140,
+    sheetHeight: 36,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      rise: { frames: [0, 1, 2], loop: false },
+      idle: { frames: [3, 4, 5, 6], loop: true },
+    },
+  },
   trashcanMan: {
     key: 'sheet-trashcan-man',
     url: 'assets/sprites/trashcan-man_walk.png',
@@ -1298,6 +1379,51 @@ export const SPRITE_SHEETS = {
       die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 8 },
     },
   },
+  // Krok U6: błysk pazurów smagnięcia Matki Pająków (tools/spider_sprites.py): 64×64, 8 kierunków; 0 wejście,
+  // 1 pełne cięcie, 2 gaśnięcie, 3 krople jadu. Komórka leży przed królową, przód = kierunek ciosu.
+  spiderQueenLashFx: {
+    key: 'sheet-spider-queen-lash-fx',
+    url: 'assets/sprites/spider-queen_lash-fx.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    sheetWidth: 256,
+    sheetHeight: 512,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      slash: { frames: [0, 1, 2, 3], loop: false, fps: 10 },
+    },
+  },
+  // Krok U6: śmierć Grzybowego Pożeracza (tools/devourer_sprites.py): 96×96, 8 kierunków; 0 konwulsja i ryk,
+  // 1 kula puchnie, 2 pęka — ciała odpadają, 3–5 osiada w kałuży, 6 ostatni wydech zarodników, 7 sterta (zostaje).
+  fungalDevourerDeath: {
+    key: 'sheet-fungal-devourer-death',
+    url: 'assets/sprites/fungal-devourer_death.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 7 },
+    },
+  },
+  // Krok U6: śmierć Palacza (tools/stoker_sprites.py): 96×96, 8 kierunków; 0 cios, 1 szufla wypada, 2 kolana,
+  // drzwiczki na posadzce, 3 ostatnie buchnięcie pieca, 4 upadek, 5–6 żar stygnie, 7 zwłoki (zostają).
+  stokerDeath: {
+    key: 'sheet-stoker-death',
+    url: 'assets/sprites/stoker_death.png',
+    frameWidth: 96,
+    frameHeight: 96,
+    sheetWidth: 768,
+    sheetHeight: 768,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      die: { frames: [0, 1, 2, 3, 4, 5, 6, 7], loop: false, fps: 7 },
+    },
+  },
   // Śmierć Króla Pająków (krok 40, tools/king_sprites.py): 128×128, 8 kierunków; 0 wzdrygnięcie z rozbłyskiem
   // bulw, 1–3 podkulanie łap i opadanie kos, 4 pęknięte bulwy (zarodniki), 5–7 rozpad w kałużę soku. Potem `splat`.
   spiderKingDeath: {
@@ -1440,18 +1566,6 @@ export const SPRITE_SHEETS = {
       tear: { frames: [10, 11, 12, 13], loop: false, fps: 10 },
     },
   },
-  // Tron z grzybni (krok 39): dekoracja areny Pożeracza bez kolizji, oparcie na północy.
-  fungalThrone: {
-    key: 'sheet-fungal-throne',
-    url: 'assets/sprites/fungal-throne.png',
-    frameWidth: 96,
-    frameHeight: 96,
-    sheetWidth: 96,
-    sheetHeight: 96,
-    directions: 1,
-    fps: SPRITE_FPS,
-    animations: {},
-  },
   // Efekty Pożeracza (krok 39): wiersz 0 krew (trafienie gracza), wiersz 1 sok (leczenie bossa).
   fungalFx: {
     key: 'sheet-fungal-fx',
@@ -1564,6 +1678,23 @@ export const SPRITE_SHEETS = {
       idle: { frames: [0, 1], loop: true },
       // Telegraf (300 ms) i rozdarcie szybciej niż spoczynek, żeby zmieściły się w czasie gry.
       fuse: { frames: [2, 3], loop: true, fps: 14 },
+      burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
+    },
+  },
+  // Kokon skarbu ukrytej komnaty: od kroku U4f własny model 2x (prośba właściciela, tools/spider_vault_sprites.py) —
+  // jajo z jedwabiu w złotych taśmach, tętniący złoty szew, złoto widoczne przez rozdarcie oplotu.
+  treasureCocoon: {
+    key: 'sheet-treasure-cocoon',
+    url: 'assets/sprites/vault/vault-cocoon.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    sheetWidth: 512,
+    sheetHeight: 64,
+    directions: 1,
+    fps: SPRITE_FPS,
+    animations: {
+      // Błysk wędruje po oplocie wolniej niż puls zwykłego kokonu.
+      idle: { frames: [0, 1, 2, 3], loop: true, fps: 3 },
       burst: { frames: [4, 5, 6, 7], loop: false, fps: 12 },
     },
   },
@@ -1931,6 +2062,29 @@ export const PLAYER_VISUAL = {
   groundShadow: WALKER_SHADOW,
 } as const satisfies EnemyVisual;
 
+/**
+ * Krok U5a: postacie 2.0 (STYLEGUIDE §13.9) — nowe arkusze z bezruchem, trafieniem, dashem i śmiercią.
+ * `false` przywraca stare arkusze bez zmian w logice (wyłącznik etapu U5).
+ */
+export const HERO_SPRITES_V2 = true;
+
+/** Ile trwa poza trafienia bohatera 2.0 (ms); w tym czasie chód i bezruch ustępują trafieniu. */
+export const HERO_HURT_POSE_MS = 260;
+
+/** Barwa leżącego ciała bohatera 2.0 (zamiast dawnej szarości 0x555555). */
+export const HERO_CORPSE_TINT = 0xa8a0a0;
+
+const BARBARIAN_VISUAL_V2 = {
+  sheet: 'barbarianV2',
+  move: 'walk',
+  idle: 'idle',
+  attack: 'attack',
+  hurt: 'hurt',
+  dash: 'dash',
+  death: 'die',
+  groundShadow: WALKER_SHADOW,
+} as const;
+
 /** Wygląd bohatera; Czarodziejka ma dodatkowo animację promienia, łucznik etapy naciągania. */
 export interface HeroVisual extends EnemyVisual {
   readonly attack: string;
@@ -1938,28 +2092,55 @@ export interface HeroVisual extends EnemyVisual {
   readonly channel?: string;
   /** Łucznik: animacje etapów naciągania łuku (od nałożenia strzały do pełnego naciągnięcia). */
   readonly drawStages?: readonly string[];
+  /** Postacie 2.0 (krok U5a): poza trafienia, dash i śmierć; brak = jak przed upgradem (miganie, szarość). */
+  readonly hurt?: string;
+  readonly dash?: string;
+  readonly death?: string;
   readonly groundShadow: NonNullable<EnemyVisual['groundShadow']>;
 }
 
 /** Wygląd grywalnych bohaterów (krok 37). */
 export const HERO_VISUALS: Readonly<Record<HeroId, HeroVisual>> = {
-  [HeroId.Barbarian]: PLAYER_VISUAL,
-  [HeroId.Sorceress]: {
-    sheet: 'sorceress',
-    move: 'walk',
-    idle: 'idle',
-    attack: 'cast',
-    channel: 'channel',
-    groundShadow: WALKER_SHADOW,
-  },
-  [HeroId.Archer]: {
-    sheet: 'archer',
-    move: 'walk',
-    idle: 'idle',
-    attack: 'release',
-    drawStages: ['nock', 'half', 'full'],
-    groundShadow: WALKER_SHADOW,
-  },
+  [HeroId.Barbarian]: HERO_SPRITES_V2 ? BARBARIAN_VISUAL_V2 : PLAYER_VISUAL,
+  [HeroId.Sorceress]: HERO_SPRITES_V2
+    ? {
+        sheet: 'sorceressV2',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'cast',
+        channel: 'channel',
+        hurt: 'hurt',
+        death: 'die',
+        groundShadow: WALKER_SHADOW,
+      }
+    : {
+        sheet: 'sorceress',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'cast',
+        channel: 'channel',
+        groundShadow: WALKER_SHADOW,
+      },
+  [HeroId.Archer]: HERO_SPRITES_V2
+    ? {
+        sheet: 'archerV2',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'release',
+        drawStages: ['nock', 'half', 'full'],
+        hurt: 'hurt',
+        dash: 'dash',
+        death: 'die',
+        groundShadow: WALKER_SHADOW,
+      }
+    : {
+        sheet: 'archer',
+        move: 'walk',
+        idle: 'idle',
+        attack: 'release',
+        drawStages: ['nock', 'half', 'full'],
+        groundShadow: WALKER_SHADOW,
+      },
 };
 
 /** Strzała łucznika: klatka według kierunku lotu (8 wierszy arkusza). */
@@ -2047,6 +2228,8 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Hook]: 'grab',
     },
     deathDecal: 'splat',
+    // Krok U6: kula pęka, sterta ciał zostaje na posadzce.
+    death: { sheet: 'fungalDevourerDeath', animation: 'die', keepCorpse: true },
   },
   // Kat Otchłani (krok 41f): jak Strażnik Bram, do tego rzut hakiem i oddech palenisk.
   [BossId.AbyssExecutioner]: {
@@ -2071,6 +2254,8 @@ export const BOSS_VISUALS: Readonly<Record<BossId, BossVisual>> = {
       [BossAttackKind.Slam]: 'belch',
     },
     deathDecal: 'splat',
+    // Krok U6: Palacz pada twarzą w posadzkę przy zimnym piecu.
+    death: { sheet: 'stokerDeath', animation: 'die', keepCorpse: true },
   },
   // Baron Dymu (krok 83): smuga dymu (puff), uderzenie brzuchem (slam), salwa puszek (throw); ryk wściekłości = łyk (drink).
   [BossId.SmokeBaron]: {
@@ -2252,12 +2437,16 @@ export const SPORE_BLAST_VISUAL = {
 
 /** Rozprysk kuli Czarodziejki (krok 50): pierścień w kolorze kul. */
 export const ORB_SPLASH_VISUAL = { color: 0xb487ff, alpha: 0.7, fillAlpha: 0.18, durationMs: 220 } as const;
-/** Ultimate (krok 98): napisy, poświata szału i tarczy, totem łucznika (placeholder geometryczny), wstrząs. */
+/** Ultimate (krok 98): napisy, poświata szału i tarczy, totem łucznika (sprite od kroku U5c), wstrząs. */
 export const ULTIMATE_VISUAL = {
   text: { rage: '#ff8a6a', supernova: '#d9b8ff', totem: '#ffe08a' },
   rage: 0xff5a3c,
   shield: 0x8ae6ef,
-  totem: { wood: 0x8a5a32, woodDark: 0x4e3018, glow: 0xffe08a, height: 22 },
+  /**
+   * Totem: sprite od kroku U5c (`sheet`, podstawa w `originY` komórki), `height` — od podstawy do oczu (stąd lecą strzały).
+   * `wood`/`woodDark` zostają dla dawnego rysunku przy `HERO_SPRITES_V2 = false`.
+   */
+  totem: { sheet: 'totem', rise: 'rise', idle: 'idle', originY: 33 / 36, wood: 0x8a5a32, woodDark: 0x4e3018, glow: 0xffe08a, height: 25 },
   shakeMs: 160,
   shakeIntensity: 0.006,
 } as const;
@@ -2283,7 +2472,8 @@ export const TRAP_VISUAL = {
 export const SECRET_ROOM_VISUAL = {
   /** Zapas (kafle) wokół komnaty przy podmianie obrazu — cienie i mury sąsiadów też się zmieniają. */
   redrawMargin: 3,
-  cocoonRadius: 9,
+  /** Strefa trafienia kokonu skarbu (od kroku U4f model 2x — było 9). */
+  cocoonRadius: 16,
   revealFlashRadius: 40,
   prizeFlashRadius: 26,
   shakeMs: 180,
@@ -2299,12 +2489,17 @@ export const ELITE_VISUAL = {
   ringAlpha: 0.85,
   pulseMs: 700,
   labelOffset: 10,
-  fontSize: 9,
+  /** Krok U7: napis w pikselowym kroju (skala 1 — piksel fontu = piksel świata). */
   /** Plama wybuchu Wybuchowego i kolor jego strefy. */
   volatileZone: 0xffb02e,
   lifestealText: '#7dff9a',
   /** Komunikat o elicie, gdy pierwszy raz widzi gracza bliżej niż tyle (px; ok. pół widoku). */
   spotRange: 220,
+  /**
+   * Krok U5c (decyzja właściciela 13.11.2026): bez komunikatu z opisem elity na środku ekranu — napis cech nad wrogiem
+   * („Wampiryczny”) wystarcza. `true` przywraca komunikat.
+   */
+  announceSpotted: false,
   toastMs: 3500,
 } as const;
 
@@ -2323,11 +2518,10 @@ export const LARDER_VISUAL = {
 } as const;
 
 /**
- * Sala tronowa Pożeracza (krok 39): tron i naklejki podłogi (kolumny `throneDecals` w kolejności
+ * Sala tronowa Pożeracza (krok 39; tron usunięty w kroku U4b): naklejki podłogi (kolumny `throneDecals` w kolejności
  * `ThroneDecalKind`), krew na graczu po trafieniu i sok nad bossem przy leczeniu (wiersze `fungalFx`).
  */
 export const THRONE_ROOM_VISUAL = {
-  throne: 'fungalThrone',
   decals: 'throneDecals',
   fx: { sheet: 'fungalFx', animation: 'burst', bloodRow: 0, sapRow: 1 },
 } as const;
@@ -2362,6 +2556,14 @@ export const COCOON_VISUAL = {
   fuse: 'fuse',
   burst: 'burst',
   groundShadow: { width: 16, height: 6, offsetX: 1, offsetY: 9 },
+} as const;
+
+/** Kokon skarbu (krok U4b): ta sama sylwetka co kokon leża, własny arkusz ze złotym szwem. */
+export const TREASURE_COCOON_VISUAL = {
+  sheet: 'treasureCocoon',
+  idle: 'idle',
+  burst: 'burst',
+  groundShadow: COCOON_VISUAL.groundShadow,
 } as const;
 
 /** Purchawka i jej chmura (krok 28c). Chmura półprzezroczysta — gaz, pod którym widać walkę. */
@@ -2616,6 +2818,11 @@ export const LOOT_FRAMES = {
   aim: numbered('aim', 8),
   shrineActive: numbered('shrine_active', 4),
   shrineUsed: numbered('shrine_used', 1),
+  /** Sakiewka na nóżkach (krok U8a, wydarzenie „złoto ucieka”). */
+  purse: numbered('purse', 4),
+  /** Przeklęta skrzynia (krok U8b): puls klątwy i otwarta. */
+  cursedChest: numbered('cursed_chest', 4),
+  cursedChestOpen: numbered('cursed_chest_open', 1),
 } as const;
 
 /** Animacje atlasu łupów: nazwa → klatki (zapętlone). */
@@ -2624,6 +2831,8 @@ export const LOOT_ANIMATIONS = {
   shot: LOOT_FRAMES.shot,
   shotPierce: LOOT_FRAMES.shotPierce,
   shrineActive: LOOT_FRAMES.shrineActive,
+  purse: LOOT_FRAMES.purse,
+  cursedChest: LOOT_FRAMES.cursedChest,
 } as const;
 
 export type LootAnimation = keyof typeof LOOT_ANIMATIONS;
