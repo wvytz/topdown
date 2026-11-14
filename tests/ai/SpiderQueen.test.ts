@@ -8,7 +8,9 @@ import { attackLeadTimeMs, isInWebPatch, leapProgress, planBossAttack, webFlight
 import { SpiderlingBrain, SpiderlingPhase } from '@/ai/SpiderlingBrain';
 import { BossAttackKind, BossId } from '@/core/bossTypes';
 import { createRng } from '@/core/random';
-import { FLOOR_GUARDIAN, SPIDER_QUEEN as QUEEN, bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+import { DIRTY_WITCH, FLOOR_GUARDIAN, SPIDER_QUEEN as QUEEN, bossById, bossForFloor, scaleBossForFloor } from '@/config/bossConfig';
+
+const WITCH_BEETLE = DIRTY_WITCH.spiderling;
 import { ENEMY_SCALING } from '@/config/combatConfig';
 import { ITEM_EFFECTS } from '@/config/lootConfig';
 import { PLAYER_BASE_STATS } from '@/config/gameConfig';
@@ -300,6 +302,30 @@ describe('pajączek-kamikaze', () => {
 
   it('ginie od jednego trafienia gracza', () => {
     expect(S.maxHp).toBeLessThanOrEqual(1);
+  });
+
+  it('krok U8d: z bliska przysiad, potem skok w zapamiętane miejsce i zapłon po lądowaniu', () => {
+    const leap = S.leap!;
+    const brain = new SpiderlingBrain(S, 0);
+    const crouch = brain.think({ x: 0, y: 0 }, { x: 80, y: 0 }, 100);
+    expect(crouch.phase).toBe(SpiderlingPhase.Crouching);
+    expect(crouch.move).toEqual({ x: 0, y: 0 });
+    expect(brain.think({ x: 0, y: 0 }, { x: 80, y: 0 }, 100 + leap.windupMs - 1).phase).toBe(SpiderlingPhase.Crouching);
+    // Wybicie: cel zapamiętany — bohater uskakuje, pajączek leci tam, gdzie był.
+    const jump = brain.think({ x: 0, y: 0 }, { x: 80, y: 0 }, 100 + leap.windupMs);
+    expect(jump.phase).toBe(SpiderlingPhase.Leaping);
+    expect(jump.speedMultiplier).toBe(leap.speedMultiplier);
+    const mid = brain.think({ x: 20, y: 0 }, { x: 80, y: 200 }, 100 + leap.windupMs + 50);
+    expect(mid.move.x).toBeCloseTo(1);
+    const land = brain.think({ x: 40, y: 0 }, { x: 80, y: 200 }, 100 + leap.windupMs + leap.durationMs);
+    expect(land.primeStarted).toBe(true);
+    expect(land.phase).toBe(SpiderlingPhase.Priming);
+  });
+
+  it('krok U8d: żuki Wiedźmy nie skaczą', () => {
+    expect(WITCH_BEETLE.leap).toBeUndefined();
+    const brain = new SpiderlingBrain(WITCH_BEETLE, 0);
+    expect(brain.think({ x: 0, y: 0 }, { x: 80, y: 0 }, 100).phase).toBe(SpiderlingPhase.Chasing);
   });
 
   it('zasięg wybuchu większy niż zasięg zapłonu — gracz musi zareagować', () => {

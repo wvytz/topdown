@@ -385,6 +385,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.aimAngle;
   }
 
+  /** Kierunek dasha (krok U8c, Rozdeptanie). */
+  dashHeading(): Vector2 {
+    return this.dash.heading;
+  }
+
   dashReadiness(now: number): number {
     return this.dash.readiness(now);
   }

@@ -535,13 +535,21 @@ export class HeroCombat {
   /** Burzowy pęd: w trakcie dasha bohater rani dotkniętych wrogów (każdego raz na dash). */
   private resolveDashStrike(now: number): void {
     const { player } = this.deps;
-    const damage = player.effects.dashDamage;
+    // Krok U8c, Rozdeptanie (Buty ×3): obrażenia dodają się do Burzowego pędu, dash szerszy, odrzut na boki.
+    const stomp = player.effects.evolved.stomp;
+    const damage = player.effects.dashDamage + (stomp?.damage ?? 0);
     if (damage <= 0 || !player.isDashing(now)) return;
     if (this.dashHitsFor !== player.dashId) {
       this.dashHitsFor = player.dashId;
       this.dashHits = new Set();
     }
-    const sweep = { center: { x: player.x, y: player.y }, radius: player.radius, damage, now };
+    const sweep = {
+      center: { x: player.x, y: player.y },
+      radius: player.radius + (stomp?.radiusBonus ?? 0),
+      damage,
+      now,
+      ...(stomp && { heading: player.dashHeading(), sideKnockback: stomp.knockback }),
+    };
     this.deps.strikes.dash(sweep, this.dashHits, player);
   }
 }

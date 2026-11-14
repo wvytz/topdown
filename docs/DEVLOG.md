@@ -6472,6 +6472,55 @@ Drugi lek na „grę powtarzalną” z ustalenia 6 (`docs/UPGRADE.md`) i „poko
 
 **Weryfikacja:** w przeglądarce (piętro 4, seed 5, Czarodziejka, `?chest=1`): podpowiedź przy skrzyni, E otwiera, 3 elity (Ognisty, Wybuchowy, Wampiryczny) wychodzą ze znaczników, po ich wybiciu wypadły Buty i złoto (+78 z łupem elit). Bez błędów w konsoli.
 
+## Krok U8c — Przemiana Butów: Rozdeptanie `#upgrade` `#przemiany`
+
+Ustalenie 7 z `docs/UPGRADE.md` (rekomendacja audytu, „pasuje do nawały”): 3. kopia Butów to **Rozdeptanie** — dash przez wrogów rani ich i odrzuca na boki. Bez nowego przycisku i bez zmian w pułapkach i plamach bossów (powód odrzucenia lewitacji w kroku 151). Propozycja do oceny na podglądzie.
+
+**Co powstało**
+- `ITEM_EVOLUTION.items[Boots]` i `ITEM_EVOLUTION.stomp` (`config/itemEvolutionConfig.ts`): 14 obrażeń za dotknięcie (ok. 2/3 ciosu barbarzyńcy), +4 za każdą kopię ponad trzecią, odrzut 320 (po połowieniu odrzutu wrogów z U4e — ok. 160), dash szerszy o 6 px. Buty dalej bez limitu kopii, prędkość rośnie do dawnego limitu +60%.
+- `WeaponEffects.evolved.stomp`; `DashStrike.sideKnockback` — odrzut prostopadle do toru dasha, w stronę, po której stoi cel (tłum rozstępuje się na boki). `DashSweep` dostał opcjonalne `heading` i `sideKnockback`, Burzowy pęd bez zmian (bez odrzutu); oba się sumują.
+- `HeroCombat.resolveDashStrike` dodaje obrażenia Rozdeptania, `DashController.heading` / `Player.dashHeading()` podają kierunek dasha. Każdy cel raz na dash — jak w Burzowym pędzie.
+- Karta nagrody pokazuje przemianę przy 3. kopii, a Buty z 1–2 kopiami znów mogą być kartą rozwoju.
+- Buty po limicie prędkości zostają w puli kart i kapliczki (krok 117 je usuwał) — każda kolejna kopia wzmacnia Rozdeptanie.
+
+**Uwaga:** dash Czarodziejki to teleport (`dash.blink`) — rani tylko wrogów w miejscu startu i lądowania; do oceny, czy jej Rozdeptanie nie powinno działać na całej linii skoku.
+
+**Testy:** `tests/systems/itemUsefulness.test.ts` (Buty w puli po limicie prędkości), `tests/systems/itemEvolution.test.ts` (Buty mają przemianę, karta przemiany i rozwoju, efekt od 3. kopii, wzrost z kolejnymi), `tests/systems/dashStrike.test.ts` (kierunek odrzutu, Burzowy pęd bez odrzutu, każdy cel raz na dash).
+
+**Weryfikacja:** w przeglądarce (`?items=boots*3`, łucznik, piętro 2): efekt włączony, dash przez wroga zabrał mu 14 HP. Bez błędów w konsoli.
+
+## Krok U8d — Skok pajączka `#upgrade` `#matka-pajakow` `#grzybnia`
+
+Z backlogu audytu upgradu („skok pajączka do bohatera — podnosi trudność, czyli zgodnie z kierunkiem”, etap U8).
+
+**Co powstało**
+- `SpiderlingDefinition.leap` (`core/bossTypes.ts`), liczby w `SPIDER_QUEEN.spiderling.leap` (`config/bossConfig.ts`): pajączek, który dobiegnie na 90 px, **przysiada** na 0,22 s (staje, spłaszcza się i patrzy na bohatera — telegraf), potem **skacze** z prędkością ×3 przez 0,26 s w miejsce, gdzie bohater stał w chwili wybicia, i po lądowaniu od razu zapala lont (zapłon i wybuch bez zmian). Uskok w bok w czasie przysiadu albo lotu ratuje — pajączek wyląduje obok.
+- `ai/SpiderlingBrain.ts`: fazy `Crouching` i `Leaping`, decyzja z `speedMultiplier`; `entities/Spiderling.ts` — przysiad i lot czytelne skalą sprite'a (lot ×1,25 — „nad ziemią”).
+- Dotyczy wylęgu Matki Pająków i pajączków z kokonów Grzybni (ta sama definicja). Żuki Brudnej Wiedźmy nie skaczą (`withoutLeap`).
+
+**Testy:** `tests/ai/SpiderQueen.test.ts` — przysiad, wybicie w zapamiętane miejsce, lot z mnożnikiem, zapłon po lądowaniu; żuki bez skoku. Dawne testy pościgu i zapalnika bez zmian.
+
+## Krok U8e — Pomiar bohaterów botem i fale nawały w małym pokoju `#upgrade` `#balans`
+
+Plan U8: „pomiar siły 3 bohaterów botem z raportem”.
+
+**Co powstało**
+- `tools/balance.mjs`: bot-partner (`?bot=<bohater>`, krok 149) walczy sam, pierwszy gracz stoi bierny i nietykalny. Mierzy arenę bossa każdego piętra (obrażenia na sekundę, utracone HP, powalenia) i pierwszy pokój z nawałą na piętrach 1, 3 i 5 (czas wybicia). Opcje `--heroes`, `--floors`, `--seconds`, `--only boss|horde`, `--out docs/balance`.
+- Raport: `docs/balance/U8e-2026-11-14.md`. Barbarzyńca bije najmocniej (54–72/s) i najszybciej traci HP, Czarodziejka najsłabiej na bossach (25–43/s, ok. 60% barbarzyńcy), łucznik pośrodku i najbezpieczniejszy. Palacz to najtrudniejsza walka dla bohaterów dystansowych, Brudna Wiedźma powaliła wszystkich trzech. Propozycje zmian liczb są w raporcie i czekają na zgodę właściciela (upgrade nie zmienia balansu).
+- **Poprawka znaleziona pomiarem:** w małym pokoju (6×6) z bohaterami w rogu `pickRetinueTiles` nie znajdował kafli 3 kafle od bohaterów i fale nawały znikały — pokój kończył się od razu (a wydarzenie z U8a dawało darmową nagrodę). Nowe `pickHordeTiles` (`systems/Horde.ts`) zmniejsza odstęp aż do 1 kafla, zanim się podda.
+
+**Testy:** `tests/systems/horde.test.ts` — fala w ciasnym pokoju dostaje kafle.
+
+## Krok U8f — Złapanie uciekiniera w locie `#upgrade` `#zasadzka`
+
+Z backlogu kroku 183 („pomysł na później: dać szansę złapania uciekiniera”) i audytu upgradu („mały, satysfakcjonujący dodatek”, etap U8).
+
+**Co powstało**
+- Uciekinier (zasadzka „flight”) w locie do bossa daje się **złapać dotykiem**: bohater w promieniu 18 px (`AMBUSH_VARIANTS.flight.catchRadius`) — zwykle dashem, bo lot (170 px/s) jest niewiele wolniejszy od chodu. Złapany spada pod nogi jako zwykły przedmiot, boss nie dostaje wzmocnienia, a nagroda po bossie za uciekiniera nie przepada, bo nie było kradzieży.
+- `catcherOfRunaway` w `systems/AmbushVariants.ts`, `AmbushManager.catchRunaway`; `diag.note('ambush-runaway-caught')`. Bez napisu.
+
+**Testy:** `tests/systems/ambushVariants.test.ts` — promień złapania, lot wolniejszy od najwolniejszego bohatera.
+
 ## Krok U11b — System wag: znak ciężkiego zamachu, ciężkie ciosy, kara bossów, telefon i bot `#upgrade` `#wagi`
 
 Ciąg dalszy wersji lekkiej (`docs/WAGI.md` §11, decyzja właściciela 14.11.2026). Prośba właściciela: „Wdrażaj wszystkie zaplanowane zmiany póki starczy tokenów” — rekomendowane ścieżki bez pytania. Oddech i automatyczna garda nadal odłożone.
@@ -6557,7 +6606,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U5 postacie — zrobione (kroki U5a–U5b, czeka na ocenę):** bezruch, trafienie, dash i śmierć wszystkich trzech bohaterów, akcent barwy barbarzyńcy, Totem z generatora, znaczniki P1/P2 w co-opie. Do oceny: czy ciała po śmierci i oddech w bezruchu „siedzą”.
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
-- **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
+- **U8 rozgrywka — zrobione poza wrogami luster i ogrodu (kroki U8a–U8f, czeka na ocenę):** wydarzenia w pokojach (pochodnia, sakiewka, ciemny pokój), przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem (`docs/balance/U8e-2026-11-14.md`; propozycje liczb czekają na zgodę), złapanie Uciekiniera. Zostaje: własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (wygląd i zachowanie z generatora).
 - **U9 platformy:** zrobione U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu) U9b (zmiana imienia w pauzie, filtr wulgaryzmów) i U9c (usuwanie zapisów i wybór piętra dotykiem, podpowiedzi zależne od urządzenia); zostają dźwięki nowych efektów.
 - **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b zrobione, U11a–U11b przyjęte przez właściciela 14.11.2026 (`#ocena`):** „!” w ciężkim zamachu, ciężkie ciosy Passy III, kara bossów, licznik na telefonie, unik bota, `npm run bench:wagi`. Dalej: strojenie liczb po ocenie właściciela; Oddech i garda tylko, jeśli wersja lekka okaże się za łatwa.
 
@@ -6729,7 +6778,7 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 **Przemiany przedmiotów (krok 150)** `#przemiany`: zrobione — 3. kopia przemienia każdy przedmiot, karta rozwoju, limity 3 kopii. Czeka na ocenę: liczby, wygląd (figury geometryczne → arkusze z generatora), limity, czytelność karty.
 
 **Po przeglądzie buildu (krok 151)** `#przemiany` `#decyzja` — do omówienia z właścicielem („pamiętaj o kolejnych punktach”):
-- **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); pomysł do wymyślenia razem z właścicielem. Do tego czasu Buty bez przemiany.
+- **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); na `upgrade-fable` krok U8c: Rozdeptanie, czeka na ocenę.
 - [x] **Fala ostrza i Rozpęd u Czarodziejki:** od kroku 180 impuls promienia (co 0,6 s) liczy się jako atak główny.
 - **Bot-partner:** goni bossa poza 220 px od gracza (łucznik i Czarodziejka prawie nie biją latającej Wiedźmy), wybiera kartę przemiany/rozwoju zamiast pierwszej; potem rzetelny pomiar siły 3 bohaterów botem.
 
@@ -6751,6 +6800,6 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 - [x] Etap C, krok 169: run kończy się zwycięstwem po piętrze 7 (ekran „ZWYCIĘSTWO”); finałowy boss wieży i Akt II — później.
 - [x] Etap C, krok 170: 7 relikwii bossów (jedna z 3 kart po bossie to zawsze jego relikwia) — czekają na ocenę.
 
-**Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie).
+**Trzy wersje zasadzki (krok 183)** `#zasadzka` `#zaduch`: czekają na ocenę — tempo kaskady (1,4 s), siła wzmocnień bossa i nagroda za Uciekiniera, czy splątanie (−40%) i strzały w mroku są czytelne, wygląd Zaducha. Pomysł na później: dać szansę złapania uciekiniera (trafienie w locie) — na `upgrade-fable` krok U8f (dotyk w locie).
 
 **Pożeracz jako kula z ciał (krok 184)** `#grzybowy-pozeracz`: czeka na ocenę — wygląd kuli, tempo szarpanego chodu, częstotliwość chwytu i leczenie z ugryzienia.

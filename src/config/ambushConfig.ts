@@ -62,6 +62,8 @@ export const AMBUSH_VARIANTS: AmbushVariantsConfig = {
   flight: {
     glowMs: 1500,
     speed: 170,
+    // Krok U8f (backlog po kroku 183: „szansa złapania uciekiniera”): dotyk w locie — lot 170 px/s, dash dogania.
+    catchRadius: 18,
     boonOf: {
       [ItemId.Heart]: BossBoon.Vitality,
       [ItemId.VampireFang]: BossBoon.Vitality,

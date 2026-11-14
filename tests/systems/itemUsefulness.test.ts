@@ -14,19 +14,18 @@ describe('usefulItemPool (krok 117)', () => {
     for (const hero of Object.values(HeroId)) expect(pool(hero, [])).toHaveLength(ITEM_POOL.length);
   });
 
-  it('Buty, Klepsydra i Rękawice na limicie znikają z puli', () => {
+  it('Klepsydra i Rękawice na limicie znikają z puli', () => {
     const owned = [...many(ItemId.Boots, 6), ...many(ItemId.Hourglass, 3), ...many(ItemId.Gloves, 5)];
     const ids = pool(HeroId.Barbarian, owned);
-    expect(ids).not.toContain(ItemId.Boots);
     expect(ids).not.toContain(ItemId.Hourglass);
     expect(ids).not.toContain(ItemId.Gloves);
     expect(ids).toContain(ItemId.Blade);
     expect(ids).toContain(ItemId.Heart);
   });
 
-  it('o jedną kopię przed limitem przedmiot jeszcze wypada (krok 151: Buty znów do limitu prędkości)', () => {
+  it('krok U8c: Buty po limicie prędkości dalej wypadają — każda kopia wzmacnia Rozdeptanie', () => {
     expect(pool(HeroId.Barbarian, many(ItemId.Boots, 5))).toContain(ItemId.Boots);
-    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 6))).not.toContain(ItemId.Boots);
+    expect(pool(HeroId.Barbarian, many(ItemId.Boots, 9))).toContain(ItemId.Boots);
   });
 
   it('krok 150: przedmioty bez limitu (Ostrze, Serce, Iskrownik) wypadają też po przemianie', () => {

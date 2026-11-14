@@ -3,7 +3,7 @@ import type { SpiderlingDefinition } from '@/core/bossTypes';
 import type { DamageResult, Hit } from '@/core/combatTypes';
 import type { Vector2 } from '@/core/types';
 import type { SpiderlingDecision } from '@/ai/SpiderlingBrain';
-import { SpiderlingBrain } from '@/ai/SpiderlingBrain';
+import { SpiderlingBrain, SpiderlingPhase } from '@/ai/SpiderlingBrain';
 import { SPRITE_SHEETS, spiderlingVisual } from '@/config/spriteConfig';
 import { RENDER_DEPTH } from '@/config/renderLayers';
 import { DirectionalAnimator } from '@/entities/DirectionalAnimator';
@@ -55,8 +55,13 @@ export class Spiderling extends Phaser.Physics.Arcade.Sprite implements MeleeTar
 
   tick(target: Vector2, now: number): SpiderlingDecision {
     const decision = this.brain.think({ x: this.x, y: this.y }, target, now);
-    const speed = this.definition.moveSpeed;
+    const speed = this.definition.moveSpeed * (decision.speedMultiplier ?? 1);
     this.setVelocity(decision.move.x * speed, decision.move.y * speed);
+    // Krok U8d: przysiad — drgnięcie w miejscu (czysto wizualne), lot — pajączek większy (nad ziemią).
+    const crouching = decision.phase === SpiderlingPhase.Crouching;
+    const leaping = decision.phase === SpiderlingPhase.Leaping;
+    this.setScale(leaping ? 1.25 : 1, leaping ? 1.25 : crouching ? 0.8 : 1);
+    if (crouching) this.animator.face({ x: target.x - this.x, y: target.y - this.y });
     if (decision.primeStarted) {
       this.animator.face({ x: target.x - this.x, y: target.y - this.y });
       this.animator.restart(this.visual.prime, this.definition.primeMs);

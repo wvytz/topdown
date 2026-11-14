@@ -34,12 +34,12 @@ const fx = (items: ItemId[]) => computeWeaponEffects(items, ITEM_EFFECTS).evolve
 const loadout = (items: ItemId[]) => computeLoadout(PLAYER_BASE_STATS, PLAYER_COMBAT, items, ITEM_DEFINITIONS, STAT_LIMITS, ITEM_EFFECTS);
 
 describe('przemiany przedmiotów (krok 150)', () => {
-  it('każdy przedmiot poza Butami i relikwiami ma przemianę z nazwą i opisem; przemiana przy 3. kopii', () => {
+  it('każdy przedmiot poza relikwiami ma przemianę z nazwą i opisem; przemiana przy 3. kopii', () => {
     expect(ITEM_EVOLUTION.copies).toBe(3);
-    // Krok 151: lewitacja cofnięta — Buty czekają na nową przemianę.
-    expect(ITEM_EVOLUTION.items[ItemId.Boots]).toBeUndefined();
+    // Krok U8c: Buty wracają do przemian — Rozdeptanie (lewitacja z kroku 150 cofnięta w kroku 151).
+    expect(ITEM_EVOLUTION.items[ItemId.Boots]?.name).toBe('Rozdeptanie');
     // Krok 170: relikwie bossów są pojedyncze, bez przemian.
-    for (const id of ALL_ITEM_IDS.filter((item) => item !== ItemId.Boots && ITEM_DEFINITIONS[item].kind !== ItemKind.Relic)) {
+    for (const id of ALL_ITEM_IDS.filter((item) => ITEM_DEFINITIONS[item].kind !== ItemKind.Relic)) {
       const evo = ITEM_EVOLUTION.items[id];
       if (!evo) throw new Error(`brak przemiany: ${id}`);
       expect(evo.name.length).toBeGreaterThan(0);
@@ -92,15 +92,17 @@ describe('przemiany przedmiotów (krok 150)', () => {
     expect(loadout(many(ItemId.Boots, 9)).stats.moveSpeed).toBe(Math.round(PLAYER_BASE_STATS.moveSpeed * STAT_LIMITS.maxMoveSpeedMultiplier));
   });
 
-  it('krok 151: Buty bez przemiany — zwykła karta, bez karty rozwoju i bez przemiany w statystykach', () => {
+  it('krok U8c: Rozdeptanie — 3. kopia Butów, dash rani i odrzuca, kolejne kopie mocniejsze', () => {
     const boots = ITEM_DEFINITIONS[ItemId.Boots];
     const third = describeRewardCard(boots, 2, ITEM_EVOLUTION);
-    expect(third.kind).toBe('growth');
-    expect(third.title).toBe(boots.name);
-    expect(third.pips.total).toBe(0);
-    expect(developmentCandidates([boots], countItems(many(ItemId.Boots, 2)), ITEM_EVOLUTION)).toEqual([]);
-    expect(isItemEvolved(ItemId.Boots, 5, ITEM_EVOLUTION)).toBe(false);
-    expect(isItemEvolved(ItemId.Blade, 3, ITEM_EVOLUTION)).toBe(true);
+    expect(third.kind).toBe('evolution');
+    expect(third.title).toBe('Rozdeptanie');
+    expect(developmentCandidates([boots], countItems(many(ItemId.Boots, 2)), ITEM_EVOLUTION)).toEqual([boots]);
+    expect(isItemEvolved(ItemId.Boots, 3, ITEM_EVOLUTION)).toBe(true);
+    expect(fx(many(ItemId.Boots, 2)).stomp).toBeNull();
+    const { stomp } = ITEM_EVOLUTION;
+    expect(fx(many(ItemId.Boots, 3)).stomp).toEqual({ damage: stomp.damage, knockback: stomp.knockback, radiusBonus: stomp.radiusBonus });
+    expect(fx(many(ItemId.Boots, 5)).stomp?.damage).toBe(stomp.damage + 2 * stomp.damagePerStack);
   });
 
   it('Pętla czasu: dash z 2 ładunkami; Kołczan bez dna skraca ładowanie strzału', () => {

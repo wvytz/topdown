@@ -31,6 +31,7 @@ import {
   HauntPhase,
   HauntState,
   boonFor,
+  catcherOfRunaway,
   dartTarget,
   edgeArrowPoints,
   farthestCorner,
@@ -40,6 +41,7 @@ import {
   pointAlongPath,
   stormScenario,
 } from '@/systems/AmbushVariants';
+import { diag } from '@/diagnostics/DiagnosticsHub';
 import { AMBUSH_ANNOUNCE, AMBUSH_FORMATION_TEXT, AMBUSH_SCENARIOS, AMBUSH_VARIANTS, AMBUSH_VARIANT_TEXT } from '@/config/ambushConfig';
 import { pickWeightedItem } from '@/systems/Loot';
 import { ENEMY_VARIANTS } from '@/config/combatConfig';
@@ -348,6 +350,12 @@ export class AmbushManager {
     const at = pointAlongPath(full, this.flightTravelled);
     wisp.setPosition(at.x, at.y);
     this.aura?.setPosition(at.x, at.y);
+    // Krok U8f: złapany w locie — spada pod nogi bohatera, boss nic nie dostaje.
+    const catcher = catcherOfRunaway(at, this.deps.party.living, glow.catchRadius);
+    if (catcher) {
+      this.catchRunaway(at);
+      return;
+    }
     if (now - this.lastTrailAt > 60) {
       this.lastTrailAt = now;
       this.streak(at, { x: at.x + (Math.random() - 0.5) * 10, y: at.y + (Math.random() - 0.5) * 10 }, 400, SPIRIT_TINT);
@@ -357,6 +365,19 @@ export class AmbushManager {
   }
 
   private flightPathFrom: Vector2 | null = null;
+
+  /** Krok U8f: uciekinier złapany w locie — przedmiot spada na ziemię, zasadzka bez wzmocnienia bossa. */
+  private catchRunaway(at: Vector2): void {
+    this.flight = 'done';
+    this.wisp?.destroy();
+    this.aura?.destroy();
+    this.wisp = null;
+    this.aura = null;
+    this.deps.spawnLoot(at, [{ kind: PickupKind.Item, itemId: this.itemId }]);
+    this.deps.effects.impact(at.x, at.y, TILE_SIZE * 0.8);
+    sound.play(SoundCue.UiConfirm, at);
+    diag.note('ambush-runaway-caught', { item: this.itemId });
+  }
 
   /** Uciekinier dotarł: wzmacnia bossa (albo, gdy boss już padł, po prostu spada na ziemię). */
   private arrive(at: Vector2): void {
