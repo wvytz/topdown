@@ -140,4 +140,22 @@ describe('PartnerBotBrain — unik ataku kary (krok U11b)', () => {
     expect(away?.y).toBeCloseTo(-1);
     expect(dodgeDirection({ x: 150, y: 0 }, [lane], 10)).toBeNull();
   });
+
+  it('boss (krok U9a): bot goni go daleko od gracza i nie wraca do niego co chwilę', () => {
+    const boss = { x: 300, y: 0, radius: 30, boss: true };
+    const d = brain().decide(world({ leader: { x: -100, y: 0 }, targets: [boss] }, 'archery'));
+    expect(d.mode).toBe('fight');
+    expect(d.actions.move.x).toBeGreaterThan(0);
+    // Zwykły wróg w tym samym miejscu — za daleko od gracza, bot go nie goni.
+    const minion = brain().decide(world({ leader: { x: -100, y: 0 }, targets: [{ ...boss, boss: false }] }, 'archery'));
+    expect(minion.mode).toBe('follow');
+  });
+
+  it('boss (krok U9a): bez teleportu do gracza, póki bot jest w zasięgu areny', () => {
+    const b = brain();
+    const targets = [{ x: 140, y: 0, radius: 30, boss: true }];
+    b.decide(world({ now: 0, leader: { x: -260, y: 0 }, targets }, 'archery'));
+    const later = b.decide(world({ now: 5000, leader: { x: -260, y: 0 }, targets }, 'archery'));
+    expect(later.warp).toBeNull();
+  });
 });

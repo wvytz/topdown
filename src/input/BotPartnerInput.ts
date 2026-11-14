@@ -4,7 +4,7 @@ import type { HeroKit } from '@/core/heroTypes';
 import type { Vector2 } from '@/core/types';
 import type { Player, PlayerActions } from '@/entities/Player';
 import type { PlayerInput, PlayerInputContext } from '@/input/playerInput';
-import { PartnerBotBrain, type BotDecision, type BotThreat } from '@/ai/PartnerBotBrain';
+import { PartnerBotBrain, type BotDecision, type BotTarget, type BotThreat } from '@/ai/PartnerBotBrain';
 import { nextWaypoint } from '@/ai/botPath';
 import { hasLineOfSight } from '@/dungeon/lineOfSight';
 import { PARTNER_BOT_CONFIG } from '@/config/partnerBotConfig';
@@ -22,6 +22,18 @@ export interface BotPartnerDeps {
   readonly warp: (to: Vector2) => void;
   /** Czerwone pasy ataku kary (krok U11b). */
   readonly threats?: () => readonly BotThreat[];
+  /** Pozycje walczących bossów (krok U9a) — te cele bot goni po całej arenie. */
+  readonly bosses?: () => readonly Vector2[];
+}
+
+/** Cel na pozycji walczącego bossa dostaje znacznik `boss` (krok U9a). */
+function markBosses(targets: Iterable<BotTarget>, bosses: readonly Vector2[]): BotTarget[] {
+  const marked: BotTarget[] = [];
+  for (const target of targets) {
+    const boss = bosses.some((at) => Math.abs(at.x - target.x) < 1 && Math.abs(at.y - target.y) < 1);
+    marked.push(boss ? { x: target.x, y: target.y, radius: target.radius, boss } : target);
+  }
+  return marked;
 }
 
 /**
@@ -56,7 +68,7 @@ export class BotPartnerInput implements PlayerInput {
         ultimateReady: ultimate.charge >= 1 && !ultimate.active,
       },
       leader: { x: leader.x, y: leader.y, downed: leader.isDead },
-      targets: [...targets()],
+      targets: markBosses(targets(), this.deps.bosses?.() ?? []),
       canSee: (from, to) => hasLineOfSight(floor, from, to, TILE_SIZE),
       navigate: (from, to) => nextWaypoint(floor, from, to, TILE_SIZE, halfWidth),
       threats: this.deps.threats?.() ?? [],

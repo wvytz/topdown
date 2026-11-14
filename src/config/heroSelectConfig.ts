@@ -23,6 +23,9 @@ export const HERO_SELECT_PALETTE = {
   arenaMode: '#c8a8ff',
 } as const;
 
+/** „Graj z botem” (krok U9a): opis zamiast zakładek trybu — bot to zawsze wspinaczka. */
+export const HERO_SELECT_BOT_TEXT = 'Z BOTEM · bot gra bohaterem po twoim · run treningowy';
+
 export const HERO_SELECT_LAYOUT = {
   centerX: GAME_WIDTH / 2,
   title: { y: 44, fontSize: 30, letterSpacing: 1 },

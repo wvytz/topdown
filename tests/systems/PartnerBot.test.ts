@@ -4,7 +4,9 @@ import { RunMode } from '@/core/runMode';
 import type { FloorSceneData } from '@/core/types';
 import { HERO_ORDER, parseHeroId } from '@/config/heroConfig';
 import { newRun } from '@/systems/RunState';
-import { isBotCoop, parseBotParam, withPartnerBot } from '@/systems/PartnerBot';
+import { botRewardPick, coopFromSave, isBotCoop, parseBotParam, withPartnerBot } from '@/systems/PartnerBot';
+import { ItemId } from '@/core/lootTypes';
+import { ITEM_DEFINITIONS, ITEM_EFFECTS } from '@/config/lootConfig';
 import { DEFAULT_COOP_DEVICES, SOLO_DEVICES } from '@/systems/coopDevices';
 
 const solo = (mode = RunMode.Tower): FloorSceneData => ({ runSeed: 1, floor: 1, run: newRun(HeroId.Barbarian, false, mode) });
@@ -48,5 +50,30 @@ describe('withPartnerBot', () => {
     const arenas = solo(RunMode.BossRush);
     expect(withPartnerBot(arenas, { hero: null }, HERO_ORDER)).toBe(arenas);
     expect(isBotCoop(data)).toBe(false);
+  });
+});
+
+describe('botRewardPick (krok U9a)', () => {
+  const pick = (choices: ItemId[], owned: ItemId[] = []) => botRewardPick(choices, owned, ITEM_DEFINITIONS, ITEM_EFFECTS.evolution);
+
+  it('bierze przemianę przed relikwią, rozwojem i nowym przedmiotem', () => {
+    const owned = [ItemId.Heart, ItemId.Heart, ItemId.Blade];
+    expect(pick([ItemId.Gloves, ItemId.SlimeCrown, ItemId.Heart], owned)).toBe(ItemId.Heart);
+    expect(pick([ItemId.Gloves, ItemId.Blade, ItemId.SlimeCrown], owned)).toBe(ItemId.SlimeCrown);
+    expect(pick([ItemId.Gloves, ItemId.Blade], owned)).toBe(ItemId.Blade);
+  });
+
+  it('przy remisie — pierwsza karta; pusta lista — brak wyboru', () => {
+    expect(pick([ItemId.Gloves, ItemId.Hourglass])).toBe(ItemId.Gloves);
+    expect(pick([])).toBeUndefined();
+  });
+});
+
+describe('coopFromSave (krok U9a)', () => {
+  it('zapis z botem wraca z botem, zwykły co-op — z padem jako P2', () => {
+    const withBotSave = coopFromSave({ hero: HeroId.Archer, items: [], hp: null, bot: true });
+    expect(isBotCoop({ coop: withBotSave })).toBe(true);
+    expect(withBotSave.partner).toEqual({ hero: HeroId.Archer, items: [], hp: null });
+    expect(coopFromSave({ hero: HeroId.Archer, items: [], hp: null }).devices).toBe(DEFAULT_COOP_DEVICES);
   });
 });

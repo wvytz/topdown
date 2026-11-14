@@ -62,6 +62,14 @@ describe('zapis gry', () => {
     expect(again.run.fromSave).toBe(true);
   });
 
+  it('partner-bot (krok U9a): znacznik bota przechodzi przez zapis i widać go w opisie', () => {
+    const withBot: SaveData = { ...data, coop: { hero: HeroId.Sorceress, items: [], hp: null, bot: true } };
+    const record = roundTrip(withBot)!;
+    expect(record.coop?.bot).toBe(true);
+    expect(saveSummary(record).title).toContain('(bot)');
+    expect(roundTrip({ ...data, coop: { hero: HeroId.Sorceress, items: [], hp: null } })!.coop?.bot).toBeUndefined();
+  });
+
   it('run testowy z adresu też jest poza tablicą', () => {
     expect(isUnranked({ practice: true })).toBe(true);
     expect(isUnranked({ practice: false })).toBe(false);

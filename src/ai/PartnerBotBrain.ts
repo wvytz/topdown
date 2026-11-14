@@ -17,6 +17,8 @@ export interface BotTarget {
   readonly x: number;
   readonly y: number;
   readonly radius: number;
+  /** Boss (krok U9a): bot goni go po całej arenie, a nie tylko przy graczu. */
+  readonly boss?: boolean;
 }
 
 /**
@@ -130,6 +132,9 @@ export class PartnerBotBrain {
     const toLeader = dist(here, leaderAt);
     const tactics: BotKitTactics = this.config.tactics[self.kit];
     const target = this.pickTarget(world, here, leaderAt);
+    // Krok U9a: w walce z bossem drużyna rozchodzi się po arenie — bot nie wraca do gracza co chwilę.
+    const bossFight = world.targets.some((t) => t.boss === true);
+    const followMaxPx = bossFight ? this.config.boss.followMaxPx : this.config.followMaxPx;
 
     let mode: BotMode;
     let move: MovementIntent = ZERO;
@@ -147,7 +152,7 @@ export class PartnerBotBrain {
     } else if (leader.downed) {
       mode = 'revive';
       if (toLeader > this.config.reviveStandPx) move = this.walk(world, here, leaderAt);
-    } else if (toLeader > this.config.followMaxPx) {
+    } else if (toLeader > followMaxPx) {
       mode = 'regroup';
       move = this.walk(world, here, leaderAt);
       dash = toLeader > this.config.catchUpDashPx && world.canSee(here, leaderAt) && this.dashReady(now);
@@ -177,18 +182,23 @@ export class PartnerBotBrain {
     this.lastAim = aim;
 
     const ultimate = self.ultimateReady && target !== null && this.ultimateWorthIt(world, here, tactics);
-    const warp = this.warpCheck(now, here, leaderAt, toLeader, move !== ZERO);
+    const warpDistancePx = bossFight ? this.config.boss.warpDistancePx : this.config.warpDistancePx;
+    const warp = this.warpCheck(now, here, leaderAt, toLeader, move !== ZERO, warpDistancePx);
     return { actions: { move, aim, attack, dash, shoot, interact: false, ultimate }, mode, warp };
   }
 
-  /** Najbliższy widoczny cel w zasięgu bota i blisko gracza. */
+  /**
+   * Najbliższy widoczny cel w zasięgu bota i blisko gracza. Boss (krok U9a) — z dalszego zasięgu i bez względu
+   * na odległość od gracza: łucznik i Czarodziejka-bot wcześniej prawie nie bili latającej Wiedźmy.
+   */
   private pickTarget(world: BotWorld, here: Vector2, leaderAt: Vector2): BotTarget | null {
     let best: BotTarget | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const target of world.targets) {
       const d = dist(here, target) - target.radius;
-      if (d > this.config.engageRangePx || d >= bestDistance) continue;
-      if (dist(leaderAt, target) - target.radius > this.config.engageLeaderRangePx) continue;
+      const boss = target.boss === true;
+      if (d > (boss ? this.config.boss.engageRangePx : this.config.engageRangePx) || d >= bestDistance) continue;
+      if (!boss && dist(leaderAt, target) - target.radius > this.config.engageLeaderRangePx) continue;
       if (!world.canSee(here, target)) continue;
       best = target;
       bestDistance = d;
@@ -221,8 +231,8 @@ export class PartnerBotBrain {
   }
 
   /** Teleport obok gracza, gdy bot długo jest daleko albo chce iść, a stoi w miejscu. */
-  private warpCheck(now: number, here: Vector2, leaderAt: Vector2, toLeader: number, moving: boolean): Vector2 | null {
-    this.farSince = toLeader > this.config.warpDistancePx ? (this.farSince ?? now) : null;
+  private warpCheck(now: number, here: Vector2, leaderAt: Vector2, toLeader: number, moving: boolean, warpDistancePx: number): Vector2 | null {
+    this.farSince = toLeader > warpDistancePx ? (this.farSince ?? now) : null;
     if (!moving) this.stuckProbe = null;
     else if (!this.stuckProbe || dist(here, this.stuckProbe.at) > this.config.stuckMovePx) this.stuckProbe = { at: here, since: now };
     const lagging = this.farSince !== null && now - this.farSince >= this.config.warpAfterMs;
