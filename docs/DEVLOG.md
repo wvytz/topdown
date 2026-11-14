@@ -6585,6 +6585,19 @@ Pierwsza część etapu U9 (platformy), wg `docs/UPGRADE.md` i backlogu („bot 
 
 **Testy:** `inputHints.test.ts`. Build zielony (3161 testów). Przeglądarka: zapis z botem w slocie 1 („Łucznik + Czarodziejka (bot)”), dwa kliknięcia „USUŃ ZAPIS” usuwają slot.
 
+## Krok U9d — Dźwięki nowych efektów `#upgrade` `#platformy` `#dzwiek`
+
+Ostatnia część etapu U9. Nowe zdarzenia z U8–U11, które dotąd grały w ciszy, dostały efekty z syntezy (przepisy w `config/audioConfig.ts`, bramka `SOUND_GATE_RULES` — w nawale rzadziej niż ciosy):
+- **Ciężki zamach wroga** (`SoundCue.HeavyWindup`, U11b): niski, narastający „wuuum” raz na początku zamachu z pomarańczowym „!” (`Enemy.updateWeightMark`), co najwyżej co 220 ms.
+- **Skok pajączka** (`SoundCue.SpiderLeap`, U8d): krótki syk i trzask odnóży na starcie skoku (`Spiderling.tick`), co najwyżej co 140 ms.
+- **Rozdeptanie** (`SoundCue.Stomp`, U8c, Buty ×3): tupnięcie z basem, gdy dash trafi wroga (`HeroCombat.resolveDashStrike`).
+
+Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miały już dźwięki (U8a–b, U11a–b). Karta wejścia bossa zostaje bez osobnego dźwięku (gra ryk bossa).
+
+**Testy:** ogólne testy przepisów (`sfxTone.test.ts` itd.) obejmują nowe efekty. Build zielony (3173 testy). `npm run smoke -- --floors 3 --seeds 1` solo, `--coop` i `--bot` — OK.
+
+**Do oceny:** głośność i barwa trzech nowych dźwięków (`SOUND_RECIPES`).
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6607,7 +6620,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka — zrobione poza wrogami luster i ogrodu (kroki U8a–U8f, czeka na ocenę):** wydarzenia w pokojach (pochodnia, sakiewka, ciemny pokój), przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem (`docs/balance/U8e-2026-11-14.md`; propozycje liczb czekają na zgodę), złapanie Uciekiniera. Zostaje: własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (wygląd i zachowanie z generatora).
-- **U9 platformy:** zrobione U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu) U9b (zmiana imienia w pauzie, filtr wulgaryzmów) i U9c (usuwanie zapisów i wybór piętra dotykiem, podpowiedzi zależne od urządzenia); zostają dźwięki nowych efektów.
+- **U9 platformy — zrobione (kroki U9a–U9d):** U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu), U9b (zmiana imienia w pauzie, filtr wulgaryzmów), U9c (usuwanie zapisów i wybór piętra dotykiem, podpowiedzi zależne od urządzenia), U9d (dźwięki ciężkiego zamachu, skoku pajączka i Rozdeptania) — etap zrobiony, czeka na ocenę.
 - **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b zrobione, U11a–U11b przyjęte przez właściciela 14.11.2026 (`#ocena`):** „!” w ciężkim zamachu, ciężkie ciosy Passy III, kara bossów, licznik na telefonie, unik bota, `npm run bench:wagi`. Dalej: strojenie liczb po ocenie właściciela; Oddech i garda tylko, jeśli wersja lekka okaże się za łatwa.
 
 **4. Odłożone — tylko za zgodą właściciela**

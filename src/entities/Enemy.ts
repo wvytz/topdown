@@ -193,6 +193,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return true;
   }
 
+  /** Czy „!” wisiało w poprzedniej klatce — dźwięk gra tylko na początku zamachu (krok U9d). */
+  private weightMarkShown = false;
+
   /** Znak wagi w zamachu (krok U11b): pomarańczowe „!” nad głową w ciężkim zamachu, miga; poza zamachem ukryty. */
   private updateWeightMark(now: number): void {
     if (!hasWindupMark(this.attackWeight)) return;
@@ -200,8 +203,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const show = this.active && this.visible && !this.isDead && this.seizedTint === null && (this.attackCycle.isWindingUp(now) || charging);
     if (!show) {
       this.weightMark?.setVisible(false);
+      this.weightMarkShown = false;
       return;
     }
+    // Krok U9d: początek ciężkiego zamachu słychać (raz na zamach).
+    if (!this.weightMarkShown) sound.play(SoundCue.HeavyWindup, this);
+    this.weightMarkShown = true;
     const { marks } = COMBAT_WEIGHT_CONFIG;
     if (!this.weightMark) {
       this.weightMark = uiText(this.scene, this.x, this.y, marks.heavyText, { color: marks.heavyCss, size: 2 })
