@@ -55,3 +55,19 @@ describe('przeszywający strzał — telegraf', () => {
     expect(piercingAimPhase(shot.aimMs, shot)).toBe(AimPhase.Fire);
   });
 });
+
+describe('atak kary bossa — wspólna przerwa (krok U11b)', () => {
+  it('boss zajmuje okno raz na przerwę i blokuje wtedy wrogów', () => {
+    const planner = new PunishPlanner(punish, createRng(1));
+    expect(planner.claim(0)).toBe(true);
+    expect(planner.claim(punish.cooldownMs - 1)).toBe(false);
+    expect(planner.plan(punish.cooldownMs - 1, hero, [at('kiter', EnemyType.Kiter, 200)])).toBeNull();
+    expect(planner.claim(punish.cooldownMs)).toBe(true);
+  });
+
+  it('wróg, który ukarał, blokuje okno bossa', () => {
+    const planner = new PunishPlanner(punish, createRng(1));
+    expect(planner.plan(0, hero, [at('kiter', EnemyType.Kiter, 200)])).not.toBeNull();
+    expect(planner.claim(1)).toBe(false);
+  });
+});

@@ -39,6 +39,8 @@ export const PARTNER_BOT_CONFIG = {
   reviveStandPx: 10,
   /** Dash doganiania, gdy gracz dalej niż tyle (px) i jest prosta droga. */
   catchUpDashPx: 190,
+  /** Unik ataku kary (krok U11b): bot odskakuje, gdy jego środek jest bliżej pasa niż połowa szerokości pasa + tyle (px; ciało i zapas). */
+  dodgeMarginPx: 14,
   /** Najkrótszy odstęp między dashami bota (ms). */
   dashCooldownMs: 1200,
   /** Teleport do gracza: dalej niż tyle (px)… */

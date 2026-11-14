@@ -7,6 +7,8 @@ import { SoundCue, sound } from '@/audio/SoundBoard';
 import type { Player } from '@/entities/Player';
 import { HERO_COLORS } from '@/systems/HeroColors';
 import { type UiText, uiText } from '@/ui/UiText';
+import { currentPlatform } from '@/core/platform';
+import type { UiTextSize } from '@/config/uiConfig';
 
 const TIER_CUES = [SoundCue.StreakTier1, SoundCue.StreakTier2, SoundCue.StreakTier3] as const;
 /** Podskok licznika po wejściu na próg (ms, px). */
@@ -28,6 +30,9 @@ export class WeightFx {
   private popUntil = 0;
   private counterColor: string = COMBAT_WEIGHT_CONFIG.visual.counterColors[0];
   private readonly classCss: string;
+  /** Krok U11b: na telefonie licznik o krój większy i dalej od postaci (czytelny pod kciukiem). */
+  private readonly sizeBonus: number;
+  private readonly offset: { readonly x: number; readonly y: number };
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -35,6 +40,9 @@ export class WeightFx {
     hero: HeroId,
   ) {
     this.classCss = HERO_COLORS[hero].css;
+    const mobile = currentPlatform() === 'mobile';
+    this.sizeBonus = mobile ? COMBAT_WEIGHT_CONFIG.mobile.counterSizeBonus : 0;
+    this.offset = mobile ? COMBAT_WEIGHT_CONFIG.mobile.counterOffset : COMBAT_WEIGHT_CONFIG.visual.counterOffset;
     this.counter = uiText(scene, player.x, player.y, '', { color: COMBAT_WEIGHT_CONFIG.visual.counterColors[0] })
       .setOrigin(0, 1)
       .setDepth(RENDER_DEPTH.worldText)
@@ -59,16 +67,16 @@ export class WeightFx {
     if (showCounter) {
       const color = snap.tier >= 3 ? this.classCss : visual.counterColors[Math.min(snap.tier, 2)]!;
       this.counterColor = color;
-      this.counter.setText(`×${snap.streak}`).setColor(color).setFontSize(snap.tier >= 3 ? 2 : 1);
+      this.counter.setText(`×${snap.streak}`).setColor(color).setFontSize((snap.tier >= 3 ? 2 : 1) + this.sizeBonus);
       const pop = now < this.popUntil ? POP_PX : 0;
-      this.counter.setPosition(Math.round(this.player.x + visual.counterOffset.x), Math.round(this.player.y + visual.counterOffset.y - pop));
+      this.counter.setPosition(Math.round(this.player.x + this.offset.x), Math.round(this.player.y + this.offset.y - pop));
     }
     this.drawCracks(alive ? snap.cracks : 0, now);
   }
 
   /** Utracona Passa: kopia licznika opada i gaśnie. */
   private shatter(): void {
-    const ghost = uiText(this.scene, this.counter.x, this.counter.y, this.counter.text, { color: this.counterColor, size: this.counter.fontSize >= 2 ? 2 : 1 })
+    const ghost = uiText(this.scene, this.counter.x, this.counter.y, this.counter.text, { color: this.counterColor, size: this.counter.fontSize as UiTextSize })
       .setOrigin(0, 1)
       .setDepth(RENDER_DEPTH.worldText);
     this.scene.tweens.add({ targets: ghost, y: ghost.y + 8, alpha: 0, duration: SHATTER_MS, onComplete: () => ghost.destroy() });

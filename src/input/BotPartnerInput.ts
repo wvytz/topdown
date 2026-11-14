@@ -4,7 +4,7 @@ import type { HeroKit } from '@/core/heroTypes';
 import type { Vector2 } from '@/core/types';
 import type { Player, PlayerActions } from '@/entities/Player';
 import type { PlayerInput, PlayerInputContext } from '@/input/playerInput';
-import { PartnerBotBrain, type BotDecision } from '@/ai/PartnerBotBrain';
+import { PartnerBotBrain, type BotDecision, type BotThreat } from '@/ai/PartnerBotBrain';
 import { nextWaypoint } from '@/ai/botPath';
 import { hasLineOfSight } from '@/dungeon/lineOfSight';
 import { PARTNER_BOT_CONFIG } from '@/config/partnerBotConfig';
@@ -20,6 +20,8 @@ export interface BotPartnerDeps {
   readonly floor: () => DungeonFloor;
   /** Teleport bota obok gracza (utknął albo został w tyle). */
   readonly warp: (to: Vector2) => void;
+  /** Czerwone pasy ataku kary (krok U11b). */
+  readonly threats?: () => readonly BotThreat[];
 }
 
 /**
@@ -57,6 +59,7 @@ export class BotPartnerInput implements PlayerInput {
       targets: [...targets()],
       canSee: (from, to) => hasLineOfSight(floor, from, to, TILE_SIZE),
       navigate: (from, to) => nextWaypoint(floor, from, to, TILE_SIZE, halfWidth),
+      threats: this.deps.threats?.() ?? [],
     });
     this.lastDecision = decision;
     if (decision.warp) this.deps.warp(decision.warp);

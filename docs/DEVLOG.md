@@ -6472,6 +6472,39 @@ Drugi lek na „grę powtarzalną” z ustalenia 6 (`docs/UPGRADE.md`) i „poko
 
 **Weryfikacja:** w przeglądarce (piętro 4, seed 5, Czarodziejka, `?chest=1`): podpowiedź przy skrzyni, E otwiera, 3 elity (Ognisty, Wybuchowy, Wampiryczny) wychodzą ze znaczników, po ich wybiciu wypadły Buty i złoto (+78 z łupem elit). Bez błędów w konsoli.
 
+## Krok U11b — System wag: znak ciężkiego zamachu, ciężkie ciosy, kara bossów, telefon i bot `#upgrade` `#wagi`
+
+Ciąg dalszy wersji lekkiej (`docs/WAGI.md` §11, decyzja właściciela 14.11.2026). Prośba właściciela: „Wdrażaj wszystkie zaplanowane zmiany póki starczy tokenów” — rekomendowane ścieżki bez pytania. Oddech i automatyczna garda nadal odłożone.
+
+**Co powstało**
+- **Waga ataku wroga** (`systems/AttackWeight.ts`, `enum AttackWeight` w `core/combatWeightTypes.ts`): upiory lekkie, elity (każda cecha), skok-szarża (ogar) i Czyhacz ciężcy, reszta średnia. Ciężki zamach (także zamach szarży Tarczownika) ma nad głową migające pomarańczowe „!” — ponad nazwą elity, bez nowego HUD-u (`Enemy.updateWeightMark`). Lekki i średni bez znaku (zostaje dawny pomarańczowy odcień zamachu), przebijający to „!!” ataku kary.
+- **Ciężkie ciosy na Passie III** (`CombatScale.isHeavy`, `Enemy.stagger`, `AttackCycle.isWindingUp`): cios, strzał albo impuls promienia bohatera z Passą III trafiający wroga w zamachu przerywa zamach i ogłusza go na 0,5 s (przez odporność na ogłuszenie). Skoku, szarży i doskoku w locie nie przerywa; bossów też nie. Bez napisu — gaśnie „!” i wróg dostaje odcień ogłuszenia.
+- **Atak kary bossów** (`BossFightDeps.punishGate`, `PunishManager.claimBossWindow`, `PunishPlanner.claim`): gdy bohater ma pęknięcia III, najbliższy atak obszarowy bossa jest przebijający — strefy ×1,5 obrażeń, pulsujący czerwony obrys nad mrokiem, nad bossem miga „!!” do uderzenia, dźwięk `PunishWarn`. Bez nowych animacji. Jedna przerwa 6 s dla wrogów i bossa (także duetu), więc nie ma serii kar. Bossowie bez ataków obszarowych w danej chwili czekają na następny.
+- **Telefon** (`COMBAT_WEIGHT_CONFIG.mobile`): licznik Passy o krój większy (×N rozmiar 2, na III — 3) i odsunięty od postaci. Pad bez zmian — system nie dodaje przycisków.
+- **Bot-partner zna czerwień** (`dodgeDirection` w `ai/PartnerBotBrain.ts`, `PunishManager.threats`): w linii przeszywającego strzału albo w pasie taranu odskakuje w bok z dashem — przed walką i wskrzeszaniem (`dodgeMarginPx`).
+- **Pomiar botem** (`npm run bench:wagi`, `tools/weights-bench.mjs`): ten sam run z `?wagi=0` i `?wagi=1`; bot-partner walczy w każdym zwykłym pokoju, P1 stoi obok nietykalny. Liczy HP utracone przez bota, „śmierci” (dolewka do pełna), czas oczyszczenia pokoju, kary, uniki, przerwane zamachy i najwyższą Passę.
+
+**Decyzje w trakcie**
+- „Pancerz zamachu” z §2 pominięty: zwykłe ciosy i tak nie przerywały zamachu wrogów, więc ciężki cios Passy III jest jedynym, który to robi — nagroda bez nowej zasady do nauki.
+- Kara bossa mnoży całe strefy ataku (w co-opie trafia też partnera bez pęknięć) — jeden znak dla wszystkich, zgodnie z zasadą „czerwony znaczy uciekaj”.
+
+**Testy:** `tests/systems/attackWeight.test.ts` (wagi archetypów, znak, `isWindingUp`), `combatScale.test.ts` (ciężkie dopiero na III), `PunishPlanner.test.ts` (wspólna przerwa bossa i wrogów), `PartnerBotBrain.test.ts` (unik w pasie, kierunek, bez uniku poza pasem).
+
+**Weryfikacja:** `npm run build` zielony; w przeglądarce: „!” nad zamachem ognistej elity, przerwany zamach przy ×12 (ogłuszenie), kara Slimera (strefa 14 → 21, czerwony obrys, „!!”), licznik ×9 na `mobile.html`. Pomiar botem — niżej.
+
+**Pomiar botem** (`npm run bench:wagi -- --floors 1,2,3`, seed 1, 12 zwykłych pokojów na bohatera, limit 25 s gry na pokój; bot bez przedmiotów):
+
+| Bot | Wagi | HP bota na pokój | „Śmierci” | Śr. czas pokoju | Kary | Uniki bota | Passa max |
+|---|---|---|---|---|---|---|---|
+| barbarzyńca | 0 | 39,3 z 80 | 5 | 21,1 s | — | — | — |
+| barbarzyńca | 1 | 34,7 z 80 | 4 | 18,8 s | 7 | 7 | 0 |
+| Czarodziejka | 0 | 22,3 z 80 | 2 | 21,4 s | — | — | — |
+| Czarodziejka | 1 | 28,8 z 80 | 3 | 20,0 s | 8 | 9 | I |
+| łucznik | 0 | 35,3 z 85 | 4 | 23,3 s | — | — | — |
+| łucznik | 1 | 32,2 z 85 | 3 | 20,6 s | 5 | 5 | II |
+
+Wniosek: system wag nie zmienia trudności dla bota w sposób widoczny ponad szum (±15% HP, ±1 „śmierć” w obie strony) — zgodnie z §7 („trudność nie spada”). Kara pojawia się co 1–2 pokoje, gdy bohater dużo przyjmuje; bot odskakuje przy każdej. Bot prawie nie buduje Passy (co chwilę dostaje, a pęknięcia blokują wzrost), więc przerwanych zamachów w pomiarze nie ma — ciężkie ciosy to nagroda dla gracza, który unika ciosów. Ograniczenia pomiaru: bot trzyma się gracza i nie goni dalekich wrogów, więc większość pokojów kończy się limitem 25 s (na piętrze 3 bot prawie nie walczył); to porównanie „przed i po”, nie bezwzględna miara trudności. Strojenie liczb — po ocenie właściciela.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6496,7 +6529,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
 - **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
-- **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b:** wagi i znaki w zamachu wrogów (pomarańczowy = ciężki, czerwony = przebijający), ciężkie ciosy na Passie III, atak kary bossów, telefon i pad (sprawdzić czytelność licznika), bot-partner unikający kary, pomiar trudności botem przed i po.
+- **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b zrobione (czeka na ocenę):** „!” w ciężkim zamachu, ciężkie ciosy Passy III, kara bossów, licznik na telefonie, unik bota, `npm run bench:wagi`. Dalej: strojenie liczb po ocenie właściciela; Oddech i garda tylko, jeśli wersja lekka okaże się za łatwa.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - Kolidujące rekwizyty (zmieniają linię wzroku Kiterów).
