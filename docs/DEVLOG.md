@@ -6577,11 +6577,24 @@ Pierwsza część etapu U9 (platformy), wg `docs/UPGRADE.md` i backlogu („bot 
 
 **Testy:** `NameFilter.test.ts`, `pauseMenu.test.ts`. Build zielony (3153 testy). Przeglądarka: pauza → „Dźwięk i obraz” → „IMIĘ: —” → „kurwa” odrzucone z komunikatem, „Wicio” zapisane w `tower-crawler.player-name.v1`.
 
+## Krok 188 — Druga paczka upgradu w grze testerów: U3–U9b i system wag `#decyzja` `#upgrade`
+
+**Decyzja właściciela (14.11.2026):** „możemy wszystko scalić i wrzucić do głównej gry?” — polecenie scalenia całego `upgrade-fable` do `main` i wdrożenia gry testerów.
+
+**Co weszło do `main`** (stan `upgrade-fable` z `d6411bb`; stan `main` sprzed scalenia: `c3b1d58`): U3 światło 2.0, U4a–U4f kafle 2.0 wszystkich biomów (bez krwi, odrzut wrogów ×0,5, skarbiec pająków), U5a–U5c postacie 2.0 (bez napisów elit i zasadzki, słabszy totem), U6 bossowie (karta wejścia, śmierci, rekwizyty aren 6–7), U7–U7h interfejs (krój POLEGŁEŚ, prosty HUD, Slimer, fazy bez komunikatów), U8a–U8f rozgrywka (wydarzenia w pokojach, przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem, złapanie Uciekiniera), U9a–U9b platformy („Graj z botem” w menu, zmiana imienia i filtr wulgaryzmów), U11a–U11b system wag w wersji lekkiej. Akt II (`akt-2`, `/topdown/akt2/`) nietknięty.
+
+**Przegląd przed wdrożeniem dla testerów**
+- **Zapisy graczy:** format zapisu i klucze `tower-crawler.*` bez zmian; jedyna zmiana w `SaveGame.ts` to opcjonalne pole `bot` partnera — stare zapisy wczytują się jak dotąd. `src/persistence/` i worker bez zmian, wspólne tablice (`/scores`, `/arena-scores`, `/coop-scores`) odpowiadają.
+- **Przełączniki z adresu:** `?vault=1`, `?event=`, `?chest=1`, `?ambush=` i bot (z adresu i z menu) dawały już run testowy. **Poprawka:** `?wagi=0|1` zmieniał zasady walki, a wynik szedł na wspólną tablicę — teraz taki run też jest testowy (`systems/startOverrides.ts`).
+- `public/do-oceny.html` ma względne linki, więc w grze testerów otwiera grę testerów (każdy link to run testowy). Wdrożenie z `main` zachowuje podkatalogi `gh-pages` (`/upgrade/`, `/akt2/`).
+
+**Testy:** `startOverrides.test.ts` (wagi z adresu = run testowy). `npm run build` zielony, `npm run smoke` (solo), `-- --coop` i `-- --bot` zielone.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
 
-**1. Do oceny** `#ocena` — jedna lista z linkami do gry: `public/do-oceny.html` (na podglądzie `wvytz.github.io/topdown/upgrade/do-oceny.html`). Nowy krok z „czeka na ocenę” dopisuje tam pozycję; ocenioną przenosimy do wpisu kroku jako `#ocena` i usuwamy ze strony. Najpilniejsze: czas klatki na telefonie właściciela (`?perf=1`) — punkt odniesienia dla U1–U3.
+**1. Do oceny** `#ocena` — jedna lista z linkami do gry: `public/do-oceny.html` (w grze testerów `wvytz.github.io/topdown/do-oceny.html`, na podglądzie `…/topdown/upgrade/do-oceny.html`). Nowy krok z „czeka na ocenę” dopisuje tam pozycję; ocenioną przenosimy do wpisu kroku jako `#ocena` i usuwamy ze strony. Najpilniejsze: czas klatki na telefonie właściciela (`?perf=1`) — punkt odniesienia dla U1–U3.
 
 **2. Otwarte decyzje właściciela** `#decyzja`
 - Nazwa biomu piętra 5 (Zadymiona palarnia / mieszkanie gracza).
