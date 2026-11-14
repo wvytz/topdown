@@ -50,6 +50,12 @@ export enum SoundCue {
   PunishWarn = 'punish-warn',
   /** Przeszywający strzał albo ruszenie taranu: suchy trzask ze świstem. */
   PunishStrike = 'punish-strike',
+  /** Krok U9d: wróg zaczyna ciężki zamach (pomarańczowe „!”). */
+  HeavyWindup = 'heavy-windup',
+  /** Krok U9d: pajączek skacze na bohatera. */
+  SpiderLeap = 'spider-leap',
+  /** Krok U9d: Rozdeptanie (Buty ×3) — dash trafia wrogów. */
+  Stomp = 'stomp',
   /** Sprzątaczka krzyczy (krok 125): krótki, piskliwy okrzyk do napisu nad głową. */
   Shout = 'shout',
   /** Chlust wody z wiadra. */
