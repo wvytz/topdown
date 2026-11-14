@@ -18,6 +18,7 @@ Decyzja właściciela z 10.11.2026: **„Wdrażaj jako osobny branch. Zostawiamy
 - Przed etapem i po nim: `npm run shots -- --label <etap>` (12 kadrów, `--before` daje arkusz „przed | po”) i `npm run perf` (pełna nawała: PC, co-op, telefon). Lista rzeczy do oceny: `public/do-oceny.html`.
 - Scalenie `upgrade-fable` do `main` dopiero na wyraźne „tak” właściciela, paczkami, z tagiem na `main` przed scaleniem.
 - **11.11.2026 — pierwsza paczka w grze testerów** (właściciel: „scal i wdróż na główny page wszystko nad czym pracowaliśmy wczoraj. ustaw ten 1.6 jako domyślny”): U0, U1a, U1, U2 i zoom 1,6 scalone do `main` (krok 185) i wdrożone. Stan sprzed scalenia: commit `110691e` (krok 184a). Kolejne etapy dalej przez `upgrade-fable` i podgląd, do `main` paczkami na „tak”.
+- **14.11.2026 — druga paczka w grze testerów** (właściciel: „możemy wszystko scalić i wrzucić do głównej gry?”): całe `upgrade-fable` do `4b24990` — U3–U8f, U9a–U9d, U11a–U11b — scalone do `main` (krok 188) i wdrożone. Stan sprzed scalenia: `c3b1d58`.
 - Kroki na gałęzi mają w DEVLOG-u nazwy **„Krok U<etap><litera>”** (np. „Krok U2a”). Numery 185 i wyższe zostają dla `main`.
 
 ## 2. Kierunek
@@ -62,7 +63,7 @@ Każdy etap to osobny wątek. U0–U3 po kolei, od U4 najwyżej dwa wątki naraz
 | **U6. Bossowie** | Wejście bossa z kartą, widoczne fazy, śmierć Pożeracza, smagnięcie Matki Pająków, rekwizyty aren 6–7 z generatora | Każdy z 7 bossów ma wejście, fazy i śmierć; liczby walk bez zmian | Wyłącznik karty w config |
 | **U7. Interfejs** | Jeden pikselowy krój pisma, nowy HUD, karty z ikonami, pauza/menu/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranach końca | Ten sam wygląd na PC, padzie i telefonie; ekran startowy nietknięty | Stary interfejs na `main` do scalenia paczki (krok U7: bez flagi — krój dotyka wszystkich ekranów) |
 | **U8. Rozgrywka** | Wydarzenia w pokojach, przeklęta skrzynia, przemiana Butów, własni wrogowie luster i ogrodu, skok pajączka, pomiar bohaterów botem | Dwa runy tym samym bohaterem różnią się przebiegiem pokojów; raport balansu | Wyłącznik każdej nowości w config |
-| | *Stan 14.11.2026: U8a wydarzenia w pokojach, U8b przeklęta skrzynia, U8c Rozdeptanie, U8d skok pajączka, U8e pomiar botem (`tools/balance.mjs`, raport w `docs/balance/`), U8f złapanie uciekiniera. Zostało z U8: własni wrogowie luster i ogrodu (nowe skórki i zachowania archetypów — generator).* | | |
+| | *Stan 14.11.2026: U8a wydarzenia w pokojach, U8b przeklęta skrzynia, U8c Rozdeptanie, U8d skok pajączka, U8e pomiar botem (`tools/balance.mjs`, raport w `docs/balance/`), U8f złapanie uciekiniera, U8g własni wrogowie luster i ogrodu (`tools/upper_enemies.py`). U8 zamknięty.* | | |
 | **U9. Platformy** | Telefon, naprawa bota i „Graj z botem”, zmiana imienia i filtr, dźwięki nowych efektów | Smoke solo, co-op i bot zielone | Małe osobne PR-y |
 | **U11. System wag** | Wagi ataków, Oddech z automatyczną gardą, Zadyszka i atak kary, Szala, sygnalizacja trafień zamiast krwi (`docs/WAGI.md`, kroki U11a–U11d) | Akceptacja właściciela na podglądzie, raport trudności botem przed i po | `?wagi=0`, `COMBAT_WEIGHT_CONFIG.enabled` |
 | **U10. Scalenie** | Paczkami do `main`, pełny smoke, wdrożenie z `.env.production` | „Tak” właściciela dla każdej paczki | Tag na `main` |

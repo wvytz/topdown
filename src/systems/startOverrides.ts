@@ -18,7 +18,7 @@ export interface StartOverrides {
   readonly roomEvent?: RoomEventKind;
   /** `?chest=1` (krok U8b): przeklęta skrzynia na każdym piętrze. */
   readonly cursedChest?: boolean;
-  /** true, gdy adres zmienił piętro albo seed — wynik runu nie jest zapisywany. */
+  /** true, gdy adres zmienił piętro, seed albo zasady (np. `?wagi=`) — wynik runu nie jest zapisywany. */
   readonly practice: boolean;
 }
 
@@ -33,6 +33,8 @@ export function parseStartOverrides(search: string): StartOverrides {
   const ambush = Object.values(AmbushVariant).find((v) => v === params.get('ambush'));
   const roomEvent = Object.values(RoomEventKind).find((v) => v === params.get('event'));
   const cursedChest = params.get('chest') === '1';
+  // Krok 188: `?wagi=0|1` przełącza system wag (krok U11a) — taki run zmienia zasady walki, więc jest testowy.
+  const weightsOverride = params.has('wagi');
   return {
     ...(atBoss ? { atBoss } : {}),
     ...(atVault ? { atVault } : {}),
@@ -41,6 +43,6 @@ export function parseStartOverrides(search: string): StartOverrides {
     ...(ambush ? { ambush } : {}),
     ...(roomEvent ? { roomEvent } : {}),
     ...(cursedChest ? { cursedChest } : {}),
-    practice: atBoss || atVault || ambush !== undefined || roomEvent !== undefined || cursedChest || runSeed !== undefined || (startFloor !== undefined && startFloor > 1),
+    practice: atBoss || atVault || weightsOverride || ambush !== undefined || roomEvent !== undefined || cursedChest || runSeed !== undefined || (startFloor !== undefined && startFloor > 1),
   };
 }

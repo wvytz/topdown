@@ -41,4 +41,9 @@ describe('start z adresu — run testowy (krok 41g)', () => {
     expect(run.snapshot(10).practice).toBe(true);
     expect(new RunState(newRun(HeroId.Barbarian)).snapshot(null).practice).toBe(false);
   });
+
+  it('przełącznik wag z adresu (krok 188) robi run testowy', () => {
+    expect(parseStartOverrides('?wagi=0')).toEqual({ practice: true });
+    expect(parseStartOverrides('?wagi=1')).toEqual({ practice: true });
+  });
 });

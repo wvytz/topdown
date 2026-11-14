@@ -20,6 +20,10 @@ Krok 122a — wersje biomów (te same kolumny: gniazdo 0–3 ruch, 4–7 wylęg;
   necromancer / crawling-hand      Cmentarzysko: nekromanta w rdzawych łachmanach z kosturem, pełzająca dłoń
   imp-mother / imp                 Piekło: rozdęta czarcica z żarem w brzuchu, chochlik
   hookah / smoke-wisp              Zadymiona palarnia: żywa fajka wodna na mosiężnych nóżkach, dymek z żarem oczu
+
+Krok U8g — Lustrzana komnata i Bociani Ogród:
+  foam-bucket / bubble             Lustrzana komnata: wiadro z pianą na mopowych nóżkach, bańka mydlana (spowalnia)
+  toad / froglet                   Bociani Ogród: ropucha z ikrą na grzbiecie, żabka z językiem
 """
 import argparse
 import math
@@ -415,6 +419,138 @@ def smoke_wisp_frame(f):
     return img
 
 
+# ---------------- Lustrzana komnata (krok U8g): wiadro z pianą i bańka mydlana ----------------
+MIRROR = trt.PALETTES['lustro_opal']
+OPAL = MIRROR.opal  # róż, błękit, liliowy, blada żółć
+# Plastikowe wiadro sprzątaczek (przygaszony róż) — ciemniejsze od jasnej posadzki; piana jasna, z obrysem.
+BUCKET = (ok(.30, .070, 355), ok(.40, .090, 355), ok(.50, .100, 355), ok(.60, .090, 358), ok(.70, .070, 5))
+SUDS = (ok(.70, .020, 250), ok(.80, .020, 245), ok(.87, .016, 240), ok(.92, .012, 235), ok(.96, .008, 230))
+MOP = (ok(.34, .015, 250), ok(.44, .018, 250), ok(.54, .020, 250), ok(.64, .020, 248), ok(.74, .018, 245))
+
+
+def foam_bucket_frame(f):
+    moving, step, swell, glow = phase(f)
+    img = Img(CELL, CELL)
+    # nóżki z mopów: cztery szare frędzle, na zmianę w przód i w tył
+    for side in (1, -1):
+        for i, (a, t) in enumerate((((C + 6, C - 3), (C + 10, C - 6)), ((C + 6, C + 6), (C + 10, C + 9)))):
+            dy = step if (i + (side > 0)) % 2 == 0 else -step
+            pts = [a, (t[0], t[1] + dy)]
+            if side < 0:
+                pts = [mirror(p, C) for p in pts]
+            stroke(img, pts, 2.4, MOP[1], edge=MOP[3])
+    # wiadro: obręcz i ciemne wnętrze
+    ellipse(img, C, C + 1, 9.5, 9.5, band_shade(BUCKET))
+    ellipse(img, C, C + 1, 7.5, 7.5, lambda nx, ny: BUCKET[0])
+    # pałąk wiadra z przodu
+    stroke(img, [(C - 7, C - 2), (C - 4, C - 8), (C + 4, C - 8), (C + 7, C - 2)], 1.2, MOP[3])
+    # piana: kłębki bąbli, przy wylęgu rośnie i jaśnieje
+    suds = ramp_shift(SUDS, glow)
+    for bx, by, r in ((C - 3, C + 2, 3.0), (C + 3, C + 3, 2.8), (C, C - 1, 3.2), (C - 1, C + 5, 2.4)):
+        ellipse(img, bx, by, r + swell * .5, r + swell * .5, band_shade(suds, light=(-.4, -.5)))
+    # opalizujący odblask na bąblach (akcent)
+    img.put(int(C - 1), int(C - 2 - swell * .5), OPAL[1])
+    img.put(int(C + 2), int(C + 2), OPAL[0])
+    # ślepia na krawędzi wiadra
+    img.put(int(C - 2), int(C - 7), OPAL[2])
+    img.put(int(C + 1), int(C - 7), OPAL[2])
+    if f == 7:
+        # wyplucie: bańka nad pianą
+        ellipse(img, C, C - 6, 2.0, 2.0, band_shade(SUDS))
+    return img
+
+
+def bubble_frame(f):
+    img = Img(CELL, CELL)
+    moving = f < 4
+    bob = (0, -1, 0, 1)[f % 4] if moving else 0
+    lunge = lunge_of(f)
+    # bańka: wnętrze bladoliliowe, obwód w barwach opalu (róż → błękit), przy ataku spłaszczona w przód
+    rx = 6.0 + (lunge * .25 if not moving else 0)
+    ry = 6.0 - (lunge * .25 if not moving else 0)
+    cy = C + bob * .5 - lunge * .5
+    rim = (ok(.52, .110, 300), ok(.66, .100, 300), OPAL[2], OPAL[1], SUDS[3])
+    ellipse(img, C, cy, rx, ry, band_shade(rim))
+    ellipse(img, C, cy, rx - 2, ry - 2, lambda nx, ny: SUDS[3] if nx + ny < 0 else SUDS[1])
+    for k in range(10):
+        a = k * math.tau / 10 + f * .3
+        img.put(int(C + math.cos(a) * (rx - .6)), int(cy + math.sin(a) * (ry - .6)), OPAL[k % 3])
+    img.put(int(C - 2), int(cy - 2), SUDS[4])
+    # ślepia (ciemne kropki) i pyszczek przy ugryzieniu
+    img.put(int(C - 2), int(cy - 1), MOP[0])
+    img.put(int(C + 1), int(cy - 1), MOP[0])
+    if not moving and f in (5, 6):
+        img.put(int(C), int(cy + 1), BUCKET[1])
+    return img
+
+
+# ---------------- Bociani Ogród (krok U8g): ropucha z ikrą i żabka ----------------
+GARDEN = trt.PALETTES['bociani_noc']
+# Ropucha: oliwkowa, brodawki jaśniejsze; ikra na grzbiecie świeci bladą zielenią (jak jaja worka ruin).
+TOAD = (ok(.30, .045, 105), ok(.38, .055, 108), ok(.47, .062, 110), ok(.56, .060, 112), ok(.66, .050, 115))
+SPAWN = (ok(.52, .090, 150), ok(.64, .110, 148), ok(.76, .120, 145), ok(.86, .090, 140), ok(.93, .050, 135))
+TOAD_EYE = ok(.84, .150, 85)
+# Żabka: jaśniejsza, żółtozielona — odcina się od ciemnej posadzki ogrodu nocą.
+FROG = (ok(.46, .100, 125), ok(.56, .120, 128), ok(.66, .130, 130), ok(.75, .120, 132), ok(.84, .090, 135))
+TONGUE = ok(.62, .130, 10)
+
+
+def toad_frame(f):
+    moving, step, swell, glow = phase(f)
+    img = Img(CELL, CELL)
+    # łapy: przednie krótkie, tylne zgięte szeroko (żaba z góry)
+    for side in (1, -1):
+        front = [(C + 6, C - 3), (C + 9, C - 6 + step), (C + 10, C - 8 + step)]
+        back = [(C + 7, C + 5), (C + 10.5, C + 3.5 - step), (C + 9.5, C + 9 - step)]
+        for pts in (front, back):
+            pts = pts if side > 0 else [mirror(p, C) for p in pts]
+            stroke(img, pts, 2.4, TOAD[1], edge=TOAD[3])
+    # tułów: szeroki, płaski
+    ellipse(img, C, C + 2, 9 + swell * .5, 8.5 + swell * .5, band_shade(TOAD))
+    # brodawki
+    for wx, wy in ((C - 6, C + 1), (C + 6, C + 2), (C - 4, C + 7), (C + 5, C + 7)):
+        img.put(int(wx), int(wy), TOAD[4])
+    # ikra na grzbiecie: grono jasnych jaj
+    spawn = ramp_shift(SPAWN, glow)
+    for ex, ey, r in ((C - 3, C + 4, 2.4), (C + 3, C + 4, 2.4), (C, C + 7.5, 2.2), (C, C + 1.5, 2.2)):
+        ellipse(img, ex, ey, r + swell * .2, r + swell * .2, band_shade(spawn, light=(-.4, -.5)))
+    # głowa z szerokim pyskiem i wyłupiastymi oczami
+    hy = C - 5 - swell * .3
+    ellipse(img, C, hy, 6, 3.6, band_shade(TOAD, light=(-.4, -.7)))
+    open_ = 0 if moving else (1, 2, 2, 1)[f - 4]
+    for x in range(int(C - 3), int(C + 4)):
+        img.put(x, int(hy - 2), TOAD[0])
+        if open_ > 1:
+            img.put(x, int(hy - 3), TOAD[0])
+    for s in (-1, 1):
+        ellipse(img, C + s * 4, hy - 1, 1.8, 1.8, shade2(TOAD[2], TOAD[3]))
+        img.put(int(C + s * 4), int(hy - 1), TOAD_EYE)
+    if f == 7:
+        ellipse(img, C, hy - 5.5, 1.6, 1.6, band_shade(SPAWN))
+    return img
+
+
+def froglet_frame(f):
+    img = Img(CELL, CELL)
+    moving = f < 4
+    hop = (0, 1.5, 2.5, 1)[f % 4] if moving else 0
+    lunge = lunge_of(f)
+    cy = C + 2 - hop * .4 - lunge * .5
+    # tylne łapy: w skoku wyprostowane do tyłu
+    for s in (-1, 1):
+        stroke(img, [(C + s * 2.5, cy + 2), (C + s * 4.5, cy + 3 + hop), (C + s * 3, cy + 5 + hop * 1.2)], 1.6, FROG[1], edge=FROG[3])
+        stroke(img, [(C + s * 2.5, cy - 2), (C + s * 4, cy - 4)], 1.2, FROG[1])
+    ellipse(img, C, cy, 3.8, 4.2, band_shade(FROG))
+    # oczy na czubku głowy (ciemne źrenice)
+    for s in (-1, 1):
+        ellipse(img, C + s * 2, cy - 3, 1.3, 1.3, shade2(FROG[3], FROG[4]))
+        img.put(int(C + s * 2 - (1 if s < 0 else 0)), int(cy - 3), TOAD[0])
+    # język przy ataku
+    if not moving and f in (5, 6):
+        stroke(img, [(C, cy - 4), (C, cy - 7 - (f - 5) * 2)], 1.0, TONGUE)
+    return img
+
+
 SHEETS = {
     'brood-sac_crawl-birth.png': sac_frame,
     'grub_crawl-bite.png': grub_frame,
@@ -428,6 +564,10 @@ SHEETS = {
     'imp_crawl-bite.png': imp_frame,
     'hookah_crawl-birth.png': hookah_frame,
     'smoke-wisp_crawl-bite.png': smoke_wisp_frame,
+    'foam-bucket_crawl-birth.png': foam_bucket_frame,
+    'bubble_crawl-bite.png': bubble_frame,
+    'toad_crawl-birth.png': toad_frame,
+    'froglet_crawl-bite.png': froglet_frame,
 }
 
 

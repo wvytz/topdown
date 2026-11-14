@@ -322,13 +322,14 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
   },
   // Lustrzana komnata (krok 124, pomysł właściciela `#lustrzana-komnata`): dwa piętra sprzątaczek po Palarni.
   // Wypolerowana, opalizująca posadzka świeci i odbija postacie, mury najbardziej zniszczone w wieży.
-  // Bez mgły — posadzka jest jasna mimo braku światła. Wrogowie na razie z ruin (nowych nie ma, decyzja otwarta).
+  // Bez mgły — posadzka jest jasna mimo braku światła. Własni wrogowie od kroku U8g (wcześniej z ruin).
   [BiomeId.MirrorHall]: {
     id: BiomeId.MirrorHall,
     name: 'Lustrzana komnata',
     tileset: MIRROR_HALL_TILESET_ASSET,
     dressing: MIRROR_HALL_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.TrashcanMan, [EnemyType.Kiter]: EnemyVariant.DemonMage, [EnemyType.Nester]: EnemyVariant.BroodSac, [EnemyType.Lurker]: EnemyVariant.StoneLurker },
+    // Krok U8g: polerka (Rusher), spryskiwacz (Kiter), wiadro z pianą (gniazdo, bańki) i Odbicie z lustra (Czyhacz).
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Polisher, [EnemyType.Kiter]: EnemyVariant.Sprayer, [EnemyType.Nester]: EnemyVariant.FoamBucket, [EnemyType.Lurker]: EnemyVariant.GlassLurker },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
@@ -343,13 +344,14 @@ export const BIOMES: Readonly<Record<BiomeId, BiomeDefinition>> = {
     ambient: { grove: null, graveyard: null, infernal: null, den: MIRROR_AMBIENT },
   },
   // Bociani Ogród (krok 137, `#brudna-wiedzma`): ostatnie piętro kręgu — po złudnej czystości Lustrzanej komnaty
-  // winda wywozi na zarośnięty taras nocą, „totalny mrok”. Wrogowie na razie z ruin (jak w Lustrzanej komnacie).
+  // winda wywozi na zarośnięty taras nocą, „totalny mrok”. Własni wrogowie od kroku U8g (wcześniej z ruin).
   [BiomeId.StorkGarden]: {
     id: BiomeId.StorkGarden,
     name: 'Bociani Ogród',
     tileset: STORK_GARDEN_TILESET_ASSET,
     dressing: STORK_GARDEN_DRESSING,
-    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.TrashcanMan, [EnemyType.Kiter]: EnemyVariant.DemonMage, [EnemyType.Nester]: EnemyVariant.BroodSac, [EnemyType.Lurker]: EnemyVariant.StoneLurker },
+    // Krok U8g: strach na wróble (Rusher), sowa (Kiter), ropucha z ikrą (gniazdo, żabki) i Cierniak z żywopłotu (Czyhacz).
+    enemyVariants: { [EnemyType.Rusher]: EnemyVariant.Scarecrow, [EnemyType.Kiter]: EnemyVariant.Owl, [EnemyType.Nester]: EnemyVariant.Toad, [EnemyType.Lurker]: EnemyVariant.ThornLurker },
     ceilingDrops: null,
     cocoons: null,
     stickyWebs: null,
