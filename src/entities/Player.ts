@@ -26,6 +26,8 @@ import { RootState } from '@/systems/Root';
 import type { RootEffect } from '@/core/bossTypes';
 import { StatusEffects } from '@/systems/StatusEffects';
 import { Timer } from '@/systems/Timer';
+import { CombatScale, scaledDamage, weightsEnabled } from '@/systems/CombatScale';
+import { COMBAT_WEIGHT_CONFIG } from '@/config/combatWeightConfig';
 import { BeamChannel, OrbSeries, orbitOffsets } from '@/systems/Sorcery';
 import { BowRepeater } from '@/systems/Archery';
 import { UltimateGauge, gaugeConfigFor, ultimateActiveMs, ultimateGuardMs } from '@/systems/Ultimate';
@@ -127,6 +129,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private shotCharges: ChargePool;
   private shotCycle: AttackCycle;
   private readonly invulnerability = new Timer();
+  /**
+   * Szala (krok U11a, wersja lekka systemu wag): Passa za trafienia, pęknięcia za przyjęte ciosy.
+   * Pęknięcia zwiększają obrażenia w `takeHit`; Passę liczy `HeroCombat`. `?wagi=0` wyłącza.
+   */
+  readonly weights = new CombatScale(
+    COMBAT_WEIGHT_CONFIG.streak,
+    COMBAT_WEIGHT_CONFIG.cracks,
+    weightsEnabled(typeof window === 'undefined' ? '' : window.location.search, COMBAT_WEIGHT_CONFIG.enabled),
+  );
   /** Krok U2: krótki błysk barwą ostrzegawczą po trafieniu (sam obraz). */
   private readonly hurtFlash = new Timer();
   /** Krok U5a: poza trafienia (tylko arkusze 2.0). */
@@ -353,6 +364,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   revive(hp: number, invulnerableMs: number, now: number): void {
     if (!this.isDead) return;
     this.health.revive(hp);
+    this.weights.reset();
     this.status = new StatusEffects(PLAYER_STATUS_RESISTANCE);
     this.root.clear();
     this.invulnerability.start(now, invulnerableMs);
@@ -586,8 +598,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   takeHit(hit: Hit, now: number): boolean {
     if (this.isDead || this.isInvulnerable(now)) return false;
 
+    // Szala (krok U11a): każde pęknięcie zwiększa obrażenia w nas; przyjęty cios zeruje Passę i dodaje pęknięcie.
+    const damage = scaledDamage(hit.damage, this.weights.incomingMultiplier);
+    this.weights.hurt(now);
     // Korona Szlamu (krok 170): co kilka sekund jedno trafienie o połowę słabsze.
-    const jelly = this.jellyGuard.absorb(hit.damage, now, this.weaponEffects.relics.jelly);
+    const jelly = this.jellyGuard.absorb(damage, now, this.weaponEffects.relics.jelly);
     if (jelly.absorbed) this.scene.events.emit(PLAYER_JELLY_EVENT, this);
     // Krwawa tarcza (krok 150) zbija obrażenia przed zdrowiem.
     const absorbed = Math.min(this.bloodShield, jelly.damage);
@@ -629,6 +644,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private die(): void {
     this.bloodShield = 0;
+    this.weights.reset();
     sound.play(SoundCue.HeroDeath, this);
     this.setVelocity(0, 0);
     this.setBodyCollision(false);

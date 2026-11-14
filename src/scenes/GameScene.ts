@@ -108,6 +108,8 @@ import { WallDogManager } from '@/combat/WallDogManager';
 import { BrazierManager } from '@/combat/BrazierManager';
 import { planShrineLocation } from '@/dungeon/ShrinePlanner';
 import { EnemyManager } from '@/combat/EnemyManager';
+import { PunishManager } from '@/combat/PunishManager';
+import { COMBAT_WEIGHT_CONFIG, PUNISH_SEED_SALT } from '@/config/combatWeightConfig';
 import { LootManager } from '@/combat/LootManager';
 import { PlayerShotManager } from '@/combat/PlayerShotManager';
 import { ProjectileManager } from '@/combat/ProjectileManager';
@@ -277,6 +279,8 @@ export class GameScene extends Phaser.Scene implements HudSource {
   private dungeon!: DungeonFloor;
   private dungeonView!: DungeonView;
   private enemies!: EnemyManager;
+  /** Atak kary systemu wag (krok U11a); null — `?wagi=0`. */
+  private punish: PunishManager | null = null;
   /** Wrogowie za kratami zasadzki i areny (krok 132). */
   private gateWait!: GateWait<Enemy>;
   private projectiles!: ProjectileManager;
@@ -726,6 +730,7 @@ export class GameScene extends Phaser.Scene implements HudSource {
     }
     const interactOf = (hero: Player) => (hero === this.player ? actions.interact : (this.partnerActions?.interact ?? false));
     this.enemies.update(time);
+    this.punish?.update(time);
     this.horde?.update(time);
     this.ceilingDrops?.update(time);
     this.cocoons?.update(time);
@@ -1048,6 +1053,19 @@ export class GameScene extends Phaser.Scene implements HudSource {
         if (ELITE_VISUAL.announceSpotted) this.showToast(eliteAnnouncement(enemy.definition.affixes ?? [], ELITE_CONFIG), ELITE_VISUAL.toastMs);
       },
     });
+    // Krok U11a: przy Odsłonięciu III wróg dostaje okno na atak kary (dash ratuje zawsze).
+    this.punish = this.player.weights.enabled
+      ? new PunishManager({
+          scene: this,
+          floor: this.dungeon,
+          party: this.party,
+          walls: this.dungeonView.collisionLayer,
+          enemies: this.enemies,
+          config: COMBAT_WEIGHT_CONFIG,
+          rng: createRng(deriveSeed(this.dungeon.seed, PUNISH_SEED_SALT)),
+          onPlayerHit,
+        })
+      : null;
 
     // Areny bossów (krok 90): bez wrogów w pokojach i bez zagrożeń biomu poza areną — tylko boss i jego pomocnicy.
     if (!this.bossRush) {

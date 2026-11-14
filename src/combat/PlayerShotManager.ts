@@ -38,6 +38,11 @@ export interface ShotFlight {
   readonly homing?: HomingConfig;
   /** Krok 150, fala ostrza: przebija tylu wrogów niezależnie od Szurikena. */
   readonly pierce?: number;
+  /**
+   * Krok U11a, Szala: numer ataku (trafienie zgłasza scena przez `PlayerShot.attackId`) i wywołanie na koniec lotu
+   * (mur, wygaśnięcie, ostatnie przebicie) — atak bez trafienia to pudło.
+   */
+  readonly tally?: { readonly attackId: number; readonly end: () => void };
 }
 
 /** Rozstrzyga trafienie pocisku gracza; zwraca trafiony cel albo null. `owner` — strzelec (co-op: który bohater). */
@@ -101,6 +106,10 @@ export class PlayerShotManager {
     shot.vampiric = look?.vampiric ?? false;
     shot.magic = look?.magic ?? false;
     shot.homing = flight?.homing ?? null;
+    if (flight?.tally) {
+      shot.attackId = flight.tally.attackId;
+      shot.once(Phaser.GameObjects.Events.DESTROY, flight.tally.end);
+    }
     shot.setDepth(RENDER_DEPTH.projectile);
     if (owner) this.owners.set(shot, owner);
 
@@ -156,6 +165,7 @@ export class PlayerShotManager {
         ignore: child.hitTargets,
         vampiric: child.vampiric,
         magic: child.magic,
+        attackId: child.attackId,
       }, this.owners.get(child) ?? null);
       if (!target) continue;
       child.hitTargets.add(target);

@@ -184,6 +184,40 @@ export const SOUND_RECIPES: Readonly<Record<SoundCue, SoundRecipe>> = {
       { wave: 'noise', freq: 2800, freqEnd: 1000, delay: 0.32, attack: 0.01, decay: 0.16, volume: 0.6, lowpass: 3200, curve: 1.2 },
     ],
   },
+  /** Passa na progach (krok U11a): krótki pisk trójkątem, każdy próg wyżej — arcade bez fanfar. */
+  [SoundCue.StreakTier1]: { gain: 0.22, layers: [{ wave: 'triangle', freq: 660, freqEnd: 880, attack: 0.005, decay: 0.09, volume: 0.6 }] },
+  [SoundCue.StreakTier2]: { gain: 0.24, layers: [{ wave: 'triangle', freq: 880, freqEnd: 1175, attack: 0.005, decay: 0.1, volume: 0.6 }] },
+  [SoundCue.StreakTier3]: {
+    gain: 0.26,
+    layers: [
+      { wave: 'triangle', freq: 1175, freqEnd: 1568, attack: 0.005, decay: 0.12, volume: 0.6 },
+      { wave: 'square', freq: 1568, delay: 0.06, attack: 0.005, decay: 0.1, volume: 0.25, duty: 0.25, lowpass: 3000 },
+    ],
+  },
+  /** Odsłonięcie III (krok U11a): niski, podwójny puls jak serce. */
+  [SoundCue.CrackPulse]: {
+    gain: 0.4,
+    layers: [
+      { wave: 'sine', freq: 70, freqEnd: 50, attack: 0.005, decay: 0.14, volume: 0.9 },
+      { wave: 'sine', freq: 70, freqEnd: 48, delay: 0.18, attack: 0.005, decay: 0.16, volume: 0.7 },
+    ],
+  },
+  /** Atak kary — telegraf: dwa ostre tony w dół, czytelne nawet w nawale. */
+  [SoundCue.PunishWarn]: {
+    gain: 0.3,
+    layers: [
+      { wave: 'square', freq: 1320, attack: 0.003, decay: 0.08, volume: 0.45, duty: 0.3, lowpass: 3500 },
+      { wave: 'square', freq: 990, delay: 0.1, attack: 0.003, decay: 0.1, volume: 0.45, duty: 0.3, lowpass: 3500 },
+    ],
+  },
+  /** Atak kary — strzał/ruszenie: trzask i świst. */
+  [SoundCue.PunishStrike]: {
+    gain: 0.4,
+    layers: [
+      { wave: 'noise', freq: 6000, freqEnd: 1500, attack: 0.002, decay: 0.16, volume: 0.6, lowpass: 5000, curve: 1.6 },
+      { wave: 'saw', freq: 900, freqEnd: 220, attack: 0.002, decay: 0.14, volume: 0.25, lowpass: 2400 },
+    ],
+  },
   /** Czyhacz wyskakuje: trzask pękającej kryjówki i niski łomot. */
   [SoundCue.LurkBurst]: {
     gain: 0.45,
@@ -598,6 +632,12 @@ export const SOUND_GATE_RULES: Readonly<Record<SoundCue, SoundGateRule>> = {
   [SoundCue.Brood]: { minGapMs: 150 },
   [SoundCue.LurkWake]: { minGapMs: 300 },
   [SoundCue.LurkBurst]: { minGapMs: 150 },
+  [SoundCue.StreakTier1]: { minGapMs: 120 },
+  [SoundCue.StreakTier2]: { minGapMs: 120 },
+  [SoundCue.StreakTier3]: { minGapMs: 120 },
+  [SoundCue.CrackPulse]: { minGapMs: 400 },
+  [SoundCue.PunishWarn]: { minGapMs: 300 },
+  [SoundCue.PunishStrike]: { minGapMs: 150 },
   [SoundCue.Explosion]: { minGapMs: 70 },
   [SoundCue.Impact]: { minGapMs: 70 },
   [SoundCue.BossHit]: { minGapMs: 80 },

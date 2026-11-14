@@ -6416,6 +6416,28 @@ Numer U4f, bo U4d i U4e zajęły równoległe poprawki krwi z gałęzi U5a (PR #
 
 **Weryfikacja:** `npm run build`, `npm run smoke`.
 
+## Krok U11a — System wag, wersja lekka: combo, pęknięcia i atak kary `#upgrade` `#wagi` `#decyzja`
+
+**Decyzja właściciela (14.11.2026)** `#decyzja`: po pytaniu „Czy nie utrudnimy odbioru i zrozumienia?” — wersja lekka z `docs/WAGI.md` §11: trzy zasady widoczne na ekranie w sekundę. Oddech, automatyczna garda i Zadyszka odłożone.
+
+**Co powstało**
+- **Szala** (`systems/CombatScale.ts`, czysta logika; liczby w `config/combatWeightConfig.ts`):
+  - *Passa* — każdy atak, który trafi choć jedno stworzenie, to +1 (zamach w pięciu wrogów i trafiona cała salwa to nadal +1). Progi 4/8/12 trafień = +10/20/30% obrażeń. Pudło (cios, strzała, kula albo impuls promienia bez trafienia) i 2,5 s bez trafienia zbijają Passę o jeden próg. Kokony, urny i purchawki się nie liczą.
+  - *Odsłonięcie* — przyjęty cios zeruje Passę i dodaje pęknięcie (do III, +12% obrażeń w nas za każde). Dwa nasze trafienia zdejmują jedno pęknięcie (dopóki są pęknięcia, Passa nie rośnie), a 5 s bez ciosu też jedno — zapas, żeby III nie trwało wiecznie.
+- **Atak kary** (`ai/PunishPlanner.ts` — kto i kiedy, własny strumień RNG `PUNISH_SEED_SALT`; `combat/PunishManager.ts` — wykonanie): przy pęknięciach III jeden wróg z linią wzroku dostaje okno, najwyżej raz na 6 s. Kiter: *przeszywający strzał* — cienka czerwona linia celownika idzie za bohaterem 0,45 s, ostatnie 0,25 s stoi (gruba linia), potem szybki pocisk przez innych wrogów do muru, ×2 obrażeń. Rusher i Czyhacz: *taran* — czerwony pas na posadzce 0,7 s, rozbieg po prostej, ×1,8 obrażeń i mocny odrzut; wbity w ścianę stoi ogłuszony (efekt jak u Tarczownika, `ShieldCharge` użyte ponownie). Nad karzącym miga czerwone „!!”, a on sam ma jasnoczerwony odcień. Bez bloku — ratuje dash (i zasłona). Stworki nawały, czerwie, upiory, Gniazdownik, Tarczownik i bossowie nie karzą (bossowie — U11b).
+- **Sygnalizacja przy bohaterze** (`effects/WeightFx.ts`, bez HUD-u, bez krwi): licznik „×N” obok postaci od 2 trafień (szary → biel na I → złoto na II → większy, w barwie klasy na III), na progu podskok i coraz wyższy ton; utrata progu rozsypuje licznik. Pęknięcia to 1–3 czerwone rysy-zygzaki na obrysie bohatera, pulsujące tym szybciej, im ich więcej; przy III niski puls. Czerwień kary rysowana nad mrokiem. Nowe dźwięki: `StreakTier1–3`, `CrackPulse`, `PunishWarn`, `PunishStrike`.
+- **Wpięcie:** `Player.weights` (mnożnik obrażeń w `takeHit`), `HeroCombat` liczy trafienia i pudła wszystkich ataków głównych i mnoży ich obrażenia (cios, strzał barbarzyńcy, kule, strzały, salwa, promień); pociski zgłaszają koniec lotu przez `ShotFlight.tally`. Fala ostrza, rozprysk, Supernowa, totem, Burzowy pęd i ultimate nie liczą się do Passy. W co-opie każdy bohater ma własną Szalę; strzał i taran kary ranią każdego żywego bohatera na swojej drodze. Śmierć, powalenie i nowe piętro zerują Szalę.
+- **Wyłącznik:** `?wagi=0` (gra jak przed krokiem), `?wagi=1`, domyślnie `COMBAT_WEIGHT_CONFIG.enabled = true`.
+- **Poprawka przy okazji:** `public/do-oceny.html` na `upgrade-fable` miał nierozwiązany konflikt scalenia (lista się nie wyświetlała) — scalony; dopisana pozycja U11a.
+
+**Decyzje w trakcie**
+- Passa III na razie daje tylko +30% i wyróżniony licznik; „ciężkie ciosy” (przebicie pancerza zamachu, ogłuszenie) wejdą w U11b razem z wagami ataków wrogów — dziś nie ma jeszcze pancerza, który mogłyby przebijać.
+- Pęknięcie dodaje każde przyjęte trafienie (także pułapka czy pocisk bossa) — jedna zasada „dostajesz, to pękasz”.
+
+**Testy:** `tests/systems/combatScale.test.ts` (progi, pudło, spadek po przerwie, pęknięcia i ich zdejmowanie, salwa liczona raz, wyłącznik, `?wagi`), `tests/ai/PunishPlanner.test.ts` (kto karze, pierwszeństwo strzelca, linia wzroku i zasięg, przerwa 6 s, determinizm, fazy celownika).
+
+**Weryfikacja:** `npm run build` zielony; w przeglądarce (`window.__game`): licznik ×9 (złoto) i ×13 (III), przeszywający strzał z linią i zamrożeniem trafia (−22 HP przy III), taran po pasie trafia (−38 HP), `?wagi=0` — Szala wyłączona, bez menedżera kary; `npm run smoke -- --floors 3 --seeds 1` — trzej bohaterowie bez błędów.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6440,7 +6462,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
 - **U8 rozgrywka:** wydarzenia w pokojach i przeklęta skrzynia (raport testera: „gra powtarzalna”), przemiana Butów „Rozdeptanie”, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu, skok pajączka do bohatera, pomiar siły 3 bohaterów botem (czy barbarzyńca dalej OP, czy osłabić łucznika i Czarodziejkę), szansa złapania Uciekiniera.
 - **U9 platformy:** bot goni bossa poza 220 px i wybiera pierwszą kartę zamiast przemiany; zmiana imienia z gry i filtr wulgaryzmów; telefon — usuwanie slotów i wybór piętra dotykiem; podpowiedzi zależne od urządzenia (pad na PC).
-- **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** Etapy U11a–U11b.
+- **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b:** wagi i znaki w zamachu wrogów (pomarańczowy = ciężki, czerwony = przebijający), ciężkie ciosy na Passie III, atak kary bossów, telefon i pad (sprawdzić czytelność licznika), bot-partner unikający kary, pomiar trudności botem przed i po.
 
 **4. Odłożone — tylko za zgodą właściciela**
 - Kolidujące rekwizyty (zmieniają linię wzroku Kiterów).
