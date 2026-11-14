@@ -218,5 +218,7 @@ export interface ItemEvolutionConfig {
   readonly quiver: { readonly rechargeMultiplier: number; readonly twinSpreadDeg: number; readonly extraOrbs: number; readonly extraVolleyArrows: number };
   readonly bloodShield: { readonly maxBaseHpPct: number };
   readonly stormTrail: { readonly durationMs: number; readonly tickMs: number; readonly radius: number; readonly damageFraction: number; readonly spacing: number };
+  /** Krok U8c, Rozdeptanie (Buty ×3): dash przez wrogów rani i odrzuca na boki. */
+  readonly stomp: { readonly damage: number; readonly damagePerStack: number; readonly knockback: number; readonly radiusBonus: number };
   readonly frost: { readonly freezeMs: number; readonly shatterRadius: number; readonly shatterSlow: { readonly pct: number; readonly durationMs: number } };
 }

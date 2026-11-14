@@ -6472,6 +6472,23 @@ Drugi lek na „grę powtarzalną” z ustalenia 6 (`docs/UPGRADE.md`) i „poko
 
 **Weryfikacja:** w przeglądarce (piętro 4, seed 5, Czarodziejka, `?chest=1`): podpowiedź przy skrzyni, E otwiera, 3 elity (Ognisty, Wybuchowy, Wampiryczny) wychodzą ze znaczników, po ich wybiciu wypadły Buty i złoto (+78 z łupem elit). Bez błędów w konsoli.
 
+## Krok U8c — Przemiana Butów: Rozdeptanie `#upgrade` `#przemiany`
+
+Ustalenie 7 z `docs/UPGRADE.md` (rekomendacja audytu, „pasuje do nawały”): 3. kopia Butów to **Rozdeptanie** — dash przez wrogów rani ich i odrzuca na boki. Bez nowego przycisku i bez zmian w pułapkach i plamach bossów (powód odrzucenia lewitacji w kroku 151). Propozycja do oceny na podglądzie.
+
+**Co powstało**
+- `ITEM_EVOLUTION.items[Boots]` i `ITEM_EVOLUTION.stomp` (`config/itemEvolutionConfig.ts`): 14 obrażeń za dotknięcie (ok. 2/3 ciosu barbarzyńcy), +4 za każdą kopię ponad trzecią, odrzut 320 (po połowieniu odrzutu wrogów z U4e — ok. 160), dash szerszy o 6 px. Buty dalej bez limitu kopii, prędkość rośnie do dawnego limitu +60%.
+- `WeaponEffects.evolved.stomp`; `DashStrike.sideKnockback` — odrzut prostopadle do toru dasha, w stronę, po której stoi cel (tłum rozstępuje się na boki). `DashSweep` dostał opcjonalne `heading` i `sideKnockback`, Burzowy pęd bez zmian (bez odrzutu); oba się sumują.
+- `HeroCombat.resolveDashStrike` dodaje obrażenia Rozdeptania, `DashController.heading` / `Player.dashHeading()` podają kierunek dasha. Każdy cel raz na dash — jak w Burzowym pędzie.
+- Karta nagrody pokazuje przemianę przy 3. kopii, a Buty z 1–2 kopiami znów mogą być kartą rozwoju.
+- Buty po limicie prędkości zostają w puli kart i kapliczki (krok 117 je usuwał) — każda kolejna kopia wzmacnia Rozdeptanie.
+
+**Uwaga:** dash Czarodziejki to teleport (`dash.blink`) — rani tylko wrogów w miejscu startu i lądowania; do oceny, czy jej Rozdeptanie nie powinno działać na całej linii skoku.
+
+**Testy:** `tests/systems/itemUsefulness.test.ts` (Buty w puli po limicie prędkości), `tests/systems/itemEvolution.test.ts` (Buty mają przemianę, karta przemiany i rozwoju, efekt od 3. kopii, wzrost z kolejnymi), `tests/systems/dashStrike.test.ts` (kierunek odrzutu, Burzowy pęd bez odrzutu, każdy cel raz na dash).
+
+**Weryfikacja:** w przeglądarce (`?items=boots*3`, łucznik, piętro 2): efekt włączony, dash przez wroga zabrał mu 14 HP. Bez błędów w konsoli.
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
@@ -6666,7 +6683,7 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 **Przemiany przedmiotów (krok 150)** `#przemiany`: zrobione — 3. kopia przemienia każdy przedmiot, karta rozwoju, limity 3 kopii. Czeka na ocenę: liczby, wygląd (figury geometryczne → arkusze z generatora), limity, czytelność karty.
 
 **Po przeglądzie buildu (krok 151)** `#przemiany` `#decyzja` — do omówienia z właścicielem („pamiętaj o kolejnych punktach”):
-- **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); pomysł do wymyślenia razem z właścicielem. Do tego czasu Buty bez przemiany.
+- **Nowa przemiana Butów** — lewitacja odrzucona (krok 151); na `upgrade-fable` krok U8c: Rozdeptanie, czeka na ocenę.
 - [x] **Fala ostrza i Rozpęd u Czarodziejki:** od kroku 180 impuls promienia (co 0,6 s) liczy się jako atak główny.
 - **Bot-partner:** goni bossa poza 220 px od gracza (łucznik i Czarodziejka prawie nie biją latającej Wiedźmy), wybiera kartę przemiany/rozwoju zamiast pierwszej; potem rzetelny pomiar siły 3 bohaterów botem.
 

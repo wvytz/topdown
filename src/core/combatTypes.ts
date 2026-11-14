@@ -294,6 +294,15 @@ export interface EvolvedEffects {
   /** Krwawa tarcza: najwyższa tarcza z leczenia przy pełnym HP (0 = brak). */
   readonly bloodShieldMax: number;
   readonly stormTrail: StormTrailEffect | null;
+  /** Krok U8c, Rozdeptanie (Buty ×3): dash rani dotkniętych i odrzuca ich na boki; null — brak. */
+  readonly stomp: StompEffect | null;
+}
+
+/** Rozdeptanie: obrażenia za dotknięcie w dashu, siła odrzutu w bok i poszerzenie zasięgu dasha (px). */
+export interface StompEffect {
+  readonly damage: number;
+  readonly knockback: number;
+  readonly radiusBonus: number;
 }
 
 export interface DamageResult {

@@ -24,8 +24,13 @@ export const ITEM_EVOLUTION: ItemEvolutionConfig = {
       after: '+20 maks. HP',
     },
     // Buty: lewitacja z kroku 150 cofnięta w kroku 151 (`#decyzja` właściciela: „niedopuszczalne” — wyłączała
-    // pułapki i plamy pięciu bossów). Przemiana Butów czeka na nowy pomysł; do tego czasu działają jak przed
-    // krokiem 150 (+10% prędkości za kopię, do limitu STAT_LIMITS.maxMoveSpeedMultiplier).
+    // pułapki i plamy pięciu bossów). Krok U8c: Rozdeptanie (rekomendacja audytu upgradu, ustalenie 7 —
+    // propozycja do oceny na podglądzie): pasuje do nawały, nie zmienia sterowania ani zasad pułapek.
+    [ItemId.Boots]: {
+      name: 'Rozdeptanie',
+      effect: 'dash przez wrogów rani ich i odrzuca na boki',
+      after: '+4 obrażeń rozdeptania',
+    },
     [ItemId.Gloves]: {
       name: 'Rozpęd',
       effect: 'ciągły atak przyspiesza o kolejne +24%; przerwa w ataku zeruje rozpęd',
@@ -87,6 +92,8 @@ export const ITEM_EVOLUTION: ItemEvolutionConfig = {
   quiver: { rechargeMultiplier: 0.5, twinSpreadDeg: 8, extraOrbs: 1, extraVolleyArrows: 2 },
   bloodShield: { maxBaseHpPct: 0.15 },
   stormTrail: { durationMs: 1500, tickMs: 250, radius: 10, damageFraction: 0.35, spacing: 10 },
+  // Krok U8c: ok. 2/3 ciosu barbarzyńcy w każdego dotkniętego; dash poszerzony o 6 px, żeby tłum dało się „rozdeptać”.
+  stomp: { damage: 14, damagePerStack: 4, knockback: 320, radiusBonus: 6 },
   frost: { freezeMs: 1000, shatterRadius: 40, shatterSlow: { pct: 0.5, durationMs: 1500 } },
 };
 
