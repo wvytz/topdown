@@ -6521,6 +6521,31 @@ Z backlogu kroku 183 („pomysł na później: dać szansę złapania uciekinier
 
 **Testy:** `tests/systems/ambushVariants.test.ts` — promień złapania, lot wolniejszy od najwolniejszego bohatera.
 
+## Krok U8g — Własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu `#upgrade` `#lustrzana-komnata` `#brudna-wiedzma`
+
+Ostatnia część etapu U8 (prośba właściciela 14.11: „wdrażaj wszystkie zaplanowane zmiany”). Piętra 6 i 7 miały dotąd wrogów z ruin (decyzja otwarta od kroków 124 i 137). Każdy z czterech archetypów dostał w obu biomach własną skórkę z generatora, a Rusher i Kiter — także własne zachowanie z istniejących rodzajów ataku. Liczby w `config/combatConfig.ts`, bez nowych mechanik AI.
+
+**Co powstało**
+- **Lustrzana komnata** (`#lustrzana-komnata`, sprzątanie i „złudna czystość”):
+  - Rusher **polerka** — żywa maszyna do polerowania posadzki; atakuje ślizgiem na wprost jak skok ogara, ale **bez smugi ognia** (`PounceAttackDefinition.trail` jest teraz opcjonalne), z dłuższym przysiadem (0,5 s) i dłuższym hamowaniem po chybieniu (0,85 s — okno na kontrę);
+  - Kiter **spryskiwacz** — butla ze środkiem do mycia na nóżkach; kropla chloru (6 obrażeń) spowalnia o 30% na 1,2 s;
+  - gniazdo **wiadro z pianą** na mopowych nóżkach, stworek **bańka mydlana** (lekko spowalnia jak pajęczaki leża) — to też nawała pięter 6;
+  - Czyhacz **Odbicie** wyskakuje z **lustra opartego o mur** (w znaku tafla ciemnieje, pojawiają się ślepia i rysa; po wyskoku pusta rama i odłamki).
+- **Bociani Ogród** (`#brudna-wiedzma`, noc w zarośniętym ogrodzie):
+  - Rusher **strach na wróble** z sierpem — wolniejszy (100) i twardszy (40 HP), ale sierp sięga dalej (50 px) i bije mocniej (13) po długim, czytelnym zamachu (0,48 s);
+  - Kiter **sowa** — pióro szybkie (250 px/s), lecące krótko (1,6 s), krótki zamach (0,38 s);
+  - gniazdo **ropucha z ikrą** na grzbiecie, stworek **żabka** (bez statusu) — nawała piętra 7;
+  - Czyhacz **Cierniak** czeka w **kępie żywopłotu** pod murem.
+- Grafika: nowy generator `tools/upper_enemies.py` (polerka, spryskiwacz, strach na wróble, sowa, kropla chloru, pióro), dopisane wersje w `tools/brood_sprites.py` (wiadro/bańka, ropucha/żabka) i `tools/lurker_sprites.py` (Odbicie, Cierniak; pas kryjówek 576 → 768 px). Stare arkusze generują się bajt w bajt tak samo. Na jasnej posadzce luster ciała są ciemne (stal, plastik), jasne zostają akcenty; w mroku ogrodu — ciepłe akcenty (słomiany kapelusz, żółte ślepia sowy). Bez krwi.
+
+**Decyzje (do oceny)**
+- Wybór stworów — moja propozycja w duchu biomów (właściciel nie podał projektu): sprzątanie dla luster, wiejski ogród nocą dla Wiedźmy. Bociany zostają przy Wiedźmie, żeby wróg piętra nie mylił się z jej atakiem.
+- Statystyki w rzędzie wrogów Piekła i palarni (piętra 6–7 to koniec runu) — trudności nie łagodzę.
+
+**Testy:** `tests/systems/enemyVariants.test.ts` — oba biomy mają własny komplet (żaden wariant pożyczony), arkusze 8-kierunkowe i pociski, polerka bez smugi i z dłuższym hamowaniem, spowolnienie spryskiwacza, pióro sowy szybsze i krótsze od kuli maga, strach wolniejszy z dłuższym zasięgiem. `brood.test.ts` i `lurk.test.ts` obejmują teraz wszystkie biomy (wyjątek dla pięter 6–7 usunięty).
+
+**Weryfikacja:** `npm run build` (typy, testy, build); kadry `npm run shots -- --only biome-6,biome-7` — bańki i polerka przy bohaterze, lustro-kryjówka pod murem; żabki i strach na wróble w ogrodzie. Pozycja w `do-oceny.html`.
+
 ## Krok U11b — System wag: znak ciężkiego zamachu, ciężkie ciosy, kara bossów, telefon i bot `#upgrade` `#wagi`
 
 Ciąg dalszy wersji lekkiej (`docs/WAGI.md` §11, decyzja właściciela 14.11.2026). Prośba właściciela: „Wdrażaj wszystkie zaplanowane zmiany póki starczy tokenów” — rekomendowane ścieżki bez pytania. Oddech i automatyczna garda nadal odłożone.
@@ -6632,7 +6657,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U5 postacie — zrobione (kroki U5a–U5b, czeka na ocenę):** bezruch, trafienie, dash i śmierć wszystkich trzech bohaterów, akcent barwy barbarzyńcy, Totem z generatora, znaczniki P1/P2 w co-opie. Do oceny: czy ciała po śmierci i oddech w bezruchu „siedzą”.
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
-- **U8 rozgrywka — zrobione poza wrogami luster i ogrodu (kroki U8a–U8f, czeka na ocenę):** wydarzenia w pokojach (pochodnia, sakiewka, ciemny pokój), przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem (`docs/balance/U8e-2026-11-14.md`; propozycje liczb czekają na zgodę), złapanie Uciekiniera. Zostaje: własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (wygląd i zachowanie z generatora).
+- **U8 rozgrywka — zrobione (kroki U8a–U8g, czeka na ocenę):** wydarzenia w pokojach (pochodnia, sakiewka, ciemny pokój), przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem (`docs/balance/U8e-2026-11-14.md`; propozycje liczb czekają na zgodę), złapanie Uciekiniera, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (U8g: polerka, spryskiwacz, wiadro z pianą, Odbicie; strach na wróble, sowa, ropucha, Cierniak — tylko na `upgrade-fable`, do następnej paczki do `main`).
 - **U9 platformy — zrobione (kroki U9a–U9d):** U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu), U9b (zmiana imienia w pauzie, filtr wulgaryzmów), U9c (usuwanie zapisów i wybór piętra dotykiem, podpowiedzi zależne od urządzenia), U9d (dźwięki ciężkiego zamachu, skoku pajączka i Rozdeptania) — etap zrobiony, czeka na ocenę.
 - **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b zrobione, U11a–U11b przyjęte przez właściciela 14.11.2026 (`#ocena`):** „!” w ciężkim zamachu, ciężkie ciosy Passy III, kara bossów, licznik na telefonie, unik bota, `npm run bench:wagi`. Dalej: strojenie liczb po ocenie właściciela; Oddech i garda tylko, jeśli wersja lekka okaże się za łatwa.
 
@@ -6744,7 +6769,7 @@ Dawny backlog bez zmian, do wyszukiwania historii decyzji i ocen. Aktualne listy
 - **Odliczanie po pauzie (krok 130):** `#ocena` 3-2-1 nad widoczną planszą po „Wznów” — długość, jasność nakładki, podpis.
 - **Bezpieczny start bossów (krok 131):** `#boss` `#ocena` boss i świta z dala od bohaterów (5 kafli od bohatera i wejścia, świta 4 kafle od każdego bohatera), odsunięcie przed windą sprzątaczki — czeka na test właściciela i testera.
 - **Wrogowie za kratami (krok 132):** `#zasadzka` wróg spoza zamkniętego pokoju czeka pod kratą, po jej podniesieniu zryw (450 ms, ×1,8) — długość i siła zrywu czekają na test właściciela.
-- **Lustrzana komnata (kroki 124–127, od kroku 154 jedno piętro 6):** `#lustrzana-komnata`; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Otwarte: własni wrogowie biomu.
+- **Lustrzana komnata (kroki 124–127, od kroku 154 jedno piętro 6):** `#lustrzana-komnata`; odbicia postaci, błyski polerowania, mury, blondynka z ucieczką windą, brunetka z plątaniem i powrót blondynki — czekają na test właściciela. Pajęczy duet na piętrze 2 we wspinaczce; Pajęcze leże poza wspinaczką (do decyzji, gdzie wraca). Własni wrogowie biomu — krok U8g na `upgrade-fable`.
 - **Czyhacz (krok 123):** `#czyhacz` czwarty archetyp — kryjówki biomów pod murem, subtelny znak, doskok z 0,6 s ostrzeżeniem, serie po 2 ciosy z zadyszką; częstość, czasy i wygląd czekają na test właściciela.
 - **Gniazdownik (kroki 122–122a):** `#gniazdownik` trzeci archetyp; wersja ruin zaakceptowana, wersje biomów (122a) — wygląd i statusy stworków, częstość i rytm wylęgu — czekają na test właściciela.
 - **Większy obraz (krok 118):** `#obraz` pełny ekran (F) i „Wypełnij okno” w pauzie — czeka na test właściciela (czy nierówne piksele przy „Wypełnij okno” przeszkadzają).

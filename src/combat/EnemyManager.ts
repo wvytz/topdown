@@ -535,8 +535,10 @@ export class EnemyManager implements EnemyAttackHandler {
   }
 
   pounceTrail(_enemy: Enemy, attack: PounceAttackDefinition, from: Vector2, to: Vector2): void {
+    const { trail } = attack;
+    if (!trail) return;
     const now = this.deps.scene.time.now;
-    for (const point of trailPoints(from, to, attack.trail.spacing)) this.firePatches.add(point, attack.trail, now);
+    for (const point of trailPoints(from, to, trail.spacing)) this.firePatches.add(point, trail, now);
   }
 
   lobBomb(enemy: Enemy, attack: LobAttackDefinition, target: Vector2): void {

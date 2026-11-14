@@ -611,7 +611,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private updatePounce(now: number, handler: EnemyAttackHandler): void {
     const pounce = this.pounce!;
     const here = { x: this.x, y: this.y };
-    if (Math.hypot(here.x - pounce.trailFrom.x, here.y - pounce.trailFrom.y) >= pounce.attack.trail.spacing) {
+    const trail = pounce.attack.trail;
+    if (trail && Math.hypot(here.x - pounce.trailFrom.x, here.y - pounce.trailFrom.y) >= trail.spacing) {
       handler.pounceTrail(this, pounce.attack, pounce.trailFrom, here);
       pounce.trailFrom = here;
     }

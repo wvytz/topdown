@@ -9,9 +9,8 @@ import { BroodLedger, broodCapacity, broodSpawnPoints } from '@/systems/Brood';
 import { distance } from '@/systems/CombatMath';
 import { enemyDefinitionFor } from '@/systems/EnemyVariants';
 
-/** Lustrzana komnata (krok 124) ma na razie wrogów z ruin — własnych jeszcze nie ma (decyzja właściciela otwarta). */
-// Lustrzana komnata i Bociani Ogród (krok 137) mają na razie wrogów z ruin.
-const OWN_ENEMY_BIOMES = Object.values(BIOMES).filter((b) => b.id !== BiomeId.MirrorHall && b.id !== BiomeId.StorkGarden);
+/** Od kroku U8g także Lustrzana komnata i Bociani Ogród mają własne gniazda (wcześniej z ruin). */
+const OWN_ENEMY_BIOMES = Object.values(BIOMES);
 
 const nester = ENEMY_DEFINITIONS[EnemyType.Nester];
 const attack = nester.attack as BroodAttackDefinition;

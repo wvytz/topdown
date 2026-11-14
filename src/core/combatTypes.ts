@@ -83,6 +83,24 @@ export enum EnemyVariant {
   CoffinLurker = 'coffin-lurker',
   CinderLurker = 'cinder-lurker',
   BarrelLurker = 'barrel-lurker',
+  /** Lustrzana komnata (krok U8g): żywa polerka (Rusher) — ślizga się po posadzce na wprost; chybiona długo hamuje. */
+  Polisher = 'polisher',
+  /** Lustrzana komnata (krok U8g): butla ze środkiem do mycia (Kiter) — psika kroplą chloru, która spowalnia. */
+  Sprayer = 'sprayer',
+  /** Gniazdownik Lustrzanej komnaty (krok U8g): wiadro z pianą na mopowych nóżkach; bańka mydlana lekko spowalnia. */
+  FoamBucket = 'foam-bucket',
+  Bubble = 'bubble',
+  /** Czyhacz Lustrzanej komnaty (krok U8g): Odbicie wyskakujące z lustra opartego o mur. */
+  GlassLurker = 'glass-lurker',
+  /** Bociani Ogród (krok U8g): strach na wróble (Rusher) — wolniejszy, ale tnie sierpem daleko i mocno. */
+  Scarecrow = 'scarecrow',
+  /** Bociani Ogród (krok U8g): sowa (Kiter) — szybkie, krótkie rzuty piórem. */
+  Owl = 'owl',
+  /** Gniazdownik Bocianiego Ogrodu (krok U8g): ropucha z ikrą na grzbiecie; żabka. */
+  Toad = 'toad',
+  Froglet = 'froglet',
+  /** Czyhacz Bocianiego Ogrodu (krok U8g): Cierniak z żywopłotu pod murem. */
+  ThornLurker = 'thorn-lurker',
 }
 
 /** Stany maszyny stanów AI (wg GDD: IDLE, CHASE, ATTACK). */
@@ -374,8 +392,8 @@ export interface PounceAttackDefinition extends BaseAttackDefinition {
   readonly hitRadius: number;
   /** Po chybionym skoku stoi tyle ms (okno na kontrę). */
   readonly missRecoveryMs: number;
-  /** Smuga żaru: plamy co `spacing` px wzdłuż toru skoku. */
-  readonly trail: FirePatchDefinition & { readonly spacing: number };
+  /** Smuga żaru: plamy co `spacing` px wzdłuż toru skoku; brak = skok bez śladu (polerka, krok U8g). */
+  readonly trail?: FirePatchDefinition & { readonly spacing: number };
 }
 
 export interface LobAttackDefinition extends BaseAttackDefinition {

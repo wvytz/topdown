@@ -1290,12 +1290,107 @@ export const SPRITE_SHEETS = {
   coffinLurker: lurkerSheet('coffin-lurker'),
   cinderLurker: lurkerSheet('cinder-lurker'),
   barrelLurker: lurkerSheet('barrel-lurker'),
+  // Krok U8g (tools/brood_sprites.py, tools/lurker_sprites.py): gniazda, stworki i Czyhacze Lustrzanej komnaty i Ogrodu.
+  foamBucket: broodSheet('foam-bucket', 'birth'),
+  bubble: broodSheet('bubble', 'bite'),
+  toad: broodSheet('toad', 'birth'),
+  froglet: broodSheet('froglet', 'bite'),
+  glassLurker: lurkerSheet('glass-lurker'),
+  thornLurker: lurkerSheet('thorn-lurker'),
+  // Wrogowie Lustrzanej komnaty i Ogrodu (krok U8g, tools/upper_enemies.py), komórka 48, 8 kierunków.
+  // Polerka: 0–3 jazda, 4 przysiad (telegraf ślizgu), 5–6 ślizg, 7 hamowanie.
+  polisher: {
+    key: 'sheet-polisher',
+    url: 'assets/sprites/polisher_run-skid.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      run: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      crouch: { frames: [4], loop: false },
+      skid: { frames: [5, 6], loop: true, fps: 12 },
+      land: { frames: [7], loop: false },
+    },
+  },
+  // Spryskiwacz: 0–3 chód, 4–7 psiknięcie (kropla wylatuje po kolumnie 7).
+  sprayer: {
+    key: 'sheet-sprayer',
+    url: 'assets/sprites/sprayer_walk-spray.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      spray: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Strach na wróble: 0–3 chód, 4–7 zamach sierpem (uderzenie w 6).
+  scarecrow: {
+    key: 'sheet-scarecrow',
+    url: 'assets/sprites/scarecrow_walk-swing.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      walk: { frames: [0, 1, 2, 3], loop: true },
+      idle: { frames: [0], loop: false },
+      swing: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  // Sowa: 0–3 lot, 4–7 rzut piórami.
+  owl: {
+    key: 'sheet-owl',
+    url: 'assets/sprites/owl_fly-throw.png',
+    frameWidth: 48,
+    frameHeight: 48,
+    sheetWidth: 384,
+    sheetHeight: 384,
+    directions: 8,
+    fps: SPRITE_FPS,
+    animations: {
+      fly: { frames: [0, 1, 2, 3], loop: true },
+      throw: { frames: [4, 5, 6, 7], loop: false },
+    },
+  },
+  chlorineDrop: {
+    key: 'sheet-chlorine-drop',
+    url: 'assets/sprites/chlorine-drop.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 16,
+    directions: 1,
+    fps: 8,
+    animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
+  },
+  owlFeather: {
+    key: 'sheet-owl-feather',
+    url: 'assets/sprites/owl-feather.png',
+    frameWidth: 16,
+    frameHeight: 16,
+    sheetWidth: 64,
+    sheetHeight: 128,
+    directions: 8,
+    fps: 10,
+    animations: { fly: { frames: [0, 1, 2, 3], loop: true } },
+  },
   lurkerHideouts: {
     key: 'sheet-lurker-hideouts',
     url: 'assets/sprites/lurker-hideouts.png',
     frameWidth: 32,
     frameHeight: 48,
-    sheetWidth: 576,
+    sheetWidth: 768,
     sheetHeight: 48,
     directions: 1,
     fps: SPRITE_FPS,
@@ -1939,6 +2034,26 @@ export const ENEMY_VISUALS: Readonly<Record<EnemyVariant, EnemyVisual>> = {
   [EnemyVariant.CoffinLurker]: lurkerVisual('coffinLurker'),
   [EnemyVariant.CinderLurker]: lurkerVisual('cinderLurker'),
   [EnemyVariant.BarrelLurker]: lurkerVisual('barrelLurker'),
+  // Krok U8g: Lustrzana komnata i Bociani Ogród.
+  [EnemyVariant.Polisher]: {
+    sheet: 'polisher',
+    move: 'run',
+    idle: 'idle',
+    attack: 'crouch',
+    leap: 'skid',
+    land: 'land',
+    groundShadow: { width: 24, height: 10, offsetX: 0, offsetY: 6 },
+  },
+  [EnemyVariant.Sprayer]: { sheet: 'sprayer', move: 'walk', idle: 'idle', attack: 'spray', groundShadow: WALKER_SHADOW },
+  [EnemyVariant.FoamBucket]: nestVisual('foamBucket'),
+  [EnemyVariant.Bubble]: broodlingVisual('bubble'),
+  [EnemyVariant.GlassLurker]: lurkerVisual('glassLurker'),
+  [EnemyVariant.Scarecrow]: { sheet: 'scarecrow', move: 'walk', idle: 'idle', attack: 'swing', groundShadow: WALKER_SHADOW },
+  // Sowa lata jak nietoperz: cień mniejszy i dalej pod nią.
+  [EnemyVariant.Owl]: { sheet: 'owl', move: 'fly', attack: 'throw', groundShadow: { width: 14, height: 6, offsetX: 0, offsetY: 12 } },
+  [EnemyVariant.Toad]: nestVisual('toad'),
+  [EnemyVariant.Froglet]: broodlingVisual('froglet'),
+  [EnemyVariant.ThornLurker]: lurkerVisual('thornLurker'),
 };
 
 /**
@@ -1954,6 +2069,8 @@ export const LURKER_HIDEOUT_VISUAL = {
     [EnemyVariant.CoffinLurker]: 3,
     [EnemyVariant.CinderLurker]: 4,
     [EnemyVariant.BarrelLurker]: 5,
+    [EnemyVariant.GlassLurker]: 6,
+    [EnemyVariant.ThornLurker]: 7,
   } as Partial<Record<EnemyVariant, number>>,
   columns: 3,
   tellJitter: 1,
@@ -2162,6 +2279,8 @@ export const ENEMY_PROJECTILE_VISUALS: Readonly<Partial<Record<EnemyVariant, Ene
   [EnemyVariant.Bat]: { sheet: 'batWave', animation: 'fly', forwardOffset: 12, directional: true },
   [EnemyVariant.Fungoid]: { sheet: 'sporeBall', animation: 'fly', forwardOffset: 12, directional: false },
   [EnemyVariant.Sower]: { sheet: 'sporeBall', animation: 'fly', forwardOffset: 12, directional: false },
+  [EnemyVariant.Sprayer]: { sheet: 'chlorineDrop', animation: 'fly', forwardOffset: 12, directional: false },
+  [EnemyVariant.Owl]: { sheet: 'owlFeather', animation: 'fly', forwardOffset: 12, directional: true },
 };
 
 export interface BossVisual extends EnemyVisual {
