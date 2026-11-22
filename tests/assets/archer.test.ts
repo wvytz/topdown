@@ -9,7 +9,7 @@ import { TILESETS_DIR, loadTileset } from '../helpers/tileset';
 /** Sprite'y łucznika z generatora tools/archer_sprites.py (krok 82): paleta i czytelność (STYLEGUIDE §4, §6a). */
 const PUBLIC = fileURLToPath(new URL('../../public/', import.meta.url));
 
-/** Paleta generatora: obrys, peleryna, skóra (kaftan, kołczan), drewno, cięciwa, grot, lotki, skóra dłoni. */
+/** Paleta generatora: obrys, peleryna, skóra (kaftan, kołczan), drewno, cięciwa, grot, lotki, skóra dłoni, jasne drzewce strzały (krok U12c). */
 const PALETTE = new Set([
   '#1b1a22',
   '#1f3a24', '#2c5232', '#3f6e3f', '#5b8f4f', '#86b866',
@@ -19,6 +19,7 @@ const PALETTE = new Set([
   '#8a94a4', '#c8d0dc',
   '#a8352c', '#d65a48',
   '#b9805e', '#e8b892',
+  '#e9dfb8', '#fff6c8',
 ]);
 const RESERVED = ['#000000', '#ffffff', '#9cff57', '#d4a83a'];
 

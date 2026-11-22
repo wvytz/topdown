@@ -47,8 +47,10 @@ WOOD = hexes('#4a3020', '#6e4a2a', '#9a6a3a')                         # D, baza,
 STRING = hexes('#d8d0b8')
 METAL = hexes('#8a94a4', '#c8d0dc')                                    # baza, blask
 FLETCH = hexes('#a8352c', '#d65a48')                                   # baza, L
+# Krok U12c (tester na telefonie: strzały „ledwo widoczne”): jasne drzewce, żeby odcinało się od brązowej podłogi.
+SHAFT = hexes('#e9dfb8', '#fff6c8')                                    # zwykła, mocna (pełny blask)
 SKIN = hexes('#b9805e', '#e8b892')                                     # cień, baza
-PALETTE_COLORS = {OUT, *CLOAK, *LEATHER, *WOOD, *STRING, *METAL, *FLETCH, *SKIN}
+PALETTE_COLORS = {OUT, *CLOAK, *LEATHER, *WOOD, *STRING, *METAL, *FLETCH, *SKIN, *SHAFT}
 
 # Klatki: stopy (przesunięcie lewej/prawej w y, − = do przodu), wychylenie rąbka peleryny (x),
 # łuk ('side' = przy boku, 'aim' = przed sobą), naciągnięcie cięciwy (y lokalne cięciwy) i strzała.
@@ -242,16 +244,17 @@ def arrow_frame(row, full):
     def put(t, s, color):
         img.put(int(round(c + ux * t + px * s)), int(round(c + uy * t + py * s)), color)
 
+    # Krok U12c: jasne drzewce (cremowe, mocna strzała jaśniejsza), grot szerszy, lotki czerwone — czytelne na podłodze.
     for i in range(-8, 9):
-        put(i * .5, 0, WOOD[1] if full else WOOD[0])
+        put(i * .5, 0, SHAFT[1] if full else SHAFT[0])
     tip = METAL[1] if full else METAL[0]
-    for t, s in ((4.5, 0), (5.5, 0), (3.5, -1), (3.5, 1)):
+    for t, s in ((4.5, 0), (5.5, 0), (3.5, -1), (3.5, 1), (4.5, -1), (4.5, 1)):
         put(t, s, tip)
-    put(4.5, 0, METAL[1])
+    put(5.5, 0, SHAFT[1])
     fl = FLETCH[1] if full else FLETCH[0]
-    for t in (-4, -3.5, -3):
+    for t in (-4.5, -4, -3.5, -3):
         put(t, -1, fl)
-        put(t, 1, FLETCH[0])
+        put(t, 1, FLETCH[0] if not full else FLETCH[1])
     outline(img, OUT)
     return img
 

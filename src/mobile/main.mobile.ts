@@ -38,6 +38,10 @@ if (!blocked) {
       };
       window.addEventListener('orientationchange', soon);
       document.addEventListener('fullscreenchange', soon);
+      // Powrót z innej aplikacji (krok U12c): przeglądarka wychodzi z pełnego ekranu i wymiary dochodzą z opóźnieniem.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') soon();
+      });
       window.visualViewport?.addEventListener('resize', soon);
     },
     phaser: {
@@ -50,11 +54,13 @@ if (!blocked) {
 }
 
 /**
- * Pierwszy dotyk prosi o pełny ekran w poziomie — bez paska przeglądarki gra jest większa.
+ * Dotyk prosi o pełny ekran w poziomie — bez paska przeglądarki gra jest większa. Krok U12c (tester: po przełączeniu
+ * aplikacji na dole zostaje pasek adresu): przeglądarka wychodzi z pełnego ekranu, gdy gra traci widoczność,
+ * a o wejście można poprosić tylko w odpowiedzi na dotyk — więc nasłuch zostaje na stałe i pierwszy dotyk
+ * po powrocie wchodzi w pełny ekran ponownie (kciuk i tak dotyka przycisku gry, więc nic nie trzeba robić dodatkowo).
  * iPhone (Safari) pełnego ekranu stron nie obsługuje; wtedy nic się nie dzieje.
  */
 function enterFullscreenOnTouch(): void {
-  window.removeEventListener('touchend', enterFullscreenOnTouch);
   const root = document.documentElement;
   if (document.fullscreenElement || !root.requestFullscreen) return;
   root

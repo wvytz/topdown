@@ -6650,6 +6650,20 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 
 **Backlog (telefon):** tryb dla leworęcznych (lustrzany układ + przełącznik w pauzie), dash gestem (odrzucony w kroku 141, wrócić po teście), przycisk pauzy przy krawędzi ekranu zamiast pod minimapą na płótnie.
 
+## Krok U12c — Telefon: łucznik z ostrzałem automatycznym, widoczne strzały, pełny ekran po powrocie `#upgrade` `#telefon` `#sterowanie` `#ocena` `#lucznik`
+
+**Skąd:** `#ocena` właściciela po teście na prawdziwym telefonie (Chrome, poziomo, `mobile.html`, po wdrożeniu U12b, 22.11.2026): sterowanie łucznikiem uciążliwe, strzały ledwo widać, po przełączeniu aplikacji na dole zostaje pasek adresu.
+
+**Co powstało:**
+- **Sterowanie łucznikiem:** ŁUK trzeba było trzymać cały czas, a SALWA, ZRYW i TOTEM wymagały zdjęcia kciuka z łuku, więc ostrzał się urywał. Teraz **krótkie stuknięcie ŁUK włącza ostrzał automatyczny** (przycisk świeci, podpis „ŁUK / AUTO”): łucznik strzela w najbliższego wroga w zasięgu, dopóki ma kogo trafić, a kciuk jest wolny na salwę, zryw i totem. Kolejne stuknięcie wyłącza; przytrzymanie i przeciąganie działają jak dawniej. Ostrzał wyłącza pauza, śmierć i zmiana piętra (`TouchState.release`). Tylko dotyk, tylko łucznik; przełącznik `TOUCH_ARCHER_FIRE_LOCK.enabled` w `config/touchConfig.ts`. **To zmiana decyzji z kroku 141 („bez auto-ataku”) — dla łucznika, do oceny właściciela.**
+- **Układ przycisków:** TOTEM i SALWA stykały się (zrzut właściciela), więc ultimate i E odsunięte (`TOUCH_BUTTONS`); test układu wymaga teraz przerwy 12 px między kółkami.
+- **Strzały łucznika widoczne:** drzewce były ciemnobrązowe na brązowej podłodze. Generator `tools/archer_sprites.py` rysuje jasne (kremowe) drzewce, szerszy grot i czerwone lotki, mocna strzała jaśniejsza; arkusz postaci bez zmian.
+- **Pasek adresu po powrocie:** przeglądarka wychodzi z pełnego ekranu, gdy gra traci widoczność, a wejść w niego można tylko w odpowiedzi na dotyk. Nasłuch `touchend` zostaje na stałe (wcześniej zdejmowany po pierwszym dotyku), więc pierwszy dotyk po powrocie przywraca pełny ekran; do tego przeliczenie skali po `visibilitychange`. Manifest (`display: fullscreen`) i `100dvh` już były. Bez dotyku strona sama nie może wejść w pełny ekran — to ograniczenie przeglądarki.
+
+**Testy:** `tests/mobile/TouchState.test.ts`, wzmocniony `tests/systems/touchLayout.test.ts`. Przeglądarka (emulacja telefonu 915×412): stuknięcie ŁUK → „ŁUK AUTO”, układ bez styku, strzała widoczna przy łuku.
+
+**Do oceny właściciela na telefonie:** czy ostrzał automatyczny pasuje (a może wolisz tylko trzymanie), czy strzały są teraz czytelne, czy pełny ekran wraca po powrocie z innej aplikacji.
+
 ## Krok 188 — Druga paczka upgradu w grze testerów: U3–U9 i system wag `#decyzja` `#upgrade`
 
 **Decyzja właściciela (14.11.2026):** „możemy wszystko scalić i wrzucić do głównej gry?” — polecenie scalenia całego `upgrade-fable` do `main` i wdrożenia gry testerów.
@@ -6668,6 +6682,14 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 **Decyzja właściciela (22.11.2026):** „ruszaj w tej kolejności” — najpierw sterowanie na telefonie (PR #124 do `upgrade-fable`), potem scalenie `upgrade-fable` do `main` i wdrożenie gry testerów.
 
 **Co weszło do `main`** (wszystko z `upgrade-fable` od kroku 188): U8g — własni wrogowie Lustrzanej komnaty (polerka, spryskiwacz, wiadro z pianą, Odbicie z lustra) i Bocianiego Ogrodu (strach na wróble, sowa, ropucha, Cierniak; generator `tools/upper_enemies.py`), U12b — telefon: łuki ładowania zrywu i ultimate, skala przycisków do wysokości ekranu, pasek bossa u góry. Akt II (`akt-2`) nietknięty.
+
+**Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
+
+## Krok 190 — Telefon w grze testerów: łucznik z ostrzałem automatycznym, widoczne strzały, pełny ekran po powrocie (U12c) `#decyzja` `#telefon`
+
+**Skąd:** `#ocena` właściciela z testu na telefonie po kroku 189; poprawki zrobione na `upgrade-fable` (Krok U12c, PR #126), tu scalone do `main` i wdrożone bez osobnego pytania (zgoda właściciela z 7.11 na wdrożenia na Pages).
+
+**Co weszło:** ŁUK stuknięciem włącza/wyłącza ostrzał automatyczny łucznika (tylko dotyk), odsunięte TOTEM i SALWA, jasne strzały łucznika, powrót do pełnego ekranu pierwszym dotykiem po przełączeniu aplikacji. Szczegóły: Krok U12c wyżej.
 
 **Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
 
