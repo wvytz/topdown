@@ -339,6 +339,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return this.health.isDead;
   }
 
+  /** Elita (krok 42): wróg z choć jedną cechą. */
+  get isElite(): boolean {
+    return (this.definition.affixes?.length ?? 0) > 0;
+  }
+
   hasAffix(affix: EliteAffix): boolean {
     return this.definition.affixes?.includes(affix) ?? false;
   }

@@ -6664,6 +6664,21 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 
 **Do oceny właściciela na telefonie:** czy ostrzał automatyczny pasuje (a może wolisz tylko trzymanie), czy strzały są teraz czytelne, czy pełny ekran wraca po powrocie z innej aplikacji.
 
+## Krok U12d — Łucznik: strzały lecą w trafionego bossa albo elitę `#upgrade` `#telefon` `#lucznik` `#ocena` `#decyzja`
+
+**Skąd:** `#ocena` właściciela (22.11.2026, po teście na telefonie): strzał podstawowy łucznika dalej się nie podoba — dużo strzał leci w zupełnie losowych kierunkach, a po trafieniu bossa albo elity każda kolejna strzała powinna lecieć w niego, a nie tam, gdzie wskaże niedokładny celownik. Pasek adresu po powrocie do gry — w porządku (krok U12c).
+
+**Co powstało:**
+- **Blokada celu** (`systems/ArrowLock.ts` — czysta logika, `config/arrowLockConfig.ts` — liczby): strzała łucznika, która trafi **bossa** (ranga 2) albo **elitę** (ranga 1), zakłada blokadę. Kolejne strzały podstawowe lecą w ten cel (od środka bohatera do środka celu), dopóki cel nie zginie, nie oddali się poza 380 px (strzała i tak nie doleci, ok. 310 px) albo nie zostanie trafiony boss (boss przejmuje blokadę od elity; ta sama ranga nie przełącza). Strzały salwy i totemu zostają tam, gdzie wymierzone.
+- **Dotyk:** gdy kciuk nie celuje (stuknięcie, ostrzał automatyczny, przytrzymanie — `aimSource: 'auto'`), strzała leci w zablokowany cel zawsze, także gdy bliżej stoi inny wróg. Przy przeciąganiu kciuka (celowanie ręczne) blokada działa tylko, gdy kierunek mieści się w stożku 45° wokół celu (plus kąt promienia celu); dalej decyduje gracz, a blokada czeka — to ręczne odwołanie bez przycisku.
+- **PC i pad:** to samo, z celowaniem zawsze ręcznym (mysz, pad) — strzała dociąga do trafionego bossa/elity w stożku 45°, poza nim leci tam, gdzie celuje gracz, więc nikt nie traci kontroli. Czeka na ocenę, czy 45° nie jest za dużo na myszy (`ARROW_LOCK.manualConeDeg`).
+- **Znacznik:** cienki jasny pierścień wokół zablokowanego celu, znika wraz z blokadą; w co-opie blokadę ma każdy łucznik osobno (`HeroCombat`).
+- `PlayerActions.aimSource` (opcjonalne), `Enemy.isElite`.
+
+**Testy:** `tests/systems/ArrowLock.test.ts` (blokada po trafieniu, stożek ręcznego celowania, śmierć celu, zasięg, rangi). `npm run build` zielony. Przeglądarka (emulacja telefonu, arena Slimera, łucznik z ostrzałem automatycznym): pierścień wokół bossa.
+
+**Do oceny właściciela:** czy strzały trafiają bossa i elity bez „losowych” wylotów, czy pierścień jest czytelny, czy na PC stożek 45° nie przeszkadza.
+
 ## Krok 188 — Druga paczka upgradu w grze testerów: U3–U9 i system wag `#decyzja` `#upgrade`
 
 **Decyzja właściciela (14.11.2026):** „możemy wszystko scalić i wrzucić do głównej gry?” — polecenie scalenia całego `upgrade-fable` do `main` i wdrożenia gry testerów.
@@ -6690,6 +6705,14 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 **Skąd:** `#ocena` właściciela z testu na telefonie po kroku 189; poprawki zrobione na `upgrade-fable` (Krok U12c, PR #126), tu scalone do `main` i wdrożone bez osobnego pytania (zgoda właściciela z 7.11 na wdrożenia na Pages).
 
 **Co weszło:** ŁUK stuknięciem włącza/wyłącza ostrzał automatyczny łucznika (tylko dotyk), odsunięte TOTEM i SALWA, jasne strzały łucznika, powrót do pełnego ekranu pierwszym dotykiem po przełączeniu aplikacji. Szczegóły: Krok U12c wyżej.
+
+**Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
+
+## Krok 191 — Łucznik: blokada celu na trafionym bossie i elicie w grze testerów (U12d) `#decyzja` `#lucznik`
+
+**Skąd:** `#ocena` właściciela po kroku 190; poprawka zrobiona na `upgrade-fable` (Krok U12d, PR #128), tu scalona do `main` i wdrożona bez osobnego pytania (zgoda właściciela z 7.11 na wdrożenia na Pages).
+
+**Co weszło:** strzały łucznika po trafieniu bossa albo elity lecą w niego, aż zginie, oddali się albo gracz odwoła ręcznym celowaniem; pierścień-znacznik. Szczegóły: Krok U12d wyżej.
 
 **Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
 
