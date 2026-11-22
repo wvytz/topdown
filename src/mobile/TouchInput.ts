@@ -46,6 +46,7 @@ export class TouchInput implements PlayerInput {
     const autoAim =
       locked || taps.attack || taps.shot || (touchState.attack && touchState.aim === null) || (touchState.shoot && touchState.shotAim === null);
     const auto = autoAim ? autoAimDirection(origin, context.targets(), TOUCH_AUTO_AIM_RANGE) : null;
+    let manualNow = false;
     if (auto) {
       this.aim = auto;
       this.holdAimUntil = now + TOUCH_AUTO_AIM_HOLD_MS;
@@ -55,6 +56,7 @@ export class TouchInput implements PlayerInput {
       const direction = touchAimDirection(touchState.shotAim, touchState.aim, holding ? { x: 0, y: 0 } : move, this.aim);
       // Ręcznie prowadzony kciuk dostaje lekkie dociąganie do wroga w wąskim stożku.
       this.aim = manual ? assistAimDirection(origin, direction, context.targets(), TOUCH_AIM_ASSIST) : direction;
+      manualNow = manual !== null;
       if (manual) this.holdAimUntil = -Infinity;
     }
 
@@ -66,6 +68,8 @@ export class TouchInput implements PlayerInput {
       shoot: base.shoot || touchState.shoot || taps.shot,
       interact: base.interact || taps.interact,
       ultimate: base.ultimate || taps.ultimate,
+      // Krok U12d: ręcznie prowadzony kciuk to celowanie ręczne, reszta (stuknięcie, przytrzymanie, ruch) — samo.
+      aimSource: manualNow ? 'manual' : 'auto',
     };
   }
 }
