@@ -6623,6 +6623,33 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 
 **Do oceny:** głośność i barwa trzech nowych dźwięków (`SOUND_RECIPES`).
 
+## Krok U12b — Telefon: czytelne ładowanie, skala do ekranu, pasek bossa u góry `#upgrade` `#telefon` `#sterowanie` `#hud`
+
+**Skąd:** zadanie „ulepszyć sterowanie na telefonie” (22.11.2026). Przegląd w Chromium z emulacją telefonu (667×375, Pixel 7 poziomo, tablet 1024×768) na `mobile.html`.
+
+**Bolączki znalezione w przeglądzie:**
+- pasek bossa na dole płótna leżał pod przyciskiem ZRYW (i pod gałką), więc zdrowia bossa nie było widać;
+- napisy na przyciskach wychodziły poza kółko (STRZAŁ, TOTEM) — krój stały, kółko małe;
+- ZRYW i ultimate nie mówiły, kiedy będą gotowe (tylko złoty kolor ultimate), zryw w ogóle bez reakcji na stuknięcie;
+- przyciski i gałki w stałych pikselach CSS — na tablecie drobne;
+- pozycje pauzy co 26 px CSS i pola dotyku z lukami między wierszami.
+
+**Co powstało:**
+- **Łuki ładowania** (`OverlayButton.progress`): wokół ZRYWU i ultimate rośnie złoty łuk od góry, przycisk jest przyciemniony, dopóki nie jest gotowy.
+- **Błysk i wibracja** (`TOUCH_FEEDBACK`): zryw, E i ultimate świecą 160 ms po stuknięciu, ale tylko gdy akcja naprawdę coś zrobi (zryw gotowy, ultimate pełne); `navigator.vibrate` (Android, bez skutku tam, gdzie go nie ma) także przy napełnieniu paska mocy.
+- **Skala do ekranu** (`TOUCH_UI_SCALE`, czyste `touchUiScale`, `placeButton(..., scale)`): przyciski, gałki, strefy przeciągnięcia i podpowiedź gałki rosną z wysokością ekranu (odniesienie 390 px, przedział 0,92–1,45); napisy rosną razem z nimi.
+- **Napisy dopasowane do kółek** (`fitLabelUnit`): rozmiar kroju tak, by napis mieścił się w kółku; PPM (STRZAŁ) większe (promień 44), ultimate większe (34).
+- **Pasek bossa u góry na telefonie** (`HUD_LAYOUT.bossBarMobile`, także duet): między panelem bohatera a minimapą, poza zasięgiem kciuków.
+- **Pauza:** pola dotyku pozycji menu stykają się na telefonie (wyliczone z kroku listy); opis sterowania wspomina łuki ładowania.
+
+**Decyzje:** bez trybu dla leworęcznych i bez dasha gestem w tym kroku (patrz backlog); ładunki PPM bez zmian.
+
+**Testy:** `tests/systems/touchLayout.test.ts` (skala i obcięcie, przyciski nie nachodzą na siebie przy skali 1,45, napisy mieszczą się w kółkach dla wszystkich kitów). `npm run build` zielony. Przeglądarka: ZRYW z łukiem po zrywie (Palacz), pasek bossa i duet pająków u góry, tablet 1024×768 ze skalowanymi przyciskami; bez błędów strony.
+
+**Do oceny właściciela na prawdziwym telefonie:** czy wibracja nie przeszkadza, rozmiar przycisków (skala), położenie paska bossa u góry.
+
+**Backlog (telefon):** tryb dla leworęcznych (lustrzany układ + przełącznik w pauzie), dash gestem (odrzucony w kroku 141, wrócić po teście), przycisk pauzy przy krawędzi ekranu zamiast pod minimapą na płótnie.
+
 ## Krok 188 — Druga paczka upgradu w grze testerów: U3–U9 i system wag `#decyzja` `#upgrade`
 
 **Decyzja właściciela (14.11.2026):** „możemy wszystko scalić i wrzucić do głównej gry?” — polecenie scalenia całego `upgrade-fable` do `main` i wdrożenia gry testerów.

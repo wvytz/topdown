@@ -385,11 +385,13 @@ export class PauseScene extends Phaser.Scene {
     const items = pauseItems(page, this.options);
     const firstY = page === PausePage.Controls || page === PausePage.Items ? L.controlsItemsY : L.itemsY;
     items.forEach((item, i) => {
-      const y = firstY + i * (page === PausePage.Settings ? L.settingsItemStep : L.itemStep);
+      const step = page === PausePage.Settings ? L.settingsItemStep : L.itemStep;
+      const y = firstY + i * step;
       const text = add(
         uiTextFromStyle(this, cx, y, '', { ...this.style, fontSize: `${slotOf(item) === null ? L.itemFontSize : L.slotFontSize}px` })
           .setOrigin(0.5)
-          .setHitPadding(16, 4),
+          // Telefon (krok U12b): pola dotyku sąsiednich pozycji stykają się, kciuk nie trafia w lukę między wierszami.
+          .setHitPadding(16, this.mobile ? Math.max(4, Math.floor((step - L.itemFontSize - 2) / 2)) : 4),
       );
       text.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.hover(item));
       text.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.activate(item));

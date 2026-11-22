@@ -125,6 +125,7 @@ export const PAUSE_CONFIG = {
       'STRZAŁ / PROMIEŃ / SALWA — przeciągnij lub stuknij',
       'ZRYW — dash · E — kapliczka, schody',
       'SZAŁ / NOVA / TOTEM — ultimate (gdy pasek mocy pełny)',
+      'Złoty łuk wokół ZRYWU i ultimate — ładowanie',
     ],
     hint: 'Stuknij pozycję',
   },

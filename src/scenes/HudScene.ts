@@ -21,7 +21,7 @@ import { display } from '@/input/DisplayControls';
 import { currentPlatform } from '@/core/platform';
 import { BOSS_POINTER_CONFIG } from '@/config/gameConfig';
 import { DEATH_HERO_ICON } from '@/config/deathScreenConfig';
-import { HUD_LAYOUT as L, UI_PALETTE as P, UI_TEXT_COLORS as C } from '@/config/uiConfig';
+import { HUD_LAYOUT as L, UI_PALETTE as P, UI_TEXT_COLORS as C, type BossBarLayout } from '@/config/uiConfig';
 import { heroIconTexture } from '@/effects/heroIcon';
 import { fadingAlpha, floorModifierNote, goldNote, objectiveHint, type ObjectiveTone } from '@/systems/hudText';
 import { UiText, uiText } from '@/ui/UiText';
@@ -57,8 +57,6 @@ const BANNER_MS = 3000;
 const BANNER_FADE_IN_MS = 300;
 const BANNER_FADE_OUT_MS = 900;
 const BANNER_Y = 150;
-const BOSS = L.bossBar;
-const DUET_BAR_WIDTH = (BOSS.width - BOSS.duetGap) / 2;
 
 /** Rampy pasków (światło, barwa, cień). */
 const RAMPS = {
@@ -116,6 +114,9 @@ export class HudScene extends Phaser.Scene {
   private minimapMarks!: Phaser.GameObjects.Graphics;
   private minimapDrawn: { explorer: MinimapExplorer; version: number } | null = null;
   private bossNameText!: UiText;
+  /** Układ paska bossa: na telefonie u góry (krok U12b — dół zasłania przycisk ZRYW). */
+  private boss: BossBarLayout = L.bossBar;
+  private duetBarWidth = 0;
   /** Imiona nad paskami duetu (krok 136). */
   private duetNameTexts: UiText[] = [];
   private pointers!: Phaser.GameObjects.Graphics;
@@ -178,8 +179,10 @@ export class HudScene extends Phaser.Scene {
     this.layoutPanel();
     this.toastText = uiText(this, this.scale.width / 2, 70, '', { size: 2, color: '#ffe08a', align: 'center' }).setOrigin(0.5);
 
-    this.bossNameText = uiText(this, this.scale.width / 2, BOSS.y - 24, '', { size: 2, color: C.boss }).setOrigin(0.5, 0).setVisible(false);
-    this.duetNameTexts = [0, 1].map((i) => uiText(this, this.duetBarX(i) + DUET_BAR_WIDTH / 2, BOSS.y - 18, '', { color: C.boss }).setOrigin(0.5, 0).setVisible(false));
+    this.boss = currentPlatform() === 'mobile' ? L.bossBarMobile : L.bossBar;
+    this.duetBarWidth = (this.boss.width - this.boss.duetGap) / 2;
+    this.bossNameText = uiText(this, this.scale.width / 2, this.boss.y - 24, '', { size: 2, color: C.boss }).setOrigin(0.5, 0).setVisible(false);
+    this.duetNameTexts = [0, 1].map((i) => uiText(this, this.duetBarX(i) + this.duetBarWidth / 2, this.boss.y - 18, '', { color: C.boss }).setOrigin(0.5, 0).setVisible(false));
     this.pointers = this.add.graphics();
 
     this.bannerTitle = uiText(this, this.scale.width / 2, BANNER_Y, '', { size: 4, color: '#f0d27a', align: 'center' }).setOrigin(0.5).setAlpha(0);
@@ -447,11 +450,11 @@ export class HudScene extends Phaser.Scene {
       return;
     }
 
-    const x = (this.scale.width - BOSS.width) / 2;
+    const x = (this.scale.width - this.boss.width) / 2;
     const ratio = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
     // Krok U7h (ocena właściciela): bez „faza x/y” i kresek progów — fazy nie są komunikowane.
     this.bossNameText.setText(boss.enraged ? `${boss.name} — ${boss.enragedLabel}` : boss.name);
-    this.fillBossBar(x, BOSS.width, ratio, boss.enraged);
+    this.fillBossBar(x, this.boss.width, ratio, boss.enraged);
   }
 
   /**
@@ -463,17 +466,17 @@ export class HudScene extends Phaser.Scene {
     if (!text) return;
     text.setText(member.name).setColor(member.defeated ? C.muted : member.enraged ? '#ff8a5a' : C.boss);
     const ratio = member.maxHp > 0 ? member.hp / member.maxHp : 0;
-    this.fillBossBar(this.duetBarX(index), DUET_BAR_WIDTH, ratio, member.enraged);
+    this.fillBossBar(this.duetBarX(index), this.duetBarWidth, ratio, member.enraged);
   }
 
   /** Pasek bossa w ramce z czerwonymi nitami (barwy ekranu startowego). */
   private fillBossBar(x: number, width: number, ratio: number, enraged: boolean): void {
-    drawFrame(this.bars, x - 4, BOSS.y - 4, width + 8, BOSS.height + 8, { rivets: P.redLight, bevel: null });
-    drawBar(this.bars, x, BOSS.y, width, BOSS.height, ratio, enraged ? RAMPS.bossEnraged : RAMPS.boss, 0x2a0c10);
+    drawFrame(this.bars, x - 4, this.boss.y - 4, width + 8, this.boss.height + 8, { rivets: P.redLight, bevel: null });
+    drawBar(this.bars, x, this.boss.y, width, this.boss.height, ratio, enraged ? RAMPS.bossEnraged : RAMPS.boss, 0x2a0c10);
   }
 
   private duetBarX(index: number): number {
-    return (this.scale.width - BOSS.width) / 2 + index * (DUET_BAR_WIDTH + BOSS.duetGap);
+    return (this.scale.width - this.boss.width) / 2 + index * (this.duetBarWidth + this.boss.duetGap);
   }
 
   /** Strzałki do bossów poza kadrem (krok 136): grot przy krawędzi ekranu, pulsuje. */
