@@ -408,6 +408,80 @@ export const ENEMY_VARIANTS: Readonly<Record<EnemyVariant, EnemyVariantDefinitio
   [EnemyVariant.CoffinLurker]: { type: EnemyType.Lurker, color: 0x6a4a32 },
   [EnemyVariant.CinderLurker]: { type: EnemyType.Lurker, color: 0xc0401c },
   [EnemyVariant.BarrelLurker]: { type: EnemyType.Lurker, color: 0x7a5a3a },
+  // Krok U8g: własni wrogowie Lustrzanej komnaty (piętro 6) i Bocianiego Ogrodu (piętro 7) zamiast wrogów z ruin.
+  // Polerka: ślizg po wypolerowanej posadzce jak skok ogara, ale bez smugi ognia; dłuższy telegraf i dłuższe
+  // hamowanie po chybieniu (okno na kontrę) — czytelny, „arcade'owy” wróg na jasnej posadzce.
+  [EnemyVariant.Polisher]: {
+    type: EnemyType.Rusher,
+    color: 0x4a4e5a,
+    moveSpeed: 125,
+    attack: {
+      kind: EnemyAttackKind.Pounce,
+      damage: 11,
+      range: 120,
+      windupMs: 500,
+      cooldownMs: 1900,
+      knockback: 230,
+      speed: 440,
+      maxDistance: 150,
+      hitRadius: 14,
+      missRecoveryMs: 850,
+    },
+  },
+  // Spryskiwacz: kropla chloru słabsza od kuli maga, ale spowalnia (30% na 1,2 s) — zgrywa się z mokrymi pasami areny.
+  [EnemyVariant.Sprayer]: {
+    type: EnemyType.Kiter,
+    color: 0x3aa890,
+    attack: {
+      kind: EnemyAttackKind.Projectile,
+      damage: 6,
+      range: 260,
+      windupMs: 450,
+      cooldownMs: 1700,
+      knockback: 90,
+      projectileSpeed: 190,
+      projectileLifetimeMs: 2000,
+      status: { slow: { pct: 0.3, durationMs: 1200 } },
+    },
+  },
+  [EnemyVariant.FoamBucket]: { type: EnemyType.Nester, color: 0xb04a5a, attack: broodAttack(EnemyVariant.Bubble) },
+  // Bańki spowalniają jak pajęczaki leża (15% na 0,8 s): mydliny są śliskie.
+  [EnemyVariant.Bubble]: broodling(0xd8d0f0, { slow: { pct: 0.15, durationMs: 800 } }),
+  [EnemyVariant.GlassLurker]: { type: EnemyType.Lurker, color: 0x5a5070 },
+  // Strach na wróble: wolniejszy od Rushera i twardszy, sierp sięga dalej i bije mocniej po długim zamachu (480 ms).
+  [EnemyVariant.Scarecrow]: {
+    type: EnemyType.Rusher,
+    color: 0xb8a060,
+    maxHp: 40,
+    moveSpeed: 100,
+    attack: {
+      kind: EnemyAttackKind.Melee,
+      damage: 13,
+      range: 36,
+      hitRange: 50,
+      windupMs: 480,
+      cooldownMs: 1300,
+      knockback: 260,
+    },
+  },
+  // Sowa: pióro szybkie (250 px/s) i krótkie (1,6 s), krótki zamach — w mroku ogrodu trzeba czytać ruch skrzydeł.
+  [EnemyVariant.Owl]: {
+    type: EnemyType.Kiter,
+    color: 0x7a6a58,
+    attack: {
+      kind: EnemyAttackKind.Projectile,
+      damage: 7,
+      range: 300,
+      windupMs: 380,
+      cooldownMs: 1400,
+      knockback: 100,
+      projectileSpeed: 250,
+      projectileLifetimeMs: 1600,
+    },
+  },
+  [EnemyVariant.Toad]: { type: EnemyType.Nester, color: 0x5a6a3a, attack: broodAttack(EnemyVariant.Froglet) },
+  [EnemyVariant.Froglet]: broodling(0x7ab04a),
+  [EnemyVariant.ThornLurker]: { type: EnemyType.Lurker, color: 0x3a5a3a },
 };
 
 /** Wrogowie strzelają tylko z widoku gracza (krok 18): przy zoomie 2,0 widać mniej świata niż przy 1,5. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { TOUCH_BUTTONS } from '@/config/touchConfig';
-import { buttonAt, followStickOrigin, placeButton } from '@/systems/touchLayout';
+import { TOUCH_BUTTONS, TOUCH_LABELS, TOUCH_UI_SCALE } from '@/config/touchConfig';
+import { measureLine } from '@/core/pixelFont';
+import { buttonAt, fitLabelUnit, followStickOrigin, placeButton, touchUiScale } from '@/systems/touchLayout';
 
 describe('placeButton — przycisk od prawego dolnego rogu ekranu', () => {
   it('liczy środek od krawędzi ekranu, nie płótna', () => {
@@ -60,5 +61,53 @@ describe('followStickOrigin — gałka idzie za kciukiem', () => {
     expect(origin.x).toBeCloseTo(152);
     // Kciuk cofa się o 60 px (do 140): jest już po lewej stronie środka — bohater idzie w lewo.
     expect(140 - origin.x).toBeLessThan(0);
+  });
+});
+
+describe('touchUiScale — sterowanie rośnie z ekranem (krok U12b)', () => {
+  it('ekran odniesienia daje 1, a skala jest obcięta z obu stron', () => {
+    expect(touchUiScale(TOUCH_UI_SCALE.referenceHeight, TOUCH_UI_SCALE)).toBe(1);
+    expect(touchUiScale(200, TOUCH_UI_SCALE)).toBe(TOUCH_UI_SCALE.min);
+    expect(touchUiScale(1200, TOUCH_UI_SCALE)).toBe(TOUCH_UI_SCALE.max);
+  });
+
+  it('zły rozmiar ekranu (jeszcze nie zmierzony) nie psuje układu', () => {
+    expect(touchUiScale(0, TOUCH_UI_SCALE)).toBe(1);
+    expect(touchUiScale(Number.NaN, TOUCH_UI_SCALE)).toBe(1);
+  });
+
+  it('skala przesuwa środek i promień przycisku od rogu ekranu', () => {
+    const button = placeButton({ right: 100, bottom: 80, radius: 40 }, { width: 1000, height: 800 }, 1.5);
+    expect(button).toEqual({ x: 850, y: 680, radius: 60 });
+  });
+
+  it('przyciski nie nachodzą na siebie także przy największej skali', () => {
+    const screen = { width: 1300, height: 900 };
+    const ids = ['attack', 'shoot', 'dash', 'interact', 'ultimate'] as const;
+    for (const a of ids) for (const b of ids) {
+      if (a >= b) continue;
+      const p = placeButton(TOUCH_BUTTONS[a], screen, TOUCH_UI_SCALE.max);
+      const q = placeButton(TOUCH_BUTTONS[b], screen, TOUCH_UI_SCALE.max);
+      expect(Math.hypot(p.x - q.x, p.y - q.y), `${a} / ${b}`).toBeGreaterThanOrEqual(p.radius + q.radius);
+    }
+  });
+});
+
+describe('fitLabelUnit — napis mieści się w kółku', () => {
+  it('krótki napis dostaje największy rozmiar, długi — mniejszy, nie mniej niż 1', () => {
+    expect(fitLabelUnit([10], 46, 3)).toBe(3);
+    expect(fitLabelUnit([60], 30, 3)).toBe(1);
+    expect(fitLabelUnit([], 30, 3)).toBe(3);
+  });
+
+  it('wszystkie napisy przycisków walki mieszczą się w swoich kółkach (rozmiar ≥ 2 poza najdłuższymi)', () => {
+    const kinds = ['melee', 'sorcery', 'archery'] as const;
+    for (const kind of kinds) {
+      for (const id of ['attack', 'shoot', 'ultimate'] as const) {
+        const label = TOUCH_LABELS[id][kind];
+        const unit = fitLabelUnit(label.split('\n').map((line) => measureLine(line)), TOUCH_BUTTONS[id].radius, id === 'attack' ? 3 : 2);
+        expect(unit, `${id}/${kind}`).toBeGreaterThanOrEqual(2);
+      }
+    }
   });
 });

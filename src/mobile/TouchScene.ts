@@ -2,11 +2,20 @@ import Phaser from 'phaser';
 import { UiText, uiTextFromStyle } from '@/ui/UiText';
 import { SceneKey } from '@/core/types';
 import { DEATH_TIMING } from '@/config/deathScreenConfig';
-import { TOUCH_BUTTONS, TOUCH_DEATH_BUTTONS, TOUCH_LABELS, TOUCH_SHOT_HOLD_MS, TOUCH_STICK, TOUCH_TAP_MAX_MS } from '@/config/touchConfig';
+import {
+  TOUCH_BUTTONS,
+  TOUCH_DEATH_BUTTONS,
+  TOUCH_FEEDBACK,
+  TOUCH_LABELS,
+  TOUCH_SHOT_HOLD_MS,
+  TOUCH_STICK,
+  TOUCH_TAP_MAX_MS,
+  TOUCH_UI_SCALE,
+} from '@/config/touchConfig';
 import type { GameScene } from '@/scenes/GameScene';
 import { MenuCommand } from '@/systems/gamepadInput';
 import { stickState, stickToMovement } from '@/systems/touchAim';
-import { buttonAt, followStickOrigin, placeButton, type ScreenButton } from '@/systems/touchLayout';
+import { buttonAt, followStickOrigin, placeButton, touchUiScale, type ScreenButton } from '@/systems/touchLayout';
 import { touchState } from '@/mobile/TouchState';
 import { TouchOverlay, type OverlayButton, type OverlayStick } from '@/mobile/TouchOverlay';
 
@@ -83,6 +92,11 @@ export class TouchScene extends Phaser.Scene {
   private canInteract = false;
   /** Pasek mocy ultimate pełny (krok 98) — przycisk świeci. */
   private ultimateReady = false;
+  /** Ładowanie zrywu i paska mocy (0..1) — łuki wokół przycisków (krok U12b). */
+  private dashReadiness = 1;
+  private ultimateCharge = 0;
+  /** Do kiedy (performance.now) przycisk świeci po stuknięciu. */
+  private flashUntil: Partial<Record<ButtonId, number>> = {};
   private deathButtons: DeathButton[] = [];
   /** Od kiedy ekran śmierci czeka na gracza — przyciski wchodzą razem z napisem, nie pod kciukiem z walki. */
   private deathSince: number | null = null;
@@ -133,17 +147,38 @@ export class TouchScene extends Phaser.Scene {
     };
   }
 
+  /** Skala sterowania do wysokości ekranu (krok U12b). */
+  private uiScale(): number {
+    return touchUiScale(this.overlay.screen.height, TOUCH_UI_SCALE);
+  }
+
+  /** Wibracja (Android); przeglądarki bez niej i iPhone po cichu pomijają. */
+  private buzz(pattern: number | readonly number[]): void {
+    try {
+      navigator.vibrate?.(pattern as number | number[]);
+    } catch {
+      // brak zgody na wibracje — bez skutku
+    }
+  }
+
+  /** Przycisk świeci chwilę po stuknięciu, ale tylko gdy akcja naprawdę coś zrobi. */
+  private flash(id: ButtonId, vibrate: number): void {
+    this.flashUntil[id] = performance.now() + TOUCH_FEEDBACK.flashMs;
+    this.buzz(vibrate);
+  }
+
   /** Przyciski walki na ekranie bieżącego rozmiaru, liczone od krawędzi bezpiecznego obszaru. */
   private screenButtons(): Record<ButtonId, ScreenButton> {
     const { width, height } = this.overlay.screen;
     const safe = this.overlay.safeArea;
     const screen = { width: width - safe.right, height: height - safe.bottom };
+    const k = this.uiScale();
     return {
-      attack: placeButton(TOUCH_BUTTONS.attack, screen),
-      shoot: placeButton(TOUCH_BUTTONS.shoot, screen),
-      dash: placeButton(TOUCH_BUTTONS.dash, screen),
-      interact: placeButton(TOUCH_BUTTONS.interact, screen),
-      ultimate: placeButton(TOUCH_BUTTONS.ultimate, screen),
+      attack: placeButton(TOUCH_BUTTONS.attack, screen, k),
+      shoot: placeButton(TOUCH_BUTTONS.shoot, screen, k),
+      dash: placeButton(TOUCH_BUTTONS.dash, screen, k),
+      interact: placeButton(TOUCH_BUTTONS.interact, screen, k),
+      ultimate: placeButton(TOUCH_BUTTONS.ultimate, screen, k),
     };
   }
 
@@ -170,7 +205,12 @@ export class TouchScene extends Phaser.Scene {
     if (hud.isPlayerDead || hud.death) return null;
     this.kit = game.heroKit;
     this.canInteract = hud.canInteract;
-    this.ultimateReady = (hud.ultimate?.charge ?? 0) >= 1;
+    this.dashReadiness = hud.dashReadiness;
+    this.ultimateCharge = hud.ultimate?.charge ?? 0;
+    const ready = this.ultimateCharge >= 1;
+    // Pasek mocy właśnie się napełnił: krótka wibracja zamiast wpatrywania się w przycisk.
+    if (ready && !this.ultimateReady) this.buzz(TOUCH_FEEDBACK.vibrate.ultimateReady);
+    this.ultimateReady = ready;
     return game;
   }
 
@@ -192,10 +232,13 @@ export class TouchScene extends Phaser.Scene {
     const button = buttonAt(this.screenButtons(), pointer, TOUCH_BUTTONS.hitSlop, (id) => id !== 'interact' || this.canInteract);
     if (button === 'dash') {
       touchState.queueDash();
+      if (this.dashReadiness >= 1) this.flash('dash', TOUCH_FEEDBACK.vibrate.dash);
     } else if (button === 'interact') {
       touchState.queueInteract();
+      this.flash('interact', TOUCH_FEEDBACK.vibrate.interact);
     } else if (button === 'ultimate') {
       touchState.queueUltimate();
+      if (this.ultimateReady) this.flash('ultimate', TOUCH_FEEDBACK.vibrate.ultimate);
     } else if (button === 'attack' || button === 'shoot') {
       if (this.sticks[button]) return;
       // Środek gałki w środku przycisku: kierunek to strona, w którą kciuk zjedzie z przycisku.
@@ -220,16 +263,16 @@ export class TouchScene extends Phaser.Scene {
   private onMove(pointer: TouchPoint): void {
     if (this.moveStick?.pointerId === pointer.id) {
       // Gałka ruchu idzie za kciukiem: zawrócenie nie wymaga cofania kciuka przez cały dawny środek.
-      const origin = followStickOrigin({ x: this.moveStick.originX, y: this.moveStick.originY }, pointer, TOUCH_STICK.radius);
+      const origin = followStickOrigin({ x: this.moveStick.originX, y: this.moveStick.originY }, pointer, TOUCH_STICK.radius * this.uiScale());
       this.moveStick.originX = origin.x;
       this.moveStick.originY = origin.y;
-      touchState.move = stickToMovement(this.updateStick(this.moveStick, pointer, TOUCH_STICK.radius));
+      touchState.move = stickToMovement(this.updateStick(this.moveStick, pointer, TOUCH_STICK.radius * this.uiScale()));
     } else if (this.sticks.attack?.pointerId === pointer.id) {
-      const stick = this.updateStick(this.sticks.attack, pointer, TOUCH_STICK.aimRadius);
+      const stick = this.updateStick(this.sticks.attack, pointer, TOUCH_STICK.aimRadius * this.uiScale());
       touchState.aim = stick.strength > 0 ? stick.direction : null;
       if (touchState.aim) touchState.attack = true;
     } else if (this.sticks.shoot?.pointerId === pointer.id) {
-      const stick = this.updateStick(this.sticks.shoot, pointer, TOUCH_STICK.aimRadius);
+      const stick = this.updateStick(this.sticks.shoot, pointer, TOUCH_STICK.aimRadius * this.uiScale());
       touchState.shotAim = stick.strength > 0 ? stick.direction : null;
       if (touchState.shotAim) touchState.shoot = true;
     }
@@ -355,23 +398,26 @@ export class TouchScene extends Phaser.Scene {
     const buttons: OverlayButton[] = [];
     for (const id of BUTTONS) {
       if (id === 'interact' && !this.canInteract) continue;
-      const active = (id === 'attack' && touchState.attack) || (id === 'shoot' && touchState.shoot);
+      const flashing = performance.now() < (this.flashUntil[id] ?? 0);
+      const active = (id === 'attack' && touchState.attack) || (id === 'shoot' && touchState.shoot) || flashing;
       const ready = id === 'ultimate' && this.ultimateReady;
+      const progress = id === 'dash' ? this.dashReadiness : id === 'ultimate' ? this.ultimateCharge : undefined;
       const label = id === 'attack' || id === 'shoot' || id === 'ultimate' ? TOUCH_LABELS[id][this.kit] : TOUCH_LABELS[id];
-      buttons.push({ ...screen[id], label, state: active ? 'active' : ready ? 'ready' : 'idle', primary: id === 'attack' });
+      buttons.push({ ...screen[id], label, state: active ? 'active' : ready ? 'ready' : 'idle', primary: id === 'attack', progress });
     }
     const sticks: OverlayStick[] = [];
-    if (this.moveStick) sticks.push({ ...this.moveStick, radius: TOUCH_STICK.radius });
+    if (this.moveStick) sticks.push({ ...this.moveStick, radius: TOUCH_STICK.radius * this.uiScale() });
     for (const id of ['attack', 'shoot'] as const) {
       const stick = this.sticks[id];
       // Przycisk ataku: obwódka zasięgu przeciągnięcia i gałka pod kciukiem.
-      if (stick) sticks.push({ ...stick, radius: TOUCH_STICK.aimRadius });
+      if (stick) sticks.push({ ...stick, radius: TOUCH_STICK.aimRadius * this.uiScale() });
     }
     const { left, bottom } = TOUCH_STICK.restHint;
-    const restX = left + this.overlay.safeArea.left;
-    const restY = this.overlay.screen.height - this.overlay.safeArea.bottom - bottom;
-    const restHint = this.moveStick ? null : { originX: restX, originY: restY, knobX: restX, knobY: restY, radius: TOUCH_STICK.radius };
-    this.overlay.draw({ buttons, sticks, restHint });
+    const k = this.uiScale();
+    const restX = left * k + this.overlay.safeArea.left;
+    const restY = this.overlay.screen.height - this.overlay.safeArea.bottom - bottom * k;
+    const restHint = this.moveStick ? null : { originX: restX, originY: restY, knobX: restX, knobY: restY, radius: TOUCH_STICK.radius * this.uiScale() };
+    this.overlay.draw({ buttons, sticks, restHint, scale: k });
   }
 
   /** Pauza: ciemna pigułka ze złotą obwódką, ikonka ⏸ i podpis — widać ją od razu, w przeciwieństwie do samego „II”. */

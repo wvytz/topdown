@@ -26,8 +26,23 @@ export interface ScreenSize {
 }
 
 /** Środek przycisku na ekranie danego rozmiaru. */
-export function placeButton(spec: CornerButtonSpec, screen: ScreenSize): ScreenButton {
-  return { x: screen.width - spec.right, y: screen.height - spec.bottom, radius: spec.radius };
+export function placeButton(spec: CornerButtonSpec, screen: ScreenSize, scale = 1): ScreenButton {
+  return { x: screen.width - spec.right * scale, y: screen.height - spec.bottom * scale, radius: spec.radius * scale };
+}
+
+/** Skala sterowania do wysokości ekranu (px CSS), obcięta do `[min, max]`; zły rozmiar (0, NaN) daje 1. */
+export function touchUiScale(screenHeight: number, config: { readonly referenceHeight: number; readonly min: number; readonly max: number }): number {
+  if (!Number.isFinite(screenHeight) || screenHeight <= 0) return 1;
+  return Math.min(config.max, Math.max(config.min, screenHeight / config.referenceHeight));
+}
+
+/** Najwyższy rozmiar piksela fontu (1..`maxUnit`), przy którym napis mieści się w kółku o danym promieniu. */
+export function fitLabelUnit(lineWidthsInFontPixels: readonly number[], radius: number, maxUnit: number): number {
+  const widest = Math.max(0, ...lineWidthsInFontPixels);
+  for (let unit = Math.max(1, Math.floor(maxUnit)); unit > 1; unit--) {
+    if (widest * unit <= radius * 1.9) return unit;
+  }
+  return 1;
 }
 
 /**

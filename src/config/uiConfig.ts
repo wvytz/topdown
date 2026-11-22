@@ -48,6 +48,14 @@ export type UiTextSize = 1 | 2 | 3 | 4 | 5 | 6 | 8;
  * Nowy HUD (krok U7): lewy górny panel bohatera (portret, paski, ultimate, złoto, przedmioty), minimapa w ramce
  * w prawym górnym rogu, pasek bossa na dole. Napisy pomocy i długie podpowiedzi celu znikają po chwili.
  */
+/** Pasek bossa (płótno 960×540). */
+export interface BossBarLayout {
+  readonly width: number;
+  readonly height: number;
+  readonly y: number;
+  readonly duetGap: number;
+}
+
 export const HUD_LAYOUT = {
   margin: 8,
   /**
@@ -80,7 +88,12 @@ export const HUD_LAYOUT = {
   helpVisibleMs: 25000,
   helpFadeMs: 1500,
   /** Pasek bossa (płótno 960×540). */
-  bossBar: { width: 420, height: 10, y: 474, duetGap: 20 },
+  bossBar: { width: 420, height: 10, y: 474, duetGap: 20 } as BossBarLayout,
+  /**
+   * Telefon (krok U12b): pasek bossa u góry, między panelem bohatera a minimapą — na dole zasłaniał go przycisk ZRYW,
+   * a kciuki i tak leżą nisko.
+   */
+  bossBarMobile: { width: 340, height: 10, y: 40, duetGap: 16 } as BossBarLayout,
   /** Panel partnera w co-opie: prawy dolny róg. */
   partner: { width: 150, right: 12, topFromBottom: 108, hpHeight: 8, ultSize: 14, itemSize: 18, itemGap: 2 },
 } as const;

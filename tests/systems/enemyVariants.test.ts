@@ -164,3 +164,55 @@ describe('wrogowie Cmentarzyska (krok 32b)', () => {
   });
 });
 
+
+describe('wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (krok U8g)', () => {
+  const ruins = BIOMES[BiomeId.TowerRuins].enemyVariants;
+
+  it('oba biomy mają własny komplet archetypów — żaden wariant nie jest pożyczony z innego biomu', () => {
+    for (const id of [BiomeId.MirrorHall, BiomeId.StorkGarden]) {
+      const own = BIOMES[id].enemyVariants;
+      for (const other of Object.values(BIOMES)) {
+        if (other.id === id) continue;
+        for (const type of Object.values(EnemyType)) expect(own[type]).not.toBe(other.enemyVariants[type]);
+      }
+      for (const type of Object.values(EnemyType)) expect(own[type]).not.toBe(ruins[type]);
+    }
+  });
+
+  it('każdy nowy wariant ma 8-kierunkowy arkusz, a strzelcy własny pocisk', () => {
+    const fresh = [BiomeId.MirrorHall, BiomeId.StorkGarden].flatMap((id) => Object.values(BIOMES[id].enemyVariants));
+    for (const variant of fresh) expect(SPRITE_SHEETS[ENEMY_VISUALS[variant].sheet].directions).toBe(8);
+    expect(ENEMY_PROJECTILE_VISUALS[EnemyVariant.Sprayer]?.sheet).toBe('chlorineDrop');
+    expect(ENEMY_PROJECTILE_VISUALS[EnemyVariant.Owl]?.directional).toBe(true);
+  });
+
+  it('polerka ślizga się jak skok ogara, ale bez smugi ognia i z dłuższym hamowaniem po chybieniu', () => {
+    const polisher = def(EnemyType.Rusher, EnemyVariant.Polisher);
+    const hound = def(EnemyType.Rusher, EnemyVariant.Hellhound);
+    if (polisher.attack.kind !== EnemyAttackKind.Pounce || hound.attack.kind !== EnemyAttackKind.Pounce) throw new Error('skok');
+    expect(polisher.attack.trail).toBeUndefined();
+    expect(polisher.attack.missRecoveryMs).toBeGreaterThan(hound.attack.missRecoveryMs);
+    expect(polisher.attack.windupMs).toBeGreaterThanOrEqual(hound.attack.windupMs);
+    expect(ENEMY_VISUALS[EnemyVariant.Polisher].leap).toBeDefined();
+  });
+
+  it('spryskiwacz spowalnia kroplą; sowa rzuca piórem szybciej niż kula maga, ale na krótszy czas lotu', () => {
+    const sprayer = def(EnemyType.Kiter, EnemyVariant.Sprayer);
+    const owl = def(EnemyType.Kiter, EnemyVariant.Owl);
+    const mage = ENEMY_DEFINITIONS[EnemyType.Kiter];
+    if (sprayer.attack.kind !== EnemyAttackKind.Projectile || owl.attack.kind !== EnemyAttackKind.Projectile) throw new Error('Kiter strzela');
+    if (mage.attack.kind !== EnemyAttackKind.Projectile) throw new Error('Kiter strzela');
+    expect(sprayer.attack.status?.slow?.pct).toBeGreaterThan(0);
+    expect(owl.attack.projectileSpeed).toBeGreaterThan(mage.attack.projectileSpeed);
+    expect(owl.attack.projectileLifetimeMs).toBeLessThan(mage.attack.projectileLifetimeMs);
+  });
+
+  it('strach na wróble: wolniejszy od Rushera, ale sierp sięga dalej i ma dłuższy zamach (czytelny telegraf)', () => {
+    const scarecrow = def(EnemyType.Rusher, EnemyVariant.Scarecrow);
+    const rusher = ENEMY_DEFINITIONS[EnemyType.Rusher];
+    if (scarecrow.attack.kind !== EnemyAttackKind.Melee || rusher.attack.kind !== EnemyAttackKind.Melee) throw new Error('cios');
+    expect(scarecrow.moveSpeed).toBeLessThan(rusher.moveSpeed);
+    expect(scarecrow.attack.hitRange).toBeGreaterThan(rusher.attack.hitRange);
+    expect(scarecrow.attack.windupMs).toBeGreaterThan(rusher.attack.windupMs);
+  });
+});

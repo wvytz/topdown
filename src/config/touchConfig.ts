@@ -69,11 +69,11 @@ export type TouchButtonSpec = CornerButtonSpec;
  */
 export const TOUCH_BUTTONS = {
   attack: { right: 92, bottom: 84, radius: 46 },
-  shoot: { right: 46, bottom: 190, radius: 34 },
+  shoot: { right: 46, bottom: 186, radius: 44 },
   dash: { right: 196, bottom: 54, radius: 36 },
   interact: { right: 206, bottom: 140, radius: 28 },
   /** Ultimate (krok 98): nad dużym kółkiem, na lewo od PPM; widoczny zawsze, jasny, gdy pasek jest pełny. */
-  ultimate: { right: 128, bottom: 196, radius: 28 },
+  ultimate: { right: 128, bottom: 198, radius: 34 },
   /**
    * Pauza (krok 140, uwaga właściciela: same „II” były nieczytelne nawet dla niego): podłużny przycisk
    * z ikonką i podpisem „PAUZA”, jaśniejszy od przycisków walki. Środek od prawego górnego rogu płótna.
@@ -99,4 +99,18 @@ export const TOUCH_DEATH_BUTTONS = {
   width: 200,
   height: 44,
   gap: 16,
+} as const;
+
+/**
+ * Skala sterowania do ekranu (krok U12b): przyciski i gałki mają rozmiar w pikselach CSS, więc na tablecie
+ * (albo dużym telefonie) wychodziły drobne w stosunku do ekranu. Skala = wysokość ekranu / wysokość odniesienia
+ * (Pixel 7 poziomo), obcięta do przedziału — mały telefon nie dostaje mniejszych przycisków niż kciuk potrzebuje.
+ */
+export const TOUCH_UI_SCALE = { referenceHeight: 390, min: 0.92, max: 1.45 } as const;
+
+/** Reakcja przycisków (krok U12b): jak długo przycisk świeci po stuknięciu (ms) i wibracje (ms; Android, gdy przeglądarka pozwala). */
+export const TOUCH_FEEDBACK = {
+  flashMs: 160,
+  /** Wibracja przy zrywie, ultimate i interakcji — tylko gdy akcja naprawdę coś zrobi. */
+  vibrate: { dash: 12, interact: 18, ultimate: 35, ultimateReady: [18, 40, 18] },
 } as const;

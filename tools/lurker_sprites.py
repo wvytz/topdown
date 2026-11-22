@@ -12,8 +12,8 @@ Użycie (z katalogu głównego repozytorium):
 
 <biom>-lurker_walk-slash.png (384x384, komórka 48x48, 8 kierunków z obrotu, obrys po obrocie):
   kolumny 0–3 chód (ręce wahadłowo, pazury przed sobą), 4–7 cięcie prawą ręką od prawej do lewej (uderzenie w 6).
-lurker-hideouts.png (576x48, komórka 32x48, bez kierunków, jeden pas): po 3 klatki na biom (ruiny, leże, Grzybnia,
-  Cmentarzysko, Piekło, palarnia): 0 spokój, 1 znak (drgnięcie, ślepia w szczelinie), 2 rozbita (po wyskoku).
+lurker-hideouts.png (768x48, komórka 32x48, bez kierunków, jeden pas): po 3 klatki na biom (ruiny, leże, Grzybnia,
+  Cmentarzysko, Piekło, palarnia, Lustrzana komnata — lustro, Bociani Ogród — żywopłot; krok U8g): 0 spokój, 1 znak (drgnięcie, ślepia w szczelinie), 2 rozbita (po wyskoku).
   Dół komórki = dół kafla pod murem; górne 16 px zachodzi na lico muru.
 """
 import argparse
@@ -47,8 +47,12 @@ BIOMES = {
     'coffin': dict(body=ramp(.38, .040, 150), eye=ok(.88, .120, 100), claw=ok(.80, .030, 90)),
     'cinder': dict(body=ramp(.22, .015, 30, .08), eye=ok(.80, .170, 55), claw=ok(.66, .190, 40), ember=ok(.62, .200, 38)),
     'barrel': dict(body=ramp(.28, .030, 55), eye=ok(.76, .170, 50), claw=ok(.70, .030, 70)),
+    # Krok U8g: Odbicie z lustra w murze Lustrzanej komnaty (ciemne srebro z fioletem, ślepia w błękicie opalu)
+    # i Cierniak z żywopłotu Bocianiego Ogrodu (ciemna zieleń jeżyn, bursztynowe ślepia, blade ciernie).
+    'glass': dict(body=ramp(.26, .030, 285, .09), eye=ok(.86, .090, 200), claw=ok(.86, .040, 300)),
+    'thorn': dict(body=ramp(.26, .050, 140, .085), eye=ok(.82, .160, 75), claw=ok(.80, .030, 95)),
 }
-ORDER = ('stone', 'silk', 'mound', 'coffin', 'cinder', 'barrel')
+ORDER = ('stone', 'silk', 'mound', 'coffin', 'cinder', 'barrel', 'glass', 'thorn')
 
 
 # ---------------- Czyhacz ----------------
@@ -284,7 +288,63 @@ def hide_barrel(state):
     return img
 
 
-HIDEOUTS = (hide_stone, hide_silk, hide_mound, hide_coffin, hide_cinder, hide_barrel)
+def hide_glass(state):
+    """Lustro w ramie wsparte o mur: rama z ciemnego mosiądzu, tafla w barwach opalu z ukośnymi odblaskami."""
+    pal = trt.PALETTES['lustro_opal']
+    frame = ramp(.30, .045, 80, .09)
+    glass = (pal.floor[0], pal.floor[1], pal.floor[2], pal.floor[4], pal.opal[1])
+    img = Img(HW, HH)
+    if state == 2:
+        # pusta rama pod murem i odłamki tafli na posadzce
+        rect(img, 7, 14, 25, FLOOR_Y, frame[1])
+        rect(img, 9, 16, 23, FLOOR_Y - 2, pal.wall_face[1])
+        for x, y, w, h in ((4, 40, 4, 2), (12, 43, 3, 2), (22, 41, 5, 2), (26, 36, 3, 2), (17, 38, 2, 2)):
+            rect(img, x, y, x + w, y + h, glass[3])
+            img.put(x, y, pal.opal[(x + y) % 3])
+        return img
+    rect(img, 7, 14, 25, FLOOR_Y, frame[2])
+    rect(img, 7, 14, 25, 15, frame[4])
+    rect(img, 9, 16, 23, FLOOR_Y - 2, glass[2])
+    # odblaski: dwa ukośne pasy jasne i jeden w barwie opalu
+    for i in range(14):
+        for off, col in ((0, glass[3]), (1, glass[3]), (6, pal.opal[2])):
+            x, y = 10 + i, 30 - i + off
+            if 9 <= x < 23 and 16 <= y < FLOOR_Y - 2:
+                img.put(x, y, col)
+    if state == 1:
+        # w tafli zamiast odbicia — ciemna sylwetka i ślepia; rysa przez szkło
+        ellipse(img, 16, 27, 4, 5, lambda nx, ny: BIOMES['glass']['body'][0])
+        eyes(img, 14, 26, BIOMES['glass']['eye'])
+        for x, y in ((19, 18), (18, 20), (19, 22), (20, 24)):
+            img.put(x, y, pal.deep[0])
+    return img
+
+
+def hide_thorn(state):
+    """Kępa żywopłotu pod murem: zwarte kule liści w zieleni ogrodu, kilka kwiatów; ślepia w gąszczu."""
+    pal = trt.PALETTES['bociani_noc']
+    leaf = ramp(.24, .060, 145, .07)
+    img = Img(HW, HH)
+    if state == 2:
+        # rozszarpany krzak: niski pieniek i porozrzucane gałązki z liśćmi
+        ellipse(img, 16, 41, 5, 2.5, lambda nx, ny: leaf[0])
+        for x0, y0, x1, y1 in ((5, 44, 11, 38), (21, 38, 27, 44), (12, 34, 17, 36), (18, 44, 24, 45)):
+            stroke(img, [(x0, y0), (x1, y1)], 1.4, BIOMES['thorn']['body'][1])
+            ellipse(img, x1, y1, 1.8, 1.6, band_shade(leaf))
+        return img
+    rustle = 1 if state == 1 else 0
+    for x, y, r in ((10, 34, 6.5), (22, 34, 6.5), (16, 28, 7.5), (16, 39, 7), (9 - rustle, 41, 5), (23 + rustle, 41, 5)):
+        ellipse(img, x, y, r, r * .9, band_shade(leaf))
+    for x, y in ((11, 30), (21, 29), (15, 36), (25, 38)):
+        img.put(x, y, pal.bloom[1])
+        img.put(x + 1, y, pal.bloom[2])
+    if state == 1:
+        ellipse(img, 16, 34, 4, 2.2, lambda nx, ny: leaf[0])
+        eyes(img, 14, 34, BIOMES['thorn']['eye'])
+    return img
+
+
+HIDEOUTS = (hide_stone, hide_silk, hide_mound, hide_coffin, hide_cinder, hide_barrel, hide_glass, hide_thorn)
 
 
 def hideout_sheet():
