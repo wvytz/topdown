@@ -30,6 +30,8 @@ export class TouchState {
   shoot = false;
   /** Kierunek przeciągnięcia przycisku strzału (gałka strzału); null — strzał celuje sam. */
   shotAim: Vector2 | null = null;
+  /** Łucznik: ostrzał automatyczny włączony stuknięciem ŁUK (krok U12c) — strzela w najbliższego wroga bez trzymania. */
+  fireLock = false;
   private queued: TouchTaps = NO_TAPS;
 
   queueDash(): void {
@@ -68,6 +70,7 @@ export class TouchState {
     this.attack = false;
     this.shoot = false;
     this.shotAim = null;
+    this.fireLock = false;
     this.queued = NO_TAPS;
   }
 }

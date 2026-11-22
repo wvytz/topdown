@@ -6650,6 +6650,20 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 
 **Backlog (telefon):** tryb dla leworęcznych (lustrzany układ + przełącznik w pauzie), dash gestem (odrzucony w kroku 141, wrócić po teście), przycisk pauzy przy krawędzi ekranu zamiast pod minimapą na płótnie.
 
+## Krok U12c — Telefon: łucznik z ostrzałem automatycznym, widoczne strzały, pełny ekran po powrocie `#upgrade` `#telefon` `#sterowanie` `#ocena` `#lucznik`
+
+**Skąd:** `#ocena` właściciela po teście na prawdziwym telefonie (Chrome, poziomo, `mobile.html`, po wdrożeniu U12b, 22.11.2026): sterowanie łucznikiem uciążliwe, strzały ledwo widać, po przełączeniu aplikacji na dole zostaje pasek adresu.
+
+**Co powstało:**
+- **Sterowanie łucznikiem:** ŁUK trzeba było trzymać cały czas, a SALWA, ZRYW i TOTEM wymagały zdjęcia kciuka z łuku, więc ostrzał się urywał. Teraz **krótkie stuknięcie ŁUK włącza ostrzał automatyczny** (przycisk świeci, podpis „ŁUK / AUTO”): łucznik strzela w najbliższego wroga w zasięgu, dopóki ma kogo trafić, a kciuk jest wolny na salwę, zryw i totem. Kolejne stuknięcie wyłącza; przytrzymanie i przeciąganie działają jak dawniej. Ostrzał wyłącza pauza, śmierć i zmiana piętra (`TouchState.release`). Tylko dotyk, tylko łucznik; przełącznik `TOUCH_ARCHER_FIRE_LOCK.enabled` w `config/touchConfig.ts`. **To zmiana decyzji z kroku 141 („bez auto-ataku”) — dla łucznika, do oceny właściciela.**
+- **Układ przycisków:** TOTEM i SALWA stykały się (zrzut właściciela), więc ultimate i E odsunięte (`TOUCH_BUTTONS`); test układu wymaga teraz przerwy 12 px między kółkami.
+- **Strzały łucznika widoczne:** drzewce były ciemnobrązowe na brązowej podłodze. Generator `tools/archer_sprites.py` rysuje jasne (kremowe) drzewce, szerszy grot i czerwone lotki, mocna strzała jaśniejsza; arkusz postaci bez zmian.
+- **Pasek adresu po powrocie:** przeglądarka wychodzi z pełnego ekranu, gdy gra traci widoczność, a wejść w niego można tylko w odpowiedzi na dotyk. Nasłuch `touchend` zostaje na stałe (wcześniej zdejmowany po pierwszym dotyku), więc pierwszy dotyk po powrocie przywraca pełny ekran; do tego przeliczenie skali po `visibilitychange`. Manifest (`display: fullscreen`) i `100dvh` już były. Bez dotyku strona sama nie może wejść w pełny ekran — to ograniczenie przeglądarki.
+
+**Testy:** `tests/mobile/TouchState.test.ts`, wzmocniony `tests/systems/touchLayout.test.ts`. Przeglądarka (emulacja telefonu 915×412): stuknięcie ŁUK → „ŁUK AUTO”, układ bez styku, strzała widoczna przy łuku.
+
+**Do oceny właściciela na telefonie:** czy ostrzał automatyczny pasuje (a może wolisz tylko trzymanie), czy strzały są teraz czytelne, czy pełny ekran wraca po powrocie z innej aplikacji.
+
 ## Krok 188 — Druga paczka upgradu w grze testerów: U3–U9 i system wag `#decyzja` `#upgrade`
 
 **Decyzja właściciela (14.11.2026):** „możemy wszystko scalić i wrzucić do głównej gry?” — polecenie scalenia całego `upgrade-fable` do `main` i wdrożenia gry testerów.
@@ -6662,6 +6676,14 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 - `public/do-oceny.html` ma względne linki, więc w grze testerów otwiera grę testerów (każdy link to run testowy). Wdrożenie z `main` zachowuje podkatalogi `gh-pages` (`/upgrade/`, `/akt2/`).
 
 **Testy:** `startOverrides.test.ts` (wagi z adresu = run testowy). `npm run build` zielony, `npm run smoke` (solo), `-- --coop` i `-- --bot` zielone.
+
+## Krok 189 — Trzecia paczka upgradu w grze testerów: U8g i telefon U12b `#decyzja` `#upgrade`
+
+**Decyzja właściciela (22.11.2026):** „ruszaj w tej kolejności” — najpierw sterowanie na telefonie (PR #124 do `upgrade-fable`), potem scalenie `upgrade-fable` do `main` i wdrożenie gry testerów.
+
+**Co weszło do `main`** (wszystko z `upgrade-fable` od kroku 188): U8g — własni wrogowie Lustrzanej komnaty (polerka, spryskiwacz, wiadro z pianą, Odbicie z lustra) i Bocianiego Ogrodu (strach na wróble, sowa, ropucha, Cierniak; generator `tools/upper_enemies.py`), U12b — telefon: łuki ładowania zrywu i ultimate, skala przycisków do wysokości ekranu, pasek bossa u góry. Akt II (`akt-2`) nietknięty.
+
+**Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
 
 ## Znane ograniczenia i backlog
 
@@ -6684,7 +6706,7 @@ Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w
 - **U5 postacie — zrobione (kroki U5a–U5b, czeka na ocenę):** bezruch, trafienie, dash i śmierć wszystkich trzech bohaterów, akcent barwy barbarzyńcy, Totem z generatora, znaczniki P1/P2 w co-opie. Do oceny: czy ciała po śmierci i oddech w bezruchu „siedzą”.
 - **U6 bossowie — zrobione (krok U6):** karta wejścia, kreski faz na pasku HP, śmierć Pożeracza i Palacza, błysk pazurów Matki Pająków, rekwizyty aren 6–7 z `tools/arena_props.py` (czeka na ocenę). Do rozważenia: osobny okrzyk/efekt w świecie przy zmianie fazy u bossów bez ryku.
 - **U7 interfejs — zrobione (krok U7):** pikselowy krój na wszystkich ekranach, nowy HUD, karty w ramkach z rombami postępu, pauza/menu/wybór/minimapa w jednym stylu, „Moje przedmioty” i podpis runu na ekranie końca (czeka na ocenę). Do rozważenia: ikony przemian z generatora łupów zamiast samej ramki.
-- **U8 rozgrywka — zrobione (kroki U8a–U8g, czeka na ocenę):** wydarzenia w pokojach (pochodnia, sakiewka, ciemny pokój), przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem (`docs/balance/U8e-2026-11-14.md`; propozycje liczb czekają na zgodę), złapanie Uciekiniera, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (U8g: polerka, spryskiwacz, wiadro z pianą, Odbicie; strach na wróble, sowa, ropucha, Cierniak — tylko na `upgrade-fable`, do następnej paczki do `main`).
+- **U8 rozgrywka — zrobione (kroki U8a–U8g, czeka na ocenę):** wydarzenia w pokojach (pochodnia, sakiewka, ciemny pokój), przeklęta skrzynia, Rozdeptanie, skok pajączka, pomiar botem (`docs/balance/U8e-2026-11-14.md`; propozycje liczb czekają na zgodę), złapanie Uciekiniera, własni wrogowie Lustrzanej komnaty i Bocianiego Ogrodu (U8g: polerka, spryskiwacz, wiadro z pianą, Odbicie; strach na wróble, sowa, ropucha, Cierniak — weszli do `main` w kroku 189).
 - **U9 platformy — zrobione (kroki U9a–U9d):** U9a (bot goni bossa, wybiera przemianę, „Graj z botem” w menu), U9b (zmiana imienia w pauzie, filtr wulgaryzmów), U9c (usuwanie zapisów i wybór piętra dotykiem, podpowiedzi zależne od urządzenia), U9d (dźwięki ciężkiego zamachu, skoku pajączka i Rozdeptania) — etap zrobiony, czeka na ocenę.
 - **U11 system wag** (`docs/WAGI.md`, pomysł właściciela 12.11.2026, `#wagi`): wagi ataków, Oddech i automatyczna garda, Zadyszka i atak kary, Szala (Passa i Odsłonięcie), arcade'owa sygnalizacja trafień zamiast krwi. **14.11.2026 `#decyzja` właściciel wybrał wersję lekką (§11): combo, pęknięcia i atak kary; Oddech i garda odłożone.** **U11a zrobione (czeka na ocenę):** Passa, pęknięcia, atak kary Kitera i Rushera/Czyhacza, `?wagi=0|1`. **U11b zrobione, U11a–U11b przyjęte przez właściciela 14.11.2026 (`#ocena`):** „!” w ciężkim zamachu, ciężkie ciosy Passy III, kara bossów, licznik na telefonie, unik bota, `npm run bench:wagi`. Dalej: strojenie liczb po ocenie właściciela; Oddech i garda tylko, jeśli wersja lekka okaże się za łatwa.
 

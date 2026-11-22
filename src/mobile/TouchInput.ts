@@ -41,8 +41,10 @@ export class TouchInput implements PlayerInput {
     const move = touchMove.x !== 0 || touchMove.y !== 0 ? touchMove : base.move;
 
     // Stuknięcie albo przytrzymanie przycisku ataku bez przeciągania: celuje sam.
+    // Ostrzał automatyczny łucznika (krok U12c): celuje sam, dopóki ma kogo trafić.
+    const locked = touchState.fireLock && !touchState.attack;
     const autoAim =
-      taps.attack || taps.shot || (touchState.attack && touchState.aim === null) || (touchState.shoot && touchState.shotAim === null);
+      locked || taps.attack || taps.shot || (touchState.attack && touchState.aim === null) || (touchState.shoot && touchState.shotAim === null);
     const auto = autoAim ? autoAimDirection(origin, context.targets(), TOUCH_AUTO_AIM_RANGE) : null;
     if (auto) {
       this.aim = auto;
@@ -59,7 +61,7 @@ export class TouchInput implements PlayerInput {
     return {
       move,
       aim: { x: origin.x + this.aim.x * TOUCH_AIM_POINT_DISTANCE, y: origin.y + this.aim.y * TOUCH_AIM_POINT_DISTANCE },
-      attack: base.attack || touchState.attack || taps.attack,
+      attack: base.attack || touchState.attack || taps.attack || (locked && auto !== null),
       dash: base.dash || taps.dash,
       shoot: base.shoot || touchState.shoot || taps.shot,
       interact: base.interact || taps.interact,
