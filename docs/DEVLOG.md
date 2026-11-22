@@ -6685,6 +6685,14 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 
 **Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
 
+## Krok 190 — Telefon w grze testerów: łucznik z ostrzałem automatycznym, widoczne strzały, pełny ekran po powrocie (U12c) `#decyzja` `#telefon`
+
+**Skąd:** `#ocena` właściciela z testu na telefonie po kroku 189; poprawki zrobione na `upgrade-fable` (Krok U12c, PR #126), tu scalone do `main` i wdrożone bez osobnego pytania (zgoda właściciela z 7.11 na wdrożenia na Pages).
+
+**Co weszło:** ŁUK stuknięciem włącza/wyłącza ostrzał automatyczny łucznika (tylko dotyk), odsunięte TOTEM i SALWA, jasne strzały łucznika, powrót do pełnego ekranu pierwszym dotykiem po przełączeniu aplikacji. Szczegóły: Krok U12c wyżej.
+
+**Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
