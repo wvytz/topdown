@@ -1,5 +1,6 @@
 import type { ScreenButton, ScreenSize } from '@/systems/touchLayout';
 import { layoutLine, measureLine } from '@/core/pixelFont';
+import { fitLabelUnit } from '@/systems/touchLayout';
 
 /** Gałka do narysowania: środek, pozycja gałki pod kciukiem i promień (px CSS). */
 export interface OverlayStick {
@@ -16,6 +17,8 @@ export interface OverlayButton extends ScreenButton {
   readonly state: 'idle' | 'active' | 'ready';
   /** Duże kółko ataku: grubsza obwódka i większy napis. */
   readonly primary?: boolean;
+  /** Ładowanie (krok U12b): 0..1; poniżej 1 przycisk jest przyciemniony, a wokół niego rośnie łuk (zryw, ultimate). */
+  readonly progress?: number | undefined;
 }
 
 export interface OverlayFrame {
@@ -23,6 +26,8 @@ export interface OverlayFrame {
   readonly sticks: readonly OverlayStick[];
   /** Blada podpowiedź gałki ruchu, gdy kciuk jej nie trzyma. */
   readonly restHint: OverlayStick | null;
+  /** Skala sterowania do ekranu (krok U12b): napisy na przyciskach rosną razem z kółkami. */
+  readonly scale?: number;
 }
 
 const FILL = { idle: 'rgba(32, 32, 48, 0.45)', active: 'rgba(57, 192, 216, 0.75)', ready: 'rgba(231, 177, 64, 0.8)' } as const;
@@ -38,6 +43,7 @@ export class TouchOverlay {
   private size: ScreenSize = { width: 0, height: 0 };
   private dpr = 1;
   private empty = true;
+  private labelScale = 1;
   /** Próbnik bezpiecznego obszaru (wcięcie, pasek „home” na iPhonie) — padding z `env(safe-area-inset-*)`. */
   private readonly safeProbe: HTMLDivElement;
   private insets = { left: 0, right: 0, bottom: 0 };
@@ -94,6 +100,7 @@ export class TouchOverlay {
       return;
     }
     this.empty = false;
+    this.labelScale = frame.scale ?? 1;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.size.width, this.size.height);
     if (frame.restHint) this.drawStick(frame.restHint, 0.35);
@@ -107,11 +114,31 @@ export class TouchOverlay {
     ctx.arc(button.x, button.y, button.radius, 0, Math.PI * 2);
     ctx.fillStyle = FILL[button.state];
     ctx.fill();
+    const charging = button.progress !== undefined && button.progress < 1;
+    if (charging) {
+      // Przycisk jeszcze niegotowy: ciemna nakładka i łuk postępu od góry, zgodnie z ruchem wskazówek zegara.
+      ctx.beginPath();
+      ctx.arc(button.x, button.y, button.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(8, 8, 14, 0.35)';
+      ctx.fill();
+    }
     ctx.lineWidth = button.primary ? 3 : 2;
     ctx.strokeStyle = button.primary ? 'rgba(232, 232, 240, 0.75)' : 'rgba(232, 232, 240, 0.55)';
     ctx.stroke();
+    if (charging) {
+      const start = -Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(button.x, button.y, button.radius, start, start + Math.PI * 2 * Math.max(0.02, button.progress ?? 0));
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(231, 177, 64, 0.95)';
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
     // Krok U7: podpis przycisku w pikselowym kroju gry (obrys 1 piksel fontu), nie czcionką systemową.
-    drawPixelLabel(ctx, button.label, button.x, button.y, button.primary ? 3 : 2);
+    // Krok U12b: krój dopasowany do kółka — „STRZAŁ” nie wychodzi poza obwódkę.
+    const widths = button.label.split('\n').map((line) => measureLine(line));
+    drawPixelLabel(ctx, button.label, button.x, button.y, fitLabelUnit(widths, button.radius, Math.floor((button.primary ? 3 : 2) * this.labelScale + 0.5)));
   }
 
   /** Gałka: tarcza z obwódką i kółko pod kciukiem; `alpha` < 1 — blada podpowiedź. */
