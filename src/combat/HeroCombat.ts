@@ -18,6 +18,10 @@ import { LoopCue, SoundCue, sound } from '@/audio/SoundBoard';
 import type { CombatEffects } from '@/effects/CombatEffects';
 import type { Player, PlayerActions } from '@/entities/Player';
 import { arrowSpec, volleyDirections } from '@/systems/Archery';
+import { ARROW_LOCK } from '@/config/arrowLockConfig';
+import { ArrowLock, type LockCandidate } from '@/systems/ArrowLock';
+import { Boss } from '@/entities/Boss';
+import { Enemy } from '@/entities/Enemy';
 import type { DashSweep } from '@/systems/DashStrike';
 import { facingDirection } from '@/systems/Facing';
 import { applyFloorToLoadout } from '@/systems/FloorModifiers';
@@ -103,6 +107,9 @@ export class HeroCombat {
   private readonly evolutionView: HeroEvolutionView;
   /** Krok U11a: licznik Passy i pęknięcia przy bohaterze. */
   private readonly weightFx: WeightFx | null;
+  /** Krok U12d: cel, który trzyma strzały łucznika po trafieniu bossa albo elity, i jego znacznik. */
+  private readonly arrowLock = new ArrowLock<LockCandidate>();
+  private lockGfx: Phaser.GameObjects.Graphics | null = null;
 
   constructor(private readonly deps: HeroCombatDeps) {
     this.ultimates = new UltimateManager({
@@ -120,6 +127,8 @@ export class HeroCombat {
     deps.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.evolutionView.destroy();
       this.weightFx?.destroy();
+      this.lockGfx?.destroy();
+      this.lockGfx = null;
     });
   }
 
@@ -163,7 +172,7 @@ export class HeroCombat {
     if (turn.orb) this.fireOrb(turn.orb);
     if (turn.ultimate) this.ultimates.use(turn.ultimate, time);
     if (turn.nova) this.castNova(time);
-    if (turn.arrow) this.fireArrow(turn.arrow.direction, turn.arrow.strong);
+    if (turn.arrow) this.fireArrow(this.lockedDirection(turn.arrow.direction, actions.aimSource ?? 'manual'), turn.arrow.strong);
     if (turn.struck || turn.orb || turn.arrow) this.afterMainAttack(time);
     if (turn.volley) this.fireVolley(turn.volley);
     this.updateBeam(turn.beam, turn.beamTicks, turn.beamCharge, time);
@@ -186,6 +195,7 @@ export class HeroCombat {
     this.updateEvolutions(time);
     player.weights.update(time);
     this.weightFx?.update(time);
+    this.drawArrowLock();
   }
 
   /** Krok U11a: obrażenia ataku bohatera po bonusie Passy. */
@@ -288,6 +298,11 @@ export class HeroCombat {
   afterShotHit(shot: { readonly position: Vector2; readonly damage: number; readonly vampiric?: boolean; readonly magic?: boolean; readonly attackId?: number }, target: object, creature: boolean, now: number): void {
     if (creature && shot.attackId) this.deps.player.weights.landPart(shot.attackId, now);
     if (creature && shot.vampiric) this.tryVampireHeal(now);
+    // Krok U12d: strzała łucznika, która trafiła bossa albo elitę, zakłada blokadę — kolejne strzały lecą w ten cel.
+    if (creature && this.deps.player.archeryConfig) {
+      if (target instanceof Boss) this.arrowLock.hit(target, 2);
+      else if (target instanceof Enemy && target.isElite) this.arrowLock.hit(target, 1);
+    }
     if (shot.magic) this.orbSplash(shot.position, shot.damage, target, now);
     // Elektryczna strzała (krok 150): piorun przeskakuje z trafionego stworzenia na najbliższych sąsiadów.
     const chain = this.deps.player.effects.evolved.chain;
@@ -297,6 +312,24 @@ export class HeroCombat {
       const jumps = chainTargets(origin, [...this.deps.aimTargets()], chain.targets, chain.range, near, sparkLinkRule(this.deps.floor, this.deps.player, TILE_SIZE));
       if (jumps.length > 0) this.strikeChain(origin, jumps, Math.max(1, Math.round(shot.damage * chain.damageFraction)), now);
     }
+  }
+
+  /** Kierunek strzały podstawowej łucznika po blokadzie celu (krok U12d); bez blokady — kierunek gracza. */
+  private lockedDirection(aim: Vector2, source: 'auto' | 'manual'): Vector2 {
+    const { player } = this.deps;
+    return this.arrowLock.steer({ x: player.x, y: player.y }, aim, source, ARROW_LOCK) ?? aim;
+  }
+
+  /** Znacznik blokady: cienki pierścień wokół zablokowanego celu (rysowany co klatkę, znika wraz z blokadą). */
+  private drawArrowLock(): void {
+    const target = this.arrowLock.target;
+    if (!target) {
+      this.lockGfx?.clear();
+      return;
+    }
+    const { marker } = ARROW_LOCK;
+    this.lockGfx ??= this.deps.scene.add.graphics().setDepth(RENDER_DEPTH.aimMarker);
+    this.lockGfx.clear().lineStyle(marker.thickness, marker.color, marker.alpha).strokeCircle(target.x, target.y, target.radius + marker.padding);
   }
 
   /** Kula Czarodziejki wylatuje z kryształu; niesie wszystkie efekty broni z przedmiotów. */

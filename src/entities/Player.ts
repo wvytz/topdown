@@ -54,6 +54,11 @@ export interface PlayerActions {
   readonly interact: boolean;
   /** Ultimate (R, krok 98) — jednorazowe wciśnięcie. */
   readonly ultimate: boolean;
+  /**
+   * Skąd punkt celowania (krok U12d): `auto` — dotyk celuje sam (stuknięcie, przytrzymanie); brak albo `manual` — ręka gracza
+   * (mysz, pad, przeciągnięcie). Blokada celu łucznika dociąga strzałę bez pytania tylko przy `auto`.
+   */
+  readonly aimSource?: 'auto' | 'manual';
 }
 
 /** Co gracz zrobił w tej klatce — do rozstrzygnięcia przez scenę. */
