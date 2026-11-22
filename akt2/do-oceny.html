@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOP DOWN — do oceny</title>
+<!--
+  Krok U0: jedna lista rzeczy, które czekają na ocenę właściciela, z linkiem prosto do miejsca w grze.
+  Źródło prawdy dla „Do oceny” — DEVLOG (backlog) odsyła tutaj. Nowy krok z „czeka na ocenę” dopisuje wpis do ITEMS,
+  oceniony wpis przenosimy do DEVLOG-u jako `#ocena` i usuwamy stąd.
+  Linki są względne: na podglądzie (/topdown/upgrade/) otwierają podgląd, w grze testerów — grę testerów.
+  Każdy link to run testowy (wynik nie trafia na tablicę), oprócz pozycji „menu”.
+-->
+<style>
+  :root { color-scheme: dark; --bg: #120d0e; --card: #1f1718; --line: #3a2a2b; --text: #eadfd6; --dim: #9c8c84; --accent: #e0573c; --ok: #7fbf6a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; letter-spacing: 0.08em; margin: 0 0 4px; }
+  h2 { font-size: 15px; letter-spacing: 0.06em; color: var(--dim); text-transform: uppercase; margin: 28px 0 8px; }
+  p { color: var(--dim); margin: 0 0 14px; }
+  a { color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .row span { color: var(--dim); min-width: 84px; }
+  button { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; font: inherit; cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--accent); color: #fff; background: #3a1c17; }
+  ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  li { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+  li.done { opacity: 0.45; }
+  li input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--ok); }
+  li b { font-weight: 600; }
+  li small { color: var(--dim); white-space: nowrap; margin-left: 6px; }
+  li .what { grid-column: 2; color: var(--dim); font-size: 14px; }
+  li .links { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 14px; }
+  footer { margin-top: 28px; color: var(--dim); font-size: 13px; }
+  code { color: var(--text); overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <h1>DO OCENY</h1>
+  <p>Wszystko, co czeka na twoją ocenę, z linkiem prosto do miejsca w grze. Każdy link to run testowy — wynik nie trafia na tablicę. Ptaszek zapamiętuje tylko ta przeglądarka; ocenę napisz w czacie projektu z Claude (podgląd upgradu nie wysyła wiadomości „Napisz do autora”).</p>
+  <p><a href="testy.html">Szybki start przy arenach</a> · licznik wydajności: dopisz <code>&amp;perf=1</code> do adresu (na telefonie: pozycja „Wydajność” niżej).</p>
+
+  <div class="row" id="heroes"><span>Bohater</span>
+    <button data-hero="barbarian" aria-pressed="true">Barbarzyńca</button>
+    <button data-hero="sorceress">Czarodziejka</button>
+    <button data-hero="archer">Łucznik</button>
+  </div>
+  <div class="row" id="filter"><span>Pokaż</span>
+    <button data-filter="open" aria-pressed="true">nieocenione</button>
+    <button data-filter="all">wszystko</button>
+  </div>
+
+  <div id="groups"></div>
+  <footer>Lista z kroku U0 (10.11.2026). Szczegóły każdej pozycji: <code>docs/DEVLOG.md</code>, „Krok N”.</footer>
+</main>
+<script>
+  // Pozycje: grupa, tytuł, kroki, co ocenić, linki [podpis, adres]. W adresie {hero} = wybrany bohater.
+  const ITEMS = [
+    ['Akt II', 'Popielnik — kryjówka pod piecami', 'Z1', 'Układ komory i stanowisk (bramy, szyb, lustro, ściana imion, półka trofeów, piec), klimat, czytelność podpisów. Grafika stanowisk jest tymczasowa.', [['Popielnik', './?hub=1'], ['telefon', 'mobile.html?hub=1']]],
+    ['Akt II', 'Zejście: 6 pięter-odbić i Żar', 'Z1', 'Wejdź Bramą Zejścia. Czy 6 pięter to dobra długość, czy wrogowie +10% i czerwony mrok są odczuwalne, tempo Żaru (boss zabezpiecza, śmierć zabiera połowę luźnego), powrót do Popielnika po śmierci (M).', [['Popielnik', './?hub=1']]],
+    ['Akt II', 'Upadek po Wiedźmie', 'Z1', 'Pokonaj Wiedźmę we wspinaczce z menu i na ekranie zwycięstwa naciśnij M: scena upadku, Żar za spalone przedmioty, pozycja „POPIELNIK” w menu.', [['menu', './'], ['arena Wiedźmy (bez odblokowania)', './?hero={hero}&floor=7&boss=1']]],
+    ['Akt II', 'Wota i Piec wotów', 'Z3', 'Pokonaj bossa w Zejściu: zostawia Wotum. W Popielniku wypal je w Piecu wotów (30 Żaru), przy Palenisku wybierz przedmiot na start. Czy 4 przedmioty ochronne (trucizna, ogień, łuska, ratunek psa) są odczuwalne, cena 30 Żaru, ikony z jadeitową obwódką, błysk i napis „jad odparty” / „żar odparty”.', [['Popielnik', './?hub=1']]],
+    ['Akt II', 'Dwie bramy i kupiec', 'Z4', 'Po bossie Zejścia E na schodach otwiera dwie bramy: głębia, odbicie i nagroda (więcej Żaru, kupiec, więcej złota). Kupiec stoi przy wejściu na głębię 3 i 5 i za bramą „kupiec”: 2 przedmioty i leczenie za złoto (obniża wynik). Czy wybór drogi coś znaczy, ceny (przedmiot 30 + 10 na głębię, leczenie 15 + 5), figura kupca (tymczasowa).', [['Popielnik', './?hub=1']]],
+    ['Akt II', 'Wota — druga paczka', 'Z4', 'Jadeitowa maska (pociski −25%), Obsydianowe zwierciadło (co 8 s odbija pocisk ×2), Skóra jaguara (ciernie 10 przy ciosie wręcz), Pióro kecala (0,25 s nietykalności po dashu). Czy są odczuwalne i czy napisy „maska osłoniła” / „odbite!” pomagają.', [['Popielnik', './?hub=1']]],
+    ['Akt II', 'Zaćmienia i rangi', 'Z5', 'Po pierwszym Dnie Brama Zejścia pyta o poziom: 0, I (elity +1 cecha, mikstury −40%), II (+ fala nawały, kupiec ×1,5), III (+ większa i częstsza świta bossa); Żar ×1 / 1,25 / 1,5 / 2. Ranga za ukończone poziomy: Zahartowany → Godny → Posłaniec → Wybraniec (nagłówek Popielnika, ekran końca, „Zać. II” na tablicy). Czy różnice są odczuwalne i czy mnożniki Żaru są warte ryzyka. Link otwiera wszystkie poziomy.', [['Popielnik z Zaćmieniami', './?hub=1&eclipse=1']]],
+    ['Akt II', 'Kram kupca — trzecia karta', 'Z5', 'Stanowisko w Popielniku (prawy dół): za 60 Żaru kupiec Zejścia na zawsze wykłada trzy przedmioty zamiast dwóch. Czy cena jest w porządku.', [['Popielnik', './?hub=1']]],
