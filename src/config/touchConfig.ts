@@ -71,9 +71,10 @@ export const TOUCH_BUTTONS = {
   attack: { right: 92, bottom: 84, radius: 46 },
   shoot: { right: 46, bottom: 186, radius: 44 },
   dash: { right: 196, bottom: 54, radius: 36 },
-  interact: { right: 206, bottom: 140, radius: 28 },
-  /** Ultimate (krok 98): nad dużym kółkiem, na lewo od PPM; widoczny zawsze, jasny, gdy pasek jest pełny. */
-  ultimate: { right: 128, bottom: 198, radius: 34 },
+  /** Krok U12c: przesunięte w lewo-górę (było 206/140), żeby nie leżało pod ultimate — kółka się nie stykają (test układu). */
+  interact: { right: 268, bottom: 124, radius: 28 },
+  /** Ultimate (krok 98): nad dużym kółkiem, na lewo od PPM; krok U12c: dalej od PPM (TOTEM i SALWA się stykały). */
+  ultimate: { right: 162, bottom: 152, radius: 34 },
   /**
    * Pauza (krok 140, uwaga właściciela: same „II” były nieczytelne nawet dla niego): podłużny przycisk
    * z ikonką i podpisem „PAUZA”, jaśniejszy od przycisków walki. Środek od prawego górnego rogu płótna.
@@ -83,6 +84,15 @@ export const TOUCH_BUTTONS = {
   hitSlop: 1.25,
 } as const;
 
+/**
+ * Łucznik na dotyku (krok U12c, uwaga właściciela po teście na telefonie: „sterowanie łucznikiem jest uciążliwe”):
+ * ŁUK trzeba było trzymać cały czas, a salwa, zryw i totem wymagały zdjęcia kciuka z łuku — ostrzał się urywał.
+ * Teraz krótkie stuknięcie ŁUK włącza ostrzał automatyczny (strzela w najbliższego wroga w zasięgu, bez trzymania),
+ * kolejne stuknięcie go wyłącza; przytrzymanie i przeciągnięcie działa jak dawniej. Tylko dotyk (osobna tablica
+ * wyników telefonu); `enabled: false` przywraca wyłącznie trzymanie.
+ */
+export const TOUCH_ARCHER_FIRE_LOCK = { enabled: true } as const;
+
 /** Napisy na przyciskach; przyciski ataku zależą od broni bohatera. */
 export const TOUCH_LABELS = {
   attack: { melee: 'ATAK', sorcery: 'KULA', archery: 'ŁUK' },
@@ -91,6 +101,8 @@ export const TOUCH_LABELS = {
   interact: 'E',
   ultimate: { melee: 'SZAŁ', sorcery: 'NOVA', archery: 'TOTEM' },
   pause: 'PAUZA',
+  /** Łucznik z włączonym ostrzałem automatycznym. */
+  attackLocked: 'ŁUK\nAUTO',
 } as const;
 
 /** Przyciski ekranu śmierci na dotyku: pod napisem „R — nowa wspinaczka”. */

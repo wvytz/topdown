@@ -3,6 +3,7 @@ import { UiText, uiTextFromStyle } from '@/ui/UiText';
 import { SceneKey } from '@/core/types';
 import { DEATH_TIMING } from '@/config/deathScreenConfig';
 import {
+  TOUCH_ARCHER_FIRE_LOCK,
   TOUCH_BUTTONS,
   TOUCH_DEATH_BUTTONS,
   TOUCH_FEEDBACK,
@@ -40,6 +41,8 @@ interface Stick {
   knobY: number;
   /** Kiedy kciuk dotknął przycisku (ms, performance.now) — dla przycisków ataku. */
   readonly downAt: number;
+  /** Kciuk wyszedł poza martwą strefę (celowanie ręczne) — to nie jest stuknięcie. */
+  dragged?: boolean;
 }
 
 interface DeathButton {
@@ -270,7 +273,10 @@ export class TouchScene extends Phaser.Scene {
     } else if (this.sticks.attack?.pointerId === pointer.id) {
       const stick = this.updateStick(this.sticks.attack, pointer, TOUCH_STICK.aimRadius * this.uiScale());
       touchState.aim = stick.strength > 0 ? stick.direction : null;
-      if (touchState.aim) touchState.attack = true;
+      if (touchState.aim) {
+        touchState.attack = true;
+        this.sticks.attack.dragged = true;
+      }
     } else if (this.sticks.shoot?.pointerId === pointer.id) {
       const stick = this.updateStick(this.sticks.shoot, pointer, TOUCH_STICK.aimRadius * this.uiScale());
       touchState.shotAim = stick.strength > 0 ? stick.direction : null;
@@ -291,7 +297,12 @@ export class TouchScene extends Phaser.Scene {
       this.moveStick = null;
       touchState.move = { x: 0, y: 0 };
     }
-    if (this.sticks.attack?.pointerId === pointer.id) {
+    const attack = this.sticks.attack;
+    if (attack?.pointerId === pointer.id) {
+      // Łucznik: krótkie stuknięcie bez przeciągania przełącza ostrzał automatyczny (krok U12c).
+      if (this.kit === 'archery' && TOUCH_ARCHER_FIRE_LOCK.enabled && !attack.dragged && performance.now() - attack.downAt <= TOUCH_TAP_MAX_MS) {
+        touchState.fireLock = !touchState.fireLock;
+      }
       this.sticks.attack = null;
       touchState.attack = false;
       touchState.aim = null;
@@ -399,10 +410,15 @@ export class TouchScene extends Phaser.Scene {
     for (const id of BUTTONS) {
       if (id === 'interact' && !this.canInteract) continue;
       const flashing = performance.now() < (this.flashUntil[id] ?? 0);
-      const active = (id === 'attack' && touchState.attack) || (id === 'shoot' && touchState.shoot) || flashing;
+      const active = (id === 'attack' && (touchState.attack || touchState.fireLock)) || (id === 'shoot' && touchState.shoot) || flashing;
       const ready = id === 'ultimate' && this.ultimateReady;
       const progress = id === 'dash' ? this.dashReadiness : id === 'ultimate' ? this.ultimateCharge : undefined;
-      const label = id === 'attack' || id === 'shoot' || id === 'ultimate' ? TOUCH_LABELS[id][this.kit] : TOUCH_LABELS[id];
+      const label =
+        id === 'attack' && touchState.fireLock
+          ? TOUCH_LABELS.attackLocked
+          : id === 'attack' || id === 'shoot' || id === 'ultimate'
+            ? TOUCH_LABELS[id][this.kit]
+            : TOUCH_LABELS[id];
       buttons.push({ ...screen[id], label, state: active ? 'active' : ready ? 'ready' : 'idle', primary: id === 'attack', progress });
     }
     const sticks: OverlayStick[] = [];

@@ -14,7 +14,7 @@ describe('placeButton — przycisk od prawego dolnego rogu ekranu', () => {
     expect(attack.y + attack.radius).toBeLessThanOrEqual(360);
   });
 
-  it('przyciski walki nie nachodzą na siebie', () => {
+  it('przyciski walki nie nachodzą na siebie i mają przerwę 12 px (krok U12c: TOTEM i SALWA się stykały)', () => {
     const screen = { width: 915, height: 412 };
     const ids = ['attack', 'shoot', 'dash', 'interact', 'ultimate'] as const;
     for (const a of ids) {
@@ -22,7 +22,7 @@ describe('placeButton — przycisk od prawego dolnego rogu ekranu', () => {
         if (a >= b) continue;
         const p = placeButton(TOUCH_BUTTONS[a], screen);
         const q = placeButton(TOUCH_BUTTONS[b], screen);
-        expect(Math.hypot(p.x - q.x, p.y - q.y), `${a} / ${b}`).toBeGreaterThanOrEqual(p.radius + q.radius);
+        expect(Math.hypot(p.x - q.x, p.y - q.y), `${a} / ${b}`).toBeGreaterThanOrEqual(p.radius + q.radius + 12);
       }
     }
   });
@@ -88,7 +88,7 @@ describe('touchUiScale — sterowanie rośnie z ekranem (krok U12b)', () => {
       if (a >= b) continue;
       const p = placeButton(TOUCH_BUTTONS[a], screen, TOUCH_UI_SCALE.max);
       const q = placeButton(TOUCH_BUTTONS[b], screen, TOUCH_UI_SCALE.max);
-      expect(Math.hypot(p.x - q.x, p.y - q.y), `${a} / ${b}`).toBeGreaterThanOrEqual(p.radius + q.radius);
+      expect(Math.hypot(p.x - q.x, p.y - q.y), `${a} / ${b}`).toBeGreaterThanOrEqual(p.radius + q.radius + 12);
     }
   });
 });
