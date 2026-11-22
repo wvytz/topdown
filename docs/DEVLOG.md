@@ -6708,6 +6708,14 @@ Wydarzenia w pokojach, przeklęta skrzynia, Passa, pęknięcia i atak kary miał
 
 **Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
 
+## Krok 191 — Łucznik: blokada celu na trafionym bossie i elicie w grze testerów (U12d) `#decyzja` `#lucznik`
+
+**Skąd:** `#ocena` właściciela po kroku 190; poprawka zrobiona na `upgrade-fable` (Krok U12d, PR #128), tu scalona do `main` i wdrożona bez osobnego pytania (zgoda właściciela z 7.11 na wdrożenia na Pages).
+
+**Co weszło:** strzały łucznika po trafieniu bossa albo elity lecą w niego, aż zginie, oddali się albo gracz odwoła ręcznym celowaniem; pierścień-znacznik. Szczegóły: Krok U12d wyżej.
+
+**Weryfikacja:** `npm run build` zielony, `npm run smoke` (patrz wdrożenie).
+
 ## Znane ograniczenia i backlog
 
 Porządek z kroku U0 (10.11.2026). Dawny backlog (kroki 20–184a) w całości w „Archiwum backlogu” na końcu pliku.
